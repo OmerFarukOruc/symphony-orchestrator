@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# symphony-logs — Query Symphony attempt logs by issue identifier.
+# Output is structured JSON, optimised for LLM consumption.
+
+set -euo pipefail
+
+SYMPHONY_DIR="${SYMPHONY_DIR:-.symphony}"
+LIMIT=50
+MODE="events"
+ISSUE=""
+ATTEMPT_ID=""
+ERRORS_ONLY=false
+
+usage() {
+  cat <<'EOF'
+Usage:
+  symphony-logs <ISSUE>                   Show latest attempt events for an issue
+  symphony-logs <ISSUE> --errors          Show only error/failure events
+  symphony-logs <ISSUE> --attempts        List all attempts for an issue
+  symphony-logs <ISSUE> -n <N>            Limit to last N events (default: 50)
+  symphony-logs --attempt <ATTEMPT_ID>    Show events for a specific attempt
+  symphony-logs --dir <PATH>              Override .symphony directory
+
+Output is always JSON. Designed for LLM consumption, not human reading.
+EOF
+  exit 0
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h) usage ;;
+    --dir) SYMPHONY_DIR="$2"; shift 2 ;;
+    --attempts) MODE="attempts"; shift ;;
+    --attempt) MODE="single-attempt"; ATTEMPT_ID="$2"; shift 2 ;;
+    --errors) ERRORS_ONLY=true; shift ;;
+    -n) LIMIT="$2"; shift 2 ;;
+    -*) echo "{\"error\":\"unknown flag: $1\"}" >&2; exit 1 ;;
+    *) ISSUE="$1"; shift ;;
+  esac
+done
+
+if [[ "$MODE" == "single-attempt" && -n "$ATTEMPT_ID" ]]; then
+  ATTEMPT_FILE="$SYMPHONY_DIR/attempts/$ATTEMPT_ID.json"
+  EVENTS_FILE="$SYMPHONY_DIR/events/$ATTEMPT_ID.jsonl"
+
+  if [[ ! -f "$ATTEMPT_FILE" ]]; then
+    echo "{\"error\":\"attempt not found\",\"attemptId\":\"$ATTEMPT_ID\"}"
+    exit 1
+  fi
+
+  ATTEMPT_META=$(cat "$ATTEMPT_FILE")
+  if [[ -f "$EVENTS_FILE" ]]; then
+    EVENTS=$(tail -n "$LIMIT" "$EVENTS_FILE" | jq -s '.')
+  else
+    EVENTS="[]"
+  fi
+
+  jq -n --argjson meta "$ATTEMPT_META" --argjson events "$EVENTS" \
+    '{attempt: $meta, events: $events}'
+  exit 0
+fi
+
+if [[ -z "$ISSUE" ]]; then
+  echo "{\"error\":\"issue identifier required. Usage: symphony-logs <ISSUE>\"}"
+  exit 1
+fi
+
+# Resolve issue -> attempt IDs via the index file
+INDEX_FILE="$SYMPHONY_DIR/issue-index.json"
+if [[ -f "$INDEX_FILE" ]]; then
+  ATTEMPT_IDS=$(jq -r --arg issue "$ISSUE" '.[$issue] // empty | .[]' "$INDEX_FILE" 2>/dev/null)
+else
+  # Fallback: scan attempt files
+  ATTEMPT_IDS=$(grep -rl "\"issueIdentifier\"" "$SYMPHONY_DIR/attempts/" 2>/dev/null \
+    | xargs grep -l "\"$ISSUE\"" 2>/dev/null \
+    | xargs -I{} jq -r '.attemptId' {} 2>/dev/null | sort)
+fi
+
+if [[ -z "$ATTEMPT_IDS" ]]; then
+  echo "{\"error\":\"no attempts found for issue\",\"issue\":\"$ISSUE\",\"symphonyDir\":\"$SYMPHONY_DIR\"}"
+  exit 1
+fi
+
+if [[ "$MODE" == "attempts" ]]; then
+  # List all attempts as a JSON array
+  RESULT="["
+  FIRST=true
+  while IFS= read -r aid; do
+    [[ -z "$aid" ]] && continue
+    AFILE="$SYMPHONY_DIR/attempts/$aid.json"
+    [[ ! -f "$AFILE" ]] && continue
+    if $FIRST; then FIRST=false; else RESULT+=","; fi
+    RESULT+=$(cat "$AFILE")
+  done <<< "$ATTEMPT_IDS"
+  RESULT+="]"
+  echo "$RESULT" | jq '.'
+  exit 0
+fi
+
+# MODE=events — show events from the latest attempt
+LATEST_ID=$(echo "$ATTEMPT_IDS" | head -1)
+ATTEMPT_FILE="$SYMPHONY_DIR/attempts/$LATEST_ID.json"
+EVENTS_FILE="$SYMPHONY_DIR/events/$LATEST_ID.jsonl"
+
+if [[ ! -f "$ATTEMPT_FILE" ]]; then
+  echo "{\"error\":\"attempt file missing\",\"attemptId\":\"$LATEST_ID\"}"
+  exit 1
+fi
+
+ATTEMPT_META=$(cat "$ATTEMPT_FILE")
+
+if [[ -f "$EVENTS_FILE" ]]; then
+  if $ERRORS_ONLY; then
+    EVENTS=$(grep -E '"event"\s*:\s*"(worker_failed|turn_failed|worker_stalled|item_completed)"' "$EVENTS_FILE" \
+      | grep -iE '(error|fail|crash|exception|panic|timeout|stall)' \
+      | tail -n "$LIMIT" | jq -s '.' 2>/dev/null || echo "[]")
+  else
+    EVENTS=$(tail -n "$LIMIT" "$EVENTS_FILE" | jq -s '.' 2>/dev/null || echo "[]")
+  fi
+else
+  EVENTS="[]"
+fi
+
+jq -n --argjson meta "$ATTEMPT_META" --argjson events "$EVENTS" --arg issue "$ISSUE" \
+  '{issue: $issue, latestAttempt: $meta, events: $events, eventCount: ($events | length)}'
