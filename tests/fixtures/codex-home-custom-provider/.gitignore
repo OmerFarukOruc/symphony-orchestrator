@@ -1,7 +1,0 @@
-# Runtime residue copied into the fixture home during local/live runs.
-auth.json
-shell_snapshots/
-tmp/
-*.sqlite
-*.sqlite-shm
-*.sqlite-wal

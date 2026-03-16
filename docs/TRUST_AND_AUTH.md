@@ -44,20 +44,24 @@ flowchart TB
 | `thread_sandbox` | `"danger-full-access"` |
 | `turn_sandbox_policy` | `{ type: "dangerFullAccess" }` |
 
-The workflow example uses an isolated `CODEX_HOME` so the daemon avoids inheriting personal experiments or unrelated MCP servers. The checked-in `WORKFLOW.md` points at the minimal fixture home in `tests/fixtures/codex-home-custom-provider` for the same reason.
+Symphony now generates a fresh per-attempt `CODEX_HOME` for every worker run. API-key flows render provider config into that runtime home, and `openai_login` flows copy `auth.json` from `codex.auth.source_home` into the generated runtime home.
 
 ---
 
 ## 🌐 Provider Boundary
 
-Symphony launches the exact `codex.command` from `WORKFLOW.md`. The default setup uses [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) as the provider proxy — it runs on the **host** (listening on `127.0.0.1:8317`) and manages all model provider credentials.
+Symphony launches the exact `codex.command` from the workflow, but it now owns the minimal runtime config that `codex app-server` sees inside Docker. That config is generic:
 
-When running inside Docker, the container cannot reach the host's `127.0.0.1` directly. Symphony handles this transparently:
+- Direct OpenAI API usage: `codex.auth.mode: "api_key"` with no `codex.provider` block
+- OpenAI-compatible proxy or third-party endpoint: `codex.auth.mode: "api_key"` plus `codex.provider.base_url`, `env_key`, and optional headers/query params
+- ChatGPT/Codex login backed flows: `codex.auth.mode: "openai_login"` with an optional custom provider that sets `requires_openai_auth: true`
 
-- Every container gets `--add-host=host.docker.internal:host-gateway`
-- The launcher script (`bin/codex-app-server-live`) rewrites `127.0.0.1` → `host.docker.internal` in `config.toml` at container startup
+When running inside Docker, the container cannot reach the host's `127.0.0.1` directly. Symphony handles that transparently by:
 
-This keeps account routing **below** Symphony and avoids duplicating credentials into each sandbox.
+- adding `--add-host=host.docker.internal:host-gateway` to every container
+- rewriting host-bound provider URLs such as `127.0.0.1` and `localhost` to `host.docker.internal` in the generated runtime config
+
+This keeps provider routing **below** Symphony without keeping repo-local launcher scripts or checked-in Codex homes.
 
 ---
 
@@ -69,10 +73,10 @@ Symphony runs the Codex agent inside a Docker container using a `node:22-bookwor
 
 | Property | How |
 |----------|-----|
-| **Path identity** | All host paths are bind-mounted at their same absolute path inside the container (`-v /host/path:/host/path`) |
-| **Auth preservation** | `CODEX_AUTH_SOURCE_HOME` is set and its directory is bind-mounted read-only |
+| **Path identity** | Workspace, archive, and generated runtime-home paths are bind-mounted at the same absolute path inside the container |
+| **Auth preservation** | `openai_login` copies `auth.json` from `codex.auth.source_home` into the generated runtime home before launch |
 | **Host permissions** | Container runs as `--user $(id -u):$(id -g)` — files it creates are owned by the host user |
-| **Provider decoupling** | Symphony does not manage provider config; the launcher and `CODEX_HOME` handle auth, same as without Docker |
+| **Provider decoupling** | Symphony renders the runtime config, but the configured provider still decides how model calls are routed |
 | **Network** | Default is Docker's default bridge (full internet). Operators can pre-provision a restricted network and reference it by name |
 
 > [!NOTE]
@@ -85,7 +89,7 @@ Symphony runs the Codex agent inside a Docker container using a `node:22-bookwor
 | Credential | Source | Purpose |
 |------------|--------|---------|
 | **Linear access** | `tracker.api_key` (typically `$LINEAR_API_KEY`) | Polling issues from Linear |
-| **Codex auth** | Launched `codex app-server`'s `CODEX_HOME` | Authenticating model calls |
+| **Codex auth** | Either provider env vars on the host or `auth.json` under `codex.auth.source_home` | Authenticating model calls |
 
 ---
 

@@ -59,6 +59,20 @@ function createConfig(): ServiceConfig {
       readTimeoutMs: 1000,
       turnTimeoutMs: 10000,
       stallTimeoutMs: 10000,
+      auth: {
+        mode: "api_key",
+        sourceHome: "/tmp/unused-codex-home",
+      },
+      provider: null,
+      sandbox: {
+        image: "symphony-codex:latest",
+        network: "",
+        security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false },
+        resources: { memory: "4g", memoryReservation: "1g", memorySwap: "4g", cpus: "2.0", tmpfsSize: "512m" },
+        extraMounts: [],
+        envPassthrough: [],
+        logs: { driver: "json-file", maxSize: "50m", maxFile: 3 },
+      },
     },
     server: { port: 4000 },
   };
@@ -573,6 +587,7 @@ describe("Orchestrator", () => {
     vi.useFakeTimers();
     const issue = createIssue();
     let callCount = 0;
+    const attemptStore = createAttemptStore();
     const agentRunner = {
       runAttempt: vi.fn(
         async (): Promise<RunOutcome> => ({
@@ -605,7 +620,7 @@ describe("Orchestrator", () => {
     } as unknown as WorkspaceManager;
 
     const orchestrator = new Orchestrator({
-      attemptStore: createAttemptStore(),
+      attemptStore,
       configStore: createConfigStore(createConfig()),
       linearClient,
       workspaceManager,
@@ -628,6 +643,31 @@ describe("Orchestrator", () => {
 
     // The retry entry should be cleared and no unhandled rejection
     expect(orchestrator.getSnapshot().retrying).toEqual([]);
+    expect(orchestrator.getSnapshot().completed).toEqual([
+      expect.objectContaining({
+        identifier: "MT-42",
+        status: "failed",
+        attempt: 1,
+        error: "Error: workspace setup exploded",
+        message: "retry startup failed: Error: workspace setup exploded",
+      }),
+    ]);
+    expect(orchestrator.getIssueDetail("MT-42")).toMatchObject({
+      identifier: "MT-42",
+      status: "failed",
+      attempt: 1,
+      error: "Error: workspace setup exploded",
+      message: "retry startup failed: Error: workspace setup exploded",
+    });
+    expect(attemptStore.createAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issueIdentifier: "MT-42",
+        status: "failed",
+        attemptNumber: 1,
+        errorCode: "worker_failed",
+        errorMessage: "Error: workspace setup exploded",
+      }),
+    );
 
     await orchestrator.stop();
   });
@@ -679,9 +719,18 @@ describe("Orchestrator", () => {
       expect.objectContaining({
         identifier: "MT-42",
         status: "failed",
+        attempt: null,
+        error: "agent failed",
         message: "workspace cleaned after terminal state",
       }),
     ]);
+    expect(orchestrator.getIssueDetail("MT-42")).toMatchObject({
+      identifier: "MT-42",
+      status: "failed",
+      attempt: null,
+      error: "agent failed",
+      message: "workspace cleaned after terminal state",
+    });
 
     await orchestrator.stop();
   });
@@ -733,9 +782,18 @@ describe("Orchestrator", () => {
       expect.objectContaining({
         identifier: "MT-42",
         status: "completed",
+        attempt: null,
+        error: null,
         message: "workspace cleaned after terminal state",
       }),
     ]);
+    expect(orchestrator.getIssueDetail("MT-42")).toMatchObject({
+      identifier: "MT-42",
+      status: "completed",
+      attempt: null,
+      error: null,
+      message: "workspace cleaned after terminal state",
+    });
 
     await orchestrator.stop();
   });

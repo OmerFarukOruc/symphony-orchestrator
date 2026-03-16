@@ -654,6 +654,8 @@ export class Orchestrator {
             issueView(latestIssue, {
               workspaceKey: workspace.workspaceKey,
               status: terminalStatus,
+              attempt,
+              error: outcome.errorMessage ?? outcome.errorCode,
               message: "workspace cleaned after terminal state",
               configuredModel: this.resolveModelSelection(latestIssue.identifier).model,
               configuredReasoningEffort: this.resolveModelSelection(latestIssue.identifier).reasoningEffort,
@@ -797,19 +799,7 @@ export class Orchestrator {
     const timer = setTimeout(() => {
       this.retryEntries.delete(issue.id);
       void this.launchWorker(issue, attempt).catch((error) => {
-        this.runningEntries.delete(issue.id);
-        this.deps.logger.error(
-          { issue_id: issue.id, issue_identifier: issue.identifier, error: String(error) },
-          "retry-launched worker startup failed",
-        );
-        this.pushEvent({
-          at: nowIso(),
-          issueId: issue.id,
-          issueIdentifier: issue.identifier,
-          sessionId: null,
-          event: "worker_failed",
-          message: `retry startup failed: ${String(error)}`,
-        });
+        void this.handleRetryLaunchFailure(issue, attempt, error);
       });
     }, delayMs);
     this.retryEntries.set(issue.id, {
@@ -885,6 +875,94 @@ export class Orchestrator {
       reasoningEffort: entry.modelSelection.reasoningEffort,
       modelSource: entry.modelSelection.source,
     });
+  }
+
+  private async handleRetryLaunchFailure(issue: Issue, attempt: number, error: unknown): Promise<void> {
+    const runningEntry = this.runningEntries.get(issue.id) ?? null;
+    this.runningEntries.delete(issue.id);
+
+    const errorText = String(error);
+    const message = `retry startup failed: ${errorText}`;
+    const selection = runningEntry?.modelSelection ?? this.resolveModelSelection(issue.identifier);
+    const workspaceKey =
+      runningEntry?.workspace.workspaceKey ?? this.detailViews.get(issue.identifier)?.workspaceKey ?? null;
+    const workspacePath = runningEntry?.workspace.path ?? null;
+
+    this.deps.logger.error(
+      { issue_id: issue.id, issue_identifier: issue.identifier, error: errorText },
+      "retry-launched worker startup failed",
+    );
+    this.pushEvent({
+      at: nowIso(),
+      issueId: issue.id,
+      issueIdentifier: issue.identifier,
+      sessionId: runningEntry?.sessionId ?? null,
+      event: "worker_failed",
+      message,
+    });
+
+    const failureView = issueView(issue, {
+      workspaceKey,
+      status: "failed",
+      attempt,
+      error: errorText,
+      message,
+      configuredModel: this.resolveModelSelection(issue.identifier).model,
+      configuredReasoningEffort: this.resolveModelSelection(issue.identifier).reasoningEffort,
+      configuredModelSource: this.resolveModelSelection(issue.identifier).source,
+      modelChangePending: false,
+      model: selection.model,
+      reasoningEffort: selection.reasoningEffort,
+      modelSource: selection.source,
+    });
+
+    this.detailViews.set(issue.identifier, failureView);
+    this.completedViews.set(issue.identifier, failureView);
+
+    const endedAt = nowIso();
+    const attemptId = runningEntry?.runId ?? randomUUID();
+    const attemptPatch = {
+      status: "failed" as const,
+      endedAt,
+      errorCode: "worker_failed",
+      errorMessage: errorText,
+      tokenUsage: runningEntry?.tokenUsage ?? null,
+      threadId: runningEntry?.sessionId ?? null,
+    };
+
+    let persisted = false;
+    if (runningEntry) {
+      persisted = await this.deps.attemptStore
+        .updateAttempt(attemptId, attemptPatch)
+        .then(() => true)
+        .catch(() => false);
+    }
+
+    if (!persisted) {
+      await this.deps.attemptStore
+        .createAttempt({
+          attemptId,
+          issueId: issue.id,
+          issueIdentifier: issue.identifier,
+          title: issue.title,
+          workspaceKey,
+          workspacePath,
+          status: "failed",
+          attemptNumber: attempt,
+          startedAt: runningEntry ? new Date(runningEntry.startedAtMs).toISOString() : endedAt,
+          endedAt,
+          model: selection.model,
+          reasoningEffort: selection.reasoningEffort,
+          modelSource: selection.source,
+          threadId: runningEntry?.sessionId ?? null,
+          turnId: null,
+          turnCount: 0,
+          errorCode: "worker_failed",
+          errorMessage: errorText,
+          tokenUsage: runningEntry?.tokenUsage ?? null,
+        })
+        .catch(() => undefined);
+    }
   }
 
   private resolveModelSelection(identifier: string): ModelSelection {

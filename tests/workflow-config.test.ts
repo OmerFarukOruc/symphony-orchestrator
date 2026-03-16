@@ -103,4 +103,26 @@ describe("config store", () => {
     expect(store.getConfig().server.port).toBe(4001);
     await store.stop();
   });
+
+  it("validates file-based login auth when openai_login mode is selected", async () => {
+    const dir = await createTempDir();
+    const workflowPath = path.join(dir, "WORKFLOW.md");
+    process.env.LINEAR_API_KEY = "linear-token";
+
+    await writeFile(
+      workflowPath,
+      "---\ntracker:\n  api_key: $LINEAR_API_KEY\ncodex:\n  command: codex app-server\n  auth:\n    mode: openai_login\n    source_home: ~/.missing-codex-home\n---\nPrompt\n",
+      "utf8",
+    );
+
+    const store = new ConfigStore(workflowPath, createLogger());
+    await store.start();
+
+    expect(store.validateDispatch()).toEqual({
+      code: "missing_codex_auth_json",
+      message: `codex.auth.mode=openai_login requires auth.json at ${path.join(process.env.HOME ?? "", ".missing-codex-home", "auth.json")}`,
+    });
+
+    await store.stop();
+  });
 });

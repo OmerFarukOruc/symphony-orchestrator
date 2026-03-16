@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -6,7 +6,8 @@ import { Liquid } from "liquidjs";
 
 import { createSuccessResponse, type JsonRpcRequest } from "./codex-protocol.js";
 import { JsonRpcConnection, JsonRpcTimeoutError } from "./agent/json-rpc-connection.js";
-import { buildDockerRunArgs, resolveAuthSourceHome } from "./docker-spawn.js";
+import { prepareCodexRuntimeConfig, getRequiredProviderEnvNames } from "./codex-runtime-config.js";
+import { buildDockerRunArgs } from "./docker-spawn.js";
 import { inspectOomKilled, removeContainer, stopContainer } from "./docker-lifecycle.js";
 import { handleCodexRequest } from "./agent/codex-request-handler.js";
 import { LinearClient } from "./linear-client.js";
@@ -61,6 +62,7 @@ export class AgentRunner {
       linearClient: LinearClient;
       workspaceManager: WorkspaceManager;
       logger: SymphonyLogger;
+      spawnProcess?: typeof spawn;
     },
   ) {}
 
@@ -86,40 +88,31 @@ export class AgentRunner {
     let turnId: string | null = null;
     let turnCount = 0;
     let fatalFailure: { code: string; message: string } | null = null;
-    // eslint-disable-next-line no-useless-assignment -- reassigned conditionally in sandbox branch
+    // eslint-disable-next-line no-useless-assignment -- used in the finally block
     let exitPromise: Promise<{ code: number | null; signal: NodeJS.Signals | null }> | null = null;
     let containerName: string | null = null;
-    // eslint-disable-next-line no-useless-assignment -- reassigned in OOM branch
+    // eslint-disable-next-line no-useless-assignment -- conditionally reassigned in OOM check
     let oomKilled = false;
-
-    const sandboxEnabled = config.codex.sandbox.enabled;
-    let child;
-    if (sandboxEnabled) {
-      const codexHome = process.env.CODEX_HOME ?? path.join(resolveAuthSourceHome(), "..", ".symphony-codex-home");
-      const archiveDir = process.env.SYMPHONY_ARCHIVE_DIR ?? path.join(process.cwd(), "archive");
-      // Pre-create host directories so Docker doesn't auto-create them as root:root
-      await mkdir(codexHome, { recursive: true });
-      await mkdir(archiveDir, { recursive: true });
-      const docker = buildDockerRunArgs({
-        sandboxConfig: config.codex.sandbox,
-        runId: `${input.issue.identifier}-${Date.now()}`,
-        command: config.codex.command,
-        workspacePath: input.workspace.path,
-        codexHome,
-        archiveDir,
-      });
-      containerName = docker.containerName;
-      child = spawn(docker.program, docker.args, {
-        env: process.env,
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-    } else {
-      child = spawn("bash", ["-lc", config.codex.command], {
-        cwd: input.workspace.path,
-        env: process.env,
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-    }
+    const spawnProcess = this.deps.spawnProcess ?? spawn;
+    const runtimeConfig = await prepareCodexRuntimeConfig(config.codex);
+    const archiveDir = process.env.SYMPHONY_ARCHIVE_DIR ?? path.join(process.cwd(), "archive");
+    // Pre-create host directories so Docker doesn't auto-create them as root:root
+    await mkdir(archiveDir, { recursive: true });
+    const docker = buildDockerRunArgs({
+      sandboxConfig: config.codex.sandbox,
+      runId: `${input.issue.identifier}-${Date.now()}`,
+      command: config.codex.command,
+      workspacePath: input.workspace.path,
+      archiveDir,
+      runtimeConfigToml: runtimeConfig.configToml,
+      runtimeAuthJsonBase64: runtimeConfig.authJsonBase64,
+      requiredEnv: getRequiredProviderEnvNames(config.codex),
+    });
+    containerName = docker.containerName;
+    const child: ChildProcessWithoutNullStreams = spawnProcess(docker.program, docker.args, {
+      env: process.env,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
 
     const connection = new JsonRpcConnection(
       child,
@@ -151,7 +144,7 @@ export class AgentRunner {
     });
     const abortHandler = () => {
       connection.close();
-      if (sandboxEnabled && containerName) {
+      if (containerName) {
         void stopContainer(containerName, 5);
       }
     };
@@ -336,8 +329,7 @@ export class AgentRunner {
         }
       }
       if (exitState.code !== null && !input.signal.aborted) {
-        // For Docker: exit code 137 may indicate OOM kill
-        if (sandboxEnabled && containerName && exitState.code === 137) {
+        if (containerName && exitState.code === 137) {
           oomKilled = await inspectOomKilled(containerName);
           if (oomKilled) {
             return {
@@ -411,22 +403,13 @@ export class AgentRunner {
     } finally {
       input.signal.removeEventListener("abort", abortHandler);
       connection.close();
-      if (sandboxEnabled && containerName) {
-        // For Docker: stop container if still running, then remove
+      if (containerName) {
         await stopContainer(containerName, 5);
         await Promise.race([
           exitPromise ?? Promise.resolve({ code: null, signal: null }),
           new Promise((resolve) => setTimeout(resolve, 5000)),
         ]).catch(() => undefined);
         await removeContainer(containerName);
-      } else {
-        if (!child.killed) {
-          child.kill("SIGTERM");
-        }
-        await Promise.race([
-          exitPromise ?? Promise.resolve({ code: null, signal: null }),
-          new Promise((resolve) => setTimeout(resolve, 250)),
-        ]).catch(() => undefined);
       }
       await this.deps.workspaceManager.runAfterRun(input.workspace).catch((error) => {
         logger.warn({ error: String(error) }, "after_run hook failed");

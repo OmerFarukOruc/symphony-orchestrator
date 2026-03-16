@@ -23,7 +23,13 @@ Symphony polls Linear for candidate issues, creates a workspace per issue, launc
 
 ## 🌐 Deployment Architecture
 
-Symphony uses [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) as its authentication and model-routing layer. CLIProxyAPI runs on the **host** and manages provider credentials — Symphony's Docker sandbox containers reach it over the network.
+Symphony always launches workers in Docker, but the model-routing/auth layer is now generic. You can use:
+
+- direct OpenAI API auth with `OPENAI_API_KEY`
+- a custom OpenAI-compatible provider via `codex.provider`
+- ChatGPT/Codex login via `codex login` and `codex.auth.mode: openai_login`
+
+Optional host-side proxies such as [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) still work; Symphony rewrites host-bound URLs so Docker workers can reach them.
 
 ```mermaid
 flowchart TD
@@ -55,7 +61,7 @@ flowchart TD
 ```
 
 > [!IMPORTANT]
-> CLIProxyAPI runs **once on the host** and serves all concurrent sandbox containers. Do not install it inside the Docker images — that would duplicate credentials and waste resources.
+> If you use a host-side proxy such as CLIProxyAPI, run it **once on the host** and let all sandbox containers reach it over the network. Do not install it inside the Docker images.
 
 ### 🐳 How Docker Networking Works
 
@@ -64,7 +70,7 @@ Containers cannot reach the host's `127.0.0.1`. Symphony automatically:
 1. Adds `--add-host=host.docker.internal:host-gateway` to every container
 2. Rewrites `127.0.0.1` → `host.docker.internal` in the Codex `config.toml` when running inside Docker
 
-This is transparent — the fixture `config.toml` keeps using `127.0.0.1` and the launcher handles the rewrite at container startup.
+This is transparent — Symphony rewrites host-bound provider URLs in the generated runtime config at container startup.
 
 ### 🖥️ VDS / Server Deployment
 
@@ -77,13 +83,16 @@ npm install && npm run build
 # 3. Build the sandbox image
 bash bin/build-sandbox.sh
 
-# 4. Set up CLIProxyAPI on the host
-#    → https://github.com/router-for-me/CLIProxyAPI
-#    Ensure it listens on 127.0.0.1:8317
+# 4. Choose a Codex auth mode
+#    API key:
+export OPENAI_API_KEY="sk-..."
+#    or ChatGPT/Codex login:
+#    codex login
+#    for headless machines:
+#    codex login --device-auth
 
-# 5. Bootstrap Codex auth
-cp -R tests/fixtures/codex-home-custom-provider "$HOME/.symphony-codex"
-# Place your auth.json with provider tokens in ~/.codex/
+# 5. Optional: configure a host-side OpenAI-compatible proxy
+#    Example: CLIProxyAPI listening on 127.0.0.1:8317
 
 # 6. Export credentials and start
 export LINEAR_API_KEY="lin_api_..."
@@ -103,10 +112,7 @@ node dist/cli.js ./WORKFLOW.md --port 4000
 | `WORKFLOW.md` | Repository's checked-in live smoke path |
 
 > [!TIP]
-> The example workflow assumes an isolated Codex home at `$HOME/.symphony-codex`. Bootstrap it once with:
-> ```bash
-> cp -R tests/fixtures/codex-home-custom-provider "$HOME/.symphony-codex"
-> ```
+> `WORKFLOW.example.md` is the API-key/custom-provider example. `WORKFLOW.md` is the local `codex login` smoke path. Both create a fresh temporary runtime `CODEX_HOME` for each attempt instead of relying on a checked-in fixture home.
 
 ---
 
@@ -133,6 +139,12 @@ If `LINEAR_API_KEY` is missing, Symphony exits with:
 
 ```text
 error code=missing_tracker_api_key msg="tracker.api_key is required after env resolution"
+```
+
+If `WORKFLOW.example.md` is using the default API-key mode and `OPENAI_API_KEY` is missing, Symphony exits with:
+
+```text
+error code=missing_codex_provider_env msg="codex runtime requires OPENAI_API_KEY in the host environment"
 ```
 
 ---
@@ -238,6 +250,7 @@ Symphony runs the Codex agent inside a Docker container by default using a `node
 | **Path identity** | All host paths are bind-mounted at their same absolute path inside the container |
 | **Host permissions** | Container runs as your UID/GID — no ownership drift |
 | **Writable HOME** | A persistent named volume is mounted at `/home/agent` for npm/pip/git caches |
+| **Generated runtime home** | Symphony creates a temporary `CODEX_HOME` per attempt and removes it after the run |
 | **Resource limits** | Memory, CPU, and tmpfs are configurable via `codex.sandbox.resources` |
 | **OOM detection** | Exit code 137 with `OOMKilled=true` is surfaced as `container_oom` (retryable) |
 
