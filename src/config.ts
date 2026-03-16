@@ -215,7 +215,7 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
       kind: trackerKind,
       apiKey: resolveEnvBackedString(tracker.api_key),
       endpoint: resolveConfigString(tracker.endpoint) || "https://api.linear.app/graphql",
-      projectSlug: asString(tracker.project_slug) || null,
+      projectSlug: resolveEnvBackedString(tracker.project_slug) || null,
       activeStates: trackerActiveStates,
       terminalStates: trackerTerminalStates,
     },

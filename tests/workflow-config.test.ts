@@ -58,25 +58,50 @@ describe("workflow loader", () => {
 });
 
 describe("config store", () => {
-  it("resolves env-backed fields and validates missing tracker key", async () => {
+  it("resolves env-backed tracker fields and validates missing tracker key", async () => {
     const dir = await createTempDir();
     const workflowPath = path.join(dir, "WORKFLOW.md");
     await writeFile(
       workflowPath,
-      "---\ntracker:\n  api_key: $LINEAR_API_KEY\n  project_slug: TEST\nworkspace:\n  root: $TMPDIR/symphony\ncodex:\n  command: codex app-server\n---\nPrompt\n",
+      "---\ntracker:\n  api_key: $LINEAR_API_KEY\n  project_slug: $LINEAR_PROJECT_SLUG\nworkspace:\n  root: $TMPDIR/symphony\ncodex:\n  command: codex app-server\n---\nPrompt\n",
       "utf8",
     );
 
     delete process.env.LINEAR_API_KEY;
+    process.env.LINEAR_PROJECT_SLUG = "TEST";
     process.env.TMPDIR = dir;
 
     const store = new ConfigStore(workflowPath, createLogger());
     await store.start();
 
     expect(store.getConfig().workspace.root).toBe(path.join(dir, "symphony"));
+    expect(store.getConfig().tracker.projectSlug).toBe("TEST");
     expect(store.validateDispatch()).toEqual({
       code: "missing_tracker_api_key",
       message: "tracker.api_key is required after env resolution",
+    });
+
+    await store.stop();
+  });
+
+  it("validates missing tracker project slug after env resolution", async () => {
+    const dir = await createTempDir();
+    const workflowPath = path.join(dir, "WORKFLOW.md");
+    await writeFile(
+      workflowPath,
+      "---\ntracker:\n  api_key: $LINEAR_API_KEY\n  project_slug: $LINEAR_PROJECT_SLUG\ncodex:\n  command: codex app-server\n---\nPrompt\n",
+      "utf8",
+    );
+
+    process.env.LINEAR_API_KEY = "linear-token";
+    delete process.env.LINEAR_PROJECT_SLUG;
+
+    const store = new ConfigStore(workflowPath, createLogger());
+    await store.start();
+
+    expect(store.validateDispatch()).toEqual({
+      code: "missing_tracker_project_slug",
+      message: "tracker.project_slug is required when tracker.kind is linear",
     });
 
     await store.stop();
