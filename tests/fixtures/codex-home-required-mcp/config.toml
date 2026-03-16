@@ -1,0 +1,6 @@
+model = "gpt-5"
+model_provider = "openai"
+
+[mcp_servers.required_example]
+command = "false"
+required = true

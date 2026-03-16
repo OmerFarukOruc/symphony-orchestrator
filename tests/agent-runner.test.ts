@@ -1,0 +1,302 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { AgentRunner } from "../src/agent-runner.js";
+import { createLogger } from "../src/logger.js";
+import type { Issue, ServiceConfig } from "../src/types.js";
+import { WorkspaceManager } from "../src/workspace-manager.js";
+import { LinearClient } from "../src/linear-client.js";
+
+const tempDirs: string[] = [];
+const fixturePath = path.resolve("tests/fixtures/mock-codex-server.mjs");
+
+async function createTempDir(): Promise<string> {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-runner-test-"));
+  tempDirs.push(dir);
+  return dir;
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function baseIssue(): Issue {
+  return {
+    id: "issue-1",
+    identifier: "MT-42",
+    title: "Ship Symphony",
+    description: null,
+    priority: 1,
+    state: "In Progress",
+    branchName: null,
+    url: null,
+    labels: [],
+    blockedBy: [],
+    createdAt: "2026-03-15T00:00:00Z",
+    updatedAt: "2026-03-16T00:00:00Z",
+  };
+}
+
+async function createRunner(
+  tempDir: string,
+  scenario: string,
+  linearClientOverrides?: Partial<LinearClient>,
+): Promise<{
+  runner: AgentRunner;
+  workspaceManager: WorkspaceManager;
+  config: ServiceConfig;
+  logPath: string;
+}> {
+  const logPath = path.join(tempDir, "mock-log.json");
+  const config: ServiceConfig = {
+    tracker: {
+      kind: "linear",
+      apiKey: "linear-token",
+      projectSlug: "EXAMPLE",
+    },
+    polling: { intervalMs: 30000 },
+    workspace: {
+      root: path.join(tempDir, "workspaces"),
+      hooks: {
+        afterCreate: null,
+        beforeRun: null,
+        afterRun: null,
+        beforeRemove: null,
+        timeoutMs: 1000,
+      },
+    },
+    agent: {
+      maxConcurrentAgents: 1,
+      maxTurns: 2,
+      maxRetryBackoffMs: 120000,
+    },
+    codex: {
+      command: `MOCK_CODEX_SCENARIO=${shellQuote(scenario)} MOCK_CODEX_LOG_PATH=${shellQuote(logPath)} ${shellQuote(process.execPath)} ${shellQuote(fixturePath)}`,
+      model: "gpt-5.4",
+      reasoningEffort: "high",
+      approvalPolicy: "never",
+      threadSandbox: "danger-full-access",
+      turnSandboxPolicy: { type: "dangerFullAccess" },
+      readTimeoutMs: 3000,
+      turnTimeoutMs: 10000,
+      stallTimeoutMs: 10000,
+    },
+    server: { port: 4000 },
+  };
+
+  const workspaceManager = new WorkspaceManager(() => config, createLogger());
+  const linearClient = {
+    fetchIssueStatesByIds: vi.fn(async () => [{ ...baseIssue(), state: "Done" }]),
+    runGraphQL: vi.fn(async () => ({ data: { viewer: { id: "user-1" } } })),
+  } as unknown as LinearClient;
+  Object.assign(linearClient, linearClientOverrides ?? {});
+
+  return {
+    runner: new AgentRunner({
+      getConfig: () => config,
+      linearClient,
+      workspaceManager,
+      logger: createLogger(),
+    }),
+    workspaceManager,
+    config,
+    logPath,
+  };
+}
+
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
+
+describe("AgentRunner", () => {
+  it("completes the protocol handshake, approvals, and dynamic tools", async () => {
+    const tempDir = await createTempDir();
+    const { runner, workspaceManager, logPath } = await createRunner(tempDir, "success");
+    const workspace = await workspaceManager.ensureWorkspace("MT-42");
+
+    const emittedEvents: Array<Record<string, unknown>> = [];
+    const outcome = await runner.runAttempt({
+      issue: baseIssue(),
+      attempt: null,
+      modelSelection: {
+        model: "gpt-5.4",
+        reasoningEffort: "high",
+        source: "default",
+      },
+      promptTemplate: "You are working on {{ issue.identifier }}.",
+      workspace,
+      signal: new AbortController().signal,
+      onEvent: (event) => emittedEvents.push(event as unknown as Record<string, unknown>),
+    });
+
+    expect(outcome.kind).toBe("normal");
+    expect(outcome.turnCount).toBe(1);
+
+    // Verify rich content extraction
+    expect(emittedEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "item_completed",
+          message: expect.stringContaining("reasoning reason-1 completed"),
+          content: "I need to run a query.", // Buffering works
+        }),
+        expect.objectContaining({
+          event: "item_completed",
+          message: expect.stringContaining("agentMessage msg-1 completed"),
+          content: "Here is the result.",
+        }),
+      ])
+    );
+
+    const events = JSON.parse(await readFile(logPath, "utf8")) as Array<Record<string, unknown>>;
+    expect(events.filter((event) => event.type === "client_request").map((event) => event.method)).toEqual(
+      expect.arrayContaining(["initialize", "account/read", "account/rateLimits/read", "thread/start", "turn/start"]),
+    );
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "client_request",
+          method: "thread/start",
+          params: expect.objectContaining({
+            model: "gpt-5.4",
+          }),
+        }),
+        expect.objectContaining({
+          type: "client_request",
+          method: "turn/start",
+          params: expect.objectContaining({
+            model: "gpt-5.4",
+            effort: "high",
+          }),
+        }),
+      ]),
+    );
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "client_notification",
+          method: "initialized",
+        }),
+        expect.objectContaining({
+          type: "server_request_result",
+          method: "item/tool/call",
+          result: expect.objectContaining({
+            success: true,
+          }),
+        }),
+        expect.objectContaining({
+          type: "server_request_result",
+          method: "item/tool/call",
+          result: expect.objectContaining({
+            success: false,
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("fails early when account/read reports missing auth", async () => {
+    const tempDir = await createTempDir();
+    const { runner, workspaceManager } = await createRunner(tempDir, "auth_required");
+    const workspace = await workspaceManager.ensureWorkspace("MT-42");
+
+    const outcome = await runner.runAttempt({
+      issue: baseIssue(),
+      attempt: null,
+      modelSelection: {
+        model: "gpt-5.4",
+        reasoningEffort: "high",
+        source: "default",
+      },
+      promptTemplate: "Prompt",
+      workspace,
+      signal: new AbortController().signal,
+      onEvent: () => undefined,
+    });
+
+    expect(outcome).toMatchObject({
+      kind: "failed",
+      errorCode: "startup_failed",
+    });
+  });
+
+  it("fails hard on interactive user input requests", async () => {
+    const tempDir = await createTempDir();
+    const { runner, workspaceManager } = await createRunner(tempDir, "user_input");
+    const workspace = await workspaceManager.ensureWorkspace("MT-42");
+
+    const outcome = await runner.runAttempt({
+      issue: baseIssue(),
+      attempt: null,
+      modelSelection: {
+        model: "gpt-5.4",
+        reasoningEffort: "high",
+        source: "default",
+      },
+      promptTemplate: "Prompt",
+      workspace,
+      signal: new AbortController().signal,
+      onEvent: () => undefined,
+    });
+
+    expect(outcome).toMatchObject({
+      kind: "failed",
+      errorCode: "turn_input_required",
+    });
+  });
+
+  it("surfaces required MCP startup failures", async () => {
+    const tempDir = await createTempDir();
+    const { runner, workspaceManager } = await createRunner(tempDir, "mcp_required_failure");
+    const workspace = await workspaceManager.ensureWorkspace("MT-42");
+
+    const outcome = await runner.runAttempt({
+      issue: baseIssue(),
+      attempt: null,
+      modelSelection: {
+        model: "gpt-5.4",
+        reasoningEffort: "high",
+        source: "default",
+      },
+      promptTemplate: "Prompt",
+      workspace,
+      signal: new AbortController().signal,
+      onEvent: () => undefined,
+    });
+
+    expect(outcome).toMatchObject({
+      kind: "failed",
+      errorCode: "startup_failed",
+      errorMessage: "thread/start failed because a required MCP server did not initialize",
+    });
+  });
+
+  it("classifies unexpected subprocess exits as port_exit", async () => {
+    const tempDir = await createTempDir();
+    const { runner, workspaceManager } = await createRunner(tempDir, "port_exit");
+    const workspace = await workspaceManager.ensureWorkspace("MT-42");
+
+    const outcome = await runner.runAttempt({
+      issue: baseIssue(),
+      attempt: null,
+      modelSelection: {
+        model: "gpt-5.4",
+        reasoningEffort: "high",
+        source: "default",
+      },
+      promptTemplate: "Prompt",
+      workspace,
+      signal: new AbortController().signal,
+      onEvent: () => undefined,
+    });
+
+    expect(outcome).toMatchObject({
+      kind: "failed",
+      errorCode: "port_exit",
+    });
+  });
+});
