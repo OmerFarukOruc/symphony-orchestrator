@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AgentRunner } from "../src/agent-runner.js";
+import { AgentRunner, extractItemContent } from "../src/agent-runner.js";
 import { createLogger } from "../src/logger.js";
 import type { Issue, ServiceConfig } from "../src/types.js";
 import { WorkspaceManager } from "../src/workspace-manager.js";
@@ -113,6 +113,207 @@ afterEach(async () => {
 });
 
 describe("AgentRunner", () => {
+  it("preserves exact extraction outputs for the phase-one helper seam", () => {
+    const reasoningBuffers = new Map<string, string>([["reason-1", "I need to run a query."]]);
+
+    expect(
+      extractItemContent(
+        "agentMessage",
+        "msg-1",
+        {
+          text: "Here is the result.",
+        },
+        "completed",
+        reasoningBuffers,
+      ),
+    ).toBe("Here is the result.");
+
+    expect(
+      extractItemContent(
+        "agentMessage",
+        "msg-2",
+        {
+          content: [{ text: "Here is " }, { text: "the result." }, { ignored: true }],
+        },
+        "completed",
+        reasoningBuffers,
+      ),
+    ).toBe("Here is the result.");
+
+    expect(
+      extractItemContent(
+        "reasoning",
+        "reason-1",
+        {
+          summary: "fallback summary",
+          text: "fallback text",
+        },
+        "completed",
+        reasoningBuffers,
+      ),
+    ).toBe("I need to run a query.");
+
+    expect(
+      extractItemContent(
+        "reasoning",
+        "reason-2",
+        {
+          summary: "fallback summary",
+          text: "fallback text",
+        },
+        "completed",
+        reasoningBuffers,
+      ),
+    ).toBe("fallback summary");
+
+    expect(
+      extractItemContent(
+        "commandExecution",
+        "cmd-1",
+        {
+          command: "printf hello",
+        },
+        "started",
+        reasoningBuffers,
+      ),
+    ).toBe("printf hello");
+
+    expect(
+      extractItemContent(
+        "commandExecution",
+        "cmd-1",
+        {
+          output: "Authorization: Bearer secret-token-123",
+          exitCode: 7,
+        },
+        "completed",
+        reasoningBuffers,
+      ),
+    ).toBe("Authorization: [REDACTED]");
+
+    expect(
+      extractItemContent(
+        "commandExecution",
+        "cmd-2",
+        {
+          exitCode: 7,
+        },
+        "completed",
+        reasoningBuffers,
+      ),
+    ).toBe("Exit code: 7");
+
+    expect(
+      extractItemContent(
+        "fileChange",
+        "file-1",
+        {
+          path: "src/example.ts",
+        },
+        "started",
+        reasoningBuffers,
+      ),
+    ).toBe("src/example.ts");
+
+    expect(
+      extractItemContent(
+        "fileChange",
+        "file-1",
+        {
+          diff: `${"a".repeat(500)}z`,
+        },
+        "completed",
+        reasoningBuffers,
+      ),
+    ).toBe(`${"a".repeat(500)}\n…[diff truncated, 1 more chars]`);
+
+    expect(
+      extractItemContent(
+        "dynamicToolCall",
+        "tool-1",
+        {
+          name: "linear_graphql",
+          arguments: {
+            query: "query One { viewer { id } }",
+            apiKey: "secret-value",
+          },
+        },
+        "started",
+        reasoningBuffers,
+      ),
+    ).toBe(
+      `linear_graphql(${JSON.stringify({
+        query: "query One { viewer { id } }",
+        apiKey: "secret-value",
+      })})`,
+    );
+
+    expect(
+      extractItemContent(
+        "dynamicToolCall",
+        "tool-1",
+        {
+          result: {
+            nested: {
+              token: "secret-value",
+            },
+            ok: true,
+          },
+        },
+        "completed",
+        reasoningBuffers,
+      ),
+    ).toBe(JSON.stringify({ nested: { token: "[REDACTED]" }, ok: true }, null, 2));
+
+    expect(
+      extractItemContent(
+        "webSearch",
+        "search-1",
+        {
+          query: "sympathy for the operator",
+        },
+        "started",
+        reasoningBuffers,
+      ),
+    ).toBe("sympathy for the operator");
+
+    expect(
+      extractItemContent(
+        "webSearch",
+        "search-1",
+        {
+          results: [{ title: "One" }, { title: "Two" }, { title: "Three" }],
+        },
+        "completed",
+        reasoningBuffers,
+      ),
+    ).toBe("Found 3 results");
+
+    expect(
+      extractItemContent(
+        "userMessage",
+        "user-1",
+        {
+          text: "Please continue.",
+        },
+        "started",
+        reasoningBuffers,
+      ),
+    ).toBe("Please continue.");
+
+    expect(
+      extractItemContent(
+        "userMessage",
+        "user-2",
+        {
+          content: [{ text: "Please " }, { text: "continue." }, { ignored: true }],
+        },
+        "started",
+        reasoningBuffers,
+      ),
+    ).toBe("Please continue.");
+  });
+
   it("completes the protocol handshake, approvals, and dynamic tools", async () => {
     const tempDir = await createTempDir();
     const { runner, workspaceManager, logPath } = await createRunner(tempDir, "success");
@@ -136,20 +337,29 @@ describe("AgentRunner", () => {
     expect(outcome.kind).toBe("normal");
     expect(outcome.turnCount).toBe(1);
 
-    // Verify rich content extraction
     expect(emittedEvents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          event: "item_completed",
-          message: expect.stringContaining("reasoning reason-1 completed"),
-          content: "I need to run a query.", // Buffering works
+          event: "item_started",
+          message: "reasoning reason-1 started",
+          content: null,
         }),
         expect.objectContaining({
           event: "item_completed",
-          message: expect.stringContaining("agentMessage msg-1 completed"),
+          message: "reasoning reason-1 completed",
+          content: "I need to run a query.",
+        }),
+        expect.objectContaining({
+          event: "item_started",
+          message: "agentMessage msg-1 started",
+          content: null,
+        }),
+        expect.objectContaining({
+          event: "item_completed",
+          message: "agentMessage msg-1 completed",
           content: "Here is the result.",
         }),
-      ])
+      ]),
     );
 
     const events = JSON.parse(await readFile(logPath, "utf8")) as Array<Record<string, unknown>>;
@@ -218,9 +428,13 @@ describe("AgentRunner", () => {
       onEvent: () => undefined,
     });
 
-    expect(outcome).toMatchObject({
+    expect(outcome).toEqual({
       kind: "failed",
       errorCode: "startup_failed",
+      errorMessage: "codex account/read reported that OpenAI auth is required and no account is configured",
+      threadId: null,
+      turnId: null,
+      turnCount: 0,
     });
   });
 
@@ -243,9 +457,13 @@ describe("AgentRunner", () => {
       onEvent: () => undefined,
     });
 
-    expect(outcome).toMatchObject({
+    expect(outcome).toEqual({
       kind: "failed",
       errorCode: "turn_input_required",
+      errorMessage: "codex requested interactive user input, which Symphony does not support",
+      threadId: "thread-1",
+      turnId: null,
+      turnCount: 1,
     });
   });
 
@@ -268,10 +486,13 @@ describe("AgentRunner", () => {
       onEvent: () => undefined,
     });
 
-    expect(outcome).toMatchObject({
+    expect(outcome).toEqual({
       kind: "failed",
       errorCode: "startup_failed",
       errorMessage: "thread/start failed because a required MCP server did not initialize",
+      threadId: null,
+      turnId: null,
+      turnCount: 0,
     });
   });
 
@@ -294,9 +515,13 @@ describe("AgentRunner", () => {
       onEvent: () => undefined,
     });
 
-    expect(outcome).toMatchObject({
+    expect(outcome).toEqual({
       kind: "failed",
       errorCode: "port_exit",
+      errorMessage: "connection exited while waiting for request 20",
+      threadId: null,
+      turnId: null,
+      turnCount: 0,
     });
   });
 });
