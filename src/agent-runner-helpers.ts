@@ -21,19 +21,6 @@ function extractTurnId(result: unknown): string | null {
   return asString(record.turnId) ?? asString(asRecord(record.turn).id) ?? null;
 }
 
-function extractUsage(result: unknown): { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined {
-  const usage = asRecord(asRecord(result).usage ?? asRecord(result).tokenUsage);
-  const inputTokens = typeof usage.inputTokens === "number" ? usage.inputTokens : undefined;
-  const outputTokens = typeof usage.outputTokens === "number" ? usage.outputTokens : undefined;
-  const totalTokens = typeof usage.totalTokens === "number" ? usage.totalTokens : undefined;
-
-  if (inputTokens === undefined && outputTokens === undefined && totalTokens === undefined) {
-    return undefined;
-  }
-
-  return { inputTokens, outputTokens, totalTokens };
-}
-
 function extractTokenUsageSnapshot(value: unknown): TokenUsageSnapshot | null {
   const usage = asRecord(value);
   const inputTokens = typeof usage.inputTokens === "number" ? usage.inputTokens : null;
@@ -174,7 +161,6 @@ export {
   extractThreadId,
   extractTokenUsageSnapshot,
   extractTurnId,
-  extractUsage,
   getTurnSandboxPolicy,
   hasUsableAccount,
 };

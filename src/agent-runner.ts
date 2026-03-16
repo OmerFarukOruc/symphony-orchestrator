@@ -24,7 +24,6 @@ import {
   extractThreadId,
   extractTokenUsageSnapshot,
   extractTurnId,
-  extractUsage,
   getTurnSandboxPolicy,
   hasUsableAccount,
 } from "./agent-runner-helpers.js";

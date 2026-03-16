@@ -28,6 +28,13 @@
 - `tests/orchestrator.test.ts` still protects the adjacent runtime contracts that matter here: retry backoff after abnormal exits, active-worker cancellation during shutdown, and model selections applying to the next attempt instead of forcing an in-flight restart.
 - Re-running `npm test -- tests/orchestrator.test.ts`, `npm test -- tests/http-server.test.ts`, and the full `npm test` suite after Task 3 stayed green, which is good evidence that the phase-one helper extraction stayed isolated to `agent-runner` behavior.
 
+## 2026-03-16 Task 5 Next Orchestrator Seam
+
+- The safest first post-phase-one seam in `src/orchestrator.ts` is runtime view shaping, not `launchWorker(...)`: the retry row/detail builders are duplicated between `getSnapshot()` (`src/orchestrator.ts:188-202`) and `getIssueDetail()` (`src/orchestrator.ts:218-232`), while queue/detail-cache shaping is duplicated between `refreshQueueViews()` (`src/orchestrator.ts:443-456` and `461-472`).
+- `runningIssueView(...)` at `src/orchestrator.ts:841-864` already shows the extraction direction: keep orchestration state access in the class, but move pure `RuntimeIssueView` construction into helper functions parameterized by resolved model selection.
+- `tests/orchestrator.test.ts:81-346` is still lifecycle-first coverage, so characterization for queued rows, retry row/detail parity, and running row metadata must land before any helper extraction; otherwise a refactor could silently drift API-visible fields without failing current tests.
+- Even though `usageDelta(...)` is pure at `src/orchestrator.ts:96-101`, it should stay out of the first pass because token accounting mistakes would affect codex totals and running usage, which is a wider blast radius than the view-only seam.
+
 ## 2026-03-16 Task 6 Attempt Store Characterization
 
 - `src/attempt-store.ts` currently persists only per-attempt JSON archives plus per-attempt `.jsonl` event streams; there is no standalone persisted issue index or `persistIssueIndex()` method in the current implementation, so issue lookup is rebuilt from archived attempt files during `start()`.
@@ -51,3 +58,29 @@
 - `src/config.ts:14-110` already separates coercion and normalization concerns from `deriveServiceConfig(...)`, but startup defaults are only partially characterized today, so fallback, path expansion, approval policy, sandbox policy, and reasoning-effort tests should land before moving helpers.
 - `src/http-server.ts:19-43` is the main response-shaping seam, but it is last in the safety order because existing HTTP coverage is broad rather than field-exhaustive and public snake_case payload names must stay frozen before serializer extraction.
 - These three modules should stay out of the phase-one oversized-module branch; the later order is Linear query builders first, config helper grouping second, and HTTP serializers last.
+
+
+## 2026-03-16 F1 Plan Compliance Audit
+
+- The executed branch followed the plan's critical path in order: Task 1 characterization commit landed before the Task 3 `agent-runner` helper extraction, and Task 4 regression gates were recorded before Wave 3 characterization/planning work.
+- Relative to `main..HEAD`, the only production source diff is the intended phase-one `agent-runner` extraction (`src/agent-runner.ts` plus new `src/agent-runner-helpers.ts`); there is no structural diff in `src/orchestrator.ts`, `src/dashboard-template.ts`, or `src/attempt-store.ts`.
+- Required validation gates were evidenced for every executed planned task: Task 1 (`tests/agent-runner`), Task 3 (`tests/agent-runner` + build), Task 4 (`tests/orchestrator`, `tests/http-server`, full `npm test`), Task 6 (`tests/attempt-store` + `tests/http-server`), and Task 7 (`tests/http-server`).
+- Intermediate environment/tooling issues do not break plan compliance when the final required gates are rerun successfully and no scope drift occurs; that pattern appeared in Task 2 (dependencies), Task 3 (missing type import before passing build), and Task 7 (missing TypeScript LSP server).
+
+## 2026-03-16 F2 Code Quality Review
+
+- `src/agent-runner-helpers.ts` keeps a focused boundary for pure agent-runner helpers and does not become a new god module, but `extractUsage` is currently speculative surface: it is exported and imported after extraction without any live call site in the repo.
+- The extracted seam preserves local `.js` import conventions in both `src/agent-runner.ts` and `src/agent-runner-helpers.ts`; the quality gate failure is about unused abstraction, not import correctness or module sprawl.
+
+- 2026-03-16: F3 runtime QA should use a dedicated agent-executed script to drive `AgentRunner.runAttempt()` with `tests/fixtures/mock-codex-server.mjs` and then hit live `HttpServer` routes with `fetch()` so approval is based on exercised runtime behavior, not test inference.
+
+## 2026-03-16 F2 Code Quality Re-Run
+
+- After removing `extractUsage`, the `agent-runner` extraction clears the code-quality bar: `src/agent-runner.ts` keeps stateful orchestration concerns, while `src/agent-runner-helpers.ts` is back to a focused set of pure parsing/sanitization helpers.
+- For this repo, `npm run build` plus full `npm test` is a strong verification pair for refactor reviews, but the stricter source-health gate is now also available after installing `typescript-language-server` into `~/.local/bin` so `lsp_diagnostics` can run successfully.
+
+## 2026-03-16 F4 Scope Fidelity Rerun
+
+- Re-running `git diff --stat HEAD` after the lockfile revert narrowed the live diff to `.sisyphus/notepads/refactor-oversized-modules/learnings.md`, `src/agent-runner.ts`, and `src/agent-runner-helpers.ts`; `package-lock.json` is now clean and no longer blocks approval.
+- `git diff -- src/orchestrator.ts`, `src/dashboard-template.ts`, and `src/attempt-store.ts` all returned empty output, which is the key proof that the branch did not drift into forbidden phase-one structural edits.
+- The only remaining production-code delta in the extraction seam is removal of the previously flagged unused `extractUsage(...)` helper/import pair, which reduces speculative surface rather than changing route, payload, or event behavior.
