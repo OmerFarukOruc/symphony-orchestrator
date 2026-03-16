@@ -39,6 +39,7 @@ function serializeSnapshot(snapshot: RuntimeSnapshot & Record<string, unknown>):
       session_id: event.sessionId,
       event: event.event,
       message: event.message,
+      content: event.content ?? null,
     })),
   };
 }

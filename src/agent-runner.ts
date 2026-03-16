@@ -11,6 +11,7 @@ import { buildDockerRunArgs } from "./docker-spawn.js";
 import { inspectOomKilled, removeContainer, stopContainer } from "./docker-lifecycle.js";
 import { handleCodexRequest } from "./agent/codex-request-handler.js";
 import { LinearClient } from "./linear-client.js";
+import { isActiveState } from "./state-policy.js";
 import {
   asRecord,
   asString,
@@ -134,6 +135,7 @@ export class AgentRunner {
           notification,
           issue: input.issue,
           threadId,
+          turnId,
           onEvent: input.onEvent,
         });
       },
@@ -220,11 +222,37 @@ export class AgentRunner {
         throw new Error("thread/start did not return a thread identifier");
       }
 
-      const prompt = await this.liquid.parseAndRender(input.promptTemplate, {
-        issue: input.issue,
-        attempt: input.attempt,
-        workspace: input.workspace,
-      });
+      let parsedTemplate;
+      try {
+        parsedTemplate = this.liquid.parse(input.promptTemplate);
+      } catch (error) {
+        return {
+          kind: "failed",
+          errorCode: "template_parse_error",
+          errorMessage: error instanceof Error ? error.message : String(error),
+          threadId,
+          turnId,
+          turnCount,
+        };
+      }
+
+      let prompt: string;
+      try {
+        prompt = await this.liquid.render(parsedTemplate, {
+          issue: input.issue,
+          attempt: input.attempt,
+          workspace: input.workspace,
+        });
+      } catch (error) {
+        return {
+          kind: "failed",
+          errorCode: "template_render_error",
+          errorMessage: error instanceof Error ? error.message : String(error),
+          threadId,
+          turnId,
+          turnCount,
+        };
+      }
 
       while (turnCount < config.agent.maxTurns) {
         if (input.signal.aborted) {
@@ -235,6 +263,7 @@ export class AgentRunner {
         const turnResult = await connection.request("turn/start", {
           threadId,
           cwd: input.workspace.path,
+          title: `${input.issue.identifier}: ${input.issue.title}`,
           model: input.modelSelection.model,
           effort: input.modelSelection.reasoningEffort,
           approvalPolicy: config.codex.approvalPolicy,
@@ -268,7 +297,7 @@ export class AgentRunner {
           at: new Date().toISOString(),
           issueId: input.issue.id,
           issueIdentifier: input.issue.identifier,
-          sessionId: threadId,
+          sessionId: this.composeSessionId(threadId, turnId),
           event: "turn_completed",
           message:
             sanitizeContent(
@@ -311,7 +340,7 @@ export class AgentRunner {
         }
 
         const latestIssue = (await this.deps.linearClient.fetchIssueStatesByIds([input.issue.id]))[0];
-        if (!latestIssue || !this.isActiveState(latestIssue.state)) {
+        if (!latestIssue || !isActiveState(latestIssue.state, config)) {
           break;
         }
       }
@@ -489,14 +518,6 @@ export class AgentRunner {
     };
   }
 
-  private isActiveState(state: string): boolean {
-    const normalized = state.trim().toLowerCase();
-    if (["done", "completed", "canceled", "cancelled", "duplicate"].includes(normalized)) {
-      return false;
-    }
-    return !["backlog", "triage", "todo", "planned"].includes(normalized);
-  }
-
   private waitForTurnCompletion(input: { turnId: string; signal: AbortSignal; timeoutMs: number }): Promise<unknown> {
     const alreadyCompleted = this.completedTurnNotifications.get(input.turnId);
     if (alreadyCompleted !== undefined) {
@@ -529,6 +550,7 @@ export class AgentRunner {
     notification: { method: string; params?: unknown };
     issue: Issue;
     threadId: string | null;
+    turnId: string | null;
     onEvent: AgentRunnerEventHandler;
   }): void {
     const params = asRecord(input.notification.params);
@@ -539,7 +561,7 @@ export class AgentRunner {
         at: new Date().toISOString(),
         issueId: input.issue.id,
         issueIdentifier: input.issue.identifier,
-        sessionId: input.threadId,
+        sessionId: this.composeSessionId(input.threadId, startedTurnId ?? input.turnId),
         event: "turn_started",
         message: startedTurnId ? `turn ${startedTurnId} started` : "turn started",
       });
@@ -572,7 +594,7 @@ export class AgentRunner {
         at: new Date().toISOString(),
         issueId: input.issue.id,
         issueIdentifier: input.issue.identifier,
-        sessionId: input.threadId,
+        sessionId: this.composeSessionId(input.threadId, turnId ?? input.turnId),
         event: "token_usage_updated",
         message: turnId ? `token usage updated for ${turnId}` : "token usage updated",
         usage: total,
@@ -621,7 +643,7 @@ export class AgentRunner {
         at: new Date().toISOString(),
         issueId: input.issue.id,
         issueIdentifier: input.issue.identifier,
-        sessionId: input.threadId,
+        sessionId: this.composeSessionId(input.threadId, input.turnId),
         event: input.notification.method.replace("/", "_"),
         message: sanitizeContent(itemId ? `${itemType} ${itemId} ${verb}` : `${itemType} ${verb}`) || "item event",
         content,
@@ -634,7 +656,7 @@ export class AgentRunner {
       at: new Date().toISOString(),
       issueId: input.issue.id,
       issueIdentifier: input.issue.identifier,
-      sessionId: input.threadId,
+      sessionId: this.composeSessionId(input.threadId, input.turnId),
       event: "other_message",
       message: sanitizeContent(level) || "other",
     });
@@ -660,5 +682,12 @@ export class AgentRunner {
       turnId,
       turnCount,
     };
+  }
+
+  private composeSessionId(threadId: string | null, turnId: string | null): string | null {
+    if (!threadId || !turnId) {
+      return threadId;
+    }
+    return `${threadId}-${turnId}`;
   }
 }

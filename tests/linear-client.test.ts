@@ -9,7 +9,10 @@ function createConfig(): ServiceConfig {
     tracker: {
       kind: "linear",
       apiKey: "linear-token",
+      endpoint: "https://api.linear.app/graphql",
       projectSlug: "EXAMPLE",
+      activeStates: ["In Progress"],
+      terminalStates: ["Done", "Completed", "Canceled", "Cancelled", "Duplicate"],
     },
     polling: { intervalMs: 30000 },
     workspace: {
@@ -24,6 +27,7 @@ function createConfig(): ServiceConfig {
     },
     agent: {
       maxConcurrentAgents: 2,
+      maxConcurrentAgentsByState: {},
       maxTurns: 2,
       maxRetryBackoffMs: 120000,
     },
@@ -146,5 +150,35 @@ describe("LinearClient", () => {
     const issues = await client.fetchCandidateIssues();
     expect(issues).toHaveLength(1);
     expect(issues[0].identifier).toBe("MT-99");
+  });
+
+  it("uses the configured endpoint and active state variables for candidate queries", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        data: {
+          issues: {
+            nodes: [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config = createConfig();
+    config.tracker.endpoint = "https://linear.example.test/graphql";
+    config.tracker.activeStates = ["In Progress", "Review"];
+
+    const client = new LinearClient(() => config, createLogger());
+    await client.fetchCandidateIssues();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://linear.example.test/graphql",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"activeStates":["In Progress","Review"]'),
+      }),
+    );
   });
 });

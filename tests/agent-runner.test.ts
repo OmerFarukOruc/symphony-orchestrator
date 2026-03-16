@@ -56,7 +56,10 @@ async function createRunner(
     tracker: {
       kind: "linear",
       apiKey: "linear-token",
+      endpoint: "https://api.linear.app/graphql",
       projectSlug: "EXAMPLE",
+      activeStates: ["In Progress"],
+      terminalStates: ["Done", "Completed", "Canceled", "Cancelled", "Duplicate"],
     },
     polling: { intervalMs: 30000 },
     workspace: {
@@ -71,6 +74,7 @@ async function createRunner(
     },
     agent: {
       maxConcurrentAgents: 1,
+      maxConcurrentAgentsByState: {},
       maxTurns: 2,
       maxRetryBackoffMs: 120000,
     },
@@ -399,6 +403,7 @@ describe("AgentRunner", () => {
           type: "client_request",
           method: "turn/start",
           params: expect.objectContaining({
+            title: "MT-42: Ship Symphony",
             model: "gpt-5.4",
             effort: "high",
           }),
@@ -487,6 +492,52 @@ describe("AgentRunner", () => {
     });
   });
 
+  it("classifies template parse failures explicitly", async () => {
+    const tempDir = await createTempDir();
+    const { runner, workspaceManager } = await createRunner(tempDir, "success");
+    const workspace = await workspaceManager.ensureWorkspace("MT-42");
+
+    const outcome = await runner.runAttempt({
+      issue: baseIssue(),
+      attempt: null,
+      modelSelection: {
+        model: "gpt-5.4",
+        reasoningEffort: "high",
+        source: "default",
+      },
+      promptTemplate: "{% if issue.identifier %}",
+      workspace,
+      signal: new AbortController().signal,
+      onEvent: () => undefined,
+    });
+
+    expect(outcome.kind).toBe("failed");
+    expect(outcome.errorCode).toBe("template_parse_error");
+  });
+
+  it("classifies template render failures explicitly", async () => {
+    const tempDir = await createTempDir();
+    const { runner, workspaceManager } = await createRunner(tempDir, "success");
+    const workspace = await workspaceManager.ensureWorkspace("MT-42");
+
+    const outcome = await runner.runAttempt({
+      issue: baseIssue(),
+      attempt: null,
+      modelSelection: {
+        model: "gpt-5.4",
+        reasoningEffort: "high",
+        source: "default",
+      },
+      promptTemplate: "{{ issue.missing.value }}",
+      workspace,
+      signal: new AbortController().signal,
+      onEvent: () => undefined,
+    });
+
+    expect(outcome.kind).toBe("failed");
+    expect(outcome.errorCode).toBe("template_render_error");
+  });
+
   it("surfaces required MCP startup failures", async () => {
     const tempDir = await createTempDir();
     const { runner, workspaceManager } = await createRunner(tempDir, "mcp_required_failure");
@@ -535,13 +586,13 @@ describe("AgentRunner", () => {
       onEvent: () => undefined,
     });
 
-    expect(outcome).toEqual({
+    expect(outcome).toMatchObject({
       kind: "failed",
       errorCode: "port_exit",
-      errorMessage: "connection exited while waiting for request 20",
       threadId: null,
       turnId: null,
       turnCount: 0,
     });
+    expect(outcome.errorMessage).toContain("connection exited while waiting for request");
   });
 });

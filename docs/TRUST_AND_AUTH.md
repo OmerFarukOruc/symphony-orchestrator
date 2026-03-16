@@ -44,7 +44,7 @@ flowchart TB
 | `thread_sandbox` | `"danger-full-access"` |
 | `turn_sandbox_policy` | `{ type: "dangerFullAccess" }` |
 
-Symphony now generates a fresh per-attempt `CODEX_HOME` for every worker run. API-key flows render provider config into that runtime home, and `openai_login` flows copy `auth.json` from `codex.auth.source_home` into the generated runtime home.
+Symphony now generates a fresh per-attempt container-local `CODEX_HOME` for every worker run. API-key flows render provider config into that runtime home, and `openai_login` flows read `auth.json` from `codex.auth.source_home` and inject it into the container runtime home.
 
 ---
 
@@ -73,8 +73,8 @@ Symphony runs the Codex agent inside a Docker container using a `node:22-bookwor
 
 | Property | How |
 |----------|-----|
-| **Path identity** | Workspace, archive, and generated runtime-home paths are bind-mounted at the same absolute path inside the container |
-| **Auth preservation** | `openai_login` copies `auth.json` from `codex.auth.source_home` into the generated runtime home before launch |
+| **Path identity** | Workspace and archive paths are bind-mounted at the same absolute path inside the container |
+| **Auth preservation** | `openai_login` reads `auth.json` from `codex.auth.source_home` and injects it into the container-local runtime home before launch |
 | **Host permissions** | Container runs as `--user $(id -u):$(id -g)` — files it creates are owned by the host user |
 | **Provider decoupling** | Symphony renders the runtime config, but the configured provider still decides how model calls are routed |
 | **Network** | Default is Docker's default bridge (full internet). Operators can pre-provision a restricted network and reference it by name |

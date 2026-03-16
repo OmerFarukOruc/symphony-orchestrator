@@ -30,17 +30,7 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
-export function isTerminalState(state: string): boolean {
-  return ["done", "completed", "canceled", "cancelled", "duplicate"].includes(state.trim().toLowerCase());
-}
-
-export function isActiveState(state: string): boolean {
-  const normalized = state.trim().toLowerCase();
-  if (isTerminalState(normalized)) {
-    return false;
-  }
-  return !["backlog", "triage", "todo", "planned"].includes(normalized);
-}
+export { isActiveState, isTerminalState } from "../state-policy.js";
 
 export function isHardFailure(errorCode: string | null): boolean {
   return ["startup_failed", "turn_input_required", "inactive", "terminal", "shutdown", "cancelled"].includes(

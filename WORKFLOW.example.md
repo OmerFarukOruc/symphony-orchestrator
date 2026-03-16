@@ -3,6 +3,15 @@
 tracker:
   kind: linear
   api_key: $LINEAR_API_KEY
+  # endpoint: https://api.linear.app/graphql
+  # active_states:
+  #   - In Progress
+  # terminal_states:
+  #   - Done
+  #   - Completed
+  #   - Canceled
+  #   - Cancelled
+  #   - Duplicate
 
 # The polling loop never overlaps; the next pass is scheduled only after the current pass completes.
 polling:
@@ -27,6 +36,9 @@ hooks:
 # Max concurrency, turn budgeting, retry ceiling, synchronous read timeout, and stall timeout all live here.
 agent:
   max_concurrent_agents: 10
+  # Optional per-state cap keyed by normalized state name.
+  # max_concurrent_agents_by_state:
+  #   in progress: 4
   max_turns: 20
   max_retry_backoff_ms: 120000
 

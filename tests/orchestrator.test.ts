@@ -31,7 +31,10 @@ function createConfig(): ServiceConfig {
     tracker: {
       kind: "linear",
       apiKey: "linear-token",
+      endpoint: "https://api.linear.app/graphql",
       projectSlug: "EXAMPLE",
+      activeStates: ["In Progress"],
+      terminalStates: ["Done", "Completed", "Canceled", "Cancelled", "Duplicate"],
     },
     polling: { intervalMs: 30000 },
     workspace: {
@@ -46,6 +49,7 @@ function createConfig(): ServiceConfig {
     },
     agent: {
       maxConcurrentAgents: 1,
+      maxConcurrentAgentsByState: {},
       maxTurns: 1,
       maxRetryBackoffMs: 120000,
     },
@@ -92,6 +96,7 @@ function createAttemptStore(): AttemptStore {
     createAttempt: vi.fn(async () => undefined),
     updateAttempt: vi.fn(async () => undefined),
     appendEvent: vi.fn(async () => undefined),
+    getAllAttempts: vi.fn(() => []),
     getAttemptsForIssue: vi.fn(() => []),
     getAttempt: vi.fn(() => null),
     getEvents: vi.fn(() => []),
@@ -104,6 +109,72 @@ afterEach(() => {
 });
 
 describe("Orchestrator", () => {
+  it("sorts dispatch by priority, then oldest createdAt, and skips blocked todo issues", async () => {
+    vi.useFakeTimers();
+    const blockedTodo = {
+      ...createIssue("Todo"),
+      id: "issue-0",
+      identifier: "MT-10",
+      blockedBy: [{ id: "blk-1", identifier: "MT-09", state: "In Progress" }],
+    };
+    const highPriority = { ...createIssue(), id: "issue-2", identifier: "MT-02", priority: 1 };
+    const oldestPriorityPeer = {
+      ...createIssue(),
+      id: "issue-1",
+      identifier: "MT-01",
+      priority: 1,
+      createdAt: "2026-03-14T00:00:00Z",
+    };
+    const launched: string[] = [];
+    const agentRunner = {
+      runAttempt: vi.fn(async ({ issue, signal }: { issue: Issue; signal: AbortSignal }): Promise<RunOutcome> => {
+        launched.push(issue.identifier);
+        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
+        return {
+          kind: "cancelled",
+          errorCode: "shutdown",
+          errorMessage: "shutdown",
+          threadId: null,
+          turnId: null,
+          turnCount: 0,
+        };
+      }),
+    } as unknown as AgentRunner;
+    const linearClient = {
+      fetchCandidateIssues: vi.fn(async () => [blockedTodo, highPriority, oldestPriorityPeer]),
+      fetchIssueStatesByIds: vi.fn(async (ids: string[]) =>
+        [blockedTodo, highPriority, oldestPriorityPeer].filter((issue) => ids.includes(issue.id)),
+      ),
+      fetchIssuesByStates: vi.fn(async () => []),
+    } as unknown as LinearClient;
+    const workspaceManager = {
+      ensureWorkspace: vi.fn(async (identifier: string) => ({
+        path: `/tmp/symphony/${identifier}`,
+        workspaceKey: identifier,
+        createdNow: true,
+      })),
+      removeWorkspace: vi.fn(async () => undefined),
+    } as unknown as WorkspaceManager;
+
+    const orchestrator = new Orchestrator({
+      attemptStore: createAttemptStore(),
+      configStore: createConfigStore(createConfig()),
+      linearClient,
+      workspaceManager,
+      agentRunner,
+      logger: createLogger(),
+    });
+
+    await orchestrator.start();
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+
+    expect(launched).toEqual(["MT-01"]);
+    expect(orchestrator.getSnapshot().queued).toEqual([expect.objectContaining({ identifier: "MT-02" })]);
+
+    await orchestrator.stop();
+  });
+
   it("queues exponential retry after abnormal exits", async () => {
     vi.useFakeTimers();
     const issue = createIssue();
@@ -157,6 +228,64 @@ describe("Orchestrator", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     await Promise.resolve();
     expect(agentRunner.runAttempt).toHaveBeenCalledTimes(2);
+
+    await orchestrator.stop();
+  });
+
+  it("respects per-state concurrency limits when launching workers", async () => {
+    vi.useFakeTimers();
+    const inProgressA = { ...createIssue(), id: "issue-1", identifier: "MT-41" };
+    const inProgressB = { ...createIssue(), id: "issue-2", identifier: "MT-42" };
+    const reviewIssue = { ...createIssue("Review"), id: "issue-3", identifier: "MT-43" };
+    const launched: string[] = [];
+    const agentRunner = {
+      runAttempt: vi.fn(async ({ issue, signal }: { issue: Issue; signal: AbortSignal }): Promise<RunOutcome> => {
+        launched.push(issue.identifier);
+        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
+        return {
+          kind: "cancelled",
+          errorCode: "shutdown",
+          errorMessage: "shutdown",
+          threadId: null,
+          turnId: null,
+          turnCount: 0,
+        };
+      }),
+    } as unknown as AgentRunner;
+    const linearClient = {
+      fetchCandidateIssues: vi.fn(async () => [inProgressA, inProgressB, reviewIssue]),
+      fetchIssueStatesByIds: vi.fn(async (ids: string[]) =>
+        [inProgressA, inProgressB, reviewIssue].filter((issue) => ids.includes(issue.id)),
+      ),
+      fetchIssuesByStates: vi.fn(async () => []),
+    } as unknown as LinearClient;
+    const workspaceManager = {
+      ensureWorkspace: vi.fn(async (identifier: string) => ({
+        path: `/tmp/symphony/${identifier}`,
+        workspaceKey: identifier,
+        createdNow: true,
+      })),
+      removeWorkspace: vi.fn(async () => undefined),
+    } as unknown as WorkspaceManager;
+
+    const config = createConfig();
+    config.agent.maxConcurrentAgents = 2;
+    config.agent.maxConcurrentAgentsByState = { "in progress": 1 };
+    config.tracker.activeStates = ["In Progress", "Review"];
+    const orchestrator = new Orchestrator({
+      attemptStore: createAttemptStore(),
+      configStore: createConfigStore(config),
+      linearClient,
+      workspaceManager,
+      agentRunner,
+      logger: createLogger(),
+    });
+
+    await orchestrator.start();
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+
+    expect(launched).toEqual(["MT-41", "MT-43"]);
 
     await orchestrator.stop();
   });
@@ -668,6 +797,63 @@ describe("Orchestrator", () => {
         errorMessage: "Error: workspace setup exploded",
       }),
     );
+
+    await orchestrator.stop();
+  });
+
+  it("cleans up terminal issue workspaces at startup and revalidates retries before relaunch", async () => {
+    vi.useFakeTimers();
+    const runningIssue = createIssue();
+    const terminalIssue = createIssue("Done");
+    let fetchStateCount = 0;
+    const agentRunner = {
+      runAttempt: vi.fn(
+        async (): Promise<RunOutcome> => ({
+          kind: "failed",
+          errorCode: "turn_failed",
+          errorMessage: "boom",
+          threadId: null,
+          turnId: null,
+          turnCount: 1,
+        }),
+      ),
+    } as unknown as AgentRunner;
+    const linearClient = {
+      fetchCandidateIssues: vi.fn(async () => [runningIssue]),
+      fetchIssueStatesByIds: vi.fn(async () => {
+        fetchStateCount += 1;
+        return fetchStateCount === 1 ? [runningIssue] : [{ ...runningIssue, state: "Todo" }];
+      }),
+      fetchIssuesByStates: vi.fn(async () => [terminalIssue]),
+    } as unknown as LinearClient;
+    const workspaceManager = {
+      ensureWorkspace: vi.fn(async () => ({
+        path: "/tmp/symphony/MT-42",
+        workspaceKey: "MT-42",
+        createdNow: true,
+      })),
+      removeWorkspace: vi.fn(async () => undefined),
+    } as unknown as WorkspaceManager;
+
+    const orchestrator = new Orchestrator({
+      attemptStore: createAttemptStore(),
+      configStore: createConfigStore(createConfig()),
+      linearClient,
+      workspaceManager,
+      agentRunner,
+      logger: createLogger(),
+    });
+
+    await orchestrator.start();
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+    expect(workspaceManager.removeWorkspace).toHaveBeenCalledWith("MT-42");
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    await Promise.resolve();
+
+    expect(agentRunner.runAttempt).toHaveBeenCalledTimes(1);
+    expect(orchestrator.getSnapshot().retrying).toEqual([]);
 
     await orchestrator.stop();
   });

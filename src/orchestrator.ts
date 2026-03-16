@@ -4,15 +4,8 @@ import { AgentRunner } from "./agent-runner.js";
 import { AttemptStore } from "./attempt-store.js";
 import { ConfigStore } from "./config.js";
 import { LinearClient } from "./linear-client.js";
-import {
-  type IssueView,
-  isActiveState,
-  isHardFailure,
-  isTerminalState,
-  issueView,
-  nowIso,
-  usageDelta,
-} from "./orchestrator/views.js";
+import { type IssueView, isHardFailure, issueView, nowIso, usageDelta } from "./orchestrator/views.js";
+import { isActiveState, isTerminalState, isTodoState, normalizeStateKey } from "./state-policy.js";
 import type {
   Issue,
   ModelSelection,
@@ -85,6 +78,7 @@ export class Orchestrator {
   private refreshQueued = false;
   private readonly runningEntries = new Map<string, RunningEntry>();
   private readonly retryEntries = new Map<string, RetryEntry & { issue: Issue; workspaceKey: string | null }>();
+  private readonly claimedIssueIds = new Set<string>();
   private readonly recentEvents: RecentEvent[] = [];
   private readonly detailViews = new Map<string, IssueView>();
   private readonly completedViews = new Map<string, IssueView>();
@@ -115,6 +109,7 @@ export class Orchestrator {
       return;
     }
     this.running = true;
+    await this.cleanupTerminalIssueWorkspaces();
     this.scheduleTick(0);
   }
 
@@ -130,6 +125,7 @@ export class Orchestrator {
       }
     }
     this.retryEntries.clear();
+    this.claimedIssueIds.clear();
     const workers = [...this.runningEntries.values()];
     for (const worker of workers) {
       worker.abortController.abort("shutdown");
@@ -176,7 +172,10 @@ export class Orchestrator {
       ),
       queued: this.queuedViews,
       completed: [...this.completedViews.values()].slice(0, 25),
-      codexTotals: { ...this.codexTotals },
+      codexTotals: {
+        ...this.codexTotals,
+        secondsRunning: this.computeSecondsRunning(),
+      },
       rateLimits: this.rateLimits,
       recentEvents: [...this.recentEvents],
     };
@@ -324,7 +323,6 @@ export class Orchestrator {
       return;
     }
     this.tickInFlight = true;
-    const startedAtMs = Date.now();
     try {
       await this.reconcileRunningAndRetrying();
       await this.refreshQueueViews();
@@ -332,7 +330,6 @@ export class Orchestrator {
     } catch (error) {
       this.deps.logger.error({ error: String(error) }, "orchestrator tick failed");
     } finally {
-      this.codexTotals.secondsRunning += (Date.now() - startedAtMs) / 1000;
       this.tickInFlight = false;
       const delayMs = this.refreshQueued ? 0 : this.getConfig().polling.intervalMs;
       this.refreshQueued = false;
@@ -346,18 +343,20 @@ export class Orchestrator {
     const now = Date.now();
     const config = this.getConfig();
 
-    for (const entry of this.runningEntries.values()) {
-      if (!entry.abortController.signal.aborted && now - entry.lastEventAtMs > config.codex.stallTimeoutMs) {
-        entry.abortController.abort("stalled");
-        entry.status = "stopping";
-        this.pushEvent({
-          at: nowIso(),
-          issueId: entry.issue.id,
-          issueIdentifier: entry.issue.identifier,
-          sessionId: entry.sessionId,
-          event: "worker_stalled",
-          message: "worker exceeded stall timeout and was cancelled",
-        });
+    if (config.codex.stallTimeoutMs > 0) {
+      for (const entry of this.runningEntries.values()) {
+        if (!entry.abortController.signal.aborted && now - entry.lastEventAtMs > config.codex.stallTimeoutMs) {
+          entry.abortController.abort("stalled");
+          entry.status = "stopping";
+          this.pushEvent({
+            at: nowIso(),
+            issueId: entry.issue.id,
+            issueIdentifier: entry.issue.identifier,
+            sessionId: entry.sessionId,
+            event: "worker_stalled",
+            message: "worker exceeded stall timeout and was cancelled",
+          });
+        }
       }
     }
 
@@ -375,13 +374,13 @@ export class Orchestrator {
         continue;
       }
       entry.issue = latest;
-      if (isTerminalState(latest.state)) {
+      if (isTerminalState(latest.state, config)) {
         entry.cleanupOnExit = true;
         if (!entry.abortController.signal.aborted) {
           entry.abortController.abort("terminal");
         }
         entry.status = "stopping";
-      } else if (!isActiveState(latest.state) && !entry.abortController.signal.aborted) {
+      } else if (!isActiveState(latest.state, config) && !entry.abortController.signal.aborted) {
         entry.abortController.abort("inactive");
         entry.status = "stopping";
       }
@@ -390,29 +389,23 @@ export class Orchestrator {
     for (const retryEntry of [...this.retryEntries.values()]) {
       const latest = byId.get(retryEntry.issueId);
       if (!latest) {
+        this.clearRetryEntry(retryEntry.issueId);
         continue;
       }
       retryEntry.issue = latest;
-      if (isTerminalState(latest.state)) {
-        if (retryEntry.timer) {
-          clearTimeout(retryEntry.timer);
-        }
-        this.retryEntries.delete(retryEntry.issueId);
+      if (isTerminalState(latest.state, config)) {
+        this.clearRetryEntry(retryEntry.issueId);
         await this.deps.workspaceManager.removeWorkspace(latest.identifier).catch(() => undefined);
-      } else if (!isActiveState(latest.state)) {
-        if (retryEntry.timer) {
-          clearTimeout(retryEntry.timer);
-        }
-        this.retryEntries.delete(retryEntry.issueId);
+      } else if (!isActiveState(latest.state, config)) {
+        this.clearRetryEntry(retryEntry.issueId);
       }
     }
   }
 
   private async refreshQueueViews(): Promise<void> {
-    const issues = await this.deps.linearClient.fetchCandidateIssues();
+    const issues = this.sortIssuesForDispatch(await this.deps.linearClient.fetchCandidateIssues());
     this.queuedViews = issues
-      .filter((issue) => isActiveState(issue.state))
-      .filter((issue) => !this.runningEntries.has(issue.id) && !this.retryEntries.has(issue.id))
+      .filter((issue) => this.canDispatchIssue(issue))
       .slice(0, 50)
       .map((issue) =>
         issueView(issue, {
@@ -428,7 +421,7 @@ export class Orchestrator {
       );
 
     for (const issue of issues) {
-      if (!this.runningEntries.has(issue.id) && !this.retryEntries.has(issue.id)) {
+      if (!this.claimedIssueIds.has(issue.id)) {
         const selection = this.resolveModelSelection(issue.identifier);
         this.detailViews.set(
           issue.identifier,
@@ -453,26 +446,40 @@ export class Orchestrator {
       return;
     }
 
-    const issues = await this.deps.linearClient.fetchCandidateIssues();
+    const issues = this.sortIssuesForDispatch(await this.deps.linearClient.fetchCandidateIssues());
     let launched = 0;
+    const pendingStateCounts = new Map<string, number>();
     for (const issue of issues) {
       if (launched >= availableSlots) {
         break;
       }
-      if (!isActiveState(issue.state)) {
+      if (!this.canDispatchIssue(issue)) {
         continue;
       }
-      if (this.runningEntries.has(issue.id) || this.retryEntries.has(issue.id)) {
+      if (!this.hasAvailableStateSlot(issue, pendingStateCounts)) {
         continue;
       }
+      this.claimIssue(issue.id);
       launched += 1;
-      await this.launchWorker(issue, null);
+      const stateKey = normalizeStateKey(issue.state);
+      pendingStateCounts.set(stateKey, (pendingStateCounts.get(stateKey) ?? 0) + 1);
+      await this.launchWorker(issue, null, { claimHeld: true });
     }
   }
 
-  private async launchWorker(issue: Issue, attempt: number | null): Promise<void> {
+  private async launchWorker(issue: Issue, attempt: number | null, options?: { claimHeld?: boolean }): Promise<void> {
+    if (!options?.claimHeld) {
+      this.claimIssue(issue.id);
+    }
+
     const workflow = this.deps.configStore.getWorkflow();
-    const workspace = await this.deps.workspaceManager.ensureWorkspace(issue.identifier);
+    let workspace: Workspace;
+    try {
+      workspace = await this.deps.workspaceManager.ensureWorkspace(issue.identifier);
+    } catch (error) {
+      this.releaseIssueClaim(issue.id);
+      throw error;
+    }
     const modelSelection = this.resolveModelSelection(issue.identifier);
     const abortController = new AbortController();
     const entry: RunningEntry = {
@@ -566,7 +573,6 @@ export class Orchestrator {
           }
           void this.deps.attemptStore
             .updateAttempt(entry.runId, {
-              threadId: entry.sessionId,
               tokenUsage: entry.tokenUsage,
             })
             .catch(() => undefined);
@@ -617,6 +623,7 @@ export class Orchestrator {
         );
 
         if (!this.running) {
+          this.releaseIssueClaim(latestIssue.id);
           this.completedViews.set(
             latestIssue.identifier,
             issueView(latestIssue, {
@@ -637,7 +644,7 @@ export class Orchestrator {
           return;
         }
 
-        if (entry.cleanupOnExit || isTerminalState(latestIssue.state)) {
+        if (entry.cleanupOnExit || isTerminalState(latestIssue.state, this.getConfig())) {
           const terminalStatus =
             outcome.kind === "normal"
               ? "completed"
@@ -666,10 +673,11 @@ export class Orchestrator {
               modelSource: entry.modelSelection.source,
             }),
           );
+          this.releaseIssueClaim(latestIssue.id);
           return;
         }
 
-        if (!isActiveState(latestIssue.state)) {
+        if (!isActiveState(latestIssue.state, this.getConfig())) {
           this.completedViews.set(
             latestIssue.identifier,
             issueView(latestIssue, {
@@ -685,6 +693,7 @@ export class Orchestrator {
               modelSource: entry.modelSelection.source,
             }),
           );
+          this.releaseIssueClaim(latestIssue.id);
           return;
         }
 
@@ -711,6 +720,7 @@ export class Orchestrator {
               modelSource: entry.modelSelection.source,
             }),
           );
+          this.releaseIssueClaim(latestIssue.id);
           return;
         }
 
@@ -732,6 +742,7 @@ export class Orchestrator {
               modelSource: entry.modelSelection.source,
             }),
           );
+          this.releaseIssueClaim(latestIssue.id);
           return;
         }
 
@@ -766,6 +777,7 @@ export class Orchestrator {
       })
       .catch((error) => {
         this.runningEntries.delete(issue.id);
+        this.releaseIssueClaim(issue.id);
         this.pushEvent({
           at: nowIso(),
           issueId: issue.id,
@@ -781,7 +793,7 @@ export class Orchestrator {
             errorCode: "worker_failed",
             errorMessage: String(error),
             tokenUsage: entry.tokenUsage,
-            threadId: entry.sessionId,
+            threadId: null,
           })
           .catch(() => undefined);
       });
@@ -791,14 +803,14 @@ export class Orchestrator {
     if (!this.running) {
       return;
     }
+    this.claimIssue(issue.id);
     const existing = this.retryEntries.get(issue.id);
     if (existing?.timer) {
       clearTimeout(existing.timer);
     }
     const dueAtMs = Date.now() + delayMs;
     const timer = setTimeout(() => {
-      this.retryEntries.delete(issue.id);
-      void this.launchWorker(issue, attempt).catch((error) => {
+      void this.revalidateAndLaunchRetry(issue.id, attempt).catch((error) => {
         void this.handleRetryLaunchFailure(issue, attempt, error);
       });
     }, delayMs);
@@ -814,6 +826,49 @@ export class Orchestrator {
     });
   }
 
+  private async revalidateAndLaunchRetry(issueId: string, attempt: number): Promise<void> {
+    const retryEntry = this.retryEntries.get(issueId);
+    if (!retryEntry || !this.running) {
+      return;
+    }
+
+    const [latestIssue] = await this.deps.linearClient.fetchIssueStatesByIds([issueId]);
+    const config = this.getConfig();
+    if (!latestIssue) {
+      this.clearRetryEntry(issueId);
+      return;
+    }
+    retryEntry.issue = latestIssue;
+
+    if (isTerminalState(latestIssue.state, config)) {
+      this.clearRetryEntry(issueId);
+      await this.deps.workspaceManager.removeWorkspace(latestIssue.identifier).catch(() => undefined);
+      return;
+    }
+    if (!isActiveState(latestIssue.state, config)) {
+      this.clearRetryEntry(issueId);
+      return;
+    }
+    if (this.runningEntries.size >= config.agent.maxConcurrentAgents || !this.hasAvailableStateSlot(latestIssue)) {
+      this.queueRetry(latestIssue, attempt, 1_000, retryEntry.error);
+      return;
+    }
+
+    this.retryEntries.delete(issueId);
+    await this.launchWorker(latestIssue, attempt, { claimHeld: true });
+  }
+
+  private clearRetryEntry(issueId: string): void {
+    const retryEntry = this.retryEntries.get(issueId);
+    if (retryEntry?.timer) {
+      clearTimeout(retryEntry.timer);
+    }
+    this.retryEntries.delete(issueId);
+    if (!this.runningEntries.has(issueId)) {
+      this.releaseIssueClaim(issueId);
+    }
+  }
+
   private pushEvent(event: RecentEvent & { usage?: unknown; rateLimits?: unknown }): void {
     this.recentEvents.unshift({
       at: event.at,
@@ -822,6 +877,7 @@ export class Orchestrator {
       sessionId: event.sessionId,
       event: event.event,
       message: event.message,
+      content: event.content ?? null,
     });
     if (this.recentEvents.length > 250) {
       this.recentEvents.length = 250;
@@ -852,6 +908,92 @@ export class Orchestrator {
     };
   }
 
+  private async cleanupTerminalIssueWorkspaces(): Promise<void> {
+    try {
+      const terminalIssues = await this.deps.linearClient.fetchIssuesByStates(this.getConfig().tracker.terminalStates);
+      await Promise.all(
+        terminalIssues.map((issue) =>
+          this.deps.workspaceManager.removeWorkspace(issue.identifier).catch(() => undefined),
+        ),
+      );
+    } catch (error) {
+      this.deps.logger.warn({ error: String(error) }, "startup terminal workspace cleanup failed");
+    }
+  }
+
+  private sortIssuesForDispatch(issues: Issue[]): Issue[] {
+    return [...issues].sort((left, right) => {
+      const leftPriority = left.priority ?? Number.MAX_SAFE_INTEGER;
+      const rightPriority = right.priority ?? Number.MAX_SAFE_INTEGER;
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority;
+      }
+
+      const leftCreatedAt = left.createdAt ? Date.parse(left.createdAt) : Number.MAX_SAFE_INTEGER;
+      const rightCreatedAt = right.createdAt ? Date.parse(right.createdAt) : Number.MAX_SAFE_INTEGER;
+      if (leftCreatedAt !== rightCreatedAt) {
+        return leftCreatedAt - rightCreatedAt;
+      }
+
+      return left.identifier.localeCompare(right.identifier);
+    });
+  }
+
+  private canDispatchIssue(issue: Issue): boolean {
+    const config = this.getConfig();
+    if (!isActiveState(issue.state, config)) {
+      return false;
+    }
+    if (this.claimedIssueIds.has(issue.id)) {
+      return false;
+    }
+    if (isTodoState(issue.state)) {
+      return !issue.blockedBy.some((blocker) => blocker.state === null || !isTerminalState(blocker.state, config));
+    }
+    return true;
+  }
+
+  private hasAvailableStateSlot(issue: Issue, pendingStateCounts?: Map<string, number>): boolean {
+    const stateKey = normalizeStateKey(issue.state);
+    const configuredLimit = this.getConfig().agent.maxConcurrentAgentsByState[stateKey];
+    if (configuredLimit === undefined) {
+      return true;
+    }
+
+    const runningCount = [...this.runningEntries.values()].filter(
+      (entry) => normalizeStateKey(entry.issue.state) === stateKey,
+    ).length;
+    const pendingCount = pendingStateCounts?.get(stateKey) ?? 0;
+    return runningCount + pendingCount < configuredLimit;
+  }
+
+  private claimIssue(issueId: string): void {
+    this.claimedIssueIds.add(issueId);
+  }
+
+  private releaseIssueClaim(issueId: string): void {
+    this.claimedIssueIds.delete(issueId);
+  }
+
+  private computeSecondsRunning(): number {
+    const archivedSeconds = this.deps.attemptStore.getAllAttempts().reduce((total, attempt) => {
+      if (!attempt.endedAt) {
+        return total;
+      }
+      const startedAt = Date.parse(attempt.startedAt);
+      const endedAt = Date.parse(attempt.endedAt);
+      if (Number.isNaN(startedAt) || Number.isNaN(endedAt) || endedAt < startedAt) {
+        return total;
+      }
+      return total + (endedAt - startedAt) / 1000;
+    }, 0);
+    const liveSeconds = [...this.runningEntries.values()].reduce(
+      (total, entry) => total + Math.max(0, (Date.now() - entry.startedAtMs) / 1000),
+      0,
+    );
+    return archivedSeconds + liveSeconds;
+  }
+
   private runningIssueView(entry: RunningEntry): RuntimeIssueView {
     const configuredSelection = this.resolveModelSelection(entry.issue.identifier);
     return issueView(entry.issue, {
@@ -880,6 +1022,7 @@ export class Orchestrator {
   private async handleRetryLaunchFailure(issue: Issue, attempt: number, error: unknown): Promise<void> {
     const runningEntry = this.runningEntries.get(issue.id) ?? null;
     this.runningEntries.delete(issue.id);
+    this.clearRetryEntry(issue.id);
 
     const errorText = String(error);
     const message = `retry startup failed: ${errorText}`;

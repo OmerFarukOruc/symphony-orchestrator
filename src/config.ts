@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import chokidar, { type FSWatcher } from "chokidar";
@@ -13,6 +14,7 @@ import type {
   WorkflowDefinition,
 } from "./types.js";
 import { loadWorkflowDefinition } from "./workflow-loader.js";
+import { DEFAULT_ACTIVE_STATES, DEFAULT_TERMINAL_STATES, normalizeStateList } from "./state-policy.js";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
@@ -37,6 +39,25 @@ function asStringMap(value: unknown): Record<string, string> {
   return Object.fromEntries(
     Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
   );
+}
+
+function asNumberMap(value: unknown): Record<string, number> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, number] => typeof entry[1] === "number" && Number.isFinite(entry[1]),
+    ),
+  );
+}
+
+function asStringArray(value: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(value)) {
+    return fallback;
+  }
+  const values = value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return values.length > 0 ? values : fallback;
 }
 
 function resolveEnvBackedString(value: unknown): string {
@@ -73,6 +94,17 @@ function resolveTmpDir(value: string): string {
 
 function resolveConfigString(value: unknown): string {
   return resolveTmpDir(expandHomePath(resolveEnvBackedString(value)));
+}
+
+function expandPathEnvVars(value: string): string {
+  return value.replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_match, name: string) => process.env[name] ?? "");
+}
+
+function resolvePathConfigString(value: unknown): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return expandPathEnvVars(resolveTmpDir(expandHomePath(value)));
 }
 
 function asCodexAuthMode(value: unknown, fallback: CodexAuthMode): CodexAuthMode {
@@ -158,14 +190,20 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
   const codex = asRecord(root.codex);
   const server = asRecord(root.server);
 
-  const workspaceRoot = resolveConfigString(asString(workspace.root, "./workspaces"));
+  const workspaceRoot = resolvePathConfigString(
+    asString(workspace.root, path.join(os.tmpdir(), "symphony_workspaces")),
+  );
   const turnSandboxPolicyRecord = asRecord(codex.turn_sandbox_policy);
-  const hookTimeoutMs = asNumber(hooks.timeout_ms, 60000);
+  const rawHookTimeoutMs = asNumber(hooks.timeout_ms, 60000);
+  const hookTimeoutMs = rawHookTimeoutMs > 0 ? rawHookTimeoutMs : 60000;
   const readTimeoutMs = asNumber(codex.read_timeout_ms, asNumber(agent.read_timeout_ms, 5000));
   const turnTimeoutMs = asNumber(codex.turn_timeout_ms, 3600000);
   const stallTimeoutMs = asNumber(codex.stall_timeout_ms, asNumber(agent.stall_timeout_ms, 300000));
   const approvalPolicy = normalizeApprovalPolicy(codex.approval_policy);
   const auth = asRecord(codex.auth);
+  const trackerKind = asString(tracker.kind, "linear");
+  const trackerActiveStates = asStringArray(tracker.active_states, DEFAULT_ACTIVE_STATES);
+  const trackerTerminalStates = asStringArray(tracker.terminal_states, DEFAULT_TERMINAL_STATES);
 
   const sandbox = asRecord(codex.sandbox);
   const sandboxSecurity = asRecord(sandbox.security);
@@ -174,9 +212,12 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
 
   return {
     tracker: {
-      kind: "linear",
+      kind: trackerKind,
       apiKey: resolveEnvBackedString(tracker.api_key),
+      endpoint: resolveConfigString(tracker.endpoint) || "https://api.linear.app/graphql",
       projectSlug: asString(tracker.project_slug) || null,
+      activeStates: trackerActiveStates,
+      terminalStates: trackerTerminalStates,
     },
     polling: {
       intervalMs: asNumber(polling.interval_ms, 30000),
@@ -193,6 +234,12 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
     },
     agent: {
       maxConcurrentAgents: asNumber(agent.max_concurrent_agents, 4),
+      maxConcurrentAgentsByState: Object.fromEntries(
+        Object.entries(asNumberMap(agent.max_concurrent_agents_by_state)).map(([state, limit]) => [
+          state.trim().toLowerCase(),
+          limit,
+        ]),
+      ),
       maxTurns: asNumber(agent.max_turns, 20),
       maxRetryBackoffMs: asNumber(agent.max_retry_backoff_ms, 120000),
     },
@@ -317,10 +364,34 @@ export class ConfigStore {
 
   validateDispatch(): ValidationError | null {
     const config = this.getConfig();
+    if (config.tracker.kind !== "linear") {
+      return {
+        code: "invalid_tracker_kind",
+        message: `tracker.kind must be "linear"; received ${JSON.stringify(config.tracker.kind)}`,
+      };
+    }
     if (!config.tracker.apiKey) {
       return {
         code: "missing_tracker_api_key",
         message: "tracker.api_key is required after env resolution",
+      };
+    }
+    if (!config.tracker.endpoint) {
+      return {
+        code: "missing_tracker_endpoint",
+        message: "tracker.endpoint is required",
+      };
+    }
+    if (normalizeStateList(config.tracker.activeStates).length === 0) {
+      return {
+        code: "invalid_tracker_active_states",
+        message: "tracker.active_states must contain at least one state",
+      };
+    }
+    if (normalizeStateList(config.tracker.terminalStates).length === 0) {
+      return {
+        code: "invalid_tracker_terminal_states",
+        message: "tracker.terminal_states must contain at least one state",
       };
     }
     if (!config.codex.command) {
