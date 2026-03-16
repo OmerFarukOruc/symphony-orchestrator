@@ -41,6 +41,17 @@ export async function handleLinearGraphqlToolCall(
     }
 
     const response = await client.runGraphQL(input.query, input.variables);
+    if (Array.isArray(response.errors) && response.errors.length > 0) {
+      return {
+        success: false,
+        contentItems: [
+          {
+            type: "inputText",
+            text: jsonText(response),
+          },
+        ],
+      };
+    }
     return {
       success: true,
       contentItems: [

@@ -36,4 +36,20 @@ describe("handleLinearGraphqlToolCall", () => {
       error: "linear_graphql requires exactly one operation",
     });
   });
+
+  it("returns success=false when the GraphQL payload contains top-level errors", async () => {
+    const client = {
+      runGraphQL: vi.fn(async () => ({ data: null, errors: [{ message: "boom" }] })),
+    } as unknown as LinearClient;
+
+    const response = await handleLinearGraphqlToolCall(client, {
+      query: "query One { viewer { id } }",
+    });
+
+    expect(response.success).toBe(false);
+    expect(JSON.parse(response.contentItems[0].text)).toEqual({
+      data: null,
+      errors: [{ message: "boom" }],
+    });
+  });
 });

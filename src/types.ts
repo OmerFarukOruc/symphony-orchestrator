@@ -150,9 +150,12 @@ export interface ValidationError {
 }
 
 export interface TrackerConfig {
-  kind: "linear";
+  kind: string;
   apiKey: string;
+  endpoint: string;
   projectSlug: string | null;
+  activeStates: string[];
+  terminalStates: string[];
 }
 
 export interface PollingConfig {
@@ -174,6 +177,7 @@ export interface WorkspaceConfig {
 
 export interface AgentConfig {
   maxConcurrentAgents: number;
+  maxConcurrentAgentsByState: Record<string, number>;
   maxTurns: number;
   maxRetryBackoffMs: number;
 }

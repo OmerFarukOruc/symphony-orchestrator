@@ -10,7 +10,7 @@
   <a href="https://github.com/OmerFarukOruc/symphony-orchestrator/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/OmerFarukOruc/symphony-orchestrator?color=green&style=flat-square" /></a>
   <img alt="Node.js" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square&logo=node.js" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-blue?style=flat-square&logo=typescript" />
-  <img alt="Status" src="https://img.shields.io/badge/status-v0.1.1-orange?style=flat-square" />
+  <img alt="Status" src="https://img.shields.io/badge/status-v0.2.0-orange?style=flat-square" />
 </p>
 
 ---
@@ -47,7 +47,7 @@ flowchart TD
 
 ---
 
-## ✨ What Ships in v0.1.1
+## ✨ What Ships in v0.2.0
 
 | Feature | Description |
 |---------|-------------|
@@ -157,12 +157,12 @@ The checked-in workflows now also tell the agent to finish with `SYMPHONY_STATUS
 | `WORKFLOW.md` | Checked-in live smoke workflow for this repo |
 
 > [!TIP]
-> Symphony now generates a fresh temporary `CODEX_HOME` for every attempt. Use `WORKFLOW.example.md` for API-key or custom provider flows, and `WORKFLOW.md` for a local `codex login` smoke path that copies `~/.codex/auth.json` into the runtime home.
+> Symphony now generates a fresh temporary container-local `CODEX_HOME` for every attempt. Use `WORKFLOW.example.md` for API-key or custom provider flows, and `WORKFLOW.md` for a local `codex login` smoke path that copies `~/.codex/auth.json` into the container runtime home.
 
 ### Auth Modes
 
 - `codex.auth.mode: "api_key"` uses env-backed provider auth. With no `codex.provider` block, Symphony targets OpenAI directly and forwards `OPENAI_API_KEY` into the container automatically.
-- `codex.auth.mode: "openai_login"` copies `auth.json` from `codex.auth.source_home` into the generated runtime home. This is the path for ChatGPT/Codex subscription users after `codex login`.
+- `codex.auth.mode: "openai_login"` reads `auth.json` from `codex.auth.source_home` and injects it into the container-local runtime home. This is the path for ChatGPT/Codex subscription users after `codex login`.
 - `codex.provider` is optional and supports OpenAI-compatible endpoints with `base_url`, `env_key`, `env_http_headers`, `query_params`, and `requires_openai_auth`.
 - Host-bound provider URLs such as `http://127.0.0.1:8317/v1` are rewritten to `host.docker.internal` inside Docker automatically.
 

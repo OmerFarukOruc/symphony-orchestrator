@@ -77,6 +77,10 @@ export class AttemptStore {
     return this.attempts.get(attemptId) ?? null;
   }
 
+  getAllAttempts(): AttemptRecord[] {
+    return [...this.attempts.values()];
+  }
+
   getEvents(attemptId: string): AttemptEvent[] {
     return [...(this.eventsByAttempt.get(attemptId) ?? [])].reverse();
   }

@@ -125,4 +125,57 @@ describe("config store", () => {
 
     await store.stop();
   });
+
+  it("defaults workspace root to the system temp directory and falls back hook timeout when configured non-positive", async () => {
+    const dir = await createTempDir();
+    const workflowPath = path.join(dir, "WORKFLOW.md");
+    process.env.LINEAR_API_KEY = "linear-token";
+
+    await writeFile(
+      workflowPath,
+      "---\ntracker:\n  kind: linear\n  api_key: $LINEAR_API_KEY\nhooks:\n  timeout_ms: 0\n---\nPrompt\n",
+      "utf8",
+    );
+
+    const store = new ConfigStore(workflowPath, createLogger());
+    await store.start();
+
+    expect(store.getConfig().workspace.root).toBe(
+      path.resolve(path.join(process.env.TMPDIR ?? baseTmpDir, "symphony_workspaces")),
+    );
+    expect(store.getConfig().workspace.hooks.timeoutMs).toBe(60000);
+    expect(store.getConfig().tracker.endpoint).toBe("https://api.linear.app/graphql");
+    expect(store.getConfig().tracker.activeStates).toEqual(["In Progress"]);
+    expect(store.getConfig().tracker.terminalStates).toEqual([
+      "Done",
+      "Completed",
+      "Canceled",
+      "Cancelled",
+      "Duplicate",
+    ]);
+
+    await store.stop();
+  });
+
+  it("rejects unsupported tracker kinds", async () => {
+    const dir = await createTempDir();
+    const workflowPath = path.join(dir, "WORKFLOW.md");
+    process.env.LINEAR_API_KEY = "linear-token";
+
+    await writeFile(
+      workflowPath,
+      "---\ntracker:\n  kind: github\n  api_key: $LINEAR_API_KEY\ncodex:\n  command: codex app-server\n---\nPrompt\n",
+      "utf8",
+    );
+
+    const store = new ConfigStore(workflowPath, createLogger());
+    await store.start();
+
+    expect(store.validateDispatch()).toEqual({
+      code: "invalid_tracker_kind",
+      message: 'tracker.kind must be "linear"; received "github"',
+    });
+
+    await store.stop();
+  });
 });

@@ -1,6 +1,5 @@
 import type { Issue, IssueBlockerRef, ServiceConfig, SymphonyLogger } from "./types.js";
 
-const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
 const PAGE_SIZE = 50;
 
 interface GraphQLResponse {
@@ -124,9 +123,9 @@ const ISSUE_FIELDS = `
 function buildCandidateIssuesQuery(includeProjectFilter: boolean): string {
   const projectFilter = includeProjectFilter ? "project: { slugId: { eq: $projectSlug } }" : "";
   return `
-    query SymphonyCandidateIssues($after: String${includeProjectFilter ? ", $projectSlug: String!" : ""}) {
+    query SymphonyCandidateIssues($after: String, $activeStates: [String!]${includeProjectFilter ? ", $projectSlug: String!" : ""}) {
       issues(first: ${PAGE_SIZE}, after: $after, filter: {
-        state: { type: { nin: ["completed", "canceled"] } }
+        state: { name: { in: $activeStates } }
         ${projectFilter}
       }) {
         nodes {
@@ -143,8 +142,8 @@ function buildCandidateIssuesQuery(includeProjectFilter: boolean): string {
 
 function buildIssuesByIdsQuery(): string {
   return `
-    query SymphonyIssuesByIds($ids: [ID!]) {
-      issues(first: ${PAGE_SIZE}, filter: { id: { in: $ids } }) {
+    query SymphonyIssuesByIds($ids: [ID!], $after: String) {
+      issues(first: ${PAGE_SIZE}, after: $after, filter: { id: { in: $ids } }) {
         nodes {
           ${ISSUE_FIELDS}
         }
@@ -159,8 +158,8 @@ function buildIssuesByIdsQuery(): string {
 
 function buildIssuesByStatesQuery(): string {
   return `
-    query SymphonyIssuesByStates($states: [String!]) {
-      issues(first: ${PAGE_SIZE}, filter: { state: { name: { in: $states } } }) {
+    query SymphonyIssuesByStates($states: [String!], $after: String) {
+      issues(first: ${PAGE_SIZE}, after: $after, filter: { state: { name: { in: $states } } }) {
         nodes {
           ${ISSUE_FIELDS}
         }
@@ -193,6 +192,7 @@ export class LinearClient {
     do {
       const payload = await this.runGraphQL(query, {
         after,
+        activeStates: config.tracker.activeStates,
         ...(config.tracker.projectSlug ? { projectSlug: config.tracker.projectSlug } : {}),
       });
       issues.push(...extractIssues(payload));
@@ -207,18 +207,33 @@ export class LinearClient {
     if (ids.length === 0) {
       return [];
     }
-
-    const payload = await this.runGraphQL(buildIssuesByIdsQuery(), { ids });
-    return extractIssues(payload);
+    const issues: Issue[] = [];
+    for (let index = 0; index < ids.length; index += PAGE_SIZE) {
+      const chunk = ids.slice(index, index + PAGE_SIZE);
+      let after: string | null = null;
+      do {
+        const payload = await this.runGraphQL(buildIssuesByIdsQuery(), { ids: chunk, after });
+        issues.push(...extractIssues(payload));
+        const pageInfo = extractPageInfo(payload);
+        after = pageInfo.hasNextPage ? pageInfo.endCursor : null;
+      } while (after);
+    }
+    return issues;
   }
 
   async fetchIssuesByStates(states: string[]): Promise<Issue[]> {
     if (states.length === 0) {
       return [];
     }
-
-    const payload = await this.runGraphQL(buildIssuesByStatesQuery(), { states });
-    return extractIssues(payload);
+    const issues: Issue[] = [];
+    let after: string | null = null;
+    do {
+      const payload = await this.runGraphQL(buildIssuesByStatesQuery(), { states, after });
+      issues.push(...extractIssues(payload));
+      const pageInfo = extractPageInfo(payload);
+      after = pageInfo.hasNextPage ? pageInfo.endCursor : null;
+    } while (after);
+    return issues;
   }
 
   async runGraphQL(
@@ -226,7 +241,7 @@ export class LinearClient {
     variables?: Record<string, unknown>,
   ): Promise<{ data?: Record<string, unknown>; errors?: unknown[] }> {
     const config = this.getConfig();
-    const response = await fetch(LINEAR_ENDPOINT, {
+    const response = await fetch(config.tracker.endpoint, {
       method: "POST",
       headers: {
         "content-type": "application/json",

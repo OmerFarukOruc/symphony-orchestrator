@@ -112,7 +112,7 @@ node dist/cli.js ./WORKFLOW.md --port 4000
 | `WORKFLOW.md` | Repository's checked-in live smoke path |
 
 > [!TIP]
-> `WORKFLOW.example.md` is the API-key/custom-provider example. `WORKFLOW.md` is the local `codex login` smoke path. Both create a fresh temporary runtime `CODEX_HOME` for each attempt instead of relying on a checked-in fixture home.
+> `WORKFLOW.example.md` is the API-key/custom-provider example. `WORKFLOW.md` is the local `codex login` smoke path. Both create a fresh temporary container-local runtime `CODEX_HOME` for each attempt instead of relying on a checked-in fixture home.
 
 ---
 
@@ -250,7 +250,7 @@ Symphony runs the Codex agent inside a Docker container by default using a `node
 | **Path identity** | All host paths are bind-mounted at their same absolute path inside the container |
 | **Host permissions** | Container runs as your UID/GID — no ownership drift |
 | **Writable HOME** | A persistent named volume is mounted at `/home/agent` for npm/pip/git caches |
-| **Generated runtime home** | Symphony creates a temporary `CODEX_HOME` per attempt and removes it after the run |
+| **Generated runtime home** | Symphony materializes a temporary container-local `CODEX_HOME` per attempt and removes it with the container |
 | **Resource limits** | Memory, CPU, and tmpfs are configurable via `codex.sandbox.resources` |
 | **OOM detection** | Exit code 137 with `OOMKilled=true` is surfaced as `container_oom` (retryable) |
 
