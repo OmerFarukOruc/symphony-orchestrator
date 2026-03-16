@@ -63,7 +63,7 @@ describe("config store", () => {
     const workflowPath = path.join(dir, "WORKFLOW.md");
     await writeFile(
       workflowPath,
-      "---\ntracker:\n  api_key: $LINEAR_API_KEY\nworkspace:\n  root: $TMPDIR/symphony\ncodex:\n  command: codex app-server\n---\nPrompt\n",
+      "---\ntracker:\n  api_key: $LINEAR_API_KEY\n  project_slug: TEST\nworkspace:\n  root: $TMPDIR/symphony\ncodex:\n  command: codex app-server\n---\nPrompt\n",
       "utf8",
     );
 
@@ -111,7 +111,7 @@ describe("config store", () => {
 
     await writeFile(
       workflowPath,
-      "---\ntracker:\n  api_key: $LINEAR_API_KEY\ncodex:\n  command: codex app-server\n  auth:\n    mode: openai_login\n    source_home: ~/.missing-codex-home\n---\nPrompt\n",
+      "---\ntracker:\n  api_key: $LINEAR_API_KEY\n  project_slug: TEST\ncodex:\n  command: codex app-server\n  auth:\n    mode: openai_login\n    source_home: ~/.missing-codex-home\n---\nPrompt\n",
       "utf8",
     );
 
@@ -145,10 +145,11 @@ describe("config store", () => {
     );
     expect(store.getConfig().workspace.hooks.timeoutMs).toBe(60000);
     expect(store.getConfig().tracker.endpoint).toBe("https://api.linear.app/graphql");
-    expect(store.getConfig().tracker.activeStates).toEqual(["In Progress"]);
+    expect(store.getConfig().tracker.activeStates).toEqual(["Todo", "In Progress"]);
     expect(store.getConfig().tracker.terminalStates).toEqual([
       "Done",
       "Completed",
+      "Closed",
       "Canceled",
       "Cancelled",
       "Duplicate",

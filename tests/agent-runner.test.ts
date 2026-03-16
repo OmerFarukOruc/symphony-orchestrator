@@ -76,7 +76,7 @@ async function createRunner(
       maxConcurrentAgents: 1,
       maxConcurrentAgentsByState: {},
       maxTurns: 2,
-      maxRetryBackoffMs: 120000,
+      maxRetryBackoffMs: 300000,
     },
     codex: {
       command: `MOCK_CODEX_SCENARIO=${shellQuote(scenario)} MOCK_CODEX_LOG_PATH=${shellQuote(logPath)} ${shellQuote(process.execPath)} ${shellQuote(fixturePath)}`,

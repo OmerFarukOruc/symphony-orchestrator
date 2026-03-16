@@ -233,7 +233,7 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
       },
     },
     agent: {
-      maxConcurrentAgents: asNumber(agent.max_concurrent_agents, 4),
+      maxConcurrentAgents: asNumber(agent.max_concurrent_agents, 10),
       maxConcurrentAgentsByState: Object.fromEntries(
         Object.entries(asNumberMap(agent.max_concurrent_agents_by_state)).map(([state, limit]) => [
           state.trim().toLowerCase(),
@@ -241,7 +241,7 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
         ]),
       ),
       maxTurns: asNumber(agent.max_turns, 20),
-      maxRetryBackoffMs: asNumber(agent.max_retry_backoff_ms, 120000),
+      maxRetryBackoffMs: asNumber(agent.max_retry_backoff_ms, 300000),
     },
     codex: {
       command: asString(codex.command, "codex app-server"),
@@ -380,6 +380,12 @@ export class ConfigStore {
       return {
         code: "missing_tracker_endpoint",
         message: "tracker.endpoint is required",
+      };
+    }
+    if (config.tracker.kind === "linear" && !config.tracker.projectSlug) {
+      return {
+        code: "missing_tracker_project_slug",
+        message: "tracker.project_slug is required when tracker.kind is linear",
       };
     }
     if (normalizeStateList(config.tracker.activeStates).length === 0) {

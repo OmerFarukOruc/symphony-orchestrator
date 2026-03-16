@@ -1,7 +1,7 @@
 import type { ServiceConfig } from "./types.js";
 
-export const DEFAULT_ACTIVE_STATES = ["In Progress"];
-export const DEFAULT_TERMINAL_STATES = ["Done", "Completed", "Canceled", "Cancelled", "Duplicate"];
+export const DEFAULT_ACTIVE_STATES = ["Todo", "In Progress"];
+export const DEFAULT_TERMINAL_STATES = ["Done", "Completed", "Closed", "Canceled", "Cancelled", "Duplicate"];
 
 function normalizeStateValue(state: string): string {
   return state.trim().toLowerCase();

@@ -37,7 +37,7 @@ function createConfig(root: string): ServiceConfig {
     agent: {
       maxConcurrentAgents: 1,
       maxTurns: 1,
-      maxRetryBackoffMs: 120000,
+      maxRetryBackoffMs: 300000,
     },
     codex: {
       command: "codex app-server",

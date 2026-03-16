@@ -103,7 +103,19 @@ export class WorkspaceManager {
       return;
     }
 
-    await this.runHook(config.workspace.hooks.beforeRemove, workspace, issueIdentifier);
+    try {
+      await this.runHook(config.workspace.hooks.beforeRemove, workspace, issueIdentifier);
+    } catch (error) {
+      this.logger.warn(
+        {
+          workspacePath: workspace.path,
+          issueIdentifier,
+          error: error instanceof Error ? error.message : String(error),
+          classification: "before_remove_hook_failed",
+        },
+        "before_remove hook failed; continuing with workspace removal",
+      );
+    }
     await rm(workspacePath, { recursive: true, force: true });
   }
 
