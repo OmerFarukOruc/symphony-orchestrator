@@ -131,7 +131,7 @@ function hasUsableAccount(result: unknown): boolean {
   );
 }
 
-function extractItemContent(
+export function extractItemContent(
   type: string,
   id: string | null,
   item: Record<string, unknown>,
