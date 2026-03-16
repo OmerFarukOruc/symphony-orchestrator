@@ -1,0 +1,23 @@
+{
+  "skill_name": "symphony-logs",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "check issue NIN-6 and tell me what happened in the latest Symphony run",
+      "expected_output": "Identifies the latest attempt, reports status, timing, and event timeline, and names the exact provenance used such as the helper command, archive file path, or API endpoint rather than referring vaguely to logs or archive files.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "why did NIN-3 fail? quote the exact error and the events that point to it",
+      "expected_output": "Retrieves the latest failed attempt, quotes the exact errorCode and errorMessage, cites the specific failure or stall events, and names the exact source those quotes came from instead of giving an ungrounded summary.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "show me the retry history for MT-42 and whether the current worker is still running",
+      "expected_output": "Inspects multiple attempts and reports retry history from named archive evidence, and for current worker state either cites the exact live API endpoint used or explicitly states that live state could not be verified from archive-only evidence.",
+      "files": []
+    }
+  ]
+}
