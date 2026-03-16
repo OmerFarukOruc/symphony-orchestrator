@@ -17,6 +17,7 @@ Symphony polls Linear for candidate issues, creates a workspace per issue, launc
 | **Node.js** | v22 or newer |
 | **Docker** | Docker Engine installed and running (`docker info` should succeed) |
 | **Linear API key** | `LINEAR_API_KEY` in your environment |
+| **Linear project slug** | `LINEAR_PROJECT_SLUG` for the project Symphony should poll |
 | **Codex auth** | Working auth setup for your `codex app-server` command |
 
 ---
@@ -96,6 +97,7 @@ export OPENAI_API_KEY="sk-..."
 
 # 6. Export credentials and start
 export LINEAR_API_KEY="lin_api_..."
+export LINEAR_PROJECT_SLUG="your-linear-project-slug"
 node dist/cli.js ./WORKFLOW.md --port 4000
 ```
 
@@ -114,6 +116,26 @@ node dist/cli.js ./WORKFLOW.md --port 4000
 > [!TIP]
 > `WORKFLOW.example.md` is the API-key/custom-provider example. `WORKFLOW.md` is the local `codex login` smoke path. Both create a fresh temporary container-local runtime `CODEX_HOME` for each attempt instead of relying on a checked-in fixture home.
 
+Both checked-in workflows resolve `tracker.project_slug` from `LINEAR_PROJECT_SLUG`, so you can reuse the same files across different Linear projects without editing tracked config.
+
+To find that value, open the Linear project in your browser and copy the segment after `/project/` from the URL:
+
+```text
+https://linear.app/<workspace>/project/<project-slug>/overview
+```
+
+Example:
+
+```text
+https://linear.app/ninetech/project/symphony-test-e1e26e4576d1/overview
+```
+
+uses:
+
+```bash
+export LINEAR_PROJECT_SLUG="symphony-test-e1e26e4576d1"
+```
+
 ---
 
 ## 📦 Install and Validate
@@ -131,8 +153,17 @@ npm run build
 # Build the Docker sandbox image
 bash bin/build-sandbox.sh
 
+# Point Symphony at the Linear project it should dispatch from
+export LINEAR_PROJECT_SLUG="your-linear-project-slug"
+
 # Dry-start the portable workflow
 node dist/cli.js ./WORKFLOW.example.md
+```
+
+If `LINEAR_PROJECT_SLUG` is missing, Symphony exits with:
+
+```text
+error code=missing_tracker_project_slug msg="tracker.project_slug is required when tracker.kind is linear"
 ```
 
 If `LINEAR_API_KEY` is missing, Symphony exits with:

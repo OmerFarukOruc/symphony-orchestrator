@@ -1,6 +1,6 @@
 # 🗺️ Roadmap and Status
 
-> Per-requirement spec conformance audit for Symphony Orchestrator.
+> Per-requirement spec conformance audit and product vision for Symphony Orchestrator.
 
 <p>
   <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-blue?style=flat-square" />
@@ -9,9 +9,9 @@
 
 ---
 
-## 📌 Current Release Baseline
+# Part 1 — Shipped ✅
 
-The repository is at **`v0.2.0`** and implements a working local orchestration loop for Linear-driven Codex work. This document tracks every atomic requirement from the Symphony Service Specification against the current codebase.
+> Everything below is implemented, tested, and running in the current `v0.2.0` release.
 
 **Legend:** ✅ Implemented · 🟡 Partial / Minor Deviation · ❌ Not Implemented · 🔵 Extension (beyond spec)
 
@@ -202,7 +202,7 @@ The repository is at **`v0.2.0`** and implements a working local orchestration l
 
 - ✅ Global `available_slots = max(max_concurrent_agents - running_count, 0)`
 - ✅ Per-state `max_concurrent_agents_by_state` with normalized state keys
-- ❌ SSH host per-host limits (not implemented — local-only)
+- ❌ SSH host per-host limits — **deferred: superseded by Docker fleet model**
 
 ### §8.4 Retry and Backoff
 
@@ -633,36 +633,13 @@ The repository is at **`v0.2.0`** and implements a working local orchestration l
 | §17 Test and Validation | 30+ | 30 | 0 | 0 |
 | **Total** | **238+** | **237** | **1** | **1** |
 
----
+### 🟡 Remaining Minor Deviation
 
-## 🟡 Minor Deviations from Spec
+| Deviation | Status |
+|-----------|--------|
+| Linear error categories not typed as spec-defined codes (§11.4) | Planned for Phase 1 |
 
-> All 6 previously identified deviations were resolved and now match the spec.
-
-| Deviation | Resolution |
-|-----------|------------|
-| `tracker.active_states` | Default changed to `["Todo", "In Progress"]` |
-| `tracker.terminal_states` | Added `"Closed"` to defaults |
-| `agent.max_concurrent_agents` | Default changed to `10` |
-| `agent.max_retry_backoff_ms` | Default changed to `300000` |
-| `tracker.project_slug` | Now **required** for `kind=linear` dispatch validation |
-| `before_remove` logging | Dedicated `before_remove_hook_failed` classification added |
-
-The one remaining 🟡 is in §11 (Linear error categories not typed as spec-defined codes).
-
----
-
-## ❌ Not Implemented (Spec-Required)
-
-| Gap | Spec Reference |
-|-----|----------------|
-| SSH host per-host concurrency limits | §8.3 / Appendix A |
-
----
-
-## 🔵 Extensions Beyond Spec
-
-Capabilities shipped that go beyond the spec requirements:
+### 🔵 Extensions Beyond Spec (Shipped)
 
 | Extension | Description |
 |-----------|-------------|
@@ -682,60 +659,332 @@ Capabilities shipped that go beyond the spec requirements:
 
 ---
 
-## 🔲 Major Remaining Roadmap Gaps
+# Part 2 — Planned 🔲
 
-> [!IMPORTANT]
-> The two largest remaining gaps are **autonomous git & CI/CD lifecycle** and **dashboard-based secrets management**. Together they represent the path from "hook-driven manual setup" to a fully autonomous orchestrator.
+> Everything below is NOT yet implemented. This is the product vision.
+> Organized into **v1.0** (MVP fundamentals) and **v2.0** (advanced AI autonomy).
+> v1.0 ships first — it builds everything needed for a fully operational autonomous agent platform.
+> v2.0 layers on verification, observability-driven feedback, and lights-out operation once the foundation is solid.
 
-### 🔀 Autonomous Git & CI/CD Lifecycle
+---
+
+# v1.0 — MVP Platform 🏗️
+
+> Core infrastructure, automation, and operator tooling. Everything an operator needs to run Symphony in production with confidence.
+
+---
+
+## Phase 1 — Quick Wins & Spec Polish
+
+Close remaining spec gaps and ship small high-value improvements.
+
+| Item | Current State | Target | Effort |
+|------|--------------|--------|--------|
+| Linear typed error codes (§11 🟡) | Generic `Error` throws | `LinearClientError` with `linear_transport_error`, `linear_http_error`, `linear_graphql_error`, `linear_unknown_payload`, `linear_missing_end_cursor` | ~1h |
+| `GET /metrics` endpoint | `MetricsCollector` exists, not wired | `GET /metrics` returns Prometheus text format | ~30m |
+| Dispatch sort/blocker tests (§17.4) | Covered implicitly | Explicit deterministic tests for priority→oldest→identifier sort and Todo blocker filtering | ~1h |
+| Local static assets | CDN: Tailwind, Google Fonts | Inline CSS bundle + system font stack; dashboard renders fully offline | ~2h |
+
+---
+
+## Phase 2 — Lifecycle Notifications
+
+| Item | Current State | Target |
+|------|--------------|--------|
+| Notification framework | ❌ Not supported | `NotificationChannel` interface with pluggable backends |
+| Slack webhook | ❌ | POST to configurable Slack webhook URL |
+| Dashboard alerts | ❌ | In-memory recent-alerts list rendered in dashboard |
+| Per-project granularity | ❌ | `"off" \| "critical" \| "verbose"` per project |
+| Event coverage | ❌ | Issue picked up · work started · PR submitted · retry triggered · terminal failure · completed |
+
+---
+
+## Phase 3 — Autonomous Git & CI/CD Lifecycle
+
+The largest remaining gap — moves from hook-driven manual git setup to fully autonomous issue-to-PR delivery. CI/CD monitoring and auto-fix are delegated to [Sentinel-Review](https://github.com/OmerFarukOruc/sentinel-review).
 
 | Feature | Current State | Target |
 |---------|--------------|--------|
-| **Multi-repo routing** | Single implicit repo via hooks | Issue → repo mapping via Linear project/label/prefix |
+| **Multi-repo routing** | Single implicit repo via hooks | `repos[]` config with issue→repo matching by project slug, label, or prefix |
 | **Git clone & branch** | Manual `after_create` hook | Built-in: clone repo, create branch from `issue.branchName` |
-| **Private repo auth** | Manual `env_passthrough` / `extra_mounts` | Dashboard-managed credentials injected automatically |
+| **Private repo auth** | Manual `env_passthrough` / `extra_mounts` | Credentials from config/secrets store, injected automatically |
 | **Commit & push** | Manual `after_run` hook | Built-in: auto-commit on `SYMPHONY_STATUS: DONE` |
 | **PR creation** | ❌ Not supported | `github_api` dynamic tool for agent-driven PRs |
-| **CI/CD status polling** | ❌ Not supported | Post-push phase: poll GitHub Actions / webhook |
-| **Auto-merge on green CI** | ❌ Not supported | Configurable: auto-merge or notify-and-wait |
-| **PR review feedback loop** | ❌ Not supported | Agent reads review comments, iterates, re-pushes |
+| **CI/CD status polling** | ❌ Not supported | Delegated to Sentinel's `ci-fixer/detector.ts` — detects failing checks, fetches logs, analyzes failures |
+| **CI auto-fix loop** | ❌ Not supported | Sentinel's `ci-fixer/ci-pipeline.ts` — detect → analyze → generate fix → canary test → self-improve |
+| **Auto-merge on green CI** | ❌ Not supported | Sentinel's `orchestrator/auto-merge.ts` — risk-score-gated merge with multi-gate checks |
+| **PR review feedback loop** | ❌ Not supported | Sentinel reports findings → Symphony re-dispatches with feedback (see v2.0 Phase 1E) |
 
-### 🔑 Dashboard-Based Secrets Management
+---
+
+## Phase 4 — Dashboard-Based Secrets Management
 
 | Problem with Env-Only | Dashboard Solution |
 |-----------------------|-------------------|
-| Secrets leak into logs / `docker inspect` | Encrypted at rest, injected at runtime only |
-| No audit trail | Dashboard logs credential changes |
+| Secrets leak into logs / `docker inspect` | AES-256-GCM encrypted at rest, injected at runtime only |
+| No audit trail | Append-only audit log for credential changes |
 | No rotation | Dashboard shows expiry, supports rotation |
 | Scattered across profiles / `.env` / CI | Single pane in operator dashboard |
 | No validation | Dashboard validates format and tests connectivity |
 
-### 🌐 Infrastructure Scaling
-
-| Feature | Spec Section |
-|---------|-------------|
-| SSH worker host distribution | Appendix A |
-| Persisted retry queue across restarts | §18.2 |
-| Pluggable tracker adapters beyond Linear | §18.2 |
-| First-class tracker write APIs | §18.2 |
+Implementation: `secrets-store.ts` with `MASTER_KEY` bootstrap, `$SECRET:key_name` resolution in config, CRUD API at `/api/v1/secrets/*`, dashboard credentials page.
 
 ---
 
-## 💡 Smaller Follow-Up Opportunities
+## Phase 5 — Docker-First Service Deployment
 
-| Area | Description |
+**Everything related to Symphony orchestration bundled in a Docker container.**
+
+| Item | Current State | Target |
+|------|--------------|--------|
+| Service container | ❌ Only `Dockerfile.sandbox` for agents | `Dockerfile` for Symphony service (multi-stage Node 22 build) |
+| Compose stack | ❌ | `docker-compose.yml` with named volumes |
+| Persistence volumes | `.symphony/` local dir | `/data/logs`, `/data/archives`, `/data/config`, `/data/workspaces` |
+| Log rotation | ❌ | Compress old logs; **deletion forbidden** — archive to cold storage |
+| Health check | ❌ | `GET /api/v1/state` probe |
+| Docker-in-Docker | Agent sandboxes bind Docker socket | Service container mounts `/var/run/docker.sock` for agent spawning |
+
+> [!CAUTION]
+> **Non-negotiable**: All environment configs, logs, archived runs, and state MUST be preserved across container reboots and must NEVER be deleted automatically.
+
+---
+
+## Phase 6 — App-Based Configuration
+
+Replace env-var-only config with a persistent, UI-manageable config store.
+
+| Item | Current State | Target |
+|------|--------------|--------|
+| Config surface | YAML front matter in `WORKFLOW.md` + env vars | Structured config file (YAML) in persistent volume |
+| Config editing | Edit `WORKFLOW.md` by hand | Dashboard UI + API for config CRUD |
+| Sensitive values | `$VAR` env indirection | Encrypted at rest via secrets store (Phase 4) |
+| Env vars role | Primary config mechanism | **Override/bootstrap only** (e.g., initial `MASTER_KEY`) |
+| Per-project config | Single workflow file | `projects[]` array with per-project tracker, state machine, agent, notification settings |
+| Validation | Dispatch preflight only | In-app validation with discoverable, documented fields |
+
+---
+
+## Phase 7 — Flexible Kanban State Machine
+
+| Item | Current State | Target |
+|------|--------------|--------|
+| Board stages | Hard-coded `active_states` / `terminal_states` | Configurable per-project state machine |
+| Valid transitions | ❌ Not tracked | `valid_transitions` map defining allowed state changes |
+| Custom stages | Partial — configurable lists | Full support for `Review`, `QA`, `Staging`, `Blocked`, etc. |
+| State machine config | In workflow YAML | Persisted in app config (Phase 6), editable via dashboard |
+
+---
+
+## Phase 8 — Testing Pipeline Hardening
+
+| Item | Current State | Target |
+|------|--------------|--------|
+| Unit tests | ✅ Vitest, < 30s | Maintain coverage for all new modules |
+| Integration tests | ✅ Opt-in with `LINEAR_API_KEY` | Add Docker lifecycle tests (build, start, health, shutdown) |
+| E2E smoke test | ❌ | Full pipeline: create Linear issue → agent picks up → commit/PR → terminal state |
+| CI/CD | ❌ No GitHub Actions | `npm test` on every PR, integration + E2E on main, always green |
+| Config persistence | ❌ | Test config survives simulated container restarts |
+| Test repo | ❌ | Dedicated test repo + Linear project for E2E (trivial task for speed) |
+
+---
+
+## Phase 9 — Cross-Platform Desktop App (Orchestration Manager)
+
+Inspired by [Superset](https://github.com/superset-sh/superset) and multi-session orchestration dashboards.
+
+| Item | Current State | Target |
+|------|--------------|--------|
+| Technology | ❌ No desktop app | Tauri or Electron (TBD) |
+| Service control | CLI only | Start/stop/restart Symphony service and individual agents |
+| Config editing | `WORKFLOW.md` by hand | Visual config editor connected to app config API |
+| Run history | Dashboard + API | Rich history browser with logs, events, and archived attempts |
+| Planning skill | ❌ | Trigger manual issue planning via planning skill UI |
+| Resource monitoring | ❌ | CPU, memory, network per agent container (via `docker stats`) |
+
+---
+
+## Phase 10 — Skill-Driven Issue Planning
+
+| Item | Current State | Target |
+|------|--------------|--------|
+| Planning skill | ❌ | Structured prompt template that decomposes goals into Linear issues |
+| Issue quality | Manual | Crystal-clear titles, descriptions, acceptance criteria — self-contained for autonomous execution |
+| Project routing | ❌ | Inferred from active workspace/repo; issues written to correct Linear project |
+| Dependency ordering | ❌ | Explicit sequencing and blocking relationships between created issues |
+| Trigger surface | ❌ | Dashboard UI + `POST /api/v1/plan` API + desktop app |
+
+---
+
+# v2.0 — Advanced AI Autonomy 🚀
+
+> Verification, observability-driven feedback loops, and lights-out operation. These phases require a solid v1.0 foundation — they layer on top of working git automation, CI/CD, secrets management, and operator tooling.
+
+---
+
+## Phase 1 — Work Verification & Drift Prevention
+
+> [!IMPORTANT]
+> This phase addresses the two hardest problems in autonomous coding: **"did the agent break anything?"** and **"what happens when multiple agents touch the same code?"**
+
+### 1A — Entity-Level Merging with Weave
+
+Integrate [Weave](https://github.com/Ataraxy-Labs/weave) as Symphony's merge driver to eliminate false merge conflicts when multiple agents work in parallel.
+
+| Item | Description |
 |------|-------------|
-| 📦 Local static assets | Replace remote CDN assets (Tailwind, Google Fonts) with local bundles |
-| 📊 Metrics endpoint | Wire `MetricsCollector` to `GET /metrics` HTTP endpoint |
-| 🎨 Dashboard polish | Settings page, credential management UI |
-| 📊 Richer reporting | Slack/webhook notifications on issue completion |
-| 🧪 Dispatch sort/blocker tests | Spec §17.4 requires deterministic tests |
-| 🔗 GitHub dynamic tool | `github_api` tool for agents to create PRs, check CI |
-| 🗂️ Multi-repo config | Repo registry mapping Linear teams/projects to git URLs |
+| **Weave setup in workspaces** | Run `weave setup` during repo clone (v1.0 Phase 3) to configure entity-level merge driver |
+| **Weave MCP tools for agents** | Expose Weave's 14 MCP tools as dynamic tools alongside `linear_graphql` — agents can claim entities before editing, check what others are working on, get conflict warnings |
+| **Entity-level conflict resolution** | Tree-sitter-based parsing merges at function/class/method level — different functions in the same file = no conflict (100% clean merge on 31/31 real-world scenarios vs git's 48%) |
+| **Scope-aware dispatch** | Query Weave's entity claim registry before dispatching — serialize hard overlaps (same entity), parallelize soft overlaps (same file, different entities) |
+
+### 1B — Reviewer Agent via [Sentinel-Review](https://github.com/OmerFarukOruc/sentinel-review)
+
+Instead of building a reviewer agent from scratch, Symphony delegates post-work verification to Sentinel-Review — an already-built multi-model code review platform with adversarial debate, oracle validation, and executable verification.
+
+| Sentinel Module | What It Provides |
+|---|---|
+| **`review/specialist-registry.ts`** + **`soul-generator.ts`** | N-Specialist panel (Claude Opus + GPT-5) with ExpertPrompting templates — multi-model consensus, not single-model rubber-stamping |
+| **`review/filtering/` (5 stages)** | Dedup → consensus → risk scoring (0–100) → severity gating → adversarial debate |
+| **`review/debate.ts`** | Adversarial debate — a Defender argues FOR the finding, a Judge rules `confirmed`/`rejected` |
+| **`review/oracle-validator.ts`** | Final GPT oracle gate — batch-validates findings with `confirmed`/`rejected`/`downgraded` verdicts |
+| **`review/verification-engine.ts`** | Docker-isolated execution to *prove* findings are real — runs category-specific test scripts |
+| **`review/ast-incremental.ts`** | AST-based incremental scoping — only re-reviews changed functions + their 5-level call graph |
+| **`review/convergence.ts`** | Stall/regression/unfixable detection in auto-fix loops — prevents infinite retry cycles |
+| **`orchestrator/auto-merge.ts`** | Risk-score-gated auto-merge with multi-gate checks (risk threshold, draft status, blocked authors) |
+
+**Symphony's role**: Create the PR (v1.0 Phase 3), then Sentinel handles review → verdict → auto-merge/block. See Phase 1E for the integration contract.
+
+### 1C — Auto-Rebase Cascade
+
+When any agent's PR merges to `main`, automatically rebase all other in-flight agent branches.
+
+| Item | Description |
+|------|-------------|
+| **Main movement detection** | GitHub webhook or polling detects new commits on `main` |
+| **Weave-powered rebase** | `git rebase main` using Weave as merge driver — resolves false conflicts automatically |
+| **Clean rebase → continue** | Agent keeps working, no interruption needed |
+| **Real entity conflict → re-dispatch** | Kill the conflicting agent, re-dispatch issue from fresh `main` |
+| **Conflict logging** | Track which modules cause frequent conflicts for future serialization hints |
+
+### 1D — Stacked PRs (Optional Enhancement)
+
+Inspired by [Graphite](https://graphite.dev), break agent output into small, dependent PRs instead of one monolithic PR.
+
+| Item | Description |
+|------|-------------|
+| **Stack-aware merge queue** | PRs in a stack merge in order; CI runs against the cumulative result of all predecessors |
+| **Smaller review surface** | Each PR in the stack is focused, making Sentinel review more tractable |
+| **Ejection handling** | If any PR in the stack fails, the stack is re-evaluated and the agent is notified |
+
+### 1E — Symphony ↔ Sentinel Integration Contract
+
+The webhook/API contract that connects Symphony (orchestrator) with Sentinel (verifier).
+
+#### Flow
+
+```
+Symphony                              GitHub                           Sentinel
+   │                                    │                                  │
+   │── commit + push ──────────────────►│                                  │
+   │── POST /repos/.../pulls ──────────►│                                  │
+   │                                    │── webhook (pull_request) ───────►│
+   │                                    │                                  │── review pipeline
+   │                                    │                                  │── adversarial debate
+   │                                    │                                  │── oracle validation
+   │                                    │◄── POST review comments ────────│
+   │                                    │◄── POST check_run (verdict) ────│
+   │                                    │                                  │
+   │◄── webhook (check_run completed) ──│                                  │
+   │    or poll GET /check-runs         │                                  │
+   │                                    │                                  │
+   ├── verdict == APPROVE?              │                                  │
+   │   YES → Sentinel auto-merges      │◄── PUT /pulls/.../merge ────────│
+   │   REQUEST_CHANGES → re-dispatch    │                                  │
+   │   with review comments as context  │                                  │
+   │   BLOCK → notify operator          │                                  │
+```
+
+#### Symphony → Sentinel (via GitHub)
+
+| Event | Mechanism | Data |
+|---|---|---|
+| PR created | GitHub `pull_request.opened` webhook → Sentinel | `repo`, `pr_number`, `head_sha`, `branch` |
+| PR updated (re-push after fix) | GitHub `pull_request.synchronize` webhook → Sentinel | Same — triggers re-review with AST incremental scoping |
+
+#### Sentinel → Symphony (via GitHub)
+
+| Event | Mechanism | Data |
+|---|---|---|
+| Review verdict | GitHub Check Run (`check_run.completed`) → Symphony polls or receives webhook | `conclusion`: `success` (APPROVE), `action_required` (REQUEST_CHANGES), `failure` (BLOCK) |
+| Review findings | GitHub PR review comments | Per-finding: `file`, `line`, `severity`, `message`, `suggestion` |
+| Auto-merge completed | GitHub `pull_request.closed` + `merged=true` → triggers rebase cascade (1C) | `merge_commit_sha` |
+
+#### Symphony Re-Dispatch on REQUEST_CHANGES
+
+When Sentinel's verdict is `action_required`, Symphony:
+1. Fetches the PR review comments via GitHub API
+2. Formats them as structured feedback in the agent's prompt context
+3. Re-dispatches the worker agent with `attempt + 1`, including:
+   - The original issue description
+   - The diff that was rejected
+   - Each review finding with file, line, severity, and suggestion
+4. Worker fixes the issues and re-pushes → Sentinel re-reviews (AST incremental — only re-checks changed functions)
+
+#### Shared Configuration
+
+Both services need to agree on:
+
+| Config | Symphony | Sentinel |
+|---|---|---|
+| GitHub App credentials | `GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY` | Same GitHub App (shared installation) |
+| Target repos | `repos[]` in `WORKFLOW.md` | Auto-discovered from webhook events |
+| Auto-merge policy | `auto_merge: true/false` per repo | `.reviewbot.yml` per repo (`auto_merge.enabled`, `risk_threshold`) |
+| Notification webhook | `notifications.slack_webhook` | Sentinel has its own notification config |
+
+---
+
+## Phase 2 — Observability as the Feedback Loop
+
+> Inspired by the "SDLC is dead" thesis: when agents ship faster than humans can review, **observability becomes the primary safety mechanism**.
+
+| Item | Description |
+|------|-------------|
+| **Closed-loop telemetry** | Production anomaly detected → Symphony creates a new Linear issue → agent investigates and fixes autonomously |
+| **Behavioral diffs** | Compare system outputs before/after a merged change — flag unexpected behavioral changes even when tests pass |
+| **Agent-consumed monitoring** | Monitoring data feeds directly into agent context, not human dashboards — agents react to alerts faster than any on-call rotation |
+| **Anomaly-driven rollback** | If post-deploy monitoring detects regression, auto-revert the merge and re-dispatch the issue with the anomaly as context |
+
+---
+
+## Phase 3 — Lights-Out Codebase (Long-Term Vision)
+
+> [!NOTE]
+> The end state: no human ever reads the code. Agents write it, agents review it, agents test it, agents deploy it, agents monitor it, agents fix regressions. Humans provide intent and handle genuinely novel situations.
+
+| Principle | Implementation |
+|-----------|---------------|
+| **TDD-first generation** | Agents write tests before implementation; test suite is the contract, not code review |
+| **AI reviews AI** | Reviewer agent (v2.0 Phase 1B) as mandatory gate; different LLM cross-checks worker output |
+| **Dedicated specialist agents** | Security review agent, performance review agent, architecture compliance agent — each focused on one concern |
+| **No human code review** | PRs are verified by reviewer agents + CI + observability; human involvement is exception-based (`BLOCK` verdict only) |
+| **Behavioral acceptance testing** | Like hardware chip acceptance testing — run black-box acceptance tests proving the system's design is correct without inspecting internals |
+| **Observability as the safety net** | Closed-loop monitoring → auto-rollback → auto-fix (Phase 2) replaces manual incident response |
+| **Multi-model adversarial review** | Different LLMs review each other's work — reduces model-specific blind spots |
+
+---
+
+## 🌐 Infrastructure Scaling (Deferred)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| SSH worker host distribution | Deferred | Superseded by Docker VDS fleet model (v1.0 Phase 5) |
+| Persisted retry queue across restarts | Not implemented | Planned for v1.0 Phase 5 with persistent volumes |
+| Pluggable tracker adapters beyond Linear | Not implemented | Future extension after core platform stabilizes |
+| First-class tracker write APIs | Not implemented | Currently agent-driven via `linear_graphql` tool |
 
 ---
 
 ## 📝 How to Keep This Document Current
 
 > [!NOTE]
-> Update this file when the shipped operator surface changes. If a capability is not implemented in the code or exposed in the actual runtime, **do not list it here as achieved**. Track each atomic spec requirement individually.
+> Update this file when the shipped operator surface changes. Move items from Part 2 (Planned) to Part 1 (Shipped) as they are completed. If a capability is not implemented in the code or exposed in the actual runtime, **do not list it in Part 1**. Track each atomic spec requirement individually.

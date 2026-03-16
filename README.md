@@ -89,11 +89,38 @@ export OPENAI_API_KEY="sk-..."
 #    or ChatGPT/Codex login flow:
 #    codex login
 
+# 5.5. Point Symphony at the Linear project it should dispatch from
+export LINEAR_PROJECT_SLUG="your-linear-project-slug"
+
 # 6. Dry-start with the portable example workflow
 node dist/cli.js ./WORKFLOW.example.md
 ```
 
-If `LINEAR_API_KEY` is missing, startup fails clearly:
+You can get the project slug directly from the Linear project URL. In:
+
+```text
+https://linear.app/<workspace>/project/<project-slug>/overview
+```
+
+the slug is the segment after `/project/`. Example:
+
+```text
+https://linear.app/ninetech/project/symphony-test-e1e26e4576d1/overview
+```
+
+means:
+
+```bash
+export LINEAR_PROJECT_SLUG="symphony-test-e1e26e4576d1"
+```
+
+If `LINEAR_PROJECT_SLUG` is missing, startup fails clearly:
+
+```text
+error code=missing_tracker_project_slug msg="tracker.project_slug is required when tracker.kind is linear"
+```
+
+If `LINEAR_API_KEY` is missing, startup also fails clearly:
 
 ```text
 error code=missing_tracker_api_key msg="tracker.api_key is required after env resolution"
@@ -159,6 +186,8 @@ The checked-in workflows now also tell the agent to finish with `SYMPHONY_STATUS
 
 > [!TIP]
 > Symphony now generates a fresh temporary container-local `CODEX_HOME` for every attempt. Use `WORKFLOW.example.md` for API-key or custom provider flows, and `WORKFLOW.md` for a local `codex login` smoke path that copies `~/.codex/auth.json` into the container runtime home.
+
+Both checked-in workflow files expect `LINEAR_PROJECT_SLUG` in the host environment, so the same repo checkout can be reused across projects without editing tracked files.
 
 ### Auth Modes
 
