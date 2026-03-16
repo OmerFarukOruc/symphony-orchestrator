@@ -165,7 +165,7 @@ Secrets are currently managed exclusively via environment variables (`env_passth
 
 ## 💡 Smaller Follow-Up Opportunities
 
-These are not blockers for `v0.1.1`, but reasonable follow-up areas:
+These are not blockers for `v0.2.0`, but reasonable follow-up areas:
 
 | Area | Description |
 |------|-------------|

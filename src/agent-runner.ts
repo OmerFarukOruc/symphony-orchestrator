@@ -154,7 +154,7 @@ export class AgentRunner {
 
     try {
       await connection.request("initialize", {
-        clientInfo: { name: "symphony", version: "0.1.1" },
+        clientInfo: { name: "symphony", version: "0.2.0" },
         capabilities: {
           experimentalApi: true,
         },

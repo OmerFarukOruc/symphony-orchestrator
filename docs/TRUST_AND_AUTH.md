@@ -33,10 +33,10 @@ flowchart TB
 
 ---
 
-## ⚠️ Recommended v0.1 Trust Posture
+## ⚠️ Recommended v0.2 Trust Posture
 
 > [!WARNING]
-> The recommended v0.1 posture is deliberately **high trust** — appropriate **only** for local, operator-controlled environments:
+> The recommended v0.2 posture is deliberately **high trust** — appropriate **only** for local, operator-controlled environments:
 
 | Setting | Value |
 |---------|-------|

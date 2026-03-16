@@ -195,7 +195,7 @@ Steps:
 1. Start Symphony and open the dashboard or poll `GET /api/v1/state`.
 2. Confirm the issue appears under `running`.
 3. Check `GET /api/v1/<ISSUE_IDENTIFIER>` or `GET /api/v1/<ISSUE_IDENTIFIER>/attempts` for a recorded attempt.
-4. Inspect `$TMPDIR/symphony_workspaces/<ISSUE_IDENTIFIER>/SYMPHONY_SMOKE_RESULT.md`.
+4. Inspect `workspace.root/<ISSUE_IDENTIFIER>/SYMPHONY_SMOKE_RESULT.md`. With the checked-in workflows, the default root is `$TMPDIR/symphony_workspaces`.
 5. After the first successful attempt lands, move the issue to `Done` or another terminal state so Symphony stops scheduling continuation turns for the still-active issue.
 
 The checked-in workflows also instruct the agent to finish with `SYMPHONY_STATUS: DONE` on success or `SYMPHONY_STATUS: BLOCKED` when it cannot proceed. Symphony uses that explicit signal to stop local continuation turns for one-shot issues.
@@ -206,7 +206,7 @@ The checked-in workflows also instruct the agent to finish with `SYMPHONY_STATUS
 
 ### 🔄 Polling and Work Selection
 
-Symphony polls Linear on the configured interval, filters candidate issues, and launches work only for issues that are currently active.
+Symphony polls Linear on the configured interval, filters candidates using `tracker.active_states`, sorts dispatches by priority then oldest creation time then identifier, suppresses blocked `Todo` issues, and enforces both the global concurrency limit and any per-state caps from `agent.max_concurrent_agents_by_state`.
 
 ### 📁 Workspace Lifecycle
 
@@ -235,6 +235,8 @@ Hook execution is bounded by `hooks.timeout_ms`.
 | Turn timeout | `codex.turn_timeout_ms` | Total time for a single turn |
 | Stall timeout | `codex.stall_timeout_ms` | Detect long-silent workers |
 | Retry backoff | `agent.max_retry_backoff_ms` | Ceiling for retry delay |
+| Active states | `tracker.active_states` | Which tracker states are eligible for dispatch |
+| Terminal states | `tracker.terminal_states` | Which states stop work and trigger cleanup |
 
 > [!TIP]
 > For safer live proving, set `codex.turn_timeout_ms` to something short like `120000` (2 minutes).

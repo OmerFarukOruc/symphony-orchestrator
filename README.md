@@ -55,6 +55,7 @@ flowchart TD
 | **Docker sandbox** | Agent runs inside a `node:22` container with Codex CLI, resource limits, security hardening, and OOM detection |
 | **Workspace isolation** | One directory per issue with lifecycle hooks & cleanup |
 | **Codex integration** | `codex app-server` process management via JSON-RPC |
+| **Spec-conformance hardening** | Config-driven tracker endpoint and state policy, dispatch sorting, blocker filtering, per-state concurrency, retry revalidation, and startup cleanup |
 | **Retry & stall handling** | Configurable backoff, turn/stall timeouts, read timeouts |
 | **Model overrides** | Per-issue model selection saved by the operator, applied on next run |
 | **Archived attempts** | Durable attempt summaries & event timelines under `.symphony/` |
@@ -142,7 +143,7 @@ Verification:
 
 - Watch `GET /api/v1/state` for the issue to appear under `running`.
 - Check `GET /api/v1/<ISSUE>` or `GET /api/v1/<ISSUE>/attempts` for a recorded attempt.
-- Inspect the workspace under `$TMPDIR/symphony_workspaces/<ISSUE>` for `SYMPHONY_SMOKE_RESULT.md`.
+- Inspect the workspace under `workspace.root/<ISSUE>`. With the default workflow this resolves to `$TMPDIR/symphony_workspaces/<ISSUE>`.
 - After the first successful attempt lands, move the Linear issue to `Done` or another terminal state so Symphony stops scheduling follow-up turns.
 
 The checked-in workflows now also tell the agent to finish with `SYMPHONY_STATUS: DONE` when the issue is complete, or `SYMPHONY_STATUS: BLOCKED` when progress is no longer possible. Symphony uses that signal to stop local continuation turns for one-shot issues.
@@ -311,7 +312,7 @@ level=info msg="worker retry queued" issue_id=abc123 issue_identifier=MT-882 att
 
 ## 🔐 Trust Posture
 
-The recommended `v0.1` operating mode is intentionally **high trust** and **local-only**.
+The recommended `v0.2` operating mode is intentionally **high trust** and **local-only**.
 
 - Symphony decides *when* to launch work and *which workspace* to use
 - Codex decides *how* each turn executes

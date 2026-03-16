@@ -29,14 +29,15 @@
 
 ## Linear API Rate Limiting
 
-**Symptoms**: Dashboard shows `rateLimits` with `retryAfter` values, polling slows.
+**Symptoms**: Dashboard shows non-null `rate_limits`, Codex requests are being throttled, or Linear calls start failing under sustained load.
 
 1. **Check current rate limits** — query the state API:
    ```bash
    curl -s http://127.0.0.1:4000/api/v1/state | jq '.rate_limits'
    ```
-2. **Orchestrator backoff** — `src/orchestrator.ts` has built-in exponential backoff for rate-limited polls. No manual intervention needed unless limits persist beyond 10 minutes.
-3. **Reduce poll frequency** — increase `polling.intervalMs` in your workflow YAML.
+2. **Interpret the source correctly** — the `rate_limits` field comes from Codex `account/rateLimits/read` preflight, not a dedicated Linear poll-backoff subsystem.
+3. **Reduce Linear pressure** — increase `polling.interval_ms` in your workflow YAML if you are polling too aggressively.
+4. **Check tracker credentials and endpoint** — verify `tracker.api_key` and `tracker.endpoint` still point at the expected Linear API.
 
 ---
 
@@ -53,7 +54,7 @@
    curl -X POST http://127.0.0.1:4000/api/v1/refresh
    ```
 3. **Review workspace** — check if the workspace directory exists and has expected content. Workspace management lives in `src/workspace-manager.ts`.
-4. **Stall timeout** — the orchestrator detects stalls via `stallTimeoutMs` in config. If the agent hasn't produced events within that window, it will be cancelled automatically.
+4. **Stall timeout** — the orchestrator detects stalls via `codex.stall_timeout_ms`. Set it to `0` or a negative value to disable stall cancellation during debugging.
 
 ---
 
@@ -65,7 +66,7 @@
    ```bash
    curl -X POST http://127.0.0.1:4000/api/v1/refresh
    ```
-2. **Check polling interval** — verify `polling.intervalMs` in your workflow YAML isn't set too high.
+2. **Check polling interval** — verify `polling.interval_ms` in your workflow YAML isn't set too high.
 3. **Browser cache** — hard-refresh the browser (`Ctrl+Shift+R`).
 
 ---
@@ -84,4 +85,4 @@
      -H 'Content-Type: application/json' \
      -d '{"model": "gpt-4.1-mini", "reasoning_effort": "medium"}'
    ```
-3. **Limit turns** — reduce `agent.maxTurns` in your workflow YAML.
+3. **Limit turns** — reduce `agent.max_turns` in your workflow YAML.

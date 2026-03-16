@@ -4,9 +4,19 @@
 
 ---
 
-## Metrics
+## Current Shipped Surface
 
-Symphony exposes Prometheus-format metrics at `GET /metrics` (when the metrics module is integrated into the HTTP server).
+The currently shipped operator surface includes:
+
+- `GET /api/v1/state` with `codex_totals`, `rate_limits`, and `recent_events`
+- Archived attempt and event history under `.symphony/`
+- Structured logger support used throughout the runtime
+
+The repository also contains observability helper modules for metrics, request tracing, and error tracking, but they are **not yet wired into the default HTTP server or CLI startup path**.
+
+## Metrics Helper
+
+`src/metrics.ts` includes a Prometheus-style collector, but the default server does **not** currently expose `GET /metrics`.
 
 ### Available Metrics
 
@@ -17,28 +27,29 @@ Symphony exposes Prometheus-format metrics at `GET /metrics` (when the metrics m
 | `symphony_orchestrator_polls_total` | Counter | Orchestrator poll cycles by status |
 | `symphony_agent_runs_total` | Counter | Agent run completions by outcome |
 
-### Grafana Setup
-
-1. Add Prometheus data source pointing at `http://<host>:4000/metrics`
-2. Import or build dashboards using the metrics above
+If you wire the collector into a custom server build later, these are the metrics it is designed to emit.
 
 ---
 
-## Distributed Tracing
+## Request Tracing Helper
 
-Every HTTP request gets an `X-Request-ID` header:
+`src/tracing.ts` provides middleware that preserves or generates `X-Request-ID`, but the default `HttpServer` does **not** currently attach it to all responses.
+
+If you integrate the middleware, the behavior is:
 
 - **Incoming**: If the client sends `X-Request-ID`, it's preserved
 - **Generated**: Otherwise a UUID v4 is generated
 - **Response**: The ID is always returned in the response headers
 
-Use this to correlate log entries across services. The logger can be enriched with the request ID via `getRequestId(req)` from `src/tracing.ts`.
+The logger can be enriched with the request ID via `getRequestId(req)` from `src/tracing.ts`.
 
 ---
 
-## Error Tracking
+## Error Tracking Helper
 
-Set the `SENTRY_DSN` environment variable to enable Sentry-compatible error tracking.
+`src/error-tracking.ts` can initialize a Sentry-compatible tracker when `SENTRY_DSN` is set, but the default CLI does **not** currently call it during startup.
+
+If you opt into that integration later:
 
 ```bash
 export SENTRY_DSN=https://your-key@sentry.io/project-id
@@ -103,10 +114,10 @@ groups:
 
 ---
 
-## Deployment Observability Checklist
+## Reality Check
 
-- [ ] Prometheus scraping `/metrics` endpoint
-- [ ] Grafana dashboard with HTTP, poll, and agent run panels
-- [ ] Alert rules loaded for error rate, poll stalls, agent failures
-- [ ] `SENTRY_DSN` configured for error tracking (optional)
-- [ ] Log aggregation collecting Winston JSON output
+- [x] Runtime snapshot includes token totals, rate limits, and recent events
+- [x] Archived attempts preserve event history for postmortems
+- [ ] `/metrics` is exposed by the default server
+- [ ] `X-Request-ID` tracing is enabled in the default server
+- [ ] `SENTRY_DSN` is wired into the default CLI startup path
