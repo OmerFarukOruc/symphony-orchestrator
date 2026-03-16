@@ -175,4 +175,123 @@ describe("HttpServer", () => {
       },
     });
   });
+
+  it("rejects invalid reasoning_effort string with 400", async () => {
+    const orchestrator = {
+      updateIssueModelSelection: async () => ({
+        updated: true,
+        restarted: false,
+        appliesNextAttempt: true,
+        selection: { model: "gpt-5.4", reasoningEffort: "high", source: "override" },
+      }),
+      getIssueDetail: () => ({ identifier: "MT-42", title: "test" }),
+    } as unknown as Orchestrator;
+
+    server = new HttpServer({ orchestrator, logger: createLogger() });
+    const started = await server.start(0);
+    const baseUrl = `http://127.0.0.1:${started.port}`;
+
+    const response = await fetch(`${baseUrl}/api/v1/MT-42/model`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-5.4", reasoning_effort: "ultra" }),
+    });
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe("invalid_reasoning_effort");
+  });
+
+  it("rejects non-string reasoning_effort with 400", async () => {
+    const orchestrator = {
+      updateIssueModelSelection: async () => ({
+        updated: true,
+        restarted: false,
+        appliesNextAttempt: true,
+        selection: { model: "gpt-5.4", reasoningEffort: "high", source: "override" },
+      }),
+      getIssueDetail: () => ({ identifier: "MT-42", title: "test" }),
+    } as unknown as Orchestrator;
+
+    server = new HttpServer({ orchestrator, logger: createLogger() });
+    const started = await server.start(0);
+    const baseUrl = `http://127.0.0.1:${started.port}`;
+
+    const response = await fetch(`${baseUrl}/api/v1/MT-42/model`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-5.4", reasoning_effort: 123 }),
+    });
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe("invalid_reasoning_effort");
+  });
+
+  it("accepts omitted reasoning_effort", async () => {
+    const orchestrator = {
+      updateIssueModelSelection: async () => ({
+        updated: true,
+        restarted: false,
+        appliesNextAttempt: true,
+        selection: { model: "gpt-5.4", reasoningEffort: null, source: "override" },
+      }),
+      getIssueDetail: () => ({ identifier: "MT-42", title: "test" }),
+    } as unknown as Orchestrator;
+
+    server = new HttpServer({ orchestrator, logger: createLogger() });
+    const started = await server.start(0);
+    const baseUrl = `http://127.0.0.1:${started.port}`;
+
+    const response = await fetch(`${baseUrl}/api/v1/MT-42/model`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-5.4" }),
+    });
+    expect(response.status).toBe(202);
+  });
+
+  it("accepts explicit null reasoning_effort", async () => {
+    const orchestrator = {
+      updateIssueModelSelection: async () => ({
+        updated: true,
+        restarted: false,
+        appliesNextAttempt: true,
+        selection: { model: "gpt-5.4", reasoningEffort: null, source: "override" },
+      }),
+      getIssueDetail: () => ({ identifier: "MT-42", title: "test" }),
+    } as unknown as Orchestrator;
+
+    server = new HttpServer({ orchestrator, logger: createLogger() });
+    const started = await server.start(0);
+    const baseUrl = `http://127.0.0.1:${started.port}`;
+
+    const response = await fetch(`${baseUrl}/api/v1/MT-42/model`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-5.4", reasoning_effort: null }),
+    });
+    expect(response.status).toBe(202);
+  });
+
+  it("accepts camelCase reasoningEffort alias", async () => {
+    const orchestrator = {
+      updateIssueModelSelection: async () => ({
+        updated: true,
+        restarted: false,
+        appliesNextAttempt: true,
+        selection: { model: "gpt-5.4", reasoningEffort: "medium", source: "override" },
+      }),
+      getIssueDetail: () => ({ identifier: "MT-42", title: "test" }),
+    } as unknown as Orchestrator;
+
+    server = new HttpServer({ orchestrator, logger: createLogger() });
+    const started = await server.start(0);
+    const baseUrl = `http://127.0.0.1:${started.port}`;
+
+    const response = await fetch(`${baseUrl}/api/v1/MT-42/model`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-5.4", reasoningEffort: "medium" }),
+    });
+    expect(response.status).toBe(202);
+  });
 });

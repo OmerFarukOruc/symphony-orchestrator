@@ -3,6 +3,7 @@ import http from "node:http";
 import express, { type Express, type Request, type Response } from "express";
 
 import { renderDashboardTemplate } from "./dashboard-template.js";
+import { renderLogsTemplate } from "./logs-template.js";
 import { Orchestrator } from "./orchestrator.js";
 import type { ReasoningEffort } from "./types.js";
 import type { RuntimeSnapshot, SymphonyLogger } from "./types.js";
@@ -102,6 +103,15 @@ export class HttpServer {
       });
 
     this.app
+      .route("/logs/:issue_identifier")
+      .get((request, response) => {
+        response.type("html").send(renderLogsTemplate(request.params.issue_identifier));
+      })
+      .all((_request, response) => {
+        methodNotAllowed(response);
+      });
+
+    this.app
       .route("/api/v1/state")
       .get((_request, response) => {
         response.json(
@@ -130,7 +140,7 @@ export class HttpServer {
       .route("/api/v1/:issue_identifier/model")
       .post(async (request, response) => {
         const model = this.asModel(request.body?.model);
-        const reasoningEffort = this.asReasoningEffort(request.body?.reasoning_effort ?? request.body?.reasoningEffort);
+        const effortResult = this.parseReasoningEffort(request.body?.reasoning_effort ?? request.body?.reasoningEffort);
         if (!model) {
           response.status(400).json({
             error: {
@@ -140,10 +150,19 @@ export class HttpServer {
           });
           return;
         }
+        if (!effortResult.ok) {
+          response.status(400).json({
+            error: {
+              code: effortResult.code,
+              message: effortResult.message,
+            },
+          });
+          return;
+        }
         const updated = await this.deps.orchestrator.updateIssueModelSelection({
           identifier: request.params.issue_identifier,
           model,
-          reasoningEffort,
+          reasoningEffort: effortResult.value,
         });
         if (!updated) {
           response.status(404).json({
@@ -238,16 +257,27 @@ export class HttpServer {
     return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
   }
 
-  private asReasoningEffort(value: unknown): ReasoningEffort | null {
+  private parseReasoningEffort(
+    value: unknown,
+  ): { ok: true; value: ReasoningEffort | null } | { ok: false; code: string; message: string } {
     if (value === null || value === undefined || value === "") {
-      return null;
+      return { ok: true, value: null };
     }
     if (typeof value !== "string") {
-      return null;
+      return { ok: false, code: "invalid_reasoning_effort", message: "reasoning_effort must be a string" };
     }
-    if (["none", "minimal", "low", "medium", "high", "xhigh"].includes(value)) {
-      return value as ReasoningEffort;
+    const trimmed = value.trim();
+    if (trimmed === "") {
+      return { ok: true, value: null };
     }
-    return null;
+    const VALID: ReasoningEffort[] = ["none", "minimal", "low", "medium", "high", "xhigh"];
+    if (VALID.includes(trimmed as ReasoningEffort)) {
+      return { ok: true, value: trimmed as ReasoningEffort };
+    }
+    return {
+      ok: false,
+      code: "invalid_reasoning_effort",
+      message: `Invalid reasoning_effort "${trimmed}". Allowed values: ${VALID.join(", ")}`,
+    };
   }
 }

@@ -248,6 +248,11 @@ export class LinearClient {
       throw new Error(`linear graphql request failed with status ${response.status}`);
     }
 
+    if (Array.isArray(payload.errors) && payload.errors.length > 0) {
+      this.logger.error({ errors: payload.errors }, "linear graphql response contained errors");
+      throw new Error("linear graphql response contained errors");
+    }
+
     return payload;
   }
 }

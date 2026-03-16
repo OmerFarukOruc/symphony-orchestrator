@@ -638,12 +638,22 @@ export class Orchestrator {
         }
 
         if (entry.cleanupOnExit || isTerminalState(latestIssue.state)) {
+          const terminalStatus =
+            outcome.kind === "normal"
+              ? "completed"
+              : outcome.kind === "timed_out"
+                ? "timed_out"
+                : outcome.kind === "stalled"
+                  ? "stalled"
+                  : outcome.kind === "cancelled"
+                    ? "cancelled"
+                    : "failed";
           await this.deps.workspaceManager.removeWorkspace(latestIssue.identifier).catch(() => undefined);
           this.completedViews.set(
             latestIssue.identifier,
             issueView(latestIssue, {
               workspaceKey: workspace.workspaceKey,
-              status: "completed",
+              status: terminalStatus,
               message: "workspace cleaned after terminal state",
               configuredModel: this.resolveModelSelection(latestIssue.identifier).model,
               configuredReasoningEffort: this.resolveModelSelection(latestIssue.identifier).reasoningEffort,
@@ -786,7 +796,21 @@ export class Orchestrator {
     const dueAtMs = Date.now() + delayMs;
     const timer = setTimeout(() => {
       this.retryEntries.delete(issue.id);
-      void this.launchWorker(issue, attempt);
+      void this.launchWorker(issue, attempt).catch((error) => {
+        this.runningEntries.delete(issue.id);
+        this.deps.logger.error(
+          { issue_id: issue.id, issue_identifier: issue.identifier, error: String(error) },
+          "retry-launched worker startup failed",
+        );
+        this.pushEvent({
+          at: nowIso(),
+          issueId: issue.id,
+          issueIdentifier: issue.identifier,
+          sessionId: null,
+          event: "worker_failed",
+          message: `retry startup failed: ${String(error)}`,
+        });
+      });
     }, delayMs);
     this.retryEntries.set(issue.id, {
       issueId: issue.id,

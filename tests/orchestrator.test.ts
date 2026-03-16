@@ -568,4 +568,175 @@ describe("Orchestrator", () => {
 
     await orchestrator.stop();
   });
+
+  it("handles retry-launched worker startup failures without unhandled rejections", async () => {
+    vi.useFakeTimers();
+    const issue = createIssue();
+    let callCount = 0;
+    const agentRunner = {
+      runAttempt: vi.fn(
+        async (): Promise<RunOutcome> => ({
+          kind: "failed",
+          errorCode: "turn_failed",
+          errorMessage: "boom",
+          threadId: null,
+          turnId: null,
+          turnCount: 1,
+        }),
+      ),
+    } as unknown as AgentRunner;
+    const linearClient = {
+      fetchCandidateIssues: vi.fn(async () => [issue]),
+      fetchIssueStatesByIds: vi.fn(async () => [issue]),
+    } as unknown as LinearClient;
+    const workspaceManager = {
+      ensureWorkspace: vi.fn(async () => {
+        callCount++;
+        if (callCount > 1) {
+          throw new Error("workspace setup exploded");
+        }
+        return {
+          path: "/tmp/symphony/MT-42",
+          workspaceKey: "MT-42",
+          createdNow: true,
+        };
+      }),
+      removeWorkspace: vi.fn(async () => undefined),
+    } as unknown as WorkspaceManager;
+
+    const orchestrator = new Orchestrator({
+      attemptStore: createAttemptStore(),
+      configStore: createConfigStore(createConfig()),
+      linearClient,
+      workspaceManager,
+      agentRunner,
+      logger: createLogger(),
+    });
+
+    await orchestrator.start();
+    // First tick: launch worker, it fails with turn_failed, queues retry
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+
+    expect(agentRunner.runAttempt).toHaveBeenCalledTimes(1);
+    expect(orchestrator.getSnapshot().retrying).toHaveLength(1);
+
+    // Advance past retry delay — ensureWorkspace will reject this time
+    await vi.advanceTimersByTimeAsync(10_000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // The retry entry should be cleared and no unhandled rejection
+    expect(orchestrator.getSnapshot().retrying).toEqual([]);
+
+    await orchestrator.stop();
+  });
+
+  it("preserves failed status in completedViews after terminal issue cleanup", async () => {
+    vi.useFakeTimers();
+    const issue = createIssue();
+    const terminalIssue = createIssue("Done");
+    const agentRunner = {
+      runAttempt: vi.fn(
+        async (): Promise<RunOutcome> => ({
+          kind: "failed",
+          errorCode: "turn_failed",
+          errorMessage: "agent failed",
+          threadId: null,
+          turnId: null,
+          turnCount: 1,
+        }),
+      ),
+    } as unknown as AgentRunner;
+    const linearClient = {
+      fetchCandidateIssues: vi.fn(async () => [issue]),
+      fetchIssueStatesByIds: vi.fn(async () => [terminalIssue]),
+    } as unknown as LinearClient;
+    const workspaceManager = {
+      ensureWorkspace: vi.fn(async () => ({
+        path: "/tmp/symphony/MT-42",
+        workspaceKey: "MT-42",
+        createdNow: true,
+      })),
+      removeWorkspace: vi.fn(async () => undefined),
+    } as unknown as WorkspaceManager;
+
+    const orchestrator = new Orchestrator({
+      attemptStore: createAttemptStore(),
+      configStore: createConfigStore(createConfig()),
+      linearClient,
+      workspaceManager,
+      agentRunner,
+      logger: createLogger(),
+    });
+
+    await orchestrator.start();
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+
+    const snapshot = orchestrator.getSnapshot();
+    expect(snapshot.completed).toEqual([
+      expect.objectContaining({
+        identifier: "MT-42",
+        status: "failed",
+        message: "workspace cleaned after terminal state",
+      }),
+    ]);
+
+    await orchestrator.stop();
+  });
+
+  it("preserves completed status in completedViews after terminal issue cleanup for normal outcomes", async () => {
+    vi.useFakeTimers();
+    const issue = createIssue();
+    const terminalIssue = createIssue("Done");
+    const agentRunner = {
+      runAttempt: vi.fn(
+        async (): Promise<RunOutcome> => ({
+          kind: "normal",
+          errorCode: null,
+          errorMessage: null,
+          threadId: null,
+          turnId: null,
+          turnCount: 1,
+        }),
+      ),
+    } as unknown as AgentRunner;
+    const linearClient = {
+      fetchCandidateIssues: vi.fn(async () => [issue]),
+      fetchIssueStatesByIds: vi.fn(async () => [terminalIssue]),
+    } as unknown as LinearClient;
+    const workspaceManager = {
+      ensureWorkspace: vi.fn(async () => ({
+        path: "/tmp/symphony/MT-42",
+        workspaceKey: "MT-42",
+        createdNow: true,
+      })),
+      removeWorkspace: vi.fn(async () => undefined),
+    } as unknown as WorkspaceManager;
+
+    const orchestrator = new Orchestrator({
+      attemptStore: createAttemptStore(),
+      configStore: createConfigStore(createConfig()),
+      linearClient,
+      workspaceManager,
+      agentRunner,
+      logger: createLogger(),
+    });
+
+    await orchestrator.start();
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+
+    const snapshot = orchestrator.getSnapshot();
+    expect(snapshot.completed).toEqual([
+      expect.objectContaining({
+        identifier: "MT-42",
+        status: "completed",
+        message: "workspace cleaned after terminal state",
+      }),
+    ]);
+
+    await orchestrator.stop();
+  });
 });

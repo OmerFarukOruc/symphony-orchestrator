@@ -97,4 +97,54 @@ describe("LinearClient", () => {
     ]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("rejects when a 200 response contains GraphQL errors", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        data: null,
+        errors: [{ message: "Field 'issues' not found", locations: [{ line: 2, column: 3 }] }],
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new LinearClient(() => createConfig(), createLogger());
+    await expect(client.fetchCandidateIssues()).rejects.toThrow("linear graphql response contained errors");
+  });
+
+  it("succeeds when a 200 response contains an empty errors array", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        data: {
+          issues: {
+            nodes: [
+              {
+                id: "issue-2",
+                identifier: "MT-99",
+                title: "Empty errors",
+                description: null,
+                priority: 1,
+                branchName: null,
+                url: null,
+                createdAt: "2026-03-15T00:00:00Z",
+                updatedAt: "2026-03-16T00:00:00Z",
+                state: { name: "In Progress" },
+                labels: { nodes: [] },
+                inverseRelations: { nodes: [] },
+              },
+            ],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+        errors: [],
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new LinearClient(() => createConfig(), createLogger());
+    const issues = await client.fetchCandidateIssues();
+    expect(issues).toHaveLength(1);
+    expect(issues[0].identifier).toBe("MT-99");
+  });
 });
