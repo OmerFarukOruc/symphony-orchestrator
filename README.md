@@ -82,7 +82,13 @@ npm run build
 # 4. Build the Docker sandbox image
 bash bin/build-sandbox.sh
 
-# 5. Dry-start with the portable example workflow
+# 5. Choose one Codex auth path
+#    API key flow:
+export OPENAI_API_KEY="sk-..."
+#    or ChatGPT/Codex login flow:
+#    codex login
+
+# 6. Dry-start with the portable example workflow
 node dist/cli.js ./WORKFLOW.example.md
 ```
 
@@ -151,10 +157,14 @@ The checked-in workflows now also tell the agent to finish with `SYMPHONY_STATUS
 | `WORKFLOW.md` | Checked-in live smoke workflow for this repo |
 
 > [!TIP]
-> The checked-in live workflow uses `bin/codex-app-server-live`, which seeds a repo-local isolated `CODEX_HOME` to avoid inherited skill noise. For the generic setup from `WORKFLOW.example.md`, bootstrap the isolated home once:
-> ```bash
-> cp -R tests/fixtures/codex-home-custom-provider "$HOME/.symphony-codex"
-> ```
+> Symphony now generates a fresh temporary `CODEX_HOME` for every attempt. Use `WORKFLOW.example.md` for API-key or custom provider flows, and `WORKFLOW.md` for a local `codex login` smoke path that copies `~/.codex/auth.json` into the runtime home.
+
+### Auth Modes
+
+- `codex.auth.mode: "api_key"` uses env-backed provider auth. With no `codex.provider` block, Symphony targets OpenAI directly and forwards `OPENAI_API_KEY` into the container automatically.
+- `codex.auth.mode: "openai_login"` copies `auth.json` from `codex.auth.source_home` into the generated runtime home. This is the path for ChatGPT/Codex subscription users after `codex login`.
+- `codex.provider` is optional and supports OpenAI-compatible endpoints with `base_url`, `env_key`, `env_http_headers`, `query_params`, and `requires_openai_auth`.
+- Host-bound provider URLs such as `http://127.0.0.1:8317/v1` are rewritten to `host.docker.internal` inside Docker automatically.
 
 ---
 

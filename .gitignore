@@ -1,19 +1,10 @@
 node_modules/
 dist/
 .symphony/
-.symphony-codex-home/
 .sisyphus/
 
 # Logs and local runtime output
 *.log
-
-# Generated fixture runtime residue
-tests/fixtures/codex-home-custom-provider/auth.json
-tests/fixtures/codex-home-custom-provider/shell_snapshots/
-tests/fixtures/codex-home-custom-provider/tmp/
-tests/fixtures/codex-home-custom-provider/*.sqlite
-tests/fixtures/codex-home-custom-provider/*.sqlite-shm
-tests/fixtures/codex-home-custom-provider/*.sqlite-wal
 
 # OS / editor noise
 .DS_Store

@@ -30,11 +30,8 @@ agent:
   max_turns: 20
   max_retry_backoff_ms: 120000
 
-# Recommended: isolate the daemon's Codex runtime from your personal Codex home.
-# A simple bootstrap is:
-#   cp -R tests/fixtures/codex-home-custom-provider "$HOME/.symphony-codex"
 codex:
-  command: "/home/oruc/Desktop/codex/bin/codex-app-server-live"
+  command: "codex app-server"
   # Default worker model; the dashboard/API can override this per issue at runtime.
   model: "gpt-5.4"
   reasoning_effort: "high"
@@ -45,10 +42,35 @@ codex:
   read_timeout_ms: 5000
   turn_timeout_ms: 120000
   stall_timeout_ms: 300000
+  # Generic auth:
+  # - api_key: env-driven provider auth
+  # - openai_login: copy auth.json from codex.auth.source_home into the runtime home
+  auth:
+    mode: "api_key"
+    source_home: "~/.codex"
+  # No provider block is needed for direct OpenAI API-key usage.
+  # For an OpenAI-compatible proxy or third-party endpoint, add:
+  # provider:
+  #   id: "custom"
+  #   name: "Custom Provider"
+  #   base_url: $CODEX_PROVIDER_BASE_URL
+  #   env_key: "CUSTOM_PROVIDER_API_KEY"
+  #   wire_api: "responses"
+  #   env_http_headers:
+  #     X-Tenant-ID: "CUSTOM_PROVIDER_TENANT"
+  #
+  # For a host-side proxy that expects ChatGPT/Codex login instead of an API key:
+  # auth:
+  #   mode: "openai_login"
+  # provider:
+  #   id: "cliproxyapi"
+  #   name: "CLIProxyAPI"
+  #   base_url: $CODEX_PROVIDER_BASE_URL
+  #   wire_api: "responses"
+  #   requires_openai_auth: true
   # Docker sandbox — the agent runs inside a container.
   # Build the image first: bash bin/build-sandbox.sh
   sandbox:
-    enabled: true
     image: "symphony-codex:latest"
     # Empty = Docker default bridge. Set to a pre-existing network name for egress filtering.
     network: ""
@@ -66,9 +88,9 @@ codex:
     # Extra host:container bind mounts (identity-mapped by default).
     extra_mounts: []
     # Extra env vars to forward into the container from the host.
+    # Provider env vars named in codex.provider.env_key/env_http_headers are forwarded automatically.
     env_passthrough:
       - LINEAR_API_KEY
-      - OPENAI_API_KEY
     logs:
       driver: json-file
       max_size: "50m"

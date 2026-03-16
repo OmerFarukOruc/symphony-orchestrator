@@ -21,7 +21,7 @@ agent:
   max_turns: 20
   max_retry_backoff_ms: 120000
 codex:
-  command: "/home/oruc/Desktop/codex/bin/codex-app-server-live"
+  command: "codex app-server"
   model: "gpt-5.4"
   reasoning_effort: "high"
   approval_policy: "never"
@@ -31,6 +31,29 @@ codex:
   read_timeout_ms: 5000
   turn_timeout_ms: 120000
   stall_timeout_ms: 300000
+  auth:
+    mode: "openai_login"
+    source_home: "~/.codex"
+  sandbox:
+    image: "symphony-codex:latest"
+    network: ""
+    security:
+      no_new_privileges: true
+      drop_capabilities: true
+      gvisor: false
+    resources:
+      memory: "4g"
+      memory_reservation: "1g"
+      memory_swap: "4g"
+      cpus: "2.0"
+      tmpfs_size: "512m"
+    extra_mounts: []
+    env_passthrough:
+      - LINEAR_API_KEY
+    logs:
+      driver: json-file
+      max_size: "50m"
+      max_file: 3
 server:
   port: 4000
 ---

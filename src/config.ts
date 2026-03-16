@@ -1,8 +1,17 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 import chokidar, { type FSWatcher } from "chokidar";
 
-import type { ReasoningEffort, ServiceConfig, SymphonyLogger, ValidationError, WorkflowDefinition } from "./types.js";
+import type {
+  CodexAuthMode,
+  CodexProviderConfig,
+  ReasoningEffort,
+  ServiceConfig,
+  SymphonyLogger,
+  ValidationError,
+  WorkflowDefinition,
+} from "./types.js";
 import { loadWorkflowDefinition } from "./workflow-loader.js";
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -21,11 +30,23 @@ function asBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
 
+function asStringMap(value: unknown): Record<string, string> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  );
+}
+
 function resolveEnvBackedString(value: unknown): string {
   if (typeof value !== "string") {
     return "";
   }
   if (!value.startsWith("$")) {
+    return value;
+  }
+  if (/^\$[A-Za-z_][A-Za-z0-9_]*$/.test(value) === false) {
     return value;
   }
 
@@ -48,6 +69,34 @@ function expandHomePath(value: unknown): string {
 
 function resolveTmpDir(value: string): string {
   return value.replace("$TMPDIR", process.env.TMPDIR ?? "/tmp");
+}
+
+function resolveConfigString(value: unknown): string {
+  return resolveTmpDir(expandHomePath(resolveEnvBackedString(value)));
+}
+
+function asCodexAuthMode(value: unknown, fallback: CodexAuthMode): CodexAuthMode {
+  return value === "openai_login" ? "openai_login" : fallback;
+}
+
+function normalizeCodexProvider(value: unknown): CodexProviderConfig | null {
+  const provider = asRecord(value);
+  if (Object.keys(provider).length === 0) {
+    return null;
+  }
+
+  return {
+    id: asString(provider.id) || null,
+    name: asString(provider.name) || null,
+    baseUrl: resolveConfigString(provider.base_url) || null,
+    envKey: asString(provider.env_key) || null,
+    envKeyInstructions: asString(provider.env_key_instructions) || null,
+    wireApi: asString(provider.wire_api) || null,
+    requiresOpenaiAuth: asBoolean(provider.requires_openai_auth, false),
+    httpHeaders: asStringMap(provider.http_headers),
+    envHttpHeaders: asStringMap(provider.env_http_headers),
+    queryParams: asStringMap(provider.query_params),
+  };
 }
 
 function defaultApprovalPolicy(): Record<string, unknown> {
@@ -109,13 +158,14 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
   const codex = asRecord(root.codex);
   const server = asRecord(root.server);
 
-  const workspaceRoot = resolveTmpDir(expandHomePath(asString(workspace.root, "./workspaces")));
+  const workspaceRoot = resolveConfigString(asString(workspace.root, "./workspaces"));
   const turnSandboxPolicyRecord = asRecord(codex.turn_sandbox_policy);
   const hookTimeoutMs = asNumber(hooks.timeout_ms, 60000);
   const readTimeoutMs = asNumber(codex.read_timeout_ms, asNumber(agent.read_timeout_ms, 5000));
   const turnTimeoutMs = asNumber(codex.turn_timeout_ms, 3600000);
   const stallTimeoutMs = asNumber(codex.stall_timeout_ms, asNumber(agent.stall_timeout_ms, 300000));
   const approvalPolicy = normalizeApprovalPolicy(codex.approval_policy);
+  const auth = asRecord(codex.auth);
 
   const sandbox = asRecord(codex.sandbox);
   const sandboxSecurity = asRecord(sandbox.security);
@@ -156,8 +206,12 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
       readTimeoutMs,
       turnTimeoutMs,
       stallTimeoutMs,
+      auth: {
+        mode: asCodexAuthMode(auth.mode, "api_key"),
+        sourceHome: resolveConfigString(asString(auth.source_home, "~/.codex")),
+      },
+      provider: normalizeCodexProvider(codex.provider),
       sandbox: {
-        enabled: asBoolean(sandbox.enabled, true),
         image: asString(sandbox.image, "symphony-codex:latest"),
         network: asString(sandbox.network, ""),
         security: {
@@ -274,6 +328,57 @@ export class ConfigStore {
         code: "missing_codex_command",
         message: "codex.command is required",
       };
+    }
+    if (!["api_key", "openai_login"].includes(config.codex.auth.mode)) {
+      return {
+        code: "invalid_codex_auth_mode",
+        message: "codex.auth.mode must be either api_key or openai_login",
+      };
+    }
+    if (
+      config.codex.auth.mode === "openai_login" &&
+      !existsSync(path.join(config.codex.auth.sourceHome, "auth.json"))
+    ) {
+      return {
+        code: "missing_codex_auth_json",
+        message: `codex.auth.mode=openai_login requires auth.json at ${path.join(config.codex.auth.sourceHome, "auth.json")}`,
+      };
+    }
+    if (config.codex.provider && !config.codex.provider.baseUrl) {
+      return {
+        code: "missing_codex_provider_base_url",
+        message: "codex.provider.base_url is required when codex.provider is configured",
+      };
+    }
+    if (
+      config.codex.auth.mode === "openai_login" &&
+      config.codex.provider &&
+      !config.codex.provider.requiresOpenaiAuth
+    ) {
+      return {
+        code: "invalid_codex_provider_auth_mode",
+        message:
+          "codex.provider.requires_openai_auth must be true when codex.auth.mode=openai_login and a custom provider is configured",
+      };
+    }
+    if (config.codex.auth.mode === "api_key") {
+      const envVars = new Set<string>();
+      if (config.codex.provider?.envKey) {
+        envVars.add(config.codex.provider.envKey);
+      } else if (!config.codex.provider) {
+        envVars.add("OPENAI_API_KEY");
+      }
+      for (const envName of Object.values(config.codex.provider?.envHttpHeaders ?? {})) {
+        envVars.add(envName);
+      }
+      for (const envName of envVars) {
+        if (!process.env[envName]) {
+          return {
+            code: "missing_codex_provider_env",
+            message: `codex runtime requires ${envName} in the host environment`,
+          };
+        }
+      }
     }
     if (config.codex.turnTimeoutMs <= 0) {
       return {

@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -83,8 +84,12 @@ async function createRunner(
       readTimeoutMs: 3000,
       turnTimeoutMs: 10000,
       stallTimeoutMs: 10000,
+      auth: {
+        mode: "api_key",
+        sourceHome: path.join(tempDir, "unused-auth-home"),
+      },
+      provider: null,
       sandbox: {
-        enabled: false,
         image: "symphony-codex:latest",
         network: "",
         security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false },
@@ -110,6 +115,11 @@ async function createRunner(
       linearClient,
       workspaceManager,
       logger: createLogger(),
+      spawnProcess: (_program, _args, options) =>
+        spawn("bash", ["-lc", config.codex.command], {
+          ...options,
+          cwd: options?.cwd ?? undefined,
+        }),
     }),
     workspaceManager,
     config,

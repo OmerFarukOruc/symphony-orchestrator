@@ -199,7 +199,6 @@ export interface SandboxLogConfig {
 }
 
 export interface SandboxConfig {
-  enabled: boolean;
   image: string;
   network: string;
   security: SandboxSecurityConfig;
@@ -207,6 +206,26 @@ export interface SandboxConfig {
   extraMounts: string[];
   envPassthrough: string[];
   logs: SandboxLogConfig;
+}
+
+export type CodexAuthMode = "api_key" | "openai_login";
+
+export interface CodexAuthConfig {
+  mode: CodexAuthMode;
+  sourceHome: string;
+}
+
+export interface CodexProviderConfig {
+  id: string | null;
+  name: string | null;
+  baseUrl: string | null;
+  envKey: string | null;
+  envKeyInstructions: string | null;
+  wireApi: string | null;
+  requiresOpenaiAuth: boolean;
+  httpHeaders: Record<string, string>;
+  envHttpHeaders: Record<string, string>;
+  queryParams: Record<string, string>;
 }
 
 export interface CodexConfig {
@@ -219,6 +238,8 @@ export interface CodexConfig {
   readTimeoutMs: number;
   turnTimeoutMs: number;
   stallTimeoutMs: number;
+  auth: CodexAuthConfig;
+  provider: CodexProviderConfig | null;
   sandbox: SandboxConfig;
 }
 

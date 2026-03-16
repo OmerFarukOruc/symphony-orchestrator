@@ -29,16 +29,11 @@ describe("config-workflow integration", () => {
 
   it("fixture codex-home directories exist and contain expected structure", async () => {
     const requiredMcp = path.join(fixtureDir, "codex-home-required-mcp");
-    const customProvider = path.join(fixtureDir, "codex-home-custom-provider");
 
     // Verify fixture directories exist by reading them
     const requiredConfig = await readFile(path.join(requiredMcp, "config.toml"), "utf8");
     expect(requiredConfig).toBeTruthy();
     expect(requiredConfig.length).toBeGreaterThan(0);
-
-    const providerConfig = await readFile(path.join(customProvider, "config.toml"), "utf8");
-    expect(providerConfig).toBeTruthy();
-    expect(providerConfig.length).toBeGreaterThan(0);
   });
 
   it("WORKFLOW.example.md prompt template contains Liquid-compatible placeholders", async () => {

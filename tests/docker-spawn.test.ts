@@ -6,7 +6,6 @@ import type { SandboxConfig } from "../src/types.js";
 
 function baseSandboxConfig(): SandboxConfig {
   return {
-    enabled: true,
     image: "symphony-codex:latest",
     network: "",
     security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false },
@@ -27,10 +26,10 @@ function baseInput(overrides?: Partial<DockerRunInput>): DockerRunInput {
   return {
     sandboxConfig: baseSandboxConfig(),
     runId: "MT-1-1710000000000",
-    command: "/repo/bin/codex-app-server-live",
+    command: "codex app-server",
     workspacePath: "/tmp/workspaces/MT-1",
-    codexHome: "/tmp/codex-home",
     archiveDir: "/tmp/archive",
+    runtimeConfigToml: 'model = "gpt-5.4"\n',
     ...overrides,
   };
 }
@@ -51,12 +50,11 @@ describe("buildDockerRunArgs", () => {
   it("includes identity-mapped volume mounts", () => {
     const result = buildDockerRunArgs(baseInput());
     const mountArgs = result.args.filter((_, i) => result.args[i - 1] === "-v");
-    // workspace, repo, codexHome, authSource, archive, cache volume
-    expect(mountArgs.length).toBeGreaterThanOrEqual(5);
+    // workspace, archive, cache volume
+    expect(mountArgs.length).toBeGreaterThanOrEqual(3);
     expect(mountArgs).toEqual(
       expect.arrayContaining([
         expect.stringContaining("/tmp/workspaces/MT-1"),
-        expect.stringContaining("/tmp/codex-home"),
         expect.stringContaining("/tmp/archive"),
       ]),
     );
@@ -78,14 +76,15 @@ describe("buildDockerRunArgs", () => {
     expect(result.args[wdIdx + 1]).toBe("/tmp/workspaces/MT-1");
   });
 
-  it("exports HOME, CODEX_HOME, and CODEX_AUTH_SOURCE_HOME", () => {
+  it("exports HOME, container CODEX_HOME, and runtime config payload", () => {
     const result = buildDockerRunArgs(baseInput());
     const envArgs = result.args.filter((_, i) => result.args[i - 1] === "-e");
     expect(envArgs).toEqual(
       expect.arrayContaining([
         "HOME=/home/agent",
-        "CODEX_HOME=/tmp/codex-home",
-        expect.stringMatching(/^CODEX_AUTH_SOURCE_HOME=/),
+        "CODEX_HOME=/tmp/symphony-codex-home",
+        'SYMPHONY_CODEX_CONFIG_TOML=model = "gpt-5.4"\n',
+        "SYMPHONY_CODEX_COMMAND=codex app-server",
       ]),
     );
   });
@@ -140,12 +139,13 @@ describe("buildDockerRunArgs", () => {
     const result = buildDockerRunArgs(baseInput());
     const imageIdx = result.args.indexOf("symphony-codex:latest");
     expect(imageIdx).toBeGreaterThan(-1);
-    expect(result.args.slice(imageIdx)).toEqual([
-      "symphony-codex:latest",
-      "bash",
-      "-lc",
-      "/repo/bin/codex-app-server-live",
-    ]);
+    expect(result.args[imageIdx]).toBe("symphony-codex:latest");
+    expect(result.args[imageIdx + 1]).toBe("bash");
+    expect(result.args[imageIdx + 2]).toBe("-lc");
+    expect(result.args[imageIdx + 3]).toContain(
+      'printf "%s" "$SYMPHONY_CODEX_CONFIG_TOML" > "$CODEX_HOME/config.toml"',
+    );
+    expect(result.args[imageIdx + 3]).toContain('exec bash -lc "$SYMPHONY_CODEX_COMMAND"');
   });
 
   it("passes through env vars from host", () => {
@@ -156,6 +156,19 @@ describe("buildDockerRunArgs", () => {
     const envArgs = result.args.filter((_, i) => result.args[i - 1] === "-e");
     expect(envArgs).toContain("MY_SECRET=hunter2");
     expect(envArgs).not.toEqual(expect.arrayContaining([expect.stringContaining("MISSING_VAR")]));
+  });
+
+  it("passes through required provider env vars automatically", () => {
+    process.env.OPENAI_API_KEY = "sk-test";
+    const result = buildDockerRunArgs(baseInput({ requiredEnv: ["OPENAI_API_KEY"] }));
+    const envArgs = result.args.filter((_, i) => result.args[i - 1] === "-e");
+    expect(envArgs).toContain("OPENAI_API_KEY=sk-test");
+  });
+
+  it("passes auth payload into the container when present", () => {
+    const result = buildDockerRunArgs(baseInput({ runtimeAuthJsonBase64: "eyJ0b2tlbiI6IngifQ==" }));
+    const envArgs = result.args.filter((_, i) => result.args[i - 1] === "-e");
+    expect(envArgs).toContain("SYMPHONY_CODEX_AUTH_JSON_B64=eyJ0b2tlbiI6IngifQ==");
   });
 
   it("includes extra user-defined mounts", () => {

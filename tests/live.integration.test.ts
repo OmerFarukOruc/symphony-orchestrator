@@ -17,20 +17,18 @@ afterEach(async () => {
 });
 
 describe("live integration", () => {
-  it("skips cleanly when required credentials are absent, while still copying fixture homes into temp space", async () => {
+  it("skips cleanly when required credentials are absent, while still copying the required MCP fixture into temp space", async () => {
     const originalLinearApiKey = process.env.LINEAR_API_KEY;
     delete process.env.LINEAR_API_KEY;
 
     const tempDir = await createTempDir();
     const requiredTarget = path.join(tempDir, "required-mcp-home");
-    const providerTarget = path.join(tempDir, "custom-provider-home");
 
     try {
       await cp("tests/fixtures/codex-home-required-mcp", requiredTarget, { recursive: true });
-      await cp("tests/fixtures/codex-home-custom-provider", providerTarget, { recursive: true });
 
       expect(process.env.LINEAR_API_KEY ?? "").toBe("");
-      expect(requiredTarget).not.toBe(providerTarget);
+      expect(requiredTarget).toContain("required-mcp-home");
     } finally {
       if (originalLinearApiKey === undefined) {
         delete process.env.LINEAR_API_KEY;

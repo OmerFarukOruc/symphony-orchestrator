@@ -302,7 +302,7 @@ export function renderDashboardTemplate(): string {
         <div class="mb-8">
           <div class="flex items-center justify-between mb-4">
             <p class="text-slate-400 text-xs uppercase font-bold tracking-widest">Agent Activity</p>
-            <button class="text-primary text-xs font-bold hover:underline" id="focusLogsButton">View Logs</button>
+            <a class="text-primary text-xs font-bold hover:underline" id="focusLogsButton" target="_blank" rel="noreferrer" href="#">View Logs ↗</a>
           </div>
           <div class="space-y-4 font-mono text-xs" id="detailActivity"></div>
         </div>
@@ -711,13 +711,19 @@ export function renderDashboardTemplate(): string {
       els.detailDuration.textContent = formatDuration(durationSeconds);
 
       els.detailActivity.innerHTML = "";
-      if (recentEvents.length === 0) {
+      const NOISE = new Set(["codex/event/agent_message_delta","codex/event/agent_message_content_delta","item/agentMessage/delta","codex/event/token_count","account/rateLimits/updated","item/reasoning/textDelta","item/reasoning/summaryTextDelta","item/reasoning/summaryPartAdded","codex/event/reasoning_delta","thread/status/changed","codex/event/task_complete"]);
+      const keyEvents = recentEvents.filter((e) => {
+        if (e.event === "other_message" && !String(e.message || "").includes("error")) return false;
+        return !NOISE.has(e.message);
+      });
+      if (keyEvents.length === 0) {
         els.detailActivity.appendChild(emptyCard("No streamed activity yet."));
       } else {
-        recentEvents.slice(0, 12).forEach((event, index) => {
+        keyEvents.slice(0, 30).forEach((event, index) => {
           renderEventRow(event, index, els.detailActivity);
         });
       }
+      els.focusLogsButton.href = "/logs/" + encodeURIComponent(detail.identifier || "");
 
       els.detailRetryHistory.textContent =
         detail.error ? "Last error: " + detail.error : "No previous attempts for this session.";
@@ -864,9 +870,7 @@ export function renderDashboardTemplate(): string {
     els.pauseButton.addEventListener("click", () => {
       applyModelSelection().catch((error) => console.error(error));
     });
-    els.focusLogsButton.addEventListener("click", () => {
-      document.getElementById("boardScroll").scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    // View Logs link is set dynamically via href in renderDetail
 
     els.searchInput.addEventListener("input", (event) => {
       state.search = event.target.value;
