@@ -83,6 +83,16 @@ async function createRunner(
       readTimeoutMs: 3000,
       turnTimeoutMs: 10000,
       stallTimeoutMs: 10000,
+      sandbox: {
+        enabled: false,
+        image: "symphony-codex:latest",
+        network: "",
+        security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false },
+        resources: { memory: "4g", memoryReservation: "1g", memorySwap: "4g", cpus: "2.0", tmpfsSize: "512m" },
+        extraMounts: [],
+        envPassthrough: [],
+        logs: { driver: "json-file", maxSize: "50m", maxFile: 3 },
+      },
     },
     server: { port: 4000 },
   };

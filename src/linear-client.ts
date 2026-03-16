@@ -9,9 +9,7 @@ interface GraphQLResponse {
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 function asArray(value: unknown): unknown[] {
@@ -35,10 +33,7 @@ function normalizeBlockers(raw: unknown, issueId: string): IssueBlockerRef[] {
     const relation = asRecord(item);
     const issue = asRecord(relation.issue);
     const relatedIssue = asRecord(relation.relatedIssue);
-    const blocker =
-      asString(issue.id) === issueId && Object.keys(relatedIssue).length > 0
-        ? relatedIssue
-        : issue;
+    const blocker = asString(issue.id) === issueId && Object.keys(relatedIssue).length > 0 ? relatedIssue : issue;
     const state = asRecord(blocker.state);
     return {
       id: asString(blocker.id),
@@ -59,8 +54,7 @@ function normalizeIssue(raw: unknown): Issue {
     identifier: asString(issue.identifier) ?? "",
     title: asString(issue.title) ?? "",
     description: asString(issue.description),
-    priority:
-      typeof issue.priority === "number" && Number.isInteger(issue.priority) ? issue.priority : null,
+    priority: typeof issue.priority === "number" && Number.isInteger(issue.priority) ? issue.priority : null,
     state: asString(state.name) ?? "unknown",
     branchName: asString(issue.branchName),
     url: asString(issue.url),
@@ -214,10 +208,7 @@ export class LinearClient {
       return [];
     }
 
-    const payload = await this.runGraphQL(
-      buildIssuesByIdsQuery(),
-      { ids },
-    );
+    const payload = await this.runGraphQL(buildIssuesByIdsQuery(), { ids });
     return extractIssues(payload);
   }
 
@@ -226,10 +217,7 @@ export class LinearClient {
       return [];
     }
 
-    const payload = await this.runGraphQL(
-      buildIssuesByStatesQuery(),
-      { states },
-    );
+    const payload = await this.runGraphQL(buildIssuesByStatesQuery(), { states });
     return extractIssues(payload);
   }
 

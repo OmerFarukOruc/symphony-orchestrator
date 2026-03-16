@@ -1,8 +1,4 @@
-import type {
-  Issue,
-  ReasoningEffort,
-  TokenUsageSnapshot,
-} from "../types.js";
+import type { Issue, ReasoningEffort, TokenUsageSnapshot } from "../types.js";
 
 export interface IssueView {
   issueId: string;

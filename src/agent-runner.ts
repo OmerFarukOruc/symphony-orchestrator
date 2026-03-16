@@ -1,9 +1,12 @@
 import { spawn } from "node:child_process";
+import path from "node:path";
 
 import { Liquid } from "liquidjs";
 
 import { createSuccessResponse, type JsonRpcRequest } from "./codex-protocol.js";
 import { JsonRpcConnection, JsonRpcTimeoutError } from "./agent/json-rpc-connection.js";
+import { buildDockerRunArgs, resolveAuthSourceHome } from "./docker-spawn.js";
+import { inspectOomKilled, removeContainer, stopContainer } from "./docker-lifecycle.js";
 import { handleCodexRequest } from "./agent/codex-request-handler.js";
 import { LinearClient } from "./linear-client.js";
 import {
@@ -31,30 +34,33 @@ import type {
 import { WorkspaceManager } from "./workspace-manager.js";
 import { sanitizeContent } from "./content-sanitizer.js";
 
-const CONTINUATION_PROMPT =
-  "Continue the current issue, make concrete progress, and stop only when done or blocked.";
+const CONTINUATION_PROMPT = "Continue the current issue, make concrete progress, and stop only when done or blocked.";
 
 export { extractItemContent } from "./agent-runner-helpers.js";
 
 export interface AgentRunnerEventHandler {
-  (event: RecentEvent & {
-    usage?: TokenUsageSnapshot;
-    usageMode?: "absolute_total" | "delta";
-    rateLimits?: unknown;
-    content?: string | null;
-  }): void;
+  (
+    event: RecentEvent & {
+      usage?: TokenUsageSnapshot;
+      usageMode?: "absolute_total" | "delta";
+      rateLimits?: unknown;
+      content?: string | null;
+    },
+  ): void;
 }
 
 export class AgentRunner {
   private readonly liquid = new Liquid({ strictFilters: true, strictVariables: true });
   private readonly reasoningBuffers = new Map<string, string>();
 
-  constructor(private readonly deps: {
-    getConfig: () => ServiceConfig;
-    linearClient: LinearClient;
-    workspaceManager: WorkspaceManager;
-    logger: SymphonyLogger;
-  }) {}
+  constructor(
+    private readonly deps: {
+      getConfig: () => ServiceConfig;
+      linearClient: LinearClient;
+      workspaceManager: WorkspaceManager;
+      logger: SymphonyLogger;
+    },
+  ) {}
 
   async runAttempt(input: {
     issue: Issue;
@@ -78,13 +84,35 @@ export class AgentRunner {
     let turnId: string | null = null;
     let turnCount = 0;
     let fatalFailure: { code: string; message: string } | null = null;
+    // eslint-disable-next-line no-useless-assignment -- reassigned conditionally in sandbox branch
     let exitPromise: Promise<{ code: number | null; signal: NodeJS.Signals | null }> | null = null;
+    let containerName: string | null = null;
+    // eslint-disable-next-line no-useless-assignment -- reassigned in OOM branch
+    let oomKilled = false;
 
-    const child = spawn("bash", ["-lc", config.codex.command], {
-      cwd: input.workspace.path,
-      env: process.env,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+    const sandboxEnabled = config.codex.sandbox.enabled;
+    let child;
+    if (sandboxEnabled) {
+      const docker = buildDockerRunArgs({
+        sandboxConfig: config.codex.sandbox,
+        runId: `${input.issue.identifier}-${Date.now()}`,
+        command: config.codex.command,
+        workspacePath: input.workspace.path,
+        codexHome: process.env.CODEX_HOME ?? path.join(resolveAuthSourceHome(), "..", ".symphony-codex-home"),
+        archiveDir: process.env.SYMPHONY_ARCHIVE_DIR ?? path.join(process.cwd(), "archive"),
+      });
+      containerName = docker.containerName;
+      child = spawn(docker.program, docker.args, {
+        env: process.env,
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+    } else {
+      child = spawn("bash", ["-lc", config.codex.command], {
+        cwd: input.workspace.path,
+        env: process.env,
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+    }
 
     const connection = new JsonRpcConnection(
       child,
@@ -114,16 +142,21 @@ export class AgentRunner {
     exitPromise = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => {
       child.once("exit", (code, signal) => resolve({ code, signal }));
     });
-    const abortHandler = () => connection.close();
+    const abortHandler = () => {
+      connection.close();
+      if (sandboxEnabled && containerName) {
+        void stopContainer(containerName, 5);
+      }
+    };
     input.signal.addEventListener("abort", abortHandler, { once: true });
 
     try {
-        await connection.request("initialize", {
-          clientInfo: { name: "symphony", version: "0.1.1" },
-          capabilities: {
-            experimentalApi: true,
-          },
-        });
+      await connection.request("initialize", {
+        clientInfo: { name: "symphony", version: "0.1.1" },
+        capabilities: {
+          experimentalApi: true,
+        },
+      });
       connection.notify("initialized", {});
 
       const accountInfo = await connection.request("account/read", {});
@@ -160,28 +193,28 @@ export class AgentRunner {
         sandbox: config.codex.threadSandbox,
         personality: "friendly",
         dynamicTools: [
-            {
-              name: "linear_graphql",
-              description: "Run exactly one GraphQL operation against Linear.",
-              inputSchema: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  query: {
-                    type: "string",
-                    description: "A single GraphQL query, mutation, or subscription document.",
-                  },
-                  variables: {
-                    type: "object",
-                    additionalProperties: true,
-                    description: "Optional GraphQL variables for the document.",
-                  },
+          {
+            name: "linear_graphql",
+            description: "Run exactly one GraphQL operation against Linear.",
+            inputSchema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                query: {
+                  type: "string",
+                  description: "A single GraphQL query, mutation, or subscription document.",
                 },
-                required: ["query"],
+                variables: {
+                  type: "object",
+                  additionalProperties: true,
+                  description: "Optional GraphQL variables for the document.",
+                },
               },
+              required: ["query"],
             },
-          ],
-        });
+          },
+        ],
+      });
       threadId = extractThreadId(threadResult);
       if (!threadId) {
         throw new Error("thread/start did not return a thread identifier");
@@ -237,13 +270,14 @@ export class AgentRunner {
           issueIdentifier: input.issue.identifier,
           sessionId: threadId,
           event: "turn_completed",
-          message: sanitizeContent(
-            completedStatus === "completed"
-              ? `turn ${turnCount} completed`
-              : completedError.message
-                ? String(completedError.message)
-                : `turn ${turnCount} ended with status ${completedStatus}`
-          ) || `turn ${turnCount} ended with status ${completedStatus}`,
+          message:
+            sanitizeContent(
+              completedStatus === "completed"
+                ? `turn ${turnCount} completed`
+                : completedError.message
+                  ? String(completedError.message)
+                  : `turn ${turnCount} ended with status ${completedStatus}`,
+            ) || `turn ${turnCount} ended with status ${completedStatus}`,
           usage: completedUsage ?? undefined,
           rateLimits: extractRateLimits(turnResult) ?? undefined,
         });
@@ -284,7 +318,9 @@ export class AgentRunner {
 
       const exitState = await Promise.race([
         exitPromise,
-        new Promise<{ code: null; signal: null }>((resolve) => setTimeout(() => resolve({ code: null, signal: null }), 20)),
+        new Promise<{ code: null; signal: null }>((resolve) =>
+          setTimeout(() => resolve({ code: null, signal: null }), 20),
+        ),
       ]);
       {
         const maybeFailureOutcome = this.failureOutcome(fatalFailure, threadId, turnId, turnCount);
@@ -293,6 +329,20 @@ export class AgentRunner {
         }
       }
       if (exitState.code !== null && !input.signal.aborted) {
+        // For Docker: exit code 137 may indicate OOM kill
+        if (sandboxEnabled && containerName && exitState.code === 137) {
+          oomKilled = await inspectOomKilled(containerName);
+          if (oomKilled) {
+            return {
+              kind: "failed",
+              errorCode: "container_oom",
+              errorMessage: `container OOM-killed (memory limit: ${config.codex.sandbox.resources.memory})`,
+              threadId,
+              turnId,
+              turnCount,
+            };
+          }
+        }
         return {
           kind: "failed",
           errorCode: "port_exit",
@@ -354,13 +404,23 @@ export class AgentRunner {
     } finally {
       input.signal.removeEventListener("abort", abortHandler);
       connection.close();
-      if (!child.killed) {
-        child.kill("SIGTERM");
+      if (sandboxEnabled && containerName) {
+        // For Docker: stop container if still running, then remove
+        await stopContainer(containerName, 5);
+        await Promise.race([
+          exitPromise ?? Promise.resolve({ code: null, signal: null }),
+          new Promise((resolve) => setTimeout(resolve, 5000)),
+        ]).catch(() => undefined);
+        await removeContainer(containerName);
+      } else {
+        if (!child.killed) {
+          child.kill("SIGTERM");
+        }
+        await Promise.race([
+          exitPromise ?? Promise.resolve({ code: null, signal: null }),
+          new Promise((resolve) => setTimeout(resolve, 250)),
+        ]).catch(() => undefined);
       }
-      await Promise.race([
-        exitPromise ?? Promise.resolve({ code: null, signal: null }),
-        new Promise((resolve) => setTimeout(resolve, 250)),
-      ]).catch(() => undefined);
       await this.deps.workspaceManager.runAfterRun(input.workspace).catch((error) => {
         logger.warn({ error: String(error) }, "after_run hook failed");
       });
@@ -447,11 +507,7 @@ export class AgentRunner {
     return !["backlog", "triage", "todo", "planned"].includes(normalized);
   }
 
-  private waitForTurnCompletion(input: {
-    turnId: string;
-    signal: AbortSignal;
-    timeoutMs: number;
-  }): Promise<unknown> {
+  private waitForTurnCompletion(input: { turnId: string; signal: AbortSignal; timeoutMs: number }): Promise<unknown> {
     const alreadyCompleted = this.completedTurnNotifications.get(input.turnId);
     if (alreadyCompleted !== undefined) {
       this.completedTurnNotifications.delete(input.turnId);
@@ -565,7 +621,7 @@ export class AgentRunner {
       const itemType = asString(item.type) ?? "item";
       const itemId = asString(item.id);
       const verb = input.notification.method.endsWith("started") ? "started" : "completed";
-      
+
       const content = extractItemContent(itemType, itemId, item, verb, this.reasoningBuffers);
       if (verb === "completed" && itemId) {
         this.reasoningBuffers.delete(itemId);

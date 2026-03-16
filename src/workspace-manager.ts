@@ -107,11 +107,7 @@ export class WorkspaceManager {
     await rm(workspacePath, { recursive: true, force: true });
   }
 
-  private async runHook(
-    hook: string | null,
-    workspace: Workspace,
-    issueIdentifier: string,
-  ): Promise<void> {
+  private async runHook(hook: string | null, workspace: Workspace, issueIdentifier: string): Promise<void> {
     if (!hook) {
       return;
     }

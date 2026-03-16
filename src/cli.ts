@@ -71,11 +71,16 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
   const config = configStore.getConfig();
   const selectedPort = parsed.values.port ? Number(parsed.values.port) : config.server.port;
-  const archiveDir = path.resolve(parsed.values["log-dir"] ?? path.join(path.dirname(resolvedWorkflowPath), ".symphony"));
+  const archiveDir = path.resolve(
+    parsed.values["log-dir"] ?? path.join(path.dirname(resolvedWorkflowPath), ".symphony"),
+  );
   const attemptStore = new AttemptStore(archiveDir, logger.child({ component: "attempt-store" }));
   await attemptStore.start();
   const linearClient = new LinearClient(() => configStore.getConfig(), logger.child({ component: "linear" }));
-  const workspaceManager = new WorkspaceManager(() => configStore.getConfig(), logger.child({ component: "workspace" }));
+  const workspaceManager = new WorkspaceManager(
+    () => configStore.getConfig(),
+    logger.child({ component: "workspace" }),
+  );
   const agentRunner = new AgentRunner({
     getConfig: () => configStore.getConfig(),
     linearClient,

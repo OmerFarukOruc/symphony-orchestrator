@@ -65,14 +65,16 @@ export class Orchestrator {
     secondsRunning: 0,
   };
 
-  constructor(private readonly deps: {
-    attemptStore: AttemptStore;
-    configStore: ConfigStore;
-    linearClient: LinearClient;
-    workspaceManager: WorkspaceManager;
-    agentRunner: AgentRunner;
-    logger: SymphonyLogger;
-  }) {}
+  constructor(
+    private readonly deps: {
+      attemptStore: AttemptStore;
+      configStore: ConfigStore;
+      linearClient: LinearClient;
+      workspaceManager: WorkspaceManager;
+      agentRunner: AgentRunner;
+      logger: SymphonyLogger;
+    },
+  ) {}
 
   async start(): Promise<void> {
     if (this.running) {
@@ -176,7 +178,7 @@ export class Orchestrator {
     const relatedEvents = runningEntry
       ? this.deps.attemptStore.getEvents(runningEntry.runId)
       : this.recentEvents.filter((event) => event.issueIdentifier === identifier);
-      
+
     const archivedAttempts = this.deps.attemptStore.getAttemptsForIssue(identifier);
     return {
       ...detail,
@@ -325,10 +327,7 @@ export class Orchestrator {
       }
     }
 
-    const trackedIds = new Set<string>([
-      ...this.runningEntries.keys(),
-      ...this.retryEntries.keys(),
-    ]);
+    const trackedIds = new Set<string>([...this.runningEntries.keys(), ...this.retryEntries.keys()]);
     if (trackedIds.size === 0) {
       return;
     }
@@ -521,15 +520,18 @@ export class Orchestrator {
           if (event.rateLimits !== undefined) {
             this.rateLimits = event.rateLimits;
           }
-          void this.deps.attemptStore.updateAttempt(entry.runId, {
-            threadId: entry.sessionId,
-            tokenUsage: entry.tokenUsage,
-          }).catch(() => undefined);
+          void this.deps.attemptStore
+            .updateAttempt(entry.runId, {
+              threadId: entry.sessionId,
+              tokenUsage: entry.tokenUsage,
+            })
+            .catch(() => undefined);
         },
       })
       .then(async (outcome) => {
         this.runningEntries.delete(issue.id);
-        const latestIssue = (await this.deps.linearClient.fetchIssueStatesByIds([issue.id]).catch(() => [issue]))[0] ?? issue;
+        const latestIssue =
+          (await this.deps.linearClient.fetchIssueStatesByIds([issue.id]).catch(() => [issue]))[0] ?? issue;
         await this.deps.attemptStore.updateAttempt(entry.runId, {
           issueId: latestIssue.id,
           issueIdentifier: latestIssue.identifier,
@@ -747,11 +749,7 @@ export class Orchestrator {
     }
   }
 
-  private applyUsageEvent(
-    entry: RunningEntry,
-    usage: TokenUsageSnapshot,
-    usageMode: "absolute_total" | "delta",
-  ): void {
+  private applyUsageEvent(entry: RunningEntry, usage: TokenUsageSnapshot, usageMode: "absolute_total" | "delta"): void {
     if (usageMode === "absolute_total") {
       const previous = entry.sessionId ? (this.sessionUsageTotals.get(entry.sessionId) ?? null) : null;
       const delta = usageDelta(previous, usage);

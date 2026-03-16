@@ -1,0 +1,11 @@
+# Default owner for everything
+* @OmerFarukOruc
+
+# Core source
+/src/ @OmerFarukOruc
+
+# Documentation
+/docs/ @OmerFarukOruc
+
+# CI/CD and infrastructure
+/.github/ @OmerFarukOruc

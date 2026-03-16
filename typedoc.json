@@ -1,0 +1,8 @@
+{
+  "entryPoints": ["src/"],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "exclude": ["**/node_modules/**", "dist/**", "tests/**"],
+  "tsconfig": "tsconfig.json",
+  "name": "Symphony Orchestrator API"
+}

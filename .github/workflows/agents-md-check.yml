@@ -1,0 +1,20 @@
+name: AGENTS.md Validation
+on:
+  push:
+    paths: [AGENTS.md, package.json, tsconfig.json]
+  pull_request:
+    paths: [AGENTS.md, package.json, tsconfig.json]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Verify AGENTS.md build command
+        run: npm run build
+      - name: Verify AGENTS.md test command
+        run: npm test

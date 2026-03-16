@@ -1,0 +1,9 @@
+FROM ghcr.io/openai/codex-universal:latest
+
+# codex-universal uses NVM — source it so npm/node are on PATH for the install
+ENV NVM_DIR=/root/.nvm
+RUN bash -c 'source "$NVM_DIR/nvm.sh" && npm install -g @openai/codex'
+
+# Symphony will supply --user $(id -u):$(id -g) at run time
+WORKDIR /workspace
+# Preserve the base image's entrypoint which sources nvm + mise

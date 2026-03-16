@@ -2,9 +2,7 @@ import { sanitizeContent } from "./content-sanitizer.js";
 import type { ServiceConfig, TokenUsageSnapshot } from "./types.js";
 
 function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 function asString(value: unknown): string | null {
@@ -130,7 +128,8 @@ function extractItemContent(
       const args = typeof item.arguments === "string" ? item.arguments : JSON.stringify(item.arguments ?? {});
       content = `${name}(${args})`;
     } else {
-      content = asString(item.output) ?? (typeof item.result === "string" ? item.result : JSON.stringify(item.result ?? {}));
+      content =
+        asString(item.output) ?? (typeof item.result === "string" ? item.result : JSON.stringify(item.result ?? {}));
     }
   } else if (type === "webSearch") {
     if (verb === "started") {

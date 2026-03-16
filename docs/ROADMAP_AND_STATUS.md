@@ -3,7 +3,7 @@
 > Public-facing status snapshot for Symphony Orchestrator — intentionally factual.
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-blue?style=flat-square" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.1-blue?style=flat-square" />
   <img alt="Status" src="https://img.shields.io/badge/status-shipped-brightgreen?style=flat-square" />
 </p>
 
@@ -11,7 +11,7 @@
 
 ## 📌 Current Release Baseline
 
-The repository is at **`v0.1.0`** and implements a working local orchestration loop for Linear-driven Codex work.
+The repository is at **`v0.1.1`** and implements a working local orchestration loop for Linear-driven Codex work.
 
 ---
 
@@ -41,6 +41,10 @@ The repository is at **`v0.1.0`** and implements a working local orchestration l
 - ✅ Rate limit preflight via `account/rateLimits/read`
 - ✅ Dynamic `linear_graphql` tool exposure to the worker
 - ✅ Per-issue model override selection saved by the operator
+- ✅ Docker container sandbox with `codex-universal` base image
+- ✅ Resource limits (memory, CPU, tmpfs) and security hardening (cap-drop, no-new-privileges)
+- ✅ OOM kill detection via `docker inspect` with distinct `container_oom` error code
+- ✅ Container lifecycle management (stop, inspect, remove) on abort/shutdown
 
 ### 🖥️ Operator Visibility
 
@@ -49,11 +53,13 @@ The repository is at **`v0.1.0`** and implements a working local orchestration l
 - ✅ Aggregate token accounting in the runtime snapshot
 - ✅ Recent event visibility for active work
 - ✅ Durable archived attempts and per-attempt event timelines under `.symphony/`
+- ✅ Repo-root `./symphony-logs` helper for issue and attempt inspection from archived evidence
 
 ### 🧪 Validation
 
 - ✅ Deterministic Vitest unit coverage
 - ✅ Fixture-driven protocol tests for the agent runner
+- ✅ Docker spawn argument building tests
 - ✅ Opt-in live integration test path
 
 ---
@@ -61,7 +67,7 @@ The repository is at **`v0.1.0`** and implements a working local orchestration l
 ## 📊 Progress Overview
 
 ```mermaid
-pie title Symphony v0.1.0 Completion
+pie title Symphony v0.1.1 Completion
     "Core Runtime" : 4
     "Issue Orchestration" : 6
     "Codex Integration" : 6
@@ -90,7 +96,7 @@ Symphony is currently meant for **local, operator-controlled use on a single hos
 
 ## 💡 Smaller Follow-Up Opportunities
 
-These are not blockers for `v0.1.0`, but reasonable follow-up areas:
+These are not blockers for `v0.1.1`, but reasonable follow-up areas:
 
 | Area | Description |
 |------|-------------|

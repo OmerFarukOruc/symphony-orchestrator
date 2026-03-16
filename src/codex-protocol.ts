@@ -28,11 +28,7 @@ export interface JsonRpcErrorResponse {
   };
 }
 
-export type JsonRpcMessage =
-  | JsonRpcRequest
-  | JsonRpcNotification
-  | JsonRpcSuccessResponse
-  | JsonRpcErrorResponse;
+export type JsonRpcMessage = JsonRpcRequest | JsonRpcNotification | JsonRpcSuccessResponse | JsonRpcErrorResponse;
 
 let nextId = 1;
 
@@ -83,21 +79,11 @@ export function isJsonRpcNotification(message: unknown): message is JsonRpcNotif
 }
 
 export function isJsonRpcSuccessResponse(message: unknown): message is JsonRpcSuccessResponse {
-  return (
-    typeof message === "object" &&
-    message !== null &&
-    "id" in message &&
-    "result" in message
-  );
+  return typeof message === "object" && message !== null && "id" in message && "result" in message;
 }
 
 export function isJsonRpcErrorResponse(message: unknown): message is JsonRpcErrorResponse {
-  return (
-    typeof message === "object" &&
-    message !== null &&
-    "id" in message &&
-    "error" in message
-  );
+  return typeof message === "object" && message !== null && "id" in message && "error" in message;
 }
 
 export function getMethod(message: JsonRpcMessage): string | null {

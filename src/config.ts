@@ -2,19 +2,11 @@ import path from "node:path";
 
 import chokidar, { type FSWatcher } from "chokidar";
 
-import type {
-  ReasoningEffort,
-  ServiceConfig,
-  SymphonyLogger,
-  ValidationError,
-  WorkflowDefinition,
-} from "./types.js";
+import type { ReasoningEffort, ServiceConfig, SymphonyLogger, ValidationError, WorkflowDefinition } from "./types.js";
 import { loadWorkflowDefinition } from "./workflow-loader.js";
 
 function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 function asString(value: unknown, fallback = ""): string {
@@ -68,9 +60,7 @@ function defaultApprovalPolicy(): Record<string, unknown> {
   };
 }
 
-function normalizeTurnSandboxPolicy(
-  value: Record<string, unknown>,
-): { type: string; [key: string]: unknown } {
+function normalizeTurnSandboxPolicy(value: Record<string, unknown>): { type: string; [key: string]: unknown } {
   if (Object.keys(value).length === 0) {
     return {
       type: "workspaceWrite",
@@ -127,6 +117,11 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
   const stallTimeoutMs = asNumber(codex.stall_timeout_ms, asNumber(agent.stall_timeout_ms, 300000));
   const approvalPolicy = normalizeApprovalPolicy(codex.approval_policy);
 
+  const sandbox = asRecord(codex.sandbox);
+  const sandboxSecurity = asRecord(sandbox.security);
+  const sandboxResources = asRecord(sandbox.resources);
+  const sandboxLogs = asRecord(sandbox.logs);
+
   return {
     tracker: {
       kind: "linear",
@@ -161,6 +156,34 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
       readTimeoutMs,
       turnTimeoutMs,
       stallTimeoutMs,
+      sandbox: {
+        enabled: asBoolean(sandbox.enabled, true),
+        image: asString(sandbox.image, "symphony-codex:latest"),
+        network: asString(sandbox.network, ""),
+        security: {
+          noNewPrivileges: asBoolean(sandboxSecurity.no_new_privileges, true),
+          dropCapabilities: asBoolean(sandboxSecurity.drop_capabilities, true),
+          gvisor: asBoolean(sandboxSecurity.gvisor, false),
+        },
+        resources: {
+          memory: asString(sandboxResources.memory, "4g"),
+          memoryReservation: asString(sandboxResources.memory_reservation, "1g"),
+          memorySwap: asString(sandboxResources.memory_swap, "4g"),
+          cpus: asString(sandboxResources.cpus, "2.0"),
+          tmpfsSize: asString(sandboxResources.tmpfs_size, "512m"),
+        },
+        extraMounts: Array.isArray(sandbox.extra_mounts)
+          ? sandbox.extra_mounts.filter((v): v is string => typeof v === "string")
+          : [],
+        envPassthrough: Array.isArray(sandbox.env_passthrough)
+          ? sandbox.env_passthrough.filter((v): v is string => typeof v === "string")
+          : [],
+        logs: {
+          driver: asString(sandboxLogs.driver, "json-file"),
+          maxSize: asString(sandboxLogs.max_size, "50m"),
+          maxFile: asNumber(sandboxLogs.max_file, 3),
+        },
+      },
     },
     server: {
       port: asNumber(server.port, 4000),

@@ -16,7 +16,7 @@ export function sanitizeContent(
     /Bearer\s+(?!null|undefined)[A-Za-z0-9\-._~+/]+=*/gi,
     /ghp_[A-Za-z0-9]{36}/g,
     /AKIA[0-9A-Z]{16}/g,
-    /xox[baprs]-[0-9a-zA-Z\-]+/g, // Slack tokens
+    /xox[baprs]-[0-9a-zA-Z-]+/g, // Slack tokens
   ];
 
   for (const pattern of patterns) {
@@ -72,7 +72,7 @@ function redactObjectPayload(obj: Record<string, unknown> | unknown[]): void {
         } else {
           // It's an object with a secret key. Redact all its fields.
           for (const k of Object.keys(value as Record<string, unknown>)) {
-             (value as Record<string, unknown>)[k] = "[REDACTED]";
+            (value as Record<string, unknown>)[k] = "[REDACTED]";
           }
         }
       } else {

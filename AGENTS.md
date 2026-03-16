@@ -29,6 +29,10 @@ Add or update Vitest coverage for every behavior change. Prefer deterministic un
 
 When behavior changes affect the operator surface, verify both code and docs together. At minimum, keep `README.md`, workflow examples, and the relevant `docs/*.md` files aligned with the actual API, trust posture, and runtime behavior.
 
+## Refactoring Guidelines
+
+Keep classes, modules, and functions small, atomic, and focused on a single responsibility. Do not let implementations grow long or mixed-purpose; extract well-named helpers or smaller modules early. Prefer modular, structured composition that is easy to read, test, and change.
+
 ## Documentation Expectations
 
 Keep the doc set role-oriented:

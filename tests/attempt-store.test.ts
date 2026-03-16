@@ -98,7 +98,10 @@ describe("AttemptStore", () => {
     const eventArchivePath = path.join(baseDir, "events", `${attempt.attemptId}.jsonl`);
     expect(await readFile(eventArchivePath, "utf8")).toBe("");
 
-    const issueIndex = JSON.parse(await readFile(path.join(baseDir, "issue-index.json"), "utf8")) as Record<string, string[]>;
+    const issueIndex = JSON.parse(await readFile(path.join(baseDir, "issue-index.json"), "utf8")) as Record<
+      string,
+      string[]
+    >;
     expect(issueIndex).toEqual({
       "MT-42": [attempt.attemptId],
     });
@@ -159,10 +162,7 @@ describe("AttemptStore", () => {
     await store.createAttempt(secondAttempt);
     await store.createAttempt(secondAttempt);
 
-    expect(store.getAttemptsForIssue("MT-42").map((attempt) => attempt.attemptId)).toEqual([
-      "attempt-2",
-      "attempt-1",
-    ]);
+    expect(store.getAttemptsForIssue("MT-42").map((attempt) => attempt.attemptId)).toEqual(["attempt-2", "attempt-1"]);
 
     const issueIndexPath = path.join(baseDir, "issue-index.json");
     expect(JSON.parse(await readFile(issueIndexPath, "utf8"))).toEqual({
@@ -222,7 +222,10 @@ describe("AttemptStore", () => {
       errorMessage: "boom",
     });
 
-    const issueIndex = JSON.parse(await readFile(path.join(baseDir, "issue-index.json"), "utf8")) as Record<string, string[]>;
+    const issueIndex = JSON.parse(await readFile(path.join(baseDir, "issue-index.json"), "utf8")) as Record<
+      string,
+      string[]
+    >;
     expect(issueIndex).toEqual({
       "MT-42": [],
       "MT-99": [attempt.attemptId],
@@ -261,7 +264,11 @@ describe("AttemptStore", () => {
       message: "completed",
     });
 
-    await writeFile(path.join(attemptsDir, `${attempt.attemptId}.json`), `${JSON.stringify(attempt, null, 2)}\n`, "utf8");
+    await writeFile(
+      path.join(attemptsDir, `${attempt.attemptId}.json`),
+      `${JSON.stringify(attempt, null, 2)}\n`,
+      "utf8",
+    );
     await writeFile(
       path.join(eventsDir, `${attempt.attemptId}.jsonl`),
       `${JSON.stringify(newerEvent)}\n${JSON.stringify(olderEvent)}\n`,

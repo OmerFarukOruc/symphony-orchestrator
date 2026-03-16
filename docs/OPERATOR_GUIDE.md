@@ -15,6 +15,7 @@ Symphony polls Linear for candidate issues, creates a workspace per issue, launc
 | Requirement | Details |
 |-------------|---------|
 | **Node.js** | v22 or newer |
+| **Docker** | Docker Engine installed and running (`docker info` should succeed) |
 | **Linear API key** | `LINEAR_API_KEY` in your environment |
 | **Codex auth** | Working auth setup for your `codex app-server` command |
 
@@ -46,6 +47,9 @@ npm test
 
 # Build the project
 npm run build
+
+# Build the Docker sandbox image
+bash bin/build-sandbox.sh
 
 # Dry-start the portable workflow
 node dist/cli.js ./WORKFLOW.example.md
@@ -107,6 +111,41 @@ Hook execution is bounded by `hooks.timeout_ms`.
 > [!TIP]
 > For safer live proving, set `codex.turn_timeout_ms` to something short like `120000` (2 minutes).
 
+### 🐳 Docker Sandbox
+
+Symphony runs the Codex agent inside a Docker container by default using the `codex-universal` base image. This provides process isolation, resource limits, and security hardening.
+
+**Key runtime behavior:**
+
+| Property | How |
+|----------|-----|
+| **Path identity** | All host paths are bind-mounted at their same absolute path inside the container |
+| **Host permissions** | Container runs as your UID/GID — no ownership drift |
+| **Writable HOME** | A persistent named volume is mounted at `/home/agent` for npm/pip/git caches |
+| **Resource limits** | Memory, CPU, and tmpfs are configurable via `codex.sandbox.resources` |
+| **OOM detection** | Exit code 137 with `OOMKilled=true` is surfaced as `container_oom` (retryable) |
+
+**Container lifecycle on abort/shutdown:**
+
+```mermaid
+flowchart LR
+    A["⚡ Abort Signal"] -->|docker stop --time=5| B["SIGTERM"]
+    B -->|5s grace| C["SIGKILL"]
+    C --> D["inspect OOMKilled"]
+    D --> E["docker rm"]
+
+    style A fill:#dc2626,stroke:#b91c1c,color:#fff
+    style E fill:#059669,stroke:#047857,color:#fff
+```
+
+**Configuration:** See `codex.sandbox` in `WORKFLOW.example.md` for all available settings.
+
+> [!WARNING]
+> Named Docker volumes (build caches) survive container/image replacement, but **not** `docker system prune --volumes`. Do not prune volumes prefixed with `symphony-`.
+
+> [!TIP]
+> For restricted network egress, pre-provision a custom Docker network with `DOCKER-USER` iptables rules and set `codex.sandbox.network` to that network name.
+
 ### 🎯 Model Overrides
 
 Save per-issue overrides via the dashboard or the API:
@@ -140,11 +179,22 @@ By default, archives are stored in `.symphony/` next to the workflow file (overr
 
 ```
 .symphony/
+├── issue-index.json
 ├── attempts/<attempt-id>.json
 └── events/<attempt-id>.jsonl
 ```
 
 This archive keeps historical attempt information visible in the dashboard and API after a restart.
+
+For archive-first CLI inspection, use the repo-root helper:
+
+```bash
+./symphony-logs MT-42
+./symphony-logs NIN-3 --attempts --dir tests/fixtures/symphony-archive-sandbox/.symphony
+./symphony-logs --attempt 00000000-0000-4000-8000-000000000422 --dir tests/fixtures/symphony-archive-sandbox/.symphony
+```
+
+The helper emits JSON and prefers `issue-index.json` when present, while still falling back to scanning archived attempt files if the index is missing.
 
 ---
 

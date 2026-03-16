@@ -104,7 +104,9 @@ export class HttpServer {
     this.app
       .route("/api/v1/state")
       .get((_request, response) => {
-        response.json(serializeSnapshot(this.deps.orchestrator.getSnapshot() as RuntimeSnapshot & Record<string, unknown>));
+        response.json(
+          serializeSnapshot(this.deps.orchestrator.getSnapshot() as RuntimeSnapshot & Record<string, unknown>),
+        );
       })
       .all((_request, response) => {
         methodNotAllowed(response);

@@ -54,6 +54,25 @@ Symphony launches the exact `codex.command` from `WORKFLOW.md`. If that Codex ru
 
 ---
 
+## 🐳 Docker Sandbox Boundary
+
+Symphony runs the Codex agent inside a Docker container using the `codex-universal` base image. The container is a **transparent wrapper** — the same `codex.command` runs inside, with the same paths and environment.
+
+**Key properties:**
+
+| Property | How |
+|----------|-----|
+| **Path identity** | All host paths are bind-mounted at their same absolute path inside the container (`-v /host/path:/host/path`) |
+| **Auth preservation** | `CODEX_AUTH_SOURCE_HOME` is set and its directory is bind-mounted read-only |
+| **Host permissions** | Container runs as `--user $(id -u):$(id -g)` — files it creates are owned by the host user |
+| **Provider decoupling** | Symphony does not manage provider config; the launcher and `CODEX_HOME` handle auth, same as without Docker |
+| **Network** | Default is Docker's default bridge (full internet). Operators can pre-provision a restricted network and reference it by name |
+
+> [!NOTE]
+> Named Docker volumes (used for build caches) survive container and image replacement, but **not** `docker system prune --volumes`. Operator docs should warn against pruning volumes prefixed with `symphony-`.
+
+---
+
 ## 🔑 Required Credentials
 
 | Credential | Source | Purpose |

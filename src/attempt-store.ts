@@ -3,10 +3,9 @@ import path from "node:path";
 
 import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "./types.js";
 
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
+// Utility retained for potential future use in archive parsing.
+function _asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 function sortAttemptsDesc(left: AttemptRecord, right: AttemptRecord): number {
@@ -45,18 +44,24 @@ export class AttemptStore {
             .split("\n")
             .map((line) => line.trim())
             .filter(Boolean);
-          let events = lines.map((line) => JSON.parse(line) as AttemptEvent);
-          
+          const events = lines.map((line) => JSON.parse(line) as AttemptEvent);
+
           // Legacy migration check: Are these events newest-first?
-          if (events.length > 1 && new Date(events[0].at).getTime() > new Date(events[events.length - 1].at).getTime()) {
+          if (
+            events.length > 1 &&
+            new Date(events[0].at).getTime() > new Date(events[events.length - 1].at).getTime()
+          ) {
             events.reverse();
             // Asynchronously rewrite the archive in chronological order
-            const serialized = events.map(e => JSON.stringify(e)).join("\n") + "\n";
+            const serialized = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
             writeFile(eventsPath, serialized, "utf8").catch((err) => {
-              this.logger.warn({ attemptId: attempt.attemptId, error: String(err) }, "failed to migrate legacy archive order");
+              this.logger.warn(
+                { attemptId: attempt.attemptId, error: String(err) },
+                "failed to migrate legacy archive order",
+              );
             });
           }
-          
+
           this.eventsByAttempt.set(attempt.attemptId, events);
         } catch {
           this.eventsByAttempt.set(attempt.attemptId, []);
@@ -168,10 +173,6 @@ export class AttemptStore {
     for (const [identifier, attemptIds] of this.attemptsByIssue) {
       index[identifier] = [...attemptIds];
     }
-    await writeFile(
-      path.join(this.baseDir, "issue-index.json"),
-      JSON.stringify(index, null, 2) + "\n",
-      "utf8",
-    );
+    await writeFile(path.join(this.baseDir, "issue-index.json"), JSON.stringify(index, null, 2) + "\n", "utf8");
   }
 }

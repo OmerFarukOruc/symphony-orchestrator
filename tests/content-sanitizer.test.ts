@@ -53,7 +53,7 @@ describe("sanitizeContent", () => {
     it("redacts Slack tokens", () => {
       expect(sanitizeContent("slack: xoxb-1234567890-1234567890-abcdef")).toBe("slack: [REDACTED]");
     });
-    
+
     it("handles multiline string redaction", () => {
       const output = `stdout:
 Connecting to service...
@@ -61,7 +61,7 @@ Authorization: Bearer secret-token-xyz
 Data loaded.
 key=lin_api_secret123
 Done.`;
-      
+
       const expected = `stdout:
 Connecting to service...
 Authorization: [REDACTED]
@@ -80,13 +80,17 @@ Done.`;
         token: "12345",
         API_KEY: "secret",
       });
-      const expected = JSON.stringify({
-        name: "test",
-        password: "[REDACTED]",
-        token: "[REDACTED]",
-        API_KEY: "[REDACTED]",
-      }, null, 2); // The sanitizer formats the output with 2 spaces
-      
+      const expected = JSON.stringify(
+        {
+          name: "test",
+          password: "[REDACTED]",
+          token: "[REDACTED]",
+          API_KEY: "[REDACTED]",
+        },
+        null,
+        2,
+      ); // The sanitizer formats the output with 2 spaces
+
       expect(sanitizeContent(json)).toBe(expected);
     });
 
@@ -98,46 +102,58 @@ Done.`;
             credential: "password123",
           },
           public: "data",
-        }
+        },
       });
-      const expected = JSON.stringify({
-        query: "test",
-        variables: {
-          auth: {
-            credential: "[REDACTED]",
+      const expected = JSON.stringify(
+        {
+          query: "test",
+          variables: {
+            auth: {
+              credential: "[REDACTED]",
+            },
+            public: "data",
           },
-          public: "data",
-        }
-      }, null, 2);
-      
+        },
+        null,
+        2,
+      );
+
       expect(sanitizeContent(json)).toBe(expected);
     });
 
     it("redacts secret keys in a JSON array", () => {
       const json = JSON.stringify([
         { id: 1, secret: "abc" },
-        { id: 2, secret: "def" }
+        { id: 2, secret: "def" },
       ]);
-      const expected = JSON.stringify([
-        { id: 1, secret: "[REDACTED]" },
-        { id: 2, secret: "[REDACTED]" }
-      ], null, 2);
-      
+      const expected = JSON.stringify(
+        [
+          { id: 1, secret: "[REDACTED]" },
+          { id: 2, secret: "[REDACTED]" },
+        ],
+        null,
+        2,
+      );
+
       expect(sanitizeContent(json)).toBe(expected);
     });
-    
+
     it("redacts non-string secret values as [REDACTED_OBJECT] or [REDACTED]", () => {
       const json = JSON.stringify({
         secretObj: { a: 1 },
         secretNum: 42,
         secretBool: true,
       });
-      const expected = JSON.stringify({
-        secretObj: { a: "[REDACTED]" },
-        secretNum: "[REDACTED]",
-        secretBool: "[REDACTED]",
-      }, null, 2);
-      
+      const expected = JSON.stringify(
+        {
+          secretObj: { a: "[REDACTED]" },
+          secretNum: "[REDACTED]",
+          secretBool: "[REDACTED]",
+        },
+        null,
+        2,
+      );
+
       expect(sanitizeContent(json)).toBe(expected);
     });
   });

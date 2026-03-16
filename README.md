@@ -10,7 +10,7 @@
   <a href="https://github.com/OmerFarukOruc/symphony-orchestrator/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/OmerFarukOruc/symphony-orchestrator?color=green&style=flat-square" /></a>
   <img alt="Node.js" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square&logo=node.js" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-blue?style=flat-square&logo=typescript" />
-  <img alt="Status" src="https://img.shields.io/badge/status-v0.1.0-orange?style=flat-square" />
+  <img alt="Status" src="https://img.shields.io/badge/status-v0.1.1-orange?style=flat-square" />
 </p>
 
 ---
@@ -30,31 +30,35 @@ This project draws direct inspiration from **[OpenAI's Symphony](https://github.
 flowchart TD
     A["🗂️ Linear"] -->|poll| B["🎵 Symphony"]
     B -->|create| C["📁 Workspace"]
-    B -->|launch| D["🤖 Codex"]
-    D -->|JSON-RPC| B
+    B -->|launch| D["🐳 Docker"]
+    D -->|contains| G["🤖 Codex"]
+    G -->|JSON-RPC| B
     B -->|persist| E["💾 Archive"]
     B -->|serve| F["🖥️ Dashboard & API"]
 
     style A fill:#7c3aed,stroke:#6d28d9,color:#fff
     style B fill:#2563eb,stroke:#1d4ed8,color:#fff
     style C fill:#059669,stroke:#047857,color:#fff
-    style D fill:#d97706,stroke:#b45309,color:#fff
+    style D fill:#0ea5e9,stroke:#0284c7,color:#fff
+    style G fill:#d97706,stroke:#b45309,color:#fff
     style E fill:#6366f1,stroke:#4f46e5,color:#fff
     style F fill:#dc2626,stroke:#b91c1c,color:#fff
 ```
 
 ---
 
-## ✨ What Ships in v0.1.0
+## ✨ What Ships in v0.1.1
 
 | Feature | Description |
 |---------|-------------|
 | **Local orchestration** | Single-host polling loop for Linear issues |
+| **Docker sandbox** | Agent runs inside a `codex-universal` container with resource limits, security hardening, and OOM detection |
 | **Workspace isolation** | One directory per issue with lifecycle hooks & cleanup |
 | **Codex integration** | `codex app-server` process management via JSON-RPC |
 | **Retry & stall handling** | Configurable backoff, turn/stall timeouts, read timeouts |
 | **Model overrides** | Per-issue model selection saved by the operator, applied on next run |
 | **Archived attempts** | Durable attempt summaries & event timelines under `.symphony/` |
+| **Run inspection helper** | Repo-root `./symphony-logs` helper for archive-first issue and attempt inspection |
 | **Dashboard & API** | Local web UI at `/` and full JSON API under `/api/v1/*` |
 | **Strict TypeScript** | Full type safety with deterministic Vitest coverage |
 
@@ -75,7 +79,10 @@ npm test
 # 3. Build the project
 npm run build
 
-# 4. Dry-start with the portable example workflow
+# 4. Build the Docker sandbox image
+bash bin/build-sandbox.sh
+
+# 5. Dry-start with the portable example workflow
 node dist/cli.js ./WORKFLOW.example.md
 ```
 
@@ -169,6 +176,7 @@ Symphony persists attempt summaries and per-attempt event streams under the repo
 
 ```
 .symphony/
+├── issue-index.json
 ├── attempts/
 │   └── <attempt-id>.json
 └── events/
@@ -179,6 +187,18 @@ This archive powers:
 - 📊 Issue detail attempt history
 - 📜 Attempt detail API responses
 - 🔄 Dashboard retry/run inspection after restarts
+
+### 🔎 `symphony-logs` Helper
+
+Use the repo-root helper for archive-first inspection without opening raw files manually:
+
+```bash
+./symphony-logs NIN-6 --dir tests/fixtures/symphony-archive-sandbox/.symphony
+./symphony-logs NIN-3 --attempts --dir tests/fixtures/symphony-archive-sandbox/.symphony
+./symphony-logs --attempt 00000000-0000-4000-8000-000000000422 --dir tests/fixtures/symphony-archive-sandbox/.symphony
+```
+
+It returns JSON tailored for issue summaries, retry-history inspection, and attempt-level event review.
 
 ---
 
@@ -233,7 +253,9 @@ level=info msg="worker retry queued" issue_id=abc123 issue_identifier=MT-882 att
 |------|------|
 | `src/cli.ts` | Startup, validation, archive directory selection, shutdown |
 | `src/orchestrator.ts` | Polling, reconciliation, retries, snapshot building, model overrides |
-| `src/agent-runner.ts` | Codex app-server client and dynamic tool handling |
+| `src/agent-runner.ts` | Codex app-server client, Docker container lifecycle, and dynamic tool handling |
+| `src/docker-spawn.ts` | Builds `docker run` argument array from sandbox config |
+| `src/docker-lifecycle.ts` | Container stop, OOM inspection, and removal helpers |
 | `src/http-server.ts` | Dashboard and API routes |
 | `src/attempt-store.ts` | Archived attempt and event persistence |
 | `src/workspace-manager.ts` | Workspace creation, hooks, and cleanup |

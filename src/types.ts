@@ -178,6 +178,37 @@ export interface AgentConfig {
   maxRetryBackoffMs: number;
 }
 
+export interface SandboxSecurityConfig {
+  noNewPrivileges: boolean;
+  dropCapabilities: boolean;
+  gvisor: boolean;
+}
+
+export interface SandboxResourceConfig {
+  memory: string;
+  memoryReservation: string;
+  memorySwap: string;
+  cpus: string;
+  tmpfsSize: string;
+}
+
+export interface SandboxLogConfig {
+  driver: string;
+  maxSize: string;
+  maxFile: number;
+}
+
+export interface SandboxConfig {
+  enabled: boolean;
+  image: string;
+  network: string;
+  security: SandboxSecurityConfig;
+  resources: SandboxResourceConfig;
+  extraMounts: string[];
+  envPassthrough: string[];
+  logs: SandboxLogConfig;
+}
+
 export interface CodexConfig {
   command: string;
   model: string;
@@ -188,6 +219,7 @@ export interface CodexConfig {
   readTimeoutMs: number;
   turnTimeoutMs: number;
   stallTimeoutMs: number;
+  sandbox: SandboxConfig;
 }
 
 export interface ServerConfig {

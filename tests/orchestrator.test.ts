@@ -83,14 +83,16 @@ describe("Orchestrator", () => {
     vi.useFakeTimers();
     const issue = createIssue();
     const agentRunner = {
-      runAttempt: vi.fn(async (): Promise<RunOutcome> => ({
-        kind: "failed",
-        errorCode: "turn_failed",
-        errorMessage: "boom",
-        threadId: null,
-        turnId: null,
-        turnCount: 1,
-      })),
+      runAttempt: vi.fn(
+        async (): Promise<RunOutcome> => ({
+          kind: "failed",
+          errorCode: "turn_failed",
+          errorMessage: "boom",
+          threadId: null,
+          turnId: null,
+          turnCount: 1,
+        }),
+      ),
     } as unknown as AgentRunner;
     const linearClient = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
@@ -205,14 +207,16 @@ describe("Orchestrator", () => {
     vi.useFakeTimers();
     const issue = createIssue();
     const agentRunner = {
-      runAttempt: vi.fn(async (): Promise<RunOutcome> => ({
-        kind: "failed",
-        errorCode: "startup_failed",
-        errorMessage: "codex home is misconfigured",
-        threadId: null,
-        turnId: null,
-        turnCount: 0,
-      })),
+      runAttempt: vi.fn(
+        async (): Promise<RunOutcome> => ({
+          kind: "failed",
+          errorCode: "startup_failed",
+          errorMessage: "codex home is misconfigured",
+          threadId: null,
+          turnId: null,
+          turnCount: 0,
+        }),
+      ),
     } as unknown as AgentRunner;
     const linearClient = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
