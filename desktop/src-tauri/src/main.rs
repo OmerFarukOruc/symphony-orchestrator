@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::Serialize;
+use std::env;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
@@ -203,6 +204,24 @@ fn default_workflow_path(repo_root: &PathBuf) -> String {
         .to_string()
 }
 
+fn configure_linux_graphics_fallbacks() {
+    #[cfg(target_os = "linux")]
+    {
+        if env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+            env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+        if env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none() {
+            env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+        }
+        if env::var_os("LIBGL_ALWAYS_SOFTWARE").is_none() {
+            env::set_var("LIBGL_ALWAYS_SOFTWARE", "1");
+        }
+        if env::var_os("GDK_BACKEND").is_none() && env::var_os("DISPLAY").is_some() {
+            env::set_var("GDK_BACKEND", "x11");
+        }
+    }
+}
+
 #[tauri::command]
 fn desktop_status(state: tauri::State<'_, DesktopState>) -> Result<ServiceStatus, String> {
     let mut runtime = state
@@ -235,6 +254,7 @@ fn desktop_stop_service(state: tauri::State<'_, DesktopState>) -> Result<Service
 }
 
 fn main() {
+    configure_linux_graphics_fallbacks();
     tauri::Builder::default()
         .manage(DesktopState::new())
         .invoke_handler(tauri::generate_handler![
