@@ -182,7 +182,7 @@ Verification:
 
 - Watch `GET /api/v1/state` for the issue to appear under `running`.
 - Check `GET /api/v1/<ISSUE>` or `GET /api/v1/<ISSUE>/attempts` for a recorded attempt.
-- Inspect the workspace under `workspace.root/<ISSUE>`. With the default workflow this resolves to `$TMPDIR/symphony_workspaces/<ISSUE>`.
+- Inspect the workspace under `workspace.root/<ISSUE>`. With the default workflow this resolves to `../symphony-workspaces/<ISSUE>` (a sibling directory of the project repo).
 - After the first successful attempt lands, move the Linear issue to `Done` or another terminal state so Symphony stops scheduling follow-up turns.
 
 The checked-in workflows now also tell the agent to finish with `SYMPHONY_STATUS: DONE` when the issue is complete, or `SYMPHONY_STATUS: BLOCKED` when progress is no longer possible. Symphony uses that signal to stop local continuation turns for one-shot issues.

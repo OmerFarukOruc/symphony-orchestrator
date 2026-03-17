@@ -304,7 +304,7 @@ Steps:
 1. Start Symphony and open the dashboard or poll `GET /api/v1/state`.
 2. Confirm the issue appears under `running`.
 3. Check `GET /api/v1/<ISSUE_IDENTIFIER>` or `GET /api/v1/<ISSUE_IDENTIFIER>/attempts` for a recorded attempt.
-4. Inspect `workspace.root/<ISSUE_IDENTIFIER>/SYMPHONY_SMOKE_RESULT.md`. With the checked-in workflows, the default root is `$TMPDIR/symphony_workspaces`.
+4. Inspect `workspace.root/<ISSUE_IDENTIFIER>/SYMPHONY_SMOKE_RESULT.md`. With the checked-in workflows, the default root is `../symphony-workspaces` (a sibling directory of the project repo).
 5. After the first successful attempt lands, move the issue to `Done` or another terminal state so Symphony stops scheduling continuation turns for the still-active issue.
 
 The checked-in workflows also instruct the agent to finish with `SYMPHONY_STATUS: DONE` on success or `SYMPHONY_STATUS: BLOCKED` when it cannot proceed. Symphony uses that explicit signal to stop local continuation turns for one-shot issues.
@@ -398,6 +398,41 @@ curl -s -X POST http://127.0.0.1:4000/api/v1/MT-42/model \
 
 > [!NOTE]
 > Model changes do **not** interrupt the active worker — they apply on the next run.
+
+---
+
+## 📂 Filesystem Paths Reference
+
+Symphony creates and reads several directories at runtime. This section documents every path so you know what is safe to keep, move, or delete.
+
+### Host-Side Paths
+
+| Path | Source | Purpose | Safe to delete? |
+|------|--------|---------|-----------------|
+| `.symphony/` (next to workflow file) | `src/cli.ts` — default `archiveDir` | Archived attempts, event streams, issue index, config overlay, and encrypted secrets store | ⚠️ You lose all historical attempt data |
+| `../symphony-workspaces/` (sibling of repo) | `src/config.ts` — default `workspace.root` | Per-issue workspace directories (one subdirectory per issue identifier) | ✅ Yes — workspaces are re-created on next dispatch |
+| `~/.codex/` | `src/config.ts` — default `codex.auth.source_home` | Codex CLI auth credentials (`auth.json`) read for `openai_login` mode | ⚠️ You'll need to re-run `codex login` |
+
+> [!NOTE]
+> The archive directory can be overridden with `--log-dir` or the `DATA_DIR` environment variable. The workspace root can be overridden via `workspace.root` in the workflow file. The auth source home can be overridden via `codex.auth.source_home`.
+
+### Inside Docker Containers
+
+These paths exist only inside worker containers and are **not** on the host filesystem:
+
+| Path | Source | Purpose |
+|------|--------|---------|
+| `/tmp/symphony-codex-home` | `src/docker-spawn.ts` — `CONTAINER_CODEX_HOME` | Ephemeral per-attempt `CODEX_HOME` with generated `config.toml` and optional `auth.json` — created at container startup, destroyed with the container |
+| `/home/agent` | `src/docker-spawn.ts` — `CONTAINER_HOME` | Container `HOME` backed by a named Docker volume (`symphony-cache-<runId>`) for npm/pip/git caches |
+
+### Named Docker Volumes
+
+| Volume | Purpose |
+|--------|---------|
+| `symphony-cache-<runId>` | Persistent build caches for each worker (npm, pip, git) — survives container restarts but **not** `docker system prune --volumes` |
+
+> [!TIP]
+> Directories like `~/.symphony-codex` or `~/.symphony-codex-home` are **not** created or used by Symphony. If you find them on your host, they are leftover Codex CLI application data and can safely be deleted.
 
 ---
 

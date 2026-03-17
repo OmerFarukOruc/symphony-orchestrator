@@ -6,7 +6,7 @@ tracker:
 polling:
   interval_ms: 30000
 workspace:
-  root: $TMPDIR/symphony_workspaces
+  root: ../symphony-workspaces
 hooks:
   timeout_ms: 60000
   after_create: |

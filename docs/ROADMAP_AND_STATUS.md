@@ -3,7 +3,7 @@
 > Per-requirement spec conformance audit for Symphony Orchestrator.
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-blue?style=flat-square" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.3.0--pre-blue?style=flat-square" />
   <img alt="Status" src="https://img.shields.io/badge/status-shipped-brightgreen?style=flat-square" />
 </p>
 
@@ -11,7 +11,7 @@
 
 ## 📌 Current Release Baseline
 
-The repository is at **`v0.2.0`** and implements a working local orchestration loop for Linear-driven Codex work. This document tracks every atomic requirement from the Symphony Service Specification against the current codebase.
+The repository is at **`v0.3.0-pre`** (v1.0 plan executed) and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, notifications, planning, a Docker deployment target, and a desktop app shell. This document tracks every atomic requirement from the Symphony Service Specification against the current codebase.
 
 **Legend:** ✅ Implemented · 🟡 Partial / Minor Deviation · ❌ Not Implemented · 🔵 Extension (beyond spec)
 
@@ -60,7 +60,7 @@ The repository is at **`v0.2.0`** and implements a working local orchestration l
 
 #### §5.3.3 `workspace`
 
-- ✅ `workspace.root` defaults to `<system-temp>/symphony_workspaces`
+- ✅ `workspace.root` defaults to `../symphony-workspaces` (sibling of repo)
 - ✅ `~` home expansion
 - ✅ `$VAR` expansion for path values
 
@@ -381,7 +381,7 @@ The repository is at **`v0.2.0`** and implements a working local orchestration l
 - ✅ Candidate fetch failure → logged, dispatch skipped
 - ✅ State refresh failure → logged, keep workers running
 - ✅ Terminal cleanup failure → logged, startup continues
-- 🟡 Error categories not typed as spec-defined codes (e.g., no `linear_unknown_payload` or `linear_missing_end_cursor`)
+- ✅ Error categories typed as spec-defined codes: `LinearClientError` with `linear_transport_error`, `linear_http_error`, `linear_graphql_error`, `linear_unknown_payload`, `linear_missing_end_cursor`
 
 ### §11.5 Tracker Writes Boundary
 
@@ -625,19 +625,17 @@ The repository is at **`v0.2.0`** and implements a working local orchestration l
 | §8 Polling, Scheduling, Reconciliation | 26 | 25 | 0 | 1 |
 | §9 Workspace Management and Safety | 17 | 17 | 0 | 0 |
 | §10 Agent Runner Protocol | 38 | 38 | 0 | 0 |
-| §11 Issue Tracker Integration | 18 | 17 | 1 | 0 |
+| §11 Issue Tracker Integration | 18 | 18 | 0 | 0 |
 | §12 Prompt Construction | 6 | 6 | 0 | 0 |
 | §13 Logging, Status, Observability | 18 | 18 | 0 | 0 |
 | §14 Failure Model and Recovery | 13 | 13 | 0 | 0 |
 | §15 Security | 7 | 7 | 0 | 0 |
 | §17 Test and Validation | 30+ | 30 | 0 | 0 |
-| **Total** | **238+** | **237** | **1** | **1** |
+| **Total** | **238+** | **238** | **0** | **1** |
 
 ---
 
-## 🟡 Minor Deviations from Spec
-
-> All 6 previously identified deviations were resolved and now match the spec.
+## 🟡 Resolved Deviations from Spec
 
 | Deviation | Resolution |
 |-----------|------------|
@@ -647,8 +645,7 @@ The repository is at **`v0.2.0`** and implements a working local orchestration l
 | `agent.max_retry_backoff_ms` | Default changed to `300000` |
 | `tracker.project_slug` | Now **required** for `kind=linear` dispatch validation |
 | `before_remove` logging | Dedicated `before_remove_hook_failed` classification added |
-
-All previously identified 🟡 deviations for the shipped local operator path are now resolved.
+| §11.4 error categories | `LinearClientError` with 5 typed codes: `linear_transport_error`, `linear_http_error`, `linear_graphql_error`, `linear_unknown_payload`, `linear_missing_end_cursor` |
 
 ---
 
@@ -663,6 +660,8 @@ All previously identified 🟡 deviations for the shipped local operator path ar
 ## 🔵 Extensions Beyond Spec
 
 Capabilities shipped that go beyond the spec requirements:
+
+### Core Runtime Extensions (v0.2.0)
 
 | Extension | Description |
 |-----------|-------------|
@@ -680,29 +679,87 @@ Capabilities shipped that go beyond the spec requirements:
 | Error tracking | Sentry-ready error tracker with breadcrumbs and context |
 | Developer tooling | ESLint, Prettier, husky, knip, jscpd, TypeDoc |
 
+### v1.0 Plan Extensions
+
+| Extension | Phase | Description |
+|-----------|:-----:|-------------|
+| Dispatch extraction | 1 | `sortIssuesForDispatch()` and `isBlockedByNonTerminal()` extracted as pure tested functions |
+| CDN-free dashboard | 1 | All CDN dependencies removed; vanilla CSS + system fonts |
+| `GET /metrics` | 1 | Prometheus text endpoint wired to `globalMetrics` |
+| Lifecycle notifications | 2 | Pluggable `NotificationChannel` interface, Slack Block Kit backend, fire-and-forget |
+| Built-in git operations | 3 | `GitManager` (clone/branch/commit/push/PR), `RepoRouter` (identifier prefix + label matching) |
+| GitHub API tool | 3 | Agent-available `github_api` tool (read-only: `add_pr_comment`, `get_pr_status`) |
+| Secrets management | 4 | AES-256-GCM encrypted store, CRUD API, `$SECRET:key` config resolution, audit log |
+| Docker service deployment | 5 | Multi-stage Dockerfile, `PathRegistry` for container→host path translation, `.env.example` |
+| Container workflow | 5 | `WORKFLOW.docker.md` with container-specific paths, `DATA_DIR` env support |
+| Persistent config overlay | 6 | Additive YAML overlay on top of WORKFLOW.md, API-managed, live merge on change |
+| Kanban state machine | 7 | Configurable stages and transitions, dynamic dashboard columns |
+| CI extensions | 8 | `integration` + `docker-build` jobs added to `ci.yml`; Docker lifecycle + E2E smoke tests |
+| Desktop app | 9 | Tauri v2 desktop shell with Rust backend for service lifecycle management |
+| Issue planning skill | 10 | Goal→issues decomposition via `PlanningSkill`, planning API, Linear issue creation |
+
 ---
 
-## 🔲 Major Remaining Roadmap Gaps
+## 🔲 v2.0 Roadmap — Advanced AI Autonomy
 
 > [!IMPORTANT]
-> The largest remaining gaps are now about scale-out and default-on operator hardening rather than core local orchestration. Git automation, secrets APIs, the metrics endpoint, planning execution, and the desktop shell are all shipped in the current tree.
+> v1.0 is fully shipped. v2.0 focuses on scale-out, CI/CD integration, work verification, and full lights-out operation.
 
-### 🌐 Infrastructure Scaling
+### Phase 1 — Symphony ↔ Sentinel Integration
 
-| Feature | Spec Section |
-|---------|-------------|
-| SSH worker host distribution | Appendix A |
-| Persisted retry queue across restarts | §18.2 |
-| Pluggable tracker adapters beyond Linear | §18.2 |
-| First-class tracker write APIs | §18.2 |
+| Item | Description |
+|------|-------------|
+| CI check-run polling | Poll GitHub check-run status on the integration branch PR |
+| Review comment ingestion | Parse Sentinel/reviewer comments and feed back to agent |
+| Re-dispatch on REQUEST_CHANGES | Auto-retry issue when PR review requests changes |
+| Auto-merge integration PR | Merge `targetBranch → main` when all checks pass and review is approved |
+| Webhook contract | GitHub webhook listener for real-time CI/review events |
+| Merge conflict re-dispatch | Extend Phase 3 conflict handling with reviewer feedback context |
 
-### 🛡️ Default-On Operational Hardening
+### Phase 2 — Work Verification & Drift Prevention
 
-| Feature | Current State | Target |
-|---------|--------------|--------|
-| Request tracing | Helper exists, not mounted by default | Default `X-Request-ID` middleware in the HTTP server |
-| Error tracking | Helper exists, not started by default | Optional CLI startup wiring behind env/config |
-| Desktop Rust validation | Wrapper shipped, Node-side assets verified | Routine `cargo check` / packaged desktop validation in CI or release flow |
+| Item | Description |
+|------|-------------|
+| Pre-merge verification | Automated test/lint runs before marking issue as done |
+| Drift detection | Detect when workspace diverges from upstream branch |
+| Change validation | Verify agent output matches issue acceptance criteria |
+| Rollback triggers | Auto-revert or re-dispatch on verification failure |
+
+### Phase 3 — Observability as the Feedback Loop
+
+| Item | Description |
+|------|-------------|
+| Structured event pipeline | Centralized event bus for all orchestrator/agent events |
+| Alerting rules | Configurable alert thresholds (cost, failure rate, stall rate) |
+| Cost tracking dashboards | Per-issue, per-model token cost breakdowns |
+| Trend analysis | Historical performance metrics and regression detection |
+
+### Phase 4 — Multi-Host Orchestration
+
+| Item | Description |
+|------|-------------|
+| SSH worker host pools | Distribute workers across remote hosts via SSH |
+| Per-host concurrency limits | §8.3 / Appendix A spec compliance |
+| Durable dispatch state | Persist retry queue and dispatch state across restarts |
+| Host health monitoring | Track host availability and auto-failover |
+
+### Phase 5 — Pluggable Tracker Adapters
+
+| Item | Description |
+|------|-------------|
+| GitHub Issues adapter | Alternative to Linear for issue tracking |
+| Jira adapter | Enterprise issue tracker support |
+| Tracker write APIs | First-class orchestrator-driven state transitions |
+| Adapter plugin interface | Third-party tracker integration surface |
+
+### Phase 6 — Lights-Out Codebase (Long-Term Vision)
+
+| Item | Description |
+|------|-------------|
+| Self-healing pipelines | Auto-diagnose and fix CI failures |
+| Autonomous issue decomposition | Agent-to-agent delegation for complex issues |
+| Continuous codebase improvement | Proactive refactoring and tech debt reduction |
+| Multi-repo orchestration | Coordinate changes across repository boundaries |
 
 ---
 
@@ -714,7 +771,7 @@ Capabilities shipped that go beyond the spec requirements:
 | 📊 Richer reporting | More operator-facing metrics, traces, and webhook/reporting presets |
 | 🖥️ Desktop packaging | Repeatable Rust/Tauri validation and packaged desktop release artifacts |
 | 🔁 Tracker write-back depth | Dependency links, richer label/state mapping, and follow-up planning actions |
-| 🗂️ Multi-host orchestration | SSH host pools and durable retry/dispatch state for larger deployments |
+| 🛡️ Default-on hardening | Wire request tracing and error tracking as default-on in the HTTP server |
 
 ---
 

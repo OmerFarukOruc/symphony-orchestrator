@@ -18,9 +18,9 @@ tracker:
 polling:
   interval_ms: 30000
 
-# Use a temp-root workspace for local proving runs so cleanup stays low-risk.
+# Workspaces live as sibling directories of the project repo.
 workspace:
-  root: $TMPDIR/symphony_workspaces
+  root: ../symphony-workspaces
 
 # Every hook runs with the issue workspace as cwd.
 hooks:

@@ -151,7 +151,7 @@ describe("config store", () => {
     await store.stop();
   });
 
-  it("defaults workspace root to the system temp directory and falls back hook timeout when configured non-positive", async () => {
+  it("defaults workspace root to ../symphony-workspaces and falls back hook timeout when configured non-positive", async () => {
     const dir = await createTempDir();
     const workflowPath = path.join(dir, "WORKFLOW.md");
     process.env.LINEAR_API_KEY = "linear-token";
@@ -165,9 +165,7 @@ describe("config store", () => {
     const store = new ConfigStore(workflowPath, createLogger());
     await store.start();
 
-    expect(store.getConfig().workspace.root).toBe(
-      path.resolve(path.join(process.env.TMPDIR ?? baseTmpDir, "symphony_workspaces")),
-    );
+    expect(store.getConfig().workspace.root).toBe(path.resolve("../symphony-workspaces"));
     expect(store.getConfig().workspace.hooks.timeoutMs).toBe(60000);
     expect(store.getConfig().tracker.endpoint).toBe("https://api.linear.app/graphql");
     expect(store.getConfig().tracker.activeStates).toEqual(["Todo", "In Progress"]);

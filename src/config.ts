@@ -1,5 +1,4 @@
 import { existsSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
 import chokidar, { type FSWatcher } from "chokidar";
@@ -322,10 +321,7 @@ export function deriveServiceConfig(
   const stateMachine = asRecord(root.state_machine);
   const server = asRecord(root.server);
 
-  const workspaceRoot = resolvePathConfigString(
-    asString(workspace.root, path.join(os.tmpdir(), "symphony_workspaces")),
-    secretResolver,
-  );
+  const workspaceRoot = resolvePathConfigString(asString(workspace.root, "../symphony-workspaces"), secretResolver);
   const turnSandboxPolicyRecord = asRecord(codex.turn_sandbox_policy);
   const rawHookTimeoutMs = asNumber(hooks.timeout_ms, 60000);
   const hookTimeoutMs = rawHookTimeoutMs > 0 ? rawHookTimeoutMs : 60000;
@@ -348,7 +344,7 @@ export function deriveServiceConfig(
       kind: trackerKind,
       apiKey: resolveEnvBackedString(tracker.api_key, secretResolver),
       endpoint: resolveConfigString(tracker.endpoint, secretResolver) || "https://api.linear.app/graphql",
-      projectSlug: asString(tracker.project_slug) || null,
+      projectSlug: resolveConfigString(tracker.project_slug, secretResolver) || null,
       activeStates: trackerActiveStates,
       terminalStates: trackerTerminalStates,
     },
