@@ -138,8 +138,6 @@ export LINEAR_PROJECT_SLUG="symphony-test-e1e26e4576d1"
 
 ---
 
-## 📦 Install and Validate
-
 ## 🖥️ Desktop Shell
 
 The repository also includes a minimal Tauri desktop shell under `desktop/`. It starts and stops the same built Symphony service you would launch from the terminal and embeds the existing dashboard in an iframe.
@@ -156,6 +154,10 @@ Current caveats:
 - the desktop host expects `node` on `PATH`
 - it launches `dist/cli.js` from the repository root
 - Rust/Tauri validation requires a working local `cargo` toolchain
+
+---
+
+## 📦 Install and Validate
 
 ```bash
 # Install dependencies
@@ -403,11 +405,22 @@ curl -s -X POST http://127.0.0.1:4000/api/v1/MT-42/model \
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/v1/state` | Snapshot — queued, running, retrying, completed + token totals |
+| `GET` | `/metrics` | Prometheus-format service metrics |
+| `GET` | `/api/v1/state` | Snapshot — queued, running, retrying, completed, workflow columns, and token totals |
 | `POST` | `/api/v1/refresh` | Trigger immediate reconciliation pass |
 | `GET` | `/api/v1/:issue_identifier` | Issue detail, recent events, archived attempts |
 | `GET` | `/api/v1/:issue_identifier/attempts` | Archived attempts + current live attempt id |
 | `GET` | `/api/v1/attempts/:attempt_id` | Archived per-attempt event timeline |
+| `POST` | `/api/v1/:issue_identifier/model` | Save per-issue model override |
+| `GET` | `/api/v1/config` | Effective merged operator config |
+| `GET` | `/api/v1/config/overlay` | Persistent overlay values only |
+| `PUT` | `/api/v1/config/overlay` | Update overlay values |
+| `DELETE` | `/api/v1/config/overlay/:path` | Remove one overlay path |
+| `GET` | `/api/v1/secrets` | List configured secret keys |
+| `POST` | `/api/v1/secrets/:key` | Store one secret |
+| `DELETE` | `/api/v1/secrets/:key` | Delete one secret |
+| `POST` | `/api/v1/plan` | Generate a structured implementation plan |
+| `POST` | `/api/v1/plan/execute` | Create Linear issues from a generated plan |
 
 ---
 

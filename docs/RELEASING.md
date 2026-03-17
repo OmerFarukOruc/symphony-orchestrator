@@ -10,7 +10,7 @@ Confirm each of the following before creating a release tag:
 
 - [ ] `package.json` version matches the intended release
 - [ ] `README.md` describes the current shipped behavior
-- [ ] `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, and `docs/TRUST_AND_AUTH.md` still match the implementation
+- [ ] `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/TRUST_AND_AUTH.md`, `docs/OBSERVABILITY.md`, and `docs/RUNBOOKS.md` still match the implementation
 - [ ] Workflow examples are safe to publish and contain **no secrets**
 - [ ] `EXECPLAN.md` does not contain stale claims that contradict the codebase
 
@@ -27,6 +27,9 @@ npm test
 # Build
 npm run build
 
+# Desktop wrapper asset sanity
+node --check desktop/web/app.js
+
 # Dry-start (no credentials needed)
 node dist/cli.js ./WORKFLOW.example.md
 ```
@@ -36,6 +39,12 @@ If you have real credentials available:
 ```bash
 # Live integration (optional)
 LINEAR_API_KEY=... npm run test:integration
+```
+
+If you have a Rust/Tauri toolchain available:
+
+```bash
+cargo check --manifest-path desktop/src-tauri/Cargo.toml
 ```
 
 ---

@@ -115,6 +115,9 @@ That means the service container must be able to read the mounted source home di
 
 The local loopback HTTP surface now includes operator-only configuration and secret management routes:
 
+- `GET /metrics`
+- `POST /api/v1/plan`
+- `POST /api/v1/plan/execute`
 - `GET /api/v1/config`
 - `GET /api/v1/config/overlay`
 - `PUT /api/v1/config/overlay`
@@ -125,6 +128,8 @@ The local loopback HTTP surface now includes operator-only configuration and sec
 - `DELETE /api/v1/secrets/:key`
 
 These routes are intentionally loopback-local like the rest of the dashboard/API surface. They are suitable for trusted operator environments, not public exposure.
+
+The optional desktop shell under `desktop/` stays inside the same trust boundary. It is a local wrapper that starts and stops the same loopback-bound service and embeds the existing dashboard; it does not add a separate remote control plane.
 
 ---
 

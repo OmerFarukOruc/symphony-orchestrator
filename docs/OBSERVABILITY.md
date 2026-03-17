@@ -9,6 +9,7 @@
 The currently shipped operator surface includes:
 
 - `GET /api/v1/state` with `codex_totals`, `rate_limits`, and `recent_events`
+- `workflow_columns` in the state snapshot for dashboard-stage rendering
 - `GET /metrics` with Prometheus-format service metrics
 - Archived attempt and event history under `.symphony/`
 - Structured logger support used throughout the runtime
@@ -118,7 +119,8 @@ groups:
 ## Reality Check
 
 - [x] Runtime snapshot includes token totals, rate limits, and recent events
+- [x] Runtime snapshot includes workflow columns for configurable dashboard stages
 - [x] Archived attempts preserve event history for postmortems
-- [ ] `/metrics` is exposed by the default server
+- [x] `/metrics` is exposed by the default server
 - [ ] `X-Request-ID` tracing is enabled in the default server
 - [ ] `SENTRY_DSN` is wired into the default CLI startup path
