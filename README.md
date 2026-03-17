@@ -347,8 +347,10 @@ level=info msg="worker retry queued" issue_id=abc123 issue_identifier=MT-882 att
 | Document | Purpose |
 |----------|---------|
 | [`docs/OPERATOR_GUIDE.md`](docs/OPERATOR_GUIDE.md) | Day-to-day setup and operations guide |
+| [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) | Metrics, traces, logging, and alerting notes |
 | [`docs/ROADMAP_AND_STATUS.md`](docs/ROADMAP_AND_STATUS.md) | Shipped scope, current status, and remaining gaps |
 | [`docs/RELEASING.md`](docs/RELEASING.md) | Release preparation checklist |
+| [`docs/RUNBOOKS.md`](docs/RUNBOOKS.md) | Troubleshooting playbooks for common operator failures |
 | [`docs/TRUST_AND_AUTH.md`](docs/TRUST_AND_AUTH.md) | Trust boundary and auth model |
 | [`WORKFLOW.example.md`](WORKFLOW.example.md) | Portable example workflow |
 | [`WORKFLOW.md`](WORKFLOW.md) | Checked-in live smoke workflow |
