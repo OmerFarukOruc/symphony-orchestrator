@@ -144,6 +144,12 @@ Then open the dashboard at **[http://127.0.0.1:4000/](http://127.0.0.1:4000/)** 
 curl -s http://127.0.0.1:4000/api/v1/state
 ```
 
+### 🪟 Desktop Shell
+
+The repository also includes a lightweight Tauri desktop wrapper under `desktop/` that can start and stop the local Symphony service and embed the existing dashboard in a desktop iframe shell.
+
+Build the TypeScript service first with `npm run build`, then run the desktop app from `desktop/src-tauri` with your normal Tauri workflow.
+
 ### ✅ First Live Smoke Issue
 
 For the first end-to-end proving run, use an issue that does not depend on repository files being present in the workspace.

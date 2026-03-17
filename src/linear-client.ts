@@ -572,12 +572,14 @@ export class LinearClient {
       const project = nodes[0];
       const teams = asArray(asRecord(asRecord(project).teams).nodes).map((team) => asRecord(team));
       const firstTeam = teams[0];
-      projectId = asString(project?.id);
-      teamId = asString(firstTeam?.id);
+      const resolvedProjectId = asString(project?.id);
+      const resolvedTeamId = asString(firstTeam?.id);
 
-      if (!projectId || !teamId) {
+      if (!resolvedProjectId || !resolvedTeamId) {
         throw new Error(`unable to resolve Linear project for slug ${config.tracker.projectSlug}`);
       }
+      projectId = resolvedProjectId;
+      teamId = resolvedTeamId;
     } else {
       projectId = null;
       const payload = await this.runGraphQL(buildTeamLookupQuery());
@@ -587,10 +589,11 @@ export class LinearClient {
           `unable to resolve a unique Linear team without tracker.project_slug; found ${nodes.length} teams`,
         );
       }
-      teamId = asString(nodes[0]?.id);
-      if (!teamId) {
+      const resolvedTeamId = asString(nodes[0]?.id);
+      if (!resolvedTeamId) {
         throw new Error("unable to resolve Linear team id");
       }
+      teamId = resolvedTeamId;
     }
 
     const labelNames = [...new Set(issues.flatMap((issue) => issue.labels.map((label) => label.trim().toLowerCase())))];

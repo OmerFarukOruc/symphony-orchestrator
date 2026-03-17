@@ -9,14 +9,15 @@
 The currently shipped operator surface includes:
 
 - `GET /api/v1/state` with `codex_totals`, `rate_limits`, and `recent_events`
+- `GET /metrics` with Prometheus-format service metrics
 - Archived attempt and event history under `.symphony/`
 - Structured logger support used throughout the runtime
 
-The repository also contains observability helper modules for metrics, request tracing, and error tracking, but they are **not yet wired into the default HTTP server or CLI startup path**.
+The repository also contains helper modules for request tracing and error tracking, but those two are still optional and are **not** wired into the default HTTP server or CLI startup path.
 
 ## Metrics Helper
 
-`src/metrics.ts` includes a Prometheus-style collector, but the default server does **not** currently expose `GET /metrics`.
+`src/metrics.ts` is now exposed by the default server at `GET /metrics`.
 
 ### Available Metrics
 
@@ -27,7 +28,7 @@ The repository also contains observability helper modules for metrics, request t
 | `symphony_orchestrator_polls_total` | Counter | Orchestrator poll cycles by status |
 | `symphony_agent_runs_total` | Counter | Agent run completions by outcome |
 
-If you wire the collector into a custom server build later, these are the metrics it is designed to emit.
+These are the metrics the default server now emits.
 
 ---
 
