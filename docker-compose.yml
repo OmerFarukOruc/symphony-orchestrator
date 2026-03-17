@@ -1,0 +1,34 @@
+services:
+  symphony:
+    build: .
+    ports:
+      - "4000:4000"
+    volumes:
+      - ${SYMPHONY_HOST_WORKSPACE_ROOT}:/data/workspaces
+      - ${SYMPHONY_HOST_ARCHIVE_DIR}:/data/archives
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODEX_AUTH_SOURCE_HOME}:/codex-auth:ro
+    environment:
+      LINEAR_API_KEY: ${LINEAR_API_KEY}
+      LINEAR_PROJECT_SLUG: ${LINEAR_PROJECT_SLUG}
+      MASTER_KEY: ${MASTER_KEY}
+      DATA_DIR: /data
+      SYMPHONY_HOST_WORKSPACE_ROOT: ${SYMPHONY_HOST_WORKSPACE_ROOT}
+      SYMPHONY_HOST_ARCHIVE_DIR: ${SYMPHONY_HOST_ARCHIVE_DIR}
+      SYMPHONY_CONTAINER_WORKSPACE_ROOT: /data/workspaces
+      SYMPHONY_CONTAINER_ARCHIVE_DIR: /data/archives
+      CODEX_AUTH_SOURCE_HOME: ${CODEX_AUTH_SOURCE_HOME}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/api/v1/state').then(r=>{if(!r.ok)throw new Error(String(r.status))})",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3

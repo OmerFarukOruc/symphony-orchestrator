@@ -983,4 +983,93 @@ describe("Orchestrator", () => {
 
     await orchestrator.stop();
   });
+
+  it("runs git post-processing only when the worker reports SYMPHONY_STATUS: DONE", async () => {
+    vi.useFakeTimers();
+    const issue = createIssue();
+    const agentRunner = {
+      runAttempt: vi.fn(
+        async ({
+          onEvent,
+        }: {
+          onEvent: (event: {
+            at: string;
+            issueId: string;
+            issueIdentifier: string;
+            sessionId: string | null;
+            event: string;
+            message: string;
+            content?: string | null;
+          }) => void;
+        }): Promise<RunOutcome> => {
+          onEvent({
+            at: "2026-03-17T00:00:00Z",
+            issueId: issue.id,
+            issueIdentifier: issue.identifier,
+            sessionId: "thread-1",
+            event: "item_completed",
+            message: "agentMessage completed",
+            content: "work finished\nSYMPHONY_STATUS: DONE",
+          });
+          return {
+            kind: "normal",
+            errorCode: null,
+            errorMessage: null,
+            threadId: "thread-1",
+            turnId: "turn-1",
+            turnCount: 1,
+          };
+        },
+      ),
+    } as unknown as AgentRunner;
+    const linearClient = {
+      fetchCandidateIssues: vi.fn(async () => [issue]),
+      fetchIssueStatesByIds: vi.fn(async () => [issue]),
+      fetchIssuesByStates: vi.fn(async () => []),
+    } as unknown as LinearClient;
+    const workspaceManager = {
+      ensureWorkspace: vi.fn(async () => ({
+        path: "/tmp/symphony/MT-42",
+        workspaceKey: "MT-42",
+        createdNow: true,
+      })),
+      removeWorkspace: vi.fn(async () => undefined),
+    } as unknown as WorkspaceManager;
+    const gitManager = {
+      cloneInto: vi.fn(async () => ({ branchName: "symphony/mt-42" })),
+      commitAndPush: vi.fn(async () => ({ committed: true, pushed: true, branchName: "symphony/mt-42" })),
+      createPullRequest: vi.fn(async () => ({ html_url: "https://github.com/acme/repo/pull/1" })),
+    };
+    const repoRouter = {
+      matchIssue: vi.fn(() => ({
+        repoUrl: "https://github.com/acme/repo.git",
+        defaultBranch: "main",
+        githubOwner: "acme",
+        githubRepo: "repo",
+        githubTokenEnv: "GITHUB_TOKEN",
+        matchedBy: "identifier_prefix",
+      })),
+    };
+
+    const orchestrator = new Orchestrator({
+      attemptStore: createAttemptStore(),
+      configStore: createConfigStore(createConfig()),
+      linearClient,
+      workspaceManager,
+      agentRunner,
+      repoRouter,
+      gitManager,
+      logger: createLogger(),
+    });
+
+    await orchestrator.start();
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+
+    expect(gitManager.cloneInto).toHaveBeenCalledTimes(1);
+    expect(gitManager.commitAndPush).toHaveBeenCalledTimes(1);
+    expect(gitManager.createPullRequest).toHaveBeenCalledTimes(1);
+
+    await orchestrator.stop();
+  });
 });

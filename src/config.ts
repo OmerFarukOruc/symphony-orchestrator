@@ -4,11 +4,17 @@ import path from "node:path";
 
 import chokidar, { type FSWatcher } from "chokidar";
 
+import type { ConfigOverlayStore } from "./config-overlay.js";
+import type { SecretsStore } from "./secrets-store.js";
 import type {
   CodexAuthMode,
   CodexProviderConfig,
+  NotificationConfig,
+  RepoConfig,
   ReasoningEffort,
   ServiceConfig,
+  StateMachineConfig,
+  StateStageConfig,
   SymphonyLogger,
   ValidationError,
   WorkflowDefinition,
@@ -60,9 +66,48 @@ function asStringArray(value: unknown, fallback: string[]): string[] {
   return values.length > 0 ? values : fallback;
 }
 
-function resolveEnvBackedString(value: unknown): string {
+function asRecordArray(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .filter(
+      (item): item is Record<string, unknown> => typeof item === "object" && item !== null && !Array.isArray(item),
+    )
+    .map((item) => item);
+}
+
+function deepMerge(base: unknown, overlay: unknown): unknown {
+  if (Array.isArray(overlay)) {
+    return [...overlay];
+  }
+  if (typeof overlay !== "object" || overlay === null) {
+    return overlay;
+  }
+  const baseRecord = asRecord(base);
+  const overlayRecord = asRecord(overlay);
+  const merged: Record<string, unknown> = { ...baseRecord };
+  for (const [key, value] of Object.entries(overlayRecord)) {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      merged[key] = deepMerge(baseRecord[key], value);
+      continue;
+    }
+    merged[key] = value;
+  }
+  return merged;
+}
+
+function cloneConfigMap(value: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+}
+
+function resolveEnvBackedString(value: unknown, secretResolver?: (name: string) => string | undefined): string {
   if (typeof value !== "string") {
     return "";
+  }
+  const secretMatch = value.match(/^\$SECRET:([A-Za-z0-9._-]+)$/);
+  if (secretMatch) {
+    return secretResolver?.(secretMatch[1]) ?? "";
   }
   if (!value.startsWith("$")) {
     return value;
@@ -92,19 +137,19 @@ function resolveTmpDir(value: string): string {
   return value.replace("$TMPDIR", process.env.TMPDIR ?? "/tmp");
 }
 
-function resolveConfigString(value: unknown): string {
-  return resolveTmpDir(expandHomePath(resolveEnvBackedString(value)));
+function resolveConfigString(value: unknown, secretResolver?: (name: string) => string | undefined): string {
+  return resolveTmpDir(expandHomePath(resolveEnvBackedString(value, secretResolver)));
 }
 
 function expandPathEnvVars(value: string): string {
   return value.replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_match, name: string) => process.env[name] ?? "");
 }
 
-function resolvePathConfigString(value: unknown): string {
+function resolvePathConfigString(value: unknown, secretResolver?: (name: string) => string | undefined): string {
   if (typeof value !== "string") {
     return "";
   }
-  return expandPathEnvVars(resolveTmpDir(expandHomePath(value)));
+  return expandPathEnvVars(resolveTmpDir(expandHomePath(resolveEnvBackedString(value, secretResolver))));
 }
 
 function asCodexAuthMode(value: unknown, fallback: CodexAuthMode): CodexAuthMode {
@@ -129,6 +174,79 @@ function normalizeCodexProvider(value: unknown): CodexProviderConfig | null {
     envHttpHeaders: asStringMap(provider.env_http_headers),
     queryParams: asStringMap(provider.query_params),
   };
+}
+
+function normalizeNotifications(
+  value: unknown,
+  secretResolver?: (name: string) => string | undefined,
+): NotificationConfig {
+  const root = asRecord(value);
+  const slack = asRecord(root.slack);
+  const webhookUrl = resolveConfigString(slack.webhook_url, secretResolver);
+  if (!webhookUrl) {
+    return { slack: null };
+  }
+  const verbosity = asString(slack.verbosity, "critical");
+  return {
+    slack: {
+      webhookUrl,
+      verbosity: verbosity === "off" || verbosity === "critical" || verbosity === "verbose" ? verbosity : "critical",
+    },
+  };
+}
+
+function normalizeGitHub(
+  value: unknown,
+  secretResolver?: (name: string) => string | undefined,
+): ServiceConfig["github"] {
+  const root = asRecord(value);
+  const token = resolveConfigString(root.token, secretResolver);
+  if (!token) {
+    return null;
+  }
+  return {
+    token,
+    apiBaseUrl: resolveConfigString(root.api_base_url, secretResolver) || "https://api.github.com",
+  };
+}
+
+function normalizeRepos(value: unknown): RepoConfig[] {
+  return asRecordArray(value)
+    .map((repo) => ({
+      repoUrl: asString(repo.repo_url),
+      defaultBranch: asString(repo.default_branch, "main"),
+      identifierPrefix: asString(repo.identifier_prefix) || null,
+      label: asString(repo.label) || null,
+      githubOwner: asString(repo.github_owner) || null,
+      githubRepo: asString(repo.github_repo) || null,
+      githubTokenEnv: asString(repo.github_token_env) || null,
+    }))
+    .filter((repo) => Boolean(repo.repoUrl && (repo.identifierPrefix || repo.label)));
+}
+
+function normalizeStateMachine(value: unknown): StateMachineConfig | null {
+  const root = asRecord(value);
+  const stages = asRecordArray(root.stages)
+    .map((stage): StateStageConfig | null => {
+      const name = asString(stage.name);
+      const kind = asString(stage.kind);
+      if (!name || !["backlog", "todo", "active", "terminal"].includes(kind)) {
+        return null;
+      }
+      return {
+        name,
+        kind: kind as StateStageConfig["kind"],
+      };
+    })
+    .filter((stage): stage is StateStageConfig => stage !== null);
+  if (stages.length === 0) {
+    return null;
+  }
+
+  const transitions = Object.fromEntries(
+    Object.entries(asRecord(root.transitions)).map(([from, to]) => [from, asStringArray(to, [])]),
+  );
+  return { stages, transitions };
 }
 
 function defaultApprovalPolicy(): Record<string, unknown> {
@@ -180,18 +298,33 @@ function asReasoningEffort(value: unknown, fallback: ReasoningEffort | null): Re
   return fallback;
 }
 
-export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig {
-  const root = asRecord(workflow.config);
+export function deriveServiceConfig(
+  workflow: WorkflowDefinition,
+  options?: {
+    overlay?: Record<string, unknown>;
+    secretResolver?: (name: string) => string | undefined;
+  },
+): ServiceConfig {
+  const mergedConfig = options?.overlay
+    ? (deepMerge(workflow.config, options.overlay) as Record<string, unknown>)
+    : workflow.config;
+  const secretResolver = options?.secretResolver;
+  const root = asRecord(mergedConfig);
   const tracker = asRecord(root.tracker);
+  const notifications = asRecord(root.notifications);
+  const github = asRecord(root.github);
+  const repos = root.repos;
   const polling = asRecord(root.polling);
   const workspace = asRecord(root.workspace);
   const hooks = asRecord(root.hooks);
   const agent = asRecord(root.agent);
   const codex = asRecord(root.codex);
+  const stateMachine = asRecord(root.state_machine);
   const server = asRecord(root.server);
 
   const workspaceRoot = resolvePathConfigString(
     asString(workspace.root, path.join(os.tmpdir(), "symphony_workspaces")),
+    secretResolver,
   );
   const turnSandboxPolicyRecord = asRecord(codex.turn_sandbox_policy);
   const rawHookTimeoutMs = asNumber(hooks.timeout_ms, 60000);
@@ -213,12 +346,15 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
   return {
     tracker: {
       kind: trackerKind,
-      apiKey: resolveEnvBackedString(tracker.api_key),
-      endpoint: resolveConfigString(tracker.endpoint) || "https://api.linear.app/graphql",
-      projectSlug: resolveEnvBackedString(tracker.project_slug) || null,
+      apiKey: resolveEnvBackedString(tracker.api_key, secretResolver),
+      endpoint: resolveConfigString(tracker.endpoint, secretResolver) || "https://api.linear.app/graphql",
+      projectSlug: asString(tracker.project_slug) || null,
       activeStates: trackerActiveStates,
       terminalStates: trackerTerminalStates,
     },
+    notifications: normalizeNotifications(notifications, secretResolver),
+    github: normalizeGitHub(github, secretResolver),
+    repos: normalizeRepos(repos),
     polling: {
       intervalMs: asNumber(polling.interval_ms, 30000),
     },
@@ -255,7 +391,7 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
       stallTimeoutMs,
       auth: {
         mode: asCodexAuthMode(auth.mode, "api_key"),
-        sourceHome: resolveConfigString(asString(auth.source_home, "~/.codex")),
+        sourceHome: resolveConfigString(asString(auth.source_home, "~/.codex"), secretResolver),
       },
       provider: normalizeCodexProvider(codex.provider),
       sandbox: {
@@ -286,6 +422,7 @@ export function deriveServiceConfig(workflow: WorkflowDefinition): ServiceConfig
         },
       },
     },
+    stateMachine: normalizeStateMachine(stateMachine),
     server: {
       port: asNumber(server.port, 4000),
     },
@@ -296,15 +433,30 @@ export class ConfigStore {
   private watcher: FSWatcher | null = null;
   private workflow: WorkflowDefinition | null = null;
   private config: ServiceConfig | null = null;
+  private mergedConfigMap: Record<string, unknown> = {};
   private listeners = new Set<() => void>();
+  private overlayUnsubscribe: (() => void) | null = null;
+  private secretsUnsubscribe: (() => void) | null = null;
 
   constructor(
     private readonly workflowPath: string,
     private readonly logger: SymphonyLogger,
+    private readonly deps?: {
+      overlayStore?: Pick<ConfigOverlayStore, "toMap" | "subscribe">;
+      secretsStore?: Pick<SecretsStore, "get" | "subscribe">;
+    },
   ) {}
 
   async start(): Promise<void> {
     await this.refresh("startup");
+    this.overlayUnsubscribe =
+      this.deps?.overlayStore?.subscribe(() => {
+        void this.refresh("overlay:change");
+      }) ?? null;
+    this.secretsUnsubscribe =
+      this.deps?.secretsStore?.subscribe(() => {
+        void this.refresh("secrets:change");
+      }) ?? null;
     this.watcher = chokidar.watch(this.workflowPath, {
       ignoreInitial: true,
       awaitWriteFinish: {
@@ -321,14 +473,24 @@ export class ConfigStore {
       await this.watcher.close();
       this.watcher = null;
     }
+    this.overlayUnsubscribe?.();
+    this.overlayUnsubscribe = null;
+    this.secretsUnsubscribe?.();
+    this.secretsUnsubscribe = null;
   }
 
   async refresh(reason: string): Promise<void> {
     try {
       const workflow = await loadWorkflowDefinition(this.workflowPath);
-      const config = deriveServiceConfig(workflow);
+      const overlay = cloneConfigMap(this.deps?.overlayStore?.toMap() ?? {});
+      const mergedConfigMap = deepMerge(workflow.config, overlay) as Record<string, unknown>;
+      const config = deriveServiceConfig(workflow, {
+        overlay,
+        secretResolver: (name) => this.deps?.secretsStore?.get(name) ?? undefined,
+      });
       this.workflow = workflow;
       this.config = config;
+      this.mergedConfigMap = mergedConfigMap;
       this.logger.info({ workflowPath: this.workflowPath, reason }, "workflow loaded");
       for (const listener of this.listeners) {
         listener();
@@ -360,6 +522,10 @@ export class ConfigStore {
       throw new Error("config store has not been started");
     }
     return this.config;
+  }
+
+  getMergedConfigMap(): Record<string, unknown> {
+    return cloneConfigMap(this.mergedConfigMap);
   }
 
   validateDispatch(): ValidationError | null {

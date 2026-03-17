@@ -1,4 +1,6 @@
 import { asRecord, asString } from "../agent-runner-helpers.js";
+import type { GithubApiToolClient } from "../github-api-tool.js";
+import { handleGithubApiToolCall } from "../github-api-tool.js";
 import type { LinearClient } from "../linear-client.js";
 import { handleLinearGraphqlToolCall } from "../linear-graphql-tool.js";
 import type { JsonRpcRequest } from "../codex-protocol.js";
@@ -11,6 +13,7 @@ export interface CodexRequestResult {
 export async function handleCodexRequest(
   request: JsonRpcRequest,
   linearClient: LinearClient,
+  githubToolClient?: GithubApiToolClient,
 ): Promise<CodexRequestResult> {
   switch (request.method) {
     case "item/commandExecution/requestApproval":
@@ -37,6 +40,29 @@ export async function handleCodexRequest(
       if (toolName === "linear_graphql") {
         const response = await handleLinearGraphqlToolCall(
           linearClient,
+          params.arguments ?? params.args ?? params.input ?? null,
+        );
+        return { response, fatalFailure: null };
+      }
+      if (toolName === "github_api") {
+        if (!githubToolClient) {
+          return {
+            response: {
+              success: false,
+              contentItems: [
+                {
+                  type: "inputText",
+                  text: JSON.stringify({
+                    error: "github_api is not configured",
+                  }),
+                },
+              ],
+            },
+            fatalFailure: null,
+          };
+        }
+        const response = await handleGithubApiToolCall(
+          githubToolClient,
           params.arguments ?? params.args ?? params.input ?? null,
         );
         return { response, fatalFailure: null };

@@ -1,5 +1,6 @@
 import os from "node:os";
 
+import type { PathRegistry } from "./path-registry.js";
 import type { SandboxConfig } from "./types.js";
 
 const CONTAINER_HOME = "/home/agent";
@@ -11,6 +12,7 @@ export interface DockerRunInput {
   command: string;
   workspacePath: string;
   archiveDir: string;
+  pathRegistry?: PathRegistry;
   runtimeConfigToml: string;
   runtimeAuthJsonBase64?: string | null;
   requiredEnv?: string[];
@@ -29,6 +31,7 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
     command,
     workspacePath,
     archiveDir,
+    pathRegistry,
     runtimeConfigToml,
     runtimeAuthJsonBase64 = null,
     requiredEnv = [],
@@ -47,8 +50,8 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
 
   // Identity mounts: -v host:container[:mode] so all absolute paths are valid inside the container
   const mounts: Array<[string, string, string?]> = [
-    [workspacePath, workspacePath], // workspace
-    [archiveDir, archiveDir], // logs/archive
+    [pathRegistry?.translate(workspacePath) ?? workspacePath, workspacePath], // workspace
+    [pathRegistry?.translate(archiveDir) ?? archiveDir, archiveDir], // logs/archive
   ];
   for (const [host, container, mode] of mounts) {
     args.push("-v", mode ? `${host}:${container}:${mode}` : `${host}:${container}`);

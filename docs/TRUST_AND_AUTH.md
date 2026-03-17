@@ -82,6 +82,50 @@ Symphony runs the Codex agent inside a Docker container using a `node:22-bookwor
 > [!NOTE]
 > Named Docker volumes (used for build caches) survive container and image replacement, but **not** `docker system prune --volumes`. Operator docs should warn against pruning volumes prefixed with `symphony-`.
 
+### Containerized Symphony
+
+When Symphony itself runs inside Docker, worker containers still need host-side bind mounts for the workspace and archive directories. Symphony now supports that by translating container-visible paths back to host-visible paths before it launches a worker container.
+
+Required environment variables for the service container:
+
+- `DATA_DIR=/data`
+- `SYMPHONY_HOST_WORKSPACE_ROOT`
+- `SYMPHONY_HOST_ARCHIVE_DIR`
+- `SYMPHONY_CONTAINER_WORKSPACE_ROOT=/data/workspaces`
+- `SYMPHONY_CONTAINER_ARCHIVE_DIR=/data/archives`
+
+This keeps the worker contract stable:
+
+- Symphony sees `/data/workspaces/<ISSUE>` inside its own container.
+- Docker bind mounts the real host workspace root into `/data/workspaces`.
+- Before launching a worker, Symphony translates `/data/workspaces/<ISSUE>` back to the host path and mounts it into the worker container at the original container-side path.
+
+### `openai_login` Auth Chain in Docker
+
+For `codex.auth.mode: openai_login`, the expected mount chain is:
+
+1. Host `~/.codex/auth.json`
+2. Service container mount at `/codex-auth`
+3. `WORKFLOW.docker.md` sets `codex.auth.source_home: /codex-auth`
+4. Symphony reads `/codex-auth/auth.json`, base64-encodes it, and injects it into the worker container runtime home
+
+That means the service container must be able to read the mounted source home directly. Symphony does not perform browser login inside containers.
+
+## 🔔 Local Operator APIs
+
+The local loopback HTTP surface now includes operator-only configuration and secret management routes:
+
+- `GET /api/v1/config`
+- `GET /api/v1/config/overlay`
+- `PUT /api/v1/config/overlay`
+- `DELETE /api/v1/config/overlay/:path`
+- `GET /api/v1/config/schema`
+- `GET /api/v1/secrets`
+- `POST /api/v1/secrets/:key`
+- `DELETE /api/v1/secrets/:key`
+
+These routes are intentionally loopback-local like the rest of the dashboard/API surface. They are suitable for trusted operator environments, not public exposure.
+
 ---
 
 ## 🔑 Required Credentials

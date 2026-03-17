@@ -23,6 +23,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:docker": "vitest run tests/integration/docker-lifecycle.test.ts",
+    "test:e2e": "vitest run tests/integration/e2e-smoke.test.ts",
     "dev": "tsx src/cli.ts",
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint --fix src/ tests/",

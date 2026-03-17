@@ -189,6 +189,65 @@ node dist/cli.js ./WORKFLOW.example.md --port 4000
 - 🖥️ **Dashboard**: [http://127.0.0.1:4000/](http://127.0.0.1:4000/)
 - 📡 **API**: `curl -s http://127.0.0.1:4000/api/v1/state`
 
+## 🐳 Run the Service in Docker
+
+```bash
+cp .env.example .env
+# fill in absolute host paths and credentials
+docker compose up --build
+```
+
+Container-specific notes:
+
+- The service image boots with `WORKFLOW.docker.md` copied into `/app/WORKFLOW.md`.
+- `DATA_DIR=/data` makes the archive root `/data/archives`.
+- `workspace.root` resolves to `/data/workspaces` inside the service container.
+- `PathRegistry` translates those container paths back to the host bind-mount sources before worker containers are launched.
+
+## ⚙️ Persistent Overlay and Secrets
+
+`WORKFLOW.md` is still the primary config source and still live-reloads on file change. Symphony now adds two operator-only persistent layers on top:
+
+- Config overlay: stored as YAML under the archive data root and exposed through `/api/v1/config*`
+- Secrets store: stored encrypted at rest under the archive data root and exposed through `/api/v1/secrets*`
+
+Merge order:
+
+1. built-in defaults
+2. `WORKFLOW.md`
+3. persistent overlay
+4. environment and `$SECRET:name` resolution
+
+Examples:
+
+```bash
+curl -s http://127.0.0.1:4000/api/v1/config
+curl -s http://127.0.0.1:4000/api/v1/config/overlay
+curl -s -X PUT http://127.0.0.1:4000/api/v1/config/overlay \
+  -H 'Content-Type: application/json' \
+  -d '{"codex":{"model":"gpt-5.4"}}'
+
+curl -s -X POST http://127.0.0.1:4000/api/v1/secrets/SLACK_WEBHOOK_URL \
+  -H 'Content-Type: application/json' \
+  -d '{"value":"https://hooks.slack.com/services/..."}'
+```
+
+## 🔔 Notifications and Git Automation
+
+The workflow can now configure:
+
+- `notifications.slack.webhook_url`
+- `notifications.slack.verbosity`
+- `repos[]` routing entries for identifier-prefix or label-based repository selection
+
+When a routed issue reports `SYMPHONY_STATUS: DONE`, Symphony can now:
+
+1. commit and push the workspace branch
+2. open a GitHub pull request
+3. expose read/comment GitHub actions to the agent through the `github_api` dynamic tool
+
+Notifications are best-effort. Delivery failures are logged but do not crash the orchestrator.
+
 ## 🧪 First End-to-End Smoke Issue
 
 For the first live proving run, use an issue that can succeed even if the workspace contains no cloned repository yet.

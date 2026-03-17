@@ -10,9 +10,6 @@ export function renderLogsTemplate(issueIdentifier: string): string {
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Logs — ${escaped} — Symphony</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -25,9 +22,12 @@ export function renderLogsTemplate(issueIdentifier: string): string {
       --purple: #bc8cff; --purple-bg: rgba(188,140,255,0.1);
       --cyan: #39d2c0; --cyan-bg: rgba(57,210,192,0.1);
       --primary: #58a6ff;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
-    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-    .mono { font-family: 'JetBrains Mono', monospace; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+    .mono { font-family: var(--mono); }
+    .icon { display: inline-flex; width: 1.25em; line-height: 1; align-items: center; justify-content: center; }
     a { color: var(--primary); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
@@ -44,7 +44,7 @@ export function renderLogsTemplate(issueIdentifier: string): string {
       text-transform: uppercase; letter-spacing: 0.5px;
     }
     .badge-live { background: var(--green-bg); color: var(--green); }
-    .badge-id { background: var(--blue-bg); color: var(--blue); font-family: 'JetBrains Mono', monospace; }
+    .badge-id { background: var(--blue-bg); color: var(--blue); font-family: var(--mono); }
     .header-right { display: flex; align-items: center; gap: 12px; }
 
     .filters {
@@ -60,7 +60,7 @@ export function renderLogsTemplate(issueIdentifier: string): string {
     .filter-btn:hover { border-color: var(--text-dim); color: var(--text); }
     .filter-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
     .stats {
-      margin-left: auto; font-size: 12px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;
+      margin-left: auto; font-size: 12px; color: var(--text-dim); font-family: var(--mono);
       display: flex; gap: 16px;
     }
     .stats span { color: var(--text); font-weight: 600; }
@@ -75,7 +75,7 @@ export function renderLogsTemplate(issueIdentifier: string): string {
     @keyframes flash { 0% { background: rgba(88,166,255,0.15); } 100% { background: transparent; } }
 
     .log-header { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
-    .log-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); min-width: 70px; }
+    .log-time { font-family: var(--mono); font-size: 11px; color: var(--text-dim); min-width: 70px; }
     .log-type {
       font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
       text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
@@ -91,12 +91,12 @@ export function renderLogsTemplate(issueIdentifier: string): string {
     .type-token { background: rgba(255,255,255,0.05); color: var(--text-dim); }
     .type-user { background: rgba(255,255,255,0.08); color: var(--text-bright); }
 
-    .log-id { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); }
+    .log-id { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
     .log-verb { font-size: 10px; color: var(--text-dim); font-weight: 500; text-transform: uppercase; }
     .log-message { font-size: 13px; color: var(--text); line-height: 1.5; }
 
     .log-content {
-      margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      margin-top: 8px; font-family: var(--mono); font-size: 12px;
       line-height: 1.6; padding: 12px 16px; border-radius: 8px;
       white-space: pre-wrap; word-break: break-word; overflow-x: auto;
       border-left: 3px solid var(--border); max-height: 400px; overflow-y: auto;
@@ -124,7 +124,7 @@ export function renderLogsTemplate(issueIdentifier: string): string {
     .empty-state {
       text-align: center; padding: 80px 24px; color: var(--text-dim);
     }
-    .empty-state .material-symbols-outlined { font-size: 48px; margin-bottom: 16px; display: block; }
+    .empty-icon { font-size: 48px; margin-bottom: 16px; display: block; }
 
     .scroll-anchor { height: 1px; }
     .auto-scroll-btn {
@@ -144,7 +144,7 @@ export function renderLogsTemplate(issueIdentifier: string): string {
   <div class="header">
     <div class="header-left">
       <a class="back-link" href="/">
-        <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span>
+        <span class="icon" style="font-size:18px">←</span>
         Dashboard
       </a>
       <div style="width:1px;height:20px;background:var(--border)"></div>
@@ -158,11 +158,11 @@ export function renderLogsTemplate(issueIdentifier: string): string {
         Auto-scroll
       </label>
       <button id="copyLogsBtn" onclick="copyLogs()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px">
-        <span class="material-symbols-outlined" style="font-size:16px">content_copy</span>
+        <span class="icon" style="font-size:16px">⧉</span>
         Copy Logs
       </button>
       <button onclick="loadEvents()" style="background:var(--primary);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px">
-        <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
+        <span class="icon" style="font-size:16px">↻</span>
         Refresh
       </button>
     </div>
@@ -186,7 +186,7 @@ export function renderLogsTemplate(issueIdentifier: string): string {
   <div class="scroll-anchor" id="scrollAnchor"></div>
 
   <button class="auto-scroll-btn" id="scrollToBottom" onclick="scrollToBottom()">
-    <span class="material-symbols-outlined" style="font-size:16px">keyboard_double_arrow_down</span>
+    <span class="icon" style="font-size:16px">⇣</span>
     Scroll to bottom
   </button>
 
@@ -291,7 +291,7 @@ export function renderLogsTemplate(issueIdentifier: string): string {
       container.innerHTML = "";
 
       if (filtered.length === 0) {
-        container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">hourglass_empty</span><p>No events yet. Waiting for agent activity…</p></div>';
+        container.innerHTML = '<div class="empty-state"><span class="empty-icon">⌛</span><p>No events yet. Waiting for agent activity...</p></div>';
         return;
       }
 
@@ -327,7 +327,7 @@ export function renderLogsTemplate(issueIdentifier: string): string {
         if (ev.content) {
           html += '<div class="log-content ' + contentClass(type) + '">' + escapeHtml(ev.content) + '</div>';
         } else if (type === "token" && ev.usage) {
-          html += '<div class="log-message" style="color:var(--text-dim);font-size:12px;font-family:JetBrains Mono,monospace">';
+          html += '<div class="log-message" style="color:var(--text-dim);font-size:12px;font-family:var(--mono)">';
           html += 'IN ' + formatNumber(ev.usage.inputTokens) + ' / OUT ' + formatNumber(ev.usage.outputTokens) + ' / TTL ' + formatNumber(ev.usage.totalTokens);
           html += '</div>';
         }
@@ -356,8 +356,8 @@ export function renderLogsTemplate(issueIdentifier: string): string {
       const text = header + '\n' + lines.join('\n---\n') + '\n=== End of Logs ===';
       navigator.clipboard.writeText(text).then(() => {
         const btn = document.getElementById('copyLogsBtn');
-        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">check</span> Copied!';
-        setTimeout(() => { btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">content_copy</span> Copy Logs'; }, 2000);
+        btn.innerHTML = '<span class="icon" style="font-size:16px">✓</span> Copied!';
+        setTimeout(() => { btn.innerHTML = '<span class="icon" style="font-size:16px">⧉</span> Copy Logs'; }, 2000);
       });
     }
 

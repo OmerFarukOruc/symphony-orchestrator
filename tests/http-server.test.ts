@@ -123,6 +123,12 @@ describe("HttpServer", () => {
       counts: { running: 0, retrying: 0 },
     });
 
+    const metricsResponse = await fetch(`${baseUrl}/metrics`);
+    expect(metricsResponse.status).toBe(200);
+    expect(metricsResponse.headers.get("content-type")).toContain("text/plain");
+    const metricsBody = await metricsResponse.text();
+    expect(metricsBody).toContain("# TYPE symphony_http_requests_total counter");
+
     const methodResponse = await fetch(`${baseUrl}/api/v1/state`, { method: "POST" });
     expect(methodResponse.status).toBe(405);
 

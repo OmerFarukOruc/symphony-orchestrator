@@ -2,6 +2,7 @@ import os from "node:os";
 import { describe, expect, it, afterEach } from "vitest";
 
 import { buildDockerRunArgs, type DockerRunInput } from "../src/docker-spawn.js";
+import { PathRegistry } from "../src/path-registry.js";
 import type { SandboxConfig } from "../src/types.js";
 
 function baseSandboxConfig(): SandboxConfig {
@@ -177,5 +178,23 @@ describe("buildDockerRunArgs", () => {
     const result = buildDockerRunArgs(baseInput({ sandboxConfig: cfg }));
     const mountArgs = result.args.filter((_, i) => result.args[i - 1] === "-v");
     expect(mountArgs).toContain("/data/models:/models:ro");
+  });
+
+  it("translates workspace and archive mounts through PathRegistry while preserving container workdir", () => {
+    const result = buildDockerRunArgs(
+      baseInput({
+        workspacePath: "/data/workspaces/MT-1",
+        archiveDir: "/data/archives",
+        pathRegistry: new PathRegistry({
+          "/data/workspaces": "/host/workspaces",
+          "/data/archives": "/host/archives",
+        }),
+      }),
+    );
+    const mountArgs = result.args.filter((_, i) => result.args[i - 1] === "-v");
+    expect(mountArgs).toContain("/host/workspaces/MT-1:/data/workspaces/MT-1");
+    expect(mountArgs).toContain("/host/archives:/data/archives");
+    const wdIdx = result.args.indexOf("--workdir");
+    expect(result.args[wdIdx + 1]).toBe("/data/workspaces/MT-1");
   });
 });

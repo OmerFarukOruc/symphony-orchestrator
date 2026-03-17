@@ -2,9 +2,17 @@ import http from "node:http";
 
 import express, { type Express, type Request, type Response } from "express";
 
+import { registerConfigApi } from "./config-api.js";
+import type { ConfigStore } from "./config.js";
 import { renderDashboardTemplate } from "./dashboard-template.js";
 import { renderLogsTemplate } from "./logs-template.js";
+import { globalMetrics } from "./metrics.js";
 import { Orchestrator } from "./orchestrator.js";
+import { createPlanningRouter, type PlanningExecutionResult } from "./planning-api.js";
+import type { PlannedIssue } from "./planning-skill.js";
+import { registerSecretsApi } from "./secrets-api.js";
+import type { ConfigOverlayStore } from "./config-overlay.js";
+import type { SecretsStore } from "./secrets-store.js";
 import type { ReasoningEffort } from "./types.js";
 import type { RuntimeSnapshot, SymphonyLogger } from "./types.js";
 
@@ -44,11 +52,42 @@ function serializeSnapshot(snapshot: RuntimeSnapshot & Record<string, unknown>):
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isSensitiveKey(key: string): boolean {
+  return /(api_?key|token|secret|webhook|password|auth)/i.test(key);
+}
+
+function sanitizeConfigValue(value: unknown, path: string[] = []): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item, index) => sanitizeConfigValue(item, [...path, String(index)]));
+  }
+  if (!isRecord(value)) {
+    return value;
+  }
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    sanitized[key] = isSensitiveKey(key) ? "[REDACTED]" : sanitizeConfigValue(child, [...path, key]);
+  }
+  return sanitized;
+}
+
 export class HttpServer {
   private readonly app: Express;
   private server: http.Server | null = null;
 
-  constructor(private readonly deps: { orchestrator: Orchestrator; logger: SymphonyLogger }) {
+  constructor(
+    private readonly deps: {
+      orchestrator: Orchestrator;
+      logger: SymphonyLogger;
+      configStore?: ConfigStore;
+      configOverlayStore?: ConfigOverlayStore;
+      secretsStore?: SecretsStore;
+      executePlan?: (issues: PlannedIssue[]) => Promise<PlanningExecutionResult>;
+    },
+  ) {
     this.app = express();
     this.app.disable("x-powered-by");
     this.app.use(express.json());
@@ -124,6 +163,16 @@ export class HttpServer {
       });
 
     this.app
+      .route("/metrics")
+      .get((_request, response) => {
+        response.setHeader("content-type", "text/plain; version=0.0.4; charset=utf-8");
+        response.send(globalMetrics.serialize());
+      })
+      .all((_request, response) => {
+        methodNotAllowed(response);
+      });
+
+    this.app
       .route("/api/v1/refresh")
       .post((request, response) => {
         const refresh = this.deps.orchestrator.requestRefresh(this.refreshReason(request));
@@ -136,6 +185,26 @@ export class HttpServer {
       .all((_request, response) => {
         methodNotAllowed(response);
       });
+
+    if (this.deps.configStore && this.deps.configOverlayStore) {
+      registerConfigApi(this.app, {
+        getEffectiveConfig: () =>
+          sanitizeConfigValue(this.deps.configStore?.getMergedConfigMap() ?? {}) as Record<string, unknown>,
+        configOverlayStore: this.deps.configOverlayStore,
+      });
+    }
+
+    if (this.deps.secretsStore) {
+      registerSecretsApi(this.app, {
+        secretsStore: this.deps.secretsStore,
+      });
+    }
+
+    this.app.use(
+      createPlanningRouter({
+        executePlan: this.deps.executePlan ? (issues) => this.deps.executePlan!(issues) : undefined,
+      }),
+    );
 
     this.app
       .route("/api/v1/:issue_identifier/model")

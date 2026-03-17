@@ -61,6 +61,11 @@ flowchart TD
 | **Archived attempts** | Durable attempt summaries & event timelines under `.symphony/` |
 | **Run inspection helper** | Repo-root `./symphony-logs` helper for archive-first issue and attempt inspection |
 | **Dashboard & API** | Local web UI at `/` and full JSON API under `/api/v1/*` |
+| **Prometheus metrics** | Local `GET /metrics` endpoint for scrape-friendly service metrics |
+| **Notifications** | Slack webhook lifecycle notifications with verbosity controls |
+| **Git automation** | Optional repo routing, clone/bootstrap, commit/push, and PR creation on `SYMPHONY_STATUS: DONE` |
+| **Config overlay & secrets** | Persistent config overlay plus encrypted local secrets API |
+| **Planning API** | Goal-to-issue planning endpoints under `/api/v1/plan*` |
 | **Strict TypeScript** | Full type safety with deterministic Vitest coverage |
 
 ---
@@ -203,12 +208,22 @@ Both checked-in workflow files expect `LINEAR_PROJECT_SLUG` in the host environm
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/` | Local operator dashboard |
+| `GET` | `/metrics` | Prometheus metrics |
 | `GET` | `/api/v1/state` | Runtime snapshot — queued, running, retrying, completed + token totals |
 | `POST` | `/api/v1/refresh` | Trigger immediate orchestration refresh |
 | `GET` | `/api/v1/:issue` | Issue detail, recent events, archived attempts |
 | `GET` | `/api/v1/:issue/attempts` | Archived attempts + current live attempt id |
 | `GET` | `/api/v1/attempts/:id` | Archived event stream for a specific attempt |
 | `POST` | `/api/v1/:issue/model` | Save per-issue model override |
+| `GET` | `/api/v1/config` | Effective merged operator config |
+| `GET` | `/api/v1/config/overlay` | Persistent overlay values only |
+| `PUT` | `/api/v1/config/overlay` | Update overlay values |
+| `DELETE` | `/api/v1/config/overlay/:path` | Remove one overlay path |
+| `GET` | `/api/v1/secrets` | List configured secret keys |
+| `POST` | `/api/v1/secrets/:key` | Store one secret |
+| `DELETE` | `/api/v1/secrets/:key` | Delete one secret |
+| `POST` | `/api/v1/plan` | Generate a structured implementation plan |
+| `POST` | `/api/v1/plan/execute` | Execute a generated plan when an execution backend is configured |
 
 ### Example: Model Override
 

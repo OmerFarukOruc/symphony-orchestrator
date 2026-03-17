@@ -5,36 +5,202 @@ export function renderDashboardTemplate(): string {
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <title>Symphony | AI Agent Orchestration</title>
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-  <script>
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            primary: "#bb4a31",
-            "background-light": "#fdfbf8",
-            "background-dark": "#1f1513",
-            "panel-light": "#ffffff",
-            "border-light": "#e4d6d3",
-          },
-          fontFamily: {
-            display: ["Inter", "sans-serif"],
-            mono: ["JetBrains Mono", "monospace"],
-          },
-          borderRadius: {
-            DEFAULT: "0.25rem",
-            lg: "0.5rem",
-            xl: "0.75rem",
-            full: "9999px",
-          },
-        },
-      },
-    };
-  </script>
   <style>
+    :root {
+      --primary: #bb4a31;
+      --background: #fdfbf8;
+      --panel: #ffffff;
+      --border: #e4d6d3;
+      --text: #0f172a;
+      --muted: #64748b;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
+      background: var(--background);
+      color: var(--text);
+      font-family: var(--sans);
+      display: flex;
+      overflow: hidden;
+    }
+
+    .icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.25em;
+      line-height: 1;
+      font-style: normal;
+    }
+
+    aside {
+      width: 4rem;
+      border-right: 1px solid var(--border);
+      background: var(--panel);
+      padding: 1rem 0.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      z-index: 10;
+    }
+
+    aside nav {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      align-items: center;
+      flex: 1;
+    }
+
+    aside button {
+      border: 0;
+      border-radius: 0.5rem;
+      background: transparent;
+      color: #64748b;
+      cursor: pointer;
+      padding: 0.35rem;
+    }
+
+    aside button:hover {
+      color: var(--primary);
+      background: #f5ece8;
+    }
+
+    main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      height: 4rem;
+      padding: 0 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-shrink: 0;
+    }
+
+    #filterNav {
+      display: flex;
+      gap: 0.25rem;
+      background: #f1f5f9;
+      padding: 0.2rem;
+      border-radius: 0.5rem;
+    }
+
+    #filterNav .filter-button {
+      border: 0;
+      border-radius: 0.4rem;
+      background: transparent;
+      color: #64748b;
+      font-size: 0.82rem;
+      padding: 0.45rem 0.8rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    #filterNav .filter-button.is-active {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+    }
+
+    #searchWrap {
+      position: relative;
+    }
+
+    #searchWrap .icon {
+      position: absolute;
+      top: 50%;
+      left: 0.65rem;
+      transform: translateY(-50%);
+      color: #94a3b8;
+    }
+
+    #searchInput {
+      width: 16rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: #f8fafc;
+      padding: 0.55rem 0.75rem 0.55rem 2rem;
+      font-size: 0.84rem;
+      outline: none;
+    }
+
+    #searchInput:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(187, 74, 49, 0.18);
+    }
+
+    #refreshButton {
+      border: 0;
+      border-radius: 0.5rem;
+      background: var(--primary);
+      color: #fff;
+      padding: 0.55rem 0.9rem;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    #refreshButton:hover {
+      filter: brightness(0.95);
+    }
+
+    section {
+      height: 3.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      padding: 0 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-shrink: 0;
+      font-family: var(--mono);
+      font-size: 0.81rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow-x: auto;
+    }
+
+    #boardScroll {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem;
+    }
+
     .dot-grid {
       background-image: radial-gradient(#e4d6d3 0.5px, transparent 0.5px);
       background-size: 20px 20px;
@@ -57,6 +223,138 @@ export function renderDashboardTemplate(): string {
     .kanban-column {
       min-width: 320px;
       max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    #queuedColumn,
+    #runningColumn,
+    #retryingColumn,
+    #completedColumn {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .issue-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.75rem;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(2, 6, 23, 0.06);
+    }
+
+    .issue-card:hover {
+      box-shadow: 0 8px 20px rgba(2, 6, 23, 0.08);
+    }
+
+    .issue-card-running {
+      border-color: rgba(187, 74, 49, 0.35);
+      box-shadow: 0 1px 6px rgba(187, 74, 49, 0.15);
+    }
+
+    .issue-card-retrying {
+      border-color: rgba(217, 119, 6, 0.35);
+    }
+
+    .issue-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .issue-id {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #475569;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 0.15rem 0.45rem;
+    }
+
+    .issue-priority {
+      font-size: 0.64rem;
+      font-weight: 700;
+      border-radius: 999px;
+      text-transform: uppercase;
+      padding: 0.15rem 0.45rem;
+    }
+
+    .issue-priority-high {
+      color: #b91c1c;
+      background: #fee2e2;
+    }
+
+    .issue-priority-medium {
+      color: #b45309;
+      background: #fef3c7;
+    }
+
+    .issue-priority-low {
+      color: #475569;
+      background: #e2e8f0;
+    }
+
+    .issue-title {
+      margin: 0;
+      font-size: 0.88rem;
+      line-height: 1.3;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .issue-labels {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-top: 0.45rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .issue-label {
+      font-size: 0.64rem;
+      color: #475569;
+      background: #f1f5f9;
+      border-radius: 0.35rem;
+      padding: 0.1rem 0.35rem;
+      text-transform: lowercase;
+    }
+
+    .issue-meta {
+      margin-top: 0.45rem;
+      font-size: 0.72rem;
+      color: #475569;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .issue-meta-note {
+      font-style: italic;
+      color: #64748b;
+    }
+
+    .issue-warning {
+      color: var(--warning);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .empty-card {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 0.5rem;
+      color: #64748b;
+      padding: 1rem;
+      text-align: center;
+      font-size: 0.88rem;
     }
 
     .detail-panel-hidden {
@@ -66,6 +364,137 @@ export function renderDashboardTemplate(): string {
 
     .detail-panel-visible {
       transform: translateX(0);
+    }
+
+    #detailPanel {
+      position: fixed;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: min(30rem, 100vw);
+      background: #ffffff;
+      border-left: 1px solid var(--border);
+      box-shadow: -8px 0 24px rgba(15, 23, 42, 0.18);
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      z-index: 40;
+    }
+
+    #detailPanel input,
+    #detailPanel select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: #f8fafc;
+      padding: 0.45rem 0.55rem;
+      font-size: 0.85rem;
+    }
+
+    #detailPanel pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    #detailAttemptTabs {
+      display: flex;
+      gap: 0.45rem;
+      padding: 0.5rem 1rem;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+
+    .attempt-tab {
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #475569;
+      border-radius: 0.5rem;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      padding: 0.38rem 0.65rem;
+      cursor: pointer;
+    }
+
+    .attempt-tab.is-active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .detail-badge {
+      border-radius: 999px;
+      padding: 0.22rem 0.58rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .detail-priority-high {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .detail-priority-medium {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .detail-priority-normal {
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .detail-status-running {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .detail-status-retrying {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .detail-status-completed {
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .detail-status-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .detail-status-default {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .detail-model {
+      background: #f5ece8;
+      color: var(--primary);
+    }
+
+    .detail-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .detail-label {
+      font-size: 0.75rem;
+      background: #f8fafc;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.4rem;
+      padding: 0.2rem 0.42rem;
+      text-transform: lowercase;
+    }
+
+    @media (max-width: 900px) {
+      #searchInput {
+        width: 11.5rem;
+      }
     }
 
     .line-clamp-1 {
@@ -87,27 +516,27 @@ export function renderDashboardTemplate(): string {
   <aside class="w-16 flex flex-col items-center py-6 border-r border-border-light bg-panel-light dark:bg-background-dark z-50">
     <div class="mb-8">
       <div class="size-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-        <span class="material-symbols-outlined text-2xl">auto_awesome</span>
+        <span class="icon text-2xl">✦</span>
       </div>
     </div>
     <nav class="flex flex-col gap-6 flex-1">
       <button class="text-primary hover:bg-primary/10 p-2 rounded-lg transition-colors">
-        <span class="material-symbols-outlined text-2xl">home</span>
+        <span class="icon text-2xl">⌂</span>
       </button>
       <button class="text-slate-400 hover:text-primary p-2 rounded-lg transition-colors">
-        <span class="material-symbols-outlined text-2xl">grid_view</span>
+        <span class="icon text-2xl">▦</span>
       </button>
       <button class="text-slate-400 hover:text-primary p-2 rounded-lg transition-colors">
-        <span class="material-symbols-outlined text-2xl">analytics</span>
+        <span class="icon text-2xl">◴</span>
       </button>
       <div class="h-px w-8 bg-border-light mx-auto"></div>
       <button class="text-slate-400 hover:text-primary p-2 rounded-lg transition-colors">
-        <span class="material-symbols-outlined text-2xl">settings</span>
+        <span class="icon text-2xl">⚙</span>
       </button>
     </nav>
     <div class="mt-auto">
       <div class="relative">
-        <span class="material-symbols-outlined text-green-500 text-2xl">sensors</span>
+        <span class="icon text-green-500 text-2xl">●</span>
         <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-green-500 ring-2 ring-white animate-pulse"></span>
       </div>
     </div>
@@ -118,19 +547,19 @@ export function renderDashboardTemplate(): string {
       <div class="flex items-center gap-8">
         <h1 class="text-xl font-bold tracking-tight text-slate-900">Symphony</h1>
         <nav class="flex gap-1 bg-slate-100 p-1 rounded-lg" id="filterNav">
-          <button class="px-4 py-1.5 text-sm font-medium rounded-md bg-white shadow-sm text-slate-900" data-filter="all">All</button>
-          <button class="px-4 py-1.5 text-sm font-medium rounded-md text-slate-500 hover:text-slate-900" data-filter="running">Running</button>
-          <button class="px-4 py-1.5 text-sm font-medium rounded-md text-slate-500 hover:text-slate-900" data-filter="retrying">Retrying</button>
-          <button class="px-4 py-1.5 text-sm font-medium rounded-md text-slate-500 hover:text-slate-900" data-filter="completed">Completed</button>
+          <button class="filter-button is-active" data-filter="all">All</button>
+          <button class="filter-button" data-filter="running">Running</button>
+          <button class="filter-button" data-filter="retrying">Retrying</button>
+          <button class="filter-button" data-filter="completed">Completed</button>
         </nav>
       </div>
       <div class="flex items-center gap-4">
-        <div class="relative">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+        <div class="relative" id="searchWrap">
+          <span class="icon absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">⌕</span>
           <input class="pl-10 pr-4 py-2 w-64 border-border-light rounded-lg bg-slate-50 focus:ring-primary focus:border-primary text-sm" id="searchInput" placeholder="Search agents..." type="text"/>
         </div>
         <button class="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20" id="refreshButton">
-          <span class="material-symbols-outlined text-lg">refresh</span>
+          <span class="icon text-lg">↻</span>
           Refresh
         </button>
       </div>
@@ -164,7 +593,7 @@ export function renderDashboardTemplate(): string {
         </div>
         <div class="w-px h-4 bg-border-light"></div>
         <div class="flex items-center gap-2 text-primary font-bold">
-          <span class="material-symbols-outlined text-lg">timer</span>
+          <span class="icon text-lg">⏱</span>
           <span id="generatedAtCompact">00:00</span>
         </div>
       </div>
@@ -177,7 +606,7 @@ export function renderDashboardTemplate(): string {
             <span class="size-2 rounded-full bg-blue-500"></span>
             <h3 class="font-bold text-sm uppercase tracking-wider text-slate-500" id="queuedHeading">Queued (0)</h3>
           </div>
-          <button class="text-slate-400 hover:text-slate-600"><span class="material-symbols-outlined">more_horiz</span></button>
+          <button class="text-slate-400 hover:text-slate-600"><span class="icon">⋯</span></button>
         </div>
         <div class="flex flex-col gap-3" id="queuedColumn"></div>
       </div>
@@ -188,7 +617,7 @@ export function renderDashboardTemplate(): string {
             <span class="size-2 rounded-full bg-green-500 animate-pulse"></span>
             <h3 class="font-bold text-sm uppercase tracking-wider text-slate-500" id="runningHeading">Running (0)</h3>
           </div>
-          <button class="text-slate-400 hover:text-slate-600"><span class="material-symbols-outlined">more_horiz</span></button>
+          <button class="text-slate-400 hover:text-slate-600"><span class="icon">⋯</span></button>
         </div>
         <div class="flex flex-col gap-3" id="runningColumn"></div>
       </div>
@@ -199,7 +628,7 @@ export function renderDashboardTemplate(): string {
             <span class="size-2 rounded-full bg-amber-500"></span>
             <h3 class="font-bold text-sm uppercase tracking-wider text-slate-500" id="retryingHeading">Retrying (0)</h3>
           </div>
-          <button class="text-slate-400 hover:text-slate-600"><span class="material-symbols-outlined">more_horiz</span></button>
+          <button class="text-slate-400 hover:text-slate-600"><span class="icon">⋯</span></button>
         </div>
         <div class="flex flex-col gap-3" id="retryingColumn"></div>
       </div>
@@ -210,7 +639,7 @@ export function renderDashboardTemplate(): string {
             <span class="size-2 rounded-full bg-slate-400"></span>
             <h3 class="font-bold text-sm uppercase tracking-wider text-slate-500" id="completedHeading">Completed (0)</h3>
           </div>
-          <button class="text-slate-400 hover:text-slate-600"><span class="material-symbols-outlined">more_horiz</span></button>
+          <button class="text-slate-400 hover:text-slate-600"><span class="icon">⋯</span></button>
         </div>
         <div class="flex flex-col gap-3 opacity-80 hover:opacity-100 transition-opacity" id="completedColumn"></div>
       </div>
@@ -221,11 +650,11 @@ export function renderDashboardTemplate(): string {
         <div class="flex items-center gap-3">
           <span class="font-mono font-bold text-slate-900" id="detailIdentifier">Issue</span>
           <a class="text-blue-500 hover:text-blue-700" href="#" id="detailExternalLink" target="_blank" rel="noreferrer">
-            <span class="material-symbols-outlined text-lg">open_in_new</span>
+            <span class="icon text-lg">↗</span>
           </a>
         </div>
         <button class="text-slate-400 hover:text-slate-900" id="closeDetailButton">
-          <span class="material-symbols-outlined">close</span>
+          <span class="icon">×</span>
         </button>
       </div>
       <div class="flex-1 overflow-y-auto p-8">
@@ -244,7 +673,7 @@ export function renderDashboardTemplate(): string {
               <p class="text-slate-400 text-xs uppercase font-bold tracking-widest mb-1">Assigned Agent</p>
               <div class="flex items-center gap-2">
                 <div class="size-6 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-sm text-primary">smart_toy</span>
+                  <span class="icon text-sm text-primary">◉</span>
                 </div>
                 <span class="font-medium" id="detailAgent">Symphony Worker</span>
               </div>
@@ -416,76 +845,75 @@ export function renderDashboardTemplate(): string {
     }
 
     function priorityLabel(priority) {
-      if (priority === 1) return { label: "high", className: "bg-red-100 text-red-600" };
-      if (priority === 2) return { label: "medium", className: "bg-amber-100 text-amber-600" };
-      if (priority === 3) return { label: "low", className: "bg-slate-100 text-slate-500" };
-      return { label: "none", className: "bg-slate-100 text-slate-500" };
+      if (priority === 1) return { label: "high", className: "issue-priority-high" };
+      if (priority === 2) return { label: "medium", className: "issue-priority-medium" };
+      if (priority === 3) return { label: "low", className: "issue-priority-low" };
+      return { label: "none", className: "issue-priority-low" };
     }
 
     function statusBadge(status) {
       const normalized = String(status || "").toLowerCase();
-      if (normalized.includes("running")) return "bg-green-100 text-green-700";
-      if (normalized.includes("retry")) return "bg-amber-100 text-amber-700";
-      if (normalized.includes("complete")) return "bg-slate-200 text-slate-700";
-      if (normalized.includes("fail") || normalized.includes("time")) return "bg-red-100 text-red-700";
-      return "bg-blue-100 text-blue-700";
+      if (normalized.includes("running")) return "detail-status-running";
+      if (normalized.includes("retry")) return "detail-status-retrying";
+      if (normalized.includes("complete")) return "detail-status-completed";
+      if (normalized.includes("fail") || normalized.includes("time")) return "detail-status-error";
+      return "detail-status-default";
     }
 
     function cardForItem(item, column) {
       const priority = priorityLabel(item.priority);
       const tokenText = item.tokenUsage ? \`\${formatCompactNumber(item.tokenUsage.inputTokens)} / \${formatCompactNumber(item.tokenUsage.outputTokens)}\` : null;
       const wrapper = document.createElement("div");
-      wrapper.className =
-        column === "running"
-          ? "bg-white border-2 border-primary/20 p-4 rounded-xl shadow-lg ring-1 ring-primary/5 cursor-pointer"
-          : column === "retrying"
-            ? "bg-white border border-amber-200 p-4 rounded-xl shadow-sm cursor-pointer relative overflow-hidden"
-            : "bg-white border border-border-light p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer";
+      wrapper.className = "issue-card " + (column === "running" ? "issue-card-running" : column === "retrying" ? "issue-card-retrying" : "issue-card-default");
 
       const body = [];
       if (column === "retrying") {
-        body.push('<div class="absolute top-0 right-0 p-1"><span class="material-symbols-outlined text-amber-500 text-lg">warning</span></div>');
+        body.push('<div class="issue-meta"><span class="issue-warning">⚠</span><span class="issue-meta-note">retry pending</span></div>');
       }
 
       body.push(
-        '<div class="flex justify-between items-start mb-2">' +
-          '<span class="font-mono text-[11px] font-bold ' + (column === "running" ? 'text-primary bg-primary/5 border-primary/10' : 'text-slate-400 bg-slate-50 border-slate-100') + ' px-2 py-0.5 rounded border">' + (item.identifier || "UNKNOWN") + '</span>' +
-          '<span class="text-[10px] font-bold uppercase ' + priority.className + ' px-2 py-0.5 rounded-full">' + priority.label + '</span>' +
+        '<div class="issue-head">' +
+          '<span class="issue-id">' + (item.identifier || "UNKNOWN") + '</span>' +
+          '<span class="issue-priority ' + priority.className + '">' + priority.label + '</span>' +
         '</div>'
       );
-      body.push('<h4 class="text-sm ' + (column === "running" ? 'font-bold text-slate-900' : 'font-semibold text-slate-800') + ' leading-snug line-clamp-2 mb-2">' + (item.title || item.identifier || "Untitled issue") + '</h4>');
+      body.push('<h4 class="issue-title line-clamp-2">' + (item.title || item.identifier || "Untitled issue") + '</h4>');
       if (Array.isArray(item.labels) && item.labels.length > 0) {
-        body.push('<div class="flex flex-wrap gap-1 mb-3">' + item.labels.slice(0, 3).map((label) => '<span class="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded lowercase">' + label + '</span>').join("") + '</div>');
+        body.push('<div class="issue-labels">' + item.labels.slice(0, 3).map((label) => '<span class="issue-label">' + label + '</span>').join("") + '</div>');
       }
       if (column === "running") {
         body.push(
-          '<div class="bg-slate-50 rounded-lg p-3 mb-3 border border-slate-100">' +
-            '<div class="flex justify-between text-[11px] font-mono mb-1">' +
-              '<span class="text-slate-500">Attempt ' + String(item.attempt ?? 0) + '</span>' +
-              '<span class="text-green-600 font-bold">' + (tokenText ? tokenText : "live") + '</span>' +
-            '</div>' +
-            '<p class="text-[11px] text-slate-600 line-clamp-1 italic">' + (item.message || "Worker is actively processing this issue.") + '</p>' +
+          '<div class="issue-meta">' +
+            '<span>Attempt ' + String(item.attempt ?? 0) + '</span>' +
+            '<span>' + (tokenText ? tokenText : "live") + '</span>' +
+          '</div>' +
+          '<div class="issue-meta-note line-clamp-1">' + (item.message || "Worker is actively processing this issue.") + '</div>' +
+          '<div class="issue-meta">' +
+            '<span>Worker live</span>' +
+            '<span>' + relativeTime(item.updatedAt) + '</span>' +
           '</div>'
         );
       }
       if (column === "retrying") {
         body.push(
-          '<div class="bg-amber-50/50 rounded-lg p-2 mb-3 border border-amber-100 text-[11px]">' +
-            '<p class="text-amber-800 font-bold mb-0.5">Attempt ' + String(item.attempt ?? 0) + '</p>' +
-            '<p class="text-amber-600 line-clamp-1 italic">Reason: ' + (item.error || item.message || "Retry queued") + '</p>' +
+          '<div class="issue-meta">' +
+            '<span>Attempt ' + String(item.attempt ?? 0) + '</span>' +
+            '<span>' + relativeTime(item.updatedAt) + '</span>' +
+          '</div>' +
+          '<div class="issue-meta-note line-clamp-1">Reason: ' + (item.error || item.message || "Retry queued") + '</div>' +
+          '<div class="issue-meta">' +
+            '<span>Retry queued</span>' +
+            '<span>' + (item.status || "retrying") + '</span>' +
           '</div>'
         );
       }
       if (column === "completed") {
-        body.push('<div class="flex justify-between items-center text-[11px] text-slate-400"><span>' + (item.status || "completed") + '</span><span>' + relativeTime(item.updatedAt) + '</span></div>');
+        body.push('<div class="issue-meta"><span>' + (item.status || "completed") + '</span><span>' + relativeTime(item.updatedAt) + '</span></div>');
       } else {
         body.push(
-          '<div class="flex items-center justify-between">' +
-            '<div class="flex items-center gap-2">' +
-              '<div class="size-7 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">' + column.charAt(0).toUpperCase() + '</div>' +
-              '<span class="text-[11px] font-bold text-slate-700">' + (column === "running" ? "Worker live" : column === "retrying" ? "Retry queued" : "Tracker issue") + '</span>' +
-            '</div>' +
-            '<span class="text-[11px] text-slate-400 italic">' + relativeTime(item.updatedAt) + '</span>' +
+          '<div class="issue-meta">' +
+            '<span>' + (column === "running" ? "Worker live" : column === "retrying" ? "Retry queued" : "Tracker issue") + '</span>' +
+            '<span>' + relativeTime(item.updatedAt) + '</span>' +
           '</div>'
         );
       }
@@ -497,7 +925,7 @@ export function renderDashboardTemplate(): string {
 
     function emptyCard(message) {
       const div = document.createElement("div");
-      div.className = "p-8 text-center bg-slate-50 border border-slate-200 rounded-lg text-slate-500";
+      div.className = "empty-card";
       div.textContent = message;
       return div;
     }
@@ -619,7 +1047,7 @@ export function renderDashboardTemplate(): string {
       if (els.detailAttemptTabs) return els.detailAttemptTabs;
       const container = document.createElement("div");
       container.id = "detailAttemptTabs";
-      container.className = "border-b border-border-light px-6 py-2 bg-white flex gap-2 overflow-x-auto shrink-0";
+      container.className = "attempt-tabs";
       const header = els.detailPanel.querySelector(".h-16.border-b");
       header.insertAdjacentElement("afterend", container);
       els.detailAttemptTabs = container;
@@ -634,11 +1062,7 @@ export function renderDashboardTemplate(): string {
       const liveAttemptId = detail.currentAttemptId || null;
       if (liveAttemptId) {
         const live = document.createElement("button");
-        live.className =
-          "px-3 py-1.5 rounded-lg text-xs font-mono border " +
-          ((state.selectedAttemptId === null || state.selectedAttemptId === liveAttemptId)
-            ? "bg-primary text-white border-primary"
-            : "bg-slate-50 text-slate-600 border-slate-200");
+        live.className = "attempt-tab " + ((state.selectedAttemptId === null || state.selectedAttemptId === liveAttemptId) ? "is-active" : "");
         live.textContent = "Live";
         live.addEventListener("click", async () => {
           state.selectedAttemptId = null;
@@ -650,9 +1074,7 @@ export function renderDashboardTemplate(): string {
       attempts.slice(0, 8).forEach((attempt, index) => {
         const tab = document.createElement("button");
         const selected = state.selectedAttemptId === attempt.attemptId;
-        tab.className =
-          "px-3 py-1.5 rounded-lg text-xs font-mono border " +
-          (selected ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-600 border-slate-200");
+        tab.className = "attempt-tab " + (selected ? "is-active" : "");
         tab.textContent = "Run " + String(index + 1);
         tab.addEventListener("click", async () => {
           state.selectedAttemptId = attempt.attemptId;
@@ -681,16 +1103,16 @@ export function renderDashboardTemplate(): string {
           : "Saved model settings apply on the next run. The active worker keeps its current model.";
       els.detailBadges.innerHTML = "";
       const badges = [
-        { text: detail.priority === 1 ? "high priority" : detail.priority === 2 ? "medium priority" : "normal priority", className: detail.priority === 1 ? "bg-red-100 text-red-700" : detail.priority === 2 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700" },
+        { text: detail.priority === 1 ? "high priority" : detail.priority === 2 ? "medium priority" : "normal priority", className: detail.priority === 1 ? "detail-priority-high" : detail.priority === 2 ? "detail-priority-medium" : "detail-priority-normal" },
         { text: detail.status || detail.state || "unknown", className: statusBadge(detail.status || detail.state) },
-        { text: (detail.model || "gpt-5.4") + (detail.reasoningEffort ? " / " + detail.reasoningEffort : ""), className: "bg-primary/10 text-primary" },
+        { text: (detail.model || "gpt-5.4") + (detail.reasoningEffort ? " / " + detail.reasoningEffort : ""), className: "detail-model" },
         detail.modelChangePending
-          ? { text: "next run pending", className: "bg-amber-100 text-amber-700" }
+          ? { text: "next run pending", className: "detail-pending" }
           : null,
       ];
       badges.filter(Boolean).forEach((badge) => {
         const span = document.createElement("span");
-        span.className = badge.className + " px-3 py-1 rounded-full text-xs font-bold uppercase tracking-tight";
+        span.className = "detail-badge " + badge.className;
         span.textContent = badge.text;
         els.detailBadges.appendChild(span);
       });
@@ -699,7 +1121,7 @@ export function renderDashboardTemplate(): string {
       const labels = Array.isArray(detail.labels) && detail.labels.length > 0 ? detail.labels : ["#linear", "#codex", "#symphony"];
       labels.forEach((label) => {
         const span = document.createElement("span");
-        span.className = "text-xs bg-slate-50 text-slate-600 border border-slate-200 px-2 py-1 rounded lowercase";
+        span.className = "detail-label";
         span.textContent = label.startsWith("#") ? label : "#" + label;
         els.detailLabels.appendChild(span);
       });
@@ -745,10 +1167,10 @@ export function renderDashboardTemplate(): string {
       els.detailBadges.innerHTML = "";
       [
         { text: attempt.status || "attempt", className: statusBadge(attempt.status) },
-        { text: (attempt.model || "gpt-5.4") + (attempt.reasoningEffort ? " / " + attempt.reasoningEffort : ""), className: "bg-primary/10 text-primary" },
+        { text: (attempt.model || "gpt-5.4") + (attempt.reasoningEffort ? " / " + attempt.reasoningEffort : ""), className: "detail-model" },
       ].forEach((badge) => {
         const span = document.createElement("span");
-        span.className = badge.className + " px-3 py-1 rounded-full text-xs font-bold uppercase tracking-tight";
+        span.className = "detail-badge " + badge.className;
         span.textContent = badge.text;
         els.detailBadges.appendChild(span);
       });
@@ -756,7 +1178,7 @@ export function renderDashboardTemplate(): string {
       els.detailLabels.innerHTML = "";
       ["#archive", "#run"].forEach((label) => {
         const span = document.createElement("span");
-        span.className = "text-xs bg-slate-50 text-slate-600 border border-slate-200 px-2 py-1 rounded lowercase";
+        span.className = "detail-label";
         span.textContent = label;
         els.detailLabels.appendChild(span);
       });
@@ -881,9 +1303,9 @@ export function renderDashboardTemplate(): string {
       button.addEventListener("click", () => {
         state.currentFilter = button.dataset.filter;
         els.filterNav.querySelectorAll("[data-filter]").forEach((candidate) => {
-          candidate.className = "px-4 py-1.5 text-sm font-medium rounded-md text-slate-500 hover:text-slate-900";
+          candidate.classList.remove("is-active");
         });
-        button.className = "px-4 py-1.5 text-sm font-medium rounded-md bg-white shadow-sm text-slate-900";
+        button.classList.add("is-active");
         if (state.snapshot) renderSnapshot(state.snapshot);
       });
     });

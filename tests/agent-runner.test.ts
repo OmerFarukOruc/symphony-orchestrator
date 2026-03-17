@@ -397,6 +397,10 @@ describe("AgentRunner", () => {
           method: "thread/start",
           params: expect.objectContaining({
             model: "gpt-5.4",
+            dynamicTools: expect.arrayContaining([
+              expect.objectContaining({ name: "linear_graphql" }),
+              expect.objectContaining({ name: "github_api" }),
+            ]),
           }),
         }),
         expect.objectContaining({

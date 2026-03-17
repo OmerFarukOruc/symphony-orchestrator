@@ -3,8 +3,12 @@ import { randomUUID } from "node:crypto";
 import { AgentRunner } from "./agent-runner.js";
 import { AttemptStore } from "./attempt-store.js";
 import { ConfigStore } from "./config.js";
+import type { GitManager } from "./git-manager.js";
 import { LinearClient } from "./linear-client.js";
+import type { NotificationManager } from "./notification-manager.js";
+import { isBlockedByNonTerminal, sortIssuesForDispatch } from "./orchestrator/dispatch.js";
 import { type IssueView, isHardFailure, issueView, nowIso, usageDelta } from "./orchestrator/views.js";
+import type { RepoMatch, RepoRouter } from "./repo-router.js";
 import { isActiveState, isTerminalState, isTodoState, normalizeStateKey } from "./state-policy.js";
 import type {
   Issue,
@@ -20,6 +24,7 @@ import type {
   Workspace,
 } from "./types.js";
 import { WorkspaceManager } from "./workspace-manager.js";
+import type { NotificationEvent } from "./notification-channel.js";
 
 interface RunningEntry {
   runId: string;
@@ -36,6 +41,7 @@ interface RunningEntry {
   tokenUsage: TokenUsageSnapshot | null;
   modelSelection: ModelSelection;
   lastAgentMessageContent: string | null;
+  repoMatch: RepoMatch | null;
 }
 
 type StopSignal = "done" | "blocked";
@@ -100,6 +106,9 @@ export class Orchestrator {
       linearClient: LinearClient;
       workspaceManager: WorkspaceManager;
       agentRunner: AgentRunner;
+      notificationManager?: NotificationManager;
+      repoRouter?: Pick<RepoRouter, "matchIssue">;
+      gitManager?: Pick<GitManager, "cloneInto" | "commitAndPush" | "createPullRequest">;
       logger: SymphonyLogger;
     },
   ) {}
@@ -403,7 +412,7 @@ export class Orchestrator {
   }
 
   private async refreshQueueViews(): Promise<void> {
-    const issues = this.sortIssuesForDispatch(await this.deps.linearClient.fetchCandidateIssues());
+    const issues = sortIssuesForDispatch(await this.deps.linearClient.fetchCandidateIssues());
     this.queuedViews = issues
       .filter((issue) => this.canDispatchIssue(issue))
       .slice(0, 50)
@@ -446,7 +455,7 @@ export class Orchestrator {
       return;
     }
 
-    const issues = this.sortIssuesForDispatch(await this.deps.linearClient.fetchCandidateIssues());
+    const issues = sortIssuesForDispatch(await this.deps.linearClient.fetchCandidateIssues());
     let launched = 0;
     const pendingStateCounts = new Map<string, number>();
     for (const issue of issues) {
@@ -474,8 +483,12 @@ export class Orchestrator {
 
     const workflow = this.deps.configStore.getWorkflow();
     let workspace: Workspace;
+    const repoMatch = this.deps.repoRouter?.matchIssue(issue) ?? null;
     try {
       workspace = await this.deps.workspaceManager.ensureWorkspace(issue.identifier);
+      if (repoMatch && workspace.createdNow && this.deps.gitManager) {
+        await this.deps.gitManager.cloneInto(repoMatch, workspace.path, issue);
+      }
     } catch (error) {
       this.releaseIssueClaim(issue.id);
       throw error;
@@ -497,6 +510,7 @@ export class Orchestrator {
       tokenUsage: null,
       modelSelection,
       lastAgentMessageContent: null,
+      repoMatch,
     };
     this.runningEntries.set(issue.id, entry);
     this.completedViews.delete(issue.identifier);
@@ -537,6 +551,42 @@ export class Orchestrator {
         modelSource: modelSelection.source,
       }),
     );
+    this.notify({
+      type: "issue_claimed",
+      severity: "info",
+      timestamp: nowIso(),
+      message: "issue claimed for execution",
+      issue: {
+        id: issue.id,
+        identifier: issue.identifier,
+        title: issue.title,
+        state: issue.state,
+        url: issue.url,
+      },
+      attempt,
+      metadata: {
+        workspace: workspace.path,
+      },
+    });
+    this.notify({
+      type: "worker_launched",
+      severity: "info",
+      timestamp: nowIso(),
+      message: "worker launched",
+      issue: {
+        id: issue.id,
+        identifier: issue.identifier,
+        title: issue.title,
+        state: issue.state,
+        url: issue.url,
+      },
+      attempt,
+      metadata: {
+        workspace: workspace.path,
+        model: modelSelection.model,
+        reasoningEffort: modelSelection.reasoningEffort,
+      },
+    });
 
     entry.promise = this.deps.agentRunner
       .runAttempt({
@@ -623,6 +673,20 @@ export class Orchestrator {
         );
 
         if (!this.running) {
+          this.notify({
+            type: "worker_failed",
+            severity: "critical",
+            timestamp: nowIso(),
+            message: outcome.errorMessage ?? "service stopped before the worker completed",
+            issue: {
+              id: latestIssue.id,
+              identifier: latestIssue.identifier,
+              title: latestIssue.title,
+              state: latestIssue.state,
+              url: latestIssue.url,
+            },
+            attempt,
+          });
           this.releaseIssueClaim(latestIssue.id);
           this.completedViews.set(
             latestIssue.identifier,
@@ -703,6 +767,23 @@ export class Orchestrator {
         }
 
         if (outcome.kind === "cancelled" || isHardFailure(outcome.errorCode)) {
+          this.notify({
+            type: outcome.kind === "cancelled" ? "worker_failed" : "worker_failed",
+            severity: "critical",
+            timestamp: nowIso(),
+            message: outcome.errorMessage ?? "worker stopped without a retry",
+            issue: {
+              id: latestIssue.id,
+              identifier: latestIssue.identifier,
+              title: latestIssue.title,
+              state: latestIssue.state,
+              url: latestIssue.url,
+            },
+            attempt,
+            metadata: {
+              errorCode: outcome.errorCode,
+            },
+          });
           this.completedViews.set(
             latestIssue.identifier,
             issueView(latestIssue, {
@@ -726,6 +807,67 @@ export class Orchestrator {
 
         const stopSignal = outcome.kind === "normal" ? detectStopSignal(entry.lastAgentMessageContent) : null;
         if (stopSignal) {
+          let pullRequestUrl: string | null = null;
+          if (stopSignal === "done" && entry.repoMatch && this.deps.gitManager) {
+            try {
+              const commitResult = await this.deps.gitManager.commitAndPush(
+                workspace.path,
+                `${latestIssue.identifier}: ${latestIssue.title}`,
+              );
+              if (commitResult.pushed) {
+                const pullRequest = await this.deps.gitManager.createPullRequest(
+                  entry.repoMatch,
+                  latestIssue,
+                  commitResult.branchName,
+                );
+                pullRequestUrl =
+                  typeof pullRequest === "object" &&
+                  pullRequest !== null &&
+                  "html_url" in pullRequest &&
+                  typeof (pullRequest as { html_url?: unknown }).html_url === "string"
+                    ? ((pullRequest as { html_url: string }).html_url ?? null)
+                    : null;
+              }
+            } catch (error) {
+              const errorText = error instanceof Error ? error.message : String(error);
+              this.notify({
+                type: "worker_failed",
+                severity: "critical",
+                timestamp: nowIso(),
+                message: `git post-run failed: ${errorText}`,
+                issue: {
+                  id: latestIssue.id,
+                  identifier: latestIssue.identifier,
+                  title: latestIssue.title,
+                  state: latestIssue.state,
+                  url: latestIssue.url,
+                },
+                attempt,
+                metadata: {
+                  workspace: workspace.path,
+                },
+              });
+              this.completedViews.set(
+                latestIssue.identifier,
+                issueView(latestIssue, {
+                  workspaceKey: workspace.workspaceKey,
+                  status: "failed",
+                  attempt,
+                  error: errorText,
+                  message: `git post-run failed: ${errorText}`,
+                  configuredModel: this.resolveModelSelection(latestIssue.identifier).model,
+                  configuredReasoningEffort: this.resolveModelSelection(latestIssue.identifier).reasoningEffort,
+                  configuredModelSource: this.resolveModelSelection(latestIssue.identifier).source,
+                  modelChangePending: false,
+                  model: entry.modelSelection.model,
+                  reasoningEffort: entry.modelSelection.reasoningEffort,
+                  modelSource: entry.modelSelection.source,
+                }),
+              );
+              this.releaseIssueClaim(latestIssue.id);
+              return;
+            }
+          }
           this.completedViews.set(
             latestIssue.identifier,
             issueView(latestIssue, {
@@ -742,6 +884,24 @@ export class Orchestrator {
               modelSource: entry.modelSelection.source,
             }),
           );
+          this.notify({
+            type: stopSignal === "blocked" ? "worker_failed" : "worker_completed",
+            severity: stopSignal === "blocked" ? "critical" : "info",
+            timestamp: nowIso(),
+            message: stopSignal === "blocked" ? "worker reported issue blocked" : "worker reported issue complete",
+            issue: {
+              id: latestIssue.id,
+              identifier: latestIssue.identifier,
+              title: latestIssue.title,
+              state: latestIssue.state,
+              url: latestIssue.url,
+            },
+            attempt,
+            metadata: {
+              workspace: workspace.path,
+              pullRequestUrl,
+            },
+          });
           this.releaseIssueClaim(latestIssue.id);
           return;
         }
@@ -824,6 +984,24 @@ export class Orchestrator {
       issue,
       workspaceKey: this.detailViews.get(issue.identifier)?.workspaceKey ?? null,
     });
+    this.notify({
+      type: "worker_retry",
+      severity: "critical",
+      timestamp: nowIso(),
+      message: `retry queued in ${delayMs}ms`,
+      issue: {
+        id: issue.id,
+        identifier: issue.identifier,
+        title: issue.title,
+        state: issue.state,
+        url: issue.url,
+      },
+      attempt,
+      metadata: {
+        delayMs,
+        error,
+      },
+    });
   }
 
   private async revalidateAndLaunchRetry(issueId: string, attempt: number): Promise<void> {
@@ -867,6 +1045,13 @@ export class Orchestrator {
     if (!this.runningEntries.has(issueId)) {
       this.releaseIssueClaim(issueId);
     }
+  }
+
+  private notify(event: NotificationEvent): void {
+    if (!this.deps.notificationManager) {
+      return;
+    }
+    void this.deps.notificationManager.notify(event);
   }
 
   private pushEvent(event: RecentEvent & { usage?: unknown; rateLimits?: unknown }): void {
@@ -921,24 +1106,6 @@ export class Orchestrator {
     }
   }
 
-  private sortIssuesForDispatch(issues: Issue[]): Issue[] {
-    return [...issues].sort((left, right) => {
-      const leftPriority = left.priority ?? Number.MAX_SAFE_INTEGER;
-      const rightPriority = right.priority ?? Number.MAX_SAFE_INTEGER;
-      if (leftPriority !== rightPriority) {
-        return leftPriority - rightPriority;
-      }
-
-      const leftCreatedAt = left.createdAt ? Date.parse(left.createdAt) : Number.MAX_SAFE_INTEGER;
-      const rightCreatedAt = right.createdAt ? Date.parse(right.createdAt) : Number.MAX_SAFE_INTEGER;
-      if (leftCreatedAt !== rightCreatedAt) {
-        return leftCreatedAt - rightCreatedAt;
-      }
-
-      return left.identifier.localeCompare(right.identifier);
-    });
-  }
-
   private canDispatchIssue(issue: Issue): boolean {
     const config = this.getConfig();
     if (!isActiveState(issue.state, config)) {
@@ -947,8 +1114,8 @@ export class Orchestrator {
     if (this.claimedIssueIds.has(issue.id)) {
       return false;
     }
-    if (isTodoState(issue.state)) {
-      return !issue.blockedBy.some((blocker) => blocker.state === null || !isTerminalState(blocker.state, config));
+    if (isTodoState(issue.state, config)) {
+      return !isBlockedByNonTerminal(issue, config);
     }
     return true;
   }

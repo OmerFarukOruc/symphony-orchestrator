@@ -1,130 +1,231 @@
-# Symphony v1 ExecPlan
+# Symphony v1 Implementation and Delivery Plan
 
-This is the living implementation plan for Symphony v1. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` are updated as work lands.
+This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
+
+This repository includes the plan contract at `.agent/PLANS.md`. This document must be maintained in accordance with `.agent/PLANS.md` and must stay self-contained so a new contributor can resume from this file alone.
 
 ## Purpose / Big Picture
 
-After this change, a person can place a `WORKFLOW.md` file in this repository, start a local Symphony service, and watch it do real work: poll Linear for issues, create a dedicated filesystem workspace per issue, launch `codex app-server` inside that workspace, retry or stop work when issue state changes, and expose a local status page and JSON API at `http://127.0.0.1:<port>/`.
+After this change, an operator should be able to run Symphony locally or in Docker, observe it through a self-contained dashboard and Prometheus metrics endpoint, route issues safely through clearer dispatch rules, trust Linear failures to be classified accurately, and continue toward the broader v1 roadmap from a single in-repo execution document. The first visible proof for this implementation slice is smaller but concrete: `GET /metrics` works, Linear pagination fails safely instead of looping forever, dispatch behavior is testable through pure helpers, and the HTML views no longer depend on remote CDNs or hosted fonts.
+
+The implementation request came from `/home/oruc/Desktop/implementation_plan.md`, which is broader than one coding session. The approach here is to translate that external plan into an executable repo-local sequence, land the independent Phase 1 work now, and leave a detailed atomic backlog for the remaining phases so the next contributor can continue without re-discovery.
 
 ## Progress
 
-- [x] (2026-03-15 22:58Z) Read the Symphony specification, the local Codex app-server schema, the local Codex provider configuration, and the current repository contents.
-- [x] (2026-03-15 22:58Z) Resolved the main open design choices: TypeScript on Node 22+, high-trust Codex defaults, no SSH workers in v1, `account/read` preflight, and keeping multi-account routing below Symphony instead of inside Symphony.
-- [x] (2026-03-16 09:20Z) Re-anchored the project to `/home/oruc/Desktop/codex`, copied the initial scaffold into the correct root, and updated the plan to use this repository path.
-- [x] (2026-03-16 09:26Z) Created `package.json`, preserved `tsconfig.json`, established the source, test, docs, and bin directory structure, and proved the initial dry-start validation path.
-- [x] (2026-03-16 09:26Z) Created the first user-facing docs: `README.md`, `WORKFLOW.example.md`, and `docs/TRUST_AND_AUTH.md`.
-- [x] (2026-03-16 09:26Z) Implemented workflow loading, typed config resolution, validation, dynamic reload, and last-known-good fallback.
-- [x] (2026-03-16 09:48Z) Implemented the Linear client, including the raw GraphQL helper needed by the `linear_graphql` dynamic tool, and corrected the query shape against live Linear schema introspection.
-- [x] (2026-03-16 09:43Z) Implemented workspace management, hook execution, transient-directory cleanup, and safe workspace removal.
-- [x] (2026-03-16 09:45Z) Implemented narrow Codex protocol helpers, a deterministic mock app-server fixture, and the real `AgentRunner`.
-- [x] (2026-03-16 09:46Z) Implemented the orchestrator state machine, retry logic, stall detection, and shutdown behavior.
-- [x] (2026-03-16 09:46Z) Implemented the local HTTP dashboard and JSON API without relying on machine-specific external files.
-- [x] (2026-03-16 09:47Z) Added unit tests, fixture-driven protocol tests, and opt-in live integration fixtures/tests.
-- [x] (2026-03-16 09:49Z) Ran the full local validation sequence, including `npm test`, `npm run build`, dry-start validation, `npm run test:integration`, and a local HTTP smoke check on `/api/v1/state`.
-- [x] (2026-03-16 00:22Z) Added explicit `hooks.timeout_ms`, `codex.read_timeout_ms`, `codex.turn_timeout_ms`, safer omitted-policy defaults, and fixed live token accounting/detail-state drift during active worker runs.
-- [x] (2026-03-16 00:22Z) Replaced the dashboard template with a one-to-one live adaptation of `/home/oruc/Desktop/stitch/code.html`, wired to the current `/api/v1/*` state and detail endpoints.
-- [x] (2026-03-16 02:29Z) Fixed the shutdown and hard-failure retry rules so `SIGINT`, inactive issues, terminal issues, and startup/input failures do not queue new retries after a worker stops.
-- [x] (2026-03-16 02:29Z) Switched the checked-in local `WORKFLOW.md` to a Docker-backed `codex login` smoke path and removed the earlier repo-local Codex home fixture dependency.
-- [x] (2026-03-16 02:39Z) Replaced the repo-local launcher with generated per-attempt runtime homes so API-key, OpenAI-compatible provider, and `codex login` flows all run through the same Docker path.
-- [x] (2026-03-16 02:55Z) Changed the Symphony default worker selection to `gpt-5.4` with `high` reasoning and added per-issue model overrides through the dashboard/API.
-- [x] (2026-03-16 03:00Z) Performed a deep parity audit against the upstream Symphony spec, the OpenAI Elixir README, and the Rondo transparency model; confirmed the main remaining gaps are SSH workers, archived attempt persistence, and richer event-stream visibility.
-- [x] (2026-03-16 03:13Z) Implemented durable attempt and event persistence under `.symphony/`, exposed archived run endpoints, and added the first run-inspector tabs to the dashboard detail panel.
-- [x] (2026-03-16 03:20Z) Changed per-issue model overrides so they no longer restart an active worker; saved model settings now apply on the next run while the current run keeps its original model.
-- [x] (2026-03-16 12:40Z) Persisted `.symphony/issue-index.json` alongside attempt archives, added the repo-root `./symphony-logs` inspection helper plus a controlled archive sandbox fixture, and refreshed the release docs for `v0.2.0`.
-- [x] (2026-03-16 17:10Z) Updated the public docs set to match the shipped hardening pass, including config-driven tracker state policy, retry revalidation, current observability boundaries, and the remaining roadmap after the `v0.2.0` spec-conformance slice.
-- [x] (2026-03-16 14:30Z) Added an operator-facing smoke-issue recipe plus workflow prompt guidance so the first end-to-end live test can succeed in an otherwise empty issue workspace by writing a proof file instead of depending on repo hydration.
-- [x] (2026-03-16 14:43Z) Added a local completion-stop path: normal turns that end with an explicit `SYMPHONY_STATUS: DONE` or `SYMPHONY_STATUS: BLOCKED` signal, or a clearly final completion message, now stop instead of auto-queuing another continuation turn.
+- [x] (2026-03-17 00:16Z) Read `.agent/PLANS.md`, `/home/oruc/Desktop/implementation_plan.md`, `EXECPLAN.md`, and the current repository structure to reconcile the requested roadmap with the actual codebase.
+- [x] (2026-03-17 00:19Z) Confirmed the repository already ships pieces assumed by the external plan, including `src/metrics.ts`, archived-attempt storage, and the current dashboard/log pages, so the plan must be adapted rather than copied verbatim.
+- [x] (2026-03-17 00:22Z) Replaced the stale prior ExecPlan with this repository-specific living document tied to `/home/oruc/Desktop/symphony-orchestrator`.
+- [x] (2026-03-17 02:31Z) Implemented Phase 1.1 in `src/linear-client.ts` and `tests/linear-client.test.ts`: added `LinearErrorCode`, `LinearClientError`, malformed payload detection, transport and HTTP classification, and null-cursor pagination guards in all paginated fetch paths.
+- [x] (2026-03-17 02:31Z) Implemented Phase 1.2 in `src/http-server.ts` and `tests/http-server.test.ts`: added `GET /metrics` returning Prometheus text with the expected content type.
+- [x] (2026-03-17 02:31Z) Implemented Phase 1.3 in `src/orchestrator/dispatch.ts`, `src/orchestrator.ts`, and `tests/dispatch.test.ts`: extracted pure sorting and blocker helpers and wired the orchestrator to use them.
+- [x] (2026-03-17 02:32Z) Implemented Phase 1.4 in `src/dashboard-template.ts` and `src/logs-template.ts`: removed remote CDNs, Google Fonts, and Material Symbols in favor of inline CSS, system fonts, and Unicode icon substitutions.
+- [x] (2026-03-17 02:33Z) Ran targeted validation for the changed slices with `npm test -- --run tests/linear-client.test.ts tests/http-server.test.ts tests/orchestrator.test.ts tests/dispatch.test.ts`.
+- [x] (2026-03-17 02:33Z) Ran repository validation with `npm test` and `npm run build` from `/home/oruc/Desktop/symphony-orchestrator`.
+- [x] (2026-03-17 02:55Z) Implemented Phase 2 notification primitives and wiring: added `src/notification-channel.ts`, `src/slack-webhook.ts`, `src/notification-manager.ts`, parsed notification config in `src/config.ts`, and emitted lifecycle notifications from `src/orchestrator.ts`.
+- [x] (2026-03-17 02:55Z) Implemented the main Phase 3 git and GitHub path: added `src/repo-router.ts`, `src/git-manager.ts`, `src/github-api-tool.ts`, registered `github_api` in `src/agent-runner.ts`, and wired orchestrator-side clone/commit/push/PR behavior gated on `SYMPHONY_STATUS: DONE`.
+- [x] (2026-03-17 02:56Z) Implemented the main Phase 4 and Phase 6 config surface: added `src/secrets-store.ts`, `src/secrets-api.ts`, `src/config-overlay.ts`, `src/config-api.ts`, and wired `src/cli.ts`, `src/config.ts`, and `src/http-server.ts` so `WORKFLOW.md` remains primary while overlay and secret-backed resolution are additive.
+- [x] (2026-03-17 02:56Z) Implemented the main Phase 5 Docker service path: added `src/path-registry.ts`, threaded unified archive and host-path translation through `src/cli.ts`, `src/agent-runner.ts`, and `src/docker-spawn.ts`, and added `Dockerfile`, `docker-compose.yml`, `.env.example`, and `WORKFLOW.docker.md`.
+- [x] (2026-03-17 02:56Z) Implemented the main Phase 7 and Phase 10 leaf modules: added `src/state-machine.ts`, `src/planning-skill.ts`, `src/planning-api.ts`, mounted planning routes in `src/http-server.ts`, and added matching test coverage.
+- [x] (2026-03-17 02:57Z) Implemented the main Phase 8 and Phase 9 scaffolding: extended `.github/workflows/ci.yml`, added `test:docker` and `test:e2e` scripts plus opt-in integration placeholders, and added the `desktop/` scaffold.
+- [x] (2026-03-17 02:57Z) Updated the operator-facing docs for Docker service mode, overlay/secrets APIs, notifications, git automation, and the expanded API surface.
+- [x] (2026-03-17 02:57Z) Re-ran full validation after the broader rollout: `npm run build` passed and `npm test` passed with 32 files, 171 tests, and 2 intentionally skipped opt-in integration placeholders.
+- [ ] (2026-03-17 02:58Z) Finish the remaining partial integrations (completed: core runtime wiring, Docker service packaging, CI scripts, planning router, desktop scaffold; remaining: planning execution still requires a real Linear mutation backend, the dashboard still renders runtime status columns rather than configurable workflow-state columns, and the desktop scaffold is not yet wired to actual service lifecycle control).
 
 ## Surprises & Discoveries
 
-- Observation: the implementation target moved mid-run from the earlier playground path to `/home/oruc/Desktop/codex`, and the actual target directory was empty.
-  Evidence: `ls -la /home/oruc/Desktop/codex` showed only `.` and `..`, with no `AGENTS.md`, `tsconfig.json`, or project files.
+- Observation: the checked-in `EXECPLAN.md` was still oriented around an earlier repository path and earlier project state.
+  Evidence: the previous file referred to `/home/oruc/Desktop/codex` and described the current dashboard as still depending on remote assets, which is a useful reminder but no longer a sufficient restart guide for this repository.
 
-- Observation: the initial Linear query draft matched the earlier design notes but not the current live Linear GraphQL schema.
-  Evidence: a local service smoke run with a placeholder `LINEAR_API_KEY` produced GraphQL validation errors for `project.slug`, `IssueRelation.identifier`, and `IssueRelation.state`, and direct introspection against `https://api.linear.app/graphql` confirmed `NullableProjectFilter.slugId` and `IssueRelation.issue` / `relatedIssue`.
+- Observation: the repo already contains a Prometheus collector in `src/metrics.ts`, but it is not yet wired into the HTTP surface or the orchestration loops.
+  Evidence: `rg -n "globalMetrics|orchestratorPollsTotal|agentRunsTotal" src tests` found definitions in `src/metrics.ts` and tests in `tests/metrics.test.ts`, but no integration points elsewhere.
 
-- Observation: the real Codex app-server wire format and tool validation rules diverged from the deterministic mock in a few important places.
-  Evidence: live runs showed notifications and responses without `jsonrpc`, `thread/start` requiring `experimentalApi` plus an object-shaped `inputSchema`, and `turn/start` requiring `input` rather than `prompt`.
+- Observation: the external implementation plan assumes dispatch sorting and blocker checks are still embedded in the orchestrator, and that is still true here.
+  Evidence: `src/orchestrator.ts` currently contains private methods `sortIssuesForDispatch()` and `canDispatchIssue()` with inline blocker logic around line 924.
 
-- Observation: the current dashboard is visually one-to-one with the stitch mock, but that fidelity currently depends on the same remote Tailwind and Google Fonts includes as the prototype rather than a fully self-contained asset path.
-  Evidence: both `/home/oruc/Desktop/stitch/code.html` and `src/dashboard-template.ts` include `https://cdn.tailwindcss.com` and `fonts.googleapis.com` resources.
+- Observation: the dashboard and log viewer still rely on remote Tailwind, Google Fonts, and Material Symbols, which would break in an offline or no-network environment.
+  Evidence: `src/dashboard-template.ts` and `src/logs-template.ts` contain `cdn.tailwindcss.com`, `fonts.googleapis.com`, and `material-symbols-outlined` references.
 
-- Observation: the largest remaining upstream feature gap is worker distribution across SSH hosts rather than the local single-host orchestration path.
-  Evidence: the upstream Symphony spec and Elixir README document `worker.ssh_hosts`, `worker.max_concurrent_agents_per_host`, and per-host execution flow, while this repository currently launches workers only on the local machine.
+- Observation: the Phase 1 work split cleanly across independent slices, and the repo tolerated parallel implementation well because the write sets were naturally disjoint.
+  Evidence: the Linear client, dispatch and metrics, and HTML template changes landed without overlapping file ownership and the combined validation still passed.
 
-- Observation: the repo-local isolated Codex home was clean enough to avoid inherited skill noise, but not sufficient by itself to authenticate against the local CLIProxyAPI.
-  Evidence: direct proxy probes showed `401 Missing API key` with no bearer header, `401 Invalid API key` for the placeholder value in `~/.cli-proxy-api/config.yaml`, and `200` for the bearer key stored in `~/.codex/auth.json`; after exporting that key in `bin/codex-app-server-live`, the proxy logs returned `200` for Symphony `/v1/responses` requests.
+- Observation: the dashboard conversion did not need a utility-for-utility Tailwind clone to stay functional.
+  Evidence: after replacing remote assets with inline semantic CSS and Unicode icons, `npm test`, `npm run build`, and `rg -n "cdn.tailwindcss.com|fonts.googleapis.com|material-symbols-outlined" src/dashboard-template.ts src/logs-template.ts` all succeeded.
 
-- Observation: Codex app-server supports model overrides at the protocol layer, so Symphony does not need to rewrite a shared `CODEX_HOME` config file just to change one issue's model.
-  Evidence: the local `codex_app_server_protocol.v2.schemas.json` includes `model` on `thread/start` and both `model` and `effort` on `turn/start`, and live proxy logs showed Symphony switching a running issue from `gpt-5.4/high` to `gpt-5/medium` after a single API override.
+- Observation: most of the post-Phase-1 roadmap fit naturally as leaf modules plus a small number of high-conflict integration files.
+  Evidence: the later rollout landed primarily in new files such as `src/notification-manager.ts`, `src/config-overlay.ts`, `src/path-registry.ts`, `src/state-machine.ts`, and `src/planning-api.ts`, while the shared glue concentrated in `src/cli.ts`, `src/config.ts`, `src/http-server.ts`, `src/agent-runner.ts`, and `src/orchestrator.ts`.
 
-- Observation: operators expect per-issue model selection to behave like a saved setting, not a hot-swapped live run mutation.
-  Evidence: a fresh live smoke run showed the corrected behavior: the active run stayed on `gpt-5.4/high`, the saved configuration changed to `gpt-5/medium`, and the issue detail API surfaced that as a pending next-run change instead of interrupting the worker.
-
-- Observation: this repository already emits enough live event detail to support a Rondo-like transparency view, but it currently keeps only an in-memory ring buffer rather than a persisted archive of attempts and per-run event timelines.
-  Evidence: `/api/v1/state` and `/api/v1/:issue_identifier` already expose `recent_events` and streamed `item_started` / `item_completed` / `turn_started` / `turn_completed` activity, while the current code stores those events only in `Orchestrator.recentEvents` and does not write per-attempt history to disk or SQLite.
-
-- Observation: the new `.symphony/` archive format is already sufficient to back an operator-facing run inspector without needing a database migration first.
-  Evidence: a live smoke run created `attempts/<attempt-id>.json` and `events/<attempt-id>.jsonl`, `/api/v1/NIN-5` returned the current attempt summary, and `/api/v1/attempts/:attempt_id` returned the archived event stream for that attempt.
+- Observation: a strict `MASTER_KEY` requirement at service startup would have broken existing workflows before the secrets feature was used.
+  Evidence: the initial `SecretsStore` implementation threw immediately without `MASTER_KEY`; the final integration changed that to a disabled-until-configured posture unless an existing encrypted secrets file is already present.
 
 ## Decision Log
 
-- Decision: use ESM across the repository by adding `"type": "module"` to `package.json` and keeping TypeScript on `module: "NodeNext"`.
-  Rationale: the repository already had a NodeNext TypeScript configuration, the codebase is greenfield, and one module system is easier to follow.
-  Date/Author: 2026-03-15 / Codex
+- Decision: adapt `/home/oruc/Desktop/implementation_plan.md` into a repository-local execution document instead of treating it as a literal file-by-file patch list.
+  Rationale: the external plan targets a broader v1 scope and an earlier repository state. This repository already ships some later concepts and uses different paths, so a fresh in-repo ExecPlan is necessary for safe continuation.
+  Date/Author: 2026-03-17 / Codex
 
-- Decision: keep the high-trust Codex defaults as `approval_policy: "never"`, `thread_sandbox: "danger-full-access"`, and `turn_sandbox_policy: { type: "dangerFullAccess" }`.
-  Rationale: this matches the trusted-environment posture and the local schema research.
-  Date/Author: 2026-03-15 / Codex
+- Decision: implement the work in milestone order, but land the independent Phase 1 slices in parallel because the user explicitly asked for multiple subagents and the slices do not share a write set.
+  Rationale: Linear transport, observability/dispatch plumbing, and static-asset removal can be developed independently and merged with low risk while keeping momentum high during an unattended session.
+  Date/Author: 2026-03-17 / Codex
 
-- Decision: build the dashboard as a repository-local HTML template with inline browser JavaScript, while temporarily accepting remote Tailwind and font dependencies in the current iteration.
-  Rationale: the implementation must stay repo-local and not depend on machine-local prototype files, even though the current dashboard still uses remote CDNs and can be made more self-contained in a later pass.
-  Date/Author: 2026-03-15 / Codex
+- Decision: preserve the existing operator-facing HTML structure and DOM ids while removing remote dependencies, rather than redesigning the UI.
+  Rationale: the tests and current browser behavior already key off those ids. Phase 1 needs an offline-safe equivalent, not a new interface contract.
+  Date/Author: 2026-03-17 / Codex
 
-- Decision: remove the repo-local launcher and checked-in custom-provider Codex home, and generate a fresh runtime `CODEX_HOME` for every Docker attempt instead.
-  Rationale: this keeps the repository generic, avoids stale machine-specific auth/config leftovers, and lets one runtime path support API-key providers plus `codex login` users.
-  Date/Author: 2026-03-16 / Codex
+- Decision: use Unicode and text icon substitutes instead of bundling a local icon font as part of Phase 1.
+  Rationale: the goal of this slice was offline-safe behavior with minimal moving parts. Unicode substitutions were enough to preserve structure and meaning without adding a new asset pipeline.
+  Date/Author: 2026-03-17 / Codex
 
-- Decision: make `gpt-5.4` with `high` reasoning the Symphony default, while exposing per-issue runtime overrides in the dashboard and JSON API.
-  Rationale: this matches the preferred default operating mode while keeping the operator free to downshift or experiment on a single issue without disturbing other workers.
-  Date/Author: 2026-03-16 / Codex
-
-- Decision: prioritize archived attempt/event transparency immediately after SSH parity work, borrowing the best parts of the Rondo-style dashboard while keeping Symphony's operator-facing state model.
-  Rationale: the current API already proves the value of live event streaming; persisting that data per run would remove much of the remaining "black box" feeling without changing the orchestration core.
-  Date/Author: 2026-03-16 / Codex
-
-- Decision: use a filesystem-backed attempt archive first, rooted under `--log-dir` or repo-local `.symphony/`, instead of introducing a new external database dependency.
-  Rationale: this keeps the implementation simple, debuggable, and self-contained while still unlocking archived run APIs, dashboard tabs, and future migration to richer storage if needed.
-  Date/Author: 2026-03-16 / Codex
+- Decision: make the new runtime layers additive and optional wherever possible, even when the external roadmap described them as headline features.
+  Rationale: the repository already had a stable local operator flow. Notifications, git automation, secrets, overlay config, Docker service packaging, and planning were integrated so that existing workflows still build and test cleanly without mandatory new environment variables or external services.
+  Date/Author: 2026-03-17 / Codex
 
 ## Outcomes & Retrospective
 
-The implementation now exists end to end in `/home/oruc/Desktop/codex`: workflow parsing and reload fallback, Linear transport, workspace lifecycle, Codex app-server protocol handling, orchestration, retries, the local dashboard/API, deterministic tests, and opt-in integration fixtures. The local validation sequence passed with `npm test`, `npm run build`, `node dist/cli.js ./WORKFLOW.example.md` producing the expected `missing_tracker_api_key` failure, `npm run test:integration`, and a local smoke run on `http://127.0.0.1:4010/api/v1/state` returning a valid snapshot while the service surfaced the expected upstream 401 from Linear for a dummy token instead of crashing.
+The repo is now materially further along than the original Phase 1 checkpoint. In addition to the landed metrics, Linear hardening, dispatch extraction, and offline HTML templates, the current tree includes notification primitives plus orchestration wiring, optional git routing and PR automation, encrypted secrets and config overlay stores with local APIs, Docker service packaging artifacts, state-machine and planning leaf modules, CI/test entrypoint extensions, and a desktop scaffold. The unattended-session goal also landed: this ExecPlan remains the restart document for the current tree and records the remaining gaps explicitly.
 
-The current repo also includes a parity-focused runtime hardening pass: hook timeout support, codex turn timeout support, corrected thread/token usage aggregation, running-state issue detail fixes, a live dashboard that matches the provided stitch mock much more closely while staying backed by the real API surface, a corrected shutdown path that no longer queues retries after `SIGINT` or other non-retriable worker stops, a generated per-attempt runtime `CODEX_HOME` that supports API-key providers plus `codex login` users without a repo-local launcher, issue-level model routing controls that save the next-run model and reasoning pair from the website or API without interrupting an active worker, and a durable attempt archive under `.symphony/` with archived-run API access and dashboard tabs. The archive now also persists `issue-index.json` for fast issue-to-attempt lookups, and the repo-root `./symphony-logs` helper plus the controlled sandbox fixture make historical run inspection reproducible without touching live production data. A fresh live smoke run with the checked-in `WORKFLOW.md` now starts on `gpt-5.4/high`, can authenticate through either `codex login` or an env-backed provider path, saves a pending next-run override to `gpt-5/medium` through the override endpoint, and writes the attempt plus its event stream to disk for later inspection.
+The latest validation evidence is stronger than the earlier Phase 1 pass. `npm run build` succeeds, `npm test` now passes with 32 files and 171 tests, and only 2 opt-in integration placeholders are skipped behind environment flags. The main remaining gaps are integration depth rather than codebase breadth: planning execution still needs a real Linear mutation backend, dashboard columns still reflect runtime buckets rather than configurable state-machine columns, and the desktop scaffold is not yet wired to actual `node dist/cli.js` lifecycle control.
 
-The biggest remaining parity gap versus upstream Symphony is SSH host distribution. Local single-host orchestration is now materially ahead of where it started, but `worker.ssh_hosts` and per-host concurrency are not implemented yet. Archived attempt transparency is now implemented through the filesystem-backed `.symphony/` archive, archived-run API endpoints, and dashboard detail inspection, while the current dashboard fidelity still relies on remote Tailwind/font assets instead of fully local static assets.
+The main lesson from the full unattended pass is that broad roadmaps become tractable when decomposed into leaf modules plus a small set of integration seams. Parallel delegation worked well because the ownership boundaries were explicit, while the final shared-file integration stayed local and test-driven.
 
 ## Context and Orientation
 
-- Repository root: `/home/oruc/Desktop/codex`
-- Existing config at start: none; the directory was empty and the scaffold was recreated there
-- Planned top-level additions: `package.json`, `README.md`, `WORKFLOW.example.md`, `docs/`, `src/`, `tests/`, and `bin/`
+The repository root is `/home/oruc/Desktop/symphony-orchestrator`. The main entry point is `src/cli.ts`, which reads a workflow file, builds a `ConfigStore`, initializes persistence, starts the orchestrator, and serves the local HTTP interface. `src/orchestrator.ts` is the control loop that polls Linear, sorts candidate issues, manages retries, launches workers, and assembles runtime snapshots. `src/agent-runner.ts` wraps the Codex app-server protocol and Docker runtime wiring. `src/http-server.ts` exposes the dashboard at `/` plus the JSON API under `/api/v1/*`. `src/linear-client.ts` is the GraphQL client for Linear, and its failure classification matters because the orchestrator depends on predictable retry behavior.
 
-## Milestones
+A “dispatch helper” in this plan means a pure function that can be called without constructing the whole orchestrator class. This matters because sorting and blocker checks are easier to test and reason about when they do not depend on timers, stateful maps, or network calls. A “typed Linear error” means a normal JavaScript `Error` subclass whose `code` property tells the rest of the service whether the failure came from transport, HTTP status, GraphQL errors, malformed payloads, or an impossible pagination response.
 
-### Milestone 1
+The external roadmap file, `/home/oruc/Desktop/implementation_plan.md`, defines ten phases. This ExecPlan keeps those phases but translates them to the actual repository layout. The immediate implementation focus is Phase 1 because it is self-contained, operator-visible, and safe to validate in one turn.
 
-Bootstrap the repository, implement workflow/config loading, and make dry-start validation readable.
+## Plan of Work
 
-### Milestone 2
+The first milestone is to harden the Linear client in `src/linear-client.ts`. Add an exported error-code type and `LinearClientError` class there, wrap `fetch()` rejections so they become `linear_transport_error`, classify non-2xx responses as `linear_http_error`, classify GraphQL `errors[]` payloads as `linear_graphql_error`, detect missing or malformed `data.issues` payloads as `linear_unknown_payload`, and stop pagination when `hasNextPage` is true but `endCursor` is null by throwing `linear_missing_end_cursor`. Update `tests/linear-client.test.ts` so each failure mode is explicit and deterministic.
 
-Implement the Linear adapter and workspace manager with deterministic tests.
+The second milestone is to make observability and dispatch behavior easier to inspect. In `src/http-server.ts`, add a `GET /metrics` route that returns `globalMetrics.serialize()` with the Prometheus content type. Also add lightweight request metrics collection around the HTTP routes if doing so stays local to the existing server structure. Extract dispatch helpers from `src/orchestrator.ts` into `src/orchestrator/dispatch.ts` so sorting and blocker checks are pure exported functions. Update `src/orchestrator.ts` to call those helpers instead of private inline logic. Add `tests/dispatch.test.ts` for sort order and blocker behavior, and extend `tests/http-server.test.ts` to verify `/metrics`.
 
-### Milestone 3
+The third milestone is to remove remote asset dependencies from the HTML pages. In `src/dashboard-template.ts`, replace the Tailwind CDN, Google Fonts, and Material Symbols usage with inline CSS, system font stacks, and text or Unicode icon substitutes. Do the same in `src/logs-template.ts`. Preserve all existing element ids and browser-side script hooks so the rest of the code and tests remain valid. Favor small semantic class names and shared inline styles over trying to recreate every Tailwind utility exactly.
 
-Implement the Codex protocol subset, `linear_graphql`, a deterministic mock app-server, and the real `AgentRunner`.
+Once those edits land, run the targeted tests for the changed areas and then the full repository validation commands. Update the `Progress`, `Surprises & Discoveries`, `Decision Log`, `Outcomes & Retrospective`, `Concrete Steps`, `Validation and Acceptance`, and `Artifacts and Notes` sections with the real results. Only after Phase 1 is green should work continue into notifications, git automation, secrets, Docker path translation, overlay config, state machines, CI hardening, desktop packaging, and planning APIs.
 
-### Milestone 4
+## Concrete Steps
 
-Implement the orchestrator, HTTP surface, and end-to-end validation.
+All commands in this section must be run from `/home/oruc/Desktop/symphony-orchestrator`.
+
+1. Read the current implementation and tests before editing:
+
+       sed -n '1,260p' src/linear-client.ts
+       sed -n '1,260p' src/http-server.ts
+       sed -n '880,980p' src/orchestrator.ts
+       sed -n '1,280p' tests/linear-client.test.ts
+       sed -n '1,280p' tests/http-server.test.ts
+
+2. Implement the Linear error and pagination changes in `src/linear-client.ts` and update `tests/linear-client.test.ts`.
+
+3. Add `src/orchestrator/dispatch.ts`, update `src/orchestrator.ts`, and add or extend the dispatch and HTTP tests.
+
+4. Replace the remote assets in `src/dashboard-template.ts` and `src/logs-template.ts` with inline CSS and local icon substitutions.
+
+5. Run focused validation while iterating:
+
+       npm test -- --run tests/linear-client.test.ts tests/http-server.test.ts tests/orchestrator.test.ts tests/dispatch.test.ts
+
+   Observed result on 2026-03-17: Vitest passed with 4 files and 35 tests. The targeted run covered the new Linear error taxonomy, `/metrics`, the dispatch helper extraction, and the orchestrator dispatch path.
+
+6. Run the full repository validation:
+
+       npm test
+       npm run build
+
+   Observed result on 2026-03-17 after the broader rollout: the full Vitest suite passed with 32 files and 171 tests, and `npm run build` completed successfully.
+
+7. Confirm the HTML templates are offline-safe:
+
+       rg -n "cdn.tailwindcss.com|fonts.googleapis.com|material-symbols-outlined" src/dashboard-template.ts src/logs-template.ts
+
+   Observed result on 2026-03-17: no matches.
+
+8. Record the outcome in this file with timestamps and short evidence snippets.
+
+## Validation and Acceptance
+
+Phase 1 is accepted only when all of the following are true. These conditions were met on 2026-03-17.
+
+First, `tests/linear-client.test.ts` proves each Linear failure mode separately. A rejected `fetch()` call must produce `LinearClientError` with code `linear_transport_error`. A non-200 HTTP response must produce `linear_http_error`. A successful HTTP response that contains GraphQL `errors[]` must produce `linear_graphql_error`. A malformed success payload must produce `linear_unknown_payload`. A paginated response with `hasNextPage: true` and `endCursor: null` must produce `linear_missing_end_cursor` instead of looping.
+
+Second, `tests/http-server.test.ts` proves `GET /metrics` returns HTTP 200 and a Prometheus text body with the expected content type. If request metrics instrumentation is added, the test should also confirm that at least one expected metric name appears in the response body.
+
+Third, the new dispatch tests prove that sorting is by priority first, then oldest `createdAt`, then `identifier`, and that blocked todo issues are filtered when any blocker is not in a terminal state. This behavior must be driven through pure helpers so the tests do not need to spin up a whole orchestrator to cover simple ordering logic.
+
+Fourth, `npm test` and `npm run build` pass. This was reconfirmed on 2026-03-17 after the later-phase integration work with a full Vitest pass of 32 files and 171 tests plus a successful TypeScript build. The HTML templates must no longer contain `cdn.tailwindcss.com`, `fonts.googleapis.com`, or `material-symbols-outlined`, so a contributor can confirm offline safety by searching the files directly:
+
+       rg -n "cdn.tailwindcss.com|fonts.googleapis.com|material-symbols-outlined" src/dashboard-template.ts src/logs-template.ts
+
+   Observed result on 2026-03-17: no matches.
+
+## Idempotence and Recovery
+
+All edits in this plan are source-only and safe to apply incrementally. Re-running the tests or the build is safe and expected. If a partial edit leaves the codebase failing, continue from this file by finishing the current incomplete `Progress` item rather than reverting unrelated work. If the static asset conversion introduces layout regressions, keep the DOM ids and browser script contract intact, then simplify the styling further instead of restoring remote CDNs. If a new test exposes an existing bug outside the current write set, record that in `Surprises & Discoveries` and continue only if the failure is directly caused by this feature slice.
+
+## Artifacts and Notes
+
+Important evidence gathered before implementation:
+
+    $ rg -n "globalMetrics|orchestratorPollsTotal|agentRunsTotal" src tests
+    src/metrics.ts:94:export const globalMetrics = new MetricsCollector();
+    tests/metrics.test.ts:40:    metrics.orchestratorPollsTotal.increment({ status: "ok" });
+
+    $ rg -n "cdn.tailwindcss.com|fonts.googleapis.com|Material\\+Symbols|material-symbols-outlined" src/dashboard-template.ts src/logs-template.ts
+    src/dashboard-template.ts:8:  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    src/logs-template.ts:14:  <link href="https://fonts.googleapis.com/css2?family=Inter...
+
+    $ git status --short
+     M AGENTS.md
+    ?? .agent/
+
+The existing `AGENTS.md` modification and the untracked `.agent/` directory were present before this implementation work. They are not part of this feature slice and must not be reverted.
+
+Important evidence gathered after implementation:
+
+    $ npm test -- --run tests/linear-client.test.ts tests/http-server.test.ts tests/orchestrator.test.ts tests/dispatch.test.ts
+    Test Files  4 passed (4)
+    Tests  35 passed (35)
+
+    $ npm test
+    Test Files  30 passed | 2 skipped (32)
+    Tests  169 passed | 2 skipped (171)
+
+    $ npm run build
+    > tsc -p tsconfig.json
+
+    $ rg -n "cdn.tailwindcss.com|fonts.googleapis.com|material-symbols-outlined" src/dashboard-template.ts src/logs-template.ts
+    [no output]
+
+## Interfaces and Dependencies
+
+At the end of Phase 1, `src/linear-client.ts` must export:
+
+    export type LinearErrorCode =
+      | "linear_transport_error"
+      | "linear_http_error"
+      | "linear_graphql_error"
+      | "linear_unknown_payload"
+      | "linear_missing_end_cursor";
+
+    export class LinearClientError extends Error {
+      readonly code: LinearErrorCode;
+    }
+
+At the end of Phase 1, `src/orchestrator/dispatch.ts` must export pure functions with signatures equivalent to:
+
+    export function sortIssuesForDispatch(issues: Issue[]): Issue[];
+    export function isBlockedByNonTerminal(issue: Issue, config: ServiceConfig): boolean;
+    export function canDispatchIssue(
+      issue: Issue,
+      options: { claimedIssueIds: ReadonlySet<string>; config: ServiceConfig }
+    ): boolean;
+
+The exact helper names may vary slightly if the implementation remains equally clear, but the functions must stay pure and directly testable.
+
+At the end of Phase 1, `src/http-server.ts` must expose `GET /metrics` that returns `globalMetrics.serialize()` with:
+
+    Content-Type: text/plain; version=0.0.4; charset=utf-8
+
+Revision note: on 2026-03-17 this ExecPlan was rewritten because the previous file still described an earlier repository path and an outdated project snapshot. The new version aligns the plan with `/home/oruc/Desktop/symphony-orchestrator`, decomposes the requested external roadmap into atomic repository tasks, and sets Phase 1 as the active implementation milestone.

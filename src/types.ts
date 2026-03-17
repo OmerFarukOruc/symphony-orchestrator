@@ -158,6 +158,56 @@ export interface TrackerConfig {
   terminalStates: string[];
 }
 
+export type NotificationVerbosity = "off" | "critical" | "verbose";
+
+export type NotificationEventType =
+  | "issue_claimed"
+  | "worker_started"
+  | "worker_retry_queued"
+  | "worker_completed"
+  | "worker_blocked"
+  | "worker_failed"
+  | "worker_cancelled";
+
+export interface NotificationEvent {
+  type: NotificationEventType;
+  at: string;
+  issueId: string;
+  issueIdentifier: string;
+  issueTitle: string;
+  attempt: number | null;
+  message?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  workspacePath?: string | null;
+  branchName?: string | null;
+  pullRequestUrl?: string | null;
+}
+
+export interface NotificationSlackConfig {
+  webhookUrl: string;
+  verbosity: NotificationVerbosity;
+}
+
+export interface NotificationConfig {
+  slack: NotificationSlackConfig | null;
+}
+
+export interface GitHubConfig {
+  token: string;
+  apiBaseUrl: string;
+}
+
+export interface RepoConfig {
+  repoUrl: string;
+  defaultBranch: string;
+  identifierPrefix: string | null;
+  label: string | null;
+  githubOwner?: string | null;
+  githubRepo?: string | null;
+  githubTokenEnv?: string | null;
+}
+
 export interface PollingConfig {
   intervalMs: number;
 }
@@ -251,12 +301,28 @@ export interface ServerConfig {
   port: number;
 }
 
+export type StateStageKind = "backlog" | "todo" | "active" | "terminal";
+
+export interface StateStageConfig {
+  name: string;
+  kind: StateStageKind;
+}
+
+export interface StateMachineConfig {
+  stages: StateStageConfig[];
+  transitions: Record<string, string[]>;
+}
+
 export interface ServiceConfig {
   tracker: TrackerConfig;
+  notifications?: NotificationConfig;
+  github?: GitHubConfig | null;
+  repos?: RepoConfig[];
   polling: PollingConfig;
   workspace: WorkspaceConfig;
   agent: AgentConfig;
   codex: CodexConfig;
+  stateMachine?: StateMachineConfig | null;
   server: ServerConfig;
 }
 

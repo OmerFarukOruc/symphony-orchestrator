@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { LinearClient } from "../src/linear-client.js";
+import { LinearClient, LinearClientError } from "../src/linear-client.js";
 import { createLogger } from "../src/logger.js";
 import type { ServiceConfig } from "../src/types.js";
 
@@ -50,41 +50,55 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function issueNode(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
+  return {
+    id: "issue-1",
+    identifier: "MT-42",
+    title: "Fix orchestration",
+    description: "details",
+    priority: 2,
+    branchName: "feature/mt-42",
+    url: "https://linear.app/issue/MT-42",
+    createdAt: "2026-03-15T00:00:00Z",
+    updatedAt: "2026-03-16T00:00:00Z",
+    state: { name: "In Progress" },
+    labels: { nodes: [{ name: "Bug" }, { name: "Backend" }] },
+    inverseRelations: {
+      nodes: [
+        {
+          id: "rel-1",
+          issue: { id: "issue-1", identifier: "MT-42", state: { name: "In Progress" } },
+          relatedIssue: { id: "blk-1", identifier: "MT-40", state: { name: "Done" } },
+        },
+      ],
+    },
+    ...overrides,
+  };
+}
+
+function issuesPayload(options?: {
+  hasNextPage?: boolean;
+  endCursor?: string | null;
+  nodes?: unknown[];
+}): Record<string, unknown> {
+  return {
+    data: {
+      issues: {
+        nodes: options?.nodes ?? [issueNode()],
+        pageInfo: {
+          hasNextPage: options?.hasNextPage ?? false,
+          endCursor: options?.endCursor ?? null,
+        },
+      },
+    },
+  };
+}
+
 describe("LinearClient", () => {
   it("normalizes issues and lowercases labels", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({
-        data: {
-          issues: {
-            nodes: [
-              {
-                id: "issue-1",
-                identifier: "MT-42",
-                title: "Fix orchestration",
-                description: "details",
-                priority: 2,
-                branchName: "feature/mt-42",
-                url: "https://linear.app/issue/MT-42",
-                createdAt: "2026-03-15T00:00:00Z",
-                updatedAt: "2026-03-16T00:00:00Z",
-                state: { name: "In Progress" },
-                labels: { nodes: [{ name: "Bug" }, { name: "Backend" }] },
-                inverseRelations: {
-                  nodes: [
-                    {
-                      id: "rel-1",
-                      issue: { id: "issue-1", identifier: "MT-42", state: { name: "In Progress" } },
-                      relatedIssue: { id: "blk-1", identifier: "MT-40", state: { name: "Done" } },
-                    },
-                  ],
-                },
-              },
-            ],
-            pageInfo: { hasNextPage: false, endCursor: null },
-          },
-        },
-      }),
+      json: async () => issuesPayload(),
     }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -102,9 +116,41 @@ describe("LinearClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects when a 200 response contains GraphQL errors", async () => {
+  it("throws linear_transport_error when fetch rejects", async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError("network down");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new LinearClient(() => createConfig(), createLogger());
+    await expect(client.fetchCandidateIssues()).rejects.toMatchObject({
+      code: "linear_transport_error",
+    });
+    await expect(client.fetchCandidateIssues()).rejects.toBeInstanceOf(LinearClientError);
+  });
+
+  it("throws linear_http_error for non-200 response statuses", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: false,
+      status: 503,
+      statusText: "Service Unavailable",
+      json: async () => ({
+        errors: [{ message: "upstream outage" }],
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new LinearClient(() => createConfig(), createLogger());
+    await expect(client.fetchCandidateIssues()).rejects.toMatchObject({
+      code: "linear_http_error",
+    });
+  });
+
+  it("throws linear_graphql_error when a 200 payload includes errors", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
+      status: 200,
+      statusText: "OK",
       json: async () => ({
         data: null,
         errors: [{ message: "Field 'issues' not found", locations: [{ line: 2, column: 3 }] }],
@@ -113,56 +159,70 @@ describe("LinearClient", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const client = new LinearClient(() => createConfig(), createLogger());
-    await expect(client.fetchCandidateIssues()).rejects.toThrow("linear graphql response contained errors");
+    await expect(client.fetchCandidateIssues()).rejects.toMatchObject({
+      code: "linear_graphql_error",
+    });
   });
 
-  it("succeeds when a 200 response contains an empty errors array", async () => {
+  it("throws linear_unknown_payload for unexpected body shape", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
+      status: 200,
+      statusText: "OK",
       json: async () => ({
         data: {
-          issues: {
-            nodes: [
-              {
-                id: "issue-2",
-                identifier: "MT-99",
-                title: "Empty errors",
-                description: null,
-                priority: 1,
-                branchName: null,
-                url: null,
-                createdAt: "2026-03-15T00:00:00Z",
-                updatedAt: "2026-03-16T00:00:00Z",
-                state: { name: "In Progress" },
-                labels: { nodes: [] },
-                inverseRelations: { nodes: [] },
-              },
-            ],
-            pageInfo: { hasNextPage: false, endCursor: null },
+          notIssues: {
+            nodes: [],
           },
         },
-        errors: [],
       }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 
     const client = new LinearClient(() => createConfig(), createLogger());
-    const issues = await client.fetchCandidateIssues();
-    expect(issues).toHaveLength(1);
-    expect(issues[0].identifier).toBe("MT-99");
+    await expect(client.fetchCandidateIssues()).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+    });
+  });
+
+  it("throws linear_unknown_payload when response is not valid json", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => {
+        throw new SyntaxError("Unexpected token < in JSON");
+      },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new LinearClient(() => createConfig(), createLogger());
+    await expect(client.fetchCandidateIssues()).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+    });
+  });
+
+  it("throws linear_missing_end_cursor when hasNextPage=true and endCursor is null", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => issuesPayload({ hasNextPage: true, endCursor: null }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new LinearClient(() => createConfig(), createLogger());
+    await expect(client.fetchCandidateIssues()).rejects.toMatchObject({
+      code: "linear_missing_end_cursor",
+    });
   });
 
   it("uses the configured endpoint and active state variables for candidate queries", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({
-        data: {
-          issues: {
-            nodes: [],
-            pageInfo: { hasNextPage: false, endCursor: null },
-          },
-        },
-      }),
+      status: 200,
+      statusText: "OK",
+      json: async () => issuesPayload({ nodes: [] }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 

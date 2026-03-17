@@ -1,4 +1,5 @@
 import type { ServiceConfig } from "./types.js";
+import { StateMachine } from "./state-machine.js";
 
 export const DEFAULT_ACTIVE_STATES = ["Todo", "In Progress"];
 export const DEFAULT_TERMINAL_STATES = ["Done", "Completed", "Closed", "Canceled", "Cancelled", "Duplicate"];
@@ -22,14 +23,37 @@ export function normalizeStateList(states: string[]): string[] {
 }
 
 export function isTerminalState(state: string, config: ServiceConfig): boolean {
+  if (config.stateMachine) {
+    return new StateMachine({
+      stages: config.stateMachine.stages.map((stage) => ({
+        key: stage.name,
+        terminal: stage.kind === "terminal",
+      })),
+      transitions: config.stateMachine.transitions,
+      activeStates: config.tracker.activeStates,
+      terminalStates: config.tracker.terminalStates,
+    }).isTerminalState(state);
+  }
   return normalizeStateList(config.tracker.terminalStates).includes(normalizeStateValue(state));
 }
 
 export function isActiveState(state: string, config: ServiceConfig): boolean {
+  if (config.stateMachine) {
+    return config.stateMachine.stages.some(
+      (stage) =>
+        normalizeStateValue(stage.name) === normalizeStateValue(state) &&
+        (stage.kind === "active" || stage.kind === "todo"),
+    );
+  }
   return normalizeStateList(config.tracker.activeStates).includes(normalizeStateValue(state));
 }
 
-export function isTodoState(state: string): boolean {
+export function isTodoState(state: string, config?: ServiceConfig): boolean {
+  if (config?.stateMachine) {
+    return config.stateMachine.stages.some(
+      (stage) => normalizeStateValue(stage.name) === normalizeStateValue(state) && stage.kind === "todo",
+    );
+  }
   return normalizeStateValue(state) === "todo";
 }
 

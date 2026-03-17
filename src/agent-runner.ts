@@ -10,7 +10,9 @@ import { prepareCodexRuntimeConfig, getRequiredProviderEnvNames } from "./codex-
 import { buildDockerRunArgs } from "./docker-spawn.js";
 import { inspectOomKilled, removeContainer, stopContainer } from "./docker-lifecycle.js";
 import { handleCodexRequest } from "./agent/codex-request-handler.js";
+import type { GithubApiToolClient } from "./github-api-tool.js";
 import { LinearClient } from "./linear-client.js";
+import type { PathRegistry } from "./path-registry.js";
 import { isActiveState } from "./state-policy.js";
 import {
   asRecord,
@@ -62,6 +64,9 @@ export class AgentRunner {
       getConfig: () => ServiceConfig;
       linearClient: LinearClient;
       workspaceManager: WorkspaceManager;
+      archiveDir?: string;
+      pathRegistry?: PathRegistry;
+      githubToolClient?: GithubApiToolClient;
       logger: SymphonyLogger;
       spawnProcess?: typeof spawn;
     },
@@ -96,8 +101,8 @@ export class AgentRunner {
     let oomKilled = false;
     const spawnProcess = this.deps.spawnProcess ?? spawn;
     const runtimeConfig = await prepareCodexRuntimeConfig(config.codex);
-    const archiveDir = process.env.SYMPHONY_ARCHIVE_DIR ?? path.join(process.cwd(), "archive");
     // Pre-create host directories so Docker doesn't auto-create them as root:root
+    const archiveDir = this.deps.archiveDir ?? path.join(process.cwd(), "archive");
     await mkdir(archiveDir, { recursive: true });
     const docker = buildDockerRunArgs({
       sandboxConfig: config.codex.sandbox,
@@ -105,6 +110,7 @@ export class AgentRunner {
       command: config.codex.command,
       workspacePath: input.workspace.path,
       archiveDir,
+      pathRegistry: this.deps.pathRegistry,
       runtimeConfigToml: runtimeConfig.configToml,
       runtimeAuthJsonBase64: runtimeConfig.authJsonBase64,
       requiredEnv: getRequiredProviderEnvNames(config.codex),
@@ -213,6 +219,33 @@ export class AgentRunner {
                 },
               },
               required: ["query"],
+            },
+          },
+          {
+            name: "github_api",
+            description: "Read pull request status or add a pull request comment in GitHub.",
+            inputSchema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                action: {
+                  type: "string",
+                  enum: ["add_pr_comment", "get_pr_status"],
+                },
+                owner: {
+                  type: "string",
+                },
+                repo: {
+                  type: "string",
+                },
+                pullNumber: {
+                  type: "number",
+                },
+                body: {
+                  type: "string",
+                },
+              },
+              required: ["action", "owner", "repo", "pullNumber"],
             },
           },
         ],
@@ -449,7 +482,7 @@ export class AgentRunner {
   private async handleIncomingRequest(
     request: JsonRpcRequest,
   ): Promise<{ response?: unknown; fatalFailure: { code: string; message: string } | null }> {
-    return handleCodexRequest(request, this.deps.linearClient);
+    return handleCodexRequest(request, this.deps.linearClient, this.deps.githubToolClient);
   }
 
   private outcomeForAbort(

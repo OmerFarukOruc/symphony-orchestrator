@@ -7,6 +7,24 @@ interface GraphQLResponse {
   errors?: unknown[];
 }
 
+export type LinearErrorCode =
+  | "linear_transport_error"
+  | "linear_http_error"
+  | "linear_graphql_error"
+  | "linear_unknown_payload"
+  | "linear_missing_end_cursor";
+
+export class LinearClientError extends Error {
+  constructor(
+    readonly code: LinearErrorCode,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = "LinearClientError";
+  }
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
@@ -64,19 +82,53 @@ function normalizeIssue(raw: unknown): Issue {
   };
 }
 
-function extractIssues(payload: GraphQLResponse): Issue[] {
-  const root = asRecord(payload.data);
-  const issues = asRecord(root.issues);
-  return asArray(issues.nodes).map(normalizeIssue);
+interface IssuesConnection {
+  nodes: unknown[];
+  pageInfo: {
+    hasNextPage: boolean;
+    endCursor: string | null;
+  };
 }
 
-function extractPageInfo(payload: GraphQLResponse): { hasNextPage: boolean; endCursor: string | null } {
-  const root = asRecord(payload.data);
-  const issues = asRecord(root.issues);
-  const pageInfo = asRecord(issues.pageInfo);
+function extractIssuesConnection(payload: GraphQLResponse): IssuesConnection {
+  if (
+    Object.prototype.hasOwnProperty.call(payload, "data") === false ||
+    typeof payload.data !== "object" ||
+    payload.data === null
+  ) {
+    throw new LinearClientError("linear_unknown_payload", "linear graphql response missing data object");
+  }
+  const root = payload.data as Record<string, unknown>;
+  const issues = root.issues;
+  if (typeof issues !== "object" || issues === null || Array.isArray(issues)) {
+    throw new LinearClientError("linear_unknown_payload", "linear graphql response missing issues connection");
+  }
+  const nodes = (issues as Record<string, unknown>).nodes;
+  if (Array.isArray(nodes) === false) {
+    throw new LinearClientError("linear_unknown_payload", "linear graphql response missing issues.nodes array");
+  }
+  const pageInfo = (issues as Record<string, unknown>).pageInfo;
+  if (typeof pageInfo !== "object" || pageInfo === null || Array.isArray(pageInfo)) {
+    throw new LinearClientError("linear_unknown_payload", "linear graphql response missing pageInfo object");
+  }
+  const hasNextPage = (pageInfo as Record<string, unknown>).hasNextPage;
+  if (typeof hasNextPage !== "boolean") {
+    throw new LinearClientError(
+      "linear_unknown_payload",
+      "linear graphql response missing boolean pageInfo.hasNextPage",
+    );
+  }
+  const endCursorRaw = (pageInfo as Record<string, unknown>).endCursor;
+  if (endCursorRaw !== null && typeof endCursorRaw !== "string") {
+    throw new LinearClientError("linear_unknown_payload", "linear graphql response has invalid pageInfo.endCursor");
+  }
+
   return {
-    hasNextPage: Boolean(pageInfo.hasNextPage),
-    endCursor: asString(pageInfo.endCursor),
+    nodes,
+    pageInfo: {
+      hasNextPage,
+      endCursor: endCursorRaw,
+    },
   };
 }
 
@@ -173,8 +225,25 @@ function buildIssuesByStatesQuery(): string {
 }
 
 async function readJsonResponse(response: Response): Promise<GraphQLResponse> {
-  const payload = (await response.json()) as GraphQLResponse;
-  return payload;
+  try {
+    return (await response.json()) as GraphQLResponse;
+  } catch (error) {
+    throw new LinearClientError("linear_unknown_payload", "linear graphql response body is not valid json", {
+      cause: error,
+    });
+  }
+}
+
+function ensurePaginationCursor(
+  pageInfo: { hasNextPage: boolean; endCursor: string | null },
+  issueCount: number,
+): void {
+  if (pageInfo.hasNextPage && !pageInfo.endCursor) {
+    throw new LinearClientError(
+      "linear_missing_end_cursor",
+      `pagination returned hasNextPage=true with null endCursor after ${issueCount} issues`,
+    );
+  }
 }
 
 export class LinearClient {
@@ -195,8 +264,10 @@ export class LinearClient {
         activeStates: config.tracker.activeStates,
         ...(config.tracker.projectSlug ? { projectSlug: config.tracker.projectSlug } : {}),
       });
-      issues.push(...extractIssues(payload));
-      const pageInfo = extractPageInfo(payload);
+      const connection = extractIssuesConnection(payload);
+      issues.push(...connection.nodes.map(normalizeIssue));
+      const pageInfo = connection.pageInfo;
+      ensurePaginationCursor(pageInfo, issues.length);
       after = pageInfo.hasNextPage ? pageInfo.endCursor : null;
     } while (after);
 
@@ -213,8 +284,10 @@ export class LinearClient {
       let after: string | null = null;
       do {
         const payload = await this.runGraphQL(buildIssuesByIdsQuery(), { ids: chunk, after });
-        issues.push(...extractIssues(payload));
-        const pageInfo = extractPageInfo(payload);
+        const connection = extractIssuesConnection(payload);
+        issues.push(...connection.nodes.map(normalizeIssue));
+        const pageInfo = connection.pageInfo;
+        ensurePaginationCursor(pageInfo, issues.length);
         after = pageInfo.hasNextPage ? pageInfo.endCursor : null;
       } while (after);
     }
@@ -229,8 +302,10 @@ export class LinearClient {
     let after: string | null = null;
     do {
       const payload = await this.runGraphQL(buildIssuesByStatesQuery(), { states, after });
-      issues.push(...extractIssues(payload));
-      const pageInfo = extractPageInfo(payload);
+      const connection = extractIssuesConnection(payload);
+      issues.push(...connection.nodes.map(normalizeIssue));
+      const pageInfo = connection.pageInfo;
+      ensurePaginationCursor(pageInfo, issues.length);
       after = pageInfo.hasNextPage ? pageInfo.endCursor : null;
     } while (after);
     return issues;
@@ -241,14 +316,22 @@ export class LinearClient {
     variables?: Record<string, unknown>,
   ): Promise<{ data?: Record<string, unknown>; errors?: unknown[] }> {
     const config = this.getConfig();
-    const response = await fetch(config.tracker.endpoint, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: config.tracker.apiKey,
-      },
-      body: JSON.stringify({ query, variables }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(config.tracker.endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: config.tracker.apiKey,
+        },
+        body: JSON.stringify({ query, variables }),
+      });
+    } catch (error) {
+      this.logger.error({ error: String(error) }, "linear graphql transport failed");
+      throw new LinearClientError("linear_transport_error", "linear graphql request failed during transport", {
+        cause: error,
+      });
+    }
 
     const payload = await readJsonResponse(response);
     if (!response.ok) {
@@ -260,12 +343,20 @@ export class LinearClient {
         },
         "linear graphql request failed",
       );
-      throw new Error(`linear graphql request failed with status ${response.status}`);
+      throw new LinearClientError("linear_http_error", `linear graphql request failed with status ${response.status}`);
     }
 
     if (Array.isArray(payload.errors) && payload.errors.length > 0) {
       this.logger.error({ errors: payload.errors }, "linear graphql response contained errors");
-      throw new Error("linear graphql response contained errors");
+      throw new LinearClientError("linear_graphql_error", "linear graphql response contained errors");
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(payload, "data") === false ||
+      typeof payload.data !== "object" ||
+      payload.data === null
+    ) {
+      throw new LinearClientError("linear_unknown_payload", "linear graphql response missing data object");
     }
 
     return payload;
