@@ -13,3 +13,8 @@ dist/
 
 # Temp coverage or generated artifacts
 coverage/
+
+# Desktop Rust/Tauri local build output
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+desktop/src-tauri/Cargo.lock
