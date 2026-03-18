@@ -2,6 +2,7 @@ import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises
 import path from "node:path";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
+import { asStringRecord, isRecord } from "./utils/type-guards.js";
 import type { SymphonyLogger } from "./types.js";
 
 const ENCRYPTION_ALGORITHM = "aes-256-gcm";
@@ -13,19 +14,6 @@ interface SecretsEnvelope {
   iv: string;
   authTag: string;
   ciphertext: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function asStringRecord(value: unknown): Record<string, string> {
-  if (!isRecord(value)) {
-    return {};
-  }
-  return Object.fromEntries(
-    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
-  );
 }
 
 function deriveKey(masterKey: string): Buffer {

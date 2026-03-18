@@ -1,13 +1,6 @@
+import { asRecord, asStringOrNull as asString } from "./utils/type-guards.js";
 import { sanitizeContent } from "./content-sanitizer.js";
 import type { ServiceConfig, TokenUsageSnapshot } from "./types.js";
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-}
-
-function asString(value: unknown): string | null {
-  return typeof value === "string" ? value : null;
-}
 
 function extractThreadId(result: unknown): string | null {
   const record = asRecord(result);

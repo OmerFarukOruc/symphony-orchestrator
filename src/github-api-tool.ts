@@ -1,3 +1,5 @@
+import { asRecord } from "./utils/type-guards.js";
+
 export type GithubApiAction = "add_pr_comment" | "get_pr_status";
 
 interface GithubApiInputBase {
@@ -21,10 +23,6 @@ type GithubApiInput = AddPrCommentInput | GetPrStatusInput;
 export interface GithubApiToolClient {
   addPrComment(input: { owner: string; repo: string; pullNumber: number; body: string }): Promise<unknown>;
   getPrStatus(input: { owner: string; repo: string; pullNumber: number }): Promise<unknown>;
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 function asString(value: unknown): string | null {

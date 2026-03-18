@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type Router } from "express";
 
+import { asRecord } from "./utils/type-guards.js";
 import { generateIssuePlan, type PlannedIssue, type PlanningRequest, type PlanningResult } from "./planning-skill.js";
 
 export interface PlanningExecutionResult {
@@ -10,10 +11,6 @@ export interface PlanningExecutionResult {
 export interface PlanningApiDeps {
   createPlan?: (request: PlanningRequest) => PlanningResult;
   executePlan?: (issues: PlannedIssue[]) => Promise<PlanningExecutionResult>;
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 function asStringArray(value: unknown): string[] {
