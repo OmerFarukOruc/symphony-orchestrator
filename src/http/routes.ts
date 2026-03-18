@@ -11,8 +11,10 @@ import { createPlanningRouter, type PlanningExecutionResult } from "../planning-
 import type { PlannedIssue } from "../planning-skill.js";
 import { registerSecretsApi } from "../secrets-api.js";
 import type { SecretsStore } from "../secrets-store.js";
-import type { ReasoningEffort, RuntimeSnapshot } from "../types.js";
+import type { RuntimeSnapshot } from "../types.js";
 import { isRecord } from "../utils/type-guards.js";
+import { handleAttemptDetail } from "./attempt-handler.js";
+import { handleModelUpdate } from "./model-handler.js";
 
 function methodNotAllowed(response: Response): void {
   response.status(405).json({
@@ -78,34 +80,6 @@ function sanitizeConfigValue(value: unknown, path: string[] = []): unknown {
 
 function refreshReason(request: Request): string {
   return request.get("x-symphony-reason") ?? "http_refresh";
-}
-
-function asModel(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
-
-function parseReasoningEffort(
-  value: unknown,
-): { ok: true; value: ReasoningEffort | null } | { ok: false; code: string; message: string } {
-  if (value === null || value === undefined || value === "") {
-    return { ok: true, value: null };
-  }
-  if (typeof value !== "string") {
-    return { ok: false, code: "invalid_reasoning_effort", message: "reasoning_effort must be a string" };
-  }
-  const trimmed = value.trim();
-  if (trimmed === "") {
-    return { ok: true, value: null };
-  }
-  const valid: ReasoningEffort[] = ["none", "minimal", "low", "medium", "high", "xhigh"];
-  if (valid.includes(trimmed as ReasoningEffort)) {
-    return { ok: true, value: trimmed as ReasoningEffort };
-  }
-  return {
-    ok: false,
-    code: "invalid_reasoning_effort",
-    message: `Invalid reasoning_effort "${trimmed}". Allowed values: ${valid.join(", ")}`,
-  };
 }
 
 export interface HttpRouteDeps {
@@ -191,50 +165,7 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   app
     .route("/api/v1/:issue_identifier/model")
     .post(async (request, response) => {
-      const model = asModel(request.body?.model);
-      const effortResult = parseReasoningEffort(request.body?.reasoning_effort ?? request.body?.reasoningEffort);
-      if (!model) {
-        response.status(400).json({
-          error: {
-            code: "invalid_model",
-            message: "model is required",
-          },
-        });
-        return;
-      }
-      if (!effortResult.ok) {
-        response.status(400).json({
-          error: {
-            code: effortResult.code,
-            message: effortResult.message,
-          },
-        });
-        return;
-      }
-      const updated = await deps.orchestrator.updateIssueModelSelection({
-        identifier: request.params.issue_identifier,
-        model,
-        reasoningEffort: effortResult.value,
-      });
-      if (!updated) {
-        response.status(404).json({
-          error: {
-            code: "not_found",
-            message: "Unknown issue identifier",
-          },
-        });
-        return;
-      }
-      response.status(202).json({
-        updated: updated.updated,
-        restarted: updated.restarted,
-        applies_next_attempt: updated.appliesNextAttempt,
-        selection: {
-          model: updated.selection.model,
-          reasoning_effort: updated.selection.reasoningEffort,
-          source: updated.selection.source,
-        },
-      });
+      await handleModelUpdate(deps.orchestrator, request, response);
     })
     .all((_request, response) => {
       methodNotAllowed(response);
@@ -265,17 +196,7 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   app
     .route("/api/v1/attempts/:attempt_id")
     .get((request, response) => {
-      const attempt = deps.orchestrator.getAttemptDetail(request.params.attempt_id);
-      if (!attempt) {
-        response.status(404).json({
-          error: {
-            code: "not_found",
-            message: "Unknown attempt identifier",
-          },
-        });
-        return;
-      }
-      response.json(attempt);
+      handleAttemptDetail(deps.orchestrator, request, response);
     })
     .all((_request, response) => {
       methodNotAllowed(response);

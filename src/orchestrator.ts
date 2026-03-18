@@ -23,14 +23,17 @@ import {
   launchWorker as launchWorkerState,
 } from "./orchestrator/worker-launcher.js";
 import { buildAttemptDetail, buildIssueDetail, buildSnapshot } from "./orchestrator/snapshot-builder.js";
+import type { OrchestratorContext } from "./orchestrator/context.js";
 import type {
   Issue,
   ModelSelection,
   RecentEvent,
   ReasoningEffort,
+  RunOutcome,
   RuntimeSnapshot,
   ServiceConfig,
   TokenUsageSnapshot,
+  Workspace,
 } from "./types.js";
 import type { NotificationEvent } from "./notification-channel.js";
 
@@ -183,9 +186,9 @@ export class Orchestrator {
     }
     this.tickInFlight = true;
     try {
-      await this.reconcileRunningAndRetrying();
-      await this.refreshQueueViews();
-      await this.launchAvailableWorkers();
+      await reconcileRunningAndRetryingState(this.ctx());
+      await refreshQueueViewsState(this.ctx());
+      await launchAvailableWorkersState(this.ctx());
     } catch (error) {
       this.deps.logger.error({ error: String(error) }, "orchestrator tick failed");
     } finally {
@@ -198,123 +201,47 @@ export class Orchestrator {
     }
   }
 
-  private async reconcileRunningAndRetrying(): Promise<void> {
-    await reconcileRunningAndRetryingState({
+  private ctx(): OrchestratorContext {
+    return {
+      running: this.running,
       runningEntries: this.runningEntries,
       retryEntries: this.retryEntries,
-      deps: {
-        linearClient: this.deps.linearClient,
-        workspaceManager: this.deps.workspaceManager,
-      },
-      getConfig: () => this.getConfig(),
-      clearRetryEntry: (issueId) => this.clearRetryEntry(issueId),
-      pushEvent: (event) => this.pushEvent(event),
-    });
-  }
-
-  private async refreshQueueViews(): Promise<void> {
-    await refreshQueueViewsState({
-      queuedViews: this.queuedViews,
+      completedViews: this.completedViews,
       detailViews: this.detailViews,
       claimedIssueIds: this.claimedIssueIds,
-      deps: {
-        linearClient: this.deps.linearClient,
-      },
-      canDispatchIssue: (issue) => this.canDispatchIssue(issue),
+      queuedViews: this.queuedViews,
+      deps: this.deps,
+      getConfig: () => this.getConfig(),
+      isRunning: () => this.running,
       resolveModelSelection: (identifier) => this.resolveModelSelection(identifier),
+      releaseIssueClaim: (issueId) => this.releaseIssueClaim(issueId),
+      claimIssue: (issueId) => this.claimIssue(issueId),
+      notify: (event) => this.notify(event),
+      pushEvent: (event) => this.pushEvent(event),
+      queueRetry: (issue, attempt, delayMs, error) => this.queueRetry(issue, attempt, delayMs, error),
+      clearRetryEntry: (issueId) => this.clearRetryEntry(issueId),
+      launchWorker: (issue, attempt, options) => this.launchWorker(issue, attempt, options),
+      canDispatchIssue: (issue) => this.canDispatchIssue(issue),
+      hasAvailableStateSlot: (issue, pendingStateCounts) => this.hasAvailableStateSlot(issue, pendingStateCounts),
+      revalidateAndLaunchRetry: (issueId, attempt) => this.revalidateAndLaunchRetry(issueId, attempt),
+      handleRetryLaunchFailure: (issue, attempt, error) => this.handleRetryLaunchFailure(issue, attempt, error),
+      getQueuedViews: () => this.queuedViews,
       setQueuedViews: (views) => {
         this.queuedViews = views;
       },
-    });
-  }
-
-  private async launchAvailableWorkers(): Promise<void> {
-    await launchAvailableWorkersState({
-      deps: {
-        linearClient: this.deps.linearClient,
+      applyUsageEvent: (entry, usage, usageMode) => this.applyUsageEvent(entry, usage, usageMode),
+      setRateLimits: (rateLimits) => {
+        this.rateLimits = rateLimits;
       },
-      getConfig: () => this.getConfig(),
-      runningEntries: this.runningEntries,
-      claimIssue: (issueId) => this.claimIssue(issueId),
-      canDispatchIssue: (issue) => this.canDispatchIssue(issue),
-      hasAvailableStateSlot: (issue, pendingStateCounts) => this.hasAvailableStateSlot(issue, pendingStateCounts),
-      launchWorker: (issue, attempt, options) => this.launchWorker(issue, attempt, options),
-    });
+    };
   }
 
   private async launchWorker(issue: Issue, attempt: number | null, options?: { claimHeld?: boolean }): Promise<void> {
     await launchWorkerState(
       {
-        deps: {
-          agentRunner: this.deps.agentRunner,
-          attemptStore: this.deps.attemptStore,
-          configStore: this.deps.configStore,
-          workspaceManager: this.deps.workspaceManager,
-          repoRouter: this.deps.repoRouter,
-          gitManager: this.deps.gitManager,
-        },
-        runningEntries: this.runningEntries,
-        completedViews: this.completedViews,
-        detailViews: this.detailViews,
-        getQueuedViews: () => this.queuedViews,
-        setQueuedViews: (views) => {
-          this.queuedViews = views;
-        },
-        claimIssue: (issueId) => this.claimIssue(issueId),
-        releaseIssueClaim: (issueId) => this.releaseIssueClaim(issueId),
-        resolveModelSelection: (identifier) => this.resolveModelSelection(identifier),
-        notify: (event) => this.notify(event),
-        pushEvent: (event) => this.pushEvent(event),
-        applyUsageEvent: (entry, usage, usageMode) => this.applyUsageEvent(entry, usage, usageMode),
-        setRateLimits: (rateLimits) => {
-          this.rateLimits = rateLimits;
-        },
-        handleWorkerPromise: async (promise, workerIssue, workspace, entry, workerAttempt) => {
-          await promise
-            .then((outcome) =>
-              handleWorkerOutcome(
-                {
-                  runningEntries: this.runningEntries,
-                  completedViews: this.completedViews,
-                  detailViews: this.detailViews,
-                  deps: {
-                    linearClient: this.deps.linearClient,
-                    attemptStore: this.deps.attemptStore,
-                    workspaceManager: this.deps.workspaceManager,
-                    gitManager: this.deps.gitManager,
-                    logger: this.deps.logger,
-                  },
-                  isRunning: () => this.running,
-                  getConfig: () => this.getConfig(),
-                  releaseIssueClaim: (issueId) => this.releaseIssueClaim(issueId),
-                  resolveModelSelection: (identifier) => this.resolveModelSelection(identifier),
-                  notify: (event) => this.notify(event),
-                  queueRetry: (latestIssue, retryAttempt, delayMs, error) =>
-                    this.queueRetry(latestIssue, retryAttempt, delayMs, error),
-                },
-                outcome,
-                entry,
-                workerIssue,
-                workspace,
-                workerAttempt,
-              ),
-            )
-            .catch((error) =>
-              handleWorkerFailure(
-                {
-                  runningEntries: this.runningEntries,
-                  releaseIssueClaim: (issueId) => this.releaseIssueClaim(issueId),
-                  pushEvent: (event) => this.pushEvent(event),
-                  deps: {
-                    attemptStore: this.deps.attemptStore,
-                  },
-                },
-                workerIssue,
-                entry,
-                error,
-              ),
-            );
-        },
+        ...this.ctx(),
+        handleWorkerPromise: (promise, workerIssue, workspace, entry, workerAttempt) =>
+          this.handleWorkerPromise(promise, workerIssue, workspace, entry, workerAttempt),
       },
       issue,
       attempt,
@@ -322,56 +249,28 @@ export class Orchestrator {
     );
   }
 
+  private async handleWorkerPromise(
+    promise: Promise<RunOutcome>,
+    workerIssue: Issue,
+    workspace: Workspace,
+    entry: RunningEntry,
+    workerAttempt: number | null,
+  ): Promise<void> {
+    await promise
+      .then((outcome) => handleWorkerOutcome(this.ctx(), outcome, entry, workerIssue, workspace, workerAttempt))
+      .catch((error) => handleWorkerFailure(this.ctx(), workerIssue, entry, error));
+  }
+
   private queueRetry(issue: Issue, attempt: number, delayMs: number, error: string | null): void {
-    queueRetryState(
-      {
-        isRunning: () => this.running,
-        claimIssue: (issueId) => this.claimIssue(issueId),
-        retryEntries: this.retryEntries,
-        detailViews: this.detailViews,
-        notify: (event) => this.notify(event),
-        revalidateAndLaunchRetry: (issueId, retryAttempt) => this.revalidateAndLaunchRetry(issueId, retryAttempt),
-        handleRetryLaunchFailure: (retryIssue, retryAttempt, failure) =>
-          this.handleRetryLaunchFailure(retryIssue, retryAttempt, failure),
-      },
-      issue,
-      attempt,
-      delayMs,
-      error,
-    );
+    queueRetryState(this.ctx(), issue, attempt, delayMs, error);
   }
 
   private async revalidateAndLaunchRetry(issueId: string, attempt: number): Promise<void> {
-    await revalidateAndLaunchRetryState(
-      {
-        retryEntries: this.retryEntries,
-        runningEntries: this.runningEntries,
-        deps: {
-          linearClient: this.deps.linearClient,
-          workspaceManager: this.deps.workspaceManager,
-        },
-        getConfig: () => this.getConfig(),
-        isRunning: () => this.running,
-        clearRetryEntry: (retryIssueId) => this.clearRetryEntry(retryIssueId),
-        hasAvailableStateSlot: (retryIssue) => this.hasAvailableStateSlot(retryIssue),
-        queueRetry: (retryIssue, retryAttempt, delayMs, error) =>
-          this.queueRetry(retryIssue, retryAttempt, delayMs, error),
-        launchWorker: (retryIssue, retryAttempt, options) => this.launchWorker(retryIssue, retryAttempt, options),
-      },
-      issueId,
-      attempt,
-    );
+    await revalidateAndLaunchRetryState(this.ctx(), issueId, attempt);
   }
 
   private clearRetryEntry(issueId: string): void {
-    clearRetryEntryState(
-      {
-        retryEntries: this.retryEntries,
-        runningEntries: this.runningEntries,
-        releaseIssueClaim: (retryIssueId) => this.releaseIssueClaim(retryIssueId),
-      },
-      issueId,
-    );
+    clearRetryEntryState(this.ctx(), issueId);
   }
 
   private notify(event: NotificationEvent): void {
@@ -421,14 +320,7 @@ export class Orchestrator {
   }
 
   private async cleanupTerminalIssueWorkspaces(): Promise<void> {
-    await cleanupTerminalIssueWorkspacesState({
-      deps: {
-        linearClient: this.deps.linearClient,
-        workspaceManager: this.deps.workspaceManager,
-        logger: this.deps.logger,
-      },
-      getConfig: () => this.getConfig(),
-    });
+    await cleanupTerminalIssueWorkspacesState(this.ctx());
   }
 
   private canDispatchIssue(issue: Issue): boolean {
@@ -448,23 +340,7 @@ export class Orchestrator {
   }
 
   private async handleRetryLaunchFailure(issue: Issue, attempt: number, error: unknown): Promise<void> {
-    await handleRetryLaunchFailureState(
-      {
-        runningEntries: this.runningEntries,
-        clearRetryEntry: (issueId) => this.clearRetryEntry(issueId),
-        deps: {
-          attemptStore: this.deps.attemptStore,
-          logger: this.deps.logger,
-        },
-        detailViews: this.detailViews,
-        completedViews: this.completedViews,
-        pushEvent: (event) => this.pushEvent(event),
-        resolveModelSelection: (identifier) => this.resolveModelSelection(identifier),
-      },
-      issue,
-      attempt,
-      error,
-    );
+    await handleRetryLaunchFailureState(this.ctx(), issue, attempt, error);
   }
 
   private resolveModelSelection(identifier: string): ModelSelection {
