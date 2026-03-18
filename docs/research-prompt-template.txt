@@ -1,0 +1,64 @@
+# Context
+
+I maintain Symphony Orchestrator — an autonomous AI agent orchestration platform.
+Our feature roadmap is tracked in a single GitHub Epic issue:
+- [EPIC] Symphony v2 Feature Roadmap: https://github.com/OmerFarukOruc/symphony-orchestrator/issues/9
+- Local roadmap doc: /home/oruc/Desktop/codex/docs/ROADMAP_AND_STATUS.md
+
+# Task
+
+Research the following repository and extract ideas, patterns, and features
+that Symphony can adopt or adapt. Cross-reference every finding against the Epic
+issue #9 body to avoid duplicates.
+
+# Instructions
+
+## 1. Deep Research
+- Read the repo's README, docs, source code, and any relevant issues/PRs.
+- Identify features, architectural patterns, UX ideas, CLI ergonomics,
+  DevOps practices, or integrations that are relevant to Symphony.
+- For each finding, note: what it is, why it matters for Symphony,
+  and how we could adapt it (not just copy — contextualize for our architecture).
+
+## 2. Cross-Reference with Epic #9
+- Fetch the current body of issue #9.
+- For each finding, determine:
+  - Already covered? Then enhance the existing item with details, implementation
+    hints, or references inspired by the researched repo. Be DETAILED.
+  - Not covered? Then add it as a new item under the appropriate tier/category
+    in the Epic body.
+
+## 3. Update the Epic Issue Body (NOT comments)
+- Edit the issue body directly using the GitHub API (gh api or equivalent).
+- Do NOT create new comments beneath the issue.
+- Do NOT remove or weaken existing items — only enrich or add.
+- Preserve the existing structure, formatting, and tier organization.
+- When adding inspired-by references, use the format:
+  (inspired by [repo-name](repo-url))
+
+## 4. Update ROADMAP_AND_STATUS.md
+- Sync /home/oruc/Desktop/codex/docs/ROADMAP_AND_STATUS.md to reflect
+  any new items or enriched descriptions added to the Epic.
+- Maintain the existing document structure and tier organization.
+- Keep status markers accurate (e.g., [ ] for planned, [x] for done).
+
+## 5. Produce a Research Summary
+- Create a concise research artifact summarizing:
+  - Key findings (bulleted, grouped by theme)
+  - Items added to the Epic (with links/anchors)
+  - Items enriched in the Epic (what was added and why)
+  - Items deliberately skipped (with reasoning)
+
+# Constraints
+- Do not create sub-issues or standalone GitHub issues unless I explicitly ask.
+- Do not alter shipped/completed items in the Epic.
+- Be thorough in research but concise in writing — no fluff.
+- If you're unsure whether something fits Symphony's scope, flag it in the
+  summary as "Consider" rather than silently adding it.
+
+---
+
+## Repository to Research
+
+Repo: [PASTE_URL_HERE]
+Why interesting: [OPTIONAL — one line on why you picked this repo]
