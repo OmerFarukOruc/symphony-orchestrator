@@ -44,7 +44,7 @@ export interface SnapshotBuilderCallbacks {
   getRetryEntries: () => Map<string, RetryRuntimeEntry>;
   getQueuedViews: () => RuntimeIssueView[];
   getRecentEvents: () => RecentEvent[];
-  getRateLimits: () => unknown | null;
+  getRateLimits: () => unknown;
   getCodexTotals: () => {
     inputTokens: number;
     outputTokens: number;
@@ -115,13 +115,16 @@ export function buildIssueDetail(
   }
 
   const archivedAttempts = deps.attemptStore.getAttemptsForIssue(identifier);
-  const relatedEvents = runningEntry
-    ? deps.attemptStore.getEvents(runningEntry.runId)
-    : retryEntry
-      ? callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier)
-      : archivedAttempts.length > 0
-        ? archivedAttempts.flatMap((attempt) => deps.attemptStore.getEvents(attempt.attemptId))
-        : callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier);
+  let relatedEvents: RecentEvent[];
+  if (runningEntry) {
+    relatedEvents = deps.attemptStore.getEvents(runningEntry.runId);
+  } else if (retryEntry) {
+    relatedEvents = callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier);
+  } else if (archivedAttempts.length > 0) {
+    relatedEvents = archivedAttempts.flatMap((attempt) => deps.attemptStore.getEvents(attempt.attemptId));
+  } else {
+    relatedEvents = callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier);
+  }
 
   return {
     ...detail,

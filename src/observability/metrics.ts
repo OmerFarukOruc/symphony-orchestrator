@@ -44,23 +44,23 @@ class Histogram {
     const lines = [`# HELP ${name} ${help}`, `# TYPE ${name} histogram`];
     for (const [key, values] of this.observations) {
       const suffix = key ? `{${key},` : "{";
-      const closeSuffix = key ? "}" : "}";
       const sorted = [...values].sort((a, b) => a - b);
       const sum = values.reduce((a, b) => a + b, 0);
       const count = values.length;
 
       for (const bucket of this.buckets) {
         const le = sorted.filter((v) => v <= bucket).length;
-        lines.push(`${name}_bucket${suffix}le="${bucket}"${closeSuffix} ${le}`);
+        lines.push(`${name}_bucket${suffix}le="${bucket}"} ${le}`);
       }
-      lines.push(`${name}_bucket${suffix}le="+Inf"${closeSuffix} ${count}`);
-      lines.push(`${name}_sum${key ? `{${key}}` : ""} ${sum}`);
-      lines.push(`${name}_count${key ? `{${key}}` : ""} ${count}`);
+      const keySuffix = key ? `{${key}}` : "";
+      lines.push(
+        `${name}_bucket${suffix}le="+Inf"} ${count}`,
+        `${name}_sum${keySuffix} ${sum}`,
+        `${name}_count${keySuffix} ${count}`,
+      );
     }
     if (this.observations.size === 0) {
-      lines.push(`${name}_bucket{le="+Inf"} 0`);
-      lines.push(`${name}_sum 0`);
-      lines.push(`${name}_count 0`);
+      lines.push(`${name}_bucket{le="+Inf"} 0`, `${name}_sum 0`, `${name}_count 0`);
     }
     return lines.join("\n");
   }

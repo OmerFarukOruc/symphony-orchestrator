@@ -57,20 +57,22 @@ function emitTurnCompletedEvent(
   completedUsage: ReturnType<typeof extractTokenUsageSnapshot>,
   turnResult: unknown,
 ): void {
+  let rawMessage: string;
+  if (completedStatus === "completed") {
+    rawMessage = `turn ${state.turnCount} completed`;
+  } else if (completedError.message) {
+    rawMessage = String(completedError.message);
+  } else {
+    rawMessage = `turn ${state.turnCount} ended with status ${completedStatus}`;
+  }
+
   input.runInput.onEvent({
     at: new Date().toISOString(),
     issueId: input.runInput.issue.id,
     issueIdentifier: input.runInput.issue.identifier,
     sessionId: composeSessionId(state.threadId, state.turnId),
     event: "turn_completed",
-    message:
-      sanitizeContent(
-        completedStatus === "completed"
-          ? `turn ${state.turnCount} completed`
-          : completedError.message
-            ? String(completedError.message)
-            : `turn ${state.turnCount} ended with status ${completedStatus}`,
-      ) || `turn ${state.turnCount} ended with status ${completedStatus}`,
+    message: sanitizeContent(rawMessage) || `turn ${state.turnCount} ended with status ${completedStatus}`,
     usage: completedUsage ?? undefined,
     rateLimits: extractRateLimits(turnResult) ?? undefined,
   });

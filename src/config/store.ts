@@ -6,8 +6,7 @@ import type { SecretsStore } from "../secrets/store.js";
 import type { SymphonyLogger, ValidationError, WorkflowDefinition, ServiceConfig } from "../core/types.js";
 import { loadWorkflowDefinition } from "../workflow/loader.js";
 import { deriveServiceConfig } from "./builders.js";
-import { cloneConfigMap } from "./merge.js";
-import { deepMerge } from "./merge.js";
+import { cloneConfigMap, deepMerge } from "./merge.js";
 
 export class ConfigStore {
   private watcher: FSWatcher | null = null;

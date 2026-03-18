@@ -92,7 +92,7 @@ let tracker: ErrorTracker = new NoopTracker();
  */
 export function initErrorTracking(logger: SymphonyLogger): ErrorTracker {
   const dsn = process.env.SENTRY_DSN;
-  if (dsn && dsn.startsWith("https://")) {
+  if (dsn?.startsWith("https://")) {
     tracker = new SentryTracker(dsn, logger);
   }
   return tracker;

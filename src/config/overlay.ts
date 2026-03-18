@@ -97,7 +97,7 @@ function mergeDeep(base: Record<string, unknown>, patch: Record<string, unknown>
 
 export class ConfigOverlayStore {
   private overlay: Record<string, unknown> = {};
-  private listeners = new Set<() => void>();
+  private readonly listeners = new Set<() => void>();
   private watcher: FSWatcher | null = null;
 
   constructor(

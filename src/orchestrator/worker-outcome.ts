@@ -1,10 +1,9 @@
 import type { GitManager } from "../git/manager.js";
 import type { NotificationEvent } from "../notification/channel.js";
-import type { RunOutcome, ServiceConfig, Workspace } from "../core/types.js";
+import type { RunOutcome, ServiceConfig, Workspace, Issue, ModelSelection } from "../core/types.js";
 import { isActiveState, isTerminalState } from "../state/policy.js";
 import { isHardFailure, issueView, nowIso } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
-import type { Issue, ModelSelection } from "../core/types.js";
 import { buildOutcomeView } from "./outcome-view-builder.js";
 import { executeGitPostRun } from "./git-post-run.js";
 

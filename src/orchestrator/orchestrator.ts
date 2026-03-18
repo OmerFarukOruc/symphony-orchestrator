@@ -52,8 +52,8 @@ export class Orchestrator {
   private readonly sessionUsageTotals = new Map<string, TokenUsageSnapshot>();
   private readonly issueModelOverrides = new Map<string, Omit<ModelSelection, "source">>();
   private queuedViews: IssueView[] = [];
-  private rateLimits: unknown | null = null;
-  private codexTotals = {
+  private rateLimits: unknown = null;
+  private readonly codexTotals = {
     inputTokens: 0,
     outputTokens: 0,
     totalTokens: 0,

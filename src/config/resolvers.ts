@@ -74,7 +74,7 @@ export function resolveConfigString(value: unknown, secretResolver?: (name: stri
  * Unlike resolveEnvBackedString, this replaces all occurrences within the string.
  */
 function expandPathEnvVars(value: string): string {
-  return value.replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_match, name: string) => process.env[name] ?? "");
+  return value.replaceAll(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_match, name: string) => process.env[name] ?? "");
 }
 
 /**

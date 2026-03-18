@@ -51,6 +51,7 @@ export async function updateIssueModelSelection(
 
   const selection = resolveModelSelection(ctx.issueModelOverrides, ctx.getConfig(), identifier);
   const runningEntry = [...ctx.runningEntries.values()].find((entry) => entry.issue.identifier === identifier);
+  const effortSuffix = selection.reasoningEffort ? ` (${selection.reasoningEffort})` : "";
   if (runningEntry && !runningEntry.abortController.signal.aborted) {
     ctx.pushEvent({
       at: new Date().toISOString(),
@@ -58,7 +59,7 @@ export async function updateIssueModelSelection(
       issueIdentifier: runningEntry.issue.identifier,
       sessionId: runningEntry.sessionId,
       event: "model_selection_updated",
-      message: `next run model updated to ${selection.model}${selection.reasoningEffort ? ` (${selection.reasoningEffort})` : ""}`,
+      message: `next run model updated to ${selection.model}${effortSuffix}`,
     });
     return {
       updated: true,
@@ -76,7 +77,7 @@ export async function updateIssueModelSelection(
       issueIdentifier: retryEntry.issue.identifier,
       sessionId: null,
       event: "model_selection_updated",
-      message: `next run model updated to ${selection.model}${selection.reasoningEffort ? ` (${selection.reasoningEffort})` : ""}`,
+      message: `next run model updated to ${selection.model}${effortSuffix}`,
     });
     return {
       updated: true,

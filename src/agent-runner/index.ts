@@ -22,16 +22,14 @@ import { WorkspaceManager } from "../workspace/manager.js";
 
 export { extractItemContent } from "./helpers.js";
 
-export interface AgentRunnerEventHandler {
-  (
-    event: RecentEvent & {
-      usage?: TokenUsageSnapshot;
-      usageMode?: "absolute_total" | "delta";
-      rateLimits?: unknown;
-      content?: string | null;
-    },
-  ): void;
-}
+export type AgentRunnerEventHandler = (
+  event: RecentEvent & {
+    usage?: TokenUsageSnapshot;
+    usageMode?: "absolute_total" | "delta";
+    rateLimits?: unknown;
+    content?: string | null;
+  },
+) => void;
 
 export class AgentRunner {
   private readonly liquid = new Liquid({ strictFilters: true, strictVariables: true });

@@ -76,6 +76,30 @@ function appendStringMap(lines: string[], tableName: string, values: Record<stri
   }
 }
 
+function appendProviderFields(lines: string[], provider: CodexProviderConfig, providerId: string): void {
+  if (provider.name) {
+    lines.push(`name = ${formatTomlString(provider.name)}`);
+  }
+  if (provider.baseUrl) {
+    lines.push(`base_url = ${formatTomlString(provider.baseUrl)}`);
+  }
+  if (provider.envKey) {
+    lines.push(`env_key = ${formatTomlString(provider.envKey)}`);
+  }
+  if (provider.envKeyInstructions) {
+    lines.push(`env_key_instructions = ${formatTomlString(provider.envKeyInstructions)}`);
+  }
+  if (provider.wireApi) {
+    lines.push(`wire_api = ${formatTomlString(provider.wireApi)}`);
+  }
+  if (provider.requiresOpenaiAuth) {
+    lines.push("requires_openai_auth = true");
+  }
+  appendStringMap(lines, `[model_providers.${formatTomlKey(providerId)}.http_headers]`, provider.httpHeaders);
+  appendStringMap(lines, `[model_providers.${formatTomlKey(providerId)}.env_http_headers]`, provider.envHttpHeaders);
+  appendStringMap(lines, `[model_providers.${formatTomlKey(providerId)}.query_params]`, provider.queryParams);
+}
+
 export function buildConfigToml(config: CodexConfig): string {
   const provider = effectiveProvider(config);
   const lines = [`model = ${formatTomlString(config.model)}`];
@@ -92,28 +116,7 @@ export function buildConfigToml(config: CodexConfig): string {
     const providerId = providerIdFor(provider);
     lines.push(`model_provider = ${formatTomlString(providerId)}`);
     lines.push("", `[model_providers.${formatTomlKey(providerId)}]`);
-    if (provider.name) {
-      lines.push(`name = ${formatTomlString(provider.name)}`);
-    }
-    if (provider.baseUrl) {
-      lines.push(`base_url = ${formatTomlString(provider.baseUrl)}`);
-    }
-    if (provider.envKey) {
-      lines.push(`env_key = ${formatTomlString(provider.envKey)}`);
-    }
-    if (provider.envKeyInstructions) {
-      lines.push(`env_key_instructions = ${formatTomlString(provider.envKeyInstructions)}`);
-    }
-    if (provider.wireApi) {
-      lines.push(`wire_api = ${formatTomlString(provider.wireApi)}`);
-    }
-    if (provider.requiresOpenaiAuth) {
-      lines.push("requires_openai_auth = true");
-    }
-
-    appendStringMap(lines, `[model_providers.${formatTomlKey(providerId)}.http_headers]`, provider.httpHeaders);
-    appendStringMap(lines, `[model_providers.${formatTomlKey(providerId)}.env_http_headers]`, provider.envHttpHeaders);
-    appendStringMap(lines, `[model_providers.${formatTomlKey(providerId)}.query_params]`, provider.queryParams);
+    appendProviderFields(lines, provider, providerId);
   } else {
     lines.push('model_provider = "openai"');
   }

@@ -117,7 +117,7 @@ export function registerConfigApi(app: Express, deps: ConfigApiDeps): void {
     .route("/api/v1/config/overlay/:path")
     .delete(async (request, response) => {
       const pathExpression = request.params.path;
-      if (!pathExpression || !pathExpression.trim()) {
+      if (!pathExpression?.trim()) {
         response.status(400).json({
           error: {
             code: "invalid_overlay_path",

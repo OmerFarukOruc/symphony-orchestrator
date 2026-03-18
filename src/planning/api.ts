@@ -29,12 +29,12 @@ function parsePlanningRequest(body: unknown): PlanningRequest | null {
   if (!goal) {
     return null;
   }
-  const maxIssues =
-    typeof record.max_issues === "number" && Number.isFinite(record.max_issues)
-      ? Math.trunc(record.max_issues)
-      : typeof record.maxIssues === "number" && Number.isFinite(record.maxIssues)
-        ? Math.trunc(record.maxIssues)
-        : undefined;
+  let maxIssues: number | undefined;
+  if (typeof record.max_issues === "number" && Number.isFinite(record.max_issues)) {
+    maxIssues = Math.trunc(record.max_issues);
+  } else if (typeof record.maxIssues === "number" && Number.isFinite(record.maxIssues)) {
+    maxIssues = Math.trunc(record.maxIssues);
+  }
   const labels = asStringArray(record.labels);
 
   return {
@@ -57,7 +57,8 @@ function parseIssueArray(body: unknown): PlannedIssue[] | null {
 }
 
 function parseStringField(record: Record<string, unknown>, key: string): string {
-  return typeof record[key] === "string" ? (record[key] as string).trim() : "";
+  const value = record[key];
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function parsePriority(value: unknown): "low" | "medium" | "high" | null {

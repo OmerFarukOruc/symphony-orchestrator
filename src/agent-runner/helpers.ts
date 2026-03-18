@@ -49,7 +49,7 @@ function getTurnSandboxPolicy(config: ServiceConfig, workspacePath: string): Rec
   return policy;
 }
 
-function extractRateLimits(result: unknown): unknown | null {
+function extractRateLimits(result: unknown): unknown {
   const record = asRecord(result);
   return record.rateLimits ?? record.limits ?? null;
 }
@@ -107,7 +107,7 @@ function extractCommandContent(item: Record<string, unknown>, verb: "started" | 
   if (verb === "started") {
     return asString(item.command);
   }
-  return asString(item.output) ?? (item.exitCode !== undefined ? `Exit code: ${item.exitCode}` : null);
+  return asString(item.output) ?? (item.exitCode !== undefined ? `Exit code: ${String(item.exitCode)}` : null);
 }
 
 function extractFileChangeContent(
@@ -172,9 +172,8 @@ function extractItemContent(
   return sanitizeContent(content, { isDiff });
 }
 
+export { asRecord, asStringOrNull as asString } from "../utils/type-guards.js";
 export {
-  asRecord,
-  asString,
   authIsRequired,
   extractItemContent,
   extractRateLimits,

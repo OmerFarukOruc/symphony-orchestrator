@@ -29,5 +29,5 @@ export interface OrchestratorContext {
   getQueuedViews: () => IssueView[];
   setQueuedViews: (views: IssueView[]) => void;
   applyUsageEvent: (entry: RunningEntry, usage: TokenUsageSnapshot, usageMode: "absolute_total" | "delta") => void;
-  setRateLimits: (rateLimits: unknown | null) => void;
+  setRateLimits: (rateLimits: unknown) => void;
 }
