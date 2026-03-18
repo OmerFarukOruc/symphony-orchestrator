@@ -1,4 +1,4 @@
-import type { ModelSelection, ReasoningEffort, RecentEvent, ServiceConfig } from "../types.js";
+import type { ModelSelection, ReasoningEffort, RecentEvent, ServiceConfig } from "../core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
 
 export function resolveModelSelection(

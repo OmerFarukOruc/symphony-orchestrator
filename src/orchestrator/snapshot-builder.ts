@@ -1,4 +1,4 @@
-import { buildWorkflowColumns } from "../workflow-columns.js";
+import { buildWorkflowColumns } from "../workflow/columns.js";
 import { issueView, nowIso } from "./views.js";
 import type {
   AttemptRecord,
@@ -7,7 +7,7 @@ import type {
   RuntimeSnapshot,
   ServiceConfig,
   ModelSelection,
-} from "../types.js";
+} from "../core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
 
 export interface AttemptSummary {

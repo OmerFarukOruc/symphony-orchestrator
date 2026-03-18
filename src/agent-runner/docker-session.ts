@@ -5,18 +5,18 @@ import path from "node:path";
 import { handleNotification } from "./notification-handler.js";
 import { composeSessionId } from "./turn-state.js";
 import type { TurnState } from "./turn-state.js";
-import { createSuccessResponse, type JsonRpcRequest } from "../codex-protocol.js";
+import { createSuccessResponse, type JsonRpcRequest } from "../codex/protocol.js";
 import { JsonRpcConnection } from "../agent/json-rpc-connection.js";
-import { prepareCodexRuntimeConfig, getRequiredProviderEnvNames } from "../codex-runtime-config.js";
-import { buildDockerRunArgs } from "../docker-spawn.js";
-import { removeContainer, stopContainer } from "../docker-lifecycle.js";
-import { getContainerStats } from "../docker-stats.js";
+import { prepareCodexRuntimeConfig, getRequiredProviderEnvNames } from "../codex/runtime-config.js";
+import { buildDockerRunArgs } from "../docker/spawn.js";
+import { removeContainer, stopContainer } from "../docker/lifecycle.js";
+import { getContainerStats } from "../docker/stats.js";
 import { handleCodexRequest } from "../agent/codex-request-handler.js";
-import type { GithubApiToolClient } from "../github-api-tool.js";
-import type { LinearClient } from "../linear-client.js";
-import type { PathRegistry } from "../path-registry.js";
-import type { AgentRunnerEventHandler } from "../agent-runner.js";
-import type { Issue, ModelSelection, ServiceConfig, SymphonyLogger, Workspace } from "../types.js";
+import type { GithubApiToolClient } from "../git/github-api-tool.js";
+import type { LinearClient } from "../linear/client.js";
+import type { PathRegistry } from "../workspace/path-registry.js";
+import type { AgentRunnerEventHandler } from "./index.js";
+import type { Issue, ModelSelection, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
 
 export interface DockerSessionDeps {
   archiveDir?: string;

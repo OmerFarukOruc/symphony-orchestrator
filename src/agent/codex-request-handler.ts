@@ -1,9 +1,9 @@
-import { asRecord, asString } from "../agent-runner-helpers.js";
-import type { GithubApiToolClient } from "../github-api-tool.js";
-import { handleGithubApiToolCall } from "../github-api-tool.js";
-import type { LinearClient } from "../linear-client.js";
-import { handleLinearGraphqlToolCall } from "../linear-graphql-tool.js";
-import type { JsonRpcRequest } from "../codex-protocol.js";
+import { asRecord, asString } from "../agent-runner/helpers.js";
+import type { GithubApiToolClient } from "../git/github-api-tool.js";
+import { handleGithubApiToolCall } from "../git/github-api-tool.js";
+import type { LinearClient } from "../linear/client.js";
+import { handleLinearGraphqlToolCall } from "../linear/graphql-tool.js";
+import type { JsonRpcRequest } from "../codex/protocol.js";
 
 export interface CodexRequestResult {
   response?: unknown;

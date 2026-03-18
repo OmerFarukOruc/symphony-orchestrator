@@ -1,7 +1,7 @@
 import type { JsonRpcConnection } from "../agent/json-rpc-connection.js";
-import type { LinearClient } from "../linear-client.js";
-import type { AgentRunnerEventHandler } from "../agent-runner.js";
-import type { ModelSelection, ServiceConfig, Workspace, Issue } from "../types.js";
+import type { LinearClient } from "../linear/client.js";
+import type { AgentRunnerEventHandler } from "./index.js";
+import type { ModelSelection, ServiceConfig, Workspace, Issue } from "../core/types.js";
 import type { TurnState } from "./turn-state.js";
 
 export interface AgentRunnerTurnExecutionRunInput {

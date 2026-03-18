@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-node "$(dirname "$0")/../dist/cli.js" "$@"
+node "$(dirname "$0")/../dist/cli/index.js" "$@"

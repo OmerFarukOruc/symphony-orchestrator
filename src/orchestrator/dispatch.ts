@@ -1,5 +1,5 @@
-import { isTerminalState } from "../state-policy.js";
-import type { Issue, ServiceConfig } from "../types.js";
+import { isTerminalState } from "../state/policy.js";
+import type { Issue, ServiceConfig } from "../core/types.js";
 
 function sortableCreatedAt(createdAt: string | null): number {
   if (!createdAt) {

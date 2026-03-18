@@ -89,6 +89,24 @@ PRs should explain the operator-visible impact, list validation steps (`npm test
 
 Keep secrets out of committed workflow files; prefer env expansion such as `$LINEAR_API_KEY`. When changing auth, trust, workflow examples, or sandbox behavior, update `docs/TRUST_AND_AUTH.md` and any affected operator docs in the same PR.
 
+## Browser Automation & Visual Verification
+
+Use `agent-browser` for visual verification of Symphony dashboard UI changes. The `visual-verify` skill in `skills/visual-verify/` teaches the full workflow. Read `skills/visual-verify/SKILL.md` whenever you need to visually verify UI changes, QA the dashboard, take screenshots, or run before/after comparisons.
+
+**When to use:** After editing `dashboard-template.ts`, `logs-template.ts`, or any file that affects the Symphony web UI. Also use when asked to "dogfood", "QA", "visual check", or "screenshot" the dashboard.
+
+**Quick workflow:**
+
+1. `agent-browser open http://127.0.0.1:4000` — navigate to dashboard
+2. `agent-browser screenshot --annotate archive/screenshots/before.png` — baseline
+3. Make code changes
+4. `agent-browser reload` — refresh
+5. `agent-browser screenshot --annotate archive/screenshots/after.png` — capture
+6. `agent-browser diff screenshot --baseline archive/screenshots/before.png` — pixel diff
+7. `agent-browser close` — cleanup
+
+Project-level `agent-browser.json` configures Brave in headed mode with screenshots going to `archive/screenshots/`. Run `agent-browser --help` for all commands.
+
 ---
 name: desloppify
 description: >

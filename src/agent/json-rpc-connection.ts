@@ -9,8 +9,8 @@ import {
   isJsonRpcSuccessResponse,
   type JsonRpcId,
   type JsonRpcRequest,
-} from "../codex-protocol.js";
-import type { SymphonyLogger } from "../types.js";
+} from "../codex/protocol.js";
+import type { SymphonyLogger } from "../core/types.js";
 
 export const MAX_LINE_BYTES = 10 * 1024 * 1024;
 

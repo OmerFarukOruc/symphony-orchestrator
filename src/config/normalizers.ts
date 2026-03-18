@@ -14,7 +14,7 @@ import type {
   ReasoningEffort,
   StateMachineConfig,
   StateStageConfig,
-} from "../types.js";
+} from "../core/types.js";
 import { asBoolean, asRecord, asString, asStringArray, asStringMap, asRecordArray } from "./coercion.js";
 import { resolveConfigString } from "./resolvers.js";
 
