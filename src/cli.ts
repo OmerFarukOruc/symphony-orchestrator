@@ -4,9 +4,9 @@ import { parseArgs } from "node:util";
 
 import { AgentRunner } from "./agent-runner.js";
 import { AttemptStore } from "./attempt-store.js";
+import { createGitHubToolProvider, createRepoRouterProvider } from "./cli/runtime-providers.js";
 import { ConfigOverlayStore } from "./config-overlay.js";
 import { ConfigStore } from "./config.js";
-import { GitManager } from "./git-manager.js";
 import { HttpServer } from "./http-server.js";
 import { LinearClient } from "./linear-client.js";
 import { createLogger } from "./logger.js";
@@ -14,7 +14,6 @@ import { NotificationManager } from "./notification-manager.js";
 import { Orchestrator } from "./orchestrator.js";
 import { PathRegistry } from "./path-registry.js";
 import { createLinearPlanningExecutor } from "./planning-executor.js";
-import { RepoRouter } from "./repo-router.js";
 import { SecretsStore } from "./secrets-store.js";
 import { SlackWebhookChannel } from "./slack-webhook.js";
 import type { ValidationError } from "./types.js";
@@ -123,47 +122,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   configureNotifications();
 
   const pathRegistry = PathRegistry.fromEnv();
-  const repoRouter = {
-    matchIssue: (issue: Parameters<RepoRouter["matchIssue"]>[0]) =>
-      new RepoRouter(
-        (configStore.getConfig().repos ?? []).map((route) => ({
-          repoUrl: route.repoUrl,
-          defaultBranch: route.defaultBranch,
-          identifierPrefix: route.identifierPrefix ?? undefined,
-          label: route.label ?? undefined,
-          githubOwner: route.githubOwner ?? undefined,
-          githubRepo: route.githubRepo ?? undefined,
-          githubTokenEnv: route.githubTokenEnv ?? undefined,
-        })),
-      ).matchIssue(issue),
-  };
-  const gitManager = {
-    cloneInto: (...args: Parameters<GitManager["cloneInto"]>) =>
-      new GitManager({
-        env: process.env,
-        apiBaseUrl: configStore.getConfig().github?.apiBaseUrl ?? "https://api.github.com",
-      }).cloneInto(...args),
-    commitAndPush: (...args: Parameters<GitManager["commitAndPush"]>) =>
-      new GitManager({
-        env: process.env,
-        apiBaseUrl: configStore.getConfig().github?.apiBaseUrl ?? "https://api.github.com",
-      }).commitAndPush(...args),
-    createPullRequest: (...args: Parameters<GitManager["createPullRequest"]>) =>
-      new GitManager({
-        env: process.env,
-        apiBaseUrl: configStore.getConfig().github?.apiBaseUrl ?? "https://api.github.com",
-      }).createPullRequest(...args),
-    addPrComment: (...args: Parameters<GitManager["addPrComment"]>) =>
-      new GitManager({
-        env: process.env,
-        apiBaseUrl: configStore.getConfig().github?.apiBaseUrl ?? "https://api.github.com",
-      }).addPrComment(...args),
-    getPrStatus: (...args: Parameters<GitManager["getPrStatus"]>) =>
-      new GitManager({
-        env: process.env,
-        apiBaseUrl: configStore.getConfig().github?.apiBaseUrl ?? "https://api.github.com",
-      }).getPrStatus(...args),
-  };
+  const repoRouter = createRepoRouterProvider(() => configStore.getConfig());
+  const gitManager = createGitHubToolProvider(() => configStore.getConfig(), { env: process.env });
   const agentRunner = new AgentRunner({
     getConfig: () => configStore.getConfig(),
     linearClient,

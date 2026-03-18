@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import YAML from "yaml";
 
 import type { ValidationError, WorkflowDefinition } from "./types.js";
+import { isRecord } from "./utils/type-guards.js";
 
 export class WorkflowLoaderError extends Error {
   constructor(
@@ -12,10 +13,6 @@ export class WorkflowLoaderError extends Error {
     super(validationError.message, options);
     this.name = "WorkflowLoaderError";
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export async function loadWorkflowDefinition(workflowPath: string): Promise<WorkflowDefinition> {

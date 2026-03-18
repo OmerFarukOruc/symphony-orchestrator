@@ -1,6 +1,7 @@
 import type { Express, Response } from "express";
 
 import { SecretsStore } from "./secrets-store.js";
+import { isRecord } from "./utils/type-guards.js";
 
 function methodNotAllowed(response: Response): void {
   response.status(405).json({
@@ -9,10 +10,6 @@ function methodNotAllowed(response: Response): void {
       message: "Method Not Allowed",
     },
   });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isValidSecretKey(value: string): boolean {
