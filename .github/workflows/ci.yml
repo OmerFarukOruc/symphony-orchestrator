@@ -20,7 +20,6 @@ jobs:
       - run: npm test -- --reporter=verbose --coverage
       - name: Dead code analysis
         run: npm run knip
-        continue-on-error: true
       - name: Duplicate code analysis
         run: npm run jscpd
         continue-on-error: true

@@ -4,7 +4,7 @@ import type { SymphonyLogger } from "./types.js";
  * Error tracking interface — all error tracking implementations must
  * satisfy this contract, including the no-op fallback.
  */
-export interface ErrorTracker {
+interface ErrorTracker {
   captureException(error: Error, context?: Record<string, unknown>): void;
   addBreadcrumb(message: string, category: string, data?: Record<string, unknown>): void;
   setContext(key: string, value: Record<string, unknown>): void;

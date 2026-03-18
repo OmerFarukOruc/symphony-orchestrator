@@ -24,3 +24,7 @@ desktop/src-tauri/Cargo.lock
 archive/screenshots/
 dogfood-output/
 *.auth-state.json
+
+# Environment secrets
+.env
+.env.*
