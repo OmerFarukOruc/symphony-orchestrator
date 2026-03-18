@@ -5,32 +5,123 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-and-test:
+  # ── Phase 1: Build & Lint ──────────────────────────────────────────
+  build:
+    name: Build & Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 22
+          cache: npm
       - run: npm ci
       - run: npm run build
       - run: npm run lint
       - run: npm run format:check
+      - uses: actions/upload-artifact@v7
+        with:
+          name: build-output
+          path: |
+            dist/
+            node_modules/
+            package.json
+            package-lock.json
+          retention-days: 1
+
+  # ── Phase 2: Test & Coverage ───────────────────────────────────────
+  test:
+    name: Test & Coverage
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
+        with:
+          name: build-output
       - run: npm test -- --reporter=verbose --coverage
       - name: Dead code analysis
-        run: npm run knip
+        run: npx knip
       - name: Duplicate code analysis
-        run: npm run jscpd
+        run: npx jscpd
         continue-on-error: true
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-report
           path: coverage/
+          retention-days: 7
+
+  # ── Phase 3: Security & Quality (parallel) ─────────────────────────
+  gitleaks:
+    name: Gitleaks
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  semgrep:
+    name: Semgrep
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v6
+      - run: semgrep scan --config auto --config p/typescript --error
+
+  codeql:
+    name: CodeQL
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v4
+
+  sonarcloud:
+    name: SonarCloud
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+      - uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # ── Phase 4: Verify (main only) ───────────────────────────────────
+  docker-build:
+    name: Docker Build
+    needs: [test, gitleaks, semgrep]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: docker build -t symphony-orchestrator-service .
 
   integration:
+    name: Integration Tests
     if: github.ref == 'refs/heads/main'
+    needs: [test, gitleaks, semgrep]
     runs-on: ubuntu-latest
     env:
       LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
@@ -39,15 +130,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
+          cache: npm
       - run: npm ci
       - run: npm run test:integration
-
-  docker-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-      - run: npm ci
-      - run: docker build -t symphony-orchestrator-service .
