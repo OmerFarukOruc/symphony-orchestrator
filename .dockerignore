@@ -9,13 +9,12 @@ tests/
 archive/
 skills/
 
-# Config & docs
+# Config & docs (keep tsconfig.json — needed by Docker build)
 *.md
 !WORKFLOW.docker.md
 .eslintrc*
 .prettierrc*
 .jscpd.json
-tsconfig.json
 vitest*.config.*
 knip.json
 
