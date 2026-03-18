@@ -5,6 +5,8 @@ import { isActiveState, isTerminalState } from "../state-policy.js";
 import { isHardFailure, issueView, nowIso } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
 import type { Issue, ModelSelection } from "../types.js";
+import { buildOutcomeView } from "./outcome-view-builder.js";
+import { executeGitPostRun } from "./git-post-run.js";
 
 type StopSignal = "done" | "blocked";
 
@@ -95,22 +97,14 @@ export async function handleWorkerOutcome(
     errorMessage: outcome.errorMessage,
     tokenUsage: entry.tokenUsage,
   });
-  const currentConfiguredSelection = configuredSelection(ctx, latestIssue.identifier);
+  const sel = configuredSelection(ctx, latestIssue.identifier);
   ctx.detailViews.set(
     latestIssue.identifier,
-    issueView(latestIssue, {
-      workspaceKey: workspace.workspaceKey,
+    buildOutcomeView(latestIssue, workspace, entry, sel, {
       status: outcome.kind,
       attempt,
       error: outcome.errorMessage,
       message: outcome.errorMessage,
-      configuredModel: currentConfiguredSelection.model,
-      configuredReasoningEffort: currentConfiguredSelection.reasoningEffort,
-      configuredModelSource: currentConfiguredSelection.source,
-      modelChangePending: false,
-      model: entry.modelSelection.model,
-      reasoningEffort: entry.modelSelection.reasoningEffort,
-      modelSource: entry.modelSelection.source,
     }),
   );
 
@@ -132,19 +126,11 @@ export async function handleWorkerOutcome(
     ctx.releaseIssueClaim(latestIssue.id);
     ctx.completedViews.set(
       latestIssue.identifier,
-      issueView(latestIssue, {
-        workspaceKey: workspace.workspaceKey,
+      buildOutcomeView(latestIssue, workspace, entry, sel, {
         status: "cancelled",
         attempt,
         error: outcome.errorMessage,
         message: outcome.errorMessage ?? "service stopped before the worker completed",
-        configuredModel: currentConfiguredSelection.model,
-        configuredReasoningEffort: currentConfiguredSelection.reasoningEffort,
-        configuredModelSource: currentConfiguredSelection.source,
-        modelChangePending: false,
-        model: entry.modelSelection.model,
-        reasoningEffort: entry.modelSelection.reasoningEffort,
-        modelSource: entry.modelSelection.source,
       }),
     );
     return;
@@ -164,19 +150,11 @@ export async function handleWorkerOutcome(
     await ctx.deps.workspaceManager.removeWorkspace(latestIssue.identifier).catch(() => undefined);
     ctx.completedViews.set(
       latestIssue.identifier,
-      issueView(latestIssue, {
-        workspaceKey: workspace.workspaceKey,
+      buildOutcomeView(latestIssue, workspace, entry, sel, {
         status: terminalStatus,
         attempt,
         error: outcome.errorMessage ?? outcome.errorCode,
         message: "workspace cleaned after terminal state",
-        configuredModel: currentConfiguredSelection.model,
-        configuredReasoningEffort: currentConfiguredSelection.reasoningEffort,
-        configuredModelSource: currentConfiguredSelection.source,
-        modelChangePending: false,
-        model: entry.modelSelection.model,
-        reasoningEffort: entry.modelSelection.reasoningEffort,
-        modelSource: entry.modelSelection.source,
       }),
     );
     ctx.releaseIssueClaim(latestIssue.id);
@@ -186,17 +164,9 @@ export async function handleWorkerOutcome(
   if (!isActiveState(latestIssue.state, ctx.getConfig())) {
     ctx.completedViews.set(
       latestIssue.identifier,
-      issueView(latestIssue, {
-        workspaceKey: workspace.workspaceKey,
+      buildOutcomeView(latestIssue, workspace, entry, sel, {
         status: "paused",
         message: "issue is no longer active",
-        configuredModel: currentConfiguredSelection.model,
-        configuredReasoningEffort: currentConfiguredSelection.reasoningEffort,
-        configuredModelSource: currentConfiguredSelection.source,
-        modelChangePending: false,
-        model: entry.modelSelection.model,
-        reasoningEffort: entry.modelSelection.reasoningEffort,
-        modelSource: entry.modelSelection.source,
       }),
     );
     ctx.releaseIssueClaim(latestIssue.id);
@@ -228,19 +198,11 @@ export async function handleWorkerOutcome(
     });
     ctx.completedViews.set(
       latestIssue.identifier,
-      issueView(latestIssue, {
-        workspaceKey: workspace.workspaceKey,
+      buildOutcomeView(latestIssue, workspace, entry, sel, {
         status: outcome.kind === "cancelled" ? "cancelled" : "failed",
         attempt,
         error: outcome.errorCode,
         message: outcome.errorMessage ?? "worker stopped without a retry",
-        configuredModel: currentConfiguredSelection.model,
-        configuredReasoningEffort: currentConfiguredSelection.reasoningEffort,
-        configuredModelSource: currentConfiguredSelection.source,
-        modelChangePending: false,
-        model: entry.modelSelection.model,
-        reasoningEffort: entry.modelSelection.reasoningEffort,
-        modelSource: entry.modelSelection.source,
       }),
     );
     ctx.releaseIssueClaim(latestIssue.id);
@@ -252,24 +214,8 @@ export async function handleWorkerOutcome(
     let pullRequestUrl: string | null = null;
     if (stopSignal === "done" && entry.repoMatch && ctx.deps.gitManager) {
       try {
-        const commitResult = await ctx.deps.gitManager.commitAndPush(
-          workspace.path,
-          `${latestIssue.identifier}: ${latestIssue.title}`,
-        );
-        if (commitResult.pushed) {
-          const pullRequest = await ctx.deps.gitManager.createPullRequest(
-            entry.repoMatch,
-            latestIssue,
-            commitResult.branchName,
-          );
-          pullRequestUrl =
-            typeof pullRequest === "object" &&
-            pullRequest !== null &&
-            "html_url" in pullRequest &&
-            typeof (pullRequest as { html_url?: unknown }).html_url === "string"
-              ? ((pullRequest as { html_url: string }).html_url ?? null)
-              : null;
-        }
+        const result = await executeGitPostRun(ctx.deps.gitManager, workspace, latestIssue, entry.repoMatch);
+        pullRequestUrl = result.pullRequestUrl;
       } catch (error) {
         const errorText = error instanceof Error ? error.message : String(error);
         ctx.notify({
@@ -291,19 +237,11 @@ export async function handleWorkerOutcome(
         });
         ctx.completedViews.set(
           latestIssue.identifier,
-          issueView(latestIssue, {
-            workspaceKey: workspace.workspaceKey,
+          buildOutcomeView(latestIssue, workspace, entry, sel, {
             status: "failed",
             attempt,
             error: errorText,
             message: `git post-run failed: ${errorText}`,
-            configuredModel: currentConfiguredSelection.model,
-            configuredReasoningEffort: currentConfiguredSelection.reasoningEffort,
-            configuredModelSource: currentConfiguredSelection.source,
-            modelChangePending: false,
-            model: entry.modelSelection.model,
-            reasoningEffort: entry.modelSelection.reasoningEffort,
-            modelSource: entry.modelSelection.source,
           }),
         );
         ctx.releaseIssueClaim(latestIssue.id);
@@ -312,18 +250,10 @@ export async function handleWorkerOutcome(
     }
     ctx.completedViews.set(
       latestIssue.identifier,
-      issueView(latestIssue, {
-        workspaceKey: workspace.workspaceKey,
+      buildOutcomeView(latestIssue, workspace, entry, sel, {
         status: stopSignal === "blocked" ? "paused" : "completed",
         attempt,
         message: stopSignal === "blocked" ? "worker reported issue blocked" : "worker reported issue complete",
-        configuredModel: currentConfiguredSelection.model,
-        configuredReasoningEffort: currentConfiguredSelection.reasoningEffort,
-        configuredModelSource: currentConfiguredSelection.source,
-        modelChangePending: false,
-        model: entry.modelSelection.model,
-        reasoningEffort: entry.modelSelection.reasoningEffort,
-        modelSource: entry.modelSelection.source,
       }),
     );
     ctx.notify({
