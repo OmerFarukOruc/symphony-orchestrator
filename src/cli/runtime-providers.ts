@@ -1,6 +1,6 @@
-import { GitManager, type GitManagerDeps } from "../git-manager.js";
-import { RepoRouter, type RepoRoute } from "../repo-router.js";
-import type { ServiceConfig } from "../types.js";
+import { GitManager, type GitManagerDeps } from "../git/manager.js";
+import { RepoRouter, type RepoRoute } from "../git/repo-router.js";
+import type { ServiceConfig } from "../core/types.js";
 
 const DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com";
 

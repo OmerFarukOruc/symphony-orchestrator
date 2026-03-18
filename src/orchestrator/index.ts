@@ -1,4 +1,4 @@
-export { Orchestrator } from "../orchestrator.js";
+export { Orchestrator } from "./orchestrator.js";
 export {
   buildAttemptDetail,
   buildIssueDetail,

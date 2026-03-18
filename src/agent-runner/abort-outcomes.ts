@@ -1,4 +1,4 @@
-import type { RunOutcome } from "../types.js";
+import type { RunOutcome } from "../core/types.js";
 
 export function outcomeForAbort(
   signal: AbortSignal,

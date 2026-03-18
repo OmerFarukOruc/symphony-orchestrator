@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
-import type { Orchestrator } from "../orchestrator.js";
-import type { ReasoningEffort } from "../types.js";
+import type { Orchestrator } from "../orchestrator/orchestrator.js";
+import type { ReasoningEffort } from "../core/types.js";
 
 function asModel(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;

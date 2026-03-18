@@ -2,10 +2,10 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import { Liquid } from "liquidjs";
 
-import { authIsRequired, extractRateLimits, extractThreadId, hasUsableAccount } from "../agent-runner-helpers.js";
+import { authIsRequired, extractRateLimits, extractThreadId, hasUsableAccount } from "./helpers.js";
 import type { DockerSession } from "./docker-session.js";
-import type { AgentRunnerEventHandler } from "../agent-runner.js";
-import type { Issue, ModelSelection, RunOutcome, ServiceConfig, SymphonyLogger, Workspace } from "../types.js";
+import type { AgentRunnerEventHandler } from "./index.js";
+import type { Issue, ModelSelection, RunOutcome, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
 
 export interface SessionInitDeps {
   logger: SymphonyLogger;

@@ -8,7 +8,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
-      exclude: ["src/dashboard-template.ts"],
+      exclude: ["src/dashboard/template.ts"],
       thresholds: {
         statements: 60,
         branches: 50,

@@ -68,6 +68,7 @@ flowchart TD
 | **Planning API** | Goal-to-issue planning endpoints under `/api/v1/plan*` |
 | **Desktop shell** | Minimal Tauri host that can start/stop `node dist/cli.js` and embed the dashboard |
 | **Strict TypeScript** | Full type safety with deterministic Vitest coverage |
+| **Visual verification** | `agent-browser` + Brave headed mode for dashboard screenshot diffing and QA |
 
 ---
 
@@ -355,6 +356,7 @@ level=info msg="worker retry queued" issue_id=abc123 issue_identifier=MT-882 att
 | [`WORKFLOW.example.md`](WORKFLOW.example.md) | Portable example workflow |
 | [`WORKFLOW.md`](WORKFLOW.md) | Checked-in live smoke workflow |
 | [`EXECPLAN.md`](EXECPLAN.md) | Internal execution history and implementation log |
+| [`skills/visual-verify/SKILL.md`](skills/visual-verify/SKILL.md) | Visual verification skill for dashboard UI testing |
 
 ---
 

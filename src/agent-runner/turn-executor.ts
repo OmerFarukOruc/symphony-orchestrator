@@ -6,14 +6,14 @@ import {
   extractTokenUsageSnapshot,
   extractTurnId,
   getTurnSandboxPolicy,
-} from "../agent-runner-helpers.js";
+} from "./helpers.js";
 import { failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
 import { composeSessionId, waitForTurnCompletion } from "./turn-state.js";
-import { isActiveState } from "../state-policy.js";
-import { sanitizeContent } from "../content-sanitizer.js";
-import { inspectOomKilled } from "../docker-lifecycle.js";
+import { isActiveState } from "../state/policy.js";
+import { sanitizeContent } from "../core/content-sanitizer.js";
+import { inspectOomKilled } from "../docker/lifecycle.js";
 import type { AgentRunnerTurnExecutionInput, AgentRunnerTurnExecutionState } from "./turn-executor.types.js";
-import type { RunOutcome } from "../types.js";
+import type { RunOutcome } from "../core/types.js";
 
 const CONTINUATION_PROMPT =
   "Continue the current issue, make concrete progress, and stop only when done or blocked. When the issue is complete, end your final message with `SYMPHONY_STATUS: DONE`. If you are blocked and cannot proceed, end your final message with `SYMPHONY_STATUS: BLOCKED`.";

@@ -19,3 +19,8 @@ coverage/
 desktop/src-tauri/target/
 desktop/src-tauri/gen/
 desktop/src-tauri/Cargo.lock
+
+# agent-browser visual verification artifacts
+archive/screenshots/
+dogfood-output/
+*.auth-state.json

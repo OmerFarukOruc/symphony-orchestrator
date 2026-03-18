@@ -507,6 +507,64 @@ The helper emits JSON and prefers `issue-index.json` when present, while still f
 
 ---
 
+## 🔭 Visual Verification of Dashboard UI
+
+Symphony includes a `visual-verify` skill and project-level `agent-browser` configuration for visually verifying dashboard UI changes using Brave in headed mode.
+
+### Prerequisites
+
+| Requirement | Details |
+|---|---|
+| **agent-browser** | `npm i -g agent-browser && agent-browser install` |
+| **Brave browser** | Installed and in `PATH` (or set `executablePath` in `agent-browser.json`) |
+
+### Project Configuration
+
+The `agent-browser.json` at project root configures Brave as the headed browser engine with screenshots saved to `archive/screenshots/`:
+
+```json
+{
+  "executablePath": "/usr/bin/brave-browser",
+  "headed": true,
+  "screenshotDir": "./archive/screenshots",
+  "screenshotFormat": "png"
+}
+```
+
+### Quick Verify Workflow
+
+Use after a targeted UI change to confirm the edit visually:
+
+```bash
+# 1. Start the dashboard
+node dist/cli.js ./WORKFLOW.example.md --port 4000
+
+# 2. Baseline screenshot
+agent-browser open http://127.0.0.1:4000
+agent-browser wait --load networkidle
+agent-browser screenshot --annotate archive/screenshots/before.png
+
+# 3. Make code changes, then reload
+agent-browser reload
+agent-browser wait --load networkidle
+agent-browser screenshot --annotate archive/screenshots/after.png
+
+# 4. Pixel diff
+agent-browser diff screenshot --baseline archive/screenshots/before.png
+
+# 5. Cleanup
+agent-browser close
+```
+
+### Full QA Workflow
+
+For comprehensive testing (before releases, after major UI changes), the `visual-verify` skill in `skills/visual-verify/SKILL.md` teaches a structured exploration workflow with video recording, annotated screenshots, console error checking, and a report template.
+
+> [!TIP]
+> Read `skills/visual-verify/SKILL.md` for the full workflow. Reference docs in `skills/visual-verify/references/` cover the dashboard element map, command reference, and issue severity taxonomy.
+
+---
+
 ## 🔐 Trust and Auth
 
 Symphony is designed for a local, operator-controlled, high-trust environment.

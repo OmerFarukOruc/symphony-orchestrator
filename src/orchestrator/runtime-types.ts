@@ -1,12 +1,19 @@
-import { AgentRunner } from "../agent-runner.js";
-import { AttemptStore } from "../attempt-store.js";
-import { ConfigStore } from "../config.js";
-import type { GitManager } from "../git-manager.js";
-import { LinearClient } from "../linear-client.js";
-import type { NotificationManager } from "../notification-manager.js";
-import type { RepoMatch, RepoRouter } from "../repo-router.js";
-import type { Issue, ModelSelection, RetryEntry, SymphonyLogger, TokenUsageSnapshot, Workspace } from "../types.js";
-import { WorkspaceManager } from "../workspace-manager.js";
+import { AgentRunner } from "../agent-runner/index.js";
+import { AttemptStore } from "../core/attempt-store.js";
+import { ConfigStore } from "../config/store.js";
+import type { GitManager } from "../git/manager.js";
+import { LinearClient } from "../linear/client.js";
+import type { NotificationManager } from "../notification/manager.js";
+import type { RepoMatch, RepoRouter } from "../git/repo-router.js";
+import type {
+  Issue,
+  ModelSelection,
+  RetryEntry,
+  SymphonyLogger,
+  TokenUsageSnapshot,
+  Workspace,
+} from "../core/types.js";
+import { WorkspaceManager } from "../workspace/manager.js";
 
 export interface RunningEntry {
   runId: string;

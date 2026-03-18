@@ -6,7 +6,7 @@
  */
 
 import path from "node:path";
-import type { ServiceConfig, WorkflowDefinition } from "../types.js";
+import type { ServiceConfig, WorkflowDefinition } from "../core/types.js";
 import { asBoolean, asNumber, asNumberMap, asRecord, asString, asStringArray, asLooseStringArray } from "./coercion.js";
 import { deepMerge } from "./merge.js";
 import { resolveConfigString, resolvePathConfigString } from "./resolvers.js";
@@ -21,7 +21,7 @@ import {
   normalizeRepos,
   normalizeStateMachine,
 } from "./normalizers.js";
-import { DEFAULT_ACTIVE_STATES, DEFAULT_TERMINAL_STATES } from "../state-policy.js";
+import { DEFAULT_ACTIVE_STATES, DEFAULT_TERMINAL_STATES } from "../state/policy.js";
 
 /**
  * Options for service config derivation.

@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 
-import type { Orchestrator } from "../orchestrator.js";
+import type { Orchestrator } from "../orchestrator/orchestrator.js";
 
 export function handleAttemptDetail(orchestrator: Orchestrator, request: Request, response: Response): void {
   const attempt = orchestrator.getAttemptDetail(String(request.params.attempt_id));

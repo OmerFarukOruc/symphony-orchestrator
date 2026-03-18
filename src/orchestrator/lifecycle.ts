@@ -1,7 +1,7 @@
 import { sortIssuesForDispatch } from "./dispatch.js";
 import { issueView, nowIso } from "./views.js";
-import { isActiveState, isTerminalState } from "../state-policy.js";
-import type { Issue, ServiceConfig } from "../types.js";
+import { isActiveState, isTerminalState } from "../state/policy.js";
+import type { Issue, ServiceConfig } from "../core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
 
 export async function reconcileRunningAndRetrying(ctx: {

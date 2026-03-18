@@ -1,6 +1,6 @@
 import { issueView } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
-import type { Issue, ModelSelection, Workspace } from "../types.js";
+import type { Issue, ModelSelection, Workspace } from "../core/types.js";
 
 export function buildOutcomeView(
   issue: Issue,

@@ -1,0 +1,6 @@
+{
+  "executablePath": "/usr/bin/brave-browser",
+  "headed": true,
+  "screenshotDir": "./archive/screenshots",
+  "screenshotFormat": "png"
+}

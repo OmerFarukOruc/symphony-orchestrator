@@ -1,7 +1,7 @@
 import type { IssueView } from "./views.js";
 import type { OrchestratorDeps, RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
-import type { Issue, ModelSelection, RecentEvent, ServiceConfig, TokenUsageSnapshot } from "../types.js";
-import type { NotificationEvent } from "../notification-channel.js";
+import type { Issue, ModelSelection, RecentEvent, ServiceConfig, TokenUsageSnapshot } from "../core/types.js";
+import type { NotificationEvent } from "../notification/channel.js";
 
 export interface OrchestratorContext {
   running: boolean;

@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 
-import { AttemptStore } from "../attempt-store.js";
-import type { NotificationEvent } from "../notification-channel.js";
+import { AttemptStore } from "../core/attempt-store.js";
+import type { NotificationEvent } from "../notification/channel.js";
 import { issueView, nowIso } from "./views.js";
-import { isActiveState, isTerminalState } from "../state-policy.js";
-import type { Issue, ModelSelection, RecentEvent, ServiceConfig } from "../types.js";
+import { isActiveState, isTerminalState } from "../state/policy.js";
+import type { Issue, ModelSelection, RecentEvent, ServiceConfig } from "../core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
 
 export function clearRetryEntry(
