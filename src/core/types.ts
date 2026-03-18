@@ -1,3 +1,5 @@
+import type { NotificationVerbosity } from "../notification/channel.js";
+
 export interface WorkflowDefinition {
   config: Record<string, unknown>;
   promptTemplate: string;
@@ -168,32 +170,6 @@ export interface TrackerConfig {
   terminalStates: string[];
 }
 
-export type NotificationVerbosity = "off" | "critical" | "verbose";
-
-export type NotificationEventType =
-  | "issue_claimed"
-  | "worker_started"
-  | "worker_retry_queued"
-  | "worker_completed"
-  | "worker_blocked"
-  | "worker_failed"
-  | "worker_cancelled";
-
-export interface NotificationEvent {
-  type: NotificationEventType;
-  at: string;
-  issueId: string;
-  issueIdentifier: string;
-  issueTitle: string;
-  attempt: number | null;
-  message?: string | null;
-  errorCode?: string | null;
-  errorMessage?: string | null;
-  workspacePath?: string | null;
-  branchName?: string | null;
-  pullRequestUrl?: string | null;
-}
-
 export interface NotificationSlackConfig {
   webhookUrl: string;
   verbosity: NotificationVerbosity;
@@ -222,7 +198,7 @@ export interface PollingConfig {
   intervalMs: number;
 }
 
-export interface WorkspaceHooks {
+interface WorkspaceHooks {
   afterCreate: string | null;
   beforeRun: string | null;
   afterRun: string | null;

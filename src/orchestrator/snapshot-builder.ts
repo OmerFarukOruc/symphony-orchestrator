@@ -114,11 +114,14 @@ export function buildIssueDetail(
     return null;
   }
 
+  const archivedAttempts = deps.attemptStore.getAttemptsForIssue(identifier);
   const relatedEvents = runningEntry
     ? deps.attemptStore.getEvents(runningEntry.runId)
-    : callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier);
-
-  const archivedAttempts = deps.attemptStore.getAttemptsForIssue(identifier);
+    : retryEntry
+      ? callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier)
+      : archivedAttempts.length > 0
+        ? archivedAttempts.flatMap((attempt) => deps.attemptStore.getEvents(attempt.attemptId))
+        : callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier);
 
   return {
     ...detail,

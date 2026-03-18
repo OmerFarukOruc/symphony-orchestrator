@@ -20,6 +20,7 @@ export interface AgentRunnerTurnExecutionInput {
   runInput: AgentRunnerTurnExecutionRunInput;
   turnState: TurnState;
   linearClient: LinearClient;
+  setActiveTurnId: (turnId: string | null) => void;
 }
 
 export interface AgentRunnerTurnExecutionState {

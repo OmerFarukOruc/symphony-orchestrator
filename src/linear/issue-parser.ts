@@ -9,7 +9,7 @@ const asString = asStringOrNull;
  * @param raw - The raw labels data from Linear's GraphQL response (typically labels.nodes)
  * @returns An array of lowercase label names
  */
-export function normalizeLabels(raw: unknown): string[] {
+function normalizeLabels(raw: unknown): string[] {
   return asArray(raw)
     .map((item) => asRecord(item))
     .map((item) => asString(item.name))
@@ -24,7 +24,7 @@ export function normalizeLabels(raw: unknown): string[] {
  * @param issueId - The ID of the issue being normalized, used to determine blocker direction
  * @returns An array of IssueBlockerRef objects with id, identifier, and state
  */
-export function normalizeBlockers(raw: unknown, issueId: string): IssueBlockerRef[] {
+function normalizeBlockers(raw: unknown, issueId: string): IssueBlockerRef[] {
   return asArray(raw).map((item) => {
     const relation = asRecord(item);
     const issue = asRecord(relation.issue);

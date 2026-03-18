@@ -31,6 +31,8 @@ export interface RunningEntry {
   modelSelection: ModelSelection;
   lastAgentMessageContent: string | null;
   repoMatch: RepoMatch | null;
+  queuePersistence: (task: () => Promise<void>) => void;
+  flushPersistence: () => Promise<void>;
 }
 
 export type RetryRuntimeEntry = RetryEntry & { issue: Issue; workspaceKey: string | null };

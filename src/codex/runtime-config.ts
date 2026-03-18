@@ -6,7 +6,7 @@ import type { CodexConfig, CodexProviderConfig } from "../core/types.js";
 const DIRECT_OPENAI_PROVIDER_ID = "symphony_openai_api";
 const DIRECT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 
-export interface PreparedCodexRuntimeConfig {
+interface PreparedCodexRuntimeConfig {
   configToml: string;
   authJsonBase64: string | null;
 }
@@ -138,13 +138,23 @@ export function getRequiredProviderEnvNames(config: CodexConfig): string[] {
 }
 
 export async function prepareCodexRuntimeConfig(config: CodexConfig): Promise<PreparedCodexRuntimeConfig> {
+  const authJsonPath = `${config.auth.sourceHome}/auth.json`;
   const authJsonBase64 =
     config.auth.mode === "openai_login"
-      ? Buffer.from(await readFile(`${config.auth.sourceHome}/auth.json`, "utf8"), "utf8").toString("base64")
+      ? Buffer.from(await readAuthJson(authJsonPath), "utf8").toString("base64")
       : null;
 
   return {
     configToml: buildConfigToml(config),
     authJsonBase64,
   };
+}
+
+async function readAuthJson(authJsonPath: string): Promise<string> {
+  try {
+    return await readFile(authJsonPath, "utf8");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`codex auth.json unavailable at ${authJsonPath}: ${message}`, { cause: error });
+  }
 }

@@ -9,6 +9,8 @@ import type { PlannedIssue } from "../planning/skill.js";
 import type { ConfigOverlayStore } from "../config/overlay.js";
 import type { SecretsStore } from "../secrets/store.js";
 import type { SymphonyLogger } from "../core/types.js";
+import { globalMetrics } from "../observability/metrics.js";
+import { tracingMiddleware } from "../observability/tracing.js";
 
 export class HttpServer {
   private readonly app: Express;
@@ -26,6 +28,22 @@ export class HttpServer {
   ) {
     this.app = express();
     this.app.disable("x-powered-by");
+    this.app.use(tracingMiddleware);
+    this.app.use((request, response, next) => {
+      const startedAt = process.hrtime.bigint();
+      response.once("finish", () => {
+        const durationSeconds = Number(process.hrtime.bigint() - startedAt) / 1_000_000_000;
+        globalMetrics.httpRequestsTotal.increment({
+          method: request.method,
+          status: String(response.statusCode),
+        });
+        globalMetrics.httpRequestDurationSeconds.observe(durationSeconds, {
+          method: request.method,
+          status: String(response.statusCode),
+        });
+      });
+      next();
+    });
     this.app.use(express.json());
     registerHttpRoutes(this.app, this.deps);
   }

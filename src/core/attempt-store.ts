@@ -3,11 +3,6 @@ import path from "node:path";
 
 import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "./types.js";
 
-// Utility retained for potential future use in archive parsing.
-function _asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-}
-
 function sortAttemptsDesc(left: AttemptRecord, right: AttemptRecord): number {
   return right.startedAt.localeCompare(left.startedAt);
 }
@@ -124,14 +119,6 @@ export class AttemptStore {
 
   private async persistAttempt(attempt: AttemptRecord): Promise<void> {
     await writeFile(this.attemptPath(attempt.attemptId), `${JSON.stringify(attempt, null, 2)}\n`, "utf8");
-  }
-
-  private async readEventsFile(attemptId: string): Promise<string> {
-    try {
-      return await readFile(this.eventsPath(attemptId), "utf8");
-    } catch {
-      return "";
-    }
   }
 
   private attemptPath(attemptId: string): string {

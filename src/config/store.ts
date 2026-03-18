@@ -9,49 +9,6 @@ import { deriveServiceConfig } from "./builders.js";
 import { cloneConfigMap } from "./merge.js";
 import { deepMerge } from "./merge.js";
 
-export { deriveServiceConfig } from "./builders.js";
-export {
-  asRecord,
-  asString,
-  asNumber,
-  asBoolean,
-  asStringMap,
-  asNumberMap,
-  asStringArray,
-  asRecordArray,
-} from "./coercion.js";
-export { deepMerge, cloneConfigMap } from "./merge.js";
-export {
-  resolveEnvBackedString,
-  expandHomePath,
-  resolveTmpDir,
-  resolveConfigString,
-  expandPathEnvVars,
-  resolvePathConfigString,
-} from "./resolvers.js";
-export {
-  asCodexAuthMode,
-  asReasoningEffort,
-  normalizeCodexProvider,
-  normalizeNotifications,
-  normalizeGitHub,
-  normalizeRepos,
-  normalizeStateMachine,
-  defaultApprovalPolicy,
-  normalizeTurnSandboxPolicy,
-  normalizeApprovalPolicy,
-} from "./normalizers.js";
-export {
-  deriveTrackerConfig,
-  deriveWorkspaceConfig,
-  deriveAgentConfig,
-  deriveSandboxConfig,
-  deriveCodexConfig,
-  derivePollingConfig,
-  deriveServerConfig,
-  type DeriveServiceConfigOptions,
-} from "./builders.js";
-
 export class ConfigStore {
   private watcher: FSWatcher | null = null;
   private workflow: WorkflowDefinition | null = null;

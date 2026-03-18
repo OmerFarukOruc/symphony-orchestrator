@@ -1,5 +1,5 @@
 import { asRecord, asStringOrNull as asString } from "../utils/type-guards.js";
-import { sanitizeContent } from "../core/content-sanitizer.js";
+import { redactSensitiveValue, sanitizeContent } from "../core/content-sanitizer.js";
 import type { ServiceConfig, TokenUsageSnapshot } from "../core/types.js";
 
 function extractThreadId(result: unknown): string | null {
@@ -118,8 +118,11 @@ function extractItemContent(
   } else if (type === "dynamicToolCall") {
     if (verb === "started") {
       const name = asString(item.name) ?? "tool";
-      const args = typeof item.arguments === "string" ? item.arguments : JSON.stringify(item.arguments ?? {});
-      content = `${name}(${args})`;
+      const args =
+        typeof item.arguments === "string"
+          ? sanitizeContent(item.arguments)
+          : JSON.stringify(redactSensitiveValue(item.arguments ?? {}));
+      content = `${name}(${args ?? "{}"})`;
     } else {
       content =
         asString(item.output) ?? (typeof item.result === "string" ? item.result : JSON.stringify(item.result ?? {}));

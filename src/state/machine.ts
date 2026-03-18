@@ -1,12 +1,12 @@
 const DEFAULT_ACTIVE_STATES = ["Todo", "In Progress"];
 const DEFAULT_TERMINAL_STATES = ["Done", "Completed", "Closed", "Canceled", "Cancelled", "Duplicate"];
 
-export interface StateMachineStage {
+interface StateMachineStage {
   key: string;
   terminal: boolean;
 }
 
-export interface StateMachineConfigInput {
+interface StateMachineConfigInput {
   stages?: Array<string | { key: string; terminal?: boolean }>;
   transitions?: Record<string, string[]>;
   activeStates?: string[];

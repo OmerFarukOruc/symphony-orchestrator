@@ -7,19 +7,19 @@ export interface JsonRpcRequest {
   params: unknown;
 }
 
-export interface JsonRpcNotification {
+interface JsonRpcNotification {
   jsonrpc: "2.0";
   method: string;
   params?: unknown;
 }
 
-export interface JsonRpcSuccessResponse {
+interface JsonRpcSuccessResponse {
   jsonrpc: "2.0";
   id: JsonRpcId;
   result: unknown;
 }
 
-export interface JsonRpcErrorResponse {
+interface JsonRpcErrorResponse {
   jsonrpc: "2.0";
   id: JsonRpcId;
   error: {
@@ -27,8 +27,6 @@ export interface JsonRpcErrorResponse {
     message: string;
   };
 }
-
-export type JsonRpcMessage = JsonRpcRequest | JsonRpcNotification | JsonRpcSuccessResponse | JsonRpcErrorResponse;
 
 let nextId = 1;
 
@@ -84,8 +82,4 @@ export function isJsonRpcSuccessResponse(message: unknown): message is JsonRpcSu
 
 export function isJsonRpcErrorResponse(message: unknown): message is JsonRpcErrorResponse {
   return typeof message === "object" && message !== null && "id" in message && "error" in message;
-}
-
-export function getMethod(message: JsonRpcMessage): string | null {
-  return "method" in message ? message.method : null;
 }

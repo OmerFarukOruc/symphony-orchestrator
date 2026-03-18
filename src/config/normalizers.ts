@@ -145,7 +145,7 @@ export function normalizeStateMachine(value: unknown): StateMachineConfig | null
 /**
  * Create a default approval policy object.
  */
-export function defaultApprovalPolicy(): Record<string, unknown> {
+function defaultApprovalPolicy(): Record<string, unknown> {
   return {
     reject: {
       sandbox_approval: true,

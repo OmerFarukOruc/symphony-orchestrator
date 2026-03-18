@@ -15,6 +15,7 @@ import type { RuntimeSnapshot } from "../core/types.js";
 import { isRecord } from "../utils/type-guards.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleModelUpdate } from "./model-handler.js";
+import { redactSensitiveValue } from "../core/content-sanitizer.js";
 
 function methodNotAllowed(response: Response): void {
   response.status(405).json({
@@ -64,16 +65,22 @@ function isSensitiveKey(key: string): boolean {
   return /(api_?key|token|secret|webhook|password|auth)/i.test(key);
 }
 
+function isSensitiveBranch(path: string[]): boolean {
+  return path.some((segment) => /(headers?|credentials?|auth|secrets?)/i.test(segment));
+}
+
 function sanitizeConfigValue(value: unknown, path: string[] = []): unknown {
   if (Array.isArray(value)) {
     return value.map((item, index) => sanitizeConfigValue(item, [...path, String(index)]));
   }
   if (!isRecord(value)) {
-    return value;
+    return redactSensitiveValue(value);
   }
   const sanitized: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
-    sanitized[key] = isSensitiveKey(key) ? "[REDACTED]" : sanitizeConfigValue(child, [...path, key]);
+    const nextPath = [...path, key];
+    const underSensitiveBranch = nextPath.some((segment) => isSensitiveKey(segment)) || isSensitiveBranch(nextPath);
+    sanitized[key] = isSensitiveKey(key) || underSensitiveBranch ? "[REDACTED]" : sanitizeConfigValue(child, nextPath);
   }
   return sanitized;
 }
@@ -82,7 +89,7 @@ function refreshReason(request: Request): string {
   return request.get("x-symphony-reason") ?? "http_refresh";
 }
 
-export interface HttpRouteDeps {
+interface HttpRouteDeps {
   orchestrator: Orchestrator;
   configStore?: ConfigStore;
   configOverlayStore?: ConfigOverlayStore;

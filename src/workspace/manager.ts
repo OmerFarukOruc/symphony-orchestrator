@@ -15,7 +15,7 @@ async function ensureDirectory(pathname: string): Promise<void> {
   await mkdir(pathname, { recursive: true });
 }
 
-export function sanitizeIdentifier(identifier: string): string {
+function sanitizeIdentifier(identifier: string): string {
   return identifier.replace(/[^A-Za-z0-9._-]/g, "_");
 }
 

@@ -38,3 +38,14 @@ export async function removeContainer(name: string): Promise<void> {
     // Already removed — safe to ignore.
   }
 }
+
+/**
+ * Remove a named Docker volume. Safe to call if it is already absent.
+ */
+export async function removeVolume(name: string): Promise<void> {
+  try {
+    await execFileAsync("docker", ["volume", "rm", "-f", name]);
+  } catch {
+    // Volume may already be removed — safe to ignore.
+  }
+}

@@ -349,11 +349,11 @@ export function renderLogsTemplate(issueIdentifier: string): string {
         const time = formatTime(ev.at);
         const label = typeLabel(type).toUpperCase();
         let line = '[' + time + '] [' + label + '] ' + (ev.message || '');
-        if (ev.content) line += '\n' + ev.content;
+        if (ev.content) line += '\\n' + ev.content;
         return line;
       });
       const header = '=== Symphony Logs: ' + ISSUE + ' (' + new Date().toISOString() + ') ===';
-      const text = header + '\n' + lines.join('\n---\n') + '\n=== End of Logs ===';
+      const text = header + '\\n' + lines.join('\\n---\\n') + '\\n=== End of Logs ===';
       navigator.clipboard.writeText(text).then(() => {
         const btn = document.getElementById('copyLogsBtn');
         btn.innerHTML = '<span class="icon" style="font-size:16px">✓</span> Copied!';

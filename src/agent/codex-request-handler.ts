@@ -5,7 +5,7 @@ import type { LinearClient } from "../linear/client.js";
 import { handleLinearGraphqlToolCall } from "../linear/graphql-tool.js";
 import type { JsonRpcRequest } from "../codex/protocol.js";
 
-export interface CodexRequestResult {
+interface CodexRequestResult {
   response?: unknown;
   fatalFailure: { code: string; message: string } | null;
 }

@@ -30,8 +30,6 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
-export { isActiveState, isTerminalState } from "../state/policy.js";
-
 export function isHardFailure(errorCode: string | null): boolean {
   return ["startup_failed", "turn_input_required", "inactive", "terminal", "shutdown", "cancelled"].includes(
     errorCode ?? "",

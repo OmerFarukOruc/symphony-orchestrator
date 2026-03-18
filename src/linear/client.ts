@@ -26,7 +26,7 @@ interface LinearCreatedIssue {
   url: string | null;
 }
 
-export type LinearErrorCode =
+type LinearErrorCode =
   | "linear_transport_error"
   | "linear_http_error"
   | "linear_graphql_error"

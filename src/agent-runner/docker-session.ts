@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
+import { asRecord, asString } from "./helpers.js";
 import { handleNotification } from "./notification-handler.js";
 import { composeSessionId } from "./turn-state.js";
 import type { TurnState } from "./turn-state.js";
@@ -9,14 +10,20 @@ import { createSuccessResponse, type JsonRpcRequest } from "../codex/protocol.js
 import { JsonRpcConnection } from "../agent/json-rpc-connection.js";
 import { prepareCodexRuntimeConfig, getRequiredProviderEnvNames } from "../codex/runtime-config.js";
 import { buildDockerRunArgs } from "../docker/spawn.js";
-import { removeContainer, stopContainer } from "../docker/lifecycle.js";
+import { removeContainer, removeVolume, stopContainer } from "../docker/lifecycle.js";
 import { getContainerStats } from "../docker/stats.js";
 import { handleCodexRequest } from "../agent/codex-request-handler.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import type { LinearClient } from "../linear/client.js";
+import { globalMetrics } from "../observability/metrics.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
 import type { AgentRunnerEventHandler } from "./index.js";
 import type { Issue, ModelSelection, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
+
+function parsePercent(value: string): number {
+  const parsed = Number.parseFloat(value.replace("%", "").trim());
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 export interface DockerSessionDeps {
   archiveDir?: string;
@@ -27,7 +34,7 @@ export interface DockerSessionDeps {
   spawnProcess?: typeof spawn;
 }
 
-export interface DockerSessionInput {
+interface DockerSessionInput {
   issue: Issue;
   modelSelection: ModelSelection;
   workspace: Workspace;
@@ -40,6 +47,7 @@ export interface DockerSession {
   connection: JsonRpcConnection;
   containerName: string;
   threadId: string | null;
+  turnId: string | null;
   exitPromise: Promise<{ code: number | null; signal: NodeJS.Signals | null }>;
   getFatalFailure: () => { code: string; message: string } | null;
   cleanup: (config: ServiceConfig, signal: AbortSignal) => Promise<void>;
@@ -76,19 +84,20 @@ export async function createDockerSession(
   });
 
   const containerName = docker.containerName;
+  const cacheVolumeName = docker.cacheVolumeName;
   const child: ChildProcessWithoutNullStreams = spawnProcess(docker.program, docker.args, {
     env: process.env,
     stdio: ["pipe", "pipe", "pipe"],
   });
 
   let fatalFailure: { code: string; message: string } | null = null;
-  const turnId: string | null = null;
 
   const session: DockerSession = {
     child,
     connection: null as unknown as JsonRpcConnection,
     containerName,
     threadId: null,
+    turnId: null,
     exitPromise: new Promise((resolve) => {
       child.once("exit", (code, sig) => resolve({ code, signal: sig }));
     }),
@@ -105,6 +114,7 @@ export async function createDockerSession(
         () => undefined,
       );
       await removeContainer(containerName);
+      await removeVolume(cacheVolumeName);
     },
   };
 
@@ -124,12 +134,16 @@ export async function createDockerSession(
       }
     },
     (notification) => {
+      if (notification.method === "turn/started") {
+        const turn = asRecord(asRecord(notification.params).turn);
+        session.turnId = asString(turn.id) ?? session.turnId;
+      }
       handleNotification({
         state: turnState,
         notification,
         issue: input.issue,
         threadId: session.threadId,
-        turnId,
+        turnId: session.turnId,
         onEvent: input.onEvent,
       });
     },
@@ -150,10 +164,12 @@ export async function createDockerSession(
           at: new Date().toISOString(),
           issueId: input.issue.id,
           issueIdentifier: input.issue.identifier,
-          sessionId: composeSessionId(session.threadId, turnId),
+          sessionId: composeSessionId(session.threadId, session.turnId),
           event: "container_stats",
           message: `CPU ${stats.cpuPercent} | MEM ${stats.memoryUsage}/${stats.memoryLimit} (${stats.memoryPercent})`,
         });
+        globalMetrics.containerCpuPercent.set(parsePercent(stats.cpuPercent), { issue: input.issue.identifier });
+        globalMetrics.containerMemoryPercent.set(parsePercent(stats.memoryPercent), { issue: input.issue.identifier });
       }
     } catch {
       // intentionally swallowed — stats are best-effort

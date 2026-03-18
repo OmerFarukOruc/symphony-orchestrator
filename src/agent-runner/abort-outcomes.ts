@@ -1,3 +1,4 @@
+import { JsonRpcTimeoutError } from "../agent/json-rpc-connection.js";
 import type { RunOutcome } from "../core/types.js";
 
 export function outcomeForAbort(
@@ -64,6 +65,26 @@ export function outcomeForAbort(
     turnId,
     turnCount,
   };
+}
+
+export function classifyRunError(
+  error: unknown,
+  threadId: string | null,
+  turnId: string | null,
+  turnCount: number,
+): RunOutcome {
+  const message = error instanceof Error ? error.message : String(error);
+  if (error instanceof JsonRpcTimeoutError || message.includes("timed out")) {
+    const timeoutCode = message.includes("turn completion") ? "turn_timeout" : "read_timeout";
+    return { kind: "timed_out", errorCode: timeoutCode, errorMessage: message, threadId, turnId, turnCount };
+  }
+  if (message.includes("connection exited")) {
+    return { kind: "failed", errorCode: "port_exit", errorMessage: message, threadId, turnId, turnCount };
+  }
+  if (message.includes("startup readiness")) {
+    return { kind: "failed", errorCode: "startup_timeout", errorMessage: message, threadId, turnId, turnCount };
+  }
+  return { kind: "failed", errorCode: "startup_failed", errorMessage: message, threadId, turnId, turnCount };
 }
 
 export function failureOutcome(

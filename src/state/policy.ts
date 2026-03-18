@@ -3,6 +3,7 @@ import { StateMachine } from "./machine.js";
 
 export const DEFAULT_ACTIVE_STATES = ["Todo", "In Progress"];
 export const DEFAULT_TERMINAL_STATES = ["Done", "Completed", "Closed", "Canceled", "Cancelled", "Duplicate"];
+const STATE_MACHINE_CACHE = new WeakMap<object, StateMachine>();
 
 function normalizeStateValue(state: string): string {
   return state.trim().toLowerCase();
@@ -24,15 +25,7 @@ export function normalizeStateList(states: string[]): string[] {
 
 export function isTerminalState(state: string, config: ServiceConfig): boolean {
   if (config.stateMachine) {
-    return new StateMachine({
-      stages: config.stateMachine.stages.map((stage) => ({
-        key: stage.name,
-        terminal: stage.kind === "terminal",
-      })),
-      transitions: config.stateMachine.transitions,
-      activeStates: config.tracker.activeStates,
-      terminalStates: config.tracker.terminalStates,
-    }).isTerminalState(state);
+    return getStateMachine(config).isTerminalState(state);
   }
   return normalizeStateList(config.tracker.terminalStates).includes(normalizeStateValue(state));
 }
@@ -61,7 +54,7 @@ export function normalizeStateKey(state: string): string {
   return normalizeStateValue(state);
 }
 
-export interface WorkflowStageDefinition {
+interface WorkflowStageDefinition {
   key: string;
   label: string;
   kind: StateStageKind | "other";
@@ -102,8 +95,7 @@ export function listWorkflowStages(config: ServiceConfig): WorkflowStageDefiniti
     });
   }
 
-  const terminalLabel = config.tracker.terminalStates[0];
-  if (terminalLabel) {
+  for (const terminalLabel of config.tracker.terminalStates) {
     appendStage(stages, seen, {
       key: normalizeStateValue(terminalLabel),
       label: terminalLabel,
@@ -113,4 +105,29 @@ export function listWorkflowStages(config: ServiceConfig): WorkflowStageDefiniti
   }
 
   return stages;
+}
+
+function getStateMachine(config: ServiceConfig): StateMachine {
+  const stateMachineConfig = config.stateMachine;
+  if (!stateMachineConfig) {
+    return new StateMachine({
+      activeStates: config.tracker.activeStates,
+      terminalStates: config.tracker.terminalStates,
+    });
+  }
+  const cached = STATE_MACHINE_CACHE.get(stateMachineConfig);
+  if (cached) {
+    return cached;
+  }
+  const machine = new StateMachine({
+    stages: stateMachineConfig.stages.map((stage) => ({
+      key: stage.name,
+      terminal: stage.kind === "terminal",
+    })),
+    transitions: stateMachineConfig.transitions,
+    activeStates: config.tracker.activeStates,
+    terminalStates: config.tracker.terminalStates,
+  });
+  STATE_MACHINE_CACHE.set(stateMachineConfig, machine);
+  return machine;
 }

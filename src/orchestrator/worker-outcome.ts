@@ -26,18 +26,6 @@ function detectStopSignal(content: string | null): StopSignal | null {
   if (normalized.includes("symphony_status: blocked") || normalized.includes("symphony status: blocked")) {
     return "blocked";
   }
-
-  const donePatterns = [
-    /\b(issue|task|work)\s+(is|was|remains)\s+(already\s+)?(done|complete|completed)\b/,
-    /\bno further (in-scope )?(work|progress|action)\b/,
-    /\bnothing (else|further) (to do|is needed)\b/,
-    /\bthere (isn't|is not) any additional work to do\b/,
-    /\bthe requested (artifact|proof file) already exists\b/,
-  ];
-  if (donePatterns.some((pattern) => pattern.test(normalized))) {
-    return "done";
-  }
-
   return null;
 }
 
@@ -73,6 +61,7 @@ export async function handleWorkerOutcome(
   workspace: Workspace,
   attempt: number | null,
 ): Promise<void> {
+  await entry.flushPersistence();
   ctx.runningEntries.delete(issue.id);
   const latestIssue = (await ctx.deps.linearClient.fetchIssueStatesByIds([issue.id]).catch(() => [issue]))[0] ?? issue;
   await ctx.deps.attemptStore.updateAttempt(entry.runId, {
@@ -279,12 +268,13 @@ export async function handleWorkerOutcome(
   }
 
   if (outcome.kind === "normal") {
-    ctx.queueRetry(latestIssue, 1, 1000, "continuation");
+    const nextAttempt = (attempt ?? 0) + 1;
+    ctx.queueRetry(latestIssue, nextAttempt, 1000, "continuation");
     ctx.deps.logger.info(
       {
         issue_id: latestIssue.id,
         issue_identifier: latestIssue.identifier,
-        attempt: 1,
+        attempt: nextAttempt,
         delay_ms: 1000,
         reason: "turn_complete",
       },
@@ -327,25 +317,30 @@ export function handleWorkerFailure(
   issue: Issue,
   entry: RunningEntry,
   error: unknown,
-): void {
-  ctx.runningEntries.delete(issue.id);
-  ctx.releaseIssueClaim(issue.id);
-  ctx.pushEvent({
-    at: nowIso(),
-    issueId: issue.id,
-    issueIdentifier: issue.identifier,
-    sessionId: entry.sessionId,
-    event: "worker_failed",
-    message: String(error),
-  });
-  void ctx.deps.attemptStore
-    .updateAttempt(entry.runId, {
-      status: "failed",
-      endedAt: nowIso(),
-      errorCode: "worker_failed",
-      errorMessage: String(error),
-      tokenUsage: entry.tokenUsage,
-      threadId: null,
-    })
-    .catch(() => undefined);
+): Promise<void> {
+  return entry
+    .flushPersistence()
+    .catch(() => undefined)
+    .then(async () => {
+      ctx.runningEntries.delete(issue.id);
+      ctx.releaseIssueClaim(issue.id);
+      ctx.pushEvent({
+        at: nowIso(),
+        issueId: issue.id,
+        issueIdentifier: issue.identifier,
+        sessionId: entry.sessionId,
+        event: "worker_failed",
+        message: String(error),
+      });
+      await ctx.deps.attemptStore
+        .updateAttempt(entry.runId, {
+          status: "failed",
+          endedAt: nowIso(),
+          errorCode: "worker_failed",
+          errorMessage: String(error),
+          tokenUsage: entry.tokenUsage,
+          threadId: null,
+        })
+        .catch(() => undefined);
+    });
 }

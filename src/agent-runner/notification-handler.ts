@@ -10,7 +10,7 @@ import {
   type TurnState,
 } from "./turn-state.js";
 
-export interface AgentRunnerNotificationEvent {
+interface AgentRunnerNotificationEvent {
   at: string;
   issueId: string;
   issueIdentifier: string;

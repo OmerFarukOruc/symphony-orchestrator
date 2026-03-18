@@ -56,11 +56,11 @@ function parseGithubRepo(repoUrl: string): { owner: string; repo: string } | nul
   return null;
 }
 
-export interface CloneResult {
+interface CloneResult {
   branchName: string;
 }
 
-export interface CommitAndPushResult {
+interface CommitAndPushResult {
   committed: boolean;
   pushed: boolean;
   branchName: string;

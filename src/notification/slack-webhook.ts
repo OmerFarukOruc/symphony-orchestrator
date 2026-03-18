@@ -100,7 +100,7 @@ function buildSlackPayload(event: NotificationEvent): Record<string, unknown> {
   };
 }
 
-export interface SlackWebhookChannelOptions {
+interface SlackWebhookChannelOptions {
   webhookUrl: string;
   verbosity: NotificationVerbosity;
   timeoutMs?: number;

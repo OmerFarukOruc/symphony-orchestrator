@@ -20,10 +20,11 @@ export interface DockerRunInput {
   model?: string;
 }
 
-export interface DockerRunResult {
+interface DockerRunResult {
   program: string;
   args: string[];
   containerName: string;
+  cacheVolumeName: string;
 }
 
 export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
@@ -39,6 +40,7 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
     requiredEnv = [],
   } = input;
   const containerName = `symphony-${runId}`;
+  const cacheVolumeName = `symphony-cache-${runId}`;
   const uid = os.userInfo().uid;
   const gid = os.userInfo().gid;
 
@@ -60,7 +62,7 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
   }
 
   // Persistent HOME cache volume for npm/pip/git under numeric UID
-  args.push("-v", `symphony-cache-${runId}:${CONTAINER_HOME}`);
+  args.push("-v", `${cacheVolumeName}:${CONTAINER_HOME}`);
 
   // Extra user-defined mounts
   for (const mount of cfg.extraMounts) {
@@ -172,5 +174,5 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
   // Materialize the runtime home entirely inside the container before starting Codex.
   args.push("bash", "-lc", entrypointSteps.join("; "));
 
-  return { program: "docker", args, containerName };
+  return { program: "docker", args, containerName, cacheVolumeName };
 }

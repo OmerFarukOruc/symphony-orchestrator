@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-export interface ContainerStats {
+interface ContainerStats {
   cpuPercent: string;
   memoryUsage: string;
   memoryLimit: string;

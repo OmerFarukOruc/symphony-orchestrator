@@ -12,7 +12,7 @@ import {
 } from "../codex/protocol.js";
 import type { SymphonyLogger } from "../core/types.js";
 
-export const MAX_LINE_BYTES = 10 * 1024 * 1024;
+const MAX_LINE_BYTES = 10 * 1024 * 1024;
 
 export class JsonRpcTimeoutError extends Error {
   constructor(message: string) {

@@ -17,7 +17,7 @@ import path from "node:path";
  * - `$VAR` → looks up environment variable
  * - literal strings → returned as-is
  */
-export function resolveEnvBackedString(value: unknown, secretResolver?: (name: string) => string | undefined): string {
+function resolveEnvBackedString(value: unknown, secretResolver?: (name: string) => string | undefined): string {
   if (typeof value !== "string") {
     return "";
   }
@@ -40,7 +40,7 @@ export function resolveEnvBackedString(value: unknown, secretResolver?: (name: s
  * Expand home directory references (~ or ~/) in a path string.
  * Returns empty string for non-string inputs.
  */
-export function expandHomePath(value: unknown): string {
+function expandHomePath(value: unknown): string {
   if (typeof value !== "string") {
     return "";
   }
@@ -57,7 +57,7 @@ export function expandHomePath(value: unknown): string {
  * Replace $TMPDIR placeholder with the actual temp directory.
  * Falls back to "/tmp" if TMPDIR is not set.
  */
-export function resolveTmpDir(value: string): string {
+function resolveTmpDir(value: string): string {
   return value.replace("$TMPDIR", process.env.TMPDIR ?? "/tmp");
 }
 
@@ -73,7 +73,7 @@ export function resolveConfigString(value: unknown, secretResolver?: (name: stri
  * Expand all $VAR style environment variable references in a string.
  * Unlike resolveEnvBackedString, this replaces all occurrences within the string.
  */
-export function expandPathEnvVars(value: string): string {
+function expandPathEnvVars(value: string): string {
   return value.replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_match, name: string) => process.env[name] ?? "");
 }
 

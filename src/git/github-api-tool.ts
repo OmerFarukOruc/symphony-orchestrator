@@ -1,6 +1,6 @@
 import { asRecord } from "../utils/type-guards.js";
 
-export type GithubApiAction = "add_pr_comment" | "get_pr_status";
+type GithubApiAction = "add_pr_comment" | "get_pr_status";
 
 interface GithubApiInputBase {
   action: GithubApiAction;

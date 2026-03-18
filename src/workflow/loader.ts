@@ -5,7 +5,7 @@ import YAML from "yaml";
 import type { ValidationError, WorkflowDefinition } from "../core/types.js";
 import { isRecord } from "../utils/type-guards.js";
 
-export class WorkflowLoaderError extends Error {
+class WorkflowLoaderError extends Error {
   constructor(
     public readonly validationError: ValidationError,
     options?: { cause?: unknown },

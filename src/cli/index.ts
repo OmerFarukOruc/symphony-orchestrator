@@ -10,6 +10,8 @@ import { ConfigStore } from "../config/store.js";
 import { HttpServer } from "../http/server.js";
 import { LinearClient } from "../linear/client.js";
 import { createLogger } from "../core/logger.js";
+import { getErrorTracker, initErrorTracking } from "../core/error-tracking.js";
+import { loadFlags } from "../core/feature-flags.js";
 import { NotificationManager } from "../notification/manager.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { PathRegistry } from "../workspace/path-registry.js";
@@ -52,6 +54,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const workflowPath = parsed.positionals[0] ?? "./WORKFLOW.md";
   const resolvedWorkflowPath = path.resolve(workflowPath);
   const logger = createLogger();
+  loadFlags(path.dirname(resolvedWorkflowPath));
+  initErrorTracking(logger.child({ component: "error-tracking" }));
   const archiveDir = path.resolve(
     parsed.values["log-dir"] ??
       (process.env.DATA_DIR
@@ -169,6 +173,9 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     await orchestrator.stop().catch(() => undefined);
     await configStore.stop().catch(() => undefined);
     await overlayStore.stop().catch(() => undefined);
+    await getErrorTracker()
+      .flush()
+      .catch(() => undefined);
   };
 
   logger.info(

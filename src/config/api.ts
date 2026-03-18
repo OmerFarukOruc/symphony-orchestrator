@@ -40,7 +40,7 @@ const DEFAULT_CONFIG_SCHEMA = {
   },
 };
 
-export interface ConfigApiDeps {
+interface ConfigApiDeps {
   getEffectiveConfig: () => Record<string, unknown>;
   configOverlayStore: ConfigOverlayStore;
   getConfigSchema?: () => Record<string, unknown>;

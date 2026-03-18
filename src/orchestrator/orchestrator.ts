@@ -36,6 +36,7 @@ import type {
   Workspace,
 } from "../core/types.js";
 import type { NotificationEvent } from "../notification/channel.js";
+import { globalMetrics } from "../observability/metrics.js";
 
 export class Orchestrator {
   private running = false;
@@ -189,7 +190,9 @@ export class Orchestrator {
       await reconcileRunningAndRetryingState(this.ctx());
       await refreshQueueViewsState(this.ctx());
       await launchAvailableWorkersState(this.ctx());
+      globalMetrics.orchestratorPollsTotal.increment({ status: "ok" });
     } catch (error) {
+      globalMetrics.orchestratorPollsTotal.increment({ status: "error" });
       this.deps.logger.error({ error: String(error) }, "orchestrator tick failed");
     } finally {
       this.tickInFlight = false;
@@ -257,8 +260,14 @@ export class Orchestrator {
     workerAttempt: number | null,
   ): Promise<void> {
     await promise
-      .then((outcome) => handleWorkerOutcome(this.ctx(), outcome, entry, workerIssue, workspace, workerAttempt))
-      .catch((error) => handleWorkerFailure(this.ctx(), workerIssue, entry, error));
+      .then(async (outcome) => {
+        await handleWorkerOutcome(this.ctx(), outcome, entry, workerIssue, workspace, workerAttempt);
+        globalMetrics.agentRunsTotal.increment({ outcome: outcome.kind });
+      })
+      .catch(async (error) => {
+        await handleWorkerFailure(this.ctx(), workerIssue, entry, error);
+        globalMetrics.agentRunsTotal.increment({ outcome: "failed" });
+      });
   }
 
   private queueRetry(issue: Issue, attempt: number, delayMs: number, error: string | null): void {

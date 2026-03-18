@@ -1,11 +1,10 @@
 import { Liquid } from "liquidjs";
 
-import { failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
+import { classifyRunError, failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
 import { createTurnState } from "./turn-state.js";
 import { executeTurns } from "./turn-executor.js";
 import { createDockerSession, type DockerSessionDeps } from "./docker-session.js";
 import { initializeSession } from "./session-init.js";
-import { JsonRpcTimeoutError } from "../agent/json-rpc-connection.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import { LinearClient } from "../linear/client.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
@@ -130,6 +129,9 @@ export class AgentRunner {
           },
           turnState: this.turnState,
           linearClient: this.deps.linearClient,
+          setActiveTurnId: (turnId) => {
+            session.turnId = turnId;
+          },
         },
         {
           threadId,
@@ -153,19 +155,9 @@ export class AgentRunner {
       if (input.signal.aborted) {
         return outcomeForAbort(input.signal, threadId, turnId, turnCount);
       }
-      const message = error instanceof Error ? error.message : String(error);
-      if (error instanceof JsonRpcTimeoutError || message.includes("timed out")) {
-        const timeoutCode = message.includes("turn completion") ? "turn_timeout" : "read_timeout";
-        return { kind: "timed_out", errorCode: timeoutCode, errorMessage: message, threadId, turnId, turnCount };
-      }
-      if (message.includes("connection exited")) {
-        return { kind: "failed", errorCode: "port_exit", errorMessage: message, threadId, turnId, turnCount };
-      }
-      if (message.includes("startup readiness")) {
-        return { kind: "failed", errorCode: "startup_timeout", errorMessage: message, threadId, turnId, turnCount };
-      }
-      return { kind: "failed", errorCode: "startup_failed", errorMessage: message, threadId, turnId, turnCount };
+      return classifyRunError(error, threadId, turnId, turnCount);
     } finally {
+      session.turnId = null;
       await session.cleanup(config, input.signal);
       await this.deps.workspaceManager.runAfterRun(input.workspace).catch((error) => {
         logger.warn({ error: String(error) }, "after_run hook failed");

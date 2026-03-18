@@ -1,4 +1,3 @@
-import { JsonRpcTimeoutError } from "../agent/json-rpc-connection.js";
 import {
   asRecord,
   asString,
@@ -7,7 +6,7 @@ import {
   extractTurnId,
   getTurnSandboxPolicy,
 } from "./helpers.js";
-import { failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
+import { classifyRunError, failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
 import { composeSessionId, waitForTurnCompletion } from "./turn-state.js";
 import { isActiveState } from "../state/policy.js";
 import { sanitizeContent } from "../core/content-sanitizer.js";
@@ -50,6 +49,7 @@ export async function executeTurns(
       if (!state.turnId) {
         throw new Error("turn/start did not return a turn identifier");
       }
+      input.setActiveTurnId(state.turnId);
 
       const completedTurn = await waitForTurnCompletion(turnState, {
         turnId: state.turnId,
@@ -61,6 +61,10 @@ export async function executeTurns(
       const completedStatus = asString(completedTurnRecord.status) ?? "failed";
       const completedError = asRecord(completedTurnRecord.error);
       const completedUsage =
+        extractTokenUsageSnapshot(completedTurnRecord.usage) ??
+        extractTokenUsageSnapshot(completedTurnRecord.tokenUsage) ??
+        extractTokenUsageSnapshot(asRecord(completedTurn).usage) ??
+        extractTokenUsageSnapshot(asRecord(completedTurn).tokenUsage) ??
         extractTokenUsageSnapshot(asRecord(turnResult).usage) ??
         extractTokenUsageSnapshot(asRecord(turnResult).tokenUsage);
 
@@ -185,45 +189,6 @@ export async function executeTurns(
     if (runInput.signal.aborted) {
       return outcomeForAbort(runInput.signal, state.threadId, state.turnId, state.turnCount);
     }
-    const message = error instanceof Error ? error.message : String(error);
-    if (error instanceof JsonRpcTimeoutError || message.includes("timed out")) {
-      const timeoutCode = message.includes("turn completion") ? "turn_timeout" : "read_timeout";
-      return {
-        kind: "timed_out",
-        errorCode: timeoutCode,
-        errorMessage: message,
-        threadId: state.threadId,
-        turnId: state.turnId,
-        turnCount: state.turnCount,
-      };
-    }
-    if (message.includes("connection exited")) {
-      return {
-        kind: "failed",
-        errorCode: "port_exit",
-        errorMessage: message,
-        threadId: state.threadId,
-        turnId: state.turnId,
-        turnCount: state.turnCount,
-      };
-    }
-    if (message.includes("startup readiness")) {
-      return {
-        kind: "failed",
-        errorCode: "startup_timeout",
-        errorMessage: message,
-        threadId: state.threadId,
-        turnId: state.turnId,
-        turnCount: state.turnCount,
-      };
-    }
-    return {
-      kind: "failed",
-      errorCode: "startup_failed",
-      errorMessage: message,
-      threadId: state.threadId,
-      turnId: state.turnId,
-      turnCount: state.turnCount,
-    };
+    return classifyRunError(error, state.threadId, state.turnId, state.turnCount);
   }
 }

@@ -7,11 +7,11 @@ import type { DockerSession } from "./docker-session.js";
 import type { AgentRunnerEventHandler } from "./index.js";
 import type { Issue, ModelSelection, RunOutcome, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
 
-export interface SessionInitDeps {
+interface SessionInitDeps {
   logger: SymphonyLogger;
 }
 
-export interface SessionInitInput {
+interface SessionInitInput {
   issue: Issue;
   attempt: number | null;
   modelSelection: ModelSelection;
@@ -22,7 +22,7 @@ export interface SessionInitInput {
   startupTimeoutMs: number;
 }
 
-export interface SessionInitSuccess {
+interface SessionInitSuccess {
   threadId: string;
   prompt: string;
 }

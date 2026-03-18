@@ -2,7 +2,7 @@ import type { PlannedIssue } from "../planning/skill.js";
 import type { ServiceConfig } from "../core/types.js";
 import { asArray, asBooleanOrNull, asRecord, asStringOrNull } from "../utils/type-guards.js";
 
-export interface LinearPlanTarget {
+interface LinearPlanTarget {
   teamId: string;
   projectId: string | null;
   labelIdsByName: Map<string, string>;
@@ -13,7 +13,7 @@ interface GraphQLResponse {
   errors?: unknown[];
 }
 
-export function extractNodesConnection(
+function extractNodesConnection(
   payload: GraphQLResponse,
   fieldName: string,
 ): { nodes: Record<string, unknown>[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } | null } {

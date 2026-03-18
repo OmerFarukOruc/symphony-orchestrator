@@ -1,13 +1,13 @@
 import type { SymphonyLogger } from "../core/types.js";
 import type { NotificationChannel, NotificationEvent } from "./channel.js";
 
-export interface NotificationDeliveryResult {
+interface NotificationDeliveryResult {
   deliveredChannels: string[];
   failedChannels: Array<{ channel: string; error: string }>;
   skippedDuplicate: boolean;
 }
 
-export interface NotificationManagerOptions {
+interface NotificationManagerOptions {
   channels?: NotificationChannel[];
   logger?: SymphonyLogger;
   dedupeWindowMs?: number;

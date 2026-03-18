@@ -87,7 +87,7 @@ export async function launchWorker(
   ctx: {
     deps: Pick<
       OrchestratorDeps,
-      "agentRunner" | "attemptStore" | "configStore" | "workspaceManager" | "repoRouter" | "gitManager"
+      "agentRunner" | "attemptStore" | "configStore" | "workspaceManager" | "repoRouter" | "gitManager" | "logger"
     >;
     runningEntries: Map<string, RunningEntry>;
     completedViews: Map<string, ReturnType<typeof issueView>>;
@@ -132,8 +132,23 @@ export async function launchWorker(
 
   const modelSelection = ctx.resolveModelSelection(issue.identifier);
   const abortController = new AbortController();
+  const runId = randomUUID();
+  let persistenceQueue = Promise.resolve();
+  const queuePersistence = (task: () => Promise<void>) => {
+    persistenceQueue = persistenceQueue.then(task).catch((error) => {
+      ctx.deps.logger.warn(
+        {
+          issue_id: issue.id,
+          issue_identifier: issue.identifier,
+          attempt_id: runId,
+          error: String(error),
+        },
+        "attempt persistence write failed",
+      );
+    });
+  };
   const entry: RunningEntry = {
-    runId: randomUUID(),
+    runId,
     issue,
     workspace,
     startedAtMs: Date.now(),
@@ -148,6 +163,8 @@ export async function launchWorker(
     modelSelection,
     lastAgentMessageContent: null,
     repoMatch,
+    queuePersistence,
+    flushPersistence: () => persistenceQueue,
   };
   ctx.runningEntries.set(issue.id, entry);
   ctx.completedViews.delete(issue.identifier);
@@ -239,29 +256,31 @@ export async function launchWorker(
         entry.lastAgentMessageContent = event.content;
       }
       ctx.pushEvent(event);
-      void ctx.deps.attemptStore.appendEvent({
-        attemptId: entry.runId,
-        at: event.at,
-        issueId: event.issueId,
-        issueIdentifier: event.issueIdentifier,
-        sessionId: event.sessionId,
-        event: event.event,
-        message: event.message,
-        content: event.content ?? null,
-        usage: event.usage ?? null,
-        rateLimits: event.rateLimits,
-      });
       if (event.usage) {
         ctx.applyUsageEvent(entry, event.usage, event.usageMode ?? "delta");
       }
       if (event.rateLimits !== undefined) {
         ctx.setRateLimits(event.rateLimits);
       }
-      void ctx.deps.attemptStore
-        .updateAttempt(entry.runId, {
-          tokenUsage: entry.tokenUsage,
-        })
-        .catch(() => undefined);
+      entry.queuePersistence(async () => {
+        await ctx.deps.attemptStore.appendEvent({
+          attemptId: entry.runId,
+          at: event.at,
+          issueId: event.issueId,
+          issueIdentifier: event.issueIdentifier,
+          sessionId: event.sessionId,
+          event: event.event,
+          message: event.message,
+          content: event.content ?? null,
+          usage: event.usage ?? null,
+          rateLimits: event.rateLimits,
+        });
+        if (event.usage) {
+          await ctx.deps.attemptStore.updateAttempt(entry.runId, {
+            tokenUsage: entry.tokenUsage,
+          });
+        }
+      });
     },
   });
   entry.promise = ctx.handleWorkerPromise(promise, issue, workspace, entry, attempt);

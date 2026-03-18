@@ -1,12 +1,12 @@
 import type { Issue, ServiceConfig } from "../core/types.js";
 import { LinearClientError } from "./client.js";
 
-export interface GraphQLResponse {
+interface GraphQLResponse {
   data?: Record<string, unknown>;
   errors?: unknown[];
 }
 
-export interface IssuesConnection {
+interface IssuesConnection {
   nodes: unknown[];
   pageInfo: {
     hasNextPage: boolean;
@@ -14,7 +14,7 @@ export interface IssuesConnection {
   };
 }
 
-export interface PaginationDependencies {
+interface PaginationDependencies {
   runGraphQL: (query: string, variables: Record<string, unknown>) => Promise<GraphQLResponse>;
   getConfig: () => ServiceConfig;
 }
@@ -29,7 +29,7 @@ export interface PaginationDependencies {
  * @returns The extracted issues connection with nodes and pagination info
  * @throws {LinearClientError} If the payload structure is invalid
  */
-export function extractIssuesConnection(payload: GraphQLResponse): IssuesConnection {
+function extractIssuesConnection(payload: GraphQLResponse): IssuesConnection {
   if (
     Object.prototype.hasOwnProperty.call(payload, "data") === false ||
     typeof payload.data !== "object" ||
@@ -81,7 +81,7 @@ export function extractIssuesConnection(payload: GraphQLResponse): IssuesConnect
  * @param issueCount - The current count of issues fetched (used in error message)
  * @throws {LinearClientError} If hasNextPage is true but endCursor is null
  */
-export function ensurePaginationCursor(
+function ensurePaginationCursor(
   pageInfo: { hasNextPage: boolean; endCursor: string | null },
   issueCount: number,
 ): void {

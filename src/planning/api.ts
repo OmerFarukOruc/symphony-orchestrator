@@ -8,7 +8,7 @@ export interface PlanningExecutionResult {
   externalIds: string[];
 }
 
-export interface PlanningApiDeps {
+interface PlanningApiDeps {
   createPlan?: (request: PlanningRequest) => PlanningResult;
   executePlan?: (issues: PlannedIssue[]) => Promise<PlanningExecutionResult>;
 }
@@ -50,7 +50,50 @@ function parseIssueArray(body: unknown): PlannedIssue[] | null {
   if (!Array.isArray(issues)) {
     return null;
   }
-  return issues as PlannedIssue[];
+  const parsed = issues
+    .map((issue) => parsePlannedIssue(issue))
+    .filter((issue): issue is PlannedIssue => issue !== null);
+  return parsed.length === issues.length ? parsed : null;
+}
+
+function parsePlannedIssue(value: unknown): PlannedIssue | null {
+  const record = asRecord(value);
+  const id = typeof record.id === "string" ? record.id.trim() : "";
+  const title = typeof record.title === "string" ? record.title.trim() : "";
+  const summary = typeof record.summary === "string" ? record.summary.trim() : "";
+  const priority =
+    record.priority === "low" || record.priority === "medium" || record.priority === "high" ? record.priority : null;
+  const acceptanceCriteria = asStringArray(record.acceptanceCriteria);
+  const dependencies = asStringArray(record.dependencies);
+  const labels = asStringArray(record.labels);
+  if (
+    !id ||
+    !title ||
+    !summary ||
+    !priority ||
+    !Array.isArray(record.acceptanceCriteria) ||
+    !Array.isArray(record.dependencies)
+  ) {
+    return null;
+  }
+  if (
+    acceptanceCriteria.length !== record.acceptanceCriteria.length ||
+    dependencies.length !== record.dependencies.length
+  ) {
+    return null;
+  }
+  if (Array.isArray(record.labels) && labels.length !== record.labels.length) {
+    return null;
+  }
+  return {
+    id,
+    title,
+    summary,
+    acceptanceCriteria,
+    dependencies,
+    priority,
+    labels,
+  };
 }
 
 export function createPlanningRouter(deps: PlanningApiDeps = {}): Router {
@@ -88,7 +131,7 @@ export function createPlanningRouter(deps: PlanningApiDeps = {}): Router {
       response.status(400).json({
         error: {
           code: "invalid_issues",
-          message: "issues array is required",
+          message: "issues array must contain valid planned issues",
         },
       });
       return;

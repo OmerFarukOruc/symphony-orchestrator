@@ -26,7 +26,7 @@ import { DEFAULT_ACTIVE_STATES, DEFAULT_TERMINAL_STATES } from "../state/policy.
 /**
  * Options for service config derivation.
  */
-export interface DeriveServiceConfigOptions {
+interface DeriveServiceConfigOptions {
   overlay?: Record<string, unknown>;
   secretResolver?: (name: string) => string | undefined;
 }
@@ -34,7 +34,7 @@ export interface DeriveServiceConfigOptions {
 /**
  * Build the tracker configuration subsection.
  */
-export function deriveTrackerConfig(
+function deriveTrackerConfig(
   tracker: Record<string, unknown>,
   secretResolver?: (name: string) => string | undefined,
 ): ServiceConfig["tracker"] {
@@ -51,7 +51,7 @@ export function deriveTrackerConfig(
 /**
  * Build the workspace configuration subsection.
  */
-export function deriveWorkspaceConfig(
+function deriveWorkspaceConfig(
   workspace: Record<string, unknown>,
   hooks: Record<string, unknown>,
   secretResolver?: (name: string) => string | undefined,
@@ -75,7 +75,7 @@ export function deriveWorkspaceConfig(
 /**
  * Build the agent configuration subsection.
  */
-export function deriveAgentConfig(agent: Record<string, unknown>): ServiceConfig["agent"] {
+function deriveAgentConfig(agent: Record<string, unknown>): ServiceConfig["agent"] {
   return {
     maxConcurrentAgents: asNumber(agent.max_concurrent_agents, 10),
     maxConcurrentAgentsByState: Object.fromEntries(
@@ -132,7 +132,7 @@ function deriveSandboxLogsConfig(sandboxLogs: Record<string, unknown>): ServiceC
 /**
  * Build the sandbox configuration subsection.
  */
-export function deriveSandboxConfig(sandbox: Record<string, unknown>): ServiceConfig["codex"]["sandbox"] {
+function deriveSandboxConfig(sandbox: Record<string, unknown>): ServiceConfig["codex"]["sandbox"] {
   const sandboxSecurity = asRecord(sandbox.security);
   const sandboxResources = asRecord(sandbox.resources);
   const sandboxLogs = asRecord(sandbox.logs);
@@ -152,7 +152,7 @@ export function deriveSandboxConfig(sandbox: Record<string, unknown>): ServiceCo
 /**
  * Build the codex configuration subsection.
  */
-export function deriveCodexConfig(
+function deriveCodexConfig(
   codex: Record<string, unknown>,
   agent: Record<string, unknown>,
   secretResolver?: (name: string) => string | undefined,
@@ -188,7 +188,7 @@ export function deriveCodexConfig(
 /**
  * Build the polling configuration subsection.
  */
-export function derivePollingConfig(polling: Record<string, unknown>): ServiceConfig["polling"] {
+function derivePollingConfig(polling: Record<string, unknown>): ServiceConfig["polling"] {
   return {
     intervalMs: asNumber(polling.interval_ms, 30000),
   };
@@ -197,7 +197,7 @@ export function derivePollingConfig(polling: Record<string, unknown>): ServiceCo
 /**
  * Build the server configuration subsection.
  */
-export function deriveServerConfig(server: Record<string, unknown>): ServiceConfig["server"] {
+function deriveServerConfig(server: Record<string, unknown>): ServiceConfig["server"] {
   return {
     port: asNumber(server.port, 4000),
   };

@@ -17,7 +17,7 @@ export const PAGE_SIZE = 50;
  *
  * Whitespace matters for query caching — do not modify formatting.
  */
-export const ISSUE_FIELDS = `
+const ISSUE_FIELDS = `
   id
   identifier
   title
