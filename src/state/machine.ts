@@ -69,50 +69,57 @@ function toStageRecord(
   }));
 }
 
+function buildExplicitTransitions(
+  known: Set<string>,
+  explicitTransitions: Record<string, string[]>,
+): Map<string, Set<string>> {
+  const transitions = new Map<string, Set<string>>();
+  for (const [from, rawTargets] of Object.entries(explicitTransitions)) {
+    const normalizedFrom = normalizeState(from);
+    if (!known.has(normalizedFrom)) {
+      continue;
+    }
+    const allowed = new Set<string>();
+    for (const target of rawTargets) {
+      const normalizedTarget = normalizeState(target);
+      if (known.has(normalizedTarget)) {
+        allowed.add(normalizedTarget);
+      }
+    }
+    allowed.add(normalizedFrom);
+    transitions.set(normalizedFrom, allowed);
+  }
+  return transitions;
+}
+
+function buildDefaultTransitions(stages: StateMachineStage[]): Map<string, Set<string>> {
+  const transitions = new Map<string, Set<string>>();
+  const stageKeys = stages.map((s) => s.key);
+  const terminalByKey = new Map(stages.map((s) => [s.key, s.terminal]));
+
+  for (const from of stageKeys) {
+    const allowed = new Set<string>();
+    if (terminalByKey.get(from)) {
+      allowed.add(from);
+    } else {
+      for (const target of stageKeys) {
+        allowed.add(target);
+      }
+    }
+    transitions.set(from, allowed);
+  }
+  return transitions;
+}
+
 function buildTransitionMap(
   stages: StateMachineStage[],
   explicitTransitions: Record<string, string[]> | undefined,
 ): Map<string, Set<string>> {
   const known = new Set(stages.map((stage) => stage.key));
-  const transitions = new Map<string, Set<string>>();
-  const terminalByKey = new Map(stages.map((stage) => [stage.key, stage.terminal]));
-
   if (explicitTransitions && Object.keys(explicitTransitions).length > 0) {
-    for (const [from, rawTargets] of Object.entries(explicitTransitions)) {
-      const normalizedFrom = normalizeState(from);
-      if (!known.has(normalizedFrom)) {
-        continue;
-      }
-      const allowed = new Set<string>();
-      for (const target of rawTargets) {
-        const normalizedTarget = normalizeState(target);
-        if (known.has(normalizedTarget)) {
-          allowed.add(normalizedTarget);
-        }
-      }
-      // Allow idempotent transition by default.
-      allowed.add(normalizedFrom);
-      transitions.set(normalizedFrom, allowed);
-    }
-    return transitions;
+    return buildExplicitTransitions(known, explicitTransitions);
   }
-
-  // Default behavior: non-terminal stages can move to any stage,
-  // terminal stages can only remain terminal/self.
-  const stageKeys = [...known.values()];
-  for (const from of stageKeys) {
-    const allowed = new Set<string>();
-    if (terminalByKey.get(from)) {
-      allowed.add(from);
-      transitions.set(from, allowed);
-      continue;
-    }
-    for (const target of stageKeys) {
-      allowed.add(target);
-    }
-    transitions.set(from, allowed);
-  }
-  return transitions;
+  return buildDefaultTransitions(stages);
 }
 
 export class StateMachine {

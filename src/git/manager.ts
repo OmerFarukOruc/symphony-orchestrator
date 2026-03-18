@@ -45,11 +45,11 @@ function deriveBranchName(issue: Pick<Issue, "identifier" | "branchName">): stri
 
 function parseGithubRepo(repoUrl: string): { owner: string; repo: string } | null {
   const normalized = repoUrl.trim().replace(/\.git$/, "");
-  const httpsMatch = normalized.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)$/i);
+  const httpsMatch = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)$/i.exec(normalized);
   if (httpsMatch) {
     return { owner: httpsMatch[1], repo: httpsMatch[2] };
   }
-  const sshMatch = normalized.match(/^git@github\.com:([^/]+)\/([^/]+)$/i);
+  const sshMatch = /^git@github\.com:([^/]+)\/([^/]+)$/i.exec(normalized);
   if (sshMatch) {
     return { owner: sshMatch[1], repo: sshMatch[2] };
   }

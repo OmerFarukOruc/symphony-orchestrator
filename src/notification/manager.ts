@@ -76,8 +76,8 @@ export class NotificationManager {
     );
 
     return {
-      deliveredChannels: deliveredChannels.sort((left, right) => left.localeCompare(right)),
-      failedChannels: failedChannels.sort((left, right) => left.channel.localeCompare(right.channel)),
+      deliveredChannels: [...deliveredChannels].sort((left, right) => left.localeCompare(right)),
+      failedChannels: [...failedChannels].sort((left, right) => left.channel.localeCompare(right.channel)),
       skippedDuplicate: false,
     };
   }

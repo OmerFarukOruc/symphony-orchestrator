@@ -71,7 +71,9 @@ function encrypt(plaintext: string, key: Buffer): SecretsEnvelope {
 }
 
 function decrypt(envelope: SecretsEnvelope, key: Buffer): string {
-  const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, key, Buffer.from(envelope.iv, "base64"));
+  const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, key, Buffer.from(envelope.iv, "base64"), {
+    authTagLength: 16,
+  });
   decipher.setAuthTag(Buffer.from(envelope.authTag, "base64"));
   const plaintext = Buffer.concat([decipher.update(Buffer.from(envelope.ciphertext, "base64")), decipher.final()]);
   return plaintext.toString("utf8");

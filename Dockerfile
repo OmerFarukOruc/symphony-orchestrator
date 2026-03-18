@@ -13,4 +13,5 @@ COPY --from=build /build/package.json ./package.json
 COPY WORKFLOW.docker.md ./WORKFLOW.md
 ENV DATA_DIR=/data
 EXPOSE 4000
+USER node
 ENTRYPOINT ["node", "dist/cli.js"]

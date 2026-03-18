@@ -30,11 +30,7 @@ interface PaginationDependencies {
  * @throws {LinearClientError} If the payload structure is invalid
  */
 function extractIssuesConnection(payload: GraphQLResponse): IssuesConnection {
-  if (
-    Object.prototype.hasOwnProperty.call(payload, "data") === false ||
-    typeof payload.data !== "object" ||
-    payload.data === null
-  ) {
+  if (Object.hasOwn(payload, "data") === false || typeof payload.data !== "object" || payload.data === null) {
     throw new LinearClientError("linear_unknown_payload", "linear graphql response missing data object");
   }
   const root = payload.data as Record<string, unknown>;

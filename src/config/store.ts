@@ -14,7 +14,7 @@ export class ConfigStore {
   private workflow: WorkflowDefinition | null = null;
   private config: ServiceConfig | null = null;
   private mergedConfigMap: Record<string, unknown> = {};
-  private listeners = new Set<() => void>();
+  private readonly listeners = new Set<() => void>();
   private overlayUnsubscribe: (() => void) | null = null;
   private secretsUnsubscribe: (() => void) | null = null;
 

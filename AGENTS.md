@@ -4,7 +4,7 @@
 
 Core source lives in `src/`. Start with `src/cli.ts` for process startup and archive directory setup, `src/orchestrator.ts` for polling, retries, runtime state, and model overrides, and `src/agent-runner.ts` for Codex worker execution. HTTP and dashboard behavior live in `src/http-server.ts` and `src/dashboard-template.ts`. Archived run persistence lives in `src/attempt-store.ts`, workspace lifecycle in `src/workspace-manager.ts`, and Linear transport in `src/linear-client.ts`.
 
-Tests live in `tests/` and use fixture data from `tests/fixtures/`. Built artifacts are emitted to `dist/`; treat that directory as generated output, not hand-edited source. Runtime docs and operator guidance live in `README.md`, `WORKFLOW.example.md`, `WORKFLOW.md`, `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/RELEASING.md`, and `docs/TRUST_AND_AUTH.md`. `EXECPLAN.md` is the implementation log and should stay factual when behavior changes.
+Tests live in `tests/` and use fixture data from `tests/fixtures/`. Built artifacts are emitted to `dist/`; treat that directory as generated output, not hand-edited source. Runtime docs and operator guidance live in `README.md`, `WORKFLOW.example.md`, `WORKFLOW.md`, `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/CONFORMANCE_AUDIT.md`, `docs/RELEASING.md`, and `docs/TRUST_AND_AUTH.md`. `EXECPLAN.md` is the implementation log and should stay factual when behavior changes.
 
 ## Build, Test, and Development Commands
 
@@ -74,7 +74,8 @@ Keep the doc set role-oriented:
 
 - `README.md` explains what Symphony is, what ships now, and how to get started.
 - `docs/OPERATOR_GUIDE.md` covers setup, runtime behavior, and common operating tasks.
-- `docs/ROADMAP_AND_STATUS.md` records shipped capabilities, current scope, and verified remaining gaps.
+- `docs/ROADMAP_AND_STATUS.md` is the issue-linked feature roadmap with all planned work across 4 tiers.
+- `docs/CONFORMANCE_AUDIT.md` records shipped capabilities, spec conformance, and verified remaining gaps.
 - `docs/RELEASING.md` captures the release checklist.
 - `docs/TRUST_AND_AUTH.md` documents trust boundaries and auth expectations.
 - `EXECPLAN.md` remains the implementation log and should not drift into stale roadmap claims.

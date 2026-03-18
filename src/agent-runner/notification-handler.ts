@@ -22,94 +22,113 @@ interface AgentRunnerNotificationEvent {
   content?: string | null;
 }
 
-export function handleNotification(input: {
+function handleTurnStarted(input: NotificationInput, params: Record<string, unknown>): void {
+  const turn = asRecord(params.turn);
+  const startedTurnId = asString(turn.id);
+  input.onEvent({
+    at: new Date().toISOString(),
+    issueId: input.issue.id,
+    issueIdentifier: input.issue.identifier,
+    sessionId: composeSessionId(input.threadId, startedTurnId ?? input.turnId),
+    event: "turn_started",
+    message: startedTurnId ? `turn ${startedTurnId} started` : "turn started",
+  });
+}
+
+function handleTurnCompleted(input: NotificationInput, params: Record<string, unknown>): void {
+  const turn = asRecord(params.turn);
+  recordCompletedTurn(input.state, asString(turn.id), params);
+}
+
+function handleTokenUsageUpdated(input: NotificationInput, params: Record<string, unknown>): void {
+  const turnId = asString(params.turnId);
+  const tokenUsage = asRecord(params.tokenUsage);
+  const total = extractTokenUsageSnapshot(tokenUsage.total);
+  if (!total) {
+    return;
+  }
+  input.onEvent({
+    at: new Date().toISOString(),
+    issueId: input.issue.id,
+    issueIdentifier: input.issue.identifier,
+    sessionId: composeSessionId(input.threadId, turnId ?? input.turnId),
+    event: "token_usage_updated",
+    message: turnId ? `token usage updated for ${turnId}` : "token usage updated",
+    usage: total,
+    usageMode: "absolute_total",
+  });
+}
+
+function handleReasoningDelta(input: NotificationInput, params: Record<string, unknown>): void {
+  const delta = asRecord(params.delta);
+  appendReasoningText(input.state, asString(delta.id) ?? asString(params.itemId), asString(delta.text));
+}
+
+function handleReasoningPartAdded(input: NotificationInput, params: Record<string, unknown>): void {
+  const part = asRecord(params.part);
+  appendReasoningText(input.state, asString(params.itemId), asString(part.text));
+}
+
+function handleItemEvent(
+  input: NotificationInput,
+  params: Record<string, unknown>,
+  verb: "started" | "completed",
+): void {
+  const item = asRecord(params.item);
+  const itemType = asString(item.type) ?? "item";
+  const itemId = asString(item.id);
+
+  const content = extractItemContent(itemType, itemId, item, verb, input.state.reasoningBuffers);
+  if (verb === "completed") {
+    deleteReasoningBuffer(input.state, itemId);
+  }
+
+  input.onEvent({
+    at: new Date().toISOString(),
+    issueId: input.issue.id,
+    issueIdentifier: input.issue.identifier,
+    sessionId: composeSessionId(input.threadId, input.turnId),
+    event: input.notification.method.replaceAll("/", "_"),
+    message: sanitizeContent(itemId ? `${itemType} ${itemId} ${verb}` : `${itemType} ${verb}`) || "item event",
+    content,
+  });
+}
+
+interface NotificationInput {
   state: TurnState;
   notification: { method: string; params?: unknown };
   issue: Issue;
   threadId: string | null;
   turnId: string | null;
   onEvent: (event: AgentRunnerNotificationEvent) => void;
-}): void {
+}
+
+const methodHandlers: Record<string, (input: NotificationInput, params: Record<string, unknown>) => void> = {
+  "turn/started": handleTurnStarted,
+  "turn/completed": handleTurnCompleted,
+  "thread/tokenUsage/updated": handleTokenUsageUpdated,
+  "item/reasoning/summaryTextDelta": handleReasoningDelta,
+  "item/reasoning/textDelta": handleReasoningDelta,
+  "item/reasoning/summaryPartAdded": handleReasoningPartAdded,
+};
+
+export function handleNotification(input: NotificationInput): void {
   const params = asRecord(input.notification.params);
-  if (input.notification.method === "turn/started") {
-    const turn = asRecord(params.turn);
-    const startedTurnId = asString(turn.id);
-    input.onEvent({
-      at: new Date().toISOString(),
-      issueId: input.issue.id,
-      issueIdentifier: input.issue.identifier,
-      sessionId: composeSessionId(input.threadId, startedTurnId ?? input.turnId),
-      event: "turn_started",
-      message: startedTurnId ? `turn ${startedTurnId} started` : "turn started",
-    });
+  const method = input.notification.method;
+
+  const handler = methodHandlers[method];
+  if (handler) {
+    handler(input, params);
     return;
   }
 
-  if (input.notification.method === "turn/completed") {
-    const turn = asRecord(params.turn);
-    recordCompletedTurn(input.state, asString(turn.id), params);
+  if (method === "item/started" || method === "item/completed") {
+    const verb = method.endsWith("started") ? "started" : "completed";
+    handleItemEvent(input, params, verb);
     return;
   }
 
-  if (input.notification.method === "thread/tokenUsage/updated") {
-    const turnId = asString(params.turnId);
-    const tokenUsage = asRecord(params.tokenUsage);
-    const total = extractTokenUsageSnapshot(tokenUsage.total);
-    if (!total) {
-      return;
-    }
-    input.onEvent({
-      at: new Date().toISOString(),
-      issueId: input.issue.id,
-      issueIdentifier: input.issue.identifier,
-      sessionId: composeSessionId(input.threadId, turnId ?? input.turnId),
-      event: "token_usage_updated",
-      message: turnId ? `token usage updated for ${turnId}` : "token usage updated",
-      usage: total,
-      usageMode: "absolute_total",
-    });
-    return;
-  }
-
-  if (
-    input.notification.method === "item/reasoning/summaryTextDelta" ||
-    input.notification.method === "item/reasoning/textDelta"
-  ) {
-    const delta = asRecord(params.delta);
-    appendReasoningText(input.state, asString(delta.id) ?? asString(params.itemId), asString(delta.text));
-    return;
-  }
-
-  if (input.notification.method === "item/reasoning/summaryPartAdded") {
-    const part = asRecord(params.part);
-    appendReasoningText(input.state, asString(params.itemId), asString(part.text));
-    return;
-  }
-
-  if (input.notification.method === "item/started" || input.notification.method === "item/completed") {
-    const item = asRecord(params.item);
-    const itemType = asString(item.type) ?? "item";
-    const itemId = asString(item.id);
-    const verb = input.notification.method.endsWith("started") ? "started" : "completed";
-
-    const content = extractItemContent(itemType, itemId, item, verb, input.state.reasoningBuffers);
-    if (verb === "completed") {
-      deleteReasoningBuffer(input.state, itemId);
-    }
-
-    input.onEvent({
-      at: new Date().toISOString(),
-      issueId: input.issue.id,
-      issueIdentifier: input.issue.identifier,
-      sessionId: composeSessionId(input.threadId, input.turnId),
-      event: input.notification.method.replace("/", "_"),
-      message: sanitizeContent(itemId ? `${itemType} ${itemId} ${verb}` : `${itemType} ${verb}`) || "item event",
-      content,
-    });
-    return;
-  }
-
-  const level = asString(input.notification.method) ?? "unknown_method";
+  const level = asString(method) ?? "unknown_method";
   input.onEvent({
     at: new Date().toISOString(),
     issueId: input.issue.id,

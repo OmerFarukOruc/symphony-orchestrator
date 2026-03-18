@@ -81,38 +81,49 @@ export function sanitizeContent(
   return processed;
 }
 
-function redactObjectPayload(obj: Record<string, unknown> | unknown[]): void {
-  if (Array.isArray(obj)) {
-    for (let i = 0; i < obj.length; i++) {
-      const current = obj[i];
-      if (typeof current === "object" && current !== null) {
-        redactObjectPayload(current as Record<string, unknown> | unknown[]);
-      } else if (typeof current === "string") {
-        obj[i] = redactSecretPatterns(current);
+function redactArrayItems(arr: unknown[]): void {
+  for (let i = 0; i < arr.length; i++) {
+    const current = arr[i];
+    if (typeof current === "object" && current !== null) {
+      redactObjectPayload(current as Record<string, unknown> | unknown[]);
+    } else if (typeof current === "string") {
+      arr[i] = redactSecretPatterns(current);
+    }
+  }
+}
+
+function redactMatchingKeyValue(obj: Record<string, unknown>, key: string, value: unknown): void {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    obj[key] = REDACTION;
+  } else if (typeof value === "object" && value !== null) {
+    if (Array.isArray(value)) {
+      obj[key] = REDACTED_OBJECT;
+    } else {
+      for (const k of Object.keys(value as Record<string, unknown>)) {
+        (value as Record<string, unknown>)[k] = REDACTION;
       }
     }
-    return;
+  } else {
+    obj[key] = REDACTED_OBJECT;
   }
+}
 
+function redactObjectEntries(obj: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(obj)) {
     if (REDACT_KEYS.test(key)) {
-      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-        obj[key] = REDACTION;
-      } else if (typeof value === "object" && value !== null) {
-        if (Array.isArray(value)) {
-          obj[key] = REDACTED_OBJECT;
-        } else {
-          for (const k of Object.keys(value as Record<string, unknown>)) {
-            (value as Record<string, unknown>)[k] = REDACTION;
-          }
-        }
-      } else {
-        obj[key] = REDACTED_OBJECT;
-      }
+      redactMatchingKeyValue(obj, key, value);
     } else if (typeof value === "object" && value !== null) {
       redactObjectPayload(value as Record<string, unknown> | unknown[]);
     } else if (typeof value === "string") {
       obj[key] = redactSecretPatterns(value);
     }
   }
+}
+
+function redactObjectPayload(obj: Record<string, unknown> | unknown[]): void {
+  if (Array.isArray(obj)) {
+    redactArrayItems(obj);
+    return;
+  }
+  redactObjectEntries(obj);
 }

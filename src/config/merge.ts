@@ -39,5 +39,5 @@ export function deepMerge(base: unknown, overlay: unknown): unknown {
  * Note: This only works for JSON-serializable values.
  */
 export function cloneConfigMap(value: Record<string, unknown>): Record<string, unknown> {
-  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+  return structuredClone(value) as Record<string, unknown>;
 }

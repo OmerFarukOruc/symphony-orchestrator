@@ -21,7 +21,7 @@ import type { AgentRunnerEventHandler } from "./index.js";
 import type { Issue, ModelSelection, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
 
 function parsePercent(value: string): number {
-  const parsed = Number.parseFloat(value.replace("%", "").trim());
+  const parsed = Number.parseFloat(value.replaceAll("%", "").trim());
   return Number.isFinite(parsed) ? parsed : 0;
 }
 

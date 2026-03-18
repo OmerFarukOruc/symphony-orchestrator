@@ -56,44 +56,44 @@ function parseIssueArray(body: unknown): PlannedIssue[] | null {
   return parsed.length === issues.length ? parsed : null;
 }
 
+function parseStringField(record: Record<string, unknown>, key: string): string {
+  return typeof record[key] === "string" ? (record[key] as string).trim() : "";
+}
+
+function parsePriority(value: unknown): "low" | "medium" | "high" | null {
+  if (value === "low" || value === "medium" || value === "high") {
+    return value;
+  }
+  return null;
+}
+
+function validateMatchingLengths(parsed: string[], raw: unknown): boolean {
+  return Array.isArray(raw) && parsed.length === raw.length;
+}
+
 function parsePlannedIssue(value: unknown): PlannedIssue | null {
   const record = asRecord(value);
-  const id = typeof record.id === "string" ? record.id.trim() : "";
-  const title = typeof record.title === "string" ? record.title.trim() : "";
-  const summary = typeof record.summary === "string" ? record.summary.trim() : "";
-  const priority =
-    record.priority === "low" || record.priority === "medium" || record.priority === "high" ? record.priority : null;
+  const id = parseStringField(record, "id");
+  const title = parseStringField(record, "title");
+  const summary = parseStringField(record, "summary");
+  const priority = parsePriority(record.priority);
   const acceptanceCriteria = asStringArray(record.acceptanceCriteria);
   const dependencies = asStringArray(record.dependencies);
   const labels = asStringArray(record.labels);
-  if (
-    !id ||
-    !title ||
-    !summary ||
-    !priority ||
-    !Array.isArray(record.acceptanceCriteria) ||
-    !Array.isArray(record.dependencies)
-  ) {
+
+  if (!id || !title || !summary || !priority) {
     return null;
   }
-  if (
-    acceptanceCriteria.length !== record.acceptanceCriteria.length ||
-    dependencies.length !== record.dependencies.length
-  ) {
+  if (!validateMatchingLengths(acceptanceCriteria, record.acceptanceCriteria)) {
+    return null;
+  }
+  if (!validateMatchingLengths(dependencies, record.dependencies)) {
     return null;
   }
   if (Array.isArray(record.labels) && labels.length !== record.labels.length) {
     return null;
   }
-  return {
-    id,
-    title,
-    summary,
-    acceptanceCriteria,
-    dependencies,
-    priority,
-    labels,
-  };
+  return { id, title, summary, acceptanceCriteria, dependencies, priority, labels };
 }
 
 export function createPlanningRouter(deps: PlanningApiDeps = {}): Router {

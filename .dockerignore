@@ -1,0 +1,26 @@
+# Build artifacts & dependencies
+node_modules/
+dist/
+
+# Development files
+.git/
+.github/
+tests/
+archive/
+skills/
+
+# Config & docs
+*.md
+.eslintrc*
+.prettierrc*
+.jscpd.json
+tsconfig.json
+vitest*.config.*
+knip.json
+
+# IDE and OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store

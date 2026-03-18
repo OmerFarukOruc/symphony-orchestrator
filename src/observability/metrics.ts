@@ -8,7 +8,7 @@ function labelKey(labels: Labels): string {
 }
 
 class Counter {
-  private values = new Map<string, number>();
+  private readonly values = new Map<string, number>();
 
   increment(labels: Labels = {}): void {
     const key = labelKey(labels);
@@ -30,7 +30,7 @@ class Counter {
 }
 
 class Histogram {
-  private observations = new Map<string, number[]>();
+  private readonly observations = new Map<string, number[]>();
   private readonly buckets = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
 
   observe(value: number, labels: Labels = {}): void {
@@ -67,7 +67,7 @@ class Histogram {
 }
 
 class Gauge {
-  private values = new Map<string, number>();
+  private readonly values = new Map<string, number>();
 
   set(value: number, labels: Labels = {}): void {
     this.values.set(labelKey(labels), value);

@@ -78,6 +78,71 @@ function hasUsableAccount(result: unknown): boolean {
   );
 }
 
+function extractAgentOrUserMessage(item: Record<string, unknown>): string | null {
+  const text = asString(item.text) ?? null;
+  if (text) {
+    return text;
+  }
+  if (!Array.isArray(item.content)) {
+    return null;
+  }
+  return item.content
+    .map((c) => asString(asRecord(c).text))
+    .filter(Boolean)
+    .join("");
+}
+
+function extractReasoningContent(
+  id: string | null,
+  item: Record<string, unknown>,
+  reasoningBuffers: Map<string, string>,
+): string | null {
+  if (id && reasoningBuffers.has(id)) {
+    return reasoningBuffers.get(id) ?? null;
+  }
+  return asString(item.summary) ?? asString(item.text) ?? null;
+}
+
+function extractCommandContent(item: Record<string, unknown>, verb: "started" | "completed"): string | null {
+  if (verb === "started") {
+    return asString(item.command);
+  }
+  return asString(item.output) ?? (item.exitCode !== undefined ? `Exit code: ${item.exitCode}` : null);
+}
+
+function extractFileChangeContent(
+  item: Record<string, unknown>,
+  verb: "started" | "completed",
+): { content: string | null; isDiff: boolean } {
+  if (verb === "started") {
+    return { content: asString(item.path), isDiff: false };
+  }
+  return {
+    content: asString(item.diff) ?? asString(item.content) ?? asString(item.path),
+    isDiff: true,
+  };
+}
+
+function extractDynamicToolCallContent(item: Record<string, unknown>, verb: "started" | "completed"): string | null {
+  if (verb === "started") {
+    const name = asString(item.name) ?? "tool";
+    const args =
+      typeof item.arguments === "string"
+        ? sanitizeContent(item.arguments)
+        : JSON.stringify(redactSensitiveValue(item.arguments ?? {}));
+    return `${name}(${args ?? "{}"})`;
+  }
+  return asString(item.output) ?? (typeof item.result === "string" ? item.result : JSON.stringify(item.result ?? {}));
+}
+
+function extractWebSearchContent(item: Record<string, unknown>, verb: "started" | "completed"): string | null {
+  if (verb === "started") {
+    return asString(item.query);
+  }
+  const results = Array.isArray(item.results) ? item.results : [];
+  return `Found ${results.length} results`;
+}
+
 function extractItemContent(
   type: string,
   id: string | null,
@@ -88,60 +153,20 @@ function extractItemContent(
   let content: string | null = null;
   let isDiff = false;
 
-  if (type === "agentMessage" && verb === "completed") {
-    content = asString(item.text) ?? null;
-    if (!content && Array.isArray(item.content)) {
-      content = item.content
-        .map((c) => asString(asRecord(c).text))
-        .filter(Boolean)
-        .join("");
-    }
+  if ((type === "agentMessage" && verb === "completed") || (type === "userMessage" && verb === "started")) {
+    content = extractAgentOrUserMessage(item);
   } else if (type === "reasoning" && verb === "completed") {
-    if (id && reasoningBuffers.has(id)) {
-      content = reasoningBuffers.get(id) ?? null;
-    } else {
-      content = asString(item.summary) ?? asString(item.text) ?? null;
-    }
+    content = extractReasoningContent(id, item, reasoningBuffers);
   } else if (type === "commandExecution") {
-    if (verb === "started") {
-      content = asString(item.command);
-    } else {
-      content = asString(item.output) ?? (item.exitCode !== undefined ? `Exit code: ${item.exitCode}` : null);
-    }
+    content = extractCommandContent(item, verb);
   } else if (type === "fileChange") {
-    if (verb === "started") {
-      content = asString(item.path);
-    } else {
-      content = asString(item.diff) ?? asString(item.content) ?? asString(item.path);
-      isDiff = true;
-    }
+    const result = extractFileChangeContent(item, verb);
+    content = result.content;
+    isDiff = result.isDiff;
   } else if (type === "dynamicToolCall") {
-    if (verb === "started") {
-      const name = asString(item.name) ?? "tool";
-      const args =
-        typeof item.arguments === "string"
-          ? sanitizeContent(item.arguments)
-          : JSON.stringify(redactSensitiveValue(item.arguments ?? {}));
-      content = `${name}(${args ?? "{}"})`;
-    } else {
-      content =
-        asString(item.output) ?? (typeof item.result === "string" ? item.result : JSON.stringify(item.result ?? {}));
-    }
+    content = extractDynamicToolCallContent(item, verb);
   } else if (type === "webSearch") {
-    if (verb === "started") {
-      content = asString(item.query);
-    } else {
-      const results = Array.isArray(item.results) ? item.results : [];
-      content = `Found ${results.length} results`;
-    }
-  } else if (type === "userMessage" && verb === "started") {
-    content = asString(item.text) ?? null;
-    if (!content && Array.isArray(item.content)) {
-      content = item.content
-        .map((c) => asString(asRecord(c).text))
-        .filter(Boolean)
-        .join("");
-    }
+    content = extractWebSearchContent(item, verb);
   }
 
   return sanitizeContent(content, { isDiff });

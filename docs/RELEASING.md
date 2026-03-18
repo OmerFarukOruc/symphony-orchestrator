@@ -10,7 +10,7 @@ Confirm each of the following before creating a release tag:
 
 - [ ] `package.json` version matches the intended release
 - [ ] `README.md` describes the current shipped behavior
-- [ ] `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/TRUST_AND_AUTH.md`, `docs/OBSERVABILITY.md`, and `docs/RUNBOOKS.md` still match the implementation
+- [ ] `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/CONFORMANCE_AUDIT.md`, `docs/TRUST_AND_AUTH.md`, `docs/OBSERVABILITY.md`, and `docs/RUNBOOKS.md` still match the implementation
 - [ ] Workflow examples are safe to publish and contain **no secrets**
 - [ ] `EXECPLAN.md` does not contain stale claims that contradict the codebase
 

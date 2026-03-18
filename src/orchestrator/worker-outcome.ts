@@ -10,8 +10,28 @@ import { executeGitPostRun } from "./git-post-run.js";
 
 type StopSignal = "done" | "blocked";
 
+/** Shared context type for all outcome handlers. */
+interface OutcomeContext {
+  runningEntries: Map<string, RunningEntry>;
+  completedViews: Map<string, ReturnType<typeof issueView>>;
+  detailViews: Map<string, ReturnType<typeof issueView>>;
+  deps: {
+    linearClient: { fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[]> };
+    attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
+    workspaceManager: { removeWorkspace: (identifier: string) => Promise<void> };
+    gitManager?: Pick<GitManager, "commitAndPush" | "createPullRequest">;
+    logger: { info: (meta: Record<string, unknown>, message: string) => void };
+  };
+  isRunning: () => boolean;
+  getConfig: () => ServiceConfig;
+  releaseIssueClaim: (issueId: string) => void;
+  resolveModelSelection: (identifier: string) => ModelSelection;
+  notify: (event: NotificationEvent) => void;
+  queueRetry: (issue: Issue, attempt: number, delayMs: number, error: string | null) => void;
+}
+
 function normalizeMessageForSignalDetection(content: string): string {
-  return content.trim().toLowerCase().replace(/\s+/g, " ");
+  return content.trim().toLowerCase().replaceAll(/\s+/g, " ");
 }
 
 function detectStopSignal(content: string | null): StopSignal | null {
@@ -29,32 +49,243 @@ function detectStopSignal(content: string | null): StopSignal | null {
   return null;
 }
 
-function configuredSelection(
-  ctx: { resolveModelSelection: (identifier: string) => ModelSelection },
-  identifier: string,
-) {
-  return ctx.resolveModelSelection(identifier);
+function outcomeToStatus(kind: RunOutcome["kind"]): string {
+  const statusMap: Record<RunOutcome["kind"], string> = {
+    normal: "completed",
+    timed_out: "timed_out",
+    stalled: "stalled",
+    cancelled: "cancelled",
+    failed: "failed",
+  };
+  return statusMap[kind];
+}
+
+function issueRef(issue: Issue) {
+  return { id: issue.id, identifier: issue.identifier, title: issue.title, state: issue.state, url: issue.url };
+}
+
+function handleServiceStopped(
+  ctx: OutcomeContext,
+  outcome: RunOutcome,
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  sel: ModelSelection,
+  attempt: number | null,
+): void {
+  ctx.notify({
+    type: "worker_failed",
+    severity: "critical",
+    timestamp: nowIso(),
+    message: outcome.errorMessage ?? "service stopped before the worker completed",
+    issue: issueRef(issue),
+    attempt,
+  });
+  ctx.releaseIssueClaim(issue.id);
+  ctx.completedViews.set(
+    issue.identifier,
+    buildOutcomeView(issue, workspace, entry, sel, {
+      status: "cancelled",
+      attempt,
+      error: outcome.errorMessage,
+      message: outcome.errorMessage ?? "service stopped before the worker completed",
+    }),
+  );
+}
+
+async function handleTerminalOrCleanup(
+  ctx: OutcomeContext,
+  outcome: RunOutcome,
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  sel: ModelSelection,
+  attempt: number | null,
+): Promise<void> {
+  await ctx.deps.workspaceManager.removeWorkspace(issue.identifier).catch(() => undefined);
+  ctx.completedViews.set(
+    issue.identifier,
+    buildOutcomeView(issue, workspace, entry, sel, {
+      status: outcomeToStatus(outcome.kind),
+      attempt,
+      error: outcome.errorMessage ?? outcome.errorCode,
+      message: "workspace cleaned after terminal state",
+    }),
+  );
+  ctx.releaseIssueClaim(issue.id);
+}
+
+function handleCancelledOrHardFailure(
+  ctx: OutcomeContext,
+  outcome: RunOutcome,
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  sel: ModelSelection,
+  attempt: number | null,
+): void {
+  ctx.notify({
+    type: "worker_failed",
+    severity: "critical",
+    timestamp: nowIso(),
+    message: outcome.errorMessage ?? "worker stopped without a retry",
+    issue: issueRef(issue),
+    attempt,
+    metadata: { errorCode: outcome.errorCode },
+  });
+  ctx.completedViews.set(
+    issue.identifier,
+    buildOutcomeView(issue, workspace, entry, sel, {
+      status: outcome.kind === "cancelled" ? "cancelled" : "failed",
+      attempt,
+      error: outcome.errorCode,
+      message: outcome.errorMessage ?? "worker stopped without a retry",
+    }),
+  );
+  ctx.releaseIssueClaim(issue.id);
+}
+
+async function handleStopSignal(
+  ctx: OutcomeContext,
+  stopSignal: StopSignal,
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  sel: ModelSelection,
+  attempt: number | null,
+): Promise<void> {
+  let pullRequestUrl: string | null = null;
+  if (stopSignal === "done" && entry.repoMatch && ctx.deps.gitManager) {
+    try {
+      const result = await executeGitPostRun(ctx.deps.gitManager, workspace, issue, entry.repoMatch);
+      pullRequestUrl = result.pullRequestUrl;
+    } catch (error) {
+      handleGitPostRunFailure(ctx, error, entry, issue, workspace, sel, attempt);
+      return;
+    }
+  }
+
+  const isBlocked = stopSignal === "blocked";
+  ctx.completedViews.set(
+    issue.identifier,
+    buildOutcomeView(issue, workspace, entry, sel, {
+      status: isBlocked ? "paused" : "completed",
+      attempt,
+      message: isBlocked ? "worker reported issue blocked" : "worker reported issue complete",
+    }),
+  );
+  ctx.notify({
+    type: isBlocked ? "worker_failed" : "worker_completed",
+    severity: isBlocked ? "critical" : "info",
+    timestamp: nowIso(),
+    message: isBlocked ? "worker reported issue blocked" : "worker reported issue complete",
+    issue: issueRef(issue),
+    attempt,
+    metadata: { workspace: workspace.path, pullRequestUrl },
+  });
+  ctx.releaseIssueClaim(issue.id);
+}
+
+function handleGitPostRunFailure(
+  ctx: OutcomeContext,
+  error: unknown,
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  sel: ModelSelection,
+  attempt: number | null,
+): void {
+  const errorText = error instanceof Error ? error.message : String(error);
+  ctx.notify({
+    type: "worker_failed",
+    severity: "critical",
+    timestamp: nowIso(),
+    message: `git post-run failed: ${errorText}`,
+    issue: issueRef(issue),
+    attempt,
+    metadata: { workspace: workspace.path },
+  });
+  ctx.completedViews.set(
+    issue.identifier,
+    buildOutcomeView(issue, workspace, entry, sel, {
+      status: "failed",
+      attempt,
+      error: errorText,
+      message: `git post-run failed: ${errorText}`,
+    }),
+  );
+  ctx.releaseIssueClaim(issue.id);
+}
+
+function queueRetryWithLog(
+  ctx: OutcomeContext,
+  issue: Issue,
+  attempt: number | null,
+  delayMs: number,
+  reason: string,
+): void {
+  const nextAttempt = (attempt ?? 0) + 1;
+  ctx.queueRetry(issue, nextAttempt, delayMs, reason);
+  ctx.deps.logger.info(
+    {
+      issue_id: issue.id,
+      issue_identifier: issue.identifier,
+      attempt: nextAttempt,
+      delay_ms: delayMs,
+      reason,
+    },
+    "worker retry queued",
+  );
+}
+
+async function handlePostReconciliation(
+  ctx: OutcomeContext,
+  outcome: RunOutcome,
+  entry: RunningEntry,
+  latestIssue: Issue,
+  workspace: Workspace,
+  sel: ReturnType<typeof ctx.resolveModelSelection>,
+  attempt: number | null,
+): Promise<void> {
+  if (entry.cleanupOnExit || isTerminalState(latestIssue.state, ctx.getConfig())) {
+    await handleTerminalOrCleanup(ctx, outcome, entry, latestIssue, workspace, sel, attempt);
+    return;
+  }
+  if (!isActiveState(latestIssue.state, ctx.getConfig())) {
+    ctx.completedViews.set(
+      latestIssue.identifier,
+      buildOutcomeView(latestIssue, workspace, entry, sel, { status: "paused", message: "issue is no longer active" }),
+    );
+    ctx.releaseIssueClaim(latestIssue.id);
+    return;
+  }
+  if (outcome.errorCode === "model_override_updated") {
+    ctx.queueRetry(latestIssue, attempt ?? 1, 0, "model_override_updated");
+    return;
+  }
+  if (outcome.kind === "cancelled" || isHardFailure(outcome.errorCode)) {
+    handleCancelledOrHardFailure(ctx, outcome, entry, latestIssue, workspace, sel, attempt);
+    return;
+  }
+
+  const stopSignal = outcome.kind === "normal" ? detectStopSignal(entry.lastAgentMessageContent) : null;
+  if (stopSignal) {
+    await handleStopSignal(ctx, stopSignal, entry, latestIssue, workspace, sel, attempt);
+    return;
+  }
+
+  if (outcome.kind === "normal") {
+    queueRetryWithLog(ctx, latestIssue, attempt, 1000, "continuation");
+    return;
+  }
+
+  const nextAttempt = (attempt ?? 0) + 1;
+  const delayMs = Math.min(10_000 * 2 ** Math.max(0, nextAttempt - 1), ctx.getConfig().agent.maxRetryBackoffMs);
+  queueRetryWithLog(ctx, latestIssue, attempt, delayMs, outcome.errorCode ?? "turn_failed");
 }
 
 export async function handleWorkerOutcome(
-  ctx: {
-    runningEntries: Map<string, RunningEntry>;
-    completedViews: Map<string, ReturnType<typeof issueView>>;
-    detailViews: Map<string, ReturnType<typeof issueView>>;
-    deps: {
-      linearClient: { fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[]> };
-      attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
-      workspaceManager: { removeWorkspace: (identifier: string) => Promise<void> };
-      gitManager?: Pick<GitManager, "commitAndPush" | "createPullRequest">;
-      logger: { info: (meta: Record<string, unknown>, message: string) => void };
-    };
-    isRunning: () => boolean;
-    getConfig: () => ServiceConfig;
-    releaseIssueClaim: (issueId: string) => void;
-    resolveModelSelection: (identifier: string) => ModelSelection;
-    notify: (event: NotificationEvent) => void;
-    queueRetry: (issue: Issue, attempt: number, delayMs: number, error: string | null) => void;
-  },
+  ctx: OutcomeContext,
   outcome: RunOutcome,
   entry: RunningEntry,
   issue: Issue,
@@ -64,20 +295,12 @@ export async function handleWorkerOutcome(
   await entry.flushPersistence();
   ctx.runningEntries.delete(issue.id);
   const latestIssue = (await ctx.deps.linearClient.fetchIssueStatesByIds([issue.id]).catch(() => [issue]))[0] ?? issue;
+
   await ctx.deps.attemptStore.updateAttempt(entry.runId, {
     issueId: latestIssue.id,
     issueIdentifier: latestIssue.identifier,
     title: latestIssue.title,
-    status:
-      outcome.kind === "normal"
-        ? "completed"
-        : outcome.kind === "timed_out"
-          ? "timed_out"
-          : outcome.kind === "stalled"
-            ? "stalled"
-            : outcome.kind === "cancelled"
-              ? "cancelled"
-              : "failed",
+    status: outcomeToStatus(outcome.kind),
     endedAt: nowIso(),
     threadId: outcome.threadId ?? entry.sessionId,
     turnId: outcome.turnId,
@@ -86,7 +309,8 @@ export async function handleWorkerOutcome(
     errorMessage: outcome.errorMessage,
     tokenUsage: entry.tokenUsage,
   });
-  const sel = configuredSelection(ctx, latestIssue.identifier);
+
+  const sel = ctx.resolveModelSelection(latestIssue.identifier);
   ctx.detailViews.set(
     latestIssue.identifier,
     buildOutcomeView(latestIssue, workspace, entry, sel, {
@@ -98,204 +322,11 @@ export async function handleWorkerOutcome(
   );
 
   if (!ctx.isRunning()) {
-    ctx.notify({
-      type: "worker_failed",
-      severity: "critical",
-      timestamp: nowIso(),
-      message: outcome.errorMessage ?? "service stopped before the worker completed",
-      issue: {
-        id: latestIssue.id,
-        identifier: latestIssue.identifier,
-        title: latestIssue.title,
-        state: latestIssue.state,
-        url: latestIssue.url,
-      },
-      attempt,
-    });
-    ctx.releaseIssueClaim(latestIssue.id);
-    ctx.completedViews.set(
-      latestIssue.identifier,
-      buildOutcomeView(latestIssue, workspace, entry, sel, {
-        status: "cancelled",
-        attempt,
-        error: outcome.errorMessage,
-        message: outcome.errorMessage ?? "service stopped before the worker completed",
-      }),
-    );
+    handleServiceStopped(ctx, outcome, entry, latestIssue, workspace, sel, attempt);
     return;
   }
 
-  if (entry.cleanupOnExit || isTerminalState(latestIssue.state, ctx.getConfig())) {
-    const terminalStatus =
-      outcome.kind === "normal"
-        ? "completed"
-        : outcome.kind === "timed_out"
-          ? "timed_out"
-          : outcome.kind === "stalled"
-            ? "stalled"
-            : outcome.kind === "cancelled"
-              ? "cancelled"
-              : "failed";
-    await ctx.deps.workspaceManager.removeWorkspace(latestIssue.identifier).catch(() => undefined);
-    ctx.completedViews.set(
-      latestIssue.identifier,
-      buildOutcomeView(latestIssue, workspace, entry, sel, {
-        status: terminalStatus,
-        attempt,
-        error: outcome.errorMessage ?? outcome.errorCode,
-        message: "workspace cleaned after terminal state",
-      }),
-    );
-    ctx.releaseIssueClaim(latestIssue.id);
-    return;
-  }
-
-  if (!isActiveState(latestIssue.state, ctx.getConfig())) {
-    ctx.completedViews.set(
-      latestIssue.identifier,
-      buildOutcomeView(latestIssue, workspace, entry, sel, {
-        status: "paused",
-        message: "issue is no longer active",
-      }),
-    );
-    ctx.releaseIssueClaim(latestIssue.id);
-    return;
-  }
-
-  if (outcome.errorCode === "model_override_updated") {
-    ctx.queueRetry(latestIssue, attempt ?? 1, 0, "model_override_updated");
-    return;
-  }
-
-  if (outcome.kind === "cancelled" || isHardFailure(outcome.errorCode)) {
-    ctx.notify({
-      type: "worker_failed",
-      severity: "critical",
-      timestamp: nowIso(),
-      message: outcome.errorMessage ?? "worker stopped without a retry",
-      issue: {
-        id: latestIssue.id,
-        identifier: latestIssue.identifier,
-        title: latestIssue.title,
-        state: latestIssue.state,
-        url: latestIssue.url,
-      },
-      attempt,
-      metadata: {
-        errorCode: outcome.errorCode,
-      },
-    });
-    ctx.completedViews.set(
-      latestIssue.identifier,
-      buildOutcomeView(latestIssue, workspace, entry, sel, {
-        status: outcome.kind === "cancelled" ? "cancelled" : "failed",
-        attempt,
-        error: outcome.errorCode,
-        message: outcome.errorMessage ?? "worker stopped without a retry",
-      }),
-    );
-    ctx.releaseIssueClaim(latestIssue.id);
-    return;
-  }
-
-  const stopSignal = outcome.kind === "normal" ? detectStopSignal(entry.lastAgentMessageContent) : null;
-  if (stopSignal) {
-    let pullRequestUrl: string | null = null;
-    if (stopSignal === "done" && entry.repoMatch && ctx.deps.gitManager) {
-      try {
-        const result = await executeGitPostRun(ctx.deps.gitManager, workspace, latestIssue, entry.repoMatch);
-        pullRequestUrl = result.pullRequestUrl;
-      } catch (error) {
-        const errorText = error instanceof Error ? error.message : String(error);
-        ctx.notify({
-          type: "worker_failed",
-          severity: "critical",
-          timestamp: nowIso(),
-          message: `git post-run failed: ${errorText}`,
-          issue: {
-            id: latestIssue.id,
-            identifier: latestIssue.identifier,
-            title: latestIssue.title,
-            state: latestIssue.state,
-            url: latestIssue.url,
-          },
-          attempt,
-          metadata: {
-            workspace: workspace.path,
-          },
-        });
-        ctx.completedViews.set(
-          latestIssue.identifier,
-          buildOutcomeView(latestIssue, workspace, entry, sel, {
-            status: "failed",
-            attempt,
-            error: errorText,
-            message: `git post-run failed: ${errorText}`,
-          }),
-        );
-        ctx.releaseIssueClaim(latestIssue.id);
-        return;
-      }
-    }
-    ctx.completedViews.set(
-      latestIssue.identifier,
-      buildOutcomeView(latestIssue, workspace, entry, sel, {
-        status: stopSignal === "blocked" ? "paused" : "completed",
-        attempt,
-        message: stopSignal === "blocked" ? "worker reported issue blocked" : "worker reported issue complete",
-      }),
-    );
-    ctx.notify({
-      type: stopSignal === "blocked" ? "worker_failed" : "worker_completed",
-      severity: stopSignal === "blocked" ? "critical" : "info",
-      timestamp: nowIso(),
-      message: stopSignal === "blocked" ? "worker reported issue blocked" : "worker reported issue complete",
-      issue: {
-        id: latestIssue.id,
-        identifier: latestIssue.identifier,
-        title: latestIssue.title,
-        state: latestIssue.state,
-        url: latestIssue.url,
-      },
-      attempt,
-      metadata: {
-        workspace: workspace.path,
-        pullRequestUrl,
-      },
-    });
-    ctx.releaseIssueClaim(latestIssue.id);
-    return;
-  }
-
-  if (outcome.kind === "normal") {
-    const nextAttempt = (attempt ?? 0) + 1;
-    ctx.queueRetry(latestIssue, nextAttempt, 1000, "continuation");
-    ctx.deps.logger.info(
-      {
-        issue_id: latestIssue.id,
-        issue_identifier: latestIssue.identifier,
-        attempt: nextAttempt,
-        delay_ms: 1000,
-        reason: "turn_complete",
-      },
-      "worker retry queued",
-    );
-    return;
-  }
-
-  const nextAttempt = (attempt ?? 0) + 1;
-  const delayMs = Math.min(10_000 * 2 ** Math.max(0, nextAttempt - 1), ctx.getConfig().agent.maxRetryBackoffMs);
-  ctx.queueRetry(latestIssue, nextAttempt, delayMs, outcome.errorCode ?? "turn_failed");
-  ctx.deps.logger.info(
-    {
-      issue_id: latestIssue.id,
-      issue_identifier: latestIssue.identifier,
-      attempt: nextAttempt,
-      delay_ms: delayMs,
-      reason: outcome.errorCode ?? "turn_failed",
-    },
-    "worker retry queued",
-  );
+  await handlePostReconciliation(ctx, outcome, entry, latestIssue, workspace, sel, attempt);
 }
 
 export function handleWorkerFailure(

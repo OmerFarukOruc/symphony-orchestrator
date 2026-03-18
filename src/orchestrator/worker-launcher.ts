@@ -83,55 +83,56 @@ export async function launchAvailableWorkers(ctx: {
   }
 }
 
-export async function launchWorker(
-  ctx: {
-    deps: Pick<
-      OrchestratorDeps,
-      "agentRunner" | "attemptStore" | "configStore" | "workspaceManager" | "repoRouter" | "gitManager" | "logger"
-    >;
-    runningEntries: Map<string, RunningEntry>;
-    completedViews: Map<string, ReturnType<typeof issueView>>;
-    detailViews: Map<string, ReturnType<typeof issueView>>;
-    getQueuedViews: () => ReturnType<typeof issueView>[];
-    setQueuedViews: (views: ReturnType<typeof issueView>[]) => void;
-    claimIssue: (issueId: string) => void;
-    releaseIssueClaim: (issueId: string) => void;
-    resolveModelSelection: (identifier: string) => ModelSelection;
-    notify: (event: NotificationEvent) => void;
-    pushEvent: (event: RecentEvent & { usage?: unknown; rateLimits?: unknown }) => void;
-    applyUsageEvent: (entry: RunningEntry, usage: TokenUsageSnapshot, usageMode: "absolute_total" | "delta") => void;
-    setRateLimits: (rateLimits: unknown | null) => void;
-    handleWorkerPromise: (
-      promise: Promise<RunOutcome>,
-      issue: Issue,
-      workspace: Workspace,
-      entry: RunningEntry,
-      attempt: number | null,
-    ) => Promise<void>;
-  },
-  issue: Issue,
-  attempt: number | null,
-  options?: { claimHeld?: boolean },
-): Promise<void> {
-  if (!options?.claimHeld) {
-    ctx.claimIssue(issue.id);
-  }
+type LaunchContext = {
+  deps: Pick<
+    OrchestratorDeps,
+    "agentRunner" | "attemptStore" | "configStore" | "workspaceManager" | "repoRouter" | "gitManager" | "logger"
+  >;
+  runningEntries: Map<string, RunningEntry>;
+  completedViews: Map<string, ReturnType<typeof issueView>>;
+  detailViews: Map<string, ReturnType<typeof issueView>>;
+  getQueuedViews: () => ReturnType<typeof issueView>[];
+  setQueuedViews: (views: ReturnType<typeof issueView>[]) => void;
+  claimIssue: (issueId: string) => void;
+  releaseIssueClaim: (issueId: string) => void;
+  resolveModelSelection: (identifier: string) => ModelSelection;
+  notify: (event: NotificationEvent) => void;
+  pushEvent: (event: RecentEvent & { usage?: unknown; rateLimits?: unknown }) => void;
+  applyUsageEvent: (entry: RunningEntry, usage: TokenUsageSnapshot, usageMode: "absolute_total" | "delta") => void;
+  setRateLimits: (rateLimits: unknown | null) => void;
+  handleWorkerPromise: (
+    promise: Promise<RunOutcome>,
+    issue: Issue,
+    workspace: Workspace,
+    entry: RunningEntry,
+    attempt: number | null,
+  ) => Promise<void>;
+};
 
-  const workflow = ctx.deps.configStore.getWorkflow();
-  let workspace: Awaited<ReturnType<typeof ctx.deps.workspaceManager.ensureWorkspace>>;
+async function prepareWorkspace(
+  ctx: LaunchContext,
+  issue: Issue,
+): Promise<Awaited<ReturnType<typeof ctx.deps.workspaceManager.ensureWorkspace>>> {
   const repoMatch = ctx.deps.repoRouter?.matchIssue(issue) ?? null;
   try {
-    workspace = await ctx.deps.workspaceManager.ensureWorkspace(issue.identifier);
+    const workspace = await ctx.deps.workspaceManager.ensureWorkspace(issue.identifier);
     if (repoMatch && workspace.createdNow && ctx.deps.gitManager) {
       await ctx.deps.gitManager.cloneInto(repoMatch, workspace.path, issue);
     }
+    return workspace;
   } catch (error) {
     ctx.releaseIssueClaim(issue.id);
     throw error;
   }
+}
 
-  const modelSelection = ctx.resolveModelSelection(issue.identifier);
-  const abortController = new AbortController();
+function buildRunningEntry(
+  ctx: LaunchContext,
+  issue: Issue,
+  workspace: Workspace,
+  attempt: number | null,
+  modelSelection: ModelSelection,
+): RunningEntry {
   const runId = randomUUID();
   let persistenceQueue = Promise.resolve();
   const queuePersistence = (task: () => Promise<void>) => {
@@ -147,14 +148,14 @@ export async function launchWorker(
       );
     });
   };
-  const entry: RunningEntry = {
+  return {
     runId,
     issue,
     workspace,
     startedAtMs: Date.now(),
     lastEventAtMs: Date.now(),
     attempt,
-    abortController,
+    abortController: new AbortController(),
     promise: Promise.resolve(),
     cleanupOnExit: false,
     status: "running",
@@ -162,13 +163,20 @@ export async function launchWorker(
     tokenUsage: null,
     modelSelection,
     lastAgentMessageContent: null,
-    repoMatch,
+    repoMatch: ctx.deps.repoRouter?.matchIssue(issue) ?? null,
     queuePersistence,
     flushPersistence: () => persistenceQueue,
   };
-  ctx.runningEntries.set(issue.id, entry);
-  ctx.completedViews.delete(issue.identifier);
-  ctx.setQueuedViews(ctx.getQueuedViews().filter((view) => view.issueId !== issue.id));
+}
+
+async function persistInitialAttempt(
+  ctx: LaunchContext,
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  attempt: number | null,
+  modelSelection: ModelSelection,
+): Promise<void> {
   await ctx.deps.attemptStore.createAttempt({
     attemptId: entry.runId,
     issueId: issue.id,
@@ -190,6 +198,109 @@ export async function launchWorker(
     errorMessage: null,
     tokenUsage: null,
   });
+}
+
+function emitLaunchNotifications(
+  ctx: LaunchContext,
+  issue: Issue,
+  workspace: Workspace,
+  attempt: number | null,
+  modelSelection: ModelSelection,
+): void {
+  const issueRef = {
+    id: issue.id,
+    identifier: issue.identifier,
+    title: issue.title,
+    state: issue.state,
+    url: issue.url,
+  };
+  ctx.notify({
+    type: "issue_claimed",
+    severity: "info",
+    timestamp: nowIso(),
+    message: "issue claimed for execution",
+    issue: issueRef,
+    attempt,
+    metadata: { workspace: workspace.path },
+  });
+  ctx.notify({
+    type: "worker_launched",
+    severity: "info",
+    timestamp: nowIso(),
+    message: "worker launched",
+    issue: issueRef,
+    attempt,
+    metadata: {
+      workspace: workspace.path,
+      model: modelSelection.model,
+      reasoningEffort: modelSelection.reasoningEffort,
+    },
+  });
+}
+
+function buildOnEventHandler(
+  ctx: LaunchContext,
+  entry: RunningEntry,
+): (
+  event: RecentEvent & {
+    usage?: TokenUsageSnapshot;
+    usageMode?: "absolute_total" | "delta";
+    rateLimits?: unknown;
+    content?: string | null;
+  },
+) => void {
+  return (event) => {
+    entry.sessionId = event.sessionId;
+    entry.lastEventAtMs = Date.now();
+    if (event.event === "item_completed" && event.message.includes("agentMessage") && event.content) {
+      entry.lastAgentMessageContent = event.content;
+    }
+    ctx.pushEvent(event);
+    if (event.usage) {
+      ctx.applyUsageEvent(entry, event.usage, event.usageMode ?? "delta");
+    }
+    if (event.rateLimits !== undefined) {
+      ctx.setRateLimits(event.rateLimits);
+    }
+    entry.queuePersistence(async () => {
+      await ctx.deps.attemptStore.appendEvent({
+        attemptId: entry.runId,
+        at: event.at,
+        issueId: event.issueId,
+        issueIdentifier: event.issueIdentifier,
+        sessionId: event.sessionId,
+        event: event.event,
+        message: event.message,
+        content: event.content ?? null,
+        usage: event.usage ?? null,
+        rateLimits: event.rateLimits,
+      });
+      if (event.usage) {
+        await ctx.deps.attemptStore.updateAttempt(entry.runId, { tokenUsage: entry.tokenUsage });
+      }
+    });
+  };
+}
+
+export async function launchWorker(
+  ctx: LaunchContext,
+  issue: Issue,
+  attempt: number | null,
+  options?: { claimHeld?: boolean },
+): Promise<void> {
+  if (!options?.claimHeld) {
+    ctx.claimIssue(issue.id);
+  }
+
+  const workspace = await prepareWorkspace(ctx, issue);
+  const modelSelection = ctx.resolveModelSelection(issue.identifier);
+  const entry = buildRunningEntry(ctx, issue, workspace, attempt, modelSelection);
+
+  ctx.runningEntries.set(issue.id, entry);
+  ctx.completedViews.delete(issue.identifier);
+  ctx.setQueuedViews(ctx.getQueuedViews().filter((view) => view.issueId !== issue.id));
+
+  await persistInitialAttempt(ctx, entry, issue, workspace, attempt, modelSelection);
   ctx.detailViews.set(
     issue.identifier,
     issueView(issue, {
@@ -205,83 +316,17 @@ export async function launchWorker(
       modelSource: modelSelection.source,
     }),
   );
-  ctx.notify({
-    type: "issue_claimed",
-    severity: "info",
-    timestamp: nowIso(),
-    message: "issue claimed for execution",
-    issue: {
-      id: issue.id,
-      identifier: issue.identifier,
-      title: issue.title,
-      state: issue.state,
-      url: issue.url,
-    },
-    attempt,
-    metadata: {
-      workspace: workspace.path,
-    },
-  });
-  ctx.notify({
-    type: "worker_launched",
-    severity: "info",
-    timestamp: nowIso(),
-    message: "worker launched",
-    issue: {
-      id: issue.id,
-      identifier: issue.identifier,
-      title: issue.title,
-      state: issue.state,
-      url: issue.url,
-    },
-    attempt,
-    metadata: {
-      workspace: workspace.path,
-      model: modelSelection.model,
-      reasoningEffort: modelSelection.reasoningEffort,
-    },
-  });
+  emitLaunchNotifications(ctx, issue, workspace, attempt, modelSelection);
 
+  const workflow = ctx.deps.configStore.getWorkflow();
   const promise = ctx.deps.agentRunner.runAttempt({
     issue,
     attempt,
     modelSelection,
     promptTemplate: workflow.promptTemplate,
     workspace,
-    signal: abortController.signal,
-    onEvent: (event) => {
-      entry.sessionId = event.sessionId;
-      entry.lastEventAtMs = Date.now();
-      if (event.event === "item_completed" && event.message.includes("agentMessage") && event.content) {
-        entry.lastAgentMessageContent = event.content;
-      }
-      ctx.pushEvent(event);
-      if (event.usage) {
-        ctx.applyUsageEvent(entry, event.usage, event.usageMode ?? "delta");
-      }
-      if (event.rateLimits !== undefined) {
-        ctx.setRateLimits(event.rateLimits);
-      }
-      entry.queuePersistence(async () => {
-        await ctx.deps.attemptStore.appendEvent({
-          attemptId: entry.runId,
-          at: event.at,
-          issueId: event.issueId,
-          issueIdentifier: event.issueIdentifier,
-          sessionId: event.sessionId,
-          event: event.event,
-          message: event.message,
-          content: event.content ?? null,
-          usage: event.usage ?? null,
-          rateLimits: event.rateLimits,
-        });
-        if (event.usage) {
-          await ctx.deps.attemptStore.updateAttempt(entry.runId, {
-            tokenUsage: entry.tokenUsage,
-          });
-        }
-      });
-    },
+    signal: entry.abortController.signal,
+    onEvent: buildOnEventHandler(ctx, entry),
   });
   entry.promise = ctx.handleWorkerPromise(promise, issue, workspace, entry, attempt);
 }

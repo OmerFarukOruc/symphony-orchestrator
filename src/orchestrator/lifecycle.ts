@@ -4,7 +4,64 @@ import { isActiveState, isTerminalState } from "../state/policy.js";
 import type { Issue, ServiceConfig } from "../core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
 
-export async function reconcileRunningAndRetrying(ctx: {
+function enforceStallTimeouts(ctx: ReconcileContext, now: number, config: ServiceConfig): void {
+  if (config.codex.stallTimeoutMs <= 0) {
+    return;
+  }
+  for (const entry of ctx.runningEntries.values()) {
+    if (!entry.abortController.signal.aborted && now - entry.lastEventAtMs > config.codex.stallTimeoutMs) {
+      entry.abortController.abort("stalled");
+      entry.status = "stopping";
+      ctx.pushEvent({
+        at: nowIso(),
+        issueId: entry.issue.id,
+        issueIdentifier: entry.issue.identifier,
+        sessionId: entry.sessionId,
+        event: "worker_stalled",
+        message: "worker exceeded stall timeout and was cancelled",
+      });
+    }
+  }
+}
+
+function reconcileRunning(entries: Map<string, RunningEntry>, byId: Map<string, Issue>, config: ServiceConfig): void {
+  for (const entry of entries.values()) {
+    const latest = byId.get(entry.issue.id);
+    if (!latest) {
+      continue;
+    }
+    entry.issue = latest;
+    if (isTerminalState(latest.state, config)) {
+      entry.cleanupOnExit = true;
+      if (!entry.abortController.signal.aborted) {
+        entry.abortController.abort("terminal");
+      }
+      entry.status = "stopping";
+    } else if (!isActiveState(latest.state, config) && !entry.abortController.signal.aborted) {
+      entry.abortController.abort("inactive");
+      entry.status = "stopping";
+    }
+  }
+}
+
+async function reconcileRetries(ctx: ReconcileContext, byId: Map<string, Issue>, config: ServiceConfig): Promise<void> {
+  for (const retryEntry of [...ctx.retryEntries.values()]) {
+    const latest = byId.get(retryEntry.issueId);
+    if (!latest) {
+      ctx.clearRetryEntry(retryEntry.issueId);
+      continue;
+    }
+    retryEntry.issue = latest;
+    if (isTerminalState(latest.state, config)) {
+      ctx.clearRetryEntry(retryEntry.issueId);
+      await ctx.deps.workspaceManager.removeWorkspace(latest.identifier).catch(() => undefined);
+    } else if (!isActiveState(latest.state, config)) {
+      ctx.clearRetryEntry(retryEntry.issueId);
+    }
+  }
+}
+
+interface ReconcileContext {
   runningEntries: Map<string, RunningEntry>;
   retryEntries: Map<string, RetryRuntimeEntry>;
   deps: {
@@ -24,26 +81,13 @@ export async function reconcileRunningAndRetrying(ctx: {
     event: string;
     message: string;
   }) => void;
-}): Promise<void> {
+}
+
+export async function reconcileRunningAndRetrying(ctx: ReconcileContext): Promise<void> {
   const now = Date.now();
   const config = ctx.getConfig();
 
-  if (config.codex.stallTimeoutMs > 0) {
-    for (const entry of ctx.runningEntries.values()) {
-      if (!entry.abortController.signal.aborted && now - entry.lastEventAtMs > config.codex.stallTimeoutMs) {
-        entry.abortController.abort("stalled");
-        entry.status = "stopping";
-        ctx.pushEvent({
-          at: nowIso(),
-          issueId: entry.issue.id,
-          issueIdentifier: entry.issue.identifier,
-          sessionId: entry.sessionId,
-          event: "worker_stalled",
-          message: "worker exceeded stall timeout and was cancelled",
-        });
-      }
-    }
-  }
+  enforceStallTimeouts(ctx, now, config);
 
   const trackedIds = new Set<string>([...ctx.runningEntries.keys(), ...ctx.retryEntries.keys()]);
   if (trackedIds.size === 0) {
@@ -53,38 +97,8 @@ export async function reconcileRunningAndRetrying(ctx: {
   const issues = await ctx.deps.linearClient.fetchIssueStatesByIds([...trackedIds]);
   const byId = new Map(issues.map((issue) => [issue.id, issue]));
 
-  for (const entry of ctx.runningEntries.values()) {
-    const latest = byId.get(entry.issue.id);
-    if (!latest) {
-      continue;
-    }
-    entry.issue = latest;
-    if (isTerminalState(latest.state, config)) {
-      entry.cleanupOnExit = true;
-      if (!entry.abortController.signal.aborted) {
-        entry.abortController.abort("terminal");
-      }
-      entry.status = "stopping";
-    } else if (!isActiveState(latest.state, config) && !entry.abortController.signal.aborted) {
-      entry.abortController.abort("inactive");
-      entry.status = "stopping";
-    }
-  }
-
-  for (const retryEntry of [...ctx.retryEntries.values()]) {
-    const latest = byId.get(retryEntry.issueId);
-    if (!latest) {
-      ctx.clearRetryEntry(retryEntry.issueId);
-      continue;
-    }
-    retryEntry.issue = latest;
-    if (isTerminalState(latest.state, config)) {
-      ctx.clearRetryEntry(retryEntry.issueId);
-      await ctx.deps.workspaceManager.removeWorkspace(latest.identifier).catch(() => undefined);
-    } else if (!isActiveState(latest.state, config)) {
-      ctx.clearRetryEntry(retryEntry.issueId);
-    }
-  }
+  reconcileRunning(ctx.runningEntries, byId, config);
+  await reconcileRetries(ctx, byId, config);
 }
 
 export async function refreshQueueViews(ctx: {

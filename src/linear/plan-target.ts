@@ -17,11 +17,7 @@ function extractNodesConnection(
   payload: GraphQLResponse,
   fieldName: string,
 ): { nodes: Record<string, unknown>[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } | null } {
-  if (
-    Object.prototype.hasOwnProperty.call(payload, "data") === false ||
-    typeof payload.data !== "object" ||
-    payload.data === null
-  ) {
+  if (Object.hasOwn(payload, "data") === false || typeof payload.data !== "object" || payload.data === null) {
     throw new Error("linear graphql response missing data object");
   }
   const root = payload.data as Record<string, unknown>;

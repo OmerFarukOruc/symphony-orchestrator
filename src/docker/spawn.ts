@@ -27,58 +27,36 @@ interface DockerRunResult {
   cacheVolumeName: string;
 }
 
-export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
-  const {
-    sandboxConfig: cfg,
-    runId,
-    command,
-    workspacePath,
-    archiveDir,
-    pathRegistry,
-    runtimeConfigToml,
-    runtimeAuthJsonBase64 = null,
-    requiredEnv = [],
-  } = input;
-  const containerName = `symphony-${runId}`;
-  const cacheVolumeName = `symphony-cache-${runId}`;
-  const uid = os.userInfo().uid;
-  const gid = os.userInfo().gid;
-
-  const args: string[] = ["run", "-i", "--name", containerName];
-
-  // Run as host UID:GID to prevent ownership drift
-  args.push("--user", `${uid}:${gid}`);
-
-  // Working directory preserves the cwd contract
-  args.push("--workdir", workspacePath);
-
-  // Identity mounts: -v host:container[:mode] so all absolute paths are valid inside the container
+function buildMountArgs(args: string[], input: DockerRunInput, cacheVolumeName: string): void {
+  const { sandboxConfig: cfg, workspacePath, archiveDir, pathRegistry } = input;
   const mounts: Array<[string, string, string?]> = [
-    [pathRegistry?.translate(workspacePath) ?? workspacePath, workspacePath], // workspace
-    [pathRegistry?.translate(archiveDir) ?? archiveDir, archiveDir], // logs/archive
+    [pathRegistry?.translate(workspacePath) ?? workspacePath, workspacePath],
+    [pathRegistry?.translate(archiveDir) ?? archiveDir, archiveDir],
   ];
   for (const [host, container, mode] of mounts) {
     args.push("-v", mode ? `${host}:${container}:${mode}` : `${host}:${container}`);
   }
-
-  // Persistent HOME cache volume for npm/pip/git under numeric UID
   args.push("-v", `${cacheVolumeName}:${CONTAINER_HOME}`);
-
-  // Extra user-defined mounts
   for (const mount of cfg.extraMounts) {
     args.push("-v", mount);
   }
+}
 
-  // Environment variables
-  args.push("-e", `HOME=${CONTAINER_HOME}`);
-  args.push("-e", `CODEX_HOME=${CONTAINER_CODEX_HOME}`);
-  args.push("-e", `SYMPHONY_CODEX_CONFIG_TOML=${runtimeConfigToml}`);
+function buildEnvArgs(args: string[], input: DockerRunInput): void {
+  const { sandboxConfig: cfg, runtimeConfigToml, runtimeAuthJsonBase64 = null, command, requiredEnv = [] } = input;
+  args.push(
+    "-e",
+    `HOME=${CONTAINER_HOME}`,
+    "-e",
+    `CODEX_HOME=${CONTAINER_CODEX_HOME}`,
+    "-e",
+    `SYMPHONY_CODEX_CONFIG_TOML=${runtimeConfigToml}`,
+  );
   if (runtimeAuthJsonBase64) {
     args.push("-e", `SYMPHONY_CODEX_AUTH_JSON_B64=${runtimeAuthJsonBase64}`);
   }
   args.push("-e", `SYMPHONY_CODEX_COMMAND=${command}`);
 
-  // Pass through configured env vars from host
   const envNames = new Set([...cfg.envPassthrough, ...requiredEnv]);
   for (const envName of envNames) {
     const value = process.env[envName];
@@ -86,23 +64,9 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
       args.push("-e", `${envName}=${value}`);
     }
   }
+}
 
-  // Allow the container to reach host-bound services (e.g. CLIProxyAPI)
-  args.push("--add-host=host.docker.internal:host-gateway");
-
-  // Network
-  if (cfg.network) {
-    args.push("--network", cfg.network);
-  }
-
-  // Resource limits
-  args.push("--memory", cfg.resources.memory);
-  args.push("--memory-reservation", cfg.resources.memoryReservation);
-  args.push("--memory-swap", cfg.resources.memorySwap);
-  args.push("--cpus", cfg.resources.cpus);
-  args.push("--tmpfs", `/tmp:exec,size=${cfg.resources.tmpfsSize}`);
-
-  // Security
+function buildSecurityArgs(args: string[], cfg: SandboxConfig): void {
   if (cfg.security.dropCapabilities) {
     args.push("--cap-drop=ALL");
   }
@@ -115,39 +79,36 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
   if (cfg.security.seccompProfile) {
     args.push(`--security-opt=seccomp=${cfg.security.seccompProfile}`);
   }
+}
 
-  // Log driver
-  args.push("--log-driver", cfg.logs.driver);
-  args.push("--log-opt", `max-size=${cfg.logs.maxSize}`);
-  args.push("--log-opt", `max-file=${cfg.logs.maxFile}`);
+function buildResourceAndLogArgs(args: string[], cfg: SandboxConfig): void {
+  args.push(
+    "--memory",
+    cfg.resources.memory,
+    "--memory-reservation",
+    cfg.resources.memoryReservation,
+    "--memory-swap",
+    cfg.resources.memorySwap,
+    "--cpus",
+    cfg.resources.cpus,
+    "--tmpfs",
+    `/tmp:exec,size=${cfg.resources.tmpfsSize}`,
+  );
+  args.push(
+    "--log-driver",
+    cfg.logs.driver,
+    "--log-opt",
+    `max-size=${cfg.logs.maxSize}`,
+    "--log-opt",
+    `max-file=${cfg.logs.maxFile}`,
+  );
+}
 
-  // Observability labels
-  if (input.issueIdentifier) {
-    args.push("--label", `symphony.issue=${input.issueIdentifier}`);
-  }
-  if (input.model) {
-    args.push("--label", `symphony.model=${input.model}`);
-  }
-  args.push("--label", `symphony.workspace=${workspacePath}`);
-  args.push("--label", `symphony.started-at=${new Date().toISOString()}`);
+function buildEntrypointScript(egressAllowlist: string[]): string {
+  const steps = ["set -euo pipefail", "umask 077"];
 
-  // Egress allowlist: grant CAP_NET_ADMIN and pass allowlist as env
-  const egressAllowlist = cfg.egressAllowlist ?? [];
   if (egressAllowlist.length > 0) {
-    args.push("--cap-add=NET_ADMIN");
-    args.push("-e", `SYMPHONY_EGRESS_ALLOWLIST=${egressAllowlist.join(" ")}`);
-  }
-
-  // Image
-  args.push(cfg.image);
-
-  // Build the entrypoint script with optional egress iptables rules
-  const entrypointSteps = ["set -euo pipefail", "umask 077"];
-
-  // When egress allowlist is configured, inject iptables rules before starting Codex
-  if (egressAllowlist.length > 0) {
-    entrypointSteps.push(
-      // Only apply iptables if available (graceful degradation)
+    steps.push(
       'if command -v iptables >/dev/null 2>&1 && [ -n "${SYMPHONY_EGRESS_ALLOWLIST:-}" ]; then',
       "  iptables -A OUTPUT -o lo -j ACCEPT",
       "  iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT",
@@ -163,7 +124,7 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
     );
   }
 
-  entrypointSteps.push(
+  steps.push(
     'rm -rf "$CODEX_HOME"',
     'mkdir -p "$CODEX_HOME"',
     'printf "%s" "$SYMPHONY_CODEX_CONFIG_TOML" > "$CODEX_HOME/config.toml"',
@@ -171,8 +132,49 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
     'exec bash -lc "$SYMPHONY_CODEX_COMMAND"',
   );
 
-  // Materialize the runtime home entirely inside the container before starting Codex.
-  args.push("bash", "-lc", entrypointSteps.join("; "));
+  return steps.join("; ");
+}
+
+export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
+  const { sandboxConfig: cfg, runId, workspacePath } = input;
+  const containerName = `symphony-${runId}`;
+  const cacheVolumeName = `symphony-cache-${runId}`;
+  const uid = os.userInfo().uid;
+  const gid = os.userInfo().gid;
+
+  const args: string[] = ["run", "-i", "--name", containerName];
+  args.push("--user", `${uid}:${gid}`, "--workdir", workspacePath);
+
+  buildMountArgs(args, input, cacheVolumeName);
+  buildEnvArgs(args, input);
+  args.push("--add-host=host.docker.internal:host-gateway");
+
+  if (cfg.network) {
+    args.push("--network", cfg.network);
+  }
+
+  buildResourceAndLogArgs(args, cfg);
+  buildSecurityArgs(args, cfg);
+
+  if (input.issueIdentifier) {
+    args.push("--label", `symphony.issue=${input.issueIdentifier}`);
+  }
+  if (input.model) {
+    args.push("--label", `symphony.model=${input.model}`);
+  }
+  args.push(
+    "--label",
+    `symphony.workspace=${workspacePath}`,
+    "--label",
+    `symphony.started-at=${new Date().toISOString()}`,
+  );
+
+  const egressAllowlist = cfg.egressAllowlist ?? [];
+  if (egressAllowlist.length > 0) {
+    args.push("--cap-add=NET_ADMIN", "-e", `SYMPHONY_EGRESS_ALLOWLIST=${egressAllowlist.join(" ")}`);
+  }
+
+  args.push(cfg.image, "bash", "-lc", buildEntrypointScript(egressAllowlist));
 
   return { program: "docker", args, containerName, cacheVolumeName };
 }

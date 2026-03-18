@@ -21,14 +21,14 @@ function resolveEnvBackedString(value: unknown, secretResolver?: (name: string) 
   if (typeof value !== "string") {
     return "";
   }
-  const secretMatch = value.match(/^\$SECRET:([A-Za-z0-9._-]+)$/);
+  const secretMatch = /^\$SECRET:([\w._-]+)$/.exec(value);
   if (secretMatch) {
     return secretResolver?.(secretMatch[1]) ?? "";
   }
   if (!value.startsWith("$")) {
     return value;
   }
-  if (/^\$[A-Za-z_][A-Za-z0-9_]*$/.test(value) === false) {
+  if (/^\$[A-Za-z_]\w*$/.test(value) === false) {
     return value;
   }
 
@@ -58,7 +58,7 @@ function expandHomePath(value: unknown): string {
  * Falls back to "/tmp" if TMPDIR is not set.
  */
 function resolveTmpDir(value: string): string {
-  return value.replace("$TMPDIR", process.env.TMPDIR ?? "/tmp");
+  return value.replaceAll("$TMPDIR", process.env.TMPDIR ?? "/tmp");
 }
 
 /**

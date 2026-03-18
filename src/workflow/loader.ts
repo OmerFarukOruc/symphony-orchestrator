@@ -36,7 +36,7 @@ export async function loadWorkflowDefinition(workflowPath: string): Promise<Work
     };
   }
 
-  const match = source.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+  const match = /^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/.exec(source);
   if (!match) {
     throw new WorkflowLoaderError({
       code: "workflow_parse_error",
