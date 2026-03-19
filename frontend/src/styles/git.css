@@ -1,0 +1,67 @@
+.git-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.git-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+
+.git-stat-box {
+  padding: var(--space-3);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+.git-stat-box strong {
+  font-size: 20px;
+  font-weight: 700;
+  display: block;
+}
+
+.git-stat-box span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.git-stat-box.is-alert strong {
+  color: var(--status-blocked);
+}
+
+.git-ops-section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+.git-op-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+
+.git-op-row.is-failed {
+  border-left: 3px solid var(--status-blocked);
+  padding-left: var(--space-3);
+}
+
+.git-op-type {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border: 1px solid var(--border-default);
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 800px) {
+  .git-summary-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+}

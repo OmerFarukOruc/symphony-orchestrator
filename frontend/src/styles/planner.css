@@ -13,7 +13,7 @@
 }
 
 .planner-shell {
-  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+  grid-template-columns: minmax(0, 1fr) 240px;
   align-items: start;
 }
 
@@ -39,13 +39,13 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-3);
-  border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  background: var(--bg-surface);
 }
 
 .planner-summary-card strong {
   font-size: 20px;
+  font-weight: 700;
 }
 
 .planner-summary-card span {
@@ -63,10 +63,10 @@
   justify-content: flex-start;
   padding: var(--space-3);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-elevated) 74%, transparent);
+  background: var(--bg-elevated);
   color: var(--text-primary);
   text-align: left;
+  font-size: 11px;
 }
 
 .planner-dependency-chip.static {
@@ -92,10 +92,13 @@
 
 .planner-result-link {
   padding: var(--space-3);
-  border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 76%, transparent);
+  background: var(--bg-elevated);
   color: var(--text-accent);
+}
+
+.planner-result-link:hover {
+  border-color: var(--border-strong);
 }
 
 @media (max-width: 1080px) {

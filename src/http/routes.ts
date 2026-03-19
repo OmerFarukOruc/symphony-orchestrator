@@ -13,8 +13,13 @@ import type { PlannedIssue } from "../planning/skill.js";
 import { registerSecretsApi } from "../secrets/api.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
+import { handleContainers } from "./container-handler.js";
+import { handleGitPrs } from "./git-handler.js";
 import { handleModelUpdate } from "./model-handler.js";
+import { handleNotifications } from "./notifications-handler.js";
 import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
+import { handleGlobalRuns } from "./runs-handler.js";
+import { handleWorkspaces } from "./workspace-handler.js";
 
 import { createRateLimiter } from "./rate-limit.js";
 
@@ -34,6 +39,7 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   app.use(express.static(staticRoot));
   registerStateAndMetricsRoutes(app, deps);
   registerExtensionApis(app, deps);
+  registerNewApiRoutes(app, deps);
   registerIssueRoutes(app, deps);
 
   const spaRateLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 120 });
@@ -86,6 +92,53 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
     .post((req, res) => {
       const refresh = deps.orchestrator.requestRefresh(refreshReason(req));
       res.status(202).json({ queued: refresh.queued, coalesced: refresh.coalesced, requested_at: refresh.requestedAt });
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+}
+
+function registerNewApiRoutes(app: Express, deps: HttpRouteDeps): void {
+  app
+    .route("/api/v1/notifications")
+    .get((req, res) => {
+      handleNotifications(req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/git/prs")
+    .get((req, res) => {
+      handleGitPrs(req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/workspaces")
+    .get((req, res) => {
+      handleWorkspaces(req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/containers")
+    .get((req, res) => {
+      handleContainers(req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/runs")
+    .get((req, res) => {
+      handleGlobalRuns(deps.orchestrator, req, res);
     })
     .all((_req, res) => {
       methodNotAllowed(res);

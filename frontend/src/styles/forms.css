@@ -4,11 +4,13 @@
 }
 
 .form-label {
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.form-label .form-required {
+  color: var(--color-copper-400);
 }
 
 .form-hint,
@@ -52,7 +54,6 @@
   min-height: 112px;
   padding: var(--space-3);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
   background: var(--bg-elevated);
   color: var(--text-primary);
   font: inherit;
@@ -61,16 +62,121 @@
 
 .mc-input:focus-visible,
 .mc-select:focus-visible,
-.mc-textarea:focus-visible,
+.mc-textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-copper-400);
+  box-shadow: 0 0 0 1px rgba(201, 110, 74, 0.25);
+}
+
 .mc-button:focus-visible,
 .mc-chip:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-copper-500) 54%, transparent);
+  outline: 2px solid var(--color-copper-400);
   outline-offset: 2px;
 }
 
 .mc-button.is-primary {
-  background: color-mix(in srgb, var(--color-copper-500) 18%, var(--bg-elevated));
-  border-color: color-mix(in srgb, var(--color-copper-500) 42%, var(--border-strong));
+  background: var(--color-copper-400);
+  border-color: var(--color-copper-500);
+  color: #ffffff;
+}
+
+.mc-button.is-primary:hover {
+  background: var(--color-copper-500);
+}
+
+.mc-button.is-danger {
+  background: var(--status-blocked);
+  border-color: #c03d37;
+  color: #ffffff;
+}
+
+.mc-button.is-danger:hover {
+  background: #c03d37;
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border-default);
+  transition: background var(--motion-fast) ease;
+}
+
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background: var(--text-primary);
+  transition: transform 150ms ease;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--color-copper-400);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(16px);
+}
+
+/* Toggle button group */
+.toggle-group {
+  display: inline-flex;
+  border: 1px solid var(--border-default);
+}
+
+.toggle-group-button {
+  padding: 6px var(--space-3);
+  border: none;
+  border-right: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) ease,
+    color var(--motion-fast) ease;
+}
+
+.toggle-group-button:last-child {
+  border-right: none;
+}
+
+.toggle-group-button.is-active {
+  background: var(--color-copper-400);
+  color: #ffffff;
+}
+
+/* Checkbox */
+.mc-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-default);
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+.mc-checkbox:checked {
+  background: var(--color-copper-400);
+  border-color: var(--color-copper-400);
 }
 
 @media (max-width: 760px) {

@@ -17,46 +17,92 @@
   justify-content: space-between;
 }
 
+.logs-breadcrumb {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: var(--space-2) 0;
+}
+
+.logs-breadcrumb a {
+  color: var(--text-secondary);
+  transition: color var(--motion-fast) ease;
+}
+
+.logs-breadcrumb a:hover {
+  color: var(--color-copper-400);
+}
+
+.logs-breadcrumb .logs-breadcrumb-sep {
+  color: var(--text-muted);
+}
+
 .logs-scroll {
   max-height: calc(100vh - 240px);
   overflow: auto;
   display: grid;
-  gap: var(--space-3);
+  gap: 0;
   padding-right: 4px;
 }
 
 .mc-log-row {
-  padding: var(--space-4);
-  background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.mc-log-row:hover {
+  background: var(--bg-surface);
 }
 
 .mc-log-row:nth-child(2n) {
-  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+  background: var(--bg-canvas);
+}
+
+.mc-log-row:nth-child(2n):hover {
+  background: var(--bg-surface);
 }
 
 .mc-log-time {
   color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .mc-log-message {
   flex: 1;
   min-width: 220px;
+  font-size: 13px;
 }
 
 .mc-log-payload {
   margin-top: var(--space-3);
   padding: var(--space-3);
-  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
-  background: var(--bg-canvas);
+  background: var(--bg-surface);
   overflow: auto;
   white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
-.logs-breadcrumb {
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.mc-log-payload .json-key {
+  color: var(--color-copper-400);
+}
+.mc-log-payload .json-string {
+  color: var(--text-secondary);
+}
+.mc-log-payload .json-number {
+  color: var(--status-queued);
+}
+.mc-log-payload .json-boolean-true {
+  color: var(--status-running);
+}
+.mc-log-payload .json-boolean-false {
+  color: var(--status-blocked);
 }
 
 .logs-new-indicator {

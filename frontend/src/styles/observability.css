@@ -21,6 +21,12 @@
   gap: var(--space-3);
 }
 
+.observability-section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
 .observability-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -30,7 +36,10 @@
 .observability-card {
   display: grid;
   gap: var(--space-3);
-  min-height: 190px;
+  min-height: 100px;
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
 }
 
 .observability-card.tone-warning {
@@ -41,19 +50,31 @@
   border-color: color-mix(in srgb, var(--status-blocked) 42%, var(--border-strong));
 }
 
-.observability-card h3,
-.observability-section h2,
-.observability-raw-header h2 {
-  font-size: 15px;
+.observability-card h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.observability-source-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
 }
 
 .observability-value {
-  font-size: clamp(22px, 2.2vw, 30px);
+  font-size: 28px;
+  font-weight: 700;
   line-height: 1.2;
 }
 
 .observability-detail {
-  min-height: 40px;
+  min-height: 20px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .observability-sparkline {
@@ -68,6 +89,11 @@
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.observability-sparkline .sparkline-area {
+  fill: var(--color-copper-400);
+  opacity: 0.08;
 }
 
 .observability-list {
@@ -90,8 +116,7 @@
   overflow: auto;
   padding: var(--space-4);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  background: var(--bg-surface);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 12px;

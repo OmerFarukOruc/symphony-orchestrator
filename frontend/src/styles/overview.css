@@ -3,29 +3,24 @@
   gap: var(--space-6);
 }
 
-/* Varied grid: primary metrics (Now, Token burn) larger, secondary (Attention, Recent) smaller */
 .overview-grid {
   display: grid;
-  grid-template-columns: 1.15fr 1.15fr 0.85fr 0.85fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-5);
 }
 
-/* Primary stat cards get more visual weight */
-.overview-grid .mc-stat-card:first-child,
-.overview-grid .mc-stat-card:nth-child(2) {
-  padding: var(--space-5);
+/* Primary "Now" card gets copper top accent */
+.overview-grid .mc-stat-card:first-child {
+  border-top: 2px solid var(--color-copper-400);
 }
 
-/* Secondary cards are more compact */
-.overview-grid .mc-stat-card:nth-child(3),
-.overview-grid .mc-stat-card:nth-child(4) {
+.overview-grid .mc-stat-card {
   padding: var(--space-4);
 }
 
-/* Lower section has generous separation from top grid */
 .overview-lower {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-5);
   padding-top: var(--space-2);
 }
@@ -43,13 +38,11 @@
   display: grid;
   gap: var(--space-2);
   padding: var(--space-4);
-  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
+  background: var(--bg-elevated);
   transition:
     border-color var(--motion-fast) var(--ease-out-quart),
-    box-shadow var(--motion-medium) var(--ease-out-quart),
-    transform var(--motion-fast) var(--ease-out-quart);
+    background-color var(--motion-fast) var(--ease-out-quart);
 }
 
 .overview-row-meta,
@@ -72,6 +65,7 @@
 .overview-terminal-item strong {
   display: block;
   font-size: 20px;
+  font-weight: 700;
   line-height: 1.1;
 }
 
@@ -83,6 +77,8 @@
 .overview-kpi span,
 .overview-small {
   color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .overview-attention-item {
@@ -95,7 +91,7 @@
 .overview-terminal-item:hover,
 .overview-row:hover {
   border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
+  background: var(--bg-muted);
 }
 
 .overview-attention-item[data-status="blocked"] {

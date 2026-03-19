@@ -13,11 +13,11 @@
   --bg-surface: #121824;
   --bg-elevated: #182131;
   --bg-muted: #1e293b;
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-subtle: #1e293b;
+  --border-default: #2a3548;
+  --border-strong: #3a4b5e;
   --text-primary: #e8edf3;
-  --text-secondary: #8b99a8;
+  --text-secondary: #7b8797;
   --text-muted: #546070;
   --text-accent: var(--color-copper-400);
   --status-queued: #4f7cff;
@@ -27,8 +27,8 @@
   --status-blocked: #d94841;
   --status-completed: #7b8797;
   --status-pending-change: #b45837;
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-mono: "SF Mono", "Cascadia Code", "Fira Code", ui-monospace, monospace;
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", monospace;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -37,13 +37,11 @@
   --space-6: 24px;
   --space-8: 32px;
   --space-10: 40px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 16px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --radius-none: 0px;
+  --shadow-none: none;
   --motion-instant: 120ms;
   --motion-fast: 180ms;
   --motion-medium: 260ms;
@@ -51,26 +49,23 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --sidebar-width-collapsed: 52px;
+  --sidebar-width-collapsed: 48px;
   --sidebar-width-expanded: 220px;
-  --header-height: 52px;
+  --header-height: 48px;
 }
 
 [data-theme="light"] {
   --bg-canvas: #f7f5f1;
   --bg-surface: #ffffff;
   --bg-elevated: #f0ede7;
-  --bg-muted: #e8e4dc;
-  --border-subtle: rgba(0, 0, 0, 0.05);
-  --border-default: rgba(0, 0, 0, 0.1);
-  --border-strong: rgba(0, 0, 0, 0.18);
+  --bg-muted: #e8e4dd;
+  --border-subtle: #e8e4dd;
+  --border-default: #d4cfc7;
+  --border-strong: #c0bab1;
   --text-primary: #1a1f28;
   --text-secondary: #5a6370;
   --text-muted: #8b96a3;
   --text-accent: var(--color-copper-600);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
 }
 
 * {

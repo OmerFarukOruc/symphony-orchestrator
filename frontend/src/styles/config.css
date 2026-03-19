@@ -8,7 +8,7 @@
 }
 
 .config-layout {
-  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.1fr) minmax(280px, 0.95fr);
+  grid-template-columns: 240px minmax(0, 1fr) 320px;
   align-items: start;
 }
 
@@ -22,11 +22,15 @@
   text-align: left;
 }
 
+.config-entry.is-modified {
+  border-left: 2px solid var(--color-copper-400);
+  padding-left: var(--space-3);
+}
+
 .config-code {
   padding: var(--space-4);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  background: var(--bg-surface);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 12px;
@@ -36,6 +40,21 @@
 
 .config-raw {
   min-height: 220px;
+}
+
+/* Diff panel styles */
+.config-diff-added {
+  background: rgba(47, 158, 68, 0.1);
+  color: var(--status-running);
+}
+
+.config-diff-removed {
+  background: rgba(217, 72, 65, 0.1);
+  color: var(--status-blocked);
+}
+
+.config-diff-changed {
+  color: var(--color-copper-400);
 }
 
 @media (max-width: 1200px) {

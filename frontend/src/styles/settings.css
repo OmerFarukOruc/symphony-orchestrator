@@ -11,7 +11,7 @@
 }
 
 .settings-layout {
-  grid-template-columns: minmax(220px, 0.38fr) minmax(0, 1fr);
+  grid-template-columns: 200px minmax(0, 1fr);
   align-items: start;
 }
 
@@ -36,11 +36,49 @@
 .settings-rail-item {
   width: 100%;
   padding: var(--space-3);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-elevated);
+  border: none;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
   text-align: left;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    background var(--motion-fast) ease;
+}
+
+.settings-rail-item:hover {
+  background: var(--bg-elevated);
+}
+
+.settings-rail-item.is-selected {
+  color: var(--text-accent);
+  border-left-color: var(--color-copper-400);
+  background: var(--bg-elevated);
+  border: none;
+  border-left: 2px solid var(--color-copper-400);
+}
+
+.settings-card {
+  padding: var(--space-5);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+.settings-card h2 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.settings-modified-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--color-copper-400);
+  margin-left: var(--space-1);
 }
 
 .settings-actions {
@@ -54,6 +92,10 @@
 .settings-diff,
 .settings-textarea {
   min-height: 180px;
+}
+
+.settings-save-flash {
+  animation: diffFlash 0.9s var(--ease-out-quart);
 }
 
 @media (max-width: 1100px) {

@@ -85,4 +85,68 @@ export const api = {
       reasoning_effort: payload.reasoningEffort,
     }),
   getMetrics: () => get<string>("/metrics"),
+  getNotifications: () =>
+    get<{
+      notifications: Array<{
+        id: string;
+        title: string;
+        detail: string;
+        channel: string;
+        timestamp: string;
+        read: boolean;
+        delivery_status: string;
+        issue_identifier?: string;
+      }>;
+    }>("/api/v1/notifications"),
+  getGitPrs: () =>
+    get<{
+      pull_requests: Array<{
+        issue: string;
+        branch: string;
+        title: string;
+        pr_number: number;
+        status: string;
+        updated: string;
+        url?: string;
+      }>;
+      summary: { active_branches: number; open_prs: number; merged_today: number; failed_ops: number };
+    }>("/api/v1/git/prs"),
+  getWorkspaces: () =>
+    get<{
+      workspaces: Array<{
+        key: string;
+        issue: string;
+        status: string;
+        path: string;
+        size: string;
+        last_activity: string;
+      }>;
+      summary: { total: number; active: number; stale: number; disk_usage: string };
+    }>("/api/v1/workspaces"),
+  getContainers: () =>
+    get<{
+      containers: Array<{
+        id: string;
+        name: string;
+        status: string;
+        issue?: string;
+        cpu_percent: number;
+        memory_used: string;
+        memory_limit: string;
+        uptime: string;
+      }>;
+      summary: { running: number; stopped: number; errored: number; avg_cpu: string };
+    }>("/api/v1/containers"),
+  getGlobalRuns: () =>
+    get<{
+      runs: Array<{
+        issue: string;
+        attempt: number;
+        status: string;
+        duration: string;
+        model: string;
+        tokens: number;
+        started: string;
+      }>;
+    }>("/api/v1/runs"),
 };

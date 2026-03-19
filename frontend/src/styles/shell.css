@@ -7,12 +7,12 @@
 .shell-sidebar {
   width: var(--sidebar-width-collapsed);
   border-right: 1px solid var(--border-default);
-  background: linear-gradient(180deg, var(--bg-surface), color-mix(in srgb, var(--bg-surface) 80%, var(--bg-canvas)));
+  background: var(--bg-muted);
   display: flex;
   flex-direction: column;
   padding: var(--space-3) var(--space-2);
   gap: var(--space-4);
-  transition: width 0.2s ease-out;
+  transition: width 200ms ease-out;
 }
 
 .shell-sidebar.is-expanded {
@@ -29,7 +29,7 @@
 .shell-header {
   height: var(--header-height);
   border-bottom: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+  background: var(--bg-surface);
   display: grid;
   grid-template-columns: 1fr minmax(220px, 420px) 1fr;
   align-items: center;
@@ -66,7 +66,12 @@
 .sidebar-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
+}
+
+.sidebar-group + .sidebar-group {
+  border-top: 1px solid var(--border-default);
+  padding-top: var(--space-3);
 }
 
 .sidebar-group-header {
@@ -77,7 +82,8 @@
   color: var(--text-muted);
   text-transform: uppercase;
   font-size: 11px;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 
 .sidebar-group-label,
@@ -94,6 +100,7 @@
 
 .shell-sidebar.is-expanded .sidebar-group-header {
   padding: 0 var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .sidebar-item {
@@ -104,28 +111,31 @@
   width: 100%;
   min-height: 36px;
   padding: 0 var(--space-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border: none;
+  border-left: 2px solid transparent;
   background: transparent;
+  color: var(--text-secondary);
   cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--ease-out-quart),
+    border-color var(--motion-fast) var(--ease-out-quart);
 }
 
-.sidebar-item:hover,
-.sidebar-item.is-active {
-  background: color-mix(in srgb, var(--color-copper-500) 14%, transparent);
-  border-color: color-mix(in srgb, var(--color-copper-500) 26%, transparent);
+.sidebar-item:hover {
+  color: var(--text-primary);
 }
 
 .sidebar-item.is-active {
   color: var(--text-accent);
+  border-left-color: var(--color-copper-400);
 }
 
 .sidebar-icon,
 .palette-item-icon {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   fill: currentColor;
-  flex: 0 0 18px;
+  flex: 0 0 20px;
 }
 
 .sidebar-item-tooltip {
@@ -134,14 +144,14 @@
   top: 50%;
   transform: translateY(-50%);
   padding: 6px 8px;
-  border-radius: var(--radius-sm);
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-md);
   color: var(--text-primary);
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
+  font-size: 12px;
+  z-index: 20;
 }
 
 .shell-sidebar:not(.is-expanded) .sidebar-item:hover .sidebar-item-tooltip {

@@ -4,7 +4,7 @@
 
 .runs-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
+  grid-template-columns: 380px minmax(320px, 1fr);
   gap: var(--space-4);
   min-height: 0;
 }
@@ -35,15 +35,21 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 11px;
+  letter-spacing: 0.03em;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 2px solid var(--border-default);
 }
 
 .runs-table tbody tr {
   height: 44px;
+}
+
+.runs-table tbody tr:nth-child(2n) {
+  background: var(--bg-canvas);
 }
 
 .runs-row.is-active {
@@ -136,8 +142,15 @@
 .runs-diff-value {
   color: var(--text-primary);
   background: color-mix(in srgb, var(--color-copper-500) 14%, transparent);
-  border-radius: var(--radius-sm);
   padding: 0 var(--space-2);
+}
+
+.runs-diff-faster {
+  color: var(--status-running);
+}
+
+.runs-diff-slower {
+  color: var(--status-retrying);
 }
 
 .runs-compare-card {
@@ -148,9 +161,24 @@
   margin: 0;
 }
 
+/* Divider line between columns */
+.runs-layout::after {
+  content: "";
+  position: absolute;
+  left: 380px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-default);
+}
+
 @media (max-width: 1100px) {
   .runs-layout {
     grid-template-columns: 1fr;
+  }
+
+  .runs-layout::after {
+    display: none;
   }
 
   .runs-table-wrap {

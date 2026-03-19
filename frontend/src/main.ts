@@ -10,8 +10,11 @@ import "./styles/modal.css";
 
 import * as attempt from "./pages/attempt";
 import * as config from "./pages/config";
+import * as containers from "./pages/containers";
+import * as git from "./pages/git";
 import * as issue from "./pages/issue";
 import * as logs from "./pages/logs";
+import * as notifications from "./pages/notifications";
 import * as observability from "./pages/observability";
 import * as overview from "./pages/overview";
 import * as planner from "./pages/planner";
@@ -19,6 +22,8 @@ import * as queue from "./pages/queue";
 import * as runs from "./pages/runs";
 import * as secrets from "./pages/secrets";
 import * as settings from "./pages/settings";
+import * as welcome from "./pages/welcome";
+import * as workspaces from "./pages/workspaces";
 import { router } from "./router";
 import { startPolling } from "./state/polling";
 import { initCommandPalette } from "./ui/command-palette";
@@ -66,6 +71,7 @@ window.addEventListener("router:navigate", (event) => {
 });
 
 router.register("/", () => overview.render());
+router.register("/welcome", () => welcome.render());
 router.register("/queue", () => queue.render());
 router.register("/queue/:id", (params) => queue.render(params));
 router.register("/issues/:id", (params) => issue.render(params));
@@ -78,7 +84,11 @@ router.register("/config", () => config.render());
 router.register("/secrets", () => secrets.render());
 router.register("/observability", () => observability.render());
 router.register("/settings", () => settings.render());
-router.register("/runs-placeholder", () => runs.render());
+router.register("/runs", () => runs.render());
+router.register("/notifications", () => notifications.render());
+router.register("/git", () => git.render());
+router.register("/workspaces", () => workspaces.render());
+router.register("/containers", () => containers.render());
 
 router.init();
 startPolling();

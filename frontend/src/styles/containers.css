@@ -1,0 +1,144 @@
+.containers-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.containers-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+
+.containers-stat {
+  padding: var(--space-3);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+.containers-stat strong {
+  font-size: 20px;
+  font-weight: 700;
+  display: block;
+}
+
+.containers-stat span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.containers-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.container-card {
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.container-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.container-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.container-gauges {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.container-gauge {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.container-gauge-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.container-gauge-bar {
+  height: 6px;
+  background: var(--border-default);
+  overflow: hidden;
+}
+
+.container-gauge-fill {
+  height: 100%;
+  background: var(--status-running);
+  transition: width var(--motion-medium) ease;
+}
+
+.container-gauge-fill.is-warning {
+  background: var(--status-retrying);
+}
+
+.container-gauge-fill.is-danger {
+  background: var(--status-blocked);
+}
+
+.container-uptime {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.container-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.container-action-button {
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--motion-fast) ease;
+}
+
+.container-action-button:hover {
+  color: var(--color-copper-400);
+}
+
+.container-action-button.is-danger:hover {
+  color: var(--status-blocked);
+}
+
+.container-logs {
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-canvas);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  max-height: 200px;
+  overflow: auto;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 900px) {
+  .containers-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .containers-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+}

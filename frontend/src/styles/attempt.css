@@ -22,10 +22,9 @@
 }
 
 .attempt-section h2 {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .attempt-summary-strip h2,
@@ -44,8 +43,7 @@
 .attempt-meta-item {
   padding: var(--space-3);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
+  background: var(--bg-surface);
 }
 
 .attempt-external-link {
@@ -56,13 +54,44 @@
 .attempt-page .issue-identifier {
   color: var(--text-accent);
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Error section with red left accent */
+.attempt-error-section {
+  border-left: 3px solid var(--status-blocked);
+  background: #1a1218;
+  padding: var(--space-4);
+}
+
+.attempt-error-section h2 {
+  color: var(--status-blocked);
 }
 
 .attempt-error-copy {
   white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Copy button for IDs */
+.attempt-copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.attempt-copy-button:hover {
+  color: var(--color-copper-400);
+  border-color: var(--border-strong);
 }
 
 @media (max-width: 900px) {

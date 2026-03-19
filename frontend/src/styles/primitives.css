@@ -5,13 +5,14 @@
 }
 
 .page-title {
-  color: var(--text-accent);
-  font-size: clamp(24px, 3vw, 32px);
-  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .page-subtitle {
   color: var(--text-secondary);
+  font-size: 13px;
   max-width: 70ch;
 }
 
@@ -22,10 +23,8 @@
 
 .page-card {
   padding: var(--space-5);
-  border-radius: var(--radius-lg);
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-surface);
 }
 
 .text-secondary {
@@ -48,7 +47,6 @@
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4);
-  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
 }
@@ -63,9 +61,8 @@
   gap: var(--space-3);
   padding: var(--space-4);
   min-height: 58vh;
-  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
+  background: var(--bg-surface);
 }
 
 .skeleton-log-list {
@@ -75,19 +72,18 @@
 .skeleton-log-row {
   gap: var(--space-2);
   padding: var(--space-4);
-  border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
+  background: var(--bg-surface);
 }
 
 .status-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  padding: 4px 8px;
   border: 1px solid var(--border-default);
   font-size: 12px;
+  font-weight: 500;
 }
 
 .status-chip-dot {
@@ -96,50 +92,72 @@
 
 .status-running {
   color: var(--status-running);
+  background: rgba(47, 158, 68, 0.12);
+  border-color: rgba(47, 158, 68, 0.25);
 }
 .status-retrying {
   color: var(--status-retrying);
+  background: rgba(217, 138, 28, 0.12);
+  border-color: rgba(217, 138, 28, 0.25);
 }
 .status-blocked {
   color: var(--status-blocked);
+  background: rgba(217, 72, 65, 0.12);
+  border-color: rgba(217, 72, 65, 0.25);
 }
 .status-completed {
   color: var(--status-completed);
+  background: rgba(123, 135, 151, 0.12);
+  border-color: rgba(123, 135, 151, 0.25);
 }
 .status-queued {
   color: var(--status-queued);
+  background: rgba(79, 124, 255, 0.12);
+  border-color: rgba(79, 124, 255, 0.25);
 }
 .status-claimed {
   color: var(--status-claimed);
+  background: rgba(124, 98, 214, 0.12);
+  border-color: rgba(124, 98, 214, 0.25);
 }
 .status-pending_change {
   color: var(--status-pending-change);
+  background: rgba(180, 88, 55, 0.12);
+  border-color: rgba(180, 88, 55, 0.25);
+}
+
+.status-running .status-chip-dot {
+  animation: pulseRunning 2s ease-in-out infinite;
 }
 
 .toast-container {
   position: fixed;
-  right: var(--space-5);
-  bottom: var(--space-5);
+  right: var(--space-4);
+  bottom: var(--space-4);
   display: grid;
   gap: var(--space-2);
   z-index: 40;
+  max-width: 360px;
 }
 
 .toast {
   min-width: 220px;
   padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-default);
   background: var(--bg-elevated);
-  box-shadow: var(--shadow-md);
+  border-left: 3px solid var(--border-strong);
+  animation: slideInRight 200ms var(--ease-out-quart);
 }
 
 .toast-success {
-  border-color: color-mix(in srgb, var(--status-running) 45%, var(--border-strong));
+  border-left-color: var(--status-running);
 }
 .toast-error {
-  border-color: color-mix(in srgb, var(--status-blocked) 45%, var(--border-strong));
+  border-left-color: var(--status-blocked);
+}
+.toast-warning {
+  border-left-color: var(--status-retrying);
 }
 .toast-info {
-  border-color: color-mix(in srgb, var(--status-queued) 45%, var(--border-strong));
+  border-left-color: var(--status-queued);
 }

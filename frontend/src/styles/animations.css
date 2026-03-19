@@ -3,7 +3,6 @@
     color var(--motion-fast) var(--ease-out-quart),
     background-color var(--motion-fast) var(--ease-out-quart),
     border-color var(--motion-fast) var(--ease-out-quart),
-    box-shadow var(--motion-medium) var(--ease-out-quart),
     opacity var(--motion-fast) var(--ease-out-quart),
     transform var(--motion-medium) var(--ease-out-quint);
 }
@@ -92,6 +91,73 @@
   }
 }
 
+@keyframes pulseRunning {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes progressBar {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 @keyframes skeletonPulse {
   0%,
   100% {
@@ -104,9 +170,9 @@
 }
 
 .skeleton {
-  background: var(--bg-muted);
-  border-radius: var(--radius-sm);
-  animation: skeletonPulse 1.5s ease-in-out infinite;
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--bg-elevated) 50%, var(--bg-muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

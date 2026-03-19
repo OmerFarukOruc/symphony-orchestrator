@@ -1,39 +1,33 @@
-/* Tier 1: Primary containers — prominent via shadow, minimal border */
+/* Tier 1: Primary containers — border elevation only, no shadows */
 .mc-panel,
 .mc-stat-card {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
 }
 
-/* Tier 2: Secondary containers — lighter shadow, subtle border */
+/* Tier 2: Secondary containers — subtle border */
 .mc-toolbar,
 .mc-strip,
 .mc-drawer,
 .mc-empty-state {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
 }
 
-/* Tier 3: Inline/row elements — no shadow, minimal border */
+/* Tier 3: Inline/row elements — minimal border */
 .mc-log-row,
 .issue-card,
 .attempts-table,
 .event-row {
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
-  box-shadow: none;
+  background: var(--bg-elevated);
 }
 
 .issue-card:hover,
 .issue-card.is-selected,
 .issue-card.is-focused {
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-sm);
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
 }
 
 .mc-panel,
@@ -49,10 +43,8 @@
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-lg);
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-surface);
 }
 
 .mc-actions,
@@ -84,14 +76,12 @@
 .mc-chip {
   min-height: 34px;
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
   background: var(--bg-elevated);
   color: var(--text-primary);
   transition:
     color var(--motion-fast) var(--ease-out-quart),
     background-color var(--motion-fast) var(--ease-out-quart),
     border-color var(--motion-fast) var(--ease-out-quart),
-    box-shadow var(--motion-medium) var(--ease-out-quart),
     transform var(--motion-fast) var(--ease-out-quart);
 }
 
@@ -111,7 +101,6 @@
 .mc-chip:hover,
 .issue-card:hover {
   border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
 }
 
 .mc-button:focus-visible,
@@ -120,7 +109,7 @@
 .mc-select:focus-visible,
 .issue-card:focus-visible,
 .attempts-table tbody tr:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-copper-500) 65%, transparent);
+  outline: 2px solid var(--color-copper-400);
   outline-offset: 2px;
 }
 
@@ -145,7 +134,7 @@
 
 .mc-empty-state-icon {
   color: var(--text-muted);
-  opacity: 0.6;
+  opacity: 0.5;
   margin-bottom: var(--space-1);
 }
 
@@ -190,20 +179,27 @@
   align-items: center;
   padding: 3px 8px;
   border: 1px solid var(--border-default);
-  border-radius: 999px;
 }
 
 .event-chip-agent {
   color: var(--status-running);
+  background: rgba(47, 158, 68, 0.12);
+  border-color: rgba(47, 158, 68, 0.25);
 }
 .event-chip-system {
   color: var(--status-queued);
+  background: rgba(79, 124, 255, 0.12);
+  border-color: rgba(79, 124, 255, 0.25);
 }
 .event-chip-error {
   color: var(--status-blocked);
+  background: rgba(217, 72, 65, 0.12);
+  border-color: rgba(217, 72, 65, 0.25);
 }
 .event-chip-state-change {
   color: var(--status-retrying);
+  background: rgba(217, 138, 28, 0.12);
+  border-color: rgba(217, 138, 28, 0.25);
 }
 
 .priority-urgent,
@@ -224,18 +220,15 @@
   padding: var(--space-3);
   text-align: left;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
   transition:
     background-color var(--motion-fast) var(--ease-out-quart),
     border-color var(--motion-fast) var(--ease-out-quart),
-    box-shadow var(--motion-medium) var(--ease-out-quart),
     transform var(--motion-fast) var(--ease-out-quart);
 }
 
 .issue-card.is-selected,
 .issue-card.is-focused {
   border-color: color-mix(in srgb, var(--color-copper-500) 40%, var(--border-strong));
-  box-shadow: var(--shadow-md);
 }
 
 .issue-card-compact {
@@ -273,14 +266,27 @@
   vertical-align: top;
 }
 
+.attempts-table th {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
+
 .attempts-table tbody tr {
   cursor: pointer;
   transition: background-color var(--motion-fast) var(--ease-out-quart);
 }
 .attempts-table tbody tr:hover,
 .attempts-table tbody tr:focus-visible {
-  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+  background: var(--bg-elevated);
 }
+
+.attempts-table tbody tr:nth-child(2n) {
+  background: var(--bg-canvas);
+}
+
 .table-empty {
   color: var(--text-secondary);
 }
