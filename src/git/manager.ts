@@ -67,7 +67,7 @@ interface CommitAndPushResult {
   branchName: string;
 }
 
-export class GitHubApiError extends Error {
+class GitHubApiError extends Error {
   constructor(
     readonly status: number,
     readonly payload: unknown,
