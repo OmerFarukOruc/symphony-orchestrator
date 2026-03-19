@@ -9,6 +9,7 @@ import {
 import { classifyRunError, failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
 import { classifyExitState } from "./exit-classifier.js";
 import { composeSessionId, waitForTurnCompletion } from "./turn-state.js";
+import { detectStopSignal } from "./signal-detection.js";
 import { isActiveState } from "../state/policy.js";
 import { sanitizeContent } from "../core/content-sanitizer.js";
 import type { AgentRunnerTurnExecutionInput, AgentRunnerTurnExecutionState } from "./turn-executor.types.js";
@@ -158,7 +159,13 @@ export async function executeTurns(
       if (result !== undefined) {
         return result; // terminal outcome
       }
-      // else: continue to next turn
+
+      // Early stop-signal detection: break immediately when the agent says DONE/BLOCKED
+      // instead of sending another continuation prompt and wasting a turn.
+      const lastContent = input.getLastAgentMessageContent?.() ?? null;
+      if (detectStopSignal(lastContent)) {
+        break;
+      }
     }
 
     return classifyExitState(input, state);

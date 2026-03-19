@@ -432,7 +432,7 @@ describe("handleWorkerFailure", () => {
 });
 
 describe("handleWorkerOutcome - git post-run failure", () => {
-  it("marks as failed and notifies when git post-run throws", async () => {
+  it("completes issue despite git post-run failure (non-fatal)", async () => {
     const ctx = makeCtx();
     (ctx.deps.gitManager as { commitAndPush: ReturnType<typeof vi.fn> }).commitAndPush.mockRejectedValueOnce(
       new Error("push rejected"),
@@ -453,11 +453,16 @@ describe("handleWorkerOutcome - git post-run failure", () => {
 
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
 
-    // Should notify as failed because git post-run throws
-    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_failed" }));
+    // Git failure is non-fatal — issue should still complete
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
     const view = ctx.completedViews.get("MT-1") as Record<string, unknown>;
-    expect(view.status).toBe("failed");
+    expect(view.status).toBe("completed");
     expect(ctx.queueRetry).not.toHaveBeenCalled();
+    // Logs the git failure
+    expect(ctx.deps.logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ issue_identifier: "MT-1", error: "push rejected" }),
+      expect.stringContaining("git post-run failed"),
+    );
   });
 });
 

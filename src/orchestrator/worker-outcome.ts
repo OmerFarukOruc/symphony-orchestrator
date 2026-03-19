@@ -6,8 +6,7 @@ import { isHardFailure, issueView, nowIso } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
 import { buildOutcomeView } from "./outcome-view-builder.js";
 import { executeGitPostRun } from "./git-post-run.js";
-
-type StopSignal = "done" | "blocked";
+import { detectStopSignal, type StopSignal } from "../agent-runner/signal-detection.js";
 
 /** Shared context type for all outcome handlers. */
 interface OutcomeContext {
@@ -27,25 +26,6 @@ interface OutcomeContext {
   resolveModelSelection: (identifier: string) => ModelSelection;
   notify: (event: NotificationEvent) => void;
   queueRetry: (issue: Issue, attempt: number, delayMs: number, error: string | null) => void;
-}
-
-function normalizeMessageForSignalDetection(content: string): string {
-  return content.trim().toLowerCase().replaceAll(/\s+/g, " ");
-}
-
-function detectStopSignal(content: string | null): StopSignal | null {
-  if (!content) {
-    return null;
-  }
-
-  const normalized = normalizeMessageForSignalDetection(content);
-  if (normalized.includes("symphony_status: done") || normalized.includes("symphony status: done")) {
-    return "done";
-  }
-  if (normalized.includes("symphony_status: blocked") || normalized.includes("symphony status: blocked")) {
-    return "blocked";
-  }
-  return null;
 }
 
 function outcomeToStatus(kind: RunOutcome["kind"]): string {
@@ -159,8 +139,13 @@ async function handleStopSignal(
       const result = await executeGitPostRun(ctx.deps.gitManager, workspace, issue, entry.repoMatch);
       pullRequestUrl = result.pullRequestUrl;
     } catch (error) {
-      handleGitPostRunFailure(ctx, error, entry, issue, workspace, sel, attempt);
-      return;
+      // Git post-run is non-fatal when DONE — the work is complete regardless.
+      // Log the error but proceed with completion to avoid infinite re-dispatch.
+      const errorText = error instanceof Error ? error.message : String(error);
+      ctx.deps.logger.info(
+        { issue_identifier: issue.identifier, error: errorText },
+        "git post-run failed after DONE — completing issue anyway",
+      );
     }
   }
 
@@ -182,38 +167,13 @@ async function handleStopSignal(
     attempt,
     metadata: { workspace: workspace.path, pullRequestUrl },
   });
-  ctx.releaseIssueClaim(issue.id);
-}
-
-function handleGitPostRunFailure(
-  ctx: OutcomeContext,
-  error: unknown,
-  entry: RunningEntry,
-  issue: Issue,
-  workspace: Workspace,
-  sel: ModelSelection,
-  attempt: number | null,
-): void {
-  const errorText = error instanceof Error ? error.message : String(error);
-  ctx.notify({
-    type: "worker_failed",
-    severity: "critical",
-    timestamp: nowIso(),
-    message: `git post-run failed: ${errorText}`,
-    issue: issueRef(issue),
-    attempt,
-    metadata: { workspace: workspace.path },
-  });
-  ctx.completedViews.set(
-    issue.identifier,
-    buildOutcomeView(issue, workspace, entry, sel, {
-      status: "failed",
-      attempt,
-      error: errorText,
-      message: `git post-run failed: ${errorText}`,
-    }),
-  );
-  ctx.releaseIssueClaim(issue.id);
+  // For DONE: keep the claim held so the issue is not re-dispatched while it
+  // remains in an active state in Linear. The claim acts as a sticky "completed"
+  // marker until the issue transitions to a terminal state.
+  // For BLOCKED: release so the issue can be retried after intervention.
+  if (isBlocked) {
+    ctx.releaseIssueClaim(issue.id);
+  }
 }
 
 function queueRetryWithLog(
@@ -268,6 +228,16 @@ async function handlePostReconciliation(
   }
 
   const stopSignal = outcome.kind === "normal" ? detectStopSignal(entry.lastAgentMessageContent) : null;
+  ctx.deps.logger.info(
+    {
+      issue_identifier: latestIssue.identifier,
+      outcome_kind: outcome.kind,
+      has_lastAgentMsg: entry.lastAgentMessageContent !== null,
+      lastAgentMsgTail: entry.lastAgentMessageContent?.slice(-80) ?? null,
+      stopSignal,
+    },
+    "post-reconciliation stop-signal check",
+  );
   if (stopSignal) {
     await handleStopSignal(ctx, stopSignal, entry, latestIssue, workspace, sel, attempt);
     return;

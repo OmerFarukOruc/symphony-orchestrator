@@ -21,6 +21,8 @@ export interface AgentRunnerTurnExecutionInput {
   turnState: TurnState;
   linearClient: LinearClient;
   setActiveTurnId: (turnId: string | null) => void;
+  /** Returns the latest agent message content for early stop-signal detection between turns. */
+  getLastAgentMessageContent?: () => string | null;
 }
 
 export interface AgentRunnerTurnExecutionState {

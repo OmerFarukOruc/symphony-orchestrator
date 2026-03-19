@@ -104,7 +104,12 @@ export class GitManager {
     return { branchName };
   }
 
-  async commitAndPush(workspaceDir: string, message: string, branchName?: string): Promise<CommitAndPushResult> {
+  async commitAndPush(
+    workspaceDir: string,
+    message: string,
+    branchName?: string,
+    tokenEnvName?: string,
+  ): Promise<CommitAndPushResult> {
     const status = await this.runGit(["status", "--porcelain"], { cwd: workspaceDir, env: this.env });
     const resolvedBranch = branchName ?? (await this.currentBranch(workspaceDir));
     if (status.stdout.trim().length === 0) {
@@ -113,7 +118,7 @@ export class GitManager {
 
     await this.runGit(["add", "-A"], { cwd: workspaceDir, env: this.env });
     await this.runGit(["commit", "-m", message], { cwd: workspaceDir, env: this.env });
-    await this.runGit(["push", "-u", "origin", resolvedBranch], { cwd: workspaceDir, env: this.env });
+    await this.pushWithToken(workspaceDir, resolvedBranch, tokenEnvName);
     return { committed: true, pushed: true, branchName: resolvedBranch };
   }
 
@@ -175,6 +180,22 @@ export class GitManager {
       },
       input.tokenEnvName,
     );
+  }
+
+  /** Push with token-based auth via git http.extraheader when GITHUB_TOKEN is available. */
+  private async pushWithToken(workspaceDir: string, branch: string, tokenEnvName?: string): Promise<void> {
+    const envName = tokenEnvName ?? this.defaultGithubTokenEnv;
+    const token = this.env[envName];
+    if (token) {
+      const encodedAuth = Buffer.from(`x-access-token:${token}`).toString("base64");
+      await this.runGit(
+        ["-c", `http.extraHeader=Authorization: Basic ${encodedAuth}`, "push", "-u", "origin", branch],
+        { cwd: workspaceDir, env: this.env },
+      );
+    } else {
+      // Fall back to plain push (relies on external credential helper)
+      await this.runGit(["push", "-u", "origin", branch], { cwd: workspaceDir, env: this.env });
+    }
   }
 
   private async currentBranch(workspaceDir: string): Promise<string> {

@@ -61,10 +61,18 @@ codex:
     extra_mounts: []
     env_passthrough:
       - LINEAR_API_KEY
+      - GITHUB_TOKEN
     logs:
       driver: json-file
       max_size: "50m"
       max_file: 3
+repos:
+  - repo_url: "https://github.com/OmerFarukOruc/symphony-orchestrator.git"
+    default_branch: "main"
+    identifier_prefix: "NIN"
+    github_owner: "OmerFarukOruc"
+    github_repo: "symphony-orchestrator"
+    github_token_env: "GITHUB_TOKEN"
 server:
   port: 4000
 ---

@@ -8,7 +8,12 @@ export async function executeGitPostRun(
   issue: Issue,
   repoMatch: RepoMatch,
 ): Promise<{ pullRequestUrl: string | null }> {
-  const commitResult = await gitManager.commitAndPush(workspace.path, `${issue.identifier}: ${issue.title}`);
+  const commitResult = await gitManager.commitAndPush(
+    workspace.path,
+    `${issue.identifier}: ${issue.title}`,
+    undefined,
+    repoMatch.githubTokenEnv,
+  );
   if (!commitResult.pushed) {
     return { pullRequestUrl: null };
   }

@@ -66,15 +66,27 @@ export class AgentRunner {
     await this.deps.workspaceManager.prepareForAttempt(input.workspace);
     await this.deps.workspaceManager.runBeforeRun(input.workspace);
 
+    // Track the latest agent message content for early stop-signal detection.
+    // This wrapper MUST be created before the Docker session so the
+    // session's notification pipeline flows through it.
+    let lastAgentMessageContent: string | null = null;
+    const wrappedOnEvent: AgentRunnerEventHandler = (event) => {
+      if (event.event === "item_completed" && event.message?.includes("agentMessage") && event.content) {
+        lastAgentMessageContent = event.content;
+      }
+      input.onEvent(event);
+    };
+    const wrappedInput = { ...input, onEvent: wrappedOnEvent };
+
     const session = await createDockerSession(
       config,
-      buildDockerInput(input),
+      buildDockerInput(wrappedInput),
       buildDockerDeps(this.deps),
       this.turnState,
     );
 
     try {
-      return await this.executeSession(session, config, input);
+      return await this.executeSession(session, config, wrappedInput, () => lastAgentMessageContent);
     } catch (error) {
       return handleRunError(error, session, input.signal);
     } finally {
@@ -98,6 +110,7 @@ export class AgentRunner {
       signal: AbortSignal;
       onEvent: AgentRunnerEventHandler;
     },
+    getLastAgentMessageContent: () => string | null,
   ): Promise<RunOutcome> {
     const initResult = await initializeSession(
       session,
@@ -121,6 +134,7 @@ export class AgentRunner {
         setActiveTurnId: (turnId) => {
           session.turnId = turnId;
         },
+        getLastAgentMessageContent,
       },
       {
         threadId,

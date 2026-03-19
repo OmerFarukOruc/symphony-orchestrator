@@ -64,7 +64,12 @@ describe("executeGitPostRun", () => {
       createPullRequest: vi.fn(),
     };
     await executeGitPostRun(gitManager, makeWorkspace(), issue, makeRepoMatch());
-    expect(gitManager.commitAndPush).toHaveBeenCalledWith(makeWorkspace().path, `${issue.identifier}: ${issue.title}`);
+    expect(gitManager.commitAndPush).toHaveBeenCalledWith(
+      makeWorkspace().path,
+      `${issue.identifier}: ${issue.title}`,
+      undefined,
+      makeRepoMatch().githubTokenEnv,
+    );
   });
 
   it("returns null pullRequestUrl when PR response has no html_url", async () => {
