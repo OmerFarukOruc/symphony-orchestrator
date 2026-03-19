@@ -58,6 +58,7 @@ Significant improvements to developer experience, extensibility, and autonomous 
 | [#56](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/56) | Docker/container sandbox — self-hosted runner pattern; Unsandbox-style remote exec with credential sync + artifact retrieval *(Orchestra)*; Daytona SDK cloud sandbox provisioning with pre-built snapshots *(Eva)* | core | Follow-up, thepopebot, Orchestra, Eva |
 | [#57](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/57) | Agent progress monitoring — stall detection, iteration limits; session dedup, mutex status locking *(jinyang)*; claim system + stall reconciliation *(Orchestra)* | core | Follow-up, jinyang, Orchestra |
 | [#58](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/58) | Secret/config injection — dual-tier secret model with env-sanitizer; encrypted env var storage with resolution at sandbox startup *(Eva)* | core | Follow-up, thepopebot, Eva |
+| [#61](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/61) | Per-state concurrency limits — cap agents per work-item state; `max_concurrent_agents_by_state` config map with per-state dispatch guards | core | symphony-for-github-projects |
 | [#66](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/66) | Chat integration layer — pluggable channel adapters (Telegram, Discord, Slack) with normalized message format; MS Teams bot adapter via Bot Framework *(Eva)* | core, api | thepopebot, Eva |
 | [#67](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/67) | Scheduled/cron job system — JSON-configured recurring tasks with per-cron model overrides | core | thepopebot |
 | [#68](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/68) | Headless agent execution — lightweight runs without branch/PR workflow | core | thepopebot |
@@ -139,11 +140,17 @@ graph TD
     L["#14 Cost Tracking"] --> M["#42 Alerting Rules"]
     N["#41 Event Pipeline"] --> M
     N --> O["#15 Live Agent Feed"]
+    N --> X["#87 Agent Presence Tracking"]
     P["#25 Acceptance Validation"] --> Q["#40 Rollback Triggers"]
     R["#39 Pre-merge Verification"] --> Q
+    R --> Y["#86 Auto Test Generation"]
     S["#28 Meta-agent"] --> T["#49 Continuous Improvement"]
     U["#30 Vector Memory"] --> T
     V["#48 Issue Decomposition"] --> W["#50 Multi-repo Orchestration"]
+    Z["#56 Docker Sandbox"] --> AA["#82 Sandbox Snapshots"]
+    Z --> AB["#70 Interactive Workspaces"]
+    AC["#72 Provider Health Daemon"] --> AD["#71 Circuit Breaker"]
+    AE["#77 Issue Dependencies"] --> V
 ```
 
 ---
@@ -153,10 +160,10 @@ graph TD
 | Tier | Issues | Status |
 |------|:------:|--------|
 | **Tier 1** — Ship first | 7 | Not started |
-| **Tier 2** — High impact | 34 | Not started |
+| **Tier 2** — High impact | 35 | Not started |
 | **Tier 3** — Architectural | 26 | Not started |
 | **Tier 4** — Lights-Out | 4 | Not started |
-| **Total** | **71** | |
+| **Total** | **72** | |
 
 ---
 

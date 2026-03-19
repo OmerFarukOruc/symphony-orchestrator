@@ -1,8 +1,16 @@
 import type { OrchestratorContext } from "./context.js";
-import type { Issue, ModelSelection, RecentEvent, RunOutcome, TokenUsageSnapshot, Workspace } from "../core/types.js";
+import type {
+  Issue,
+  ModelSelection,
+  RecentEvent,
+  RunOutcome,
+  RuntimeIssueView,
+  TokenUsageSnapshot,
+  Workspace,
+} from "../core/types.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type { OrchestratorDeps, RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
-import type { IssueView } from "./views.js";
+
 import { usageDelta } from "./views.js";
 import { resolveModelSelection as resolveModelSelectionFromConfig } from "./model-selection.js";
 import {
@@ -69,10 +77,10 @@ export interface OrchestratorState {
   running: boolean;
   runningEntries: Map<string, RunningEntry>;
   retryEntries: Map<string, RetryRuntimeEntry>;
-  completedViews: Map<string, IssueView>;
-  detailViews: Map<string, IssueView>;
+  completedViews: Map<string, RuntimeIssueView>;
+  detailViews: Map<string, RuntimeIssueView>;
   claimedIssueIds: Set<string>;
-  queuedViews: IssueView[];
+  queuedViews: RuntimeIssueView[];
   recentEvents: RecentEvent[];
   rateLimits: unknown;
   issueModelOverrides: Map<string, Omit<ModelSelection, "source">>;

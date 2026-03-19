@@ -152,12 +152,10 @@ async function awaitShutdown(logger: ReturnType<typeof createLogger>, shutdown: 
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main()
-    .then((code) => {
-      process.exitCode = code;
-    })
-    .catch((error) => {
-      console.error(error);
-      process.exitCode = 1;
-    });
+  try {
+    process.exitCode = await main();
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  }
 }

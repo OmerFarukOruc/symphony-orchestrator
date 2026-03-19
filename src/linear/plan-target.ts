@@ -20,7 +20,7 @@ function extractNodesConnection(
   if (Object.hasOwn(payload, "data") === false || typeof payload.data !== "object" || payload.data === null) {
     throw new Error("linear graphql response missing data object");
   }
-  const root = payload.data as Record<string, unknown>;
+  const root = payload.data;
   const connection = asRecord(root[fieldName]);
   const nodes = asArray(connection.nodes).map((node) => asRecord(node));
   const pageInfoRecord = asRecord(connection.pageInfo);

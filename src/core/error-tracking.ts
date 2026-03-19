@@ -45,7 +45,7 @@ class SentryTracker implements ErrorTracker {
     private readonly dsn: string,
     private readonly logger: SymphonyLogger,
   ) {
-    logger.info({ dsn: dsn.replace(/\/\/.*@/, "//<redacted>@") }, "Sentry error tracking initialized");
+    logger.info({ dsn: dsn.replace(/\/\/[^@]*@/, "//<redacted>@") }, "Sentry error tracking initialized");
   }
 
   captureException(error: Error, context?: Record<string, unknown>): void {

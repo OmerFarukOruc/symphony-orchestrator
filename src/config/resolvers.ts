@@ -7,6 +7,7 @@
  * secrets ($SECRET:name), or home directories (~).
  */
 
+import os from "node:os";
 import path from "node:path";
 
 /**
@@ -21,14 +22,14 @@ function resolveEnvBackedString(value: unknown, secretResolver?: (name: string) 
   if (typeof value !== "string") {
     return "";
   }
-  const secretMatch = /^\$SECRET:([\w._-]+)$/.exec(value);
+  const secretMatch = /^\$SECRET:([\w.-]+)$/.exec(value);
   if (secretMatch) {
     return secretResolver?.(secretMatch[1]) ?? "";
   }
   if (!value.startsWith("$")) {
     return value;
   }
-  if (/^\$[A-Za-z_]\w*$/.test(value) === false) {
+  if (!/^\$[A-Za-z_]\w*$/.test(value)) {
     return value;
   }
 
@@ -58,7 +59,7 @@ function expandHomePath(value: unknown): string {
  * Falls back to "/tmp" if TMPDIR is not set.
  */
 function resolveTmpDir(value: string): string {
-  return value.replaceAll("$TMPDIR", process.env.TMPDIR ?? "/tmp");
+  return value.replaceAll("$TMPDIR", process.env.TMPDIR ?? os.tmpdir());
 }
 
 /**
@@ -74,7 +75,7 @@ export function resolveConfigString(value: unknown, secretResolver?: (name: stri
  * Unlike resolveEnvBackedString, this replaces all occurrences within the string.
  */
 function expandPathEnvVars(value: string): string {
-  return value.replaceAll(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_match, name: string) => process.env[name] ?? "");
+  return value.replaceAll(/\$([A-Za-z_]\w*)/g, (_match, name: string) => process.env[name] ?? "");
 }
 
 /**

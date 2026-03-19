@@ -36,16 +36,28 @@ export async function loadWorkflowDefinition(workflowPath: string): Promise<Work
     };
   }
 
-  const match = /^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/.exec(source);
-  if (!match) {
+  const firstNewline = source.indexOf("\n");
+  if (firstNewline === -1) {
     throw new WorkflowLoaderError({
       code: "workflow_parse_error",
       message: "workflow front matter is not closed with a terminating --- line",
     });
   }
 
+  const endMarker = source.indexOf("\n---", firstNewline);
+  if (endMarker === -1) {
+    throw new WorkflowLoaderError({
+      code: "workflow_parse_error",
+      message: "workflow front matter is not closed with a terminating --- line",
+    });
+  }
+
+  const frontMatterContent = source.slice(firstNewline + 1, endMarker);
+  const afterEnd = source.indexOf("\n", endMarker + 4);
+  const body = afterEnd === -1 ? "" : source.slice(afterEnd + 1);
+
   try {
-    const parsed = YAML.parse(match[1]);
+    const parsed = YAML.parse(frontMatterContent);
     if (!isRecord(parsed)) {
       throw new WorkflowLoaderError({
         code: "workflow_front_matter_not_a_map",
@@ -55,7 +67,7 @@ export async function loadWorkflowDefinition(workflowPath: string): Promise<Work
 
     return {
       config: parsed,
-      promptTemplate: match[2].trim(),
+      promptTemplate: body.trim(),
     };
   } catch (error) {
     if (error instanceof WorkflowLoaderError) {

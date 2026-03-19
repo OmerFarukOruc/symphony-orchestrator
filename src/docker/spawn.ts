@@ -4,6 +4,12 @@ import type { PathRegistry } from "../workspace/path-registry.js";
 import type { SandboxConfig } from "../core/types.js";
 
 const CONTAINER_HOME = "/home/agent";
+/**
+ * Container-internal path — isolated from host filesystem.
+ * The container's /tmp is a dedicated tmpfs mount with restricted
+ * size and permissions (see buildResourceAndLogArgs). The container
+ * also runs with --cap-drop=ALL and --security-opt=no-new-privileges.
+ */
 const CONTAINER_CODEX_HOME = "/tmp/symphony-codex-home";
 
 export interface DockerRunInput {
@@ -93,8 +99,6 @@ function buildResourceAndLogArgs(args: string[], cfg: SandboxConfig): void {
     cfg.resources.cpus,
     "--tmpfs",
     `/tmp:exec,size=${cfg.resources.tmpfsSize}`,
-  );
-  args.push(
     "--log-driver",
     cfg.logs.driver,
     "--log-opt",

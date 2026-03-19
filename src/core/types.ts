@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- Pure type definitions; splitting would hurt readability. */
 import type { NotificationVerbosity } from "../notification/channel.js";
 
 export interface WorkflowDefinition {
@@ -153,7 +152,7 @@ export interface RuntimeSnapshot {
     totalTokens: number;
     secondsRunning: number;
   };
-  rateLimits: unknown | null;
+  rateLimits: unknown;
   recentEvents: RecentEvent[];
 }
 

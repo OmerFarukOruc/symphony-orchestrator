@@ -99,7 +99,7 @@ type LaunchContext = {
   notify: (event: NotificationEvent) => void;
   pushEvent: (event: RecentEvent & { usage?: unknown; rateLimits?: unknown }) => void;
   applyUsageEvent: (entry: RunningEntry, usage: TokenUsageSnapshot, usageMode: "absolute_total" | "delta") => void;
-  setRateLimits: (rateLimits: unknown | null) => void;
+  setRateLimits: (rateLimits: unknown) => void;
   handleWorkerPromise: (
     promise: Promise<RunOutcome>,
     issue: Issue,

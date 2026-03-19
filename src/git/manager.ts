@@ -30,9 +30,10 @@ function sanitizeBranchSegment(value: string): string {
   return value
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9._/-]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^[-/]+|[-/]+$/g, "");
+    .replaceAll(/[^a-z0-9._/-]+/g, "-")
+    .replaceAll(/-{2,}/g, "-")
+    .replace(/^[-/]+/, "")
+    .replace(/[-/]+$/, "");
 }
 
 function deriveBranchName(issue: Pick<Issue, "identifier" | "branchName">): string {

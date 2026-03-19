@@ -27,7 +27,7 @@ function rewriteHostBoundUrl(value: string): string {
     }
     return parsed.toString();
   } catch {
-    return value.replace(/:\/\/(127\.0\.0\.1|localhost)(?=[:/]|$)/g, "://host.docker.internal");
+    return value.replaceAll(/:\/\/(127\.0\.0\.1|localhost)(?=[:/]|$)/g, "://host.docker.internal");
   }
 }
 
@@ -114,8 +114,11 @@ export function buildConfigToml(config: CodexConfig): string {
 
   if (provider) {
     const providerId = providerIdFor(provider);
-    lines.push(`model_provider = ${formatTomlString(providerId)}`);
-    lines.push("", `[model_providers.${formatTomlKey(providerId)}]`);
+    lines.push(
+      `model_provider = ${formatTomlString(providerId)}`,
+      "",
+      `[model_providers.${formatTomlKey(providerId)}]`,
+    );
     appendProviderFields(lines, provider, providerId);
   } else {
     lines.push('model_provider = "openai"');

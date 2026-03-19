@@ -1,8 +1,5 @@
 import type { Issue, RuntimeIssueView, TokenUsageSnapshot } from "../core/types.js";
 
-/** @deprecated Use `RuntimeIssueView` directly. Kept for backward compatibility. */
-export type IssueView = RuntimeIssueView;
-
 export function nowIso(): string {
   return new Date().toISOString();
 }
@@ -13,7 +10,7 @@ export function isHardFailure(errorCode: string | null): boolean {
   );
 }
 
-export function issueView(issue: Issue, extra?: Partial<IssueView>): IssueView {
+export function issueView(issue: Issue, extra?: Partial<RuntimeIssueView>): RuntimeIssueView {
   return {
     issueId: issue.id,
     identifier: issue.identifier,

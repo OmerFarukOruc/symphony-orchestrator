@@ -49,8 +49,8 @@ export function queueRetry(
   }
   const dueAtMs = Date.now() + delayMs;
   const timer = setTimeout(() => {
-    void ctx.revalidateAndLaunchRetry(issue.id, attempt).catch((failure) => {
-      void ctx.handleRetryLaunchFailure(issue, attempt, failure);
+    void ctx.revalidateAndLaunchRetry(issue.id, attempt).catch((retryError) => {
+      void ctx.handleRetryLaunchFailure(issue, attempt, retryError);
     });
   }, delayMs);
   ctx.retryEntries.set(issue.id, {

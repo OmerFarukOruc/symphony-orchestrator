@@ -61,7 +61,8 @@ function emitTurnCompletedEvent(
   if (completedStatus === "completed") {
     rawMessage = `turn ${state.turnCount} completed`;
   } else if (completedError.message) {
-    rawMessage = String(completedError.message);
+    rawMessage =
+      typeof completedError.message === "string" ? completedError.message : JSON.stringify(completedError.message);
   } else {
     rawMessage = `turn ${state.turnCount} ended with status ${completedStatus}`;
   }

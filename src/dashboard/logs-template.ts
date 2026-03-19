@@ -6,7 +6,7 @@ import { logsScript } from "./logs/script.js";
  * Full logs page — assembles styles, HTML layout, and client-side script.
  */
 export function renderLogsTemplate(issueIdentifier: string): string {
-  const escaped = issueIdentifier.replace(/[&<>"']/g, "");
+  const escaped = issueIdentifier.replaceAll(/[&<>"']/g, "");
   return `<!DOCTYPE html>
 <html lang="en">
 <head>

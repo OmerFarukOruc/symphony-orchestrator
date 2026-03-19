@@ -133,7 +133,7 @@ export function buildIssuesByIdsQuery(): string {
  * @example
  * ```typescript
  * const query = buildIssuesByStatesQuery();
- * const variables = { states: ["In Progress", "Todo"], after: null };
+ * const variables = { states: ["In Progress", "Triage"], after: null };
  * ```
  */
 export function buildIssuesByStatesQuery(): string {

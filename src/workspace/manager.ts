@@ -16,7 +16,7 @@ async function ensureDirectory(pathname: string): Promise<void> {
 }
 
 function sanitizeIdentifier(identifier: string): string {
-  return identifier.replace(/[^A-Za-z0-9._-]/g, "_");
+  return identifier.replaceAll(/[^A-Za-z0-9._-]/g, "_");
 }
 
 async function pathIsDirectory(pathname: string): Promise<boolean> {
@@ -136,6 +136,7 @@ export class WorkspaceManager {
         cwd: workspace.path,
         env: {
           ...process.env,
+          PATH: process.env.PATH,
           SYMPHONY_WORKSPACE_PATH: workspace.path,
           SYMPHONY_ISSUE_IDENTIFIER: issueIdentifier,
         },

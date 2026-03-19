@@ -1,5 +1,5 @@
 import type { Issue, ServiceConfig } from "../core/types.js";
-import { LinearClientError } from "./client.js";
+import { LinearClientError } from "./errors.js";
 
 interface GraphQLResponse {
   data?: Record<string, unknown>;
@@ -33,7 +33,7 @@ function extractIssuesConnection(payload: GraphQLResponse): IssuesConnection {
   if (Object.hasOwn(payload, "data") === false || typeof payload.data !== "object" || payload.data === null) {
     throw new LinearClientError("linear_unknown_payload", "linear graphql response missing data object");
   }
-  const root = payload.data as Record<string, unknown>;
+  const root = payload.data;
   const issues = root.issues;
   if (typeof issues !== "object" || issues === null || Array.isArray(issues)) {
     throw new LinearClientError("linear_unknown_payload", "linear graphql response missing issues connection");

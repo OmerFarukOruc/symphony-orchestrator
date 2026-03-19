@@ -77,7 +77,7 @@ function setAtPath(target: Record<string, unknown>, segments: string[], value: u
     cursor = child;
   }
 
-  cursor[segments[segments.length - 1]] = value;
+  cursor[segments.at(-1)!] = value;
 }
 
 function mergeDeep(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {

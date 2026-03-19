@@ -43,7 +43,7 @@ function parseEnvelope(source: string): SecretsEnvelope {
     throw new Error(`unsupported secrets algorithm: ${String(algorithm)}`);
   }
   if (typeof iv !== "string" || typeof authTag !== "string" || typeof ciphertext !== "string") {
-    throw new Error("secrets envelope contains invalid binary fields");
+    throw new TypeError("secrets envelope contains invalid binary fields");
   }
 
   return {
