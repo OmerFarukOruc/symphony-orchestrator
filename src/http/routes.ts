@@ -31,13 +31,14 @@ interface HttpRouteDeps {
 
 export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   const staticRoot = deps.frontendDir ?? frontendDist;
+
+  app.use(createRateLimiter({ windowMs: 60_000, maxRequests: 120 }));
   app.use(express.static(staticRoot));
   registerStateAndMetricsRoutes(app, deps);
   registerExtensionApis(app, deps);
   registerIssueRoutes(app, deps);
 
-  const spaRateLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 120 });
-  app.use(spaRateLimiter, (request, response) => {
+  app.use((request, response) => {
     if (request.path.startsWith("/api/") || request.path === "/metrics") {
       response.status(404).json({ error: { code: "not_found", message: "Not found" } });
       return;

@@ -28,7 +28,7 @@ function sortForStableStringify(value: unknown): unknown {
     return value;
   }
 
-  const sorted: Record<string, unknown> = {};
+  const sorted: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
   for (const key of Object.keys(value).sort((left, right) => left.localeCompare(right))) {
     sorted[key] = sortForStableStringify(value[key]);
   }
@@ -53,14 +53,14 @@ function removeAtPath(target: Record<string, unknown>, segments: string[]): bool
     throw new TypeError(`Refusing to traverse dangerous key: ${head}`);
   }
   if (tail.length === 0) {
-    if (!(head in target)) {
+    if (!Object.hasOwn(target, head)) {
       return false;
     }
     delete target[head];
     return true;
   }
 
-  const child = target[head];
+  const child = Object.hasOwn(target, head) ? target[head] : undefined;
   if (!isRecord(child)) {
     return false;
   }
@@ -79,9 +79,9 @@ function setAtPath(target: Record<string, unknown>, segments: string[], value: u
     if (isDangerousKey(key)) {
       throw new TypeError(`Refusing to traverse dangerous key: ${key}`);
     }
-    const child = cursor[key];
+    const child = Object.hasOwn(cursor, key) ? cursor[key] : undefined;
     if (!isRecord(child)) {
-      const next: Record<string, unknown> = {};
+      const next: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
       cursor[key] = next;
       cursor = next;
       continue;
@@ -99,8 +99,10 @@ function setAtPath(target: Record<string, unknown>, segments: string[], value: u
 function mergeDeep(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
   const output = structuredClone(base) as Record<string, unknown>;
 
-  for (const [key, patchValue] of Object.entries(patch)) {
-    const baseValue = output[key];
+  for (const key of Object.keys(patch)) {
+    if (isDangerousKey(key)) continue;
+    const patchValue = patch[key];
+    const baseValue = Object.hasOwn(output, key) ? output[key] : undefined;
     if (isRecord(baseValue) && isRecord(patchValue)) {
       output[key] = mergeDeep(baseValue, patchValue);
       continue;
