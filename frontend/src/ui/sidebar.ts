@@ -1,11 +1,15 @@
 import { router } from "../router";
 import { navGroups, navItems } from "./nav-items";
 
+const svgParser = new DOMParser();
+
 function iconMarkup(svg: string): HTMLSpanElement {
   const span = document.createElement("span");
   span.className = "sidebar-icon";
   span.setAttribute("aria-hidden", "true");
-  span.innerHTML = svg;
+  const parsed = svgParser.parseFromString(svg, "image/svg+xml");
+  const svgEl = parsed.documentElement;
+  span.append(svgEl);
   return span;
 }
 
