@@ -16,7 +16,7 @@ import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleModelUpdate } from "./model-handler.js";
 import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
 
-import { createRateLimiter } from "./rate-limit.js";
+import rateLimit from "express-rate-limit";
 
 const frontendDist = join(process.cwd(), "dist/frontend");
 
@@ -32,7 +32,7 @@ interface HttpRouteDeps {
 export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   const staticRoot = deps.frontendDir ?? frontendDist;
 
-  app.use(createRateLimiter({ windowMs: 60_000, maxRequests: 120 }));
+  app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false }));
   app.use(express.static(staticRoot));
   registerStateAndMetricsRoutes(app, deps);
   registerExtensionApis(app, deps);

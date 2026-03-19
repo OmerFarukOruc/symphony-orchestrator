@@ -52,6 +52,9 @@ function removeAtPath(target: Record<string, unknown>, segments: string[]): bool
   if (isDangerousKey(head)) {
     throw new TypeError(`Refusing to traverse dangerous key: ${head}`);
   }
+  if (head === "__proto__" || head === "constructor" || head === "prototype") {
+    return false;
+  }
   if (tail.length === 0) {
     if (!Object.hasOwn(target, head)) {
       return false;
@@ -79,6 +82,9 @@ function setAtPath(target: Record<string, unknown>, segments: string[], value: u
     if (isDangerousKey(key)) {
       throw new TypeError(`Refusing to traverse dangerous key: ${key}`);
     }
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      return;
+    }
     const child = Object.hasOwn(cursor, key) ? cursor[key] : undefined;
     if (!isRecord(child)) {
       const next: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
@@ -92,6 +98,9 @@ function setAtPath(target: Record<string, unknown>, segments: string[], value: u
   const leafKey = segments.at(-1)!;
   if (isDangerousKey(leafKey)) {
     throw new TypeError(`Refusing to set dangerous key: ${leafKey}`);
+  }
+  if (leafKey === "__proto__" || leafKey === "constructor" || leafKey === "prototype") {
+    return;
   }
   cursor[leafKey] = value;
 }
