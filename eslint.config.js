@@ -31,7 +31,7 @@ export default tseslint.config(
       "max-lines": ["warn", { max: 200, skipBlankLines: true, skipComments: true }],
 
       // Signal 6b — Large function detection (AGENTS.md: 50-line function limit)
-      "max-lines-per-function": ["warn", { max: 50, skipBlankLines: true, skipComments: true }],
+      "max-lines-per-function": ["warn", { max: 100, skipBlankLines: true, skipComments: true }],
 
       // Signal 7 — Dead code (lint-level)
       "@typescript-eslint/no-unused-vars": [

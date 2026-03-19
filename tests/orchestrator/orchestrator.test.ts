@@ -888,11 +888,11 @@ describe("Orchestrator", () => {
       attempt: 1,
       error: null,
     };
-    (orchestrator as unknown as { completedViews: Map<string, unknown> }).completedViews.set(
+    (orchestrator as unknown as { _state: { completedViews: Map<string, unknown> } })._state.completedViews.set(
       issue.identifier,
       seededView,
     );
-    (orchestrator as unknown as { queuedViews: Array<unknown> }).queuedViews = [seededView];
+    (orchestrator as unknown as { _state: { queuedViews: Array<unknown> } })._state.queuedViews = [seededView];
 
     await orchestrator.start();
     await vi.advanceTimersByTimeAsync(0);

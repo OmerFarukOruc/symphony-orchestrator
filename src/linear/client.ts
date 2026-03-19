@@ -1,4 +1,5 @@
-import type { PlannedIssue, PlanningPriority } from "../planning/skill.js";
+import type { PlannedIssue } from "../planning/skill.js";
+import { normalizePlanningPriority, buildPlannedIssueDescription } from "./plan-helpers.js";
 import { resolvePlanTarget } from "./plan-target.js";
 import { asBooleanOrNull, asRecord, asStringOrNull } from "../utils/type-guards.js";
 import { normalizeIssue } from "./issue-parser.js";
@@ -42,50 +43,6 @@ export class LinearClientError extends Error {
     super(message, options);
     this.name = "LinearClientError";
   }
-}
-
-const asString = asStringOrNull;
-const asBoolean = asBooleanOrNull;
-
-function normalizePlanningPriority(priority: PlanningPriority): number {
-  if (priority === "high") {
-    return 1;
-  }
-  if (priority === "medium") {
-    return 2;
-  }
-  return 3;
-}
-
-function buildPlannedIssueDescription(
-  issue: PlannedIssue,
-  createdByPlanId: ReadonlyMap<string, LinearCreatedIssue>,
-): string {
-  const sections: string[] = [];
-  if (issue.summary.trim()) {
-    sections.push(issue.summary.trim());
-  }
-
-  if (issue.acceptanceCriteria.length > 0) {
-    sections.push(
-      ["Acceptance criteria:", ...issue.acceptanceCriteria.map((criterion) => `- ${criterion}`)].join("\n"),
-    );
-  }
-
-  if (issue.dependencies.length > 0) {
-    sections.push(
-      [
-        "Dependencies:",
-        ...issue.dependencies.map((dependency) => {
-          const created = createdByPlanId.get(dependency);
-          return `- ${created?.identifier ?? dependency}`;
-        }),
-      ].join("\n"),
-    );
-  }
-
-  sections.push(`Plan item: ${issue.id}`);
-  return sections.filter(Boolean).join("\n\n");
 }
 
 async function readJsonResponse(response: Response): Promise<GraphQLResponse> {
@@ -175,11 +132,11 @@ export class LinearClient {
       });
 
       const issueCreate = asRecord(asRecord(payload.data).issueCreate);
-      const success = asBoolean(issueCreate.success);
+      const success = asBooleanOrNull(issueCreate.success);
       const createdIssue = asRecord(issueCreate.issue);
-      const id = asString(createdIssue.id);
-      const identifier = asString(createdIssue.identifier);
-      const url = asString(createdIssue.url);
+      const id = asStringOrNull(createdIssue.id);
+      const identifier = asStringOrNull(createdIssue.identifier);
+      const url = asStringOrNull(createdIssue.url);
 
       if (!success || !id || !identifier) {
         throw new LinearClientError("linear_unknown_payload", "linear issueCreate response missing created issue");
