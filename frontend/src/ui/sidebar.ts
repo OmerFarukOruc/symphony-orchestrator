@@ -1,8 +1,12 @@
 import { router } from "../router";
 import { navGroups, navItems } from "./nav-items";
 
-function iconMarkup(svg: string): string {
-  return `<span class="sidebar-icon" aria-hidden="true">${svg}</span>`;
+function iconMarkup(svg: string): HTMLSpanElement {
+  const span = document.createElement("span");
+  span.className = "sidebar-icon";
+  span.setAttribute("aria-hidden", "true");
+  span.innerHTML = svg;
+  return span;
 }
 
 function updateActiveState(sidebarEl: HTMLElement): void {
@@ -24,7 +28,13 @@ export function initSidebar(sidebarEl: HTMLElement): void {
 
     const header = document.createElement("div");
     header.className = "sidebar-group-header";
-    header.innerHTML = `<span class="sidebar-group-label">${groupName}</span><span class="sidebar-group-toggle">⌃</span>`;
+    const groupLabel = document.createElement("span");
+    groupLabel.className = "sidebar-group-label";
+    groupLabel.textContent = groupName;
+    const groupToggle = document.createElement("span");
+    groupToggle.className = "sidebar-group-toggle";
+    groupToggle.textContent = "⌃";
+    header.append(groupLabel, groupToggle);
 
     const groupItems = navItems.filter((item) => item.group === groupName);
     for (const item of groupItems) {
@@ -33,7 +43,13 @@ export function initSidebar(sidebarEl: HTMLElement): void {
       button.type = "button";
       button.dataset.path = item.path;
       button.title = item.name;
-      button.innerHTML = `${iconMarkup(item.icon)}<span class="sidebar-item-label">${item.name}</span><span class="sidebar-item-tooltip">${item.name}</span>`;
+      const labelSpan = document.createElement("span");
+      labelSpan.className = "sidebar-item-label";
+      labelSpan.textContent = item.name;
+      const tooltipSpan = document.createElement("span");
+      tooltipSpan.className = "sidebar-item-tooltip";
+      tooltipSpan.textContent = item.name;
+      button.append(iconMarkup(item.icon), labelSpan, tooltipSpan);
       button.addEventListener("click", () => router.navigate(item.path));
       group.append(button);
     }

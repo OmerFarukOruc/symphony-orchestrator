@@ -15,7 +15,11 @@ export function buildSection(title: string, widgets: WidgetDescriptor[]): HTMLEl
   section.className = "observability-section";
   const header = document.createElement("div");
   header.className = "observability-section-header";
-  header.innerHTML = `<div><h2>${title}</h2></div>`;
+  const headerWrap = document.createElement("div");
+  const h2 = document.createElement("h2");
+  h2.textContent = title;
+  headerWrap.append(h2);
+  header.append(headerWrap);
   const grid = document.createElement("div");
   grid.className = "observability-grid";
   widgets.forEach((widget) => grid.append(createWidgetCard(widget)));
@@ -44,7 +48,9 @@ function createWidgetCard(widget: WidgetDescriptor): HTMLElement {
   card.className = `mc-stat-card observability-card${widget.tone ? ` tone-${widget.tone}` : ""}`;
   const header = document.createElement("div");
   header.className = "observability-card-header";
-  header.innerHTML = `<h3>${widget.title}</h3>`;
+  const h3 = document.createElement("h3");
+  h3.textContent = widget.title;
+  header.append(h3);
   const source = document.createElement("span");
   source.className = "mc-badge";
   source.textContent = widget.source;

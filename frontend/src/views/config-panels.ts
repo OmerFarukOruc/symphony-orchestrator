@@ -7,7 +7,12 @@ export function renderSchemaRail(rail: HTMLElement, state: ConfigState): void {
   rail.replaceChildren();
   const header = document.createElement("div");
   header.className = "config-rail-card";
-  header.innerHTML = `<h2>Schema / help</h2><p class="text-secondary">Common payload shapes and routes remain visible while you edit the overlay.</p>`;
+  const h2 = document.createElement("h2");
+  h2.textContent = "Schema / help";
+  const p = document.createElement("p");
+  p.className = "text-secondary";
+  p.textContent = "Common payload shapes and routes remain visible while you edit the overlay.";
+  header.append(h2, p);
   rail.append(header);
   if (!state.schema) {
     rail.append(
@@ -92,7 +97,13 @@ export function renderOverlayEditor(
       const row = document.createElement("button");
       row.type = "button";
       row.className = "config-entry mc-panel";
-      row.innerHTML = `<strong class="text-mono">${entry.path}</strong><span class="text-secondary">${redactPath(entry.path, entry.value)}</span>`;
+      const pathLabel = document.createElement("strong");
+      pathLabel.className = "text-mono";
+      pathLabel.textContent = entry.path;
+      const valueLabel = document.createElement("span");
+      valueLabel.className = "text-secondary";
+      valueLabel.textContent = redactPath(entry.path, entry.value);
+      row.append(pathLabel, valueLabel);
       row.addEventListener("click", () => actions.onSelectPath(entry.path));
       list.append(row);
     });
@@ -132,7 +143,12 @@ export function renderDiffPanel(panel: HTMLElement, state: ConfigState): void {
   panel.replaceChildren();
   const box = document.createElement("section");
   box.className = "mc-panel form-grid";
-  box.innerHTML = `<h2>Effective config / diff</h2><p class="text-secondary">Sensitive paths stay visibly redacted. Every overlay change previews here before you save.</p>`;
+  const diffH2 = document.createElement("h2");
+  diffH2.textContent = "Effective config / diff";
+  const diffP = document.createElement("p");
+  diffP.className = "text-secondary";
+  diffP.textContent = "Sensitive paths stay visibly redacted. Every overlay change previews here before you save.";
+  box.append(diffH2, diffP);
   const diff = document.createElement("pre");
   diff.className = "config-code";
   diff.textContent = buildDiffText(state.effective, state.overlay);

@@ -23,7 +23,13 @@ export function createPlannerCard(options: PlannerCardOptions): HTMLElement {
   header.className = "planner-card-header";
   const title = document.createElement("div");
   title.className = "planner-card-titlebar";
-  title.innerHTML = `<span class="mc-badge">${issue.id}</span><span class="priority-badge priority-${issue.priority}">${issue.priority}</span>`;
+  const idBadge = document.createElement("span");
+  idBadge.className = "mc-badge";
+  idBadge.textContent = issue.id;
+  const priorityBadge = document.createElement("span");
+  priorityBadge.className = `priority-badge priority-${issue.priority}`;
+  priorityBadge.textContent = issue.priority;
+  title.append(idBadge, priorityBadge);
   const actions = document.createElement("div");
   actions.className = "mc-actions";
   const up = createButton("↑");

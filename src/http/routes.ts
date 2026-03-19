@@ -16,6 +16,8 @@ import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleModelUpdate } from "./model-handler.js";
 import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
 
+import { createRateLimiter } from "./rate-limit.js";
+
 const frontendDist = join(process.cwd(), "dist/frontend");
 
 interface HttpRouteDeps {
@@ -34,7 +36,8 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   registerExtensionApis(app, deps);
   registerIssueRoutes(app, deps);
 
-  app.use((request, response) => {
+  const spaRateLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 120 });
+  app.use(spaRateLimiter, (request, response) => {
     if (request.path.startsWith("/api/") || request.path === "/metrics") {
       response.status(404).json({ error: { code: "not_found", message: "Not found" } });
       return;

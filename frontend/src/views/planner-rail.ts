@@ -10,7 +10,12 @@ export function renderPlannerRail(
   rail.replaceChildren();
   const heading = document.createElement("div");
   heading.className = "planner-rail-section";
-  heading.innerHTML = `<h2>Summary</h2><p class="text-secondary">Dependencies, labels, and execution intent stay visible while editing.</p>`;
+  const headH2 = document.createElement("h2");
+  headH2.textContent = "Summary";
+  const headP = document.createElement("p");
+  headP.className = "text-secondary";
+  headP.textContent = "Dependencies, labels, and execution intent stay visible while editing.";
+  heading.append(headH2, headP);
   rail.append(heading);
 
   if (!state.plan?.length) {
@@ -26,7 +31,21 @@ export function renderPlannerRail(
   const summary = planSummary(state.plan);
   const stats = document.createElement("div");
   stats.className = "planner-summary-grid";
-  stats.innerHTML = `<div class="planner-summary-card"><strong>${summary.count}</strong><span>Issues</span></div><div class="planner-summary-card"><strong>${summary.deps}</strong><span>Dependencies</span></div><div class="planner-summary-card"><strong>${summary.high}</strong><span>High priority</span></div>`;
+  function summaryCard(value: number, label: string): HTMLElement {
+    const card = document.createElement("div");
+    card.className = "planner-summary-card";
+    const strong = document.createElement("strong");
+    strong.textContent = String(value);
+    const span = document.createElement("span");
+    span.textContent = label;
+    card.append(strong, span);
+    return card;
+  }
+  stats.append(
+    summaryCard(summary.count, "Issues"),
+    summaryCard(summary.deps, "Dependencies"),
+    summaryCard(summary.high, "High priority"),
+  );
   const deps = document.createElement("div");
   deps.className = "planner-dependency-strip";
   state.plan.forEach((issue) => {
@@ -47,7 +66,9 @@ export function renderPlannerRail(
 
   const result = document.createElement("div");
   result.className = "planner-result-links";
-  result.innerHTML = `<h2>Created</h2>`;
+  const resultH2 = document.createElement("h2");
+  resultH2.textContent = "Created";
+  result.append(resultH2);
   state.result.created.forEach((item) => {
     const link = document.createElement("a");
     link.className = "planner-result-link";

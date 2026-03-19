@@ -6,23 +6,41 @@ function button(label: string, icon: string): HTMLButtonElement {
   const element = document.createElement("button");
   element.type = "button";
   element.className = "header-button transition-base";
-  element.innerHTML = `<span>${icon}</span><span>${label}</span>`;
+  const iconSpan = document.createElement("span");
+  iconSpan.textContent = icon;
+  const labelSpan = document.createElement("span");
+  labelSpan.textContent = label;
+  element.append(iconSpan, labelSpan);
   return element;
 }
 
 export function initHeader(headerEl: HTMLElement): void {
-  headerEl.innerHTML = "";
+  headerEl.replaceChildren();
 
   const brand = document.createElement("div");
   brand.className = "header-brand";
-  brand.innerHTML = `<span class="header-title">Symphony</span><span class="header-badge"><span class="header-badge-dot">●</span> local</span>`;
+  const titleSpan = document.createElement("span");
+  titleSpan.className = "header-title";
+  titleSpan.textContent = "Symphony";
+  const badgeSpan = document.createElement("span");
+  badgeSpan.className = "header-badge";
+  const dot = document.createElement("span");
+  dot.className = "header-badge-dot";
+  dot.textContent = "●";
+  badgeSpan.append(dot, " local");
+  brand.append(titleSpan, badgeSpan);
 
   const command = document.createElement("div");
   command.className = "header-command";
   const commandButton = document.createElement("button");
   commandButton.type = "button";
   commandButton.className = "command-button transition-base";
-  commandButton.innerHTML = `<span>Search routes, issues, actions…</span><span class="header-hint">Ctrl+K</span>`;
+  const cmdLabel = document.createElement("span");
+  cmdLabel.textContent = "Search routes, issues, actions…";
+  const cmdHint = document.createElement("span");
+  cmdHint.className = "header-hint";
+  cmdHint.textContent = "Ctrl+K";
+  commandButton.append(cmdLabel, cmdHint);
   commandButton.addEventListener("click", () => {
     window.dispatchEvent(new CustomEvent("palette:open"));
   });
@@ -38,7 +56,12 @@ export function initHeader(headerEl: HTMLElement): void {
 
   refreshButton.addEventListener("click", async () => {
     refreshButton.disabled = true;
-    refreshButton.innerHTML = "<span>⟳</span><span>Refreshing</span>";
+    refreshButton.replaceChildren();
+    const spinIcon = document.createElement("span");
+    spinIcon.textContent = "⟳";
+    const spinLabel = document.createElement("span");
+    spinLabel.textContent = "Refreshing";
+    refreshButton.append(spinIcon, spinLabel);
     try {
       await api.postRefresh();
       toast("Refresh queued.", "success");
@@ -47,7 +70,12 @@ export function initHeader(headerEl: HTMLElement): void {
     }
     window.setTimeout(() => {
       refreshButton.disabled = false;
-      refreshButton.innerHTML = "<span>↻</span><span>Refresh</span>";
+      refreshButton.replaceChildren();
+      const restoreIcon = document.createElement("span");
+      restoreIcon.textContent = "↻";
+      const restoreLabel = document.createElement("span");
+      restoreLabel.textContent = "Refresh";
+      refreshButton.append(restoreIcon, restoreLabel);
     }, 500);
   });
 

@@ -29,7 +29,16 @@ function renderList(): void {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `palette-item transition-base${index === activeIndex ? " is-active" : ""}`;
-    button.innerHTML = `<span class="palette-item-icon" aria-hidden="true">${item.icon}</span><span>${item.name}</span><span class="palette-meta">${item.hotkey}</span>`;
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "palette-item-icon";
+    iconSpan.setAttribute("aria-hidden", "true");
+    iconSpan.innerHTML = item.icon;
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = item.name;
+    const metaSpan = document.createElement("span");
+    metaSpan.className = "palette-meta";
+    metaSpan.textContent = item.hotkey;
+    button.append(iconSpan, nameSpan, metaSpan);
     button.addEventListener("click", () => {
       router.navigate(item.path);
       closePalette();

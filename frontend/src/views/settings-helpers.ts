@@ -85,10 +85,15 @@ export function getValueAtPath(root: Record<string, unknown>, path: string): unk
   }, root);
 }
 
+const dangerousKeys = new Set(["__proto__", "constructor", "prototype"]);
+
 export function setValueAtPath(target: Record<string, unknown>, path: string, value: unknown): void {
   const parts = path.split(".");
   let cursor: Record<string, unknown> = target;
   parts.forEach((segment, index) => {
+    if (dangerousKeys.has(segment)) {
+      throw new TypeError(`Refusing to traverse dangerous key: ${segment}`);
+    }
     if (index === parts.length - 1) {
       cursor[segment] = value;
       return;

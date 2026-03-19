@@ -99,7 +99,10 @@ export function createPlannerPage(): HTMLElement {
     modal.footer.replaceChildren();
     const summary = document.createElement("div");
     summary.className = "form-grid";
-    summary.innerHTML = `<p class="text-secondary">You are about to create <strong>${state.plan.length}</strong> Linear issues with labels <strong>${state.labels.join(", ") || "none"}</strong>.</p>`;
+    const summaryP = document.createElement("p");
+    summaryP.className = "text-secondary";
+    summaryP.textContent = `You are about to create ${state.plan.length} Linear issues with labels ${state.labels.join(", ") || "none"}.`;
+    summary.append(summaryP);
     const strip = document.createElement("div");
     strip.className = "planner-dependency-strip";
     state.plan.forEach((issue) => {

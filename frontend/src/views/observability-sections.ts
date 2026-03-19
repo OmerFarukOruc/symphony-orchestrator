@@ -32,7 +32,17 @@ export function renderObservabilitySections(
   const metrics = parsePrometheusText(state.metricsRaw);
   const summary = document.createElement("section");
   summary.className = "mc-strip observability-summary";
-  summary.innerHTML = `<div><h2>Instrumentation status</h2><p class="text-secondary">${summarizeMetrics(metrics)}</p></div><span class="mc-badge">${getMissingFamilies(metrics).length ? "Fallback messaging active" : "Metrics connected"}</span>`;
+  const summaryWrap = document.createElement("div");
+  const summaryH2 = document.createElement("h2");
+  summaryH2.textContent = "Instrumentation status";
+  const summaryP = document.createElement("p");
+  summaryP.className = "text-secondary";
+  summaryP.textContent = summarizeMetrics(metrics);
+  summaryWrap.append(summaryH2, summaryP);
+  const summaryBadge = document.createElement("span");
+  summaryBadge.className = "mc-badge";
+  summaryBadge.textContent = getMissingFamilies(metrics).length ? "Fallback messaging active" : "Metrics connected";
+  summary.append(summaryWrap, summaryBadge);
   container.append(summary);
   if (!snapshot) {
     container.append(

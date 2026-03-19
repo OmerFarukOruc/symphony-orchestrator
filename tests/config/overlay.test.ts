@@ -129,4 +129,20 @@ describe("ConfigOverlayStore", () => {
     unsubscribe();
     await store.stop();
   });
+  it("rejects prototype-polluting keys with TypeError", async () => {
+    const dir = await createTempDir();
+    const overlayPath = path.join(dir, "config", "overlay.yaml");
+    const store = new ConfigOverlayStore(overlayPath, createLogger());
+    await store.start();
+
+    await expect(store.set("__proto__.polluted", true)).rejects.toThrow(TypeError);
+    await expect(store.set("constructor.polluted", true)).rejects.toThrow(TypeError);
+    await expect(store.set("prototype.polluted", true)).rejects.toThrow(TypeError);
+    await expect(store.set("safe.__proto__", true)).rejects.toThrow(TypeError);
+
+    expect(store.toMap()).toEqual({});
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+
+    await store.stop();
+  });
 });

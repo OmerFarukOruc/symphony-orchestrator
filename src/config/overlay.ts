@@ -7,6 +7,12 @@ import YAML from "yaml";
 import type { SymphonyLogger } from "../core/types.js";
 import { isRecord } from "../utils/type-guards.js";
 
+const dangerousKeys = new Set(["__proto__", "constructor", "prototype"]);
+
+function isDangerousKey(key: string): boolean {
+  return dangerousKeys.has(key);
+}
+
 function normalizePath(pathExpression: string): string[] {
   return pathExpression
     .split(".")
@@ -43,6 +49,9 @@ function removeAtPath(target: Record<string, unknown>, segments: string[]): bool
   }
 
   const [head, ...tail] = segments;
+  if (isDangerousKey(head)) {
+    throw new TypeError(`Refusing to traverse dangerous key: ${head}`);
+  }
   if (tail.length === 0) {
     if (!(head in target)) {
       return false;
@@ -67,6 +76,9 @@ function setAtPath(target: Record<string, unknown>, segments: string[], value: u
   let cursor = target;
   for (let index = 0; index < segments.length - 1; index += 1) {
     const key = segments[index];
+    if (isDangerousKey(key)) {
+      throw new TypeError(`Refusing to traverse dangerous key: ${key}`);
+    }
     const child = cursor[key];
     if (!isRecord(child)) {
       const next: Record<string, unknown> = {};
@@ -77,7 +89,11 @@ function setAtPath(target: Record<string, unknown>, segments: string[], value: u
     cursor = child;
   }
 
-  cursor[segments.at(-1)!] = value;
+  const leafKey = segments.at(-1)!;
+  if (isDangerousKey(leafKey)) {
+    throw new TypeError(`Refusing to set dangerous key: ${leafKey}`);
+  }
+  cursor[leafKey] = value;
 }
 
 function mergeDeep(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
