@@ -43,7 +43,6 @@ function reconcileRunning(entries: Map<string, RunningEntry>, byId: Map<string, 
     }
   }
 }
-
 async function reconcileRetries(ctx: ReconcileContext, byId: Map<string, Issue>, config: ServiceConfig): Promise<void> {
   for (const retryEntry of [...ctx.retryEntries.values()]) {
     const latest = byId.get(retryEntry.issueId);
@@ -60,7 +59,6 @@ async function reconcileRetries(ctx: ReconcileContext, byId: Map<string, Issue>,
     }
   }
 }
-
 interface ReconcileContext {
   runningEntries: Map<string, RunningEntry>;
   retryEntries: Map<string, RetryRuntimeEntry>;
@@ -82,7 +80,6 @@ interface ReconcileContext {
     message: string;
   }) => void;
 }
-
 export async function reconcileRunningAndRetrying(ctx: ReconcileContext): Promise<void> {
   const now = Date.now();
   const config = ctx.getConfig();
@@ -100,7 +97,6 @@ export async function reconcileRunningAndRetrying(ctx: ReconcileContext): Promis
   reconcileRunning(ctx.runningEntries, byId, config);
   await reconcileRetries(ctx, byId, config);
 }
-
 export async function refreshQueueViews(ctx: {
   queuedViews: IssueView[];
   detailViews: Map<string, IssueView>;
@@ -135,10 +131,11 @@ export async function refreshQueueViews(ctx: {
     });
   ctx.setQueuedViews(queuedViews);
 
+  const nextDetailViews = new Map<string, IssueView>();
   for (const issue of issues) {
     if (!ctx.claimedIssueIds.has(issue.id)) {
       const selection = ctx.resolveModelSelection(issue.identifier);
-      ctx.detailViews.set(
+      nextDetailViews.set(
         issue.identifier,
         issueView(issue, {
           configuredModel: selection.model,
@@ -152,8 +149,9 @@ export async function refreshQueueViews(ctx: {
       );
     }
   }
+  ctx.detailViews.clear();
+  nextDetailViews.forEach((detailView, identifier) => ctx.detailViews.set(identifier, detailView));
 }
-
 export async function cleanupTerminalIssueWorkspaces(ctx: {
   deps: {
     linearClient: { fetchIssuesByStates: (states: string[]) => Promise<Issue[]> };

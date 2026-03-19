@@ -1,17 +1,14 @@
 import { createEmptyState } from "../components/empty-state";
+import { createPageHeader } from "../components/page-header";
 
 export function createNotificationsPage(): HTMLElement {
   const page = document.createElement("div");
   page.className = "page fade-in";
 
-  const header = document.createElement("section");
-  header.innerHTML = `
-    <div>
-      <h1 class="page-title">Notifications</h1>
-      <p class="page-subtitle">Webhook deliveries, system alerts, and operator notifications in one timeline.</p>
-    </div>
-  `;
-  header.className = "mc-strip";
+  const header = createPageHeader(
+    "Notifications",
+    "Webhook deliveries, system alerts, and operator notifications in one timeline.",
+  );
 
   const filterBar = document.createElement("div");
   filterBar.className = "filter-bar";
@@ -29,7 +26,7 @@ export function createNotificationsPage(): HTMLElement {
   }
 
   const body = document.createElement("section");
-  body.style.padding = "var(--space-5)";
+  body.className = "page-body";
   body.append(
     createEmptyState(
       "No notifications",

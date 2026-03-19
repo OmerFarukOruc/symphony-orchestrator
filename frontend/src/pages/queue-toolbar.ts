@@ -70,7 +70,8 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
     }
     stageBar.replaceChildren(
       ...deduped.map((column) => {
-        const button = chip(`${column.label} ${column.count}`, () => {
+        const label = column.count > 0 ? `${column.label} ${column.count}` : column.label;
+        const button = chip(label, () => {
           const normalized = normalizeStageKey(column.key);
           if (filters.stages.has(normalized)) filters.stages.delete(normalized);
           else filters.stages.add(normalized);

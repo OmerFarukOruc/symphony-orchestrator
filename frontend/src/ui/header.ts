@@ -10,15 +10,13 @@ export function initHeader(headerEl: HTMLElement): void {
   const titleSpan = document.createElement("span");
   titleSpan.textContent = "Symphony";
   const sep = document.createElement("span");
+  sep.className = "header-separator";
   sep.textContent = "·";
-  sep.style.color = "var(--text-muted)";
   const badgeSpan = document.createElement("span");
-  badgeSpan.className = "mc-badge";
-  badgeSpan.style.fontSize = "11px";
-  badgeSpan.style.color = "var(--text-muted)";
+  badgeSpan.className = "mc-badge header-env-badge";
   const dot = document.createElement("span");
+  dot.className = "status-dot";
   dot.textContent = "\u25CF";
-  dot.style.color = "var(--status-running)";
   badgeSpan.append(dot, " local");
   brand.append(titleSpan, sep, badgeSpan);
 
@@ -57,7 +55,7 @@ export function initHeader(headerEl: HTMLElement): void {
 
   refreshButton.addEventListener("click", async () => {
     refreshButton.disabled = true;
-    refreshButton.style.color = "var(--text-muted)";
+    refreshButton.classList.add("is-disabled");
     try {
       await api.postRefresh();
       toast("Refresh queued.", "success");
@@ -66,7 +64,7 @@ export function initHeader(headerEl: HTMLElement): void {
     }
     window.setTimeout(() => {
       refreshButton.disabled = false;
-      refreshButton.style.color = "";
+      refreshButton.classList.remove("is-disabled");
     }, 500);
   });
 

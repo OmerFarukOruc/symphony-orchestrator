@@ -49,8 +49,14 @@ export function renderOverlayEditor(
   toolbar.className = "mc-toolbar config-toolbar";
   const modes = document.createElement("div");
   modes.className = "mc-actions";
+  const modeDescriptions: Record<string, string> = {
+    tree: "Browse overlay paths in a tree view",
+    path: "Edit a single path and value",
+    raw: "Edit the full overlay as raw JSON",
+  };
   ["tree", "path", "raw"].forEach((mode) => {
     const button = createButton(mode);
+    button.title = modeDescriptions[mode] ?? mode;
     button.classList.toggle("is-primary", state.mode === mode);
     button.addEventListener("click", () => actions.onMode(mode as ConfigMode));
     modes.append(button);
@@ -75,7 +81,10 @@ export function renderOverlayEditor(
     save.addEventListener("click", actions.onSaveRaw);
     const panel = document.createElement("section");
     panel.className = "mc-panel form-grid";
-    panel.append(createField("Raw JSON patch", raw, "YAML patch mode is represented as JSON for now."), save);
+    panel.append(
+      createField({ label: "Raw JSON patch", hint: "YAML patch mode is represented as JSON for now." }, raw),
+      save,
+    );
     main.append(panel);
     return;
   }
@@ -131,8 +140,8 @@ export function renderOverlayEditor(
   const editor = document.createElement("section");
   editor.className = "mc-panel form-grid";
   editor.append(
-    createField("Path", pathInput),
-    createField("Value", valueInput, "JSON values are parsed automatically."),
+    createField({ label: "Path" }, pathInput),
+    createField({ label: "Value", hint: "JSON values are parsed automatically." }, valueInput),
     savePath,
     deletePath,
   );

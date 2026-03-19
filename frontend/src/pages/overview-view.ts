@@ -4,7 +4,6 @@ import { store } from "../state/store";
 import type { AppState } from "../state/store";
 import type { RuntimeIssueView } from "../types";
 import { skeletonCard } from "../ui/skeleton";
-import { toggleTheme } from "../ui/theme";
 import { createEventRow } from "../components/event-row";
 import { createEmptyState } from "../components/empty-state";
 import { buildAttentionList, latestTerminalIssues } from "../utils/issues";
@@ -74,15 +73,7 @@ export function createOverviewPage(): HTMLElement {
       refresh.disabled = false;
     }, 500);
   });
-  const theme = document.createElement("button");
-  theme.type = "button";
-  theme.className = "mc-button mc-button-ghost";
-  theme.textContent = "Theme";
-  theme.addEventListener("click", () => toggleTheme());
-  const hint = document.createElement("span");
-  hint.className = "mc-badge";
-  hint.textContent = "Ctrl+K command entry";
-  actions.append(envBadge, staleBadge, refresh, theme, hint);
+  actions.append(envBadge, staleBadge, refresh);
   top.append(actions);
 
   const grid = document.createElement("section");

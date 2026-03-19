@@ -10,7 +10,7 @@ interface SettingsFieldRenderOptions {
 
 export function createSettingsField(field: SettingsFieldDefinition, options: SettingsFieldRenderOptions): HTMLElement {
   const control = buildControl(field, options);
-  return createField(field.label, control, field.hint);
+  return createField({ label: field.label, hint: field.hint }, control);
 }
 
 export function createSectionAction(label: string, primary = false): HTMLButtonElement {

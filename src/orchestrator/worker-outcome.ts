@@ -134,6 +134,7 @@ async function handleStopSignal(
   attempt: number | null,
 ): Promise<void> {
   let pullRequestUrl: string | null = null;
+  const status = stopSignal === "blocked" ? "paused" : "completed";
   if (stopSignal === "done" && entry.repoMatch && ctx.deps.gitManager) {
     try {
       const result = await executeGitPostRun(ctx.deps.gitManager, workspace, issue, entry.repoMatch);
@@ -147,7 +148,7 @@ async function handleStopSignal(
     }
   }
 
-  await ctx.deps.attemptStore.updateAttempt(entry.runId, { stopSignal, pullRequestUrl }).catch(() => undefined);
+  await ctx.deps.attemptStore.updateAttempt(entry.runId, { stopSignal, pullRequestUrl, status }).catch(() => undefined);
 
   if (pullRequestUrl) {
     ctx.deps.logger.info({ issue_identifier: issue.identifier, url: pullRequestUrl }, "pull request created");
@@ -157,7 +158,7 @@ async function handleStopSignal(
   ctx.completedViews.set(
     issue.identifier,
     buildOutcomeView(issue, workspace, entry, sel, {
-      status: isBlocked ? "paused" : "completed",
+      status,
       attempt,
       message: isBlocked ? "worker reported issue blocked" : "worker reported issue complete",
     }),
@@ -171,10 +172,7 @@ async function handleStopSignal(
     attempt,
     metadata: { workspace: workspace.path, pullRequestUrl },
   });
-  // For DONE: keep the claim held so the issue is not re-dispatched while it
-  // remains in an active state in Linear. The claim acts as a sticky "completed"
-  // marker until the issue transitions to a terminal state.
-  // For BLOCKED: release so the issue can be retried after intervention.
+  // DONE keeps the claim sticky until terminal; BLOCKED releases it for a later retry.
   if (isBlocked) {
     ctx.releaseIssueClaim(issue.id);
   }

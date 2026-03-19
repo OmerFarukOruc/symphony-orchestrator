@@ -92,12 +92,12 @@ export class WorkspaceManager {
     }
   }
 
-  async runBeforeRun(workspace: Workspace): Promise<void> {
-    await this.runHook(this.getConfig().workspace.hooks.beforeRun, workspace, workspace.workspaceKey);
+  async runBeforeRun(workspace: Workspace, issueIdentifier: string): Promise<void> {
+    await this.runHook(this.getConfig().workspace.hooks.beforeRun, workspace, issueIdentifier);
   }
 
-  async runAfterRun(workspace: Workspace): Promise<void> {
-    await this.runHook(this.getConfig().workspace.hooks.afterRun, workspace, workspace.workspaceKey);
+  async runAfterRun(workspace: Workspace, issueIdentifier: string): Promise<void> {
+    await this.runHook(this.getConfig().workspace.hooks.afterRun, workspace, issueIdentifier);
   }
 
   async removeWorkspace(issueIdentifier: string): Promise<void> {

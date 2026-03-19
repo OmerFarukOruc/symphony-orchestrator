@@ -139,4 +139,24 @@ describe("GitManager", () => {
       "missing GitHub token env var",
     );
   });
+
+  it("wraps non-JSON GitHub error bodies in GitHubApiError instead of throwing SyntaxError", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("<html>Bad Gateway</html>", {
+          status: 502,
+          headers: { "content-type": "text/html" },
+        }),
+    );
+
+    const manager = new GitManager({
+      runGit: async () => ({ stdout: "", stderr: "" }),
+      fetch: fetchMock as unknown as typeof fetch,
+      env: { GITHUB_TOKEN: "ghs_test" },
+    });
+
+    await expect(manager.createPullRequest(createRepoMatch(), createIssue(), "symphony/nin-42")).rejects.toThrow(
+      "github request failed with status 502",
+    );
+  });
 });

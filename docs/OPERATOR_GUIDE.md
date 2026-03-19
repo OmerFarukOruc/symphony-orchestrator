@@ -12,13 +12,13 @@ Symphony polls Linear for candidate issues, creates a workspace per issue, launc
 
 ## 📋 Prerequisites
 
-| Requirement | Details |
-|-------------|---------|
-| **Node.js** | v22 or newer |
-| **Docker** | Docker Engine installed and running (`docker info` should succeed) |
-| **Linear API key** | `LINEAR_API_KEY` in your environment |
-| **Linear project slug** | `LINEAR_PROJECT_SLUG` for the project Symphony should poll |
-| **Codex auth** | Working auth setup for your `codex app-server` command |
+| Requirement             | Details                                                            |
+| ----------------------- | ------------------------------------------------------------------ |
+| **Node.js**             | v22 or newer                                                       |
+| **Docker**              | Docker Engine installed and running (`docker info` should succeed) |
+| **Linear API key**      | `LINEAR_API_KEY` in your environment                               |
+| **Linear project slug** | `LINEAR_PROJECT_SLUG` for the project Symphony should poll         |
+| **Codex auth**          | Working auth setup for your `codex app-server` command             |
 
 ---
 
@@ -108,10 +108,10 @@ node dist/cli.js ./WORKFLOW.md --port 4000
 
 ## 📄 Choose the Right Workflow File
 
-| File | When to use |
-|------|-------------|
+| File                  | When to use                                              |
+| --------------------- | -------------------------------------------------------- |
 | `WORKFLOW.example.md` | Portable example setup (recommended for getting started) |
-| `WORKFLOW.md` | Repository's checked-in live smoke path |
+| `WORKFLOW.md`         | Repository's checked-in live smoke path                  |
 
 > [!TIP]
 > `WORKFLOW.example.md` is the API-key/custom-provider example. `WORKFLOW.md` is the local `codex login` smoke path. Both create a fresh temporary container-local runtime `CODEX_HOME` for each attempt instead of relying on a checked-in fixture home.
@@ -230,6 +230,8 @@ Container-specific notes:
 - Config overlay: stored as YAML under the archive data root and exposed through `/api/v1/config*`
 - Secrets store: stored encrypted at rest under the archive data root and exposed through `/api/v1/secrets*`
 
+If Symphony finds an existing `secrets.enc` that cannot be decrypted with the current `MASTER_KEY`, startup now fails fast and leaves the encrypted file untouched. Fix the key mismatch before retrying.
+
 Merge order:
 
 1. built-in defaults
@@ -287,6 +289,7 @@ SMOKE: create workspace proof file
 Goal: prove Symphony can pick up a live issue, launch Codex, write a file in the issue workspace, and archive the attempt.
 
 Steps:
+
 1. Create `SYMPHONY_SMOKE_RESULT.md` in the workspace for this issue.
 2. Include:
    - the issue identifier
@@ -337,15 +340,15 @@ Hook execution is bounded by `hooks.timeout_ms`.
 
 ### ⏱️ Timeouts and Retries
 
-| Knob | Config Key | Purpose |
-|------|-----------|---------|
-| Hook timeout | `hooks.timeout_ms` | Max time for any lifecycle hook |
-| Read timeout | `codex.read_timeout_ms` | JSON-RPC read timeout |
-| Turn timeout | `codex.turn_timeout_ms` | Total time for a single turn |
-| Stall timeout | `codex.stall_timeout_ms` | Detect long-silent workers |
-| Retry backoff | `agent.max_retry_backoff_ms` | Ceiling for retry delay |
-| Active states | `tracker.active_states` | Which tracker states are eligible for dispatch |
-| Terminal states | `tracker.terminal_states` | Which states stop work and trigger cleanup |
+| Knob            | Config Key                   | Purpose                                        |
+| --------------- | ---------------------------- | ---------------------------------------------- |
+| Hook timeout    | `hooks.timeout_ms`           | Max time for any lifecycle hook                |
+| Read timeout    | `codex.read_timeout_ms`      | JSON-RPC read timeout                          |
+| Turn timeout    | `codex.turn_timeout_ms`      | Total time for a single turn                   |
+| Stall timeout   | `codex.stall_timeout_ms`     | Detect long-silent workers                     |
+| Retry backoff   | `agent.max_retry_backoff_ms` | Ceiling for retry delay                        |
+| Active states   | `tracker.active_states`      | Which tracker states are eligible for dispatch |
+| Terminal states | `tracker.terminal_states`    | Which states stop work and trigger cleanup     |
 
 > [!TIP]
 > For safer live proving, set `codex.turn_timeout_ms` to something short like `120000` (2 minutes).
@@ -356,14 +359,14 @@ Symphony runs the Codex agent inside a Docker container by default using a `node
 
 **Key runtime behavior:**
 
-| Property | How |
-|----------|-----|
-| **Path identity** | All host paths are bind-mounted at their same absolute path inside the container |
-| **Host permissions** | Container runs as your UID/GID — no ownership drift |
-| **Writable HOME** | A persistent named volume is mounted at `/home/agent` for npm/pip/git caches |
+| Property                   | How                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Path identity**          | All host paths are bind-mounted at their same absolute path inside the container                             |
+| **Host permissions**       | Container runs as your UID/GID — no ownership drift                                                          |
+| **Writable HOME**          | A persistent named volume is mounted at `/home/agent` for npm/pip/git caches                                 |
 | **Generated runtime home** | Symphony materializes a temporary container-local `CODEX_HOME` per attempt and removes it with the container |
-| **Resource limits** | Memory, CPU, and tmpfs are configurable via `codex.sandbox.resources` |
-| **OOM detection** | Exit code 137 with `OOMKilled=true` is surfaced as `container_oom` (retryable) |
+| **Resource limits**        | Memory, CPU, and tmpfs are configurable via `codex.sandbox.resources`                                        |
+| **OOM detection**          | Exit code 137 with `OOMKilled=true` is surfaced as `container_oom` (retryable)                               |
 
 **Container lifecycle on abort/shutdown:**
 
@@ -407,11 +410,11 @@ Symphony creates and reads several directories at runtime. This section document
 
 ### Host-Side Paths
 
-| Path | Source | Purpose | Safe to delete? |
-|------|--------|---------|-----------------|
-| `.symphony/` (next to workflow file) | `src/cli.ts` — default `archiveDir` | Archived attempts, event streams, issue index, config overlay, and encrypted secrets store | ⚠️ You lose all historical attempt data |
-| `../symphony-workspaces/` (sibling of repo) | `src/config.ts` — default `workspace.root` | Per-issue workspace directories (one subdirectory per issue identifier) | ✅ Yes — workspaces are re-created on next dispatch |
-| `~/.codex/` | `src/config.ts` — default `codex.auth.source_home` | Codex CLI auth credentials (`auth.json`) read for `openai_login` mode | ⚠️ You'll need to re-run `codex login` |
+| Path                                        | Source                                             | Purpose                                                                                    | Safe to delete?                                     |
+| ------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| `.symphony/` (next to workflow file)        | `src/cli.ts` — default `archiveDir`                | Archived attempts, event streams, issue index, config overlay, and encrypted secrets store | ⚠️ You lose all historical attempt data             |
+| `../symphony-workspaces/` (sibling of repo) | `src/config.ts` — default `workspace.root`         | Per-issue workspace directories (one subdirectory per issue identifier)                    | ✅ Yes — workspaces are re-created on next dispatch |
+| `~/.codex/`                                 | `src/config.ts` — default `codex.auth.source_home` | Codex CLI auth credentials (`auth.json`) read for `openai_login` mode                      | ⚠️ You'll need to re-run `codex login`              |
 
 > [!NOTE]
 > The archive directory can be overridden with `--log-dir` or the `DATA_DIR` environment variable. The workspace root can be overridden via `workspace.root` in the workflow file. The auth source home can be overridden via `codex.auth.source_home`.
@@ -420,15 +423,15 @@ Symphony creates and reads several directories at runtime. This section document
 
 These paths exist only inside worker containers and are **not** on the host filesystem:
 
-| Path | Source | Purpose |
-|------|--------|---------|
+| Path                       | Source                                         | Purpose                                                                                                                                               |
+| -------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/tmp/symphony-codex-home` | `src/docker-spawn.ts` — `CONTAINER_CODEX_HOME` | Ephemeral per-attempt `CODEX_HOME` with generated `config.toml` and optional `auth.json` — created at container startup, destroyed with the container |
-| `/home/agent` | `src/docker-spawn.ts` — `CONTAINER_HOME` | Container `HOME` backed by a named Docker volume (`symphony-cache-<runId>`) for npm/pip/git caches |
+| `/home/agent`              | `src/docker-spawn.ts` — `CONTAINER_HOME`       | Container `HOME` backed by a named Docker volume (`symphony-cache-<runId>`) for npm/pip/git caches                                                    |
 
 ### Named Docker Volumes
 
-| Volume | Purpose |
-|--------|---------|
+| Volume                   | Purpose                                                                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | `symphony-cache-<runId>` | Persistent build caches for each worker (npm, pip, git) — survives container restarts but **not** `docker system prune --volumes` |
 
 > [!TIP]
@@ -438,24 +441,24 @@ These paths exist only inside worker containers and are **not** on the host file
 
 ## 📡 JSON API Reference
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/metrics` | Prometheus-format service metrics |
-| `GET` | `/api/v1/state` | Snapshot — queued, running, retrying, completed, workflow columns, and token totals |
-| `POST` | `/api/v1/refresh` | Trigger immediate reconciliation pass |
-| `GET` | `/api/v1/:issue_identifier` | Issue detail, recent events, archived attempts |
-| `GET` | `/api/v1/:issue_identifier/attempts` | Archived attempts + current live attempt id |
-| `GET` | `/api/v1/attempts/:attempt_id` | Archived per-attempt event timeline |
-| `POST` | `/api/v1/:issue_identifier/model` | Save per-issue model override |
-| `GET` | `/api/v1/config` | Effective merged operator config |
-| `GET` | `/api/v1/config/overlay` | Persistent overlay values only |
-| `PUT` | `/api/v1/config/overlay` | Update overlay values |
-| `DELETE` | `/api/v1/config/overlay/:path` | Remove one overlay path |
-| `GET` | `/api/v1/secrets` | List configured secret keys |
-| `POST` | `/api/v1/secrets/:key` | Store one secret |
-| `DELETE` | `/api/v1/secrets/:key` | Delete one secret |
-| `POST` | `/api/v1/plan` | Generate a structured implementation plan |
-| `POST` | `/api/v1/plan/execute` | Create Linear issues from a generated plan |
+| Method   | Endpoint                             | Description                                                                         |
+| -------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
+| `GET`    | `/metrics`                           | Prometheus-format service metrics                                                   |
+| `GET`    | `/api/v1/state`                      | Snapshot — queued, running, retrying, completed, workflow columns, and token totals |
+| `POST`   | `/api/v1/refresh`                    | Trigger immediate reconciliation pass                                               |
+| `GET`    | `/api/v1/:issue_identifier`          | Issue detail, recent events, archived attempts                                      |
+| `GET`    | `/api/v1/:issue_identifier/attempts` | Archived attempts + current live attempt id                                         |
+| `GET`    | `/api/v1/attempts/:attempt_id`       | Archived per-attempt event timeline                                                 |
+| `POST`   | `/api/v1/:issue_identifier/model`    | Save per-issue model override                                                       |
+| `GET`    | `/api/v1/config`                     | Effective merged operator config                                                    |
+| `GET`    | `/api/v1/config/overlay`             | Persistent overlay values only                                                      |
+| `PUT`    | `/api/v1/config/overlay`             | Update overlay values                                                               |
+| `DELETE` | `/api/v1/config/overlay/:path`       | Remove one overlay path                                                             |
+| `GET`    | `/api/v1/secrets`                    | List configured secret keys                                                         |
+| `POST`   | `/api/v1/secrets/:key`               | Store one secret                                                                    |
+| `DELETE` | `/api/v1/secrets/:key`               | Delete one secret                                                                   |
+| `POST`   | `/api/v1/plan`                       | Generate a structured implementation plan                                           |
+| `POST`   | `/api/v1/plan/execute`               | Create Linear issues from a generated plan                                          |
 
 ---
 
@@ -487,22 +490,31 @@ The helper emits JSON and prefers `issue-index.json` when present, while still f
 ## ⚠️ Common Failure Cases
 
 > [!WARNING]
+>
 > ### Missing Tracker API Key
+>
 > If `tracker.api_key` resolves to an empty value, startup fails with `missing_tracker_api_key`.
 
 > [!WARNING]
+>
 > ### Missing Codex Auth
+>
 > If `codex app-server` cannot authenticate, `account/read` fails the run early as a startup failure instead of leaving the worker hanging.
 
 > [!WARNING]
+>
 > ### Required MCP Startup Failure
+>
 > This is a **Codex runtime** problem, not a Symphony bug:
+>
 > ```text
 > error code=startup_failed msg="thread/start failed because a required MCP server did not initialize"
 > ```
 
 > [!WARNING]
+>
 > ### Invalid External Credentials
+>
 > If the Linear token or provider credentials are invalid, Symphony surfaces the upstream failure rather than crashing.
 
 ---
@@ -513,9 +525,9 @@ Symphony includes a `visual-verify` skill and project-level `agent-browser` conf
 
 ### Prerequisites
 
-| Requirement | Details |
-|---|---|
-| **agent-browser** | `npm i -g agent-browser && agent-browser install` |
+| Requirement       | Details                                                                   |
+| ----------------- | ------------------------------------------------------------------------- |
+| **agent-browser** | `npm i -g agent-browser && agent-browser install`                         |
 | **Brave browser** | Installed and in `PATH` (or set `executablePath` in `agent-browser.json`) |
 
 ### Project Configuration

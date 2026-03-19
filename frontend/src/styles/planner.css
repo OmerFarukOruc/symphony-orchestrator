@@ -45,7 +45,9 @@
 
 .planner-summary-card strong {
   font-family: var(--font-heading);
-  font-size: 20px;
+  font-size: var(--text-xl);
+  letter-spacing: var(--tracking-tight);
+  font-feature-settings: var(--font-features-tabular);
 }
 
 .planner-summary-card span {
@@ -109,7 +111,7 @@
   background: var(--bg-elevated);
   color: var(--text-accent);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-ui);
 }
 
 .planner-rail {
@@ -119,11 +121,11 @@
 
 .planner-rail-section h3 {
   font-family: var(--font-heading);
-  font-size: 13px;
+  font-size: var(--text-ui);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-wider);
   margin-bottom: var(--space-3);
 }
 

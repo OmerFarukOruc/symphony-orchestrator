@@ -276,6 +276,10 @@ describe("handleWorkerOutcome - stop signal detection", () => {
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_failed" }));
     const view = ctx.completedViews.get("MT-1") as Record<string, unknown>;
     expect(view.status).toBe("paused");
+    expect(ctx.deps.attemptStore.updateAttempt).toHaveBeenLastCalledWith(
+      "run-abc",
+      expect.objectContaining({ status: "paused", stopSignal: "blocked" }),
+    );
   });
 
   it("handles case-insensitive SYMPHONY_STATUS variations", async () => {

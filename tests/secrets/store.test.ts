@@ -69,16 +69,25 @@ describe("SecretsStore", () => {
     await expect(store.start()).rejects.toThrow("MASTER_KEY");
   });
 
-  it("fails startup when the persisted secrets file is decrypted with the wrong key", async () => {
+  it("refuses to overwrite existing secrets when started with the wrong key", async () => {
     const dir = await createTempDir();
     process.env.MASTER_KEY = "key-a";
 
     const store = new SecretsStore(dir, createLogger());
     await store.start();
     await store.set("TOKEN", "value-1");
+    const originalEncryptedFile = await readFile(path.join(dir, "secrets.enc"), "utf8");
 
     process.env.MASTER_KEY = "key-b";
     const wrongKeyStore = new SecretsStore(dir, createLogger());
-    await expect(wrongKeyStore.start()).rejects.toThrow();
+    await expect(wrongKeyStore.start()).rejects.toThrow("MASTER_KEY may not match");
+
+    const encryptedFileAfterFailure = await readFile(path.join(dir, "secrets.enc"), "utf8");
+    expect(encryptedFileAfterFailure).toBe(originalEncryptedFile);
+
+    process.env.MASTER_KEY = "key-a";
+    const restartedStore = new SecretsStore(dir, createLogger());
+    await restartedStore.start();
+    expect(restartedStore.get("TOKEN")).toBe("value-1");
   });
 });

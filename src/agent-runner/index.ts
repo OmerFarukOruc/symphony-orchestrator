@@ -64,7 +64,7 @@ export class AgentRunner {
     });
 
     await this.deps.workspaceManager.prepareForAttempt(input.workspace);
-    await this.deps.workspaceManager.runBeforeRun(input.workspace);
+    await this.deps.workspaceManager.runBeforeRun(input.workspace, input.issue.identifier);
 
     // Track the latest agent message content for early stop-signal detection.
     // This wrapper MUST be created before the Docker session so the
@@ -92,7 +92,7 @@ export class AgentRunner {
     } finally {
       session.turnId = null;
       await session.cleanup(config, input.signal);
-      await this.deps.workspaceManager.runAfterRun(input.workspace).catch((error) => {
+      await this.deps.workspaceManager.runAfterRun(input.workspace, input.issue.identifier).catch((error) => {
         logger.warn({ error: String(error) }, "after_run hook failed");
       });
     }

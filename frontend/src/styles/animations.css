@@ -126,7 +126,10 @@
   .timeline-enter,
   .expand-in,
   .skeleton,
-  .status-running .status-chip-dot {
+  .status-running .status-chip-dot,
+  .toast.is-exiting,
+  .modal-root.is-closing .modal-backdrop,
+  .modal-root.is-closing .modal-panel {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;

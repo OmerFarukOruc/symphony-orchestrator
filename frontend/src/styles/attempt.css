@@ -23,7 +23,7 @@
 
 .attempt-section h2 {
   font-family: var(--font-heading);
-  font-size: 15px;
+  font-size: var(--text-sm-plus);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -55,15 +55,16 @@
 .attempt-page .issue-identifier {
   color: var(--text-accent);
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-widest);
   text-transform: uppercase;
+  font-feature-settings: var(--font-features-mono-num);
 }
 
 .attempt-error-copy {
   white-space: pre-wrap;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 @media (max-width: 900px) {

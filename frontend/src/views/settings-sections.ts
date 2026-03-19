@@ -125,6 +125,7 @@ function renderContent(
           value: drafts[field.path] ?? "",
           onInput: (value) => {
             drafts[field.path] = value;
+            state.error = null;
             state.selectedSectionId = section.id;
           },
           onFocus: () => {

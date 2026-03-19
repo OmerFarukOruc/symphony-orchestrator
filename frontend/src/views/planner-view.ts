@@ -47,6 +47,7 @@ export function createPlannerPage(): HTMLElement {
     maxIssuesInput.value = state.maxIssues ? String(state.maxIssues) : "";
     labelsInput.value = state.labels.join(", ");
     regenerateButton.disabled = generating;
+    regenerateButton.hidden = !state.plan?.length;
     executeButton.disabled = !state.plan?.length || state.executing || generating;
     generateButton.disabled = generating;
     renderPlannerContent({

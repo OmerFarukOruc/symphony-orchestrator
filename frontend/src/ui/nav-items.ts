@@ -23,13 +23,6 @@ export const navItems: NavItem[] = [
   },
   {
     group: "Operate",
-    name: "Runs",
-    path: "/runs-placeholder",
-    hotkey: "g r",
-    icon: "<svg viewBox='0 0 24 24'><path d='M5 5h14v4H5zm0 5h14v4H5zm0 5h14v4H5z'/></svg>",
-  },
-  {
-    group: "Operate",
     name: "Planner",
     path: "/planner",
     hotkey: "g p",

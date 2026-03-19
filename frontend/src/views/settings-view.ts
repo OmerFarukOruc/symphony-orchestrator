@@ -2,7 +2,8 @@ import { api } from "../api";
 import { toast } from "../ui/toast";
 import { registerPageCleanup } from "../utils/page";
 
-import { buildSettingsSections, buildSectionPatchEntries, getSectionById, isSchemaLimited } from "./settings-helpers";
+import { buildSettingsSections, getSectionById, isSchemaLimited } from "./settings-helpers";
+import { buildSectionPatchPlan } from "./settings-patches";
 import { handleSettingsKeyboard } from "./settings-keyboard";
 import { renderSettingsLayout } from "./settings-sections";
 import { createSettingsState } from "./settings-state";
@@ -63,17 +64,23 @@ export function createSettingsPage(): HTMLElement {
       return;
     }
     const drafts = state.drafts[section.id] ?? {};
-    const entries = buildSectionPatchEntries(section, drafts, state.effective);
-    if (!entries.length) {
+    const plan = buildSectionPatchPlan(section, drafts, state.effective);
+    if (plan.errors.length > 0) {
+      const message = plan.errors.map((error) => error.message).join(" ");
+      state.error = message;
+      toast(message, "error");
+      render();
+      return;
+    }
+    if (!plan.entries.length) {
       toast(`No changes to save for ${section.title}.`, "info");
       return;
     }
     state.savingSectionId = section.id;
+    state.error = null;
     render();
     try {
-      for (const entry of entries) {
-        await api.putConfigOverlay({ path: entry.path, value: entry.value });
-      }
+      await api.putConfigOverlay({ patch: plan.patch });
       toast(`${section.title} updated.`, "success");
       await load();
     } catch (error) {

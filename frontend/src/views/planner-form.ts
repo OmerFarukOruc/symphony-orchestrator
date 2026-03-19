@@ -47,13 +47,16 @@ export function createPlannerForm(actions: {
   const fields = document.createElement("div");
   fields.className = "form-grid columns-2";
   fields.append(
-    createField("Goal", goalInput, "Describe the outcome, constraints, and hidden edges you want broken into work."),
+    createField(
+      { label: "Goal", hint: "Describe the outcome, constraints, and hidden edges you want broken into work." },
+      goalInput,
+    ),
   );
   const sideFields = document.createElement("div");
   sideFields.className = "form-grid";
   sideFields.append(
-    createField("Max issues", maxIssuesInput, "Optional cap, clamped to 20 by the API."),
-    createField("Labels", labelsInput, "Comma-separated labels applied to every generated issue."),
+    createField({ label: "Max issues", hint: "Optional cap, clamped to 20 by the API." }, maxIssuesInput),
+    createField({ label: "Labels", hint: "Comma-separated labels applied to every generated issue." }, labelsInput),
   );
   fields.append(sideFields);
 

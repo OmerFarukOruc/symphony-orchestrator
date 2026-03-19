@@ -112,7 +112,16 @@ export class SecretsStore {
     }
 
     const envelope = parseEnvelope(source);
-    const decrypted = decrypt(envelope, this.requiredKey());
+    let decrypted: string;
+    try {
+      decrypted = decrypt(envelope, this.requiredKey());
+    } catch (error) {
+      this.logger.error(
+        { error: String(error), secretsPath: this.secretsPath() },
+        "failed to decrypt secrets.enc — refusing to overwrite existing secret store",
+      );
+      throw new Error("failed to decrypt secrets.enc; MASTER_KEY may not match the existing archive", { cause: error });
+    }
     const secrets = asStringRecord(JSON.parse(decrypted) as unknown);
     this.cache.clear();
     for (const [key, value] of Object.entries(secrets)) {

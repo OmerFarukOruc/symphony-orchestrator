@@ -48,20 +48,23 @@
 .observability-section h2,
 .observability-raw-header h2 {
   font-family: var(--font-heading);
-  font-size: 15px;
+  font-size: var(--text-sm-plus);
   font-weight: 600;
+  letter-spacing: var(--tracking-snug);
 }
 
 .observability-value {
   font-family: var(--font-heading);
   font-size: clamp(22px, 2.2vw, 30px);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tightest);
+  font-feature-settings: var(--font-features-tabular);
 }
 
 .observability-detail {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--text-xs);
   min-height: 40px;
   color: var(--text-secondary);
 }
@@ -86,7 +89,7 @@
   padding-left: var(--space-4);
   color: var(--text-secondary);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--text-ui);
 }
 
 .observability-raw-drawer {
@@ -107,13 +110,13 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   white-space: pre-wrap;
 }
 
 .observability-source-badge {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-2xs);
   padding: 2px 6px;
   background: var(--bg-muted);
   border: 1px solid var(--border-stitch);

@@ -101,11 +101,11 @@ export function createPlannerCard(options: PlannerCardOptions): HTMLElement {
 
   card.append(
     header,
-    createField("Title", titleInput),
-    createField("Summary", summaryInput),
-    createField("Priority", priority),
-    createField("Dependencies", depsInput, "Comma-separated issue IDs in execution order."),
-    createField("Acceptance criteria", criteria, "One criterion per line."),
+    createField({ label: "Title" }, titleInput),
+    createField({ label: "Summary" }, summaryInput),
+    createField({ label: "Priority" }, priority),
+    createField({ label: "Dependencies", hint: "Comma-separated issue IDs in execution order." }, depsInput),
+    createField({ label: "Acceptance criteria", hint: "One criterion per line." }, criteria),
     labels,
   );
 

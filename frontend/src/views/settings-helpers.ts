@@ -1,4 +1,6 @@
-import { buildDiffText, parsePathValue, prettyJson, redactPath } from "./config-helpers";
+import { buildDiffText, prettyJson, redactPath } from "./config-helpers";
+import { buildSectionPatchPlan } from "./settings-patches";
+import { getValueAtPath, setValueAtPath } from "./settings-paths";
 
 export interface SettingsFieldOption {
   value: string;
@@ -76,41 +78,6 @@ export function sectionMatchesFilter(
   return haystacks.some((value) => value.toLowerCase().includes(query));
 }
 
-export function getValueAtPath(root: Record<string, unknown>, path: string): unknown {
-  return path.split(".").reduce<unknown>((value, segment) => {
-    if (!value || typeof value !== "object") {
-      return undefined;
-    }
-    return (value as Record<string, unknown>)[segment];
-  }, root);
-}
-
-const dangerousKeys = new Set(["__proto__", "constructor", "prototype"]);
-
-function setRecursive(obj: Record<string, unknown>, segments: string[], value: unknown): void {
-  const key = segments[0];
-  if (dangerousKeys.has(key)) {
-    throw new TypeError(`Refusing to traverse dangerous key: ${key}`);
-  }
-  if (segments.length === 1) {
-    obj[key] = value;
-    return;
-  }
-  const child = obj[key];
-  if (!child || typeof child !== "object" || Array.isArray(child)) {
-    obj[key] = {};
-  }
-  setRecursive(obj[key] as Record<string, unknown>, segments.slice(1), value);
-}
-
-export function setValueAtPath(target: Record<string, unknown>, path: string, value: unknown): void {
-  const parts = path.split(".");
-  if (parts.length === 0) {
-    return;
-  }
-  setRecursive(target, parts, value);
-}
-
 export function ensureSectionDrafts(
   drafts: Record<string, Record<string, string>>,
   section: SettingsSectionDefinition,
@@ -152,50 +119,6 @@ export function formatFieldDraft(field: SettingsFieldDefinition, value: unknown)
   return String(value);
 }
 
-export function parseFieldDraft(field: SettingsFieldDefinition, value: string): unknown {
-  if (field.kind === "boolean") {
-    return value === "true";
-  }
-  if (field.kind === "number") {
-    const numeric = Number(value);
-    return Number.isFinite(numeric) ? numeric : 0;
-  }
-  if (field.kind === "list") {
-    return value
-      .split(/\n|,/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-  if (field.kind === "json") {
-    return parsePathValue(value);
-  }
-  if (field.kind === "readonly") {
-    return value;
-  }
-  return parsePathValue(value);
-}
-
-export function buildSectionPatchEntries(
-  section: SettingsSectionDefinition,
-  drafts: Record<string, string>,
-  effective: Record<string, unknown>,
-): Array<{ path: string; value: unknown }> {
-  return section.fields
-    .filter((field) => field.editable !== false && field.kind !== "readonly")
-    .flatMap((field) => {
-      const draft = drafts[field.path] ?? "";
-      const current = getValueAtPath(effective, field.path);
-      if (draft === "[redacted]" && current !== undefined) {
-        return [];
-      }
-      const nextValue = parseFieldDraft(field, draft);
-      if (stableStringify(nextValue) === stableStringify(current)) {
-        return [];
-      }
-      return [{ path: field.path, value: nextValue }];
-    });
-}
-
 export function buildSectionDiffPreview(
   section: SettingsSectionDefinition,
   drafts: Record<string, string>,
@@ -203,7 +126,11 @@ export function buildSectionDiffPreview(
   overlay: Record<string, unknown>,
 ): string {
   const previewOverlay = structuredClone(overlay) as Record<string, unknown>;
-  buildSectionPatchEntries(section, drafts, effective).forEach((entry) => {
+  const plan = buildSectionPatchPlan(section, drafts, effective);
+  if (plan.errors.length > 0) {
+    return `Fix invalid fields before previewing a diff:\n${plan.errors.map((error) => `- ${error.message}`).join("\n")}`;
+  }
+  plan.entries.forEach((entry) => {
     setValueAtPath(previewOverlay, entry.path, entry.value);
   });
   const effectiveSlice = pickByPrefixes(effective, section.prefixes);
@@ -495,10 +422,6 @@ function pickByPrefixes(source: Record<string, unknown>, prefixes: string[]): Re
     }
   });
   return next;
-}
-
-function stableStringify(value: unknown): string {
-  return JSON.stringify(value);
 }
 
 function isSensitivePath(path: string): boolean {

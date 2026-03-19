@@ -62,7 +62,7 @@
 
 .queue-column-header > strong {
   font-family: var(--font-heading);
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 

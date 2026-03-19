@@ -60,13 +60,11 @@ function parseGithubRepo(repoUrl: string): { owner: string; repo: string } | nul
 interface CloneResult {
   branchName: string;
 }
-
 interface CommitAndPushResult {
   committed: boolean;
   pushed: boolean;
   branchName: string;
 }
-
 class GitHubApiError extends Error {
   constructor(
     readonly status: number,
@@ -108,7 +106,6 @@ export class GitManager {
     this.apiBaseUrl = deps.apiBaseUrl ?? "https://api.github.com";
     this.defaultGithubTokenEnv = deps.defaultGithubTokenEnv ?? "GITHUB_TOKEN";
   }
-
   async cloneInto(
     route: RepoMatch,
     workspaceDir: string,
@@ -122,7 +119,6 @@ export class GitManager {
     await this.runGit(["checkout", "-b", branchName], { cwd: workspaceDir, env: this.env });
     return { branchName };
   }
-
   async commitAndPush(
     workspaceDir: string,
     message: string,
@@ -140,7 +136,6 @@ export class GitManager {
     await this.pushWithToken(workspaceDir, resolvedBranch, tokenEnvName);
     return { committed: true, pushed: true, branchName: resolvedBranch };
   }
-
   async createPullRequest(
     route: RepoMatch,
     issue: Pick<Issue, "identifier" | "title" | "url">,
@@ -171,7 +166,6 @@ export class GitManager {
       return Array.isArray(existing) && existing.length > 0 ? existing[0] : undefined;
     }
   }
-
   async addPrComment(input: {
     owner: string;
     repo: string;
@@ -188,7 +182,6 @@ export class GitManager {
       input.tokenEnvName,
     );
   }
-
   async getPrStatus(input: {
     owner: string;
     repo: string;
@@ -203,8 +196,6 @@ export class GitManager {
       input.tokenEnvName,
     );
   }
-
-  /** Push with token-based auth via git http.extraheader when GITHUB_TOKEN is available. */
   private async pushWithToken(workspaceDir: string, branch: string, tokenEnvName?: string): Promise<void> {
     const envName = tokenEnvName ?? this.defaultGithubTokenEnv;
     const token = this.env[envName];
@@ -215,16 +206,13 @@ export class GitManager {
         { cwd: workspaceDir, env: this.env },
       );
     } else {
-      // Fall back to plain push (relies on external credential helper)
       await this.runGit(["push", "-u", "origin", branch], { cwd: workspaceDir, env: this.env });
     }
   }
-
   private async currentBranch(workspaceDir: string): Promise<string> {
     const result = await this.runGit(["rev-parse", "--abbrev-ref", "HEAD"], { cwd: workspaceDir, env: this.env });
     return result.stdout.trim() || "main";
   }
-
   private async githubRequest(
     pathName: string,
     init: { method: string; body?: string },
@@ -245,7 +233,14 @@ export class GitManager {
       body: init.body,
     });
     const text = await response.text();
-    const payload = text.length > 0 ? JSON.parse(text) : null;
+    let payload: unknown = null;
+    if (text.length > 0) {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = text;
+      }
+    }
     if (!response.ok) {
       throw new GitHubApiError(response.status, payload);
     }

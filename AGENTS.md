@@ -106,6 +106,24 @@ Use `agent-browser` for visual verification of Symphony dashboard UI changes. Th
 6. `agent-browser diff screenshot --baseline archive/screenshots/before.png` — pixel diff
 7. `agent-browser close` — cleanup
 
+## Semantic Code Search (CocoIndex)
+
+This project is indexed with [cocoindex-code](https://github.com/cocoindex-io/cocoindex-code) using the `nomic-ai/CodeRankEmbed` embedding model (137M params, ~1 GB VRAM, GPU-accelerated, 8192-token context). An MCP server (`ccc mcp`) exposes a `search` tool for semantic code search.
+
+**When to use semantic search vs grep:**
+
+- **Use the `search` MCP tool** for natural language and conceptual queries: *"how does authentication work"*, *"find the retry logic"*, *"where are errors handled"*. It understands meaning, not just text.
+- **Use grep/rg** for exact string matches: specific function names, variable names, imports, error messages.
+
+**Always prefer semantic search first** when exploring unfamiliar parts of the codebase or when the exact identifier is unknown. It saves tokens and finds relevant code that keyword search would miss.
+
+**MCP tool signature:**
+```
+search(query, limit=5, offset=0, refresh_index=true, languages=["typescript"], paths=["src/*"])
+```
+
+**Re-indexing:** If files have been added or changed significantly, the index auto-refreshes on search. To manually rebuild: `ccc reset && ccc index` from the project root.
+
 ## SonarCloud Prevention Rules
 
 These rules prevent the recurring code quality issues identified and fixed during the SonarCloud cleanup. Follow them strictly in all new code.

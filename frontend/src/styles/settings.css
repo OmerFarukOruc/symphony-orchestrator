@@ -42,7 +42,7 @@
   text-align: left;
   cursor: pointer;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--text-ui);
   color: var(--text-secondary);
   transition:
     color var(--motion-fast) var(--ease-out-quart),
@@ -82,13 +82,14 @@
 
 .settings-card-title {
   font-family: var(--font-heading);
-  font-size: 16px;
+  font-size: var(--text-md);
   font-weight: 700;
+  letter-spacing: var(--tracking-snug);
 }
 
 .settings-card-desc {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--text-ui);
   color: var(--text-secondary);
 }
 

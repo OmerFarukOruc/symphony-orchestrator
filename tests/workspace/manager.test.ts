@@ -27,9 +27,9 @@ function createConfig(root: string): ServiceConfig {
     workspace: {
       root,
       hooks: {
-        afterCreate: "echo after_create >> hook.log",
-        beforeRun: "echo before_run >> hook.log",
-        afterRun: "echo after_run >> hook.log",
+        afterCreate: "printf 'after_create:%s\\n' \"$SYMPHONY_ISSUE_IDENTIFIER\" >> hook.log",
+        beforeRun: "printf 'before_run:%s\\n' \"$SYMPHONY_ISSUE_IDENTIFIER\" >> hook.log",
+        afterRun: "printf 'after_run:%s\\n' \"$SYMPHONY_ISSUE_IDENTIFIER\" >> hook.log",
         beforeRemove: "echo before_remove >> hook.log",
         timeoutMs: 1000,
       },
@@ -69,13 +69,13 @@ describe("WorkspaceManager", () => {
     await mkdir(path.join(workspace.path, "tmp"), { recursive: true });
     await mkdir(path.join(workspace.path, ".elixir_ls"), { recursive: true });
     await manager.prepareForAttempt(workspace);
-    await manager.runBeforeRun(workspace);
-    await manager.runAfterRun(workspace);
+    await manager.runBeforeRun(workspace, "MT/42");
+    await manager.runAfterRun(workspace, "MT/42");
 
     const hookLog = await readFile(path.join(workspace.path, "hook.log"), "utf8");
-    expect(hookLog).toContain("after_create");
-    expect(hookLog).toContain("before_run");
-    expect(hookLog).toContain("after_run");
+    expect(hookLog).toContain("after_create:MT/42");
+    expect(hookLog).toContain("before_run:MT/42");
+    expect(hookLog).toContain("after_run:MT/42");
 
     await manager.removeWorkspace("MT/42");
     await expect(stat(workspace.path)).rejects.toThrow();

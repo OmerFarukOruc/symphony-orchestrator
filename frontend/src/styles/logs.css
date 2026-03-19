@@ -42,15 +42,16 @@
 
 .mc-log-time {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--text-muted);
+  font-feature-settings: var(--font-features-mono-num);
 }
 
 .mc-log-message {
   flex: 1;
   min-width: 220px;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--text-ui);
 }
 
 .mc-log-payload {
@@ -61,13 +62,13 @@
   overflow: auto;
   white-space: pre-wrap;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .logs-breadcrumb {
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
 }
 
@@ -83,7 +84,7 @@
   border: none;
   padding: var(--space-2) var(--space-4);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--text-ui);
   font-weight: 600;
   cursor: pointer;
 }
@@ -95,7 +96,7 @@
 .logs-mode-toggle button {
   padding: 4px 10px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   background: var(--bg-elevated);
   border: 1px solid var(--border-stitch);
   color: var(--text-secondary);

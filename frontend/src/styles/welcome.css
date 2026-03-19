@@ -1,0 +1,106 @@
+/* ============================================
+   WELCOME VIEW STYLES
+   ============================================ */
+
+.welcome-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding-top: var(--space-10);
+}
+
+/* Hero Section */
+.welcome-hero {
+  text-align: left;
+}
+
+.welcome-hero-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-hero);
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.welcome-hero-subtitle {
+  font-family: var(--font-body);
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+}
+
+.welcome-hero-version {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}
+
+/* Checklist Section */
+.welcome-checklist {
+  margin-top: var(--space-10);
+}
+
+.welcome-steps {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.welcome-step {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.welcome-step-number {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: var(--stroke-default) solid var(--border-stitch);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-accent);
+  flex-shrink: 0;
+}
+
+.welcome-step-content {
+  flex: 1;
+}
+
+.welcome-step-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--text-primary);
+}
+
+.welcome-step-desc {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.welcome-step-link {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-accent);
+  margin-top: 4px;
+  display: inline-block;
+}
+
+/* Code Block */
+.welcome-code-block {
+  margin-top: var(--space-5);
+}
+
+/* Footer */
+.welcome-footer {
+  margin-top: var(--space-8);
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}

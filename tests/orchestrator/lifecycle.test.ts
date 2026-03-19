@@ -280,6 +280,25 @@ describe("refreshQueueViews", () => {
     expect(detailViews.has("MT-1")).toBe(false);
     expect(detailViews.has("MT-2")).toBe(true);
   });
+
+  it("removes stale detailViews entries for issues no longer in the queue", async () => {
+    const issues = [makeIssue({ id: "i2", identifier: "MT-2" })];
+    const detailViews = new Map<string, unknown>([
+      ["MT-1", { identifier: "MT-1" }],
+      ["MT-2", { identifier: "MT-2" }],
+    ]);
+    await refreshQueueViews({
+      queuedViews: [],
+      detailViews: detailViews as never,
+      claimedIssueIds: new Set<string>(),
+      deps: { linearClient: { fetchCandidateIssues: vi.fn().mockResolvedValue(issues) } },
+      canDispatchIssue: () => true,
+      resolveModelSelection: () => ({ model: "gpt-4o", reasoningEffort: "high" as const, source: "default" as const }),
+      setQueuedViews: () => undefined,
+    });
+    expect(detailViews.has("MT-1")).toBe(false);
+    expect(detailViews.has("MT-2")).toBe(true);
+  });
 });
 
 describe("cleanupTerminalIssueWorkspaces", () => {

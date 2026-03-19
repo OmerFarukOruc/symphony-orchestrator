@@ -1,0 +1,482 @@
+/* ============================================
+   HARDENING UTILITIES
+   Production-ready resilience for edge cases,
+   internationalization, and accessibility
+   ============================================ */
+
+/* ============================================
+   TEXT OVERFLOW & WRAPPING
+   ============================================ */
+
+/* Single line with ellipsis - prevents layout breakage */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Multi-line with clamp - handles long descriptions */
+.text-line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.text-line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.text-line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Allow wrapping with break-word for long content */
+.text-wrap {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Prevent text wrapping for short identifiers */
+.text-nowrap {
+  white-space: nowrap;
+}
+
+/* ============================================
+   FLEX/GRID OVERFLOW PREVENTION
+   ============================================ */
+
+/* Prevent flex items from overflowing - CRITICAL for containers */
+.flex-minimize {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Allow flex child to shrink below content size */
+.flex-shrink {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Grid item overflow prevention */
+.grid-minimize {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ============================================
+   INTERNATIONALIZATION (i18n)
+   ============================================ */
+
+/* RTL Support - logical properties for bidirectional text */
+[dir="rtl"] .logical-start {
+  margin-inline-start: var(--space-3);
+  padding-inline-start: var(--space-2);
+}
+
+[dir="rtl"] .logical-border {
+  border-inline-start: 2px solid var(--text-accent);
+}
+
+/* Icon mirroring for RTL */
+[dir="rtl"] .rtl-mirror {
+  transform: scaleX(-1);
+}
+
+/* Text expansion support - German can be 30-40% longer */
+.text-expansion-safe {
+  min-width: fit-content;
+  max-width: 100%;
+}
+
+/* Container that adapts to content width */
+.content-adaptive {
+  width: auto;
+  min-width: min-content;
+  max-width: 100%;
+}
+
+/* ============================================
+   ERROR & EMPTY STATES
+   ============================================ */
+
+/* Error state container */
+.error-state {
+  display: grid;
+  gap: var(--space-3);
+  place-items: center;
+  padding: var(--space-8);
+  text-align: center;
+  min-height: 200px;
+}
+
+.error-state-icon {
+  color: var(--status-blocked);
+  opacity: 0.7;
+}
+
+.error-state-title {
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.error-state-message {
+  color: var(--text-secondary);
+  max-width: 60ch;
+  word-wrap: break-word;
+}
+
+.error-state-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Enhanced empty state - more resilient */
+.empty-state-enhanced {
+  display: grid;
+  gap: var(--space-3);
+  place-items: center;
+  padding: var(--space-8) var(--space-6);
+  text-align: center;
+  min-height: 180px;
+}
+
+.empty-state-icon {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-family: var(--font-heading);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.empty-state-detail {
+  color: var(--text-muted);
+  max-width: 50ch;
+  word-wrap: break-word;
+}
+
+/* ============================================
+   INPUT VALIDATION & CONSTRAINTS
+   ============================================ */
+
+/* Input with validation state */
+.mc-input.is-invalid {
+  border-color: var(--status-blocked);
+  background: color-mix(in srgb, var(--status-blocked) 5%, var(--bg-elevated));
+}
+
+.mc-input.is-valid {
+  border-color: var(--status-running);
+  background: color-mix(in srgb, var(--status-running) 5%, var(--bg-elevated));
+}
+
+/* Character counter */
+.input-counter {
+  display: flex;
+  justify-content: flex-end;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+}
+
+.input-counter.is-warning {
+  color: var(--status-retrying);
+}
+
+.input-counter.is-error {
+  color: var(--status-blocked);
+}
+
+/* Required field indicator */
+.form-label .required::after {
+  content: " *";
+  color: var(--status-blocked);
+}
+
+/* ============================================
+   ACCESSIBILITY ENHANCEMENTS
+   ============================================ */
+
+/* Focus visible styles - enhanced */
+.focus-ring:focus-visible {
+  outline: var(--stroke-accent) solid var(--text-accent);
+  outline-offset: 2px;
+}
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-stitch);
+  color: var(--text-primary);
+  z-index: 100;
+  transition: top var(--motion-fast);
+}
+
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Visible on focus for keyboard users */
+.sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Live region for announcements */
+.live-region {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* ============================================
+   HIGH CONTRAST MODE SUPPORT
+   ============================================ */
+
+@media (prefers-contrast: high) {
+  .mc-button,
+  .mc-input,
+  .mc-select,
+  .mc-chip,
+  .issue-card,
+  .mc-list-item,
+  .mc-rail-item {
+    border-width: 2px;
+  }
+
+  .mc-button:focus-visible,
+  .mc-input:focus-visible,
+  .mc-select:focus-visible,
+  .mc-chip:focus-visible {
+    outline-width: 3px;
+  }
+}
+
+/* ============================================
+   REDUCED MOTION (already partially in primitives.css)
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all animations and transitions */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Keep instant feedback visible */
+  .skeleton-line,
+  .skeleton-block {
+    animation: none !important;
+    opacity: 0.6;
+  }
+
+  /* Remove pulsing animations */
+  .is-status-running::before,
+  .is-status-claimed::before {
+    animation: none !important;
+  }
+}
+
+/* ============================================
+   RESPONSIVE TEXT SIZING
+   ============================================ */
+
+/* Fluid typography that respects user preferences */
+.text-responsive-sm {
+  font-size: clamp(11px, 2.5vw, 12px);
+}
+
+.text-responsive-base {
+  font-size: clamp(12px, 2.5vw, 14px);
+}
+
+.text-responsive-lg {
+  font-size: clamp(14px, 3vw, 18px);
+}
+
+/* ============================================
+   SCROLLBAR STYLING (consistent across browsers)
+   ============================================ */
+
+/* Webkit scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-muted);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-stitch);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-stitch) var(--bg-muted);
+}
+
+/* ============================================
+   TOAST ENHANCEMENTS
+   ============================================ */
+
+/* Toast with better text handling */
+.toast-enhanced {
+  width: min(360px, 90vw);
+  max-width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-stitch);
+  background: var(--bg-elevated);
+  position: relative;
+  overflow: hidden;
+  animation: toastIn var(--motion-fast) var(--ease-out-quart);
+  word-wrap: break-word;
+}
+
+/* Toast with action button */
+.toast-with-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.toast-with-action .toast-message {
+  flex: 1;
+  word-wrap: break-word;
+}
+
+/* ============================================
+   MODAL ENHANCEMENTS
+   ============================================ */
+
+/* Modal with max-height for content */
+.modal-panel-enhanced {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Modal body with constrained text */
+.modal-body-enhanced {
+  max-width: 70ch;
+  word-wrap: break-word;
+}
+
+/* ============================================
+   TABLE ENHANCEMENTS
+   ============================================ */
+
+/* Responsive table wrapper */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Table cell with text truncation */
+.table-cell-truncate {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================
+   BADGE/CHIP ENHANCEMENTS
+   ============================================ */
+
+/* Chip with max-width for long content */
+.mc-chip-truncate {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================
+   UTILITY CLASSES FOR EDGE CASES
+   ============================================ */
+
+/* Hide when empty */
+.hide-empty:empty {
+  display: none;
+}
+
+/* Min height for content areas */
+.min-content-height {
+  min-height: 120px;
+}
+
+/* Loading shimmer effect (respects reduced motion) */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Touch-friendly tap targets */
+@media (pointer: coarse) {
+  .mc-button,
+  .mc-chip.is-interactive,
+  .mc-list-item,
+  .mc-rail-item {
+    min-height: 44px;
+  }
+
+  .header-action-btn {
+    width: 44px;
+    height: 44px;
+  }
+}

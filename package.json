@@ -26,7 +26,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:docker": "vitest run tests/integration/docker-lifecycle.test.ts",
     "test:e2e": "vitest run tests/integration/e2e-smoke.test.ts",
-    "dev": "tsx src/cli/index.ts",
+    "dev": "tsx watch src/cli/index.ts",
     "dev:frontend": "vite --config frontend/vite.config.ts",
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint --fix src/ tests/",
@@ -35,6 +35,7 @@
     "knip": "knip",
     "jscpd": "jscpd --config .jscpd.json",
     "docs:generate": "typedoc",
+    "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",
     "prepare": "husky"
   },
   "dependencies": {

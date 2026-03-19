@@ -1,111 +1,85 @@
-:root,
-[data-theme="dark"] {
-  /* Copper palette */
-  --color-copper-50: #f9eee9;
-  --color-copper-100: #f3ddd4;
-  --color-copper-200: #e8bba9;
-  --color-copper-300: #da9478;
-  --color-copper-400: #c96e4a;
-  --color-copper-500: #b45837;
-  --color-copper-600: #9a472b;
-  --color-copper-700: #7a3520;
-  --color-copper-800: #5d2a1c;
+/* ============================================
+   DESIGN TOKENS
+   Extends design-system.css with app-specific tokens
+   ============================================ */
 
-  /* Surface scale */
-  --bg-canvas: #0c1016;
-  --bg-surface: #121824;
-  --bg-elevated: #182131;
-  --bg-muted: #1e293b;
-  --border-stitch: #2a3548;
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: #2a3548;
-  --border-strong: rgba(255, 255, 255, 0.18);
+@import url("./design-system.css");
 
-  /* Text */
-  --text-primary: #e8edf3;
-  --text-secondary: #8b99a8;
-  --text-muted: #546070;
-  --text-accent: var(--color-copper-400);
+/* ============================================
+   APP-SPECIFIC TOKEN ALIASES
+   ============================================ */
 
-  /* Status */
-  --status-queued: #4f7cff;
-  --status-claimed: #7c62d6;
-  --status-running: #2f9e44;
-  --status-retrying: #d98a1c;
-  --status-blocked: #d94841;
-  --status-completed: #7b8797;
-  --status-pending-change: #b45837;
+:root {
+  /* Legacy surface aliases */
+  --bg-canvas: var(--bg-base);
+  --border-stitch: var(--border-default);
+  --border-strong: var(--border-subtle);
 
-  /* Typography — Stitch */
-  --font-heading: "Space Grotesk", "Inter", system-ui, sans-serif;
-  --font-body: "Manrope", "Inter", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", "SF Mono", "Cascadia Code", ui-monospace, monospace;
+  /* Typography scale - app specific */
+  --text-2xs: 0.625rem;      /* 10px — group headers, type badges */
+  --text-xxs: 0.6875rem;     /* 11px — toolbar labels, table headers */
+  --text-xs: 0.75rem;        /* 12px — secondary labels */
+  --text-ui: 0.8125rem;      /* 13px — secondary UI text, descriptions */
+  --text-sm: 0.875rem;       /* 14px — base UI text */
+  --text-sm-plus: 0.9375rem; /* 15px — subsection headings */
+  --text-md: 1rem;           /* 16px — section titles */
+  --text-lg: 1.125rem;       /* 18px */
+  --text-xl: 1.25rem;        /* 20px — KPI numbers */
+  --text-2xl: clamp(1.375rem, 2.5vw, 1.75rem);
+  --text-hero: clamp(1.75rem, 4vw, 2.625rem);
 
-  /* Spacing */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
+  /* Letter-spacing (tracking) tokens */
+  --tracking-tightest: -0.03em;  /* hero/KPI numbers, 22px+ headings */
+  --tracking-tight:    -0.02em;  /* headings 20–28px */
+  --tracking-snug:     -0.01em;  /* medium headings 16–20px, brand wordmark */
+  --tracking-normal:    0em;     /* body text */
+  --tracking-wide:      0.02em;  /* mono badges, inline identifiers */
+  --tracking-wider:     0.04em;  /* uppercase mono labels */
+  --tracking-widest:    0.08em;  /* UPPERCASE issue identifiers */
+  --tracking-caps:      0.1em;   /* sidebar group headers, all-caps micro */
 
-  /* Stitch: no rounded corners */
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
+  /* Line-height (leading) tokens */
+  --leading-none:    1;    /* badges, buttons, single-line UI elements */
+  --leading-tight:   1.2;  /* display numbers, KPI values, hero headings */
+  --leading-snug:    1.35; /* card titles */
+  --leading-normal:  1.5;  /* body text */
+  --leading-relaxed: 1.6;  /* code panels, log output */
+  --leading-loose:   1.65; /* long-form reading content */
 
-  /* Stitch: no shadows — elevation via border/background shifts */
-  --shadow-sm: none;
-  --shadow-md: none;
-  --shadow-lg: none;
+  /* Font feature tokens */
+  --font-features-default:  "kern" 1, "liga" 1, "calt" 1;
+  --font-features-tabular:  "kern" 1, "tnum" 1, "lnum" 1;
+  --font-features-mono-num: "tnum" 1, "lnum" 1, "zero" 1;
+  --font-features-heading:  "kern" 1, "liga" 1, "calt" 1, "ss01" 1;
 
-  /* Motion */
-  --motion-instant: 120ms;
-  --motion-fast: 180ms;
-  --motion-medium: 260ms;
-  --motion-slow: 420ms;
-  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Control heights */
+  --control-height-xs: 28px;
+  --control-height-sm: 32px;
+  --control-height-md: 36px;
+  --control-height-lg: 40px;
+  --control-height-xl: 44px;
 
-  /* Shell */
+  /* Icon sizes */
+  --icon-size-xs: 12px;
+  --icon-size-sm: 14px;
+  --icon-size-md: 16px;
+  --icon-size-lg: 20px;
+  --icon-size-xl: 24px;
+
+  /* Stroke widths */
+  --stroke-default: 1px;
+  --stroke-accent: 2px;
+  --stroke-emphasis: 3px;
+
+  /* Shell dimensions */
   --sidebar-width-collapsed: 48px;
   --sidebar-width-expanded: 220px;
   --header-height: 48px;
 }
 
-[data-theme="light"] {
-  --bg-canvas: #f7f5f1;
-  --bg-surface: #ffffff;
-  --bg-elevated: #f0ede7;
-  --bg-muted: #e8e4dc;
-  --border-stitch: #d4cfc7;
-  --border-subtle: rgba(0, 0, 0, 0.05);
-  --border-default: #d4cfc7;
-  --border-strong: rgba(0, 0, 0, 0.18);
-  --text-primary: #1a1f28;
-  --text-secondary: #5a6370;
-  --text-muted: #8b96a3;
-  --text-accent: var(--color-copper-600);
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
 html,
 body {
   height: 100%;
-  font-family: var(--font-ui);
-  background: var(--bg-canvas);
-  color: var(--text-primary);
-  font-size: 14px;
-  line-height: 1.5;
 }
 
 body {

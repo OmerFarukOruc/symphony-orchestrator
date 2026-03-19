@@ -54,11 +54,16 @@ async function del(path: string): Promise<void> {
 export const api = {
   getState: () => get<RuntimeSnapshot>("/api/v1/state"),
   getRuntime: () => get<RuntimeInfo>("/api/v1/runtime"),
-  getIssue: (id: string) => get<IssueDetail>(`/api/v1/${encodeURIComponent(id)}`),
-  getAttempts: (id: string) =>
-    get<{ attempts: AttemptSummary[]; current_attempt_id: string | null }>(
+  getIssue: (id: string) => {
+    if (!id) return Promise.reject(new Error("issue id is required"));
+    return get<IssueDetail>(`/api/v1/${encodeURIComponent(id)}`);
+  },
+  getAttempts: (id: string) => {
+    if (!id) return Promise.resolve({ attempts: [] as AttemptSummary[], current_attempt_id: null });
+    return get<{ attempts: AttemptSummary[]; current_attempt_id: string | null }>(
       `/api/v1/${encodeURIComponent(id)}/attempts`,
-    ),
+    );
+  },
   getAttemptDetail: (id: string) => get<AttemptRecord>(`/api/v1/attempts/${encodeURIComponent(id)}`),
   postRefresh: () => post<{ queued: boolean }>("/api/v1/refresh", {}),
   getConfig: () => get<Record<string, unknown>>("/api/v1/config"),

@@ -1,20 +1,17 @@
 export function createWelcomePage(): HTMLElement {
   const page = document.createElement("div");
-  page.className = "page fade-in";
-  page.style.maxWidth = "640px";
-  page.style.margin = "0 auto";
-  page.style.paddingTop = "var(--space-10)";
+  page.className = "welcome-page fade-in";
 
   const hero = document.createElement("section");
-  hero.style.textAlign = "left";
+  hero.className = "welcome-hero";
   hero.innerHTML = `
-    <h1 style="font-family: var(--font-heading); font-size: 42px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">Symphony</h1>
-    <p style="font-family: var(--font-body); font-size: 16px; color: var(--text-secondary); margin-top: var(--space-2);">Autonomous issue orchestration.</p>
-    <p style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-top: var(--space-2);">v0.2.0</p>
+    <h1 class="welcome-hero-title">Symphony</h1>
+    <p class="welcome-hero-subtitle">Autonomous issue orchestration.</p>
+    <p class="welcome-hero-version">v0.2.0</p>
   `;
 
   const checklist = document.createElement("section");
-  checklist.style.marginTop = "var(--space-10)";
+  checklist.className = "welcome-checklist";
 
   const checklistTitle = document.createElement("h2");
   checklistTitle.className = "section-title";
@@ -49,43 +46,25 @@ export function createWelcomePage(): HTMLElement {
   ];
 
   const list = document.createElement("div");
-  list.style.display = "grid";
-  list.style.gap = "var(--space-4)";
-  list.style.marginTop = "var(--space-4)";
+  list.className = "welcome-steps";
 
   for (const step of steps) {
     const row = document.createElement("div");
-    row.style.display = "flex";
-    row.style.gap = "var(--space-4)";
-    row.style.alignItems = "flex-start";
+    row.className = "welcome-step";
 
     const num = document.createElement("div");
-    num.style.width = "28px";
-    num.style.height = "28px";
-    num.style.display = "grid";
-    num.style.placeItems = "center";
-    num.style.border = "1px solid var(--border-stitch)";
-    num.style.fontFamily = "var(--font-mono)";
-    num.style.fontSize = "13px";
-    num.style.fontWeight = "600";
-    num.style.color = "var(--text-accent)";
-    num.style.flexShrink = "0";
+    num.className = "welcome-step-number";
     num.textContent = step.n;
 
     const content = document.createElement("div");
-    content.style.flex = "1";
+    content.className = "welcome-step-content";
+
     const titleEl = document.createElement("div");
-    titleEl.style.fontFamily = "var(--font-heading)";
-    titleEl.style.fontWeight = "600";
-    titleEl.style.fontSize = "14px";
-    titleEl.style.color = "var(--text-primary)";
+    titleEl.className = "welcome-step-title";
     titleEl.textContent = step.title;
 
     const descEl = document.createElement("div");
-    descEl.style.fontFamily = "var(--font-body)";
-    descEl.style.fontSize = "13px";
-    descEl.style.color = "var(--text-secondary)";
-    descEl.style.marginTop = "2px";
+    descEl.className = "welcome-step-desc";
     descEl.textContent = step.desc;
 
     content.append(titleEl, descEl);
@@ -93,11 +72,7 @@ export function createWelcomePage(): HTMLElement {
     if (step.link) {
       const linkEl = document.createElement("a");
       linkEl.href = "#";
-      linkEl.style.fontFamily = "var(--font-body)";
-      linkEl.style.fontSize = "13px";
-      linkEl.style.color = "var(--text-accent)";
-      linkEl.style.marginTop = "4px";
-      linkEl.style.display = "inline-block";
+      linkEl.className = "welcome-step-link";
       linkEl.textContent = `${step.link} \u2192`;
       linkEl.addEventListener("click", (e) => {
         e.preventDefault();
@@ -120,23 +95,12 @@ export function createWelcomePage(): HTMLElement {
   checklist.append(list);
 
   const codeBlock = document.createElement("pre");
-  codeBlock.style.marginTop = "var(--space-5)";
-  codeBlock.style.padding = "var(--space-4)";
-  codeBlock.style.background = "var(--bg-surface)";
-  codeBlock.style.border = "1px solid var(--border-stitch)";
-  codeBlock.style.fontFamily = "var(--font-mono)";
-  codeBlock.style.fontSize = "13px";
-  codeBlock.style.color = "var(--text-primary)";
-  codeBlock.style.overflow = "auto";
+  codeBlock.className = "welcome-code-block mc-code-panel";
   codeBlock.textContent = "node dist/cli.js ./WORKFLOW.example.md --port 4000";
   checklist.append(codeBlock);
 
   const footer = document.createElement("p");
-  footer.style.marginTop = "var(--space-8)";
-  footer.style.textAlign = "center";
-  footer.style.fontFamily = "var(--font-body)";
-  footer.style.fontSize = "12px";
-  footer.style.color = "var(--text-muted)";
+  footer.className = "welcome-footer";
   footer.textContent =
     "This page appears when no active workflow is detected. Start a workflow to see Mission Control.";
 

@@ -89,7 +89,8 @@ ISSUE_ID="<identifier_from_2.1>"   # e.g. NIN-15
 fuser -k 4000/tcp 2>/dev/null
 sleep 1
 rm -rf "/home/oruc/Desktop/symphony-workspaces/$ISSUE_ID"
-echo "Ready — port 4000 free, workspace clean"
+rm -f /home/oruc/Desktop/codex/.symphony/secrets.enc /home/oruc/Desktop/codex/.symphony/secrets.audit.log
+echo "Ready — port 4000 free, workspace clean, secrets cleared"
 ```
 
 ### 3.2 Start the orchestrator (backgrounded)
@@ -99,7 +100,7 @@ Start Symphony in the background and capture its PID and log file path. You will
 ```bash
 export GITHUB_TOKEN="$(gh auth token)"
 export LINEAR_PROJECT_SLUG="symphony-e2e-test-c36e46913595"
-export MASTER_KEY="e2e-test-key-$(date +%s)"
+export MASTER_KEY="e2e-test-key"
 export LOG_FILE="/tmp/symphony-e2e-$(date +%s).log"
 
 cd /home/oruc/Desktop/codex && \
@@ -131,15 +132,17 @@ grep -E "issueIdentifier|dispatch|worker_started|codex stderr" "$LOG_FILE" | hea
 Poll the API every 15 seconds until the issue appears in the `completed` list:
 
 ```bash
+ISSUE_ID="<identifier_from_2.1>"
+
 for i in $(seq 1 12); do
   RESULT=$(curl -s http://127.0.0.1:4000/api/v1/state | python3 -c "
 import json, sys
 d = json.load(sys.stdin)
-running = [(r.get('issue_identifier'), r.get('status')) for r in d.get('running', [])]
-completed = [(c.get('issue_identifier'), c.get('status')) for c in d.get('completed', [])]
+running = [(r.get('identifier'), r.get('status')) for r in d.get('running', [])]
+completed = [(c.get('identifier'), c.get('status')) for c in d.get('completed', [])]
 print(f'Running: {running}')
 print(f'Completed: {completed}')
-if completed:
+if any(c[0] == '$ISSUE_ID' for c in completed):
     print('DONE')
 ")
   echo "[$(date +%H:%M:%S)] $RESULT"
@@ -182,7 +185,7 @@ print('=== RESULTS ===')
 errors = []
 
 if running:
-    errors.append(f'❌ Running should be empty, got {len(running)} entries: {[r.get(\"issue_identifier\") for r in running]}')
+    errors.append(f'❌ Running should be empty, got {len(running)} entries: {[r.get(\"identifier\") for r in running]}')
 else:
     print('✅ No running agents')
 
@@ -191,7 +194,7 @@ if not completed:
 else:
     c = completed[0]
     status = c.get('status', 'unknown')
-    ident = c.get('issue_identifier', 'unknown')
+    ident = c.get('identifier', 'unknown')
     print(f'✅ Issue {ident} status: {status}')
     if status != 'completed':
         errors.append(f'❌ Expected status=completed, got {status}')
@@ -220,7 +223,12 @@ This checks that `pullRequestUrl` and `stopSignal` are stored in the archived at
 ```bash
 ISSUE_ID="<identifier_from_2.1>"
 
-ATTEMPT_FILE=$(ls -t /home/oruc/Desktop/codex/.symphony/attempts/*.json 2>/dev/null | head -1)
+ATTEMPT_FILE=$(python3 -c "
+import json, glob, os
+for f in sorted(glob.glob('/home/oruc/Desktop/codex/.symphony/attempts/*.json'), key=lambda x: -os.path.getmtime(x)):
+    if json.load(open(f)).get('issueIdentifier') == '$ISSUE_ID':
+        print(f); break
+")
 if [ -z "$ATTEMPT_FILE" ]; then
   echo "❌ No attempt files found in .symphony/attempts/"
 else
@@ -264,7 +272,7 @@ fi
 Use the `pullRequestUrl` from the attempt JSON to confirm the PR is accessible on GitHub.
 
 ```bash
-ATTEMPT_FILE=$(ls -t /home/oruc/Desktop/codex/.symphony/attempts/*.json 2>/dev/null | head -1)
+ATTEMPT_FILE=$(python3 -c "import json, glob, os; [print(f) for f in sorted(glob.glob('/home/oruc/Desktop/codex/.symphony/attempts/*.json'), key=lambda x: -os.path.getmtime(x)) if json.load(open(f)).get('pullRequestUrl')][:1]")
 PR_URL=$(python3 -c "import json; print(json.load(open('$ATTEMPT_FILE')).get('pullRequestUrl', ''))" 2>/dev/null)
 
 if [ -z "$PR_URL" ]; then
@@ -380,12 +388,12 @@ result = subprocess.run(
   capture_output=True, text=True
 )
 d = json.loads(result.stdout)
-running = [r for r in d.get('running', []) if r.get('issue_identifier') == '$ISSUE_ID']
+running = [r for r in d.get('running', []) if r.get('identifier') == '$ISSUE_ID']
 if running:
-    print(f'❌ FAIL — issue \$ISSUE_ID is running again: {running}')
+    print(f'❌ FAIL — issue $ISSUE_ID is running again: {running}')
 else:
-    print(f'✅ PASS — issue \$ISSUE_ID is not running after restart')
-    completed = [c for c in d.get('completed', []) if c.get('issue_identifier') == '$ISSUE_ID']
+    print(f'✅ PASS — issue $ISSUE_ID is not running after restart')
+    completed = [c for c in d.get('completed', []) if c.get('identifier') == '$ISSUE_ID']
     if completed:
         print(f'✅ Issue still shows as completed: {completed[0].get(\"status\")}')
 "

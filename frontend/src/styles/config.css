@@ -24,13 +24,14 @@
 
 .config-entry-name {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-ui);
 }
 
 .config-entry-value {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
+  font-feature-settings: var(--font-features-mono-num);
 }
 
 .config-code {
@@ -39,7 +40,8 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
+  font-feature-settings: var(--font-features-mono-num);
   overflow: auto;
   white-space: pre-wrap;
 }
@@ -51,7 +53,7 @@
 .config-rail-item {
   padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-ui);
   cursor: pointer;
   border-left: 2px solid transparent;
   transition:
@@ -69,7 +71,7 @@
 }
 
 .config-rail-item .type-badge {
-  font-size: 10px;
+  font-size: var(--text-2xs);
   color: var(--text-muted);
   margin-left: var(--space-2);
 }

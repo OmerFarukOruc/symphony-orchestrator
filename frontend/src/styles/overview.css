@@ -68,17 +68,19 @@
 .overview-terminal-item strong {
   display: block;
   font-family: var(--font-heading);
-  font-size: 20px;
+  font-size: var(--text-xl);
   font-weight: 700;
   line-height: 1.1;
+  letter-spacing: var(--tracking-tight);
+  font-feature-settings: var(--font-features-tabular);
 }
 
 .overview-kpi-label {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-wider);
 }
 
 .overview-grid > .mc-stat-card,
