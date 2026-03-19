@@ -72,6 +72,7 @@ Significant improvements to developer experience, extensibility, and autonomous 
 | [#83](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/83) | Document/PRD context store — structured storage for PRDs, specs, docs; template variable injection into agent prompts; AI interview workflow for PRD creation | core, api | Eva |
 | [#85](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/85) | Workflow watchdog — background health checker for stuck/zombie workflows; corrective actions with dead letter queue | core | Eva |
 | [#87](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/87) | Agent presence and activity tracking — real-time heartbeat-based presence indicators; dashboard badges; API endpoint | core, dashboard | Eva |
+| [#65](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/65) | Capacity reservation for failure retries — reserve concurrency slots for retry attempts to prevent retry starvation under high load | core | symphony-for-github-projects |
 
 ---
 
@@ -160,10 +161,13 @@ graph TD
 | Tier | Issues | Status |
 |------|:------:|--------|
 | **Tier 1** — Ship first | 7 | Not started |
-| **Tier 2** — High impact | 35 | Not started |
-| **Tier 3** — Architectural | 26 | Not started |
+| **Tier 2** — High impact | 36 | Not started (some extensions shipped — see notes) |
+| **Tier 3** — Architectural | 26 | Not started (some extensions shipped — see notes) |
 | **Tier 4** — Lights-Out | 4 | Not started |
-| **Total** | **72** | |
+| **Total** | **73** | |
+
+> [!NOTE]
+> Several T2/T3 issues have **partial implementations shipped as extensions** (see [CONFORMANCE_AUDIT.md §Extensions](CONFORMANCE_AUDIT.md#-extensions-beyond-spec)): #54 (request tracing/error tracking), #56 (Docker sandbox), #61 (per-state concurrency), #76 (Kanban state machine), #53 (Tauri desktop shell). These issues remain open for scope beyond what shipped.
 
 ---
 

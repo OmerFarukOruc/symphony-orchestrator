@@ -1,0 +1,22 @@
+.diff-flash {
+  animation: diffFlash 0.9s var(--ease-out-quart);
+}
+
+@keyframes diffFlash {
+  0% {
+    background: color-mix(in srgb, var(--color-copper-500) 10%, var(--bg-surface));
+    border-color: color-mix(in srgb, var(--color-copper-500) 42%, var(--border-strong));
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-copper-500) 28%, transparent);
+  }
+
+  55% {
+    background: color-mix(in srgb, var(--color-copper-500) 6%, var(--bg-surface));
+    border-color: color-mix(in srgb, var(--color-copper-500) 26%, var(--border-default));
+  }
+
+  100% {
+    background: initial;
+    border-color: initial;
+    box-shadow: 0 0 0 10px transparent;
+  }
+}

@@ -1,0 +1,80 @@
+.form-field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.form-label {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.form-hint,
+.form-note,
+.form-error {
+  font-size: 12px;
+}
+
+.form-hint,
+.form-note {
+  color: var(--text-secondary);
+}
+
+.form-error {
+  color: var(--status-blocked);
+}
+
+.form-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.form-grid.columns-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.mc-textarea,
+.mc-input,
+.mc-select {
+  width: 100%;
+}
+
+.mc-textarea {
+  min-height: 112px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  resize: vertical;
+}
+
+.mc-input:focus-visible,
+.mc-select:focus-visible,
+.mc-textarea:focus-visible,
+.mc-button:focus-visible,
+.mc-chip:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-copper-500) 54%, transparent);
+  outline-offset: 2px;
+}
+
+.mc-button.is-primary {
+  background: color-mix(in srgb, var(--color-copper-500) 18%, var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--color-copper-500) 42%, var(--border-strong));
+}
+
+@media (max-width: 760px) {
+  .form-grid.columns-2 {
+    grid-template-columns: 1fr;
+  }
+}

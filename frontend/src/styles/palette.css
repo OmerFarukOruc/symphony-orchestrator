@@ -1,0 +1,98 @@
+.command-button,
+.header-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+  cursor: pointer;
+}
+
+.command-button {
+  width: 100%;
+  justify-content: space-between;
+  color: var(--text-secondary);
+}
+
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding-top: 12vh;
+  background: rgba(5, 7, 10, 0.56);
+  backdrop-filter: blur(10px);
+  z-index: 50;
+}
+
+.palette-overlay[hidden] {
+  display: none;
+}
+
+.palette-panel {
+  width: min(640px, calc(100vw - 32px));
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.palette-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 var(--space-5);
+  border: 0;
+  border-bottom: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.palette-list {
+  max-height: 360px;
+  overflow: auto;
+  padding: var(--space-2);
+}
+
+.palette-item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 42px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.palette-item.is-active,
+.palette-item:hover {
+  background: color-mix(in srgb, var(--color-copper-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-copper-500) 25%, transparent);
+}
+
+.palette-meta,
+.header-hint,
+.sidebar-hotkey,
+.header-badge {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.header-title {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.header-badge-dot {
+  color: var(--status-running);
+}

@@ -1,0 +1,115 @@
+.overview-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.overview-lower {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: var(--space-5);
+}
+
+.overview-list,
+.overview-stack,
+.overview-events {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.overview-row,
+.overview-attention-item,
+.overview-terminal-item {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
+  transition:
+    border-color var(--motion-fast) var(--ease-out-quart),
+    box-shadow var(--motion-medium) var(--ease-out-quart),
+    transform var(--motion-fast) var(--ease-out-quart);
+}
+
+.overview-row-meta,
+.overview-terminal-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.overview-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.overview-kpi strong,
+.overview-attention-item strong,
+.overview-terminal-item strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.overview-grid > .mc-stat-card,
+.overview-lower > .mc-panel {
+  min-height: 100%;
+}
+
+.overview-kpi span,
+.overview-small {
+  color: var(--text-secondary);
+}
+
+.overview-attention-item {
+  text-align: left;
+  cursor: pointer;
+  border-left: 3px solid var(--status-queued);
+}
+
+.overview-attention-item:hover,
+.overview-terminal-item:hover,
+.overview-row:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.overview-attention-item[data-status="blocked"] {
+  border-left-color: var(--status-blocked);
+}
+.overview-attention-item[data-status="retrying"] {
+  border-left-color: var(--status-retrying);
+}
+.overview-attention-item[data-status="running"] {
+  border-left-color: var(--status-running);
+}
+
+.overview-scroll {
+  max-height: 46vh;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+@media (max-width: 1180px) {
+  .overview-grid,
+  .overview-lower {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .overview-grid,
+  .overview-lower,
+  .overview-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}

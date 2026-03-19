@@ -1,0 +1,167 @@
+.runs-page {
+  min-height: 0;
+}
+
+.runs-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+.runs-column {
+  min-width: 0;
+}
+
+.runs-detail-column {
+  display: grid;
+  align-content: start;
+}
+
+.runs-table-wrap,
+.runs-detail-panel,
+.runs-compare-panel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.runs-table-wrap {
+  padding: 0;
+  overflow: auto;
+  max-height: calc(100vh - 220px);
+}
+
+.runs-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+}
+
+.runs-table tbody tr {
+  height: 44px;
+}
+
+.runs-row.is-active {
+  background: color-mix(in srgb, var(--color-copper-500) 8%, var(--bg-elevated));
+  box-shadow: inset 3px 0 0 var(--color-copper-500);
+}
+
+.runs-row.is-compared {
+  background: color-mix(in srgb, var(--status-queued) 8%, var(--bg-elevated));
+}
+
+.runs-row.is-live {
+  background: color-mix(in srgb, var(--status-running) 5%, var(--bg-surface));
+}
+
+.runs-compare-cell {
+  width: 36px;
+}
+
+.runs-run-cell,
+.runs-time-cell,
+.runs-detail-header,
+.runs-compare-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.runs-run-cell {
+  flex-wrap: wrap;
+}
+
+.runs-time-cell {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.runs-live-pill {
+  color: var(--status-running);
+}
+
+.runs-error-cell {
+  max-width: 240px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.runs-error-cell.is-error,
+.runs-inline-error,
+.attempt-error-copy {
+  color: var(--status-blocked);
+}
+
+.runs-summary-strip,
+.runs-compare-cards,
+.runs-compare-grid,
+.runs-compare-metric,
+.runs-detail-card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.runs-summary-strip,
+.runs-compare-cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.runs-summary-item,
+.runs-compare-card-list {
+  display: grid;
+  gap: 6px;
+}
+
+.runs-detail-card {
+  padding: var(--space-4);
+}
+
+.runs-compare-grid {
+  padding: var(--space-4);
+}
+
+.runs-compare-metric {
+  grid-template-columns: minmax(100px, 140px) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.runs-diff-value {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-copper-500) 14%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+}
+
+.runs-compare-card {
+  align-content: start;
+}
+
+.runs-compare-card-list dd {
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .runs-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .runs-table-wrap {
+    max-height: none;
+  }
+}
+
+@media (max-width: 780px) {
+  .runs-summary-strip,
+  .runs-compare-cards,
+  .runs-compare-metric {
+    grid-template-columns: 1fr;
+  }
+}

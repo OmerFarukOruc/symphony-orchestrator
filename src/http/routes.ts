@@ -1,20 +1,23 @@
-import type { Express } from "express";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import express, { type Express } from "express";
 
 import { registerConfigApi } from "../config/api.js";
-import type { ConfigStore } from "../config/store.js";
 import type { ConfigOverlayStore } from "../config/overlay.js";
-import { renderDashboardTemplate } from "../dashboard/template.js";
-import { renderLogsTemplate } from "../dashboard/logs-template.js";
+import type { ConfigStore } from "../config/store.js";
+import type { RuntimeSnapshot } from "../core/types.js";
 import { globalMetrics } from "../observability/metrics.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { createPlanningRouter, type PlanningExecutionResult } from "../planning/api.js";
 import type { PlannedIssue } from "../planning/skill.js";
 import { registerSecretsApi } from "../secrets/api.js";
 import type { SecretsStore } from "../secrets/store.js";
-import type { RuntimeSnapshot } from "../core/types.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleModelUpdate } from "./model-handler.js";
-import { methodNotAllowed, serializeSnapshot, sanitizeConfigValue, refreshReason } from "./route-helpers.js";
+import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
+
+const frontendDist = join(dirname(fileURLToPath(import.meta.url)), "../../dist/frontend");
 
 interface HttpRouteDeps {
   orchestrator: Orchestrator;
@@ -22,34 +25,26 @@ interface HttpRouteDeps {
   configOverlayStore?: ConfigOverlayStore;
   secretsStore?: SecretsStore;
   executePlan?: (issues: PlannedIssue[]) => Promise<PlanningExecutionResult>;
+  frontendDir?: string;
 }
 
 export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
-  registerPageRoutes(app);
+  const staticRoot = deps.frontendDir ?? frontendDist;
+  app.use(express.static(staticRoot));
+  registerStateAndMetricsRoutes(app, deps);
   registerExtensionApis(app, deps);
-  registerApiRoutes(app, deps);
+  registerIssueRoutes(app, deps);
+
+  app.use((request, response) => {
+    if (request.path.startsWith("/api/") || request.path === "/metrics") {
+      response.status(404).json({ error: { code: "not_found", message: "Not found" } });
+      return;
+    }
+    response.sendFile(join(staticRoot, "index.html"));
+  });
 }
 
-function registerPageRoutes(app: Express): void {
-  app
-    .route("/")
-    .get((_req, res) => {
-      res.type("html").send(renderDashboardTemplate());
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
-  app
-    .route("/logs/:issue_identifier")
-    .get((req, res) => {
-      res.type("html").send(renderLogsTemplate(req.params.issue_identifier));
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
-}
-
-function registerApiRoutes(app: Express, deps: HttpRouteDeps): void {
+function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void {
   app
     .route("/api/v1/state")
     .get((_req, res) => {
@@ -58,6 +53,22 @@ function registerApiRoutes(app: Express, deps: HttpRouteDeps): void {
     .all((_req, res) => {
       methodNotAllowed(res);
     });
+
+  app
+    .route("/api/v1/runtime")
+    .get((_req, res) => {
+      res.json({
+        version: process.env.npm_package_version ?? "unknown",
+        workflow_path: process.env.SYMPHONY_WORKFLOW_PATH ?? "",
+        data_dir: process.env.SYMPHONY_DATA_DIR ?? "",
+        feature_flags: {},
+        provider_summary: "Codex",
+      });
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
   app
     .route("/metrics")
     .get((_req, res) => {
@@ -67,6 +78,7 @@ function registerApiRoutes(app: Express, deps: HttpRouteDeps): void {
     .all((_req, res) => {
       methodNotAllowed(res);
     });
+
   app
     .route("/api/v1/refresh")
     .post((req, res) => {
@@ -76,6 +88,9 @@ function registerApiRoutes(app: Express, deps: HttpRouteDeps): void {
     .all((_req, res) => {
       methodNotAllowed(res);
     });
+}
+
+function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
   app
     .route("/api/v1/:issue_identifier/model")
     .post(async (req, res) => {
@@ -84,6 +99,7 @@ function registerApiRoutes(app: Express, deps: HttpRouteDeps): void {
     .all((_req, res) => {
       methodNotAllowed(res);
     });
+
   app
     .route("/api/v1/:issue_identifier/attempts")
     .get((req, res) => {
@@ -97,6 +113,7 @@ function registerApiRoutes(app: Express, deps: HttpRouteDeps): void {
     .all((_req, res) => {
       methodNotAllowed(res);
     });
+
   app
     .route("/api/v1/attempts/:attempt_id")
     .get((req, res) => {
@@ -105,6 +122,7 @@ function registerApiRoutes(app: Express, deps: HttpRouteDeps): void {
     .all((_req, res) => {
       methodNotAllowed(res);
     });
+
   app
     .route("/api/v1/:issue_identifier")
     .get((req, res) => {

@@ -24,6 +24,7 @@ export class HttpServer {
       configOverlayStore?: ConfigOverlayStore;
       secretsStore?: SecretsStore;
       executePlan?: (issues: PlannedIssue[]) => Promise<PlanningExecutionResult>;
+      frontendDir?: string;
     },
   ) {
     this.app = express();

@@ -1,0 +1,111 @@
+.planner-page,
+.planner-shell,
+.planner-main,
+.planner-cards,
+.planner-rail,
+.planner-rail-section,
+.planner-result-panel,
+.planner-result-links,
+.planner-card,
+.planner-card-labels {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.planner-shell {
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+  align-items: start;
+}
+
+.planner-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.planner-goal,
+.planner-card-criteria {
+  min-height: 132px;
+}
+
+.planner-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.planner-summary-card {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+}
+
+.planner-summary-card strong {
+  font-size: 20px;
+}
+
+.planner-summary-card span {
+  color: var(--text-secondary);
+}
+
+.planner-dependency-strip {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.planner-dependency-chip {
+  display: inline-flex;
+  width: 100%;
+  justify-content: flex-start;
+  padding: var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-elevated) 74%, transparent);
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.planner-dependency-chip.static {
+  cursor: default;
+}
+
+.planner-card.is-selected {
+  border-color: color-mix(in srgb, var(--color-copper-500) 40%, var(--border-strong));
+}
+
+.planner-card-header,
+.planner-card-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.planner-card-labels {
+  grid-template-columns: repeat(auto-fit, minmax(100px, max-content));
+}
+
+.planner-result-link {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--bg-elevated) 76%, transparent);
+  color: var(--text-accent);
+}
+
+@media (max-width: 1080px) {
+  .planner-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .planner-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -12,7 +12,7 @@ import type {
 } from "../core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
 
-interface AttemptSummary {
+export interface AttemptSummary {
   attemptId: string;
   attemptNumber: number | null;
   startedAt: string;
@@ -27,6 +27,14 @@ interface AttemptSummary {
   } | null;
   errorCode: string | null;
   errorMessage: string | null;
+  issueIdentifier?: string;
+  title?: string;
+  workspacePath?: string | null;
+  workspaceKey?: string | null;
+  modelSource?: string;
+  turnCount?: number;
+  threadId?: string | null;
+  turnId?: string | null;
 }
 
 export interface SnapshotBuilderDeps {
@@ -189,5 +197,13 @@ function buildAttemptSummary(attempt: AttemptRecord): AttemptSummary {
     tokenUsage: attempt.tokenUsage,
     errorCode: attempt.errorCode,
     errorMessage: attempt.errorMessage,
+    issueIdentifier: attempt.issueIdentifier,
+    title: attempt.title,
+    workspacePath: attempt.workspacePath,
+    workspaceKey: attempt.workspaceKey,
+    modelSource: attempt.modelSource,
+    turnCount: attempt.turnCount,
+    threadId: attempt.threadId,
+    turnId: attempt.turnId,
   };
 }
