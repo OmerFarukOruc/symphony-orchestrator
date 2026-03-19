@@ -34,24 +34,18 @@ export default tseslint.config(
       "max-lines-per-function": ["warn", { max: 150, skipBlankLines: true, skipComments: true }],
 
       // Signal 7 — Dead code (lint-level)
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
 
       // Signal 9 — Tech debt tracking
-      "no-warning-comments": [
-        "warn",
-        { terms: ["todo", "fixme", "hack", "xxx"], location: "start" },
-      ],
+      "no-warning-comments": ["warn", { terms: ["todo", "fixme", "hack", "xxx"], location: "start" }],
     },
   },
   {
-    // Dashboard template files return template-literal strings (HTML/CSS/JS),
-    // not logic — stricter per-function limits hurt readability here.
-    files: ["src/dashboard/template/**/*.ts", "src/dashboard/logs/**/*.ts"],
+    files: ["frontend/**/*.ts"],
     rules: {
-      "max-lines-per-function": ["warn", { max: 200, skipBlankLines: true, skipComments: true }],
+      complexity: ["warn", { max: 30 }],
+      "max-lines-per-function": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
+      "max-lines": ["warn", { max: 600, skipBlankLines: true, skipComments: true }],
     },
   },
   {
@@ -63,6 +57,15 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ["dist/", "node_modules/", "coverage/", "*.js", "*.mjs", "tests/fixtures/", "vitest.*.ts", "knip.config.ts"],
+    ignores: [
+      "dist/",
+      "node_modules/",
+      "coverage/",
+      "*.js",
+      "*.mjs",
+      "tests/fixtures/",
+      "vitest.*.ts",
+      "knip.config.ts",
+    ],
   },
 );

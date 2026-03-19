@@ -127,6 +127,13 @@ export interface RuntimeIssueView {
   configuredReasoningEffort?: ReasoningEffort | null;
   configuredModelSource?: "default" | "override" | null;
   modelChangePending?: boolean;
+  url?: string | null;
+  description?: string | null;
+  blockedBy?: IssueBlockerRef[];
+  branchName?: string | null;
+  pullRequestUrl?: string | null;
+  nextRetryDueAt?: string | null;
+  createdAt?: string | null;
 }
 
 export interface WorkflowColumnView {

@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -8,6 +8,8 @@ import { ConfigOverlayStore } from "../../src/config/overlay.js";
 import { HttpServer } from "../../src/http/server.js";
 import { createLogger } from "../../src/core/logger.js";
 import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
+
+const SPA_HTML = `<!doctype html><html><head><title>Symphony</title></head><body><div id="app"></div></body></html>`;
 
 describe("HttpServer", () => {
   let server: HttpServer | null = null;
@@ -25,7 +27,13 @@ describe("HttpServer", () => {
     return dir;
   }
 
-  it("serves dashboard and API routes in the expected order with 405 handling", async () => {
+  async function createFrontendDir(): Promise<string> {
+    const dir = await createTempDir();
+    await writeFile(path.join(dir, "index.html"), SPA_HTML, "utf8");
+    return dir;
+  }
+
+  it("serves SPA and API routes in the expected order with 405 handling", async () => {
     const orchestrator = {
       getSnapshot: () => ({
         generatedAt: "2026-03-16T00:00:00Z",
@@ -92,9 +100,11 @@ describe("HttpServer", () => {
           : null,
     } as unknown as Orchestrator;
 
+    const frontendDir = await createFrontendDir();
     server = new HttpServer({
       orchestrator,
       logger: createLogger(),
+      frontendDir,
     });
 
     const started = await server.start(0);
@@ -104,41 +114,8 @@ describe("HttpServer", () => {
     expect(rootResponse.status).toBe(200);
     expect(rootResponse.headers.get("x-request-id")).toBeTruthy();
     const rootHtml = await rootResponse.text();
-    expect(rootHtml).toContain("Symphony | AI Agent Orchestration");
-    expect(rootHtml).toContain('id="boardScroll"');
-    expect(rootHtml).toContain('id="queuedHeading"');
-    expect(rootHtml).toContain('id="queuedColumn"');
-    expect(rootHtml).toContain('id="runningHeading"');
-    expect(rootHtml).toContain('id="runningColumn"');
-    expect(rootHtml).toContain('id="retryingHeading"');
-    expect(rootHtml).toContain('id="retryingColumn"');
-    expect(rootHtml).toContain('id="completedHeading"');
-    expect(rootHtml).toContain('id="completedColumn"');
-    expect(rootHtml).toContain("Queued (0)");
-    expect(rootHtml).toContain("Running (0)");
-    expect(rootHtml).toContain("Retrying (0)");
-    expect(rootHtml).toContain("Completed (0)");
-    expect(rootHtml).toContain('id="detailPanel"');
-    expect(rootHtml).toContain('id="detailIdentifier"');
-    expect(rootHtml).toContain('id="detailTitle"');
-    expect(rootHtml).toContain('id="detailRetryHistory"');
-    expect(rootHtml).toContain('id="closeDetailButton"');
-    expect(rootHtml).toContain('id="focusLogsButton"');
-    expect(rootHtml).toContain('id="refreshDetailButton"');
-    expect(rootHtml).toContain("Model Routing");
-    expect(rootHtml).toContain('id="detailModelInput"');
-    expect(rootHtml).toContain('id="detailReasoningSelect"');
-    expect(rootHtml).toContain('id="detailModelSource"');
-    expect(rootHtml).toContain('id="detailModelHelp"');
-    expect(rootHtml).toContain('for="detailModelInput"');
-    expect(rootHtml).toContain('for="detailReasoningSelect"');
-    expect(rootHtml).toContain('id="pauseButton"');
-    expect(rootHtml).toContain("Save Model");
-    expect(rootHtml).toContain('id="refreshButton"');
-    expect(rootHtml).toContain('id="searchInput"');
-    expect(rootHtml).toContain('data-filter="running"');
-    expect(rootHtml).toContain('data-filter="retrying"');
-    expect(rootHtml).toContain('data-filter="completed"');
+    expect(rootHtml).toContain('<div id="app">');
+    expect(rootHtml).toContain("<title>Symphony</title>");
 
     const stateResponse = await fetch(`${baseUrl}/api/v1/state`);
     expect(stateResponse.status).toBe(200);
@@ -216,6 +193,52 @@ describe("HttpServer", () => {
     });
   });
 
+  it("serves /api/v1/runtime with version and config info", async () => {
+    const frontendDir = await createFrontendDir();
+    server = new HttpServer({
+      orchestrator: {} as unknown as Orchestrator,
+      logger: createLogger(),
+      frontendDir,
+    });
+    const started = await server.start(0);
+    const response = await fetch(`http://127.0.0.1:${started.port}/api/v1/runtime`);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(body).toMatchObject({
+      version: expect.any(String),
+      workflow_path: expect.any(String),
+      data_dir: expect.any(String),
+      feature_flags: expect.any(Object),
+      provider_summary: expect.any(String),
+    });
+  });
+
+  it("returns JSON 404 for unknown /api/ paths", async () => {
+    server = new HttpServer({
+      orchestrator: {} as unknown as Orchestrator,
+      logger: createLogger(),
+    });
+    const started = await server.start(0);
+    const response = await fetch(`http://127.0.0.1:${started.port}/api/v99/state`);
+    expect(response.status).toBe(404);
+    const body = (await response.json()) as Record<string, unknown>;
+    expect((body as { error: { code: string } }).error.code).toBe("not_found");
+  });
+
+  it("serves SPA index.html for unknown non-API paths", async () => {
+    const frontendDir = await createFrontendDir();
+    server = new HttpServer({
+      orchestrator: {} as unknown as Orchestrator,
+      logger: createLogger(),
+      frontendDir,
+    });
+    const started = await server.start(0);
+    const response = await fetch(`http://127.0.0.1:${started.port}/dashboard`);
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('<div id="app">');
+  });
+
   it("rejects invalid reasoning_effort string with 400", async () => {
     const orchestrator = {
       updateIssueModelSelection: async () => ({
@@ -237,7 +260,7 @@ describe("HttpServer", () => {
       body: JSON.stringify({ model: "gpt-5.4", reasoning_effort: "ultra" }),
     });
     expect(response.status).toBe(400);
-    const body = await response.json();
+    const body = (await response.json()) as { error: { code: string } };
     expect(body.error.code).toBe("invalid_reasoning_effort");
   });
 
@@ -262,7 +285,7 @@ describe("HttpServer", () => {
       body: JSON.stringify({ model: "gpt-5.4", reasoning_effort: 123 }),
     });
     expect(response.status).toBe(400);
-    const body = await response.json();
+    const body = (await response.json()) as { error: { code: string } };
     expect(body.error.code).toBe("invalid_reasoning_effort");
   });
 

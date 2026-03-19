@@ -1,0 +1,63 @@
+.settings-page,
+.settings-layout,
+.settings-rail,
+.settings-content,
+.settings-stack,
+.settings-rail-card,
+.settings-card,
+.settings-paths {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.settings-layout {
+  grid-template-columns: minmax(220px, 0.38fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.settings-toolbar,
+.settings-card-header,
+.settings-rail-item {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.settings-grid {
+  align-items: start;
+}
+
+.settings-card.is-selected,
+.settings-rail-item.is-selected {
+  border-color: color-mix(in srgb, var(--color-copper-500) 38%, var(--border-strong));
+}
+
+.settings-rail-item {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-actions {
+  justify-content: flex-start;
+}
+
+.settings-paths {
+  grid-template-columns: repeat(auto-fit, minmax(180px, max-content));
+}
+
+.settings-diff,
+.settings-textarea {
+  min-height: 180px;
+}
+
+@media (max-width: 1100px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+}

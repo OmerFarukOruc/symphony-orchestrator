@@ -1,0 +1,45 @@
+.config-page,
+.config-layout,
+.config-column,
+.config-rail-card,
+.config-entry-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.config-layout {
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.1fr) minmax(280px, 0.95fr);
+  align-items: start;
+}
+
+.config-toolbar {
+  justify-content: space-between;
+}
+
+.config-entry {
+  display: grid;
+  gap: var(--space-1);
+  text-align: left;
+}
+
+.config-code {
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.config-raw {
+  min-height: 220px;
+}
+
+@media (max-width: 1200px) {
+  .config-layout {
+    grid-template-columns: 1fr;
+  }
+}
