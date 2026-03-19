@@ -139,14 +139,18 @@ async function handleStopSignal(
       const result = await executeGitPostRun(ctx.deps.gitManager, workspace, issue, entry.repoMatch);
       pullRequestUrl = result.pullRequestUrl;
     } catch (error) {
-      // Git post-run is non-fatal when DONE — the work is complete regardless.
-      // Log the error but proceed with completion to avoid infinite re-dispatch.
       const errorText = error instanceof Error ? error.message : String(error);
       ctx.deps.logger.info(
         { issue_identifier: issue.identifier, error: errorText },
         "git post-run failed after DONE — completing issue anyway",
       );
     }
+  }
+
+  await ctx.deps.attemptStore.updateAttempt(entry.runId, { stopSignal, pullRequestUrl }).catch(() => undefined);
+
+  if (pullRequestUrl) {
+    ctx.deps.logger.info({ issue_identifier: issue.identifier, url: pullRequestUrl }, "pull request created");
   }
 
   const isBlocked = stopSignal === "blocked";

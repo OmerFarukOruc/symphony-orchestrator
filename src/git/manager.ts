@@ -67,6 +67,25 @@ interface CommitAndPushResult {
   branchName: string;
 }
 
+export class GitHubApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly payload: unknown,
+  ) {
+    super(`github request failed with status ${status}: ${JSON.stringify(payload)}`);
+  }
+}
+
+function isDuplicatePrError(error: unknown): boolean {
+  return (
+    error instanceof GitHubApiError &&
+    error.status === 422 &&
+    typeof error.payload === "object" &&
+    error.payload !== null &&
+    JSON.stringify(error.payload).includes("already exists")
+  );
+}
+
 export class GitManager {
   private readonly runGit: GitRunner;
   private readonly fetchImpl: typeof fetch;
@@ -134,20 +153,23 @@ export class GitManager {
     }
 
     const tokenEnvName = route.githubTokenEnv || "GITHUB_TOKEN";
-    const response = await this.githubRequest(
-      `/repos/${owner}/${repo}/pulls`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          title: `${issue.identifier}: ${issue.title}`,
-          head: branchName,
-          base: route.defaultBranch,
-          body: issue.url ? `Source issue: ${issue.url}` : undefined,
-        }),
-      },
-      tokenEnvName,
-    );
-    return response;
+    const body = JSON.stringify({
+      title: `${issue.identifier}: ${issue.title}`,
+      head: branchName,
+      base: route.defaultBranch,
+      body: issue.url ? `Source issue: ${issue.url}` : undefined,
+    });
+    try {
+      return await this.githubRequest(`/repos/${owner}/${repo}/pulls`, { method: "POST", body }, tokenEnvName);
+    } catch (error) {
+      if (!isDuplicatePrError(error)) throw error;
+      const existing = await this.githubRequest(
+        `/repos/${owner}/${repo}/pulls?head=${owner}:${branchName}&state=open`,
+        { method: "GET" },
+        tokenEnvName,
+      );
+      return Array.isArray(existing) && existing.length > 0 ? existing[0] : undefined;
+    }
   }
 
   async addPrComment(input: {
@@ -225,7 +247,7 @@ export class GitManager {
     const text = await response.text();
     const payload = text.length > 0 ? JSON.parse(text) : null;
     if (!response.ok) {
-      throw new Error(`github request failed with status ${response.status}: ${JSON.stringify(payload)}`);
+      throw new GitHubApiError(response.status, payload);
     }
     return payload;
   }

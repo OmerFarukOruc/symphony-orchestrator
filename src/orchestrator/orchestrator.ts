@@ -5,6 +5,7 @@ import {
 import {
   reconcileRunningAndRetrying as reconcileRunningAndRetryingState,
   refreshQueueViews as refreshQueueViewsState,
+  seedCompletedClaims,
 } from "./lifecycle.js";
 import { launchAvailableWorkers as launchAvailableWorkersState } from "./worker-launcher.js";
 import { buildAttemptDetail, buildIssueDetail, buildSnapshot } from "./snapshot-builder.js";
@@ -45,6 +46,10 @@ export class Orchestrator {
     if (this._state.running) return;
     this._state.running = true;
     await cleanupTerminalWorkspaces(this._state, this.deps);
+    seedCompletedClaims({
+      claimedIssueIds: this._state.claimedIssueIds,
+      deps: { attemptStore: this.deps.attemptStore, logger: this.deps.logger },
+    });
     this.scheduleTick(0);
   }
 

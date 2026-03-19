@@ -94,6 +94,8 @@ export interface AttemptRecord {
   errorCode: string | null;
   errorMessage: string | null;
   tokenUsage: TokenUsageSnapshot | null;
+  pullRequestUrl?: string | null;
+  stopSignal?: "done" | "blocked" | null;
 }
 
 export interface AttemptEvent extends RecentEvent {
