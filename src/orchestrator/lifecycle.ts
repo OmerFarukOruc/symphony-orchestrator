@@ -1,7 +1,7 @@
 import { sortIssuesForDispatch } from "./dispatch.js";
 import { issueView, nowIso } from "./views.js";
 import { isActiveState, isTerminalState } from "../state/policy.js";
-import type { Issue, ServiceConfig } from "../core/types.js";
+import type { AttemptRecord, Issue, ServiceConfig } from "../core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
 
 function enforceStallTimeouts(ctx: ReconcileContext, now: number, config: ServiceConfig): void {
@@ -173,3 +173,30 @@ export async function cleanupTerminalIssueWorkspaces(ctx: {
 }
 
 type IssueView = ReturnType<typeof issueView>;
+
+export function seedCompletedClaims(ctx: {
+  claimedIssueIds: Set<string>;
+  deps: {
+    attemptStore: { getAllAttempts: () => AttemptRecord[] };
+    logger: { info: (meta: Record<string, unknown>, message: string) => void };
+  };
+}): void {
+  const attempts = ctx.deps.attemptStore.getAllAttempts();
+  const latestByIssueId = new Map<string, AttemptRecord>();
+  for (const attempt of attempts) {
+    const existing = latestByIssueId.get(attempt.issueId);
+    if (!existing || attempt.startedAt > existing.startedAt) {
+      latestByIssueId.set(attempt.issueId, attempt);
+    }
+  }
+  let seeded = 0;
+  for (const [issueId, attempt] of latestByIssueId) {
+    if (attempt.status === "completed") {
+      ctx.claimedIssueIds.add(issueId);
+      seeded++;
+    }
+  }
+  if (seeded > 0) {
+    ctx.deps.logger.info({ count: seeded }, "seeded completed issue claims from attempt store");
+  }
+}
