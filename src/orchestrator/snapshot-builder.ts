@@ -12,7 +12,7 @@ import type {
 } from "../core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
 
-export interface AttemptSummary {
+interface AttemptSummary {
   attemptId: string;
   attemptNumber: number | null;
   startedAt: string;
