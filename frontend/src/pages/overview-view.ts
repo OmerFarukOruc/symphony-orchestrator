@@ -27,7 +27,18 @@ function issueRow(issue: RuntimeIssueView, target: "queue" | "attention"): HTMLB
   row.type = "button";
   row.className = target === "attention" ? "overview-attention-item" : "overview-terminal-item";
   row.dataset.status = issue.status;
-  row.innerHTML = `<div class="overview-row-meta"><strong class="text-mono">${issue.identifier}</strong><span class="overview-small">${formatRelativeTime(issue.updatedAt)}</span></div><div>${issue.title}</div>`;
+  const meta = document.createElement("div");
+  meta.className = "overview-row-meta";
+  const ident = document.createElement("strong");
+  ident.className = "text-mono";
+  ident.textContent = issue.identifier;
+  const time = document.createElement("span");
+  time.className = "overview-small";
+  time.textContent = formatRelativeTime(issue.updatedAt);
+  meta.append(ident, time);
+  const titleDiv = document.createElement("div");
+  titleDiv.textContent = issue.title;
+  row.append(meta, titleDiv);
   row.addEventListener("click", () => router.navigate(`/queue/${issue.identifier}`));
   return row;
 }

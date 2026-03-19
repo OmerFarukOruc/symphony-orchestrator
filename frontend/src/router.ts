@@ -12,11 +12,20 @@ interface InternalRoute extends Route {
 
 function compileRoute(path: string): Pick<InternalRoute, "pattern" | "keys"> {
   const keys: string[] = [];
-  const source = path.replace(/:([^/]+)/g, (_match, key: string) => {
-    keys.push(key);
-    return "([^/]+)";
-  });
-  return { pattern: new RegExp(`^${source}$`), keys };
+
+  const source = path
+    .split("/")
+    .map((segment) => {
+      const paramMatch = /^:([^/]+)$/.exec(segment);
+      if (paramMatch) {
+        keys.push(paramMatch[1]);
+        return "([^/]+)";
+      }
+      return segment.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    })
+    .join("\\/");
+
+  return { pattern: RegExp(`^${source}$`), keys };
 }
 
 class Router {

@@ -25,15 +25,22 @@ export function createAttemptsTable(attempts: AttemptSummary[], onOpen: (attempt
   attempts.forEach((attempt) => {
     const row = document.createElement("tr");
     row.tabIndex = 0;
-    row.innerHTML = `
-      <td>${attempt.attemptNumber}</td>
-      <td>${attempt.status}</td>
-      <td class="text-mono">${formatShortTime(attempt.startedAt)}</td>
-      <td class="text-mono">${formatShortTime(attempt.endedAt)}</td>
-      <td class="text-mono">${durationForAttempt(attempt)}</td>
-      <td class="text-mono">${attempt.model ?? "—"}</td>
-      <td class="text-mono">${formatTokenUsage(attempt.tokenUsage?.totalTokens ?? null)}</td>
-      <td>${attempt.errorMessage ?? attempt.errorCode ?? "—"}</td>`;
+    function td(text: string, mono = false): HTMLTableCellElement {
+      const cell = document.createElement("td");
+      if (mono) cell.className = "text-mono";
+      cell.textContent = text;
+      return cell;
+    }
+    row.append(
+      td(String(attempt.attemptNumber)),
+      td(attempt.status),
+      td(formatShortTime(attempt.startedAt), true),
+      td(formatShortTime(attempt.endedAt), true),
+      td(durationForAttempt(attempt), true),
+      td(attempt.model ?? "—", true),
+      td(formatTokenUsage(attempt.tokenUsage?.totalTokens ?? null), true),
+      td(attempt.errorMessage ?? attempt.errorCode ?? "—"),
+    );
     row.addEventListener("click", () => onOpen(attempt.attemptId));
     row.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {

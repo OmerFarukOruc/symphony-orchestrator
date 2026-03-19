@@ -87,23 +87,28 @@ export function getValueAtPath(root: Record<string, unknown>, path: string): unk
 
 const dangerousKeys = new Set(["__proto__", "constructor", "prototype"]);
 
+function setRecursive(obj: Record<string, unknown>, segments: string[], value: unknown): void {
+  const key = segments[0];
+  if (dangerousKeys.has(key)) {
+    throw new TypeError(`Refusing to traverse dangerous key: ${key}`);
+  }
+  if (segments.length === 1) {
+    obj[key] = value;
+    return;
+  }
+  const child = obj[key];
+  if (!child || typeof child !== "object" || Array.isArray(child)) {
+    obj[key] = {};
+  }
+  setRecursive(obj[key] as Record<string, unknown>, segments.slice(1), value);
+}
+
 export function setValueAtPath(target: Record<string, unknown>, path: string, value: unknown): void {
   const parts = path.split(".");
-  let cursor: Record<string, unknown> = target;
-  parts.forEach((segment, index) => {
-    if (dangerousKeys.has(segment)) {
-      throw new TypeError(`Refusing to traverse dangerous key: ${segment}`);
-    }
-    if (index === parts.length - 1) {
-      cursor[segment] = value;
-      return;
-    }
-    const existing = cursor[segment];
-    if (!existing || typeof existing !== "object" || Array.isArray(existing)) {
-      cursor[segment] = {};
-    }
-    cursor = cursor[segment] as Record<string, unknown>;
-  });
+  if (parts.length === 0) {
+    return;
+  }
+  setRecursive(target, parts, value);
 }
 
 export function ensureSectionDrafts(

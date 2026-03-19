@@ -32,7 +32,8 @@ function renderList(): void {
     const iconSpan = document.createElement("span");
     iconSpan.className = "palette-item-icon";
     iconSpan.setAttribute("aria-hidden", "true");
-    iconSpan.innerHTML = item.icon;
+    const iconDoc = new DOMParser().parseFromString(item.icon, "image/svg+xml");
+    iconSpan.append(iconDoc.documentElement);
     const nameSpan = document.createElement("span");
     nameSpan.textContent = item.name;
     const metaSpan = document.createElement("span");
