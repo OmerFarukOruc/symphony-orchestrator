@@ -8,6 +8,14 @@ const EMPTY_STATE_ICONS = {
 
 type EmptyStateVariant = keyof typeof EMPTY_STATE_ICONS;
 
+function parseSvgFromTrustedSource(svgString: string): SVGElement | null {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgString, "image/svg+xml");
+  const svg = doc.documentElement;
+  if (svg instanceof SVGElement) return svg;
+  return null;
+}
+
 export function createEmptyState(
   title: string,
   detail: string,
@@ -21,7 +29,8 @@ export function createEmptyState(
   const iconHtml = EMPTY_STATE_ICONS[variant] ?? EMPTY_STATE_ICONS.default;
   const icon = document.createElement("div");
   icon.className = "mc-empty-state-icon";
-  icon.innerHTML = iconHtml;
+  const svgElement = parseSvgFromTrustedSource(iconHtml);
+  if (svgElement) icon.append(svgElement);
 
   const heading = document.createElement("h3");
   heading.textContent = title;
