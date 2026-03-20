@@ -185,6 +185,9 @@ export function validateField(input: HTMLInputElement | HTMLTextAreaElement): { 
   if (input instanceof HTMLInputElement && input.pattern) {
     let re = patternCache.get(input.pattern);
     if (!re) {
+      // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp
+      // input.pattern comes from the HTML pattern attribute set by the developer,
+      // not from user input. This is a safe source for RegExp construction.
       re = new RegExp(input.pattern);
       patternCache.set(input.pattern, re);
     }

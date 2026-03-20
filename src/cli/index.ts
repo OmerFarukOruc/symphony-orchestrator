@@ -1,4 +1,4 @@
-import { mkdir, readdir, rm } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
@@ -41,9 +41,25 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     path.join(archiveDir, "config", "overlay.yaml"),
     logger.child({ component: "config-overlay" }),
   );
-  const secretsStore = new SecretsStore(archiveDir, logger.child({ component: "secrets" }));
+  const fileKey = await readMasterKeyFile(archiveDir);
+  const secretsStore = new SecretsStore(
+    archiveDir,
+    logger.child({ component: "secrets" }),
+    fileKey ? { masterKey: fileKey } : undefined,
+  );
   await overlayStore.start();
-  await secretsStore.start();
+  let needsSetup = false;
+  try {
+    await secretsStore.start();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("MASTER_KEY is required")) {
+      logger.warn("MASTER_KEY not configured — starting in setup mode");
+      await secretsStore.startDeferred();
+      needsSetup = true;
+    } else {
+      throw error;
+    }
+  }
   const configStore = new ConfigStore(workflowPath, logger.child({ component: "config" }), {
     overlayStore,
     secretsStore,
@@ -52,11 +68,13 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const startError = await safeStartConfigStore(configStore);
   if (startError !== null) return startError;
 
-  const validationError = configStore.validateDispatch();
-  if (validationError) {
-    printValidationError(validationError);
-    await configStore.stop();
-    return 1;
+  if (!needsSetup) {
+    const validationError = configStore.validateDispatch();
+    if (validationError) {
+      printValidationError(validationError);
+      await configStore.stop();
+      return 1;
+    }
   }
 
   const config = configStore.getConfig();
@@ -66,7 +84,9 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
   const { orchestrator, httpServer } = services;
   await cleanupTransientWorkspaceDirs(config.workspace.root);
-  await orchestrator.start();
+  if (!needsSetup) {
+    await orchestrator.start();
+  }
   await httpServer.start(port);
 
   const shutdown = buildShutdown(httpServer, orchestrator, configStore, overlayStore, logger);
@@ -100,6 +120,16 @@ function parseCliArgs(argv: string[]) {
   );
   const selectedPort = parsed.values.port ? Number(parsed.values.port) : undefined;
   return { workflowPath, resolvedWorkflowPath, archiveDir, selectedPort, logger };
+}
+
+async function readMasterKeyFile(archiveDir: string): Promise<string | null> {
+  try {
+    const content = await readFile(path.join(archiveDir, "master.key"), "utf8");
+    return content.trim() || null;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
 }
 
 async function safeStartConfigStore(configStore: ConfigStore): Promise<number | null> {

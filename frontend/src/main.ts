@@ -10,6 +10,7 @@ import "./styles/modal.css";
 import "./styles/hardening.css";
 import "./styles/kanban.css";
 
+import { api } from "./api";
 import { lazyPage } from "./utils/lazy-page";
 import { router } from "./router";
 import { startPolling } from "./state/polling";
@@ -73,6 +74,7 @@ const git = lazyPage(() => import("./pages/git"));
 const workspaces = lazyPage(() => import("./pages/workspaces"));
 const containers = lazyPage(() => import("./pages/containers"));
 const welcome = lazyPage(() => import("./pages/welcome"));
+const setup = lazyPage(() => import("./pages/setup"));
 
 router.register("/", overview);
 router.register("/queue", queue);
@@ -92,6 +94,19 @@ router.register("/git", git);
 router.register("/workspaces", workspaces);
 router.register("/containers", containers);
 router.register("/welcome", welcome);
+router.register("/setup", setup);
 
 router.init();
 startPolling();
+
+// Redirect to setup wizard if not yet configured
+api
+  .getSetupStatus()
+  .then((status) => {
+    if (!status.configured && window.location.pathname !== "/setup") {
+      router.navigate("/setup");
+    }
+  })
+  .catch(() => {
+    // Server may not have setup endpoint yet (older version) — ignore
+  });

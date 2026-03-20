@@ -11,6 +11,7 @@ import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { createPlanningRouter, type PlanningExecutionResult } from "../planning/api.js";
 import type { PlannedIssue } from "../planning/skill.js";
 import { registerSecretsApi } from "../secrets/api.js";
+import { registerSetupApi } from "../setup/api.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleModelUpdate } from "./model-handler.js";
@@ -27,13 +28,16 @@ interface HttpRouteDeps {
   secretsStore?: SecretsStore;
   executePlan?: (issues: PlannedIssue[]) => Promise<PlanningExecutionResult>;
   frontendDir?: string;
+  archiveDir?: string;
 }
 
 export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   const staticRoot = deps.frontendDir ?? frontendDist;
 
-  app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false }));
   app.use(express.static(staticRoot));
+  const apiLimiter = rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false });
+  app.use("/api/", apiLimiter);
+  app.use("/metrics", apiLimiter);
   registerStateAndMetricsRoutes(app, deps);
   registerExtensionApis(app, deps);
   registerIssueRoutes(app, deps);
@@ -151,6 +155,14 @@ function registerExtensionApis(app: Express, deps: HttpRouteDeps): void {
   }
   if (deps.secretsStore) {
     registerSecretsApi(app, { secretsStore: deps.secretsStore });
+  }
+  if (deps.secretsStore && deps.configOverlayStore && deps.archiveDir) {
+    registerSetupApi(app, {
+      secretsStore: deps.secretsStore,
+      configOverlayStore: deps.configOverlayStore,
+      orchestrator: deps.orchestrator,
+      archiveDir: deps.archiveDir,
+    });
   }
   app.use(createPlanningRouter({ executePlan: deps.executePlan ? (issues) => deps.executePlan!(issues) : undefined }));
 }

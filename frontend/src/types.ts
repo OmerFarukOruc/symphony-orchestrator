@@ -128,3 +128,19 @@ export interface RuntimeInfo {
   feature_flags: Record<string, boolean>;
   provider_summary: string;
 }
+
+export interface SetupStatus {
+  configured: boolean;
+  steps: {
+    masterKey: { done: boolean };
+    linearProject: { done: boolean };
+    githubToken: { done: boolean };
+  };
+}
+
+export interface LinearProject {
+  id: unknown;
+  name: unknown;
+  slugId: string;
+  teamKey: unknown;
+}

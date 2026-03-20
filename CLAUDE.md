@@ -1,4 +1,18 @@
-# Design Context for Symphony Orchestrator
+# Symphony Orchestrator
+
+## Code Search — MANDATORY
+
+**ALWAYS use `mcp__cocoindex-code__search` as your FIRST tool when exploring or understanding code.** Do NOT default to Read or grep for code exploration. The semantic search MCP tool finds code by meaning, not just text — it is faster, cheaper, and more accurate for navigating this codebase.
+
+- **First choice → `mcp__cocoindex-code__search`**: For ANY query about how something works, where code lives, finding implementations, understanding features, or locating related code. Use natural language: *"authentication logic"*, *"retry handling"*, *"HTTP route definitions"*.
+- **Fallback → grep/rg**: ONLY for exact string matches (specific function names, variable names, import paths, error message strings).
+- **Last resort → Read**: ONLY after search/grep has identified the specific file and line range you need.
+
+```
+search(query, limit=5, offset=0, refresh_index=true, languages=["typescript"], paths=["src/*"])
+```
+
+---
 
 ## Design Context
 

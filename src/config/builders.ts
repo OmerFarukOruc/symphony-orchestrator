@@ -40,9 +40,10 @@ function deriveTrackerConfig(
 ): ServiceConfig["tracker"] {
   return {
     kind: asString(tracker.kind, "linear"),
-    apiKey: resolveConfigString(tracker.api_key, secretResolver),
+    apiKey: resolveConfigString(tracker.api_key, secretResolver) || secretResolver?.("LINEAR_API_KEY") || "",
     endpoint: resolveConfigString(tracker.endpoint, secretResolver) || "https://api.linear.app/graphql",
-    projectSlug: resolveConfigString(tracker.project_slug, secretResolver) || null,
+    projectSlug:
+      resolveConfigString(tracker.project_slug, secretResolver) || secretResolver?.("LINEAR_PROJECT_SLUG") || null,
     activeStates: asStringArray(tracker.active_states, DEFAULT_ACTIVE_STATES),
     terminalStates: asStringArray(tracker.terminal_states, DEFAULT_TERMINAL_STATES),
   };

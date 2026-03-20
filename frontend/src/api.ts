@@ -1,4 +1,13 @@
-import type { AttemptRecord, AttemptSummary, IssueDetail, PlannedIssue, RuntimeInfo, RuntimeSnapshot } from "./types";
+import type {
+  AttemptRecord,
+  AttemptSummary,
+  IssueDetail,
+  LinearProject,
+  PlannedIssue,
+  RuntimeInfo,
+  RuntimeSnapshot,
+  SetupStatus,
+} from "./types";
 
 const BASE = "";
 
@@ -90,4 +99,9 @@ export const api = {
       reasoning_effort: payload.reasoningEffort,
     }),
   getMetrics: () => get<string>("/metrics"),
+  getSetupStatus: () => get<SetupStatus>("/api/v1/setup/status"),
+  postMasterKey: (key?: string) => post<{ key: string }>("/api/v1/setup/master-key", { key }),
+  getLinearProjects: () => get<{ projects: LinearProject[] }>("/api/v1/setup/linear-projects"),
+  postLinearProject: (slugId: string) => post<{ ok: boolean }>("/api/v1/setup/linear-project", { slugId }),
+  postGithubToken: (token: string) => post<{ valid: boolean }>("/api/v1/setup/github-token", { token }),
 };

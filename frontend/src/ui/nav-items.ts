@@ -93,6 +93,13 @@ export const navItems: NavItem[] = [
     hotkey: "g i",
     icon: "welcome",
   },
+  {
+    group: "System",
+    name: "Setup",
+    path: "/setup",
+    hotkey: "g u",
+    icon: "settings",
+  },
 ];
 
 export const navGroups = ["Operate", "Configure", "Observe", "System"];

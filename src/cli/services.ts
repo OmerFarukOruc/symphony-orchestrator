@@ -72,6 +72,7 @@ export async function createServices(
     configOverlayStore: overlayStore,
     secretsStore,
     executePlan: createLinearPlanningExecutor({ linearClient }),
+    archiveDir,
   });
   return { orchestrator, httpServer, notificationManager, linearClient };
 }

@@ -25,6 +25,7 @@ export class HttpServer {
       secretsStore?: SecretsStore;
       executePlan?: (issues: PlannedIssue[]) => Promise<PlanningExecutionResult>;
       frontendDir?: string;
+      archiveDir?: string;
     },
   ) {
     this.app = express();

@@ -104,16 +104,10 @@ export class SecretsStore {
     }
     this.encryptionKey = deriveKey(masterKey);
 
-    let source: string;
-    try {
-      source = await readFile(this.secretsPath(), "utf8");
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code === "ENOENT") {
-        await this.persist();
-        return;
-      }
-      throw error;
+    const source = await this.readEncryptedFile();
+    if (source === null) {
+      await this.persist();
+      return;
     }
 
     const envelope = parseEnvelope(source);
@@ -127,11 +121,44 @@ export class SecretsStore {
       );
       throw new Error("failed to decrypt secrets.enc; MASTER_KEY may not match the existing archive", { cause: error });
     }
-    const secrets = asStringRecord(JSON.parse(decrypted) as unknown);
-    this.cache.clear();
-    for (const [key, value] of Object.entries(secrets)) {
-      this.cache.set(key, value);
+    this.loadCache(decrypted);
+  }
+
+  /** Start without a MASTER_KEY — leaves encryptionKey null (degraded/setup mode). */
+  async startDeferred(): Promise<void> {
+    await mkdir(this.baseDir, { recursive: true });
+  }
+
+  /** Initialise the store with a master key after deferred start. */
+  async initializeWithKey(masterKey: string): Promise<void> {
+    this.encryptionKey = deriveKey(masterKey);
+
+    const source = await this.readEncryptedFile();
+    if (source === null) {
+      await this.persist();
+      this.notify();
+      return;
     }
+
+    const envelope = parseEnvelope(source);
+    let decrypted: string;
+    try {
+      decrypted = decrypt(envelope, this.requiredKey());
+    } catch (error) {
+      this.logger.warn(
+        { error: String(error) },
+        "failed to decrypt secrets.enc — MASTER_KEY may have changed; starting with empty store",
+      );
+      await this.persist();
+      this.notify();
+      return;
+    }
+    this.loadCache(decrypted);
+    this.notify();
+  }
+
+  isInitialized(): boolean {
+    return this.encryptionKey !== null;
   }
 
   subscribe(listener: () => void): () => void {
@@ -191,6 +218,23 @@ export class SecretsStore {
       key,
     });
     await appendFile(this.auditPath(), `${line}\n`, "utf8");
+  }
+
+  private async readEncryptedFile(): Promise<string | null> {
+    try {
+      return await readFile(this.secretsPath(), "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw error;
+    }
+  }
+
+  private loadCache(decrypted: string): void {
+    const secrets = asStringRecord(JSON.parse(decrypted) as unknown);
+    this.cache.clear();
+    for (const [key, value] of Object.entries(secrets)) {
+      this.cache.set(key, value);
+    }
   }
 
   private async persist(): Promise<void> {

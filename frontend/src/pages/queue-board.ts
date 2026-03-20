@@ -15,51 +15,6 @@ interface QueueBoardRendererOptions {
   onOpenIssue: (issueId: string, fullPage: boolean) => void;
 }
 
-/**
- * Normalize stage keys for deduplication.
- * "canceled" and "cancelled" are treated as the same stage.
- */
-function normalizeStageKey(key: string): string {
-  const lower = key.toLowerCase();
-  if (lower === "cancelled" || lower === "canceled") return "cancelled";
-  return key.toLowerCase().replaceAll(" ", "_");
-}
-
-/**
- * Normalize stage label for display.
- * Ensures consistent display name for canceled/cancelled.
- */
-function normalizeStageLabel(key: string): string {
-  const lower = key.toLowerCase();
-  if (lower === "cancelled" || lower === "canceled") return "Canceled";
-  return key;
-}
-
-/**
- * Merge columns with the same normalized key.
- * Combines issues, sums counts, and normalizes labels.
- */
-function mergeColumns(columns: WorkflowColumn[]): WorkflowColumn[] {
-  const merged = new Map<string, WorkflowColumn>();
-  for (const column of columns) {
-    const normalized = normalizeStageKey(column.key);
-    const existing = merged.get(normalized);
-    if (existing) {
-      // Merge issues and sum counts
-      existing.issues = [...existing.issues, ...column.issues];
-      existing.count = (existing.count ?? 0) + (column.count ?? 0);
-    } else {
-      // Create new entry with normalized label
-      merged.set(normalized, {
-        ...column,
-        key: normalized,
-        label: normalizeStageLabel(column.label),
-      });
-    }
-  }
-  return Array.from(merged.values());
-}
-
 export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
   renderLoading: () => void;
   render: (columns: WorkflowColumn[]) => void;
@@ -92,10 +47,8 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
   }
 
   function render(columns: WorkflowColumn[]): void {
-    // Merge duplicate columns (e.g., Canceled/Cancelled)
-    const mergedColumns = mergeColumns(columns);
-    const eligible = mergedColumns.flatMap((column) => filterColumn(column, options.filters));
-    if (mergedColumns.length === 0) {
+    const eligible = columns.flatMap((column) => filterColumn(column, options.filters));
+    if (columns.length === 0) {
       renderLoading();
       return;
     }
@@ -114,7 +67,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
 
     const nextIssueIds = new Set<string>();
     const ui = options.getUi();
-    const sections = mergedColumns.map((column, columnIndex) => {
+    const sections = columns.map((column, columnIndex) => {
       const list = filterColumn(column, options.filters);
       const handle = getColumnHandle(column.key);
       applyColumnStage(handle, column.key);
