@@ -56,6 +56,8 @@ export interface RuntimeIssueView {
   createdAt?: string | null;
 }
 
+export const REASONING_EFFORT_OPTIONS = ["none", "minimal", "low", "medium", "high", "xhigh"] as const;
+
 export interface IssueDetail extends RuntimeIssueView {
   recentEvents: RecentEvent[];
   attempts: AttemptSummary[];

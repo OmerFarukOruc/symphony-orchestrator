@@ -1,4 +1,5 @@
 import { api } from "../api";
+import { REASONING_EFFORT_OPTIONS } from "../types";
 import type { IssueDetail } from "../types";
 import { router } from "../router";
 import { statusChip } from "../ui/status-chip";
@@ -42,7 +43,8 @@ export function buildDescriptionSection(detail: IssueDetail): HTMLElement {
     const blockers = document.createElement("div");
     blockers.className = "issue-blocker-list";
     detail.blockedBy?.forEach((blocker) => {
-      const identifier = blocker.identifier ?? blocker.id ?? "";
+      const identifier = blocker.identifier ?? blocker.id;
+      if (!identifier) return;
       const item = document.createElement("button");
       item.type = "button";
       item.className = "overview-row";
@@ -99,7 +101,7 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
   });
   const effortSelect = document.createElement("select");
   effortSelect.className = "mc-select";
-  ["none", "minimal", "low", "medium", "high", "xhigh"].forEach((value) => {
+  REASONING_EFFORT_OPTIONS.forEach((value) => {
     const option = document.createElement("option");
     option.value = value === "none" ? "" : value;
     option.textContent = value;

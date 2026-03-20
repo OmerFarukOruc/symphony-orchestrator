@@ -1,3 +1,4 @@
+import { REASONING_EFFORT_OPTIONS } from "../types";
 import { buildDiffText, prettyJson, redactPath } from "./config-helpers";
 import { buildSectionPatchPlan } from "./settings-patches";
 import { getValueAtPath, setValueAtPath } from "./settings-paths";
@@ -264,7 +265,7 @@ function buildDefaultSections(effective: Record<string, unknown>): SettingsSecti
           path: "codex.reasoning_effort",
           label: "Reasoning effort",
           kind: "select",
-          options: ["none", "minimal", "low", "medium", "high", "xhigh"].map((value) => ({ value, label: value })),
+          options: REASONING_EFFORT_OPTIONS.map((value) => ({ value, label: value })),
         },
         {
           path: "codex.auth.mode",
