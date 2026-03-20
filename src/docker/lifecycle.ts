@@ -3,6 +3,14 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
+function isNotFound(error: unknown): boolean {
+  if (error instanceof Error && "stderr" in error) {
+    const stderr = (error as { stderr?: string }).stderr;
+    return typeof stderr === "string" && (stderr.includes("No such container") || stderr.includes("No such volume"));
+  }
+  return false;
+}
+
 /**
  * Gracefully stop a running container.
  * Sends SIGTERM, waits `timeoutSeconds`, then SIGKILL.
@@ -10,21 +18,27 @@ const execFileAsync = promisify(execFile);
 export async function stopContainer(name: string, timeoutSeconds = 5): Promise<void> {
   try {
     await execFileAsync("docker", ["stop", "--time", String(timeoutSeconds), name]);
-  } catch {
-    // Container may already be stopped or removed — safe to ignore.
+  } catch (error) {
+    if (!isNotFound(error)) {
+      throw error;
+    }
   }
 }
 
 /**
  * Inspect whether the container was killed by the OOM killer.
- * Returns `true` if OOMKilled is set, `false` otherwise (including on inspect failure).
+ * Returns `true` if OOMKilled is set, `false` if the container exists and OOMKilled is not set,
+ * `null` if the container does not exist or inspection fails.
  */
-export async function inspectOomKilled(name: string): Promise<boolean> {
+export async function inspectOomKilled(name: string): Promise<boolean | null> {
   try {
     const { stdout } = await execFileAsync("docker", ["inspect", name, "--format", "{{.State.OOMKilled}}"]);
     return stdout.trim() === "true";
-  } catch {
-    return false;
+  } catch (error) {
+    if (isNotFound(error)) {
+      return null;
+    }
+    throw error;
   }
 }
 
@@ -34,8 +48,10 @@ export async function inspectOomKilled(name: string): Promise<boolean> {
 export async function removeContainer(name: string): Promise<void> {
   try {
     await execFileAsync("docker", ["rm", "-f", name]);
-  } catch {
-    // Already removed — safe to ignore.
+  } catch (error) {
+    if (!isNotFound(error)) {
+      throw error;
+    }
   }
 }
 
@@ -45,7 +61,9 @@ export async function removeContainer(name: string): Promise<void> {
 export async function removeVolume(name: string): Promise<void> {
   try {
     await execFileAsync("docker", ["volume", "rm", "-f", name]);
-  } catch {
-    // Volume may already be removed — safe to ignore.
+  } catch (error) {
+    if (!isNotFound(error)) {
+      throw error;
+    }
   }
 }

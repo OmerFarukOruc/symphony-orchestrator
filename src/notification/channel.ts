@@ -1,4 +1,5 @@
-export type NotificationVerbosity = "off" | "critical" | "verbose";
+export type { NotificationVerbosity } from "../core/notification-types.js";
+import type { NotificationVerbosity } from "../core/notification-types.js";
 
 export type NotificationSeverity = "info" | "critical";
 

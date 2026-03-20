@@ -2,6 +2,7 @@ import { buildWorkflowColumns } from "../workflow/columns.js";
 import { nowIso } from "./views.js";
 import { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
 export { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
+import { type IssueLocatorCallbacks, resolveIssue, toIssueView } from "./issue-locator.js";
 import type {
   AttemptRecord,
   RecentEvent,
@@ -109,20 +110,21 @@ export function buildIssueDetail(
 ):
   | (RuntimeIssueView & { recentEvents: RecentEvent[]; attempts: AttemptSummary[]; currentAttemptId: string | null })
   | null {
-  const runningEntry = [...callbacks.getRunningEntries().values()].find(
-    (entry) => entry.issue.identifier === identifier,
-  );
-  const retryEntry = [...callbacks.getRetryEntries().values()].find((entry) => entry.identifier === identifier);
-  const completedEntry = callbacks.getCompletedViews().get(identifier);
-  const detail =
-    (runningEntry ? buildRunningIssueView(runningEntry, callbacks.resolveModelSelection) : null) ??
-    (retryEntry ? buildRetryIssueView(retryEntry, callbacks.resolveModelSelection) : null) ??
-    completedEntry ??
-    callbacks.getDetailViews().get(identifier);
-
-  if (!detail) {
+  const locatorCallbacks: IssueLocatorCallbacks = {
+    getRunningEntries: callbacks.getRunningEntries,
+    getRetryEntries: callbacks.getRetryEntries,
+    getCompletedViews: callbacks.getCompletedViews,
+    getDetailViews: callbacks.getDetailViews,
+    resolveModelSelection: callbacks.resolveModelSelection,
+  };
+  const location = resolveIssue(identifier, locatorCallbacks);
+  if (!location) {
     return null;
   }
+
+  const detail = toIssueView(location, locatorCallbacks);
+  const runningEntry = location.kind === "running" ? location.entry : null;
+  const retryEntry = location.kind === "retry" ? location.entry : null;
 
   const archivedAttempts = deps.attemptStore.getAttemptsForIssue(identifier);
   let relatedEvents: RecentEvent[];

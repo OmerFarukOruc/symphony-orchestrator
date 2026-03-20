@@ -25,7 +25,12 @@ function encodeEnvelope(envelope: SecretsEnvelope): string {
 }
 
 function parseEnvelope(source: string): SecretsEnvelope {
-  const parsed = JSON.parse(source) as unknown;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source) as unknown;
+  } catch {
+    throw new Error("secrets envelope is not valid JSON");
+  }
   if (!isRecord(parsed)) {
     throw new Error("secrets envelope must be a JSON object");
   }

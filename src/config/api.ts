@@ -95,24 +95,6 @@ function registerOverlayRoute(app: Express, deps: ConfigApiDeps): void {
         return;
       }
 
-      if ("path" in body) {
-        if (typeof body.path !== "string" || !("value" in body)) {
-          response.status(400).json({
-            error: {
-              code: "invalid_overlay_payload",
-              message: "path-based updates require a string path and value",
-            },
-          });
-          return;
-        }
-        const updated = await deps.configOverlayStore.set(body.path, body.value);
-        response.json({
-          updated,
-          overlay: deps.configOverlayStore.toMap(),
-        });
-        return;
-      }
-
       const patch = isRecord(body.patch) ? body.patch : body;
       const updated = await deps.configOverlayStore.applyPatch(patch);
       response.json({
@@ -128,6 +110,35 @@ function registerOverlayRoute(app: Express, deps: ConfigApiDeps): void {
 function registerOverlayDeleteRoute(app: Express, deps: ConfigApiDeps): void {
   app
     .route("/api/v1/config/overlay/:path")
+    .patch(async (request, response) => {
+      const pathExpression = request.params.path;
+      if (!pathExpression?.trim()) {
+        response.status(400).json({
+          error: {
+            code: "invalid_overlay_path",
+            message: "overlay path must not be empty",
+          },
+        });
+        return;
+      }
+
+      const body = request.body;
+      if (!isRecord(body) || !("value" in body)) {
+        response.status(400).json({
+          error: {
+            code: "invalid_overlay_payload",
+            message: "PATCH body must contain a value field",
+          },
+        });
+        return;
+      }
+
+      const updated = await deps.configOverlayStore.set(pathExpression, body.value);
+      response.json({
+        updated,
+        overlay: deps.configOverlayStore.toMap(),
+      });
+    })
     .delete(async (request, response) => {
       const pathExpression = request.params.path;
       if (!pathExpression?.trim()) {

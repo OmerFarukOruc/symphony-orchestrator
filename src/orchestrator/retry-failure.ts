@@ -76,28 +76,41 @@ async function persistRetryFailure(
   errorText: string,
   attempt: number,
   workspaceKey: string | null,
+  logger: { warn: (meta: Record<string, unknown>, message: string) => void },
 ): Promise<void> {
   const endedAt = nowIso();
   const attemptId = runningEntry?.runId ?? randomUUID();
 
   let persisted = false;
   if (runningEntry) {
-    persisted = await attemptStore
-      .updateAttempt(attemptId, {
+    try {
+      await attemptStore.updateAttempt(attemptId, {
         status: "failed" as const,
         endedAt,
         errorCode: "worker_failed",
         errorMessage: errorText,
         tokenUsage: runningEntry.tokenUsage ?? null,
         threadId: runningEntry.sessionId ?? null,
-      })
-      .then(() => true)
-      .catch(() => false);
+      });
+      persisted = true;
+    } catch (updateError) {
+      logger.warn(
+        { issue_id: issue.id, issue_identifier: issue.identifier, attempt_id: attemptId, error: String(updateError) },
+        "retry failure: failed to update attempt record, falling back to create",
+      );
+    }
   }
 
   if (!persisted) {
     const data = buildFailureAttemptData(runningEntry, issue, selection, errorText, attempt, workspaceKey, endedAt);
-    await attemptStore.createAttempt(data).catch(() => undefined);
+    try {
+      await attemptStore.createAttempt(data);
+    } catch (createError) {
+      logger.warn(
+        { issue_id: issue.id, issue_identifier: issue.identifier, error: String(createError) },
+        "retry failure: failed to create fallback attempt record",
+      );
+    }
   }
 }
 
@@ -107,7 +120,10 @@ export async function handleRetryLaunchFailure(
     clearRetryEntry: (issueId: string) => void;
     deps: {
       attemptStore: Pick<AttemptStore, "updateAttempt" | "createAttempt">;
-      logger: { error: (meta: Record<string, unknown>, message: string) => void };
+      logger: {
+        error: (meta: Record<string, unknown>, message: string) => void;
+        warn: (meta: Record<string, unknown>, message: string) => void;
+      };
     };
     detailViews: Map<string, ReturnType<typeof issueView>>;
     completedViews: Map<string, ReturnType<typeof issueView>>;
@@ -151,5 +167,6 @@ export async function handleRetryLaunchFailure(
     errorText,
     attempt,
     failureView.workspaceKey ?? null,
+    ctx.deps.logger,
   );
 }

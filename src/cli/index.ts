@@ -61,7 +61,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
   const config = configStore.getConfig();
   const port = selectedPort ?? config.server.port;
-  const services = await createServices(config, configStore, overlayStore, secretsStore, archiveDir, logger);
+  const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger);
   wireNotifications(services.notificationManager, configStore, logger);
 
   const { orchestrator, httpServer } = services;
@@ -69,7 +69,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   await orchestrator.start();
   await httpServer.start(port);
 
-  const shutdown = buildShutdown(httpServer, orchestrator, configStore, overlayStore);
+  const shutdown = buildShutdown(httpServer, orchestrator, configStore, overlayStore, logger);
   logger.info({ workflowPath, port, logDir: archiveDir }, "service started");
   watchConfigChanges(configStore, services.notificationManager, config.server.port, logger);
 
@@ -125,18 +125,29 @@ function buildShutdown(
   orchestrator: Orchestrator,
   configStore: ConfigStore,
   overlayStore: ConfigOverlayStore,
+  logger: ReturnType<typeof createLogger>,
 ): () => Promise<void> {
   let shuttingDown = false;
   return async () => {
     if (shuttingDown) return;
     shuttingDown = true;
-    await httpServer.stop().catch(() => undefined);
-    await orchestrator.stop().catch(() => undefined);
-    await configStore.stop().catch(() => undefined);
-    await overlayStore.stop().catch(() => undefined);
+    await httpServer.stop().catch((error: unknown) => {
+      logger.warn({ error: String(error) }, "http server shutdown failed");
+    });
+    await orchestrator.stop().catch((error: unknown) => {
+      logger.warn({ error: String(error) }, "orchestrator shutdown failed");
+    });
+    await configStore.stop().catch((error: unknown) => {
+      logger.warn({ error: String(error) }, "config store shutdown failed");
+    });
+    await overlayStore.stop().catch((error: unknown) => {
+      logger.warn({ error: String(error) }, "overlay store shutdown failed");
+    });
     await getErrorTracker()
       .flush()
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        logger.warn({ error: String(error) }, "error tracker flush failed");
+      });
   };
 }
 

@@ -1,8 +1,14 @@
 import type { JsonRpcConnection } from "../agent/json-rpc-connection.js";
 import type { LinearClient } from "../linear/client.js";
-import type { AgentRunnerEventHandler } from "./index.js";
-import type { ModelSelection, ServiceConfig, Workspace, Issue } from "../core/types.js";
+import type { AgentRunnerEventHandler } from "./contracts.js";
+import type { ModelSelection, RunOutcome, ServiceConfig, Workspace, Issue } from "../core/types.js";
 import type { TurnState } from "./turn-state.js";
+
+/** Explicit result type for turn execution - no implicit undefined sentinel. */
+export type TurnResult =
+  | { kind: "stop" } // Issue inactive, stop the turn loop
+  | { kind: "continue" } // Continue to next turn
+  | { kind: "outcome"; outcome: RunOutcome }; // Terminal outcome
 
 export interface AgentRunnerTurnExecutionRunInput {
   issue: Issue;

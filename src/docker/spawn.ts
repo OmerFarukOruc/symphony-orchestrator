@@ -34,7 +34,7 @@ interface DockerRunResult {
 }
 
 function buildMountArgs(args: string[], input: DockerRunInput, cacheVolumeName: string): void {
-  const { sandboxConfig: cfg, workspacePath, archiveDir, pathRegistry } = input;
+  const { sandboxConfig, workspacePath, archiveDir, pathRegistry } = input;
   const mounts: Array<[string, string, string?]> = [
     [pathRegistry?.translate(workspacePath) ?? workspacePath, workspacePath],
     [pathRegistry?.translate(archiveDir) ?? archiveDir, archiveDir],
@@ -43,13 +43,13 @@ function buildMountArgs(args: string[], input: DockerRunInput, cacheVolumeName: 
     args.push("-v", mode ? `${host}:${container}:${mode}` : `${host}:${container}`);
   }
   args.push("-v", `${cacheVolumeName}:${CONTAINER_HOME}`);
-  for (const mount of cfg.extraMounts) {
+  for (const mount of sandboxConfig.extraMounts) {
     args.push("-v", mount);
   }
 }
 
 function buildEnvArgs(args: string[], input: DockerRunInput): void {
-  const { sandboxConfig: cfg, runtimeConfigToml, runtimeAuthJsonBase64 = null, command, requiredEnv = [] } = input;
+  const { sandboxConfig, runtimeConfigToml, runtimeAuthJsonBase64 = null, command, requiredEnv = [] } = input;
   args.push(
     "-e",
     `HOME=${CONTAINER_HOME}`,
@@ -63,7 +63,7 @@ function buildEnvArgs(args: string[], input: DockerRunInput): void {
   }
   args.push("-e", `SYMPHONY_CODEX_COMMAND=${command}`);
 
-  const envNames = new Set([...cfg.envPassthrough, ...requiredEnv]);
+  const envNames = new Set([...sandboxConfig.envPassthrough, ...requiredEnv]);
   for (const envName of envNames) {
     const value = process.env[envName];
     if (value !== undefined) {
@@ -72,39 +72,39 @@ function buildEnvArgs(args: string[], input: DockerRunInput): void {
   }
 }
 
-function buildSecurityArgs(args: string[], cfg: SandboxConfig): void {
-  if (cfg.security.dropCapabilities) {
+function buildSecurityArgs(args: string[], sandboxConfig: SandboxConfig): void {
+  if (sandboxConfig.security.dropCapabilities) {
     args.push("--cap-drop=ALL");
   }
-  if (cfg.security.noNewPrivileges) {
+  if (sandboxConfig.security.noNewPrivileges) {
     args.push("--security-opt=no-new-privileges");
   }
-  if (cfg.security.gvisor) {
+  if (sandboxConfig.security.gvisor) {
     args.push("--runtime=runsc");
   }
-  if (cfg.security.seccompProfile) {
-    args.push(`--security-opt=seccomp=${cfg.security.seccompProfile}`);
+  if (sandboxConfig.security.seccompProfile) {
+    args.push(`--security-opt=seccomp=${sandboxConfig.security.seccompProfile}`);
   }
 }
 
-function buildResourceAndLogArgs(args: string[], cfg: SandboxConfig): void {
+function buildResourceAndLogArgs(args: string[], sandboxConfig: SandboxConfig): void {
   args.push(
     "--memory",
-    cfg.resources.memory,
+    sandboxConfig.resources.memory,
     "--memory-reservation",
-    cfg.resources.memoryReservation,
+    sandboxConfig.resources.memoryReservation,
     "--memory-swap",
-    cfg.resources.memorySwap,
+    sandboxConfig.resources.memorySwap,
     "--cpus",
-    cfg.resources.cpus,
+    sandboxConfig.resources.cpus,
     "--tmpfs",
-    `/tmp:exec,size=${cfg.resources.tmpfsSize}`,
+    `/tmp:exec,size=${sandboxConfig.resources.tmpfsSize}`,
     "--log-driver",
-    cfg.logs.driver,
+    sandboxConfig.logs.driver,
     "--log-opt",
-    `max-size=${cfg.logs.maxSize}`,
+    `max-size=${sandboxConfig.logs.maxSize}`,
     "--log-opt",
-    `max-file=${cfg.logs.maxFile}`,
+    `max-file=${sandboxConfig.logs.maxFile}`,
   );
 }
 
@@ -140,7 +140,7 @@ function buildEntrypointScript(egressAllowlist: string[]): string {
 }
 
 export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
-  const { sandboxConfig: cfg, runId, workspacePath } = input;
+  const { sandboxConfig, runId, workspacePath } = input;
   const containerName = `symphony-${runId}`;
   const cacheVolumeName = `symphony-cache-${runId}`;
   const uid = os.userInfo().uid;
@@ -153,12 +153,12 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
   buildEnvArgs(args, input);
   args.push("--add-host=host.docker.internal:host-gateway");
 
-  if (cfg.network) {
-    args.push("--network", cfg.network);
+  if (sandboxConfig.network) {
+    args.push("--network", sandboxConfig.network);
   }
 
-  buildResourceAndLogArgs(args, cfg);
-  buildSecurityArgs(args, cfg);
+  buildResourceAndLogArgs(args, sandboxConfig);
+  buildSecurityArgs(args, sandboxConfig);
 
   if (input.issueIdentifier) {
     args.push("--label", `symphony.issue=${input.issueIdentifier}`);
@@ -173,12 +173,12 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
     `symphony.started-at=${new Date().toISOString()}`,
   );
 
-  const egressAllowlist = cfg.egressAllowlist ?? [];
+  const egressAllowlist = sandboxConfig.egressAllowlist ?? [];
   if (egressAllowlist.length > 0) {
     args.push("--cap-add=NET_ADMIN", "-e", `SYMPHONY_EGRESS_ALLOWLIST=${egressAllowlist.join(" ")}`);
   }
 
-  args.push(cfg.image, "bash", "-lc", buildEntrypointScript(egressAllowlist));
+  args.push(sandboxConfig.image, "bash", "-lc", buildEntrypointScript(egressAllowlist));
 
   return { program: "docker", args, containerName, cacheVolumeName };
 }

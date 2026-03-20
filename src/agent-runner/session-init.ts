@@ -3,7 +3,7 @@ import type { Liquid } from "liquidjs";
 import { authIsRequired, extractRateLimits, extractThreadId, hasUsableAccount } from "./helpers.js";
 import { waitForStartup, buildDynamicTools } from "./session-helpers.js";
 import type { DockerSession } from "./docker-session.js";
-import type { AgentRunnerEventHandler } from "./index.js";
+import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { Issue, ModelSelection, RunOutcome, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
 
 interface SessionInitDeps {
