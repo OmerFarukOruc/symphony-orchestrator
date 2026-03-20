@@ -51,7 +51,7 @@ function createErrorCell(attempt: AttemptSummary): HTMLTableCellElement {
     cell.classList.add("is-error");
   }
   cell.title = text;
-  cell.textContent = text;
+  cell.textContent = text.length > 60 ? `${text.slice(0, 60)}…` : text;
   return cell;
 }
 

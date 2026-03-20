@@ -135,7 +135,6 @@
 .queue-page .drawer-overlay {
   top: var(--header-height);
   left: var(--sidebar-width-collapsed);
-  background: transparent;
 }
 
 /* Issue inspector overrides for panel context */

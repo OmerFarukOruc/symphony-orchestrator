@@ -30,7 +30,12 @@ export function lazyPage(importFn: () => Promise<PageModule>): (params?: Record<
 
     container.append(skeletonCard());
     void ensureLoaded().then((mod) => {
-      container.replaceChildren(mod.render(params));
+      const rendered = mod.render(params);
+      if (container.parentNode) {
+        container.parentNode.replaceChild(rendered, container);
+      } else {
+        container.replaceChildren(rendered);
+      }
     });
 
     return container;

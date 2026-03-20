@@ -64,7 +64,7 @@ export function buildWorkspaceSection(detail: IssueDetail): HTMLElement {
   const grid = document.createElement("div");
   grid.className = "issue-meta-grid";
   grid.append(
-    kv("Workspace", detail.workspacePath ?? "Not available"),
+    kv("Workspace", detail.workspacePath ?? detail.workspaceKey ?? "—"),
     kv("Branch", detail.branchName ?? "—"),
     kv("Pull request", detail.pull_request_url ?? "—"),
     kv("Tokens", formatCompactNumber(detail.tokenUsage?.totalTokens ?? null)),
@@ -131,7 +131,24 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
   note.textContent = detail.modelChangePending
     ? "Saved change pending — applies on the next run."
     : "Applies next run. Active worker keeps its current model.";
-  section.append(active, form, note);
+  const footer = document.createElement("div");
+  footer.className = "mc-actions";
+  footer.append(note);
+  if (detail.modelChangePending) {
+    const cancelBtn = button("Cancel pending change", async () => {
+      try {
+        await api.postModelOverride(detail.identifier, {
+          model: detail.model ?? "",
+          reasoningEffort: detail.reasoningEffort ?? "",
+        });
+        toast("Pending model change cancelled.", "success");
+      } catch (error) {
+        toast(error instanceof Error ? error.message : "Failed to cancel model change.", "error");
+      }
+    });
+    footer.append(cancelBtn);
+  }
+  section.append(active, form, footer);
   return section;
 }
 
