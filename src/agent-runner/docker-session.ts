@@ -25,6 +25,10 @@ function parsePercent(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+import type { PrecomputedRuntimeConfig } from "../dispatch/types.js";
+
+export type { PrecomputedRuntimeConfig } from "../dispatch/types.js";
+
 export interface DockerSessionDeps {
   archiveDir?: string;
   pathRegistry?: PathRegistry;
@@ -58,9 +62,10 @@ export async function createDockerSession(
   input: DockerSessionInput,
   deps: DockerSessionDeps,
   turnState: TurnState,
+  precomputedRuntimeConfig?: PrecomputedRuntimeConfig,
 ): Promise<DockerSession> {
   const spawnProcess = deps.spawnProcess ?? spawn;
-  const runtimeConfig = await prepareCodexRuntimeConfig(config.codex);
+  const runtimeConfig = precomputedRuntimeConfig ?? (await prepareCodexRuntimeConfig(config.codex));
   const archiveDir = deps.archiveDir ?? path.join(process.cwd(), "archive");
   await mkdir(archiveDir, { recursive: true });
 

@@ -223,6 +223,61 @@ Container-specific notes:
 - `workspace.root` resolves to `/data/workspaces` inside the service container.
 - `PathRegistry` translates those container paths back to the host bind-mount sources before worker containers are launched.
 
+### Control/Data Plane Architecture (Remote Dispatch Mode)
+
+By default, Symphony runs in **local mode** — all orchestration and agent execution happen in a single process. For scale-out scenarios (remote SSH workers, hot upgrades, multi-host distribution), enable **remote dispatch mode**:
+
+```bash
+# .env
+DISPATCH_MODE=remote
+DISPATCH_URL=http://data-plane:9100/dispatch
+DISPATCH_SHARED_SECRET=your-secure-secret-here
+```
+
+This splits Symphony into two containers:
+
+```mermaid
+flowchart TD
+    subgraph Docker ["🐳 Docker Compose"]
+        CP["🎵 Control Plane\n:4000\n• Linear polling\n• Dashboard/API\n• Workspace lifecycle\n• Config/secrets"]
+        DP["⚙️ Data Plane\n:9100 (internal)\n• Agent execution\n• Container spawning"]
+    end
+
+    CP -->|"HTTP + SSE\nBearer auth"| DP
+    DP -->|"Docker CLI"| CX1["🤖 Worker 1"]
+    DP -->|"Docker CLI"| CX2["🤖 Worker 2"]
+
+    style CP fill:#2563eb,stroke:#1d4ed8,color:#fff
+    style DP fill:#059669,stroke:#047857,color:#fff
+```
+
+**Control plane responsibilities:**
+- Polls Linear for issues
+- Creates/manages workspaces and git clones
+- Serves the dashboard and HTTP API
+- Holds config overlay and secrets
+- Dispatches run requests to the data plane
+
+**Data plane responsibilities:**
+- Receives dispatch requests with pre-computed config
+- Spawns and manages Codex worker containers
+- Streams events back to control plane via SSE
+- Returns final `RunOutcome` for each dispatch
+
+The data plane is **not exposed to the host** — it only listens on the private `symphony-internal` Docker bridge network. The `DISPATCH_SHARED_SECRET` authenticates inter-container communication.
+
+**When to use remote dispatch mode:**
+
+| Scenario | Benefit |
+|----------|---------|
+| Hot upgrades (#96) | Upgrade control plane without killing active agents |
+| Multi-host SSH workers (#33) | Data plane runs on remote hosts |
+| Interactive workspaces (#70) | WebSocket proxy routes to correct data plane |
+| Multi-repo orchestration (#50) | Multiple data planes with different checkouts |
+
+> [!NOTE]
+> Remote dispatch mode is opt-in. The default `DISPATCH_MODE=local` runs everything in one process with no behavior changes from prior versions.
+
 ## ⚙️ Persistent Overlay and Secrets
 
 `WORKFLOW.md` is still the primary config source and still live-reloads on file change. Symphony now adds two operator-only persistent layers on top:

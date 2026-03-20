@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - "4000:4000"
+    networks:
+      - symphony-internal
     volumes:
       - ${SYMPHONY_HOST_WORKSPACE_ROOT}:/data/workspaces
       - ${SYMPHONY_HOST_ARCHIVE_DIR}:/data/archives
@@ -20,6 +22,9 @@ services:
       CODEX_AUTH_SOURCE_HOME: ${CODEX_AUTH_SOURCE_HOME}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DISPATCH_MODE: ${DISPATCH_MODE:-local}
+      DISPATCH_URL: ${DISPATCH_URL:-http://data-plane:9100/dispatch}
+      DISPATCH_SHARED_SECRET: ${DISPATCH_SHARED_SECRET:-}
     restart: unless-stopped
     healthcheck:
       test:
@@ -32,3 +37,44 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    depends_on:
+      data-plane:
+        condition: service_healthy
+
+  data-plane:
+    build:
+      context: .
+      dockerfile: Dockerfile.data-plane
+    networks:
+      - symphony-internal
+    volumes:
+      - ${SYMPHONY_HOST_WORKSPACE_ROOT}:/data/workspaces
+      - ${SYMPHONY_HOST_ARCHIVE_DIR}:/data/archives
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DATA_DIR: /data
+      DISPATCH_PORT: "9100"
+      DISPATCH_SHARED_SECRET: ${DISPATCH_SHARED_SECRET:-}
+      LINEAR_API_KEY: ${LINEAR_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SYMPHONY_HOST_WORKSPACE_ROOT: ${SYMPHONY_HOST_WORKSPACE_ROOT}
+      SYMPHONY_HOST_ARCHIVE_DIR: ${SYMPHONY_HOST_ARCHIVE_DIR}
+      SYMPHONY_CONTAINER_WORKSPACE_ROOT: /data/workspaces
+      SYMPHONY_CONTAINER_ARCHIVE_DIR: /data/archives
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:9100/health').then(r=>{if(!r.ok)throw new Error(String(r.status))})",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  symphony-internal:
+    driver: bridge
