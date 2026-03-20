@@ -4,7 +4,7 @@ import path from "node:path";
 import { bearerAuth } from "./auth.js";
 import type { AgentRunnerEventHandler } from "../agent-runner/contracts.js";
 import { AgentRunner } from "../agent-runner/index.js";
-import type { DispatchRequest, DispatchStreamMessage, PrecomputedRuntimeConfig } from "./types.js";
+import type { DispatchRequest, DispatchStreamMessage, PrecomputedRuntimeConfig, DataPlaneHealth } from "./types.js";
 import { LinearClient } from "../linear/client.js";
 import { WorkspaceManager } from "../workspace/manager.js";
 import { createGitHubToolProvider } from "../cli/runtime-providers.js";
@@ -29,10 +29,11 @@ export function createDataPlaneServer(secret: string): express.Application {
 
   // Health check (no auth required)
   app.get("/health", (_req: Request, res: Response) => {
-    res.json({
-      status: "ok" as const,
+    const health: DataPlaneHealth = {
+      status: "ok",
       activeDispatches: activeDispatches.size,
-    });
+    };
+    res.json(health);
   });
 
   // Dispatch endpoint (requires auth)

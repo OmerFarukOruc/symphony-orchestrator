@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "project": ["src/**/*.ts"],
+  "entry": ["src/dispatch/entrypoint.ts"],
   "ignoreExportsUsedInFile": true
 }
