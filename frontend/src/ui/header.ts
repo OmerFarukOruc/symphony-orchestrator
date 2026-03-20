@@ -16,9 +16,14 @@ export function initHeader(headerEl: HTMLElement): void {
   const badgeSpan = document.createElement("span");
   badgeSpan.className = "mc-badge header-env-badge";
   const dot = document.createElement("span");
-  dot.className = "status-dot";
+  dot.className = "status-dot status-dot--local";
   dot.textContent = "\u25CF";
-  badgeSpan.append(dot, " local");
+  const envLabel = document.createElement("span");
+  envLabel.className = "header-env-label";
+  envLabel.textContent = "Local";
+  badgeSpan.append(dot, envLabel);
+  badgeSpan.title =
+    "Local mode — Symphony is running on your machine. Issues are processed in sandboxed Docker containers for security.";
   brand.append(titleSpan, sep, badgeSpan);
 
   const command = document.createElement("div");

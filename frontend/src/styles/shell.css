@@ -351,12 +351,25 @@
 }
 
 .header-env-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
   font-size: var(--text-xs);
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--status-running) 12%, var(--bg-elevated));
+  border: 1px solid color-mix(in srgb, var(--status-running) 30%, var(--border-stitch));
+  cursor: help;
 }
 
 .header-env-badge .status-dot {
   color: var(--status-running);
+  font-size: 8px;
+}
+
+.header-env-label {
+  font-weight: 500;
+  text-transform: capitalize;
 }
 
 .header-command {

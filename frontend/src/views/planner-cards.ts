@@ -109,7 +109,14 @@ export function createPlannerCard(options: PlannerCardOptions): HTMLElement {
     labels,
   );
 
-  card.addEventListener("click", onSelect);
+  card.addEventListener("click", (event) => {
+    // Don't trigger selection when clicking on form inputs
+    const target = event.target as HTMLElement;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") {
+      return;
+    }
+    onSelect();
+  });
   card.addEventListener("focus", onSelect);
   return card;
 }
