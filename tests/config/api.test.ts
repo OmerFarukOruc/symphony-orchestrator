@@ -80,16 +80,15 @@ describe("registerConfigApi", () => {
         codex: { model: "gpt-5.4" },
       });
 
-      const putPathResponse = await fetch(`${baseUrl}/api/v1/config/overlay`, {
-        method: "PUT",
+      const patchPathResponse = await fetch(`${baseUrl}/api/v1/config/overlay/server.port`, {
+        method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          path: "server.port",
           value: 4010,
         }),
       });
-      expect(putPathResponse.status).toBe(200);
-      expect((await putPathResponse.json()).overlay).toEqual({
+      expect(patchPathResponse.status).toBe(200);
+      expect((await patchPathResponse.json()).overlay).toEqual({
         codex: { model: "gpt-5.4" },
         server: { port: 4010 },
       });
@@ -147,13 +146,13 @@ describe("registerConfigApi", () => {
 
     const { server, baseUrl } = await startServer(app);
     try {
-      const invalidPutResponse = await fetch(`${baseUrl}/api/v1/config/overlay`, {
-        method: "PUT",
+      const invalidPatchResponse = await fetch(`${baseUrl}/api/v1/config/overlay/test.path`, {
+        method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ path: 42 }),
+        body: JSON.stringify({ wrong: 42 }),
       });
-      expect(invalidPutResponse.status).toBe(400);
-      expect((await invalidPutResponse.json()).error.code).toBe("invalid_overlay_payload");
+      expect(invalidPatchResponse.status).toBe(400);
+      expect((await invalidPatchResponse.json()).error.code).toBe("invalid_overlay_payload");
 
       const unknownDeleteResponse = await fetch(`${baseUrl}/api/v1/config/overlay/unknownPath`, {
         method: "DELETE",

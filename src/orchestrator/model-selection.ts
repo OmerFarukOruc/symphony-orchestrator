@@ -1,5 +1,6 @@
 import type { ModelSelection, ReasoningEffort, RecentEvent, ServiceConfig } from "../core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
+import { type IssueLocatorCallbacks, resolveIssue } from "./issue-locator.js";
 
 export function resolveModelSelection(
   overrides: Map<string, Omit<ModelSelection, "source">>,
@@ -50,14 +51,24 @@ export async function updateIssueModelSelection(
   });
 
   const selection = resolveModelSelection(ctx.issueModelOverrides, ctx.getConfig(), identifier);
-  const runningEntry = [...ctx.runningEntries.values()].find((entry) => entry.issue.identifier === identifier);
   const effortSuffix = selection.reasoningEffort ? ` (${selection.reasoningEffort})` : "";
-  if (runningEntry && !runningEntry.abortController.signal.aborted) {
+
+  // Use locator to find running or retry entry
+  const locatorCallbacks: IssueLocatorCallbacks = {
+    getRunningEntries: () => ctx.runningEntries,
+    getRetryEntries: () => ctx.retryEntries,
+    getCompletedViews: () => new Map(),
+    getDetailViews: () => new Map(),
+    resolveModelSelection: (id) => resolveModelSelection(ctx.issueModelOverrides, ctx.getConfig(), id),
+  };
+  const location = resolveIssue(identifier, locatorCallbacks);
+
+  if (location?.kind === "running" && !location.entry.abortController.signal.aborted) {
     ctx.pushEvent({
       at: new Date().toISOString(),
-      issueId: runningEntry.issue.id,
-      issueIdentifier: runningEntry.issue.identifier,
-      sessionId: runningEntry.sessionId,
+      issueId: location.entry.issue.id,
+      issueIdentifier: location.entry.issue.identifier,
+      sessionId: location.entry.sessionId,
       event: "model_selection_updated",
       message: `next run model updated to ${selection.model}${effortSuffix}`,
     });
@@ -69,12 +80,11 @@ export async function updateIssueModelSelection(
     };
   }
 
-  const retryEntry = [...ctx.retryEntries.values()].find((entry) => entry.identifier === identifier);
-  if (retryEntry) {
+  if (location?.kind === "retry") {
     ctx.pushEvent({
       at: new Date().toISOString(),
-      issueId: retryEntry.issue.id,
-      issueIdentifier: retryEntry.issue.identifier,
+      issueId: location.entry.issue.id,
+      issueIdentifier: location.entry.issue.identifier,
       sessionId: null,
       event: "model_selection_updated",
       message: `next run model updated to ${selection.model}${effortSuffix}`,

@@ -6,7 +6,7 @@ import { isHardFailure, issueView, nowIso } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
 import { buildOutcomeView } from "./outcome-view-builder.js";
 import { executeGitPostRun } from "./git-post-run.js";
-import { detectStopSignal, type StopSignal } from "../agent-runner/signal-detection.js";
+import { detectStopSignal, type StopSignal } from "../core/signal-detection.js";
 
 /** Shared context type for all outcome handlers. */
 interface OutcomeContext {
@@ -49,7 +49,7 @@ function handleServiceStopped(
   entry: RunningEntry,
   issue: Issue,
   workspace: Workspace,
-  sel: ModelSelection,
+  modelSelection: ModelSelection,
   attempt: number | null,
 ): void {
   ctx.notify({
@@ -63,7 +63,7 @@ function handleServiceStopped(
   ctx.releaseIssueClaim(issue.id);
   ctx.completedViews.set(
     issue.identifier,
-    buildOutcomeView(issue, workspace, entry, sel, {
+    buildOutcomeView(issue, workspace, entry, modelSelection, {
       status: "cancelled",
       attempt,
       error: outcome.errorMessage,
@@ -72,19 +72,24 @@ function handleServiceStopped(
   );
 }
 
-async function handleTerminalOrCleanup(
+async function finalizeTerminalOrCleanupOutcome(
   ctx: OutcomeContext,
   outcome: RunOutcome,
   entry: RunningEntry,
   issue: Issue,
   workspace: Workspace,
-  sel: ModelSelection,
+  modelSelection: ModelSelection,
   attempt: number | null,
 ): Promise<void> {
-  await ctx.deps.workspaceManager.removeWorkspace(issue.identifier).catch(() => undefined);
+  await ctx.deps.workspaceManager.removeWorkspace(issue.identifier).catch((error) => {
+    ctx.deps.logger.info(
+      { issue_identifier: issue.identifier, error: String(error) },
+      "workspace cleanup failed (non-fatal)",
+    );
+  });
   ctx.completedViews.set(
     issue.identifier,
-    buildOutcomeView(issue, workspace, entry, sel, {
+    buildOutcomeView(issue, workspace, entry, modelSelection, {
       status: outcomeToStatus(outcome.kind),
       attempt,
       error: outcome.errorMessage ?? outcome.errorCode,
@@ -100,7 +105,7 @@ function handleCancelledOrHardFailure(
   entry: RunningEntry,
   issue: Issue,
   workspace: Workspace,
-  sel: ModelSelection,
+  modelSelection: ModelSelection,
   attempt: number | null,
 ): void {
   ctx.notify({
@@ -114,7 +119,7 @@ function handleCancelledOrHardFailure(
   });
   ctx.completedViews.set(
     issue.identifier,
-    buildOutcomeView(issue, workspace, entry, sel, {
+    buildOutcomeView(issue, workspace, entry, modelSelection, {
       status: outcome.kind === "cancelled" ? "cancelled" : "failed",
       attempt,
       error: outcome.errorCode,
@@ -130,7 +135,7 @@ async function handleStopSignal(
   entry: RunningEntry,
   issue: Issue,
   workspace: Workspace,
-  sel: ModelSelection,
+  modelSelection: ModelSelection,
   attempt: number | null,
 ): Promise<void> {
   let pullRequestUrl: string | null = null;
@@ -148,7 +153,12 @@ async function handleStopSignal(
     }
   }
 
-  await ctx.deps.attemptStore.updateAttempt(entry.runId, { stopSignal, pullRequestUrl, status }).catch(() => undefined);
+  await ctx.deps.attemptStore.updateAttempt(entry.runId, { stopSignal, pullRequestUrl, status }).catch((error) => {
+    ctx.deps.logger.info(
+      { attempt_id: entry.runId, error: String(error) },
+      "attempt update failed after stop signal (non-fatal)",
+    );
+  });
 
   if (pullRequestUrl) {
     ctx.deps.logger.info({ issue_identifier: issue.identifier, url: pullRequestUrl }, "pull request created");
@@ -157,7 +167,7 @@ async function handleStopSignal(
   const isBlocked = stopSignal === "blocked";
   ctx.completedViews.set(
     issue.identifier,
-    buildOutcomeView(issue, workspace, entry, sel, {
+    buildOutcomeView(issue, workspace, entry, modelSelection, {
       status,
       attempt,
       message: isBlocked ? "worker reported issue blocked" : "worker reported issue complete",
@@ -199,23 +209,26 @@ function queueRetryWithLog(
   );
 }
 
-async function handlePostReconciliation(
+async function reconcileOutcomeAgainstLatestIssueState(
   ctx: OutcomeContext,
   outcome: RunOutcome,
   entry: RunningEntry,
   latestIssue: Issue,
   workspace: Workspace,
-  sel: ReturnType<typeof ctx.resolveModelSelection>,
+  modelSelection: ReturnType<typeof ctx.resolveModelSelection>,
   attempt: number | null,
 ): Promise<void> {
   if (entry.cleanupOnExit || isTerminalState(latestIssue.state, ctx.getConfig())) {
-    await handleTerminalOrCleanup(ctx, outcome, entry, latestIssue, workspace, sel, attempt);
+    await finalizeTerminalOrCleanupOutcome(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
     return;
   }
   if (!isActiveState(latestIssue.state, ctx.getConfig())) {
     ctx.completedViews.set(
       latestIssue.identifier,
-      buildOutcomeView(latestIssue, workspace, entry, sel, { status: "paused", message: "issue is no longer active" }),
+      buildOutcomeView(latestIssue, workspace, entry, modelSelection, {
+        status: "paused",
+        message: "issue is no longer active",
+      }),
     );
     ctx.releaseIssueClaim(latestIssue.id);
     return;
@@ -225,7 +238,7 @@ async function handlePostReconciliation(
     return;
   }
   if (outcome.kind === "cancelled" || isHardFailure(outcome.errorCode)) {
-    handleCancelledOrHardFailure(ctx, outcome, entry, latestIssue, workspace, sel, attempt);
+    handleCancelledOrHardFailure(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
     return;
   }
 
@@ -241,7 +254,7 @@ async function handlePostReconciliation(
     "post-reconciliation stop-signal check",
   );
   if (stopSignal) {
-    await handleStopSignal(ctx, stopSignal, entry, latestIssue, workspace, sel, attempt);
+    await handleStopSignal(ctx, stopSignal, entry, latestIssue, workspace, modelSelection, attempt);
     return;
   }
 
@@ -281,10 +294,10 @@ export async function handleWorkerOutcome(
     tokenUsage: entry.tokenUsage,
   });
 
-  const sel = ctx.resolveModelSelection(latestIssue.identifier);
+  const modelSelection = ctx.resolveModelSelection(latestIssue.identifier);
   ctx.detailViews.set(
     latestIssue.identifier,
-    buildOutcomeView(latestIssue, workspace, entry, sel, {
+    buildOutcomeView(latestIssue, workspace, entry, modelSelection, {
       status: outcome.kind,
       attempt,
       error: outcome.errorMessage,
@@ -293,14 +306,14 @@ export async function handleWorkerOutcome(
   );
 
   if (!ctx.isRunning()) {
-    handleServiceStopped(ctx, outcome, entry, latestIssue, workspace, sel, attempt);
+    handleServiceStopped(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
     return;
   }
 
-  await handlePostReconciliation(ctx, outcome, entry, latestIssue, workspace, sel, attempt);
+  await reconcileOutcomeAgainstLatestIssueState(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
 }
 
-export function handleWorkerFailure(
+export async function handleWorkerFailure(
   ctx: {
     runningEntries: Map<string, RunningEntry>;
     releaseIssueClaim: (issueId: string) => void;
@@ -314,35 +327,77 @@ export function handleWorkerFailure(
     }) => void;
     deps: {
       attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
+      logger: { warn: (meta: Record<string, unknown>, message: string) => void };
     };
   },
   issue: Issue,
   entry: RunningEntry,
   error: unknown,
 ): Promise<void> {
-  return entry
-    .flushPersistence()
-    .catch(() => undefined)
-    .then(async () => {
-      ctx.runningEntries.delete(issue.id);
-      ctx.releaseIssueClaim(issue.id);
-      ctx.pushEvent({
-        at: nowIso(),
-        issueId: issue.id,
-        issueIdentifier: issue.identifier,
-        sessionId: entry.sessionId,
-        event: "worker_failed",
-        message: String(error),
-      });
-      await ctx.deps.attemptStore
-        .updateAttempt(entry.runId, {
-          status: "failed",
-          endedAt: nowIso(),
-          errorCode: "worker_failed",
-          errorMessage: String(error),
-          tokenUsage: entry.tokenUsage,
-          threadId: null,
-        })
-        .catch(() => undefined);
+  try {
+    await entry.flushPersistence();
+  } catch (flushError) {
+    ctx.deps.logger.warn(
+      { issue_id: issue.id, issue_identifier: issue.identifier, attempt_id: entry.runId, error: String(flushError) },
+      "worker failure: failed to flush persistence, attempting fallback update",
+    );
+    try {
+      await ctx.deps.attemptStore.updateAttempt(entry.runId, { errorCode: "flush_failed" });
+    } catch (fallbackError) {
+      ctx.deps.logger.warn(
+        {
+          issue_id: issue.id,
+          issue_identifier: issue.identifier,
+          attempt_id: entry.runId,
+          error: String(fallbackError),
+        },
+        "worker failure: fallback attempt update also failed",
+      );
+    }
+  }
+
+  ctx.runningEntries.delete(issue.id);
+  ctx.releaseIssueClaim(issue.id);
+  ctx.pushEvent({
+    at: nowIso(),
+    issueId: issue.id,
+    issueIdentifier: issue.identifier,
+    sessionId: entry.sessionId,
+    event: "worker_failed",
+    message: String(error),
+  });
+
+  try {
+    await ctx.deps.attemptStore.updateAttempt(entry.runId, {
+      status: "failed",
+      endedAt: nowIso(),
+      errorCode: "worker_failed",
+      errorMessage: String(error),
+      tokenUsage: entry.tokenUsage,
+      threadId: null,
     });
+  } catch (updateError) {
+    ctx.deps.logger.warn(
+      {
+        issue_id: issue.id,
+        issue_identifier: issue.identifier,
+        attempt_id: entry.runId,
+        error: String(updateError),
+      },
+      "worker failure: failed to update attempt status, attempting fallback error code",
+    );
+    try {
+      await ctx.deps.attemptStore.updateAttempt(entry.runId, { errorCode: "update_failed" });
+    } catch (fallbackError) {
+      ctx.deps.logger.warn(
+        {
+          issue_id: issue.id,
+          issue_identifier: issue.identifier,
+          attempt_id: entry.runId,
+          error: String(fallbackError),
+        },
+        "worker failure: fallback error code update also failed",
+      );
+    }
+  }
 }

@@ -3,12 +3,6 @@ import type { Issue, IssueBlockerRef } from "../core/types.js";
 
 const asString = asStringOrNull;
 
-/**
- * Normalizes an array of label objects from Linear's GraphQL API into a sorted array of lowercase label names.
- *
- * @param raw - The raw labels data from Linear's GraphQL response (typically labels.nodes)
- * @returns An array of lowercase label names
- */
 function normalizeLabels(raw: unknown): string[] {
   return asArray(raw)
     .map((item) => asRecord(item))
@@ -17,13 +11,7 @@ function normalizeLabels(raw: unknown): string[] {
     .map((value) => value.toLowerCase());
 }
 
-/**
- * Normalizes blocker relations from Linear's GraphQL API into a structured array of blocker references.
- *
- * @param raw - The raw blocker relations data from Linear's GraphQL response (typically inverseRelations.nodes)
- * @param issueId - The ID of the issue being normalized, used to determine blocker direction
- * @returns An array of IssueBlockerRef objects with id, identifier, and state
- */
+/** Determines blocker direction: if issue.id matches, the related issue is the blocker. */
 function normalizeBlockers(raw: unknown, issueId: string): IssueBlockerRef[] {
   return asArray(raw).map((item) => {
     const relation = asRecord(item);
@@ -39,12 +27,6 @@ function normalizeBlockers(raw: unknown, issueId: string): IssueBlockerRef[] {
   });
 }
 
-/**
- * Normalizes a raw Linear issue object from Linear's GraphQL API into a structured Issue type.
- *
- * @param raw - The raw issue data from Linear's GraphQL response
- * @returns A normalized Issue object with all required fields
- */
 export function normalizeIssue(raw: unknown): Issue {
   const issue = asRecord(raw);
   const state = asRecord(issue.state);

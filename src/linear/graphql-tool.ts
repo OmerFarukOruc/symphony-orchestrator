@@ -1,5 +1,3 @@
-import { Kind, parse } from "graphql";
-
 import { LinearClient } from "./client.js";
 import {
   type ToolCallResult,
@@ -27,13 +25,19 @@ function extractInput(args: unknown): { query: string; variables?: Record<string
   throw new Error("linear_graphql expects a query string or { query, variables } object");
 }
 
+function countOperations(query: string): number {
+  const operationKeywords = /\b(query|mutation|subscription)\b/gi;
+  let count = 0;
+  while (operationKeywords.exec(query) !== null) {
+    count++;
+  }
+  return count;
+}
+
 export async function handleLinearGraphqlToolCall(client: LinearClient, args: unknown): Promise<ToolCallResult> {
   try {
     const input = extractInput(args);
-    const document = parse(input.query);
-    const operationCount = document.definitions.filter(
-      (definition) => definition.kind === Kind.OPERATION_DEFINITION,
-    ).length;
+    const operationCount = countOperations(input.query);
 
     if (operationCount !== 1) {
       throw new Error("linear_graphql requires exactly one operation");

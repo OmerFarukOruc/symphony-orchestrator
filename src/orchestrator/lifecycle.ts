@@ -53,7 +53,12 @@ async function reconcileRetries(ctx: ReconcileContext, byId: Map<string, Issue>,
     retryEntry.issue = latest;
     if (isTerminalState(latest.state, config)) {
       ctx.clearRetryEntry(retryEntry.issueId);
-      await ctx.deps.workspaceManager.removeWorkspace(latest.identifier).catch(() => undefined);
+      await ctx.deps.workspaceManager.removeWorkspace(latest.identifier).catch((error: unknown) => {
+        ctx.deps.logger.warn(
+          { issueId: retryEntry.issueId, identifier: latest.identifier, error: String(error) },
+          "workspace cleanup failed during retry reconciliation",
+        );
+      });
     } else if (!isActiveState(latest.state, config)) {
       ctx.clearRetryEntry(retryEntry.issueId);
     }
@@ -68,6 +73,7 @@ interface ReconcileContext {
       fetchIssuesByStates: (states: string[]) => Promise<Issue[]>;
     };
     workspaceManager: { removeWorkspace: (identifier: string) => Promise<void> };
+    logger: { warn: (meta: Record<string, unknown>, message: string) => void };
   };
   getConfig: () => ServiceConfig;
   clearRetryEntry: (issueId: string) => void;
@@ -163,7 +169,14 @@ export async function cleanupTerminalIssueWorkspaces(ctx: {
   try {
     const terminalIssues = await ctx.deps.linearClient.fetchIssuesByStates(ctx.getConfig().tracker.terminalStates);
     await Promise.all(
-      terminalIssues.map((issue) => ctx.deps.workspaceManager.removeWorkspace(issue.identifier).catch(() => undefined)),
+      terminalIssues.map((issue) =>
+        ctx.deps.workspaceManager.removeWorkspace(issue.identifier).catch((error: unknown) => {
+          ctx.deps.logger.warn(
+            { identifier: issue.identifier, error: String(error) },
+            "workspace cleanup failed for terminal issue",
+          );
+        }),
+      ),
     );
   } catch (error) {
     ctx.deps.logger.warn({ error: String(error) }, "startup terminal workspace cleanup failed");

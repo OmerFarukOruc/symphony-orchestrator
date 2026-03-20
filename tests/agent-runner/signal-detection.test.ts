@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectStopSignal } from "../../src/agent-runner/signal-detection.js";
+import { detectStopSignal } from "../../src/core/signal-detection.js";
 
 describe("detectStopSignal", () => {
   it("returns 'done' for SYMPHONY_STATUS: DONE", () => {

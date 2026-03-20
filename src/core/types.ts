@@ -1,4 +1,4 @@
-import type { NotificationVerbosity } from "../notification/channel.js";
+import type { NotificationVerbosity } from "./notification-types.js";
 
 export interface WorkflowDefinition {
   config: Record<string, unknown>;

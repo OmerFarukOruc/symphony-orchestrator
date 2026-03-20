@@ -14,7 +14,6 @@ import type { SecretsStore } from "../secrets/store.js";
 import { WorkspaceManager } from "../workspace/manager.js";
 
 export async function createServices(
-  config: ReturnType<ConfigStore["getConfig"]>,
   configStore: ConfigStore,
   overlayStore: ConfigOverlayStore,
   secretsStore: SecretsStore,

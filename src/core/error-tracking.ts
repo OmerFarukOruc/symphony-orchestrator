@@ -28,11 +28,12 @@ class NoopTracker implements ErrorTracker {
 
 /**
  * Logger-backed error tracker that records structured exception data,
- * breadcrumbs, and context through the existing Winston logger.
- * When a real Sentry DSN is provided, this captures errors with
- * full breadcrumb trail and context snapshots.
+ * breadcrumbs, and context through the existing logger.
+ * When SENTRY_DSN is set, this tracker is activated as a structured
+ * logger-backed tracker; actual Sentry integration would require
+ * installing @sentry/node.
  */
-class SentryTracker implements ErrorTracker {
+class LoggerErrorTracker implements ErrorTracker {
   private breadcrumbs: Array<{
     message: string;
     category: string;
@@ -93,7 +94,7 @@ let tracker: ErrorTracker = new NoopTracker();
 export function initErrorTracking(logger: SymphonyLogger): ErrorTracker {
   const dsn = process.env.SENTRY_DSN;
   if (dsn?.startsWith("https://")) {
-    tracker = new SentryTracker(dsn, logger);
+    tracker = new LoggerErrorTracker(dsn, logger);
   }
   return tracker;
 }

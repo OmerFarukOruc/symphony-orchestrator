@@ -17,7 +17,7 @@ import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import type { LinearClient } from "../linear/client.js";
 import { globalMetrics } from "../observability/metrics.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
-import type { AgentRunnerEventHandler } from "./index.js";
+import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { Issue, ModelSelection, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
 
 function parsePercent(value: string): number {

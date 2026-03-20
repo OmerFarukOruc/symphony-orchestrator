@@ -58,8 +58,16 @@ export class AttemptStore {
           }
 
           this.eventsByAttempt.set(attempt.attemptId, events);
-        } catch {
-          this.eventsByAttempt.set(attempt.attemptId, []);
+        } catch (error) {
+          if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+            this.eventsByAttempt.set(attempt.attemptId, []);
+          } else {
+            this.logger.warn(
+              { attemptId: attempt.attemptId, error: String(error) },
+              "attempt event archive corrupt or unreadable",
+            );
+            this.eventsByAttempt.set(attempt.attemptId, []);
+          }
         }
       } catch (error) {
         this.logger.warn({ entry: entry.name, error: String(error) }, "attempt archive entry could not be loaded");

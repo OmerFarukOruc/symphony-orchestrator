@@ -5,31 +5,16 @@ import { createTurnState } from "./turn-state.js";
 import { executeTurns } from "./turn-executor.js";
 import { createDockerSession, type DockerSessionDeps } from "./docker-session.js";
 import { initializeSession } from "./session-init.js";
+import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import { LinearClient } from "../linear/client.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
-import type {
-  Issue,
-  ModelSelection,
-  RecentEvent,
-  RunOutcome,
-  ServiceConfig,
-  SymphonyLogger,
-  TokenUsageSnapshot,
-  Workspace,
-} from "../core/types.js";
+import type { Issue, ModelSelection, RunOutcome, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
 import { WorkspaceManager } from "../workspace/manager.js";
 
 export { extractItemContent } from "./helpers.js";
 
-export type AgentRunnerEventHandler = (
-  event: RecentEvent & {
-    usage?: TokenUsageSnapshot;
-    usageMode?: "absolute_total" | "delta";
-    rateLimits?: unknown;
-    content?: string | null;
-  },
-) => void;
+export type { AgentRunnerEventHandler } from "./contracts.js";
 
 export class AgentRunner {
   private readonly liquid = new Liquid({ strictFilters: true, strictVariables: true });

@@ -9,10 +9,14 @@ import {
 import { classifyRunError, failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
 import { classifyExitState } from "./exit-classifier.js";
 import { composeSessionId, waitForTurnCompletion } from "./turn-state.js";
-import { detectStopSignal } from "./signal-detection.js";
+import { detectStopSignal } from "../core/signal-detection.js";
 import { isActiveState } from "../state/policy.js";
 import { sanitizeContent } from "../core/content-sanitizer.js";
-import type { AgentRunnerTurnExecutionInput, AgentRunnerTurnExecutionState } from "./turn-executor.types.js";
+import type {
+  AgentRunnerTurnExecutionInput,
+  AgentRunnerTurnExecutionState,
+  TurnResult,
+} from "./turn-executor.types.js";
 import type { RunOutcome } from "../core/types.js";
 
 const CONTINUATION_PROMPT =
@@ -84,7 +88,7 @@ async function runSingleTurn(
   input: AgentRunnerTurnExecutionInput,
   state: AgentRunnerTurnExecutionState,
   prompt: string,
-): Promise<RunOutcome | null> {
+): Promise<TurnResult> {
   state.turnCount += 1;
   const turnResult = await input.connection.request("turn/start", {
     threadId: state.threadId,
@@ -116,14 +120,14 @@ async function runSingleTurn(
   emitTurnCompletedEvent(input, state, completedStatus, completedError, completedUsage, turnResult);
 
   const fatalOutcome = checkFatalFailure(state);
-  if (fatalOutcome) return fatalOutcome;
+  if (fatalOutcome) return { kind: "outcome", outcome: fatalOutcome };
 
   const turnOutcome = classifyTurnResult(completedStatus, completedError, state);
-  if (turnOutcome) return turnOutcome;
+  if (turnOutcome) return { kind: "outcome", outcome: turnOutcome };
 
   const latestIssue = (await input.linearClient.fetchIssueStatesByIds([input.runInput.issue.id]))[0];
-  if (!latestIssue || !isActiveState(latestIssue.state, input.config)) return null;
-  return undefined as unknown as RunOutcome; // continue to next turn (sentinel)
+  if (!latestIssue || !isActiveState(latestIssue.state, input.config)) return { kind: "stop" };
+  return { kind: "continue" };
 }
 
 function resolveTokenUsage(
@@ -153,15 +157,13 @@ export async function executeTurns(
 
       const prompt = state.turnCount === 0 ? input.prompt : CONTINUATION_PROMPT;
       const result = await runSingleTurn(input, state, prompt);
-      if (result === null) {
-        break; // issue inactive, stop
+      if (result.kind === "stop") {
+        break;
       }
-      if (result !== undefined) {
-        return result; // terminal outcome
+      if (result.kind === "outcome") {
+        return result.outcome;
       }
 
-      // Early stop-signal detection: break immediately when the agent says DONE/BLOCKED
-      // instead of sending another continuation prompt and wasting a turn.
       const lastContent = input.getLastAgentMessageContent?.() ?? null;
       if (detectStopSignal(lastContent)) {
         break;
