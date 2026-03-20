@@ -3,16 +3,29 @@
 .settings-rail,
 .settings-content,
 .settings-stack,
-.settings-rail-card,
-.settings-card,
-.settings-paths {
-  display: grid;
-  gap: var(--space-4);
+.settings-rail-card {
+  padding: var(--space-4);
+  border: 1px solid var(--border-stitch);
+  background: var(--bg-surface);
+}
+
+.settings-rail-card h2 {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.settings-rail-card p {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
 }
 
 .settings-layout {
-  grid-template-columns: minmax(220px, 0.38fr) minmax(0, 1fr);
+  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
   align-items: start;
+  gap: var(--space-5);
 }
 
 .settings-toolbar,

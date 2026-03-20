@@ -10,6 +10,47 @@ function chip(label: string, onClick: () => void): HTMLButtonElement {
   return button;
 }
 
+/**
+ * Normalize stage keys for deduplication.
+ * "canceled" and "cancelled" are treated as the same stage.
+ */
+function normalizeStageKey(key: string): string {
+  const lower = key.toLowerCase();
+  if (lower === "cancelled" || lower === "canceled") return "cancelled";
+  return key.toLowerCase().replaceAll(" ", "_");
+}
+
+/**
+ * Normalize stage label for display.
+ */
+function normalizeStageLabel(key: string): string {
+  const lower = key.toLowerCase();
+  if (lower === "cancelled" || lower === "canceled") return "Canceled";
+  return key;
+}
+
+/**
+ * Merge columns with the same normalized key.
+ */
+function mergeColumns(columns: WorkflowColumn[]): WorkflowColumn[] {
+  const merged = new Map<string, WorkflowColumn>();
+  for (const column of columns) {
+    const normalized = normalizeStageKey(column.key);
+    const existing = merged.get(normalized);
+    if (existing) {
+      existing.issues = [...existing.issues, ...column.issues];
+      existing.count = (existing.count ?? 0) + (column.count ?? 0);
+    } else {
+      merged.set(normalized, {
+        ...column,
+        key: normalized,
+        label: normalizeStageLabel(column.label),
+      });
+    }
+  }
+  return Array.from(merged.values());
+}
+
 interface QueueToolbarOptions {
   toolbar: HTMLElement;
   filters: QueueFilters;
@@ -46,40 +87,26 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
     filters.density = filters.density === "comfortable" ? "compact" : "comfortable";
     syncControls();
   });
+  density.classList.toggle("is-active", filters.density === "comfortable");
   const completed = chip(filters.showCompleted ? "Show completed" : "Hide completed", () => {
     filters.showCompleted = !filters.showCompleted;
     syncControls();
   });
+  completed.classList.toggle("is-active", filters.showCompleted);
   const refreshButton = chip("Refresh from Linear", onRefresh);
 
-  function normalizeStageKey(key: string): string {
-    const lower = key.toLowerCase();
-    if (lower === "cancelled" || lower === "canceled") return "cancelled";
-    return key;
-  }
-
   function renderStages(): void {
-    const seen = new Set<string>();
-    const deduped: WorkflowColumn[] = [];
-    for (const column of columns) {
-      const normalized = normalizeStageKey(column.key);
-      if (!seen.has(normalized)) {
-        seen.add(normalized);
-        deduped.push(column);
-      }
-    }
+    const merged = mergeColumns(columns);
     stageBar.replaceChildren(
-      ...deduped.map((column) => {
+      ...merged.map((column) => {
         const label = column.count > 0 ? `${column.label} ${column.count}` : column.label;
         const button = chip(label, () => {
-          const normalized = normalizeStageKey(column.key);
-          if (filters.stages.has(normalized)) filters.stages.delete(normalized);
-          else filters.stages.add(normalized);
+          if (filters.stages.has(column.key)) filters.stages.delete(column.key);
+          else filters.stages.add(column.key);
           renderStages();
           onChange();
         });
-        const normalized = normalizeStageKey(column.key);
-        button.classList.toggle("is-active", filters.stages.has(normalized));
+        button.classList.toggle("is-active", filters.stages.has(column.key));
         return button;
       }),
     );
@@ -101,7 +128,9 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
 
   function syncControls(): void {
     density.textContent = filters.density === "comfortable" ? "Comfortable" : "Compact";
+    density.classList.toggle("is-active", filters.density === "comfortable");
     completed.textContent = filters.showCompleted ? "Show completed" : "Hide completed";
+    completed.classList.toggle("is-active", filters.showCompleted);
     onChange();
   }
 

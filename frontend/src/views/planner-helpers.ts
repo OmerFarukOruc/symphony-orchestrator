@@ -43,6 +43,6 @@ export function normalizeDependencies(plan: PlannedIssue[]): PlannedIssue[] {
 export function buildCreatedLinks(externalIds: string[]): { identifier: string; url: string }[] {
   return externalIds.map((identifier) => ({
     identifier,
-    url: `https://linear.app/search/results/all/${encodeURIComponent(identifier)}`,
+    url: `https://linear.app/issue/${encodeURIComponent(identifier)}`,
   }));
 }

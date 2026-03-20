@@ -7,6 +7,42 @@
   gap: var(--space-4);
 }
 
+/* Help callout */
+.config-help-callout {
+  padding: var(--space-4);
+  border-left: 3px solid var(--text-accent);
+}
+
+.config-help-callout h2 {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.config-help-callout ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.config-help-callout li {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.config-help-callout code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--bg-muted);
+  padding: 1px 4px;
+}
+
+.config-help-callout p {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+
 .config-layout {
   grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.1fr) minmax(280px, 0.95fr);
   align-items: start;

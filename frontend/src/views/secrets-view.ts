@@ -16,9 +16,22 @@ export function createSecretsPage(): HTMLElement {
   const addButton = createButton("New secret", "primary");
   const header = createPageHeader(
     "Secrets",
-    "Trust-first secret management. Values are written once, encrypted at rest, and never shown back to the operator.",
+    "Store API keys and tokens securely. Values are encrypted and never shown after saving.",
     { actions: addButton },
   );
+  // Help callout
+  const helpCallout = document.createElement("section");
+  helpCallout.className = "secrets-help-callout mc-panel";
+  helpCallout.innerHTML = `
+    <h2>What secrets should I store?</h2>
+    <ul>
+      <li><code>LINEAR_API_KEY</code> — Your Linear API token for issue tracking</li>
+      <li><code>OPENAI_API_KEY</code> — OpenAI API key for Codex/LLM access</li>
+      <li><code>ANTHROPIC_API_KEY</code> — Anthropic API key (if using Claude)</li>
+      <li><code>GITHUB_TOKEN</code> — GitHub personal access token for repo operations</li>
+    </ul>
+    <p class="text-secondary">These secrets are passed to sandboxed containers when processing issues. Add any key your workflow needs.</p>
+  `;
   const body = document.createElement("section");
   body.className = "secrets-layout";
   const tableWrap = document.createElement("div");
@@ -35,7 +48,7 @@ export function createSecretsPage(): HTMLElement {
     description: "Values are entered once and cannot be recovered later.",
   });
   const deleteModal = createModal({ title: "Delete secret", description: "Type the key name to confirm destruction." });
-  page.append(header, body, addModal.root, deleteModal.root);
+  page.append(header, helpCallout, body, addModal.root, deleteModal.root);
 
   const keyInput = Object.assign(document.createElement("input"), {
     className: "mc-input text-mono",

@@ -14,8 +14,20 @@ export function createConfigPage(): HTMLElement {
   page.className = "page config-page fade-in";
   const header = createPageHeader(
     "Config overlay",
-    "Three-panel operator view for safe overrides, schema hints, and effective config diffing.",
+    "Override Symphony settings without modifying the workflow file. Changes persist across restarts.",
   );
+  // Add help callout
+  const helpCallout = document.createElement("section");
+  helpCallout.className = "config-help-callout mc-panel";
+  helpCallout.innerHTML = `
+    <h2>How this works</h2>
+    <ul>
+      <li><strong>Overlay</strong>: Create persistent overrides that survive restarts. Use dotted paths like <code>tracker.project_slug</code> or <code>codex.sandbox.image</code>.</li>
+      <li><strong>Schema</strong>: Shows available config paths and their types (left panel).</li>
+      <li><strong>Diff</strong>: Preview changes before saving (right panel shows effective config).</li>
+    </ul>
+    <p class="text-secondary">Example: Set <code>codex.sandbox.memory</code> to <code>"2g"</code> to increase container memory limits.</p>
+  `;
   const layout = document.createElement("section");
   layout.className = "config-layout";
   const rail = document.createElement("aside");
@@ -29,7 +41,7 @@ export function createConfigPage(): HTMLElement {
     description: "This only deletes the persistent override, not the effective default.",
   });
   layout.append(rail, editor, diff);
-  page.append(header, layout, modal.root);
+  page.append(header, helpCallout, layout, modal.root);
   const actions = createConfigActions(state, render, load);
 
   async function load(): Promise<void> {
