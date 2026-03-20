@@ -11,7 +11,7 @@ export function renderAddSecretModal(
 ): void {
   keyInput.value = state.draftKey;
   valueInput.value = state.draftValue;
-  modal.body.replaceChildren();
+  modal.resetContent();
   const form = document.createElement("div");
   form.className = "form-grid";
   form.append(
@@ -19,7 +19,6 @@ export function renderAddSecretModal(
     createField({ label: "Value", hint: "Value is never returned after save." }, valueInput),
   );
   modal.body.append(form);
-  modal.footer.replaceChildren();
   const cancel = createButton("Cancel");
   const save = createButton(state.saving ? "Saving…" : "Save secret", "primary");
   save.disabled = state.saving;
@@ -29,7 +28,7 @@ export function renderAddSecretModal(
 }
 
 export function renderDeleteSecretModal(modal: ModalController, state: SecretsState, onDelete: () => void): void {
-  modal.body.replaceChildren();
+  modal.resetContent();
   const confirmInput = Object.assign(document.createElement("input"), {
     className: "mc-input text-mono",
     value: state.deleteConfirm,
@@ -42,7 +41,6 @@ export function renderDeleteSecretModal(modal: ModalController, state: SecretsSt
   modal.body.append(
     createField({ label: "Confirmation", hint: `Type ${state.selectedKey} exactly to enable deletion.` }, confirmInput),
   );
-  modal.footer.replaceChildren();
   const cancel = createButton("Cancel");
   const confirm = createButton(state.deleting ? "Deleting…" : "Delete key", "primary");
   confirm.disabled = state.deleting || state.deleteConfirm !== state.selectedKey;

@@ -18,9 +18,9 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
   const layout = document.createElement("section");
   layout.className = "queue-layout";
   const boardWrap = document.createElement("div");
-  boardWrap.className = "queue-board-wrap";
+  boardWrap.className = "kanban-board-wrap";
   const board = document.createElement("div");
-  board.className = "queue-board";
+  board.className = "kanban-board";
   const inspector = createIssueInspector({ mode: "drawer", initialId: params?.id });
   inspector.element.hidden = !params?.id;
   boardWrap.append(board);
@@ -33,6 +33,11 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
   let columns: WorkflowColumn[] = store.getState().snapshot?.workflow_columns ?? [];
   let searchInput: HTMLInputElement = document.createElement("input");
   let filterButton: HTMLButtonElement | null = null;
+  let lastColumnFingerprint = "";
+
+  function getColumnFingerprint(cols: WorkflowColumn[]): string {
+    return cols.map((c) => `${c.key}:${c.count ?? 0}`).join("|");
+  }
 
   const boardRenderer = createQueueBoardRenderer({
     board,
@@ -82,7 +87,11 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
     if (ui.collapsed.size === 0 && columns.length > 0) {
       ui = createUiState(columns);
     }
-    renderToolbar();
+    const fp = getColumnFingerprint(columns);
+    if (fp !== lastColumnFingerprint) {
+      lastColumnFingerprint = fp;
+      renderToolbar();
+    }
     if (!state.snapshot) {
       boardRenderer.renderLoading();
       return;

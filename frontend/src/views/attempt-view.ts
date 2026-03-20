@@ -1,5 +1,6 @@
 import { api } from "../api";
 import { createEmptyState } from "../components/empty-state";
+import { createPageHeader } from "../components/page-header";
 import { router } from "../router";
 import { skeletonBlock, skeletonCard } from "../ui/skeleton";
 import { statusChip } from "../ui/status-chip";
@@ -68,25 +69,20 @@ function renderAttemptPage(attempt: AttemptRecord, issue: IssueDetail | null): H
   const page = document.createElement("div");
   page.className = "page attempt-page fade-in";
 
-  const header = document.createElement("section");
-  header.className = "attempt-header mc-strip";
-  const text = document.createElement("div");
-  const eyebrow = document.createElement("p");
-  eyebrow.className = "issue-identifier";
-  eyebrow.textContent = issueIdentifier;
-  const title = document.createElement("h1");
-  title.className = "page-title";
-  title.textContent = `${issueTitle} · Run #${attempt.attemptNumber}`;
-  const subtitle = document.createElement("p");
-  subtitle.className = "page-subtitle";
-  subtitle.textContent = "Archived attempt metadata, routing, and workspace context for one complete run.";
-  text.append(eyebrow, title, subtitle);
   const actions = document.createElement("div");
   actions.className = "mc-actions";
   if (resolveIssueIdentifier(attempt, issue)) {
     actions.append(createLinkButton(`Back to ${issueIdentifier}`, `/issues/${issueIdentifier}`));
   }
-  header.append(text, actions);
+  const header = createPageHeader(
+    `${issueTitle} · Run #${attempt.attemptNumber}`,
+    "Archived attempt metadata, routing, and workspace context for one complete run.",
+    {
+      eyebrow: issueIdentifier,
+      actions,
+      className: "attempt-header",
+    },
+  );
 
   const summary = createSection("Summary strip", "attempt-summary-strip mc-panel");
   summary.append(

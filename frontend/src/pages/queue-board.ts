@@ -1,5 +1,6 @@
 import { createEmptyState } from "../components/empty-state";
-import { createIssueCard, type IssueCardHandle } from "../components/issue-card";
+import { createKanbanCard, type KanbanCardHandle } from "../components/kanban-card";
+import { createKanbanColumn, applyColumnStage, type KanbanColumnHandle } from "../components/kanban-column";
 import type { WorkflowColumn } from "../types";
 import { skeletonColumn } from "../ui/skeleton";
 import { filterColumn, type QueueFilters, type QueueUiState } from "./queue-state";
@@ -14,42 +15,12 @@ interface QueueBoardRendererOptions {
   onOpenIssue: (issueId: string, fullPage: boolean) => void;
 }
 
-interface QueueColumnHandle {
-  section: HTMLElement;
-  label: HTMLElement;
-  count: HTMLElement;
-  toggle: HTMLButtonElement;
-  body: HTMLElement;
-}
-
-function createColumnHandle(onToggle: () => void): QueueColumnHandle {
-  const section = document.createElement("section");
-  section.className = "queue-column stagger-item";
-  const header = document.createElement("div");
-  header.className = "queue-column-header";
-  const label = document.createElement("strong");
-  const count = document.createElement("span");
-  count.className = "mc-badge";
-  const actions = document.createElement("div");
-  actions.className = "queue-column-actions";
-  const toggle = document.createElement("button");
-  toggle.type = "button";
-  toggle.className = "mc-chip";
-  toggle.addEventListener("click", onToggle);
-  actions.append(toggle);
-  header.append(label, count, actions);
-  const body = document.createElement("div");
-  body.className = "queue-column-list";
-  section.append(header, body);
-  return { section, label, count, toggle, body };
-}
-
 export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
   renderLoading: () => void;
   render: (columns: WorkflowColumn[]) => void;
 } {
-  const columnHandles = new Map<string, QueueColumnHandle>();
-  const cardHandles = new Map<string, IssueCardHandle>();
+  const columnHandles = new Map<string, KanbanColumnHandle>();
+  const cardHandles = new Map<string, KanbanCardHandle>();
 
   function renderLoading(): void {
     options.board.replaceChildren(
@@ -62,12 +33,10 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
     );
   }
 
-  function getColumnHandle(key: string): QueueColumnHandle {
+  function getColumnHandle(key: string): KanbanColumnHandle {
     const existing = columnHandles.get(key);
-    if (existing) {
-      return existing;
-    }
-    const handle = createColumnHandle(() => {
+    if (existing) return existing;
+    const handle = createKanbanColumn(() => {
       const ui = options.getUi();
       if (ui.collapsed.has(key)) ui.collapsed.delete(key);
       else ui.collapsed.add(key);
@@ -86,8 +55,8 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
     if (eligible.length === 0) {
       options.board.replaceChildren(
         createEmptyState(
-          "No eligible issues in current filters",
-          "Broaden search, clear stage filters, or show completed columns.",
+          "No issues match current filters",
+          "Broaden your search, clear stage filters, or show completed columns.",
           "Clear filters",
           options.clearFilters,
           "queue",
@@ -101,6 +70,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
     const sections = columns.map((column, columnIndex) => {
       const list = filterColumn(column, options.filters);
       const handle = getColumnHandle(column.key);
+      applyColumnStage(handle, column.key);
       handle.section.classList.toggle("is-collapsed", ui.collapsed.has(column.key));
       handle.section.classList.toggle("is-focused", ui.focusedColumn === columnIndex);
       handle.section.style.setProperty("--stagger-index", String(columnIndex));
@@ -110,10 +80,13 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
       handle.toggle.textContent = ui.collapsed.has(column.key) ? "Expand" : "Collapse";
 
       if (list.length === 0) {
+        const emptyHint = column.terminal
+          ? "Completed work is tucked away here."
+          : "No active issues yet. They appear when Linear syncs.";
         handle.body.replaceChildren(
           createEmptyState(
             `No ${column.label.toLowerCase()} issues`,
-            column.terminal ? "Terminal work is tucked away here." : "No active issues yet.",
+            emptyHint,
             undefined,
             undefined,
             column.terminal ? "terminal" : "queue",
@@ -127,9 +100,8 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
         const existing = cardHandles.get(issue.identifier);
         const card =
           existing ??
-          createIssueCard({
+          createKanbanCard({
             issue,
-            density: options.filters.density,
             selected: false,
             focused: false,
             onOpen: () => undefined,
@@ -138,7 +110,6 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
           });
         card.update({
           issue,
-          density: options.filters.density,
           selected: options.getRouteId() === issue.identifier,
           focused: ui.focusedColumn === columnIndex && ui.focusedCard === cardIndex,
           onOpen: () => options.onOpenIssue(issue.identifier, false),
@@ -149,7 +120,6 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
           },
         });
         if (!existing) {
-          card.element.classList.add("stagger-item");
           cardHandles.set(issue.identifier, card);
         }
         card.element.style.setProperty("--stagger-index", String(cardIndex));

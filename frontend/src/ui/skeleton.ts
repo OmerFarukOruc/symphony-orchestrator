@@ -20,8 +20,6 @@ export function skeletonCard(): HTMLElement {
   const card = document.createElement("div");
   card.className = "skeleton-card";
   card.setAttribute("aria-hidden", "true");
-  card.setAttribute("role", "status");
-  card.setAttribute("aria-label", "Loading...");
   card.append(skeletonLine("42%"), skeletonLine("76%"), skeletonBlock("72px"));
   return card;
 }
@@ -30,8 +28,6 @@ export function skeletonColumn(): HTMLElement {
   const column = document.createElement("section");
   column.className = "skeleton-column";
   column.setAttribute("aria-hidden", "true");
-  column.setAttribute("role", "status");
-  column.setAttribute("aria-label", "Loading content...");
   column.append(skeletonLine("38%"), skeletonCard(), skeletonCard(), skeletonCard());
   return column;
 }
@@ -40,8 +36,6 @@ export function skeletonLogRows(count = 6): HTMLElement {
   const shell = document.createElement("div");
   shell.className = "skeleton-log-list";
   shell.setAttribute("aria-hidden", "true");
-  shell.setAttribute("role", "status");
-  shell.setAttribute("aria-label", "Loading logs...");
   Array.from({ length: count }).forEach(() => {
     const row = document.createElement("div");
     row.className = "skeleton-log-row";
@@ -55,8 +49,6 @@ export function skeletonTable(rows = 5): HTMLElement {
   const container = document.createElement("div");
   container.className = "table-responsive";
   container.setAttribute("aria-hidden", "true");
-  container.setAttribute("role", "status");
-  container.setAttribute("aria-label", "Loading table...");
 
   const table = document.createElement("table");
   table.className = "attempts-table";

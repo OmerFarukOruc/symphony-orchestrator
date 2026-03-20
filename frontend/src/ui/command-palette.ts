@@ -1,4 +1,5 @@
 import { router } from "../router";
+import { createIconSlot } from "./icons";
 import { navItems } from "./nav-items";
 
 let overlayEl: HTMLElement | null = null;
@@ -24,16 +25,12 @@ function renderList(): void {
   }
   const items = filteredItems();
   activeIndex = Math.min(activeIndex, Math.max(items.length - 1, 0));
-  listEl.innerHTML = "";
+  listEl.replaceChildren();
   items.forEach((item, index) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `palette-item transition-base${index === activeIndex ? " is-active" : ""}`;
-    const iconSpan = document.createElement("span");
-    iconSpan.className = "palette-item-icon";
-    iconSpan.setAttribute("aria-hidden", "true");
-    const iconDoc = new DOMParser().parseFromString(item.icon, "image/svg+xml");
-    iconSpan.append(iconDoc.documentElement);
+    const iconSpan = createIconSlot(item.icon, { slotClassName: "palette-item-icon", size: 18 });
     const nameSpan = document.createElement("span");
     nameSpan.textContent = item.name;
     const metaSpan = document.createElement("span");

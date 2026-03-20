@@ -180,8 +180,8 @@
    ============================================ */
 
 :root {
-  --radius-sm: 0px;
-  --radius-md: 0px;
+  --radius-sm: 2px;
+  --radius-md: 2px;
   --radius-lg: 0px;
   --radius-xl: 0px;
   --radius-full: 9999px;
@@ -235,7 +235,10 @@ html {
   line-height: 1.5;
   color: var(--text-primary);
   background: var(--bg-base);
-  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  font-feature-settings:
+    "kern" 1,
+    "liga" 1,
+    "calt" 1;
 }
 
 body {

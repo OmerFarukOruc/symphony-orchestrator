@@ -7,6 +7,7 @@ export interface ModalController {
   destroy: () => void;
   isOpen: () => boolean;
   setError: (message: string | null) => void;
+  resetContent: () => void;
 }
 
 interface ModalOptions {
@@ -108,6 +109,22 @@ export function createModal(options: ModalOptions): ModalController {
 
   function open(): void {
     previousFocus = document.activeElement;
+
+    const otherOpenRoots = Array.from(document.querySelectorAll<HTMLElement>(".modal-root:not([hidden])")).filter(
+      (other) => other !== root,
+    );
+
+    for (const other of otherOpenRoots) {
+      other.hidden = true;
+      other.setAttribute("aria-hidden", "true");
+      other.classList.remove("is-closing");
+    }
+
+    if (otherOpenRoots.length > 0) {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    }
+
     root.hidden = false;
     root.setAttribute("aria-hidden", "false");
     window.addEventListener("keydown", onKey);
@@ -154,7 +171,13 @@ export function createModal(options: ModalOptions): ModalController {
     document.body.style.overflow = "";
   }
 
+  function resetContent(): void {
+    body.replaceChildren();
+    footer.replaceChildren();
+    setError(null);
+  }
+
   backdrop.addEventListener("click", close);
   closeButton.addEventListener("click", close);
-  return { root, body, footer, open, close, destroy, isOpen: () => !root.hidden, setError };
+  return { root, body, footer, open, close, destroy, isOpen: () => !root.hidden, setError, resetContent };
 }

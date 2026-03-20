@@ -28,7 +28,7 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   toolbar.innerHTML = "";
   const search = Object.assign(document.createElement("input"), {
     className: "mc-input",
-    placeholder: "Search title or identifier",
+    placeholder: "Search issues\u2026",
   });
   search.value = filters.search;
   const sort = document.createElement("select");
@@ -50,7 +50,7 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
     filters.showCompleted = !filters.showCompleted;
     syncControls();
   });
-  const refreshButton = chip("Refresh", onRefresh);
+  const refreshButton = chip("Refresh from Linear", onRefresh);
 
   function normalizeStageKey(key: string): string {
     const lower = key.toLowerCase();

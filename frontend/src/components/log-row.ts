@@ -38,14 +38,26 @@ function highlightText(text: string, query: string): DocumentFragment {
 
 export function createLogRow(options: LogRowOptions): HTMLElement {
   const { event, expanded, highlightedText = "", onToggle } = options;
+  const payload = stringifyPayload(event.content);
+
   const row = document.createElement("article");
   row.className = "mc-log-row";
+  if (payload) row.classList.add("has-payload");
+  if (expanded) row.classList.add("is-expanded");
 
   const header = document.createElement("div");
   header.className = "mc-log-row-header";
 
+  // Chevron — only rendered when row has a payload
+  if (payload) {
+    const chevron = document.createElement("span");
+    chevron.className = "mc-log-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    header.append(chevron);
+  }
+
   const timestamp = document.createElement("time");
-  timestamp.className = "mc-log-time text-mono";
+  timestamp.className = "mc-log-time";
   timestamp.dateTime = event.at;
   timestamp.textContent = formatShortTime(event.at);
 
@@ -60,20 +72,14 @@ export function createLogRow(options: LogRowOptions): HTMLElement {
   header.append(timestamp, chip, message);
   row.append(header);
 
-  const payload = stringifyPayload(event.content);
   if (payload) {
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "mc-log-toggle mc-button";
-    toggle.textContent = expanded ? "Hide payload" : "Show payload";
-    toggle.addEventListener("click", () => onToggle?.());
-    header.append(toggle);
-
     const panel = document.createElement("pre");
-    panel.className = "mc-log-payload text-mono";
+    panel.className = "mc-log-payload";
     panel.hidden = !expanded;
     panel.textContent = payload;
     row.append(panel);
+
+    row.addEventListener("click", () => onToggle?.());
   }
 
   return row;

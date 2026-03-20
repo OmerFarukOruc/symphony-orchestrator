@@ -1,3 +1,4 @@
+import { createStatCardHeader, createStatCardShell } from "../components/metric-card.js";
 import { buildSparklinePath } from "./observability-helpers";
 
 export interface WidgetDescriptor {
@@ -44,17 +45,15 @@ export function buildCadenceSeries(capturedAtSeries: number[]): number[] {
 }
 
 function createWidgetCard(widget: WidgetDescriptor): HTMLElement {
-  const card = document.createElement("section");
-  card.className = `mc-stat-card observability-card${widget.tone ? ` tone-${widget.tone}` : ""}`;
-  const header = document.createElement("div");
-  header.className = "observability-card-header";
-  const h3 = document.createElement("h3");
-  h3.textContent = widget.title;
-  header.append(h3);
-  const source = document.createElement("span");
-  source.className = "mc-badge";
-  source.textContent = widget.source;
-  header.append(source);
+  const card = createStatCardShell({
+    className: `mc-stat-card observability-card${widget.tone ? ` tone-${widget.tone}` : ""}`,
+  });
+  const header = createStatCardHeader({
+    title: widget.title,
+    kicker: widget.source,
+    titleTag: "h3",
+    headerClassName: "observability-card-header",
+  });
   const value = document.createElement("strong");
   value.className = "observability-value";
   value.textContent = widget.value;

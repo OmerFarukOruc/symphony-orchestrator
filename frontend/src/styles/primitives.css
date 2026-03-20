@@ -138,41 +138,7 @@
   font-size: 10px;
 }
 
-.status-running {
-  color: var(--status-running);
-  background: color-mix(in srgb, var(--status-running) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--status-running) 25%, transparent);
-}
-.status-retrying {
-  color: var(--status-retrying);
-  background: color-mix(in srgb, var(--status-retrying) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--status-retrying) 25%, transparent);
-}
-.status-blocked {
-  color: var(--status-blocked);
-  background: color-mix(in srgb, var(--status-blocked) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--status-blocked) 25%, transparent);
-}
-.status-completed {
-  color: var(--status-completed);
-  background: color-mix(in srgb, var(--status-completed) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--status-completed) 25%, transparent);
-}
-.status-queued {
-  color: var(--status-queued);
-  background: color-mix(in srgb, var(--status-queued) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--status-queued) 25%, transparent);
-}
-.status-claimed {
-  color: var(--status-claimed);
-  background: color-mix(in srgb, var(--status-claimed) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--status-claimed) 25%, transparent);
-}
-.status-pending_change {
-  color: var(--status-pending-change);
-  background: color-mix(in srgb, var(--status-pending-change) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--status-pending-change) 25%, transparent);
-}
+/* Status classes consolidated to components.css — single source of truth */
 
 .toast-container {
   position: fixed;
@@ -500,33 +466,7 @@
   opacity: 1;
 }
 
-/* Legacy class aliases (for backward compatibility) */
-.sidebar-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-  min-height: 36px;
-  padding: 0 var(--space-2);
-  border: 1px solid transparent;
-  background: transparent;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition:
-    color var(--motion-fast) var(--ease-out-quart),
-    background-color var(--motion-fast) var(--ease-out-quart),
-    border-color var(--motion-fast) var(--ease-out-quart);
-}
-
-.sidebar-item:hover {
-  color: var(--text-primary);
-}
-
-.sidebar-item.is-active {
-  color: var(--text-accent);
-  border-left: 2px solid var(--text-accent);
-}
+/* .sidebar-item consolidated to shell.css — single source of truth */
 
 .settings-rail-item {
   width: 100%;

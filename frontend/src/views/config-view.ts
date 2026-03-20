@@ -1,5 +1,6 @@
 import { api } from "../api";
 import { createModal } from "../components/modal";
+import { createPageHeader } from "../components/page-header";
 import { registerPageCleanup } from "../utils/page";
 import { flattenConfig, prettyJson } from "./config-helpers";
 import { createConfigActions } from "./config-actions";
@@ -11,9 +12,10 @@ export function createConfigPage(): HTMLElement {
   const state = createConfigState();
   const page = document.createElement("div");
   page.className = "page config-page fade-in";
-  const header = document.createElement("section");
-  header.className = "mc-strip";
-  header.innerHTML = `<div><h1 class="page-title">Config overlay</h1><p class="page-subtitle">Three-panel operator view for safe overrides, schema hints, and effective config diffing.</p></div>`;
+  const header = createPageHeader(
+    "Config overlay",
+    "Three-panel operator view for safe overrides, schema hints, and effective config diffing.",
+  );
   const layout = document.createElement("section");
   layout.className = "config-layout";
   const rail = document.createElement("aside");

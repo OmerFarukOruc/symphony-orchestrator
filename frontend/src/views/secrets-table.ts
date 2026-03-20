@@ -1,5 +1,6 @@
 import { createButton } from "../components/forms";
 import { createEmptyState } from "../components/empty-state";
+import { applyTableRowInteraction, createMonoTableCell, createTableCell, createTableHead } from "../ui/table";
 
 export function renderSecretsTable(
   container: HTMLElement,
@@ -23,17 +24,13 @@ export function renderSecretsTable(
   }
   const table = document.createElement("table");
   table.className = "attempts-table";
-  table.innerHTML = `<thead><tr><th>Key</th><th>Value</th><th>Actions</th></tr></thead>`;
+  const head = createTableHead(["Key", "Value", "Actions"]);
   const body = document.createElement("tbody");
   keys.forEach((key) => {
     const row = document.createElement("tr");
-    row.tabIndex = 0;
     row.classList.toggle("is-selected", key === selectedKey);
-    const keyCell = document.createElement("td");
-    keyCell.className = "text-mono";
-    keyCell.textContent = key;
-    const valueCell = document.createElement("td");
-    valueCell.textContent = "Stored once — never shown again";
+    const keyCell = createMonoTableCell(key);
+    const valueCell = createTableCell("Stored once — never shown again");
     const actionsCell = document.createElement("td");
     const copy = createButton("Copy key");
     const remove = createButton("Delete");
@@ -41,9 +38,9 @@ export function renderSecretsTable(
     remove.addEventListener("click", () => actions.onDelete(key));
     actionsCell.append(copy, remove);
     row.append(keyCell, valueCell, actionsCell);
-    row.addEventListener("click", () => actions.onSelect(key));
+    applyTableRowInteraction(row, () => actions.onSelect(key));
     body.append(row);
   });
-  table.append(body);
+  table.append(head, body);
   container.append(table);
 }

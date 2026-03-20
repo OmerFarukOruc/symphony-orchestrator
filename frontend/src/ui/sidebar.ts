@@ -1,23 +1,10 @@
 import { router } from "../router";
+import { createIcon, createIconSlot } from "./icons";
 import { navGroups, navItems } from "./nav-items";
 
 const STORAGE_KEY = "symphony-sidebar-expanded";
 
 let _navHandler: (() => void) | null = null;
-
-function iconMarkup(svg: string): HTMLSpanElement {
-  const span = document.createElement("span");
-  span.className = "sidebar-icon";
-  span.setAttribute("aria-hidden", "true");
-  span.innerHTML = svg;
-  const svgEl = span.querySelector("svg");
-  if (svgEl) {
-    svgEl.setAttribute("width", "18");
-    svgEl.setAttribute("height", "18");
-    svgEl.setAttribute("fill", "currentColor");
-  }
-  return span;
-}
 
 function readExpandedPref(): boolean {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -66,7 +53,12 @@ function buildNavItems(groupEl: HTMLElement, groupName: string): void {
     tooltipSpan.className = "sidebar-item-tooltip";
     tooltipSpan.textContent = item.name;
 
-    button.append(iconMarkup(item.icon), labelSpan, hotkeySpan, tooltipSpan);
+    button.append(
+      createIconSlot(item.icon, { slotClassName: "sidebar-icon", size: 18 }),
+      labelSpan,
+      hotkeySpan,
+      tooltipSpan,
+    );
     button.addEventListener("click", () => router.navigate(item.path));
     itemsInner.append(button);
   }
@@ -99,7 +91,8 @@ function buildCollapseToggle(sidebarEl: HTMLElement): HTMLButtonElement {
 
   const icon = document.createElement("span");
   icon.className = "sidebar-collapse-toggle-icon";
-  icon.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>`;
+  icon.setAttribute("aria-hidden", "true");
+  icon.append(createIcon("chevronLeft", { size: 16 }));
 
   const label = document.createElement("span");
   label.className = "sidebar-collapse-label";
@@ -119,7 +112,7 @@ function buildCollapseToggle(sidebarEl: HTMLElement): HTMLButtonElement {
 
 export function initSidebar(sidebarEl: HTMLElement): void {
   sidebarEl.classList.add("transition-base");
-  sidebarEl.innerHTML = "";
+  sidebarEl.replaceChildren();
 
   if (readExpandedPref()) {
     sidebarEl.classList.add("is-expanded");

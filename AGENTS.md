@@ -96,7 +96,23 @@ Use `agent-browser` for visual verification of Symphony dashboard UI changes. Th
 
 **When to use:** After editing `dashboard-template.ts`, `logs-template.ts`, or any file that affects the Symphony web UI. Also use when asked to "dogfood", "QA", "visual check", or "screenshot" the dashboard.
 
-**Quick workflow:**
+**Connecting to existing Brave:** Brave is always launched with `--remote-debugging-port=9222` via the desktop entry override. Connect without opening a new window:
+```bash
+agent-browser --auto-connect open http://127.0.0.1:4000
+# or equivalently via config — autoConnect is set in agent-browser.json
+```
+
+**Quick workflow (batch — preferred for speed):**
+```bash
+echo '[
+  ["open", "http://127.0.0.1:4000"],
+  ["wait", "--load", "networkidle"],
+  ["screenshot", "--annotate", "archive/screenshots/before.png"],
+  ["snapshot", "-i"]
+]' | agent-browser batch --json
+```
+
+**Step-by-step workflow:**
 
 1. `agent-browser open http://127.0.0.1:4000` — navigate to dashboard
 2. `agent-browser screenshot --annotate archive/screenshots/before.png` — baseline
@@ -104,7 +120,45 @@ Use `agent-browser` for visual verification of Symphony dashboard UI changes. Th
 4. `agent-browser reload` — refresh
 5. `agent-browser screenshot --annotate archive/screenshots/after.png` — capture
 6. `agent-browser diff screenshot --baseline archive/screenshots/before.png` — pixel diff
-7. `agent-browser close` — cleanup
+7. `agent-browser errors` — check for uncaught JS exceptions
+8. `agent-browser console` — check console output
+9. `agent-browser close` — cleanup
+
+**Error & Console Monitoring:** Always run after UI changes to catch silent frontend errors:
+```bash
+agent-browser errors    # uncaught JS exceptions
+agent-browser console   # console.log/warn/error output
+```
+
+**Network Request Tracking:** Verify API calls fire correctly during QA:
+```bash
+agent-browser network har start
+# ... exercise the UI ...
+agent-browser network har stop ./archive/api-trace.har
+agent-browser network requests --filter api
+```
+
+**Session Persistence:** Use a named session to avoid re-navigating every run:
+```bash
+agent-browser --session-name symphony open http://127.0.0.1:4000
+# State auto-saves across runs; next invocation resumes from saved cookies/storage
+```
+
+**Diff Between Two URLs:** Compare two running instances (e.g. local vs staging):
+```bash
+agent-browser diff url http://127.0.0.1:4000 http://127.0.0.1:4001 --screenshot
+```
+
+**JavaScript Evaluation:** Inspect frontend store state directly:
+```bash
+agent-browser eval "JSON.stringify(window.__STORE__?.getState())"
+```
+
+**Live Streaming Preview:** Watch automation in real-time via WebSocket on port 9223:
+```bash
+AGENT_BROWSER_STREAM_PORT=9223 agent-browser open http://127.0.0.1:4000
+# Connect any WebSocket client to ws://localhost:9223 to see the live viewport
+```
 
 ## Semantic Code Search (CocoIndex)
 

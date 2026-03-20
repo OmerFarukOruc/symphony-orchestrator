@@ -1,5 +1,6 @@
 import type { AttemptSummary } from "../types";
 import { statusChip } from "../ui/status-chip";
+import { applyTableRowInteraction, createMonoTableCell, createTableHead } from "../ui/table";
 import {
   computeDurationSeconds,
   formatCompactNumber,
@@ -14,13 +15,6 @@ export interface RunsTableOptions {
   compareAttemptIds: string[];
   onSelect: (attemptId: string) => void;
   onToggleCompare: (attemptId: string) => void;
-}
-
-function createHeaderCell(label: string): HTMLTableCellElement {
-  const cell = document.createElement("th");
-  cell.scope = "col";
-  cell.textContent = label;
-  return cell;
 }
 
 function tokenBreakdown(attempt: AttemptSummary): string {
@@ -62,10 +56,7 @@ function createErrorCell(attempt: AttemptSummary): HTMLTableCellElement {
 }
 
 function createModelCell(value: string | null): HTMLTableCellElement {
-  const cell = document.createElement("td");
-  cell.className = "text-mono";
-  cell.textContent = value ?? "—";
-  return cell;
+  return createMonoTableCell(value ?? "—");
 }
 
 export function createRunsTable(options: RunsTableOptions): HTMLElement {
@@ -73,12 +64,18 @@ export function createRunsTable(options: RunsTableOptions): HTMLElement {
   wrap.className = "runs-table-wrap mc-panel";
   const table = document.createElement("table");
   table.className = "attempts-table runs-table";
-  const head = document.createElement("thead");
-  const headRow = document.createElement("tr");
-  ["", "Run", "Status", "Start", "End", "Duration", "Model", "Reasoning", "Tokens", "Error"].forEach((label) => {
-    headRow.append(createHeaderCell(label));
-  });
-  head.append(headRow);
+  const head = createTableHead([
+    "",
+    "Run",
+    "Status",
+    "Start",
+    "End",
+    "Duration",
+    "Model",
+    "Reasoning",
+    "Tokens",
+    "Error",
+  ]);
 
   const body = document.createElement("tbody");
   options.attempts.forEach((attempt) => {
@@ -95,9 +92,7 @@ export function createRunsTable(options: RunsTableOptions): HTMLElement {
     if (attempt.endedAt === null) {
       row.classList.add("is-live");
     }
-    row.tabIndex = 0;
-    row.setAttribute("aria-selected", String(isActive));
-    row.addEventListener("click", () => options.onSelect(attempt.attemptId));
+    applyTableRowInteraction(row, () => options.onSelect(attempt.attemptId), { ariaSelected: isActive });
 
     const compareCell = document.createElement("td");
     compareCell.className = "runs-compare-cell";
@@ -127,17 +122,9 @@ export function createRunsTable(options: RunsTableOptions): HTMLElement {
     const statusCell = document.createElement("td");
     statusCell.append(statusChip(attempt.status));
 
-    const durationCell = document.createElement("td");
-    durationCell.className = "text-mono";
-    durationCell.textContent = durationLabel(attempt);
-
-    const reasoningCell = document.createElement("td");
-    reasoningCell.className = "text-mono";
-    reasoningCell.textContent = attempt.reasoningEffort ?? "—";
-
-    const tokenCell = document.createElement("td");
-    tokenCell.className = "text-mono";
-    tokenCell.textContent = tokenBreakdown(attempt);
+    const durationCell = createMonoTableCell(durationLabel(attempt));
+    const reasoningCell = createMonoTableCell(attempt.reasoningEffort ?? "—");
+    const tokenCell = createMonoTableCell(tokenBreakdown(attempt));
 
     row.append(
       compareCell,

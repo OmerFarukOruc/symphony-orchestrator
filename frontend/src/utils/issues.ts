@@ -7,17 +7,18 @@ const PRIORITY_ORDER: Record<string, number> = {
   low: 3,
 };
 
-export function normalizePriority(priority: string | null | undefined): string {
-  const value = priority?.trim().toLowerCase();
-  return value && PRIORITY_ORDER[value] !== undefined ? value : "low";
+export function normalizePriority(priority: string | number | null | undefined): string {
+  if (priority === null || priority === undefined) return "low";
+  const value = String(priority).trim().toLowerCase();
+  return PRIORITY_ORDER[value] !== undefined ? value : "low";
 }
 
-export function formatPriority(priority: string | null | undefined): string {
+export function formatPriority(priority: string | number | null | undefined): string {
   const value = normalizePriority(priority);
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-export function priorityRank(priority: string | null | undefined): number {
+export function priorityRank(priority: string | number | null | undefined): number {
   return PRIORITY_ORDER[normalizePriority(priority)] ?? PRIORITY_ORDER.low;
 }
 

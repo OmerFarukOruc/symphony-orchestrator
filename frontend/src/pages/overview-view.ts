@@ -6,6 +6,8 @@ import type { RuntimeIssueView } from "../types";
 import { skeletonCard } from "../ui/skeleton";
 import { createEventRow } from "../components/event-row";
 import { createEmptyState } from "../components/empty-state";
+import { createStatCardHeader, createStatCardShell } from "../components/metric-card";
+import { createPageHeader } from "../components/page-header";
 import { buildAttentionList, latestTerminalIssues } from "../utils/issues";
 import { formatCompactNumber, formatDuration, formatRateLimitHeadroom, formatRelativeTime } from "../utils/format";
 import { flashDiff, setTextWithDiff } from "../utils/diff";
@@ -19,6 +21,12 @@ function stat(label: string): { root: HTMLElement; value: HTMLElement } {
   caption.textContent = label;
   root.append(value, caption);
   return { root, value };
+}
+
+function createOverviewSection(title: string, kicker: string, className = "mc-stat-card"): HTMLElement {
+  const card = createStatCardShell({ className });
+  card.append(createStatCardHeader({ title, kicker, headerClassName: "overview-row-meta" }));
+  return card;
 }
 
 function issueRow(issue: RuntimeIssueView, target: "queue" | "attention"): HTMLButtonElement {
@@ -50,9 +58,6 @@ function fillList(container: HTMLElement, next: HTMLElement[]): void {
 export function createOverviewPage(): HTMLElement {
   const page = document.createElement("div");
   page.className = "page overview-page fade-in";
-  const top = document.createElement("section");
-  top.className = "mc-strip";
-  top.innerHTML = `<div><div class="page-title">Mission Control</div><p class="page-subtitle">Operational view across queue pressure, token burn, intervention risk, and event flow.</p></div>`;
   const actions = document.createElement("div");
   actions.className = "mc-actions";
   const staleBadge = document.createElement("span");
@@ -74,28 +79,32 @@ export function createOverviewPage(): HTMLElement {
     }, 500);
   });
   actions.append(envBadge, staleBadge, refresh);
-  top.append(actions);
+  const top = createPageHeader(
+    "Mission Control",
+    "Operational view across queue pressure, token burn, intervention risk, and event flow.",
+    {
+      actions,
+      titleTagName: "div",
+    },
+  );
 
   const grid = document.createElement("section");
   grid.className = "overview-grid";
-  const nowCard = document.createElement("section");
-  nowCard.className = "mc-stat-card";
-  const tokenCard = document.createElement("section");
-  tokenCard.className = "mc-stat-card";
-  const attentionCard = document.createElement("section");
-  attentionCard.className = "mc-stat-card";
-  const recentCard = document.createElement("section");
-  recentCard.className = "mc-stat-card";
+  const nowCard = createOverviewSection("Now", "Live");
+  const tokenCard = createOverviewSection("Token burn", "Session totals");
+  const attentionCard = createOverviewSection("Attention", "Intervention queue");
+  const recentCard = createOverviewSection("Recent changes", "Last 5 events");
   grid.append(nowCard, tokenCard, attentionCard, recentCard);
 
   const lower = document.createElement("section");
   lower.className = "overview-lower";
-  const terminal = document.createElement("section");
-  terminal.className = "mc-panel overview-scroll";
-  const events = document.createElement("section");
-  events.className = "mc-panel overview-scroll";
+  const terminal = createOverviewSection("Latest completed / failed", "Terminal columns", "mc-panel overview-scroll");
+  const events = createOverviewSection("Live event stream", "Recent events", "mc-panel overview-scroll");
   lower.append(terminal, events);
   page.append(top, grid, lower);
+
+  const loadingSections = [nowCard, tokenCard, attentionCard, recentCard, terminal, events];
+  loadingSections.forEach((section) => section.setAttribute("aria-busy", "true"));
 
   const running = stat("Running agents");
   const retrying = stat("Retry pressure");
@@ -114,28 +123,17 @@ export function createOverviewPage(): HTMLElement {
   const eventList = document.createElement("div");
   eventList.className = "overview-events";
 
-  nowCard.innerHTML = '<div class="overview-row-meta"><h2>Now</h2><span class="mc-badge">Live</span></div>';
   const nowGrid = document.createElement("div");
   nowGrid.className = "overview-kpi-grid";
   nowGrid.append(running.root, retrying.root, queued.root, headroom.root);
   nowCard.append(nowGrid);
-  tokenCard.innerHTML =
-    '<div class="overview-row-meta"><h2>Token burn</h2><span class="mc-badge">Session totals</span></div>';
   const tokenGrid = document.createElement("div");
   tokenGrid.className = "overview-kpi-grid";
   tokenGrid.append(inputTokens.root, outputTokens.root, totalTokens.root, runtime.root);
   tokenCard.append(tokenGrid);
-  attentionCard.innerHTML =
-    '<div class="overview-row-meta"><h2>Attention</h2><span class="mc-badge">Intervention queue</span></div>';
   attentionCard.append(attentionList);
-  recentCard.innerHTML =
-    '<div class="overview-row-meta"><h2>Recent changes</h2><span class="mc-badge">Last 5 events</span></div>';
   recentCard.append(recentList);
-  terminal.innerHTML =
-    '<div class="overview-row-meta"><h2>Latest completed / failed</h2><span class="mc-badge">Terminal columns</span></div>';
   terminal.append(terminalList);
-  events.innerHTML =
-    '<div class="overview-row-meta"><h2>Live event stream</h2><span class="mc-badge">Recent events</span></div>';
   events.append(eventList);
 
   function renderSnapshot(state: AppState): void {
@@ -150,6 +148,7 @@ export function createOverviewPage(): HTMLElement {
       return;
     }
     setTextWithDiff(running.value, String(snapshot.counts.running));
+    loadingSections.forEach((section) => section.setAttribute("aria-busy", "false"));
     setTextWithDiff(retrying.value, String(snapshot.counts.retrying));
     setTextWithDiff(queued.value, String(snapshot.queued.length));
     setTextWithDiff(headroom.value, formatRateLimitHeadroom(snapshot.rate_limits));

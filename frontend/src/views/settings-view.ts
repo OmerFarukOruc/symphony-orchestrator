@@ -1,4 +1,5 @@
 import { api } from "../api";
+import { createPageHeader } from "../components/page-header";
 import { toast } from "../ui/toast";
 import { registerPageCleanup } from "../utils/page";
 
@@ -12,18 +13,14 @@ export function createSettingsPage(): HTMLElement {
   const state = createSettingsState();
   const page = document.createElement("div");
   page.className = "page settings-page fade-in";
-  const header = document.createElement("section");
-  header.className = "mc-strip";
-  const subtitle = document.createElement("p");
-  subtitle.className = "page-subtitle";
-  const titleWrap = document.createElement("div");
-  titleWrap.append(
-    Object.assign(document.createElement("h1"), { className: "page-title", textContent: "Settings" }),
-    subtitle,
-  );
   const schemaBadge = document.createElement("span");
   schemaBadge.className = "mc-badge";
-  header.append(titleWrap, schemaBadge);
+  const header = createPageHeader("Settings", "", { actions: schemaBadge });
+  const subtitleElement = header.querySelector(".page-subtitle");
+  if (!(subtitleElement instanceof HTMLElement)) {
+    throw new TypeError("Settings page header is missing a subtitle element.");
+  }
+  const subtitle = subtitleElement;
   const shell = document.createElement("section");
   shell.className = "settings-layout";
   const rail = document.createElement("aside");

@@ -8,6 +8,7 @@ import "./styles/diff.css";
 import "./styles/forms.css";
 import "./styles/modal.css";
 import "./styles/hardening.css";
+import "./styles/kanban.css";
 
 import { lazyPage } from "./utils/lazy-page";
 import { router } from "./router";

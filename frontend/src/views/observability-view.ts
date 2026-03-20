@@ -1,6 +1,7 @@
 import { api } from "../api";
 import { createButton } from "../components/forms";
-import { store } from "../state/store";
+import { createPageHeader } from "../components/page-header";
+import { APP_STATE_HEARTBEAT_EVENT, APP_STATE_UPDATE_EVENT, store } from "../state/store";
 import type { AppState } from "../state/store";
 import { toast } from "../ui/toast";
 import { registerPageCleanup } from "../utils/page";
@@ -14,9 +15,6 @@ export function createObservabilityPage(): HTMLElement {
   const state = createObservabilityState();
   const page = document.createElement("div");
   page.className = "page observability-page fade-in";
-  const header = document.createElement("section");
-  header.className = "mc-strip";
-  header.innerHTML = `<div><h1 class="page-title">Observability</h1><p class="page-subtitle">Correlate current snapshot health, Prometheus counters, and in-session client trends without leaving the browser.</p></div>`;
   const actions = document.createElement("div");
   actions.className = "mc-actions";
   const sourceBadge = document.createElement("span");
@@ -25,7 +23,11 @@ export function createObservabilityPage(): HTMLElement {
   const drawerButton = createButton("Raw metrics (x)");
   const refreshButton = createButton("Refresh (r)", "primary");
   actions.append(sourceBadge, drawerButton, refreshButton);
-  header.append(actions);
+  const header = createPageHeader(
+    "Observability",
+    "Correlate current snapshot health, Prometheus counters, and in-session client trends without leaving the browser.",
+    { actions },
+  );
   const content = document.createElement("div");
   content.className = "observability-shell";
   const body = document.createElement("main");
@@ -67,7 +69,7 @@ export function createObservabilityPage(): HTMLElement {
     try {
       await api.postRefresh().catch(() => undefined);
       const [snapshot, metrics] = await Promise.all([api.getState(), api.getMetrics()]);
-      store.mergeSnapshot(snapshot);
+      store.mergeSnapshot(snapshot, { resetStale: true });
       state.metricsRaw = metrics;
       state.metricsFetchedAt = Date.now();
       state.error = null;
@@ -117,12 +119,14 @@ export function createObservabilityPage(): HTMLElement {
     });
   };
 
-  window.addEventListener("state:update", onState);
+  window.addEventListener(APP_STATE_UPDATE_EVENT, onState);
+  window.addEventListener(APP_STATE_HEARTBEAT_EVENT, onState);
   window.addEventListener("keydown", onKey);
   sync(store.getState());
   void loadMetrics();
   registerPageCleanup(page, () => {
-    window.removeEventListener("state:update", onState);
+    window.removeEventListener(APP_STATE_UPDATE_EVENT, onState);
+    window.removeEventListener(APP_STATE_HEARTBEAT_EVENT, onState);
     window.removeEventListener("keydown", onKey);
   });
   return page;

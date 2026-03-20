@@ -1,6 +1,7 @@
 import { api } from "../api";
 import { createButton } from "../components/forms";
 import { createModal } from "../components/modal";
+import { createPageHeader } from "../components/page-header";
 import { toast } from "../ui/toast";
 import { registerPageCleanup } from "../utils/page";
 import { handleSecretsKeyboard } from "./secrets-keyboard";
@@ -12,11 +13,12 @@ export function createSecretsPage(): HTMLElement {
   const state = createSecretsState();
   const page = document.createElement("div");
   page.className = "page secrets-page fade-in";
-  const header = document.createElement("section");
-  header.className = "mc-strip";
-  header.innerHTML = `<div><h1 class="page-title">Secrets</h1><p class="page-subtitle">Trust-first secret management. Values are written once, encrypted at rest, and never shown back to the operator.</p></div>`;
   const addButton = createButton("New secret", "primary");
-  header.append(addButton);
+  const header = createPageHeader(
+    "Secrets",
+    "Trust-first secret management. Values are written once, encrypted at rest, and never shown back to the operator.",
+    { actions: addButton },
+  );
   const body = document.createElement("section");
   body.className = "secrets-layout";
   const tableWrap = document.createElement("div");

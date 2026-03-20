@@ -1,5 +1,6 @@
 import { api } from "../api";
 import { createEmptyState } from "../components/empty-state";
+import { createPageHeader } from "../components/page-header";
 import { router } from "../router";
 import { toast } from "../ui/toast";
 import { skeletonBlock } from "../ui/skeleton";
@@ -35,16 +36,6 @@ export function createRunsPage(issueId: string): HTMLElement {
   const state = createRunsState(issueId);
   const page = document.createElement("div");
   page.className = "page runs-page fade-in";
-  const header = document.createElement("section");
-  header.className = "mc-strip";
-  const titleWrap = document.createElement("div");
-  const title = document.createElement("h1");
-  title.className = "page-title";
-  title.textContent = "Run History";
-  const subtitle = document.createElement("p");
-  subtitle.className = "page-subtitle";
-  subtitle.textContent = "Inspect archived runs, compare two attempts, and jump into detailed attempt metadata.";
-  titleWrap.append(title, subtitle);
   const actions = document.createElement("div");
   actions.className = "mc-actions";
   const backButton = document.createElement("button");
@@ -53,7 +44,18 @@ export function createRunsPage(issueId: string): HTMLElement {
   backButton.textContent = "Back to issue";
   backButton.addEventListener("click", () => router.navigate(`/issues/${state.issueIdentifier}`));
   actions.append(backButton);
-  header.append(titleWrap, actions);
+  const header = createPageHeader(
+    "Run History",
+    "Inspect archived runs, compare two attempts, and jump into detailed attempt metadata.",
+    { actions },
+  );
+  const titleElement = header.querySelector(".page-title");
+  const subtitleElement = header.querySelector(".page-subtitle");
+  if (!(titleElement instanceof HTMLElement) || !(subtitleElement instanceof HTMLElement)) {
+    throw new TypeError("Runs page header is missing required elements.");
+  }
+  const title = titleElement;
+  const subtitle = subtitleElement;
 
   const layout = document.createElement("section");
   layout.className = "runs-layout";

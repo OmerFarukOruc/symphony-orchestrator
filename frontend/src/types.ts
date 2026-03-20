@@ -37,7 +37,7 @@ export interface RuntimeIssueView {
   updatedAt: string;
   attempt: number | null;
   error: string | null;
-  priority: string | null;
+  priority: string | number | null;
   labels: string[];
   startedAt: string | null;
   lastEventAt: string | null;

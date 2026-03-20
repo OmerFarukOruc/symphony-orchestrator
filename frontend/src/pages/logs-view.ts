@@ -4,6 +4,8 @@ import { registerPageCleanup } from "../utils/page";
 import { eventMatchesSearch, eventTypeLabel } from "../utils/events";
 import type { RecentEvent } from "../types";
 import { loadArchiveLogs, loadLiveLogs } from "./logs-data";
+import { createIcon } from "../ui/icons";
+import { stringifyPayload } from "../utils/events";
 
 type Mode = "live" | "archive";
 
@@ -11,15 +13,74 @@ function copyEvents(events: RecentEvent[]): Promise<void> {
   return navigator.clipboard.writeText(events.map((event) => `${event.at} ${event.event} ${event.message}`).join("\n"));
 }
 
+function makeIconBtn(iconName: Parameters<typeof createIcon>[0], label: string): HTMLButtonElement {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "mc-button mc-button-ghost is-icon-only logs-icon-btn";
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+  btn.appendChild(createIcon(iconName, { size: 15 }));
+  return btn;
+}
+
 export function createLogsPage(id: string): HTMLElement {
   const page = document.createElement("div");
   page.className = "page logs-page fade-in";
+
+  // ── Header: breadcrumb + mode tabs ───────────────────────────────────────
+  const header = document.createElement("div");
+  header.className = "logs-header";
+
   const breadcrumb = document.createElement("div");
   breadcrumb.className = "logs-breadcrumb text-secondary";
+
+  const modeSegment = document.createElement("div");
+  modeSegment.className = "mc-button-segment";
+  const liveBtn = document.createElement("button");
+  liveBtn.type = "button";
+  liveBtn.className = "mc-button is-sm logs-live-btn";
+  liveBtn.textContent = "Live";
+  const archiveBtn = document.createElement("button");
+  archiveBtn.type = "button";
+  archiveBtn.className = "mc-button is-sm";
+  archiveBtn.textContent = "Archive";
+  modeSegment.append(liveBtn, archiveBtn);
+  header.append(breadcrumb, modeSegment);
+
+  // ── Filter bar: type chips + search + view icon buttons ──────────────────
   const controls = document.createElement("section");
-  controls.className = "mc-toolbar logs-control";
+  controls.className = "logs-control";
+
+  const typeBar = document.createElement("div");
+  typeBar.className = "logs-toolbar-group";
+  const search = Object.assign(document.createElement("input"), {
+    className: "mc-input logs-search",
+    placeholder: "Search logs",
+  });
+
+  const autoToggle = makeIconBtn("scrollDown", "Auto-scroll to bottom");
+  const expandToggle = makeIconBtn("unfold", "Expand payloads");
+  const copyButton = makeIconBtn("copy", "Copy visible logs");
+  copyButton.addEventListener("click", () => {
+    void copyEvents(filtered()).then(() => {
+      copyButton.title = "Copied!";
+      copyButton.setAttribute("aria-label", "Copied!");
+      setTimeout(() => {
+        copyButton.title = "Copy visible logs";
+        copyButton.setAttribute("aria-label", "Copy visible logs");
+      }, 1500);
+    });
+  });
+
+  const viewActions = document.createElement("div");
+  viewActions.className = "logs-view-actions";
+  viewActions.append(autoToggle, expandToggle, copyButton);
+  controls.append(typeBar, search, viewActions);
+
+  // ── Log scroll area ───────────────────────────────────────────────────────
   const scroll = document.createElement("section");
   scroll.className = "logs-scroll";
+
   const indicator = document.createElement("button");
   indicator.type = "button";
   indicator.className = "mc-button mc-button-ghost logs-new-indicator";
@@ -29,38 +90,17 @@ export function createLogsPage(id: string): HTMLElement {
     scroll.scrollTop = scroll.scrollHeight;
     indicator.hidden = true;
   });
-  page.append(breadcrumb, controls, scroll, indicator);
 
+  page.append(header, controls, scroll, indicator);
+
+  // ── State ─────────────────────────────────────────────────────────────────
   let mode: Mode = "live";
   let typeFilter = "all";
   let searchText = "";
-  let expanded = false;
   let autoScroll = true;
   let data: { title: string; issueId: string; events: RecentEvent[] } = { title: "Loading…", issueId: id, events: [] };
   let timer = 0;
-  let loading = false;
   const expandedEvents = new Set<string>();
-  const typeBar = document.createElement("div");
-  typeBar.className = "logs-toolbar-group";
-  const loadingBadge = document.createElement("span");
-  loadingBadge.className = "mc-badge";
-
-  const search = Object.assign(document.createElement("input"), { className: "mc-input", placeholder: "Search logs" });
-  const modeToggle = document.createElement("button");
-  modeToggle.type = "button";
-  modeToggle.className = "mc-button mc-button-ghost";
-  const autoToggle = document.createElement("button");
-  autoToggle.type = "button";
-  autoToggle.className = "mc-button mc-button-ghost";
-  const expandToggle = document.createElement("button");
-  expandToggle.type = "button";
-  expandToggle.className = "mc-button mc-button-ghost";
-  const copyButton = document.createElement("button");
-  copyButton.type = "button";
-  copyButton.className = "mc-button mc-button-ghost";
-  copyButton.textContent = "Copy visible logs";
-  copyButton.addEventListener("click", () => void copyEvents(filtered()));
-  controls.append(typeBar, search, modeToggle, autoToggle, expandToggle, copyButton, loadingBadge);
 
   function filtered(): RecentEvent[] {
     return data.events.filter((event) => {
@@ -75,7 +115,7 @@ export function createLogsPage(id: string): HTMLElement {
       ...types.map((value) => {
         const button = document.createElement("button");
         button.type = "button";
-        button.className = `mc-chip${typeFilter === value ? " is-active" : ""}`;
+        button.className = `mc-chip is-interactive${typeFilter === value ? " is-active" : ""}`;
         button.textContent = value === "all" ? "All events" : eventTypeLabel(value);
         button.addEventListener("click", () => {
           typeFilter = value;
@@ -89,10 +129,10 @@ export function createLogsPage(id: string): HTMLElement {
 
   function render(): void {
     breadcrumb.textContent = `Queue → ${data.issueId} → Logs`;
-    modeToggle.textContent = mode === "live" ? "Live" : "Archive";
-    autoToggle.textContent = autoScroll ? "Auto-scroll on" : "Auto-scroll off";
-    expandToggle.textContent = expanded ? "Collapse payloads" : "Expand payloads";
-    loadingBadge.textContent = loading ? "Refreshing…" : mode === "live" ? "Live" : "Archive";
+    liveBtn.classList.toggle("is-active", mode === "live");
+    archiveBtn.classList.toggle("is-active", mode === "archive");
+    autoToggle.classList.toggle("is-active", autoScroll);
+    expandToggle.classList.toggle("is-active", expandedEvents.size > 0);
     renderTypeFilters();
     const events = filtered();
     if (events.length === 0) {
@@ -106,12 +146,13 @@ export function createLogsPage(id: string): HTMLElement {
       );
       return;
     }
+    const total = events.length;
     scroll.replaceChildren(
       ...events.map((event, index) => {
         const key = `${event.at}:${event.event}:${event.message}`;
         const row = createLogRow({
           event,
-          expanded: expanded || expandedEvents.has(key),
+          expanded: expandedEvents.has(key),
           highlightedText: searchText,
           onToggle: () => {
             if (expandedEvents.has(key)) expandedEvents.delete(key);
@@ -119,8 +160,13 @@ export function createLogsPage(id: string): HTMLElement {
             render();
           },
         });
-        row.classList.add("timeline-enter");
-        row.style.setProperty("--stagger-index", String(index));
+        // Only animate the last 30 rows (most recent, visible after auto-scroll).
+        // With 24ms stagger a raw index on 1000+ events → multi-second delays.
+        const staggerPos = index - (total - 30);
+        if (staggerPos >= 0) {
+          row.classList.add("timeline-enter");
+          row.style.setProperty("--stagger-index", String(staggerPos));
+        }
         return row;
       }),
     );
@@ -129,12 +175,13 @@ export function createLogsPage(id: string): HTMLElement {
     }
   }
 
-  async function refresh(): Promise<void> {
-    loading = true;
-    render();
+  async function refresh(force = false): Promise<void> {
+    const prevLength = data.events.length;
+    const prevLastAt = data.events.at(-1)?.at;
     data = mode === "live" ? await loadLiveLogs(id) : await loadArchiveLogs(id);
-    loading = false;
-    render();
+    if (force || data.events.length !== prevLength || data.events.at(-1)?.at !== prevLastAt) {
+      render();
+    }
   }
 
   function restartPolling(): void {
@@ -146,17 +193,34 @@ export function createLogsPage(id: string): HTMLElement {
     }
   }
 
-  modeToggle.addEventListener("click", () => {
-    mode = mode === "live" ? "archive" : "live";
+  liveBtn.addEventListener("click", () => {
+    if (mode === "live") return;
+    mode = "live";
+    render();
     restartPolling();
-    void refresh();
+    void refresh(true);
+  });
+  archiveBtn.addEventListener("click", () => {
+    if (mode === "archive") return;
+    mode = "archive";
+    render();
+    restartPolling();
+    void refresh(true);
   });
   autoToggle.addEventListener("click", () => {
     autoScroll = !autoScroll;
     render();
   });
   expandToggle.addEventListener("click", () => {
-    expanded = !expanded;
+    if (expandedEvents.size > 0) {
+      expandedEvents.clear();
+    } else {
+      for (const event of filtered()) {
+        if (stringifyPayload(event.content)) {
+          expandedEvents.add(`${event.at}:${event.event}:${event.message}`);
+        }
+      }
+    }
     render();
   });
   search.addEventListener("input", () => {
@@ -167,6 +231,16 @@ export function createLogsPage(id: string): HTMLElement {
     const nearBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 24;
     indicator.hidden = nearBottom || autoScroll;
   });
+  // Make the shell outlet non-scrolling so logs-scroll is the true scroll boundary
+  const outlet = document.querySelector(".shell-outlet") as HTMLElement | null;
+  if (outlet) {
+    const prev = outlet.style.overflowY;
+    outlet.style.overflowY = "hidden";
+    registerPageCleanup(page, () => {
+      outlet.style.overflowY = prev;
+    });
+  }
+
   void refresh();
   restartPolling();
   registerPageCleanup(page, () => window.clearInterval(timer));

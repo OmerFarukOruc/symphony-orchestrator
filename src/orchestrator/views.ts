@@ -22,6 +22,8 @@ export function issueView(issue: Issue, extra?: Partial<RuntimeIssueView>): Runt
     updatedAt: issue.updatedAt ?? nowIso(),
     attempt: null,
     error: null,
+    priority: issue.priority,
+    labels: issue.labels,
     url: issue.url,
     description: issue.description,
     blockedBy: issue.blockedBy,

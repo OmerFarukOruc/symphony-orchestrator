@@ -1,4 +1,5 @@
 import "../styles/queue.css";
+import "../styles/issue.css";
 
 import { createQueuePage } from "./queue-view";
 

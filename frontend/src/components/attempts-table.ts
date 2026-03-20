@@ -1,4 +1,11 @@
 import type { AttemptSummary } from "../types";
+import {
+  applyTableRowInteraction,
+  createMonoTableCell,
+  createTableCell,
+  createTableEmptyRow,
+  createTableHead,
+} from "../ui/table";
 import { formatDuration, formatShortTime, formatTokenUsage } from "../utils/format";
 
 function durationForAttempt(attempt: AttemptSummary): string {
@@ -10,46 +17,34 @@ function durationForAttempt(attempt: AttemptSummary): string {
 }
 
 export function createAttemptsTable(attempts: AttemptSummary[], onOpen: (attemptId: string) => void): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "attempts-table-wrap";
   const table = document.createElement("table");
   table.className = "attempts-table";
-  table.innerHTML =
-    "<thead><tr><th>Run#</th><th>Status</th><th>Start</th><th>End</th><th>Duration</th><th>Model</th><th>Tokens</th><th>Error</th></tr></thead>";
+  const head = createTableHead(["Run#", "Status", "Start", "End", "Duration", "Model", "Tokens", "Error"]);
   const body = document.createElement("tbody");
 
   if (attempts.length === 0) {
-    const row = document.createElement("tr");
-    row.innerHTML = '<td colspan="8" class="table-empty">No runs recorded yet.</td>';
-    body.append(row);
+    body.append(createTableEmptyRow("No runs recorded yet.", 8));
   }
 
   attempts.forEach((attempt) => {
     const row = document.createElement("tr");
-    row.tabIndex = 0;
-    function td(text: string, mono = false): HTMLTableCellElement {
-      const cell = document.createElement("td");
-      if (mono) cell.className = "text-mono";
-      cell.textContent = text;
-      return cell;
-    }
     row.append(
-      td(String(attempt.attemptNumber)),
-      td(attempt.status),
-      td(formatShortTime(attempt.startedAt), true),
-      td(formatShortTime(attempt.endedAt), true),
-      td(durationForAttempt(attempt), true),
-      td(attempt.model ?? "—", true),
-      td(formatTokenUsage(attempt.tokenUsage?.totalTokens ?? null), true),
-      td(attempt.errorMessage ?? attempt.errorCode ?? "—"),
+      createTableCell(String(attempt.attemptNumber)),
+      createTableCell(attempt.status),
+      createMonoTableCell(formatShortTime(attempt.startedAt)),
+      createMonoTableCell(formatShortTime(attempt.endedAt)),
+      createMonoTableCell(durationForAttempt(attempt)),
+      createMonoTableCell(attempt.model ?? "—"),
+      createMonoTableCell(formatTokenUsage(attempt.tokenUsage?.totalTokens ?? null)),
+      createTableCell(attempt.errorMessage ?? attempt.errorCode ?? "—"),
     );
-    row.addEventListener("click", () => onOpen(attempt.attemptId));
-    row.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        onOpen(attempt.attemptId);
-      }
-    });
+    applyTableRowInteraction(row, () => onOpen(attempt.attemptId), { keyboard: "enter" });
     body.append(row);
   });
 
-  table.append(body);
-  return table;
+  table.append(head, body);
+  wrap.append(table);
+  return wrap;
 }

@@ -96,8 +96,7 @@ export function createPlannerPage(): HTMLElement {
     if (!state.plan?.length) {
       return;
     }
-    modal.body.replaceChildren();
-    modal.footer.replaceChildren();
+    modal.resetContent();
     const summary = document.createElement("div");
     summary.className = "form-grid";
     const summaryP = document.createElement("p");

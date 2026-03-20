@@ -137,13 +137,17 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     summaryStats.source.update(detail.modelSource ?? "—");
     summaryStats.retry.update(detail.next_retry_due_at ? formatTimestamp(detail.next_retry_due_at) : "—");
 
-    content.replaceChildren(
+    const sections = [
       buildDescriptionSection(detail),
       buildWorkspaceSection(detail),
       buildModelSection(detail),
       buildActivitySection(detail),
       buildAttemptsSection(detail),
-    );
+    ];
+    if (content.children.length > 0) {
+      sections.forEach((s) => s.classList.remove("expand-in"));
+    }
+    content.replaceChildren(...sections);
     Array.from(content.children).forEach((section, index) => {
       if (section instanceof HTMLElement) {
         section.style.setProperty("--stagger-index", String(index));
@@ -169,6 +173,7 @@ export function createIssueInspector(options: IssueInspectorOptions): {
   async function load(id: string): Promise<void> {
     currentId = id;
     hydrated = false;
+    content.replaceChildren();
     await refresh();
     window.clearInterval(poll);
     poll = window.setInterval(() => {
