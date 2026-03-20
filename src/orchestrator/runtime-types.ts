@@ -1,4 +1,4 @@
-import { AgentRunner } from "../agent-runner/index.js";
+import type { RunAttemptDispatcher } from "../dispatch/types.js";
 import { AttemptStore } from "../core/attempt-store.js";
 import { ConfigStore } from "../config/store.js";
 import type { GitManager } from "../git/manager.js";
@@ -42,7 +42,7 @@ export interface OrchestratorDeps {
   configStore: ConfigStore;
   linearClient: LinearClient;
   workspaceManager: WorkspaceManager;
-  agentRunner: AgentRunner;
+  agentRunner: RunAttemptDispatcher;
   notificationManager?: NotificationManager;
   repoRouter?: Pick<RepoRouter, "matchIssue">;
   gitManager?: Pick<GitManager, "cloneInto" | "commitAndPush" | "createPullRequest">;

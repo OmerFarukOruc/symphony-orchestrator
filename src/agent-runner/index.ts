@@ -3,7 +3,7 @@ import { Liquid } from "liquidjs";
 import { classifyRunError, failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
 import { createTurnState } from "./turn-state.js";
 import { executeTurns } from "./turn-executor.js";
-import { createDockerSession, type DockerSessionDeps } from "./docker-session.js";
+import { createDockerSession, type DockerSessionDeps, type PrecomputedRuntimeConfig } from "./docker-session.js";
 import { initializeSession } from "./session-init.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
@@ -41,6 +41,8 @@ export class AgentRunner {
     workspace: Workspace;
     signal: AbortSignal;
     onEvent: AgentRunnerEventHandler;
+    /** Pre-computed runtime config for data plane (skips auth.json read) */
+    precomputedRuntimeConfig?: PrecomputedRuntimeConfig;
   }): Promise<RunOutcome> {
     const config = this.deps.getConfig();
     const logger = this.deps.logger.child({
@@ -68,6 +70,7 @@ export class AgentRunner {
       buildDockerInput(wrappedInput),
       buildDockerDeps(this.deps),
       this.turnState,
+      input.precomputedRuntimeConfig,
     );
 
     try {

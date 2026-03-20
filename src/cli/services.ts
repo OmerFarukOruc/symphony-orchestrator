@@ -3,6 +3,8 @@ import { AttemptStore } from "../core/attempt-store.js";
 import { createGitHubToolProvider, createRepoRouterProvider } from "./runtime-providers.js";
 import type { ConfigOverlayStore } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
+import { DispatchClient } from "../dispatch/client.js";
+import type { RunAttemptDispatcher } from "../dispatch/types.js";
 import { HttpServer } from "../http/server.js";
 import { LinearClient } from "../linear/client.js";
 import type { createLogger } from "../core/logger.js";
@@ -31,15 +33,27 @@ export async function createServices(
   const pathRegistry = PathRegistry.fromEnv();
   const repoRouter = createRepoRouterProvider(() => configStore.getConfig());
   const gitManager = createGitHubToolProvider(() => configStore.getConfig(), { env: process.env });
-  const agentRunner = new AgentRunner({
-    getConfig: () => configStore.getConfig(),
-    linearClient,
-    workspaceManager,
-    archiveDir,
-    pathRegistry,
-    githubToolClient: gitManager,
-    logger: logger.child({ component: "agent-runner" }),
-  });
+
+  // Dispatch mode: remote (data plane) or local (in-process)
+  const dispatchMode = process.env.DISPATCH_MODE ?? "local";
+  const agentRunner: RunAttemptDispatcher =
+    dispatchMode === "remote"
+      ? new DispatchClient({
+          dispatchUrl: process.env.DISPATCH_URL ?? "http://data-plane:9100/dispatch",
+          secret: process.env.DISPATCH_SHARED_SECRET ?? "",
+          getConfig: () => configStore.getConfig(),
+          logger: logger.child({ component: "dispatch-client" }),
+        })
+      : new AgentRunner({
+          getConfig: () => configStore.getConfig(),
+          linearClient,
+          workspaceManager,
+          archiveDir,
+          pathRegistry,
+          githubToolClient: gitManager,
+          logger: logger.child({ component: "agent-runner" }),
+        });
+
   const orchestrator = new Orchestrator({
     attemptStore,
     configStore,
