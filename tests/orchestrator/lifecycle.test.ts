@@ -8,6 +8,16 @@ import {
 import type { Issue, ServiceConfig } from "../../src/core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "../../src/orchestrator/runtime-types.js";
 
+function makeMockLogger() {
+  return {
+    child: vi.fn(() => makeMockLogger()),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  };
+}
+
 function makeIssue(overrides: Partial<Issue> = {}): Issue {
   return {
     id: "issue-1",
@@ -88,6 +98,7 @@ describe("reconcileRunningAndRetrying", () => {
       deps: {
         linearClient: { fetchIssueStatesByIds: fetchSpy, fetchIssuesByStates: vi.fn() },
         workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
       },
       getConfig: () => makeConfig(),
       clearRetryEntry: vi.fn(),
@@ -108,6 +119,7 @@ describe("reconcileRunningAndRetrying", () => {
           fetchIssuesByStates: vi.fn(),
         },
         workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
       },
       getConfig: () => makeConfig(),
       clearRetryEntry: vi.fn(),
@@ -132,6 +144,7 @@ describe("reconcileRunningAndRetrying", () => {
           fetchIssuesByStates: vi.fn(),
         },
         workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
       },
       getConfig: () => config,
       clearRetryEntry: vi.fn(),
@@ -151,6 +164,7 @@ describe("reconcileRunningAndRetrying", () => {
           fetchIssuesByStates: vi.fn(),
         },
         workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
       },
       getConfig: () => makeConfig(),
       clearRetryEntry: vi.fn(),
@@ -172,6 +186,7 @@ describe("reconcileRunningAndRetrying", () => {
           fetchIssuesByStates: vi.fn(),
         },
         workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
       },
       getConfig: () => makeConfig(),
       clearRetryEntry: vi.fn(),
@@ -235,6 +250,7 @@ describe("reconcileRunningAndRetrying", () => {
           fetchIssuesByStates: vi.fn(),
         },
         workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
       },
       getConfig: () => makeConfig(),
       clearRetryEntry,
@@ -326,6 +342,7 @@ describe("cleanupTerminalIssueWorkspaces", () => {
       deps: {
         linearClient: { fetchIssuesByStates: vi.fn().mockRejectedValue(new Error("network error")) },
         workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
         logger: { warn },
       },
       getConfig: () => makeConfig(),
