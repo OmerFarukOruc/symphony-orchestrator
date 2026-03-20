@@ -99,7 +99,7 @@ export function createRunsTable(options: RunsTableOptions): HTMLElement {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = isCompared;
-    checkbox.setAttribute("aria-label", `Compare run ${attempt.attemptNumber ?? "best"}`);
+    checkbox.setAttribute("aria-label", `Compare run ${attempt.attemptNumber ?? "—"}`);
     checkbox.addEventListener("click", (event) => event.stopPropagation());
     checkbox.addEventListener("change", () => options.onToggleCompare(attempt.attemptId));
     compareCell.append(checkbox);
