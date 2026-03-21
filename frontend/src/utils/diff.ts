@@ -15,7 +15,7 @@ export function setTextWithDiff(element: HTMLElement, nextValue: string): void {
   flashDiff(element);
 }
 
-export function setAttributeWithDiff(element: HTMLElement, name: string, nextValue: string): void {
+function setAttributeWithDiff(element: HTMLElement, name: string, nextValue: string): void {
   if (element.getAttribute(name) === nextValue) {
     return;
   }

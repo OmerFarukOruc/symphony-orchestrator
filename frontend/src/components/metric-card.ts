@@ -44,7 +44,7 @@ export function createStatCardHeader(options: StatCardHeaderOptions): HTMLElemen
   return header;
 }
 
-export function createMetricCard(title: string, kicker?: string): HTMLElement {
+function createMetricCard(title: string, kicker?: string): HTMLElement {
   const card = createStatCardShell();
   const header = createStatCardHeader({ title, kicker });
   const body = document.createElement("div");

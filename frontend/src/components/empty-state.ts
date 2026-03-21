@@ -108,7 +108,7 @@ export function createErrorState(title: string, message: string, retryAction?: (
   return box;
 }
 
-export function createNetworkErrorState(retryAction?: () => void): HTMLElement {
+function createNetworkErrorState(retryAction?: () => void): HTMLElement {
   return createErrorState(
     "Connection issue",
     "Unable to connect to the server. Please check your network connection and try again.",

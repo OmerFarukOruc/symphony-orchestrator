@@ -84,6 +84,6 @@ export function latestTerminalIssues(columns: WorkflowColumn[]): RuntimeIssueVie
     .slice(0, 8);
 }
 
-export function recentEventKey(event: RecentEvent): string {
+function recentEventKey(event: RecentEvent): string {
   return `${event.at}:${event.issue_identifier}:${event.event}:${event.message}`;
 }

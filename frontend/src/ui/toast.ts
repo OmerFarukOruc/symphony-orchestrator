@@ -59,6 +59,6 @@ function removeToast(item: HTMLElement): void {
   );
 }
 
-export function clearToasts(): void {
+function clearToasts(): void {
   getContainer().replaceChildren();
 }

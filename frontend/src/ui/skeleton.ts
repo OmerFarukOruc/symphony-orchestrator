@@ -32,7 +32,7 @@ export function skeletonColumn(): HTMLElement {
   return column;
 }
 
-export function skeletonLogRows(count = 6): HTMLElement {
+function skeletonLogRows(count = 6): HTMLElement {
   const shell = document.createElement("div");
   shell.className = "skeleton-log-list";
   shell.setAttribute("aria-hidden", "true");
@@ -45,7 +45,7 @@ export function skeletonLogRows(count = 6): HTMLElement {
   return shell;
 }
 
-export function skeletonTable(rows = 5): HTMLElement {
+function skeletonTable(rows = 5): HTMLElement {
   const container = document.createElement("div");
   container.className = "table-responsive";
   container.setAttribute("aria-hidden", "true");

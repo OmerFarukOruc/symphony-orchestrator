@@ -68,7 +68,7 @@ export function createField(options: FieldOptions, control: HTMLElement): HTMLEl
   return field;
 }
 
-export function createInput(options: {
+function createInput(options: {
   type?: string;
   placeholder?: string;
   value?: string;
@@ -91,7 +91,7 @@ export function createInput(options: {
   return input;
 }
 
-export function createTextarea(options: {
+function createTextarea(options: {
   placeholder?: string;
   value?: string;
   required?: boolean;
@@ -110,7 +110,7 @@ export function createTextarea(options: {
   return textarea;
 }
 
-export function createSelect(options: {
+function createSelect(options: {
   options: { value: string; label: string }[];
   value?: string;
   required?: boolean;
@@ -132,7 +132,7 @@ export function createSelect(options: {
   return select;
 }
 
-export function createCharacterCounter(input: HTMLInputElement | HTMLTextAreaElement, maxLength: number): HTMLElement {
+function createCharacterCounter(input: HTMLInputElement | HTMLTextAreaElement, maxLength: number): HTMLElement {
   const counter = document.createElement("span");
   counter.className = "input-counter";
 
@@ -172,7 +172,7 @@ export function createButton(
   return button;
 }
 
-export function validateField(input: HTMLInputElement | HTMLTextAreaElement): { valid: boolean; error?: string } {
+function validateField(input: HTMLInputElement | HTMLTextAreaElement): { valid: boolean; error?: string } {
   if (input.required && !input.value.trim()) {
     return { valid: false, error: "This field is required" };
   }
