@@ -223,14 +223,6 @@
   animation: focusRing var(--motion-fast) var(--ease-out-quart);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mc-list-item:focus-visible,
-  .mc-rail-item:focus-visible,
-  .mc-button:focus-visible {
-    animation-duration: 0.01ms !important;
-  }
-}
-
 .summary-strip {
   display: flex;
   gap: var(--space-5);
@@ -469,51 +461,15 @@
 /* .sidebar-item consolidated to shell.css — single source of truth */
 
 .settings-rail-item {
-  width: 100%;
   padding: var(--space-3);
-  border: 1px solid transparent;
-  border-left: 2px solid transparent;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
   font-family: var(--font-body);
   font-size: var(--text-ui);
-  color: var(--text-secondary);
-  transition:
-    color var(--motion-fast) var(--ease-out-quart),
-    border-color var(--motion-fast) var(--ease-out-quart),
-    background-color var(--motion-fast) var(--ease-out-quart);
-}
-
-.settings-rail-item:hover {
-  color: var(--text-primary);
-  background: var(--bg-elevated);
-}
-
-.settings-rail-item.is-active {
-  color: var(--text-accent);
-  border-left-color: var(--text-accent);
-  background: var(--bg-elevated);
 }
 
 .config-rail-item {
   padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
   font-size: var(--text-ui);
-  cursor: pointer;
-  border-left: 2px solid transparent;
-  transition:
-    color var(--motion-fast) var(--ease-out-quart),
-    border-color var(--motion-fast) var(--ease-out-quart);
-}
-
-.config-rail-item:hover {
-  color: var(--text-primary);
-}
-
-.config-rail-item.is-active {
-  color: var(--text-accent);
-  border-left-color: var(--text-accent);
 }
 
 .breadcrumb {
@@ -591,13 +547,6 @@
   }
   100% {
     background-position: 200% 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .toast,
-  .drawer {
-    animation-duration: 0.01ms !important;
   }
 }
 

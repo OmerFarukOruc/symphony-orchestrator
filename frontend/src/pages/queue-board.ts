@@ -85,6 +85,8 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
       renderLoading();
       return;
     }
+    options.board.classList.toggle("is-compact", options.filters.density === "compact");
+    options.board.classList.toggle("is-comfortable", options.filters.density === "comfortable");
     /* Even when no issues match, render all columns with their per-column
        empty states so the Kanban board structure stays visible. */
 

@@ -1,0 +1,86 @@
+import type { AsyncState } from "../utils/async-state.js";
+
+import { buildSettingsSections, isSchemaLimited } from "./settings-helpers.js";
+import { renderSettingsLayout } from "./settings-sections.js";
+import type { SettingsState } from "./settings-state.js";
+
+export interface SettingsPageData {
+  effective: Record<string, unknown>;
+  overlay: Record<string, unknown>;
+  schema: Record<string, unknown> | null;
+}
+
+interface RenderLoadedSettingsOptions {
+  onFilter: (value: string) => void;
+  onSelectSection: (sectionId: string) => void;
+  onToggleDiff: (sectionId: string) => void;
+  onTogglePaths: (sectionId: string) => void;
+  onSaveSection: (sectionId: string) => void;
+  onBrowseLinearProjects: (fieldPath: string) => void;
+}
+
+export function isSettingsPageData(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function updateSettingsHeader(
+  subtitle: HTMLElement,
+  schemaBadge: HTMLElement,
+  state: SettingsState,
+  loadState: AsyncState<SettingsPageData>,
+): void {
+  if (loadState.loading) {
+    subtitle.textContent = "Loading grouped settings and operator-facing paths.";
+    schemaBadge.textContent = "Loading";
+    return;
+  }
+  if (loadState.error) {
+    subtitle.textContent = "Settings could not be loaded. Retry after fixing the underlying API or network issue.";
+    schemaBadge.textContent = "Unavailable";
+    return;
+  }
+  if (!loadState.data) {
+    subtitle.textContent = "Settings are not available yet.";
+    schemaBadge.textContent = "Empty";
+    return;
+  }
+  syncLoadedData(state, loadState.data);
+  subtitle.textContent = isSchemaLimited(state.schema)
+    ? "Schema is limited, so these grouped cards fall back to shaped config views with plain underlying paths."
+    : "Schema-aware grouped settings with live section diffs and operator-facing paths.";
+  schemaBadge.textContent = isSchemaLimited(state.schema) ? "Schema limited" : "Schema guided";
+}
+
+export function renderLoadedSettings(
+  rail: HTMLElement,
+  content: HTMLElement,
+  searchInput: HTMLInputElement,
+  state: SettingsState,
+  data: SettingsPageData,
+  options: RenderLoadedSettingsOptions,
+): HTMLElement[] {
+  syncLoadedData(state, data);
+  const sections = buildSettingsSections(state.schema, state.effective);
+  if (!sections.some((section) => section.id === state.selectedSectionId)) {
+    state.selectedSectionId = sections[0]?.id ?? "tracker";
+  }
+  renderSettingsLayout(rail, content, searchInput, state, sections, {
+    onFilter: options.onFilter,
+    onSelectSection: options.onSelectSection,
+    onToggleDiff: options.onToggleDiff,
+    onTogglePaths: options.onTogglePaths,
+    onSaveSection: options.onSaveSection,
+    onFieldAction: (_sectionId, fieldPath, actionKind) => {
+      if (actionKind === "browse-linear-projects") {
+        options.onBrowseLinearProjects(fieldPath);
+      }
+    },
+  });
+  return [rail, content];
+}
+
+function syncLoadedData(state: SettingsState, data: SettingsPageData): void {
+  state.effective = data.effective;
+  state.overlay = data.overlay;
+  state.schema = data.schema;
+}

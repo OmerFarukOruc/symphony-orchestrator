@@ -68,10 +68,14 @@ export function createLogRow(options: LogRowOptions): HTMLElement {
   const chip = document.createElement("span");
   chip.className = `event-chip event-chip-${eventClass}`;
   chip.textContent = eventTypeLabel(event.event);
+  chip.title = event.event;
 
   const message = document.createElement("p");
   message.className = "mc-log-message";
   message.append(highlightText(event.message, highlightedText));
+  if (event.message !== event.event) {
+    message.title = event.event;
+  }
 
   header.append(timestamp, chip, message);
   row.append(header);

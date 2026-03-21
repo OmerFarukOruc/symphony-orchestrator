@@ -1,3 +1,5 @@
+import { isTypingTarget } from "../utils/dom.js";
+
 interface ConfigKeyboardOptions {
   selectedPath: string;
   modalOpen: boolean;
@@ -9,7 +11,7 @@ interface ConfigKeyboardOptions {
 }
 
 export function handleConfigKeyboard(event: KeyboardEvent, options: ConfigKeyboardOptions): boolean {
-  const isTyping = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
+  const isTyping = isTypingTarget(event.target);
   if (event.key === "/" && !isTyping) {
     event.preventDefault();
     options.onFocusFilter();

@@ -13,6 +13,13 @@ function normalizeStatus(status: string): string {
   return status.trim().toLowerCase().replace(/\s+/g, "_");
 }
 
+function capitalizeStatus(status: string): string {
+  return status
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export function statusChip(status: string): HTMLElement {
   const normalized = normalizeStatus(status);
   const chip = document.createElement("span");
@@ -24,7 +31,7 @@ export function statusChip(status: string): HTMLElement {
   dot.textContent = "◉";
 
   const label = document.createElement("span");
-  label.textContent = STATUS_LABELS[normalized] ?? "Unknown";
+  label.textContent = STATUS_LABELS[normalized] ?? capitalizeStatus(normalized);
 
   chip.append(dot, label);
   return chip;

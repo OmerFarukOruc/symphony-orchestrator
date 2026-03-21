@@ -54,7 +54,7 @@ function renderRail(
   sections.forEach((section) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "settings-rail-item";
+    button.className = "mc-rail-item settings-rail-item";
     button.classList.toggle("is-selected", section.id === state.selectedSectionId);
     const btnTitle = document.createElement("strong");
     btnTitle.textContent = section.title;

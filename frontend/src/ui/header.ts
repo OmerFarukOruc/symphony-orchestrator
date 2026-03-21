@@ -58,13 +58,13 @@ export function initHeader(headerEl: HTMLElement): void {
 
   const refreshButton = document.createElement("button");
   refreshButton.type = "button";
-  refreshButton.className = "header-action-btn";
+  refreshButton.className = "mc-button is-ghost is-icon-only header-action-btn";
   refreshButton.title = "Refresh";
   refreshButton.append(createIcon("refresh", { size: 16 }));
 
   const themeButton = document.createElement("button");
   themeButton.type = "button";
-  themeButton.className = "header-action-btn";
+  themeButton.className = "mc-button is-ghost is-icon-only header-action-btn";
   themeButton.title = "Theme";
   themeButton.append(createIcon("theme", { size: 16 }));
 

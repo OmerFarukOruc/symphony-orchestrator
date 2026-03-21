@@ -11,6 +11,15 @@
       ],
       "enabled": true,
       "environment": {}
+    },
+    "perplexity-answer": {
+      "type": "local",
+      "command": [
+        "node",
+        "/home/oruc/Desktop/workspace/perplexity-answer-mcp-server/dist/index.js"
+      ],
+      "enabled": true,
+      "environment": {}
     }
   }
 }

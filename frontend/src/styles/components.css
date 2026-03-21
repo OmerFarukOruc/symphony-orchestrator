@@ -761,6 +761,12 @@
 .event-chip-state-change {
   color: var(--status-retrying);
 }
+.event-chip-tool {
+  color: var(--color-copper-400);
+}
+.event-chip-usage {
+  color: var(--text-secondary);
+}
 
 .priority-urgent,
 .priority-high {
@@ -771,6 +777,9 @@
 }
 .priority-low {
   color: var(--text-secondary);
+}
+.priority-none {
+  color: var(--text-muted);
 }
 
 .status-running {
@@ -956,29 +965,4 @@
   font-size: var(--text-sm);
   overflow: auto;
   white-space: pre-wrap;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mc-button,
-  .mc-input,
-  .mc-select,
-  .mc-chip,
-  .issue-card,
-  .event-row,
-  .attempts-table tbody tr,
-  .status-chip,
-  .mc-badge.is-status-queued,
-  .mc-chip.is-status-queued,
-  .mc-badge.is-status-running,
-  .mc-chip.is-status-running,
-  .mc-badge.is-status-retrying,
-  .mc-chip.is-status-retrying,
-  .mc-badge.is-status-blocked,
-  .mc-chip.is-status-blocked,
-  .mc-badge.is-status-completed,
-  .mc-chip.is-status-completed,
-  .mc-badge.is-status-claimed,
-  .mc-chip.is-status-claimed {
-    transition-duration: 0.01ms;
-  }
 }

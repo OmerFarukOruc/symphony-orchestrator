@@ -45,8 +45,13 @@
 }
 
 @keyframes livePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 /* ── Filter bar: chips + search + icon actions ───────────────────────────── */
@@ -317,6 +322,20 @@
   background: var(--bg-muted);
   border-color: transparent;
   color: var(--text-muted);
+}
+
+/* Tool chip: copper accent */
+.mc-log-row.is-tool .event-chip {
+  background: rgba(192, 132, 79, 0.1);
+  border-color: rgba(192, 132, 79, 0.2);
+  color: var(--color-copper-400);
+}
+
+/* Usage chip: very muted */
+.mc-log-row.is-usage .event-chip {
+  background: var(--bg-muted);
+  border-color: transparent;
+  color: var(--text-secondary);
 }
 
 /* ── Payload panel: code block styling ───────────────────────────────────── */

@@ -47,31 +47,9 @@
 }
 
 .settings-rail-item {
-  width: 100%;
   padding: var(--space-3);
-  border: 1px solid transparent;
-  border-left: 2px solid transparent;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
   font-family: var(--font-body);
   font-size: var(--text-ui);
-  color: var(--text-secondary);
-  transition:
-    color var(--motion-fast) var(--ease-out-quart),
-    border-color var(--motion-fast) var(--ease-out-quart),
-    background-color var(--motion-fast) var(--ease-out-quart);
-}
-
-.settings-rail-item:hover {
-  color: var(--text-primary);
-  background: var(--bg-elevated);
-}
-
-.settings-rail-item.is-active {
-  color: var(--text-accent);
-  border-left-color: var(--text-accent);
-  background: var(--bg-elevated);
 }
 
 .settings-actions {
@@ -181,4 +159,3 @@
   color: var(--text-muted);
   font-family: var(--font-mono, monospace);
 }
-

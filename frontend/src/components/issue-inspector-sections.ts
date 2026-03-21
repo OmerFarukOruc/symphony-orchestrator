@@ -158,7 +158,7 @@ export function buildActivitySection(detail: IssueDetail): HTMLElement {
   section.append(Object.assign(document.createElement("h2"), { textContent: "Activity" }));
   const list = document.createElement("div");
   list.className = "issue-activity-list";
-  const events = detail.recentEvents.slice(0, 5);
+  const events = detail.recentEvents.slice(-5);
   if (events.length === 0) {
     list.append(
       createEmptyState("No streamed activity", "Fresh issue detail will appear here once agents emit events."),
