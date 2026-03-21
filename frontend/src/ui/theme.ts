@@ -51,10 +51,6 @@ export function systemTheme(): Theme {
   return getMediaQueryList().matches ? "dark" : "light";
 }
 
-export function getTheme(): Theme {
-  return resolveTheme(getThemePreference());
-}
-
 export function getThemePreference(): ThemePreference {
   const storedPreference = localStorage.getItem(STORAGE_KEY);
   return isThemePreference(storedPreference) ? storedPreference : "system";
