@@ -281,7 +281,7 @@ describe("refreshQueueViews", () => {
     expect(captured.length).toBe(2);
   });
 
-  it("only adds unclaimed issues to detailViews", async () => {
+  it("adds all fetched issues to detailViews including claimed ones", async () => {
     const issues = [makeIssue({ id: "i1", identifier: "MT-1" }), makeIssue({ id: "i2", identifier: "MT-2" })];
     const detailViews = new Map<string, unknown>();
     await refreshQueueViews({
@@ -293,7 +293,7 @@ describe("refreshQueueViews", () => {
       resolveModelSelection: () => ({ model: "gpt-4o", reasoningEffort: "high" as const, source: "default" as const }),
       setQueuedViews: () => undefined,
     });
-    expect(detailViews.has("MT-1")).toBe(false);
+    expect(detailViews.has("MT-1")).toBe(true);
     expect(detailViews.has("MT-2")).toBe(true);
   });
 
