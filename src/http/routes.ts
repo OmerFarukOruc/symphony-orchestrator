@@ -8,8 +8,7 @@ import type { ConfigStore } from "../config/store.js";
 import type { RuntimeSnapshot } from "../core/types.js";
 import { globalMetrics } from "../observability/metrics.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
-import { createPlanningRouter, type PlanningExecutionResult } from "../planning/api.js";
-import type { PlannedIssue } from "../planning/skill.js";
+
 import { registerSecretsApi } from "../secrets/api.js";
 import { registerSetupApi } from "../setup/api.js";
 import type { SecretsStore } from "../secrets/store.js";
@@ -30,7 +29,7 @@ interface HttpRouteDeps {
   configStore?: ConfigStore;
   configOverlayStore?: ConfigOverlayStore;
   secretsStore?: SecretsStore;
-  executePlan?: (issues: PlannedIssue[]) => Promise<PlanningExecutionResult>;
+
   frontendDir?: string;
   archiveDir?: string;
 }
@@ -190,5 +189,5 @@ function registerExtensionApis(app: Express, deps: HttpRouteDeps): void {
       archiveDir: deps.archiveDir,
     });
   }
-  app.use(createPlanningRouter({ executePlan: deps.executePlan ? (issues) => deps.executePlan!(issues) : undefined }));
+
 }

@@ -1,6 +1,4 @@
-import type { PlannedIssue } from "../planning/skill.js";
-import { normalizePlanningPriority, buildPlannedIssueDescription } from "./plan-helpers.js";
-import { resolvePlanTarget } from "./plan-target.js";
+
 import { asArray, asBooleanOrNull, asRecord, asStringOrNull } from "../utils/type-guards.js";
 import { normalizeIssue } from "./issue-parser.js";
 import type { Issue, ServiceConfig, SymphonyLogger } from "../core/types.js";
@@ -12,8 +10,6 @@ import {
   buildIssuesByStatesQuery,
   buildProjectLookupQuery,
   buildTeamLookupQuery,
-  buildLabelLookupQuery,
-  buildIssueCreateMutation,
 } from "./queries.js";
 import { fetchCandidateIssues, fetchIssueStatesByIds, fetchIssuesByStates } from "./issue-pagination.js";
 import { LinearClientError } from "./errors.js";
@@ -122,58 +118,7 @@ export class LinearClient {
     );
   }
 
-  async createIssuesFromPlan(issues: PlannedIssue[]): Promise<LinearCreatedIssue[]> {
-    if (issues.length === 0) {
-      return [];
-    }
 
-    const target = await resolvePlanTarget({
-      issues,
-      config: this.getConfig(),
-      runGraphQL: (query, variables) => this.runGraphQL(query, variables),
-      buildProjectLookupQuery,
-      buildTeamLookupQuery,
-      buildLabelLookupQuery,
-    });
-    const createdByPlanId = new Map<string, LinearCreatedIssue>();
-    const created: LinearCreatedIssue[] = [];
-
-    for (const issue of issues) {
-      const payload = await this.runGraphQL(buildIssueCreateMutation(), {
-        input: {
-          title: issue.title,
-          description: buildPlannedIssueDescription(issue, createdByPlanId),
-          priority: normalizePlanningPriority(issue.priority),
-          teamId: target.teamId,
-          ...(target.projectId ? { projectId: target.projectId } : {}),
-          ...(issue.labels.length > 0
-            ? {
-                labelIds: issue.labels
-                  .map((label) => target.labelIdsByName.get(label.trim().toLowerCase()) ?? null)
-                  .filter((labelId): labelId is string => Boolean(labelId)),
-              }
-            : {}),
-        },
-      });
-
-      const issueCreate = asRecord(asRecord(payload.data).issueCreate);
-      const success = asBooleanOrNull(issueCreate.success);
-      const createdIssue = asRecord(issueCreate.issue);
-      const id = asStringOrNull(createdIssue.id);
-      const identifier = asStringOrNull(createdIssue.identifier);
-      const url = asStringOrNull(createdIssue.url);
-
-      if (!success || !id || !identifier) {
-        throw new LinearClientError("linear_unknown_payload", "linear issueCreate response missing created issue");
-      }
-
-      const nextIssue = { id, identifier, url };
-      createdByPlanId.set(issue.id, nextIssue);
-      created.push(nextIssue);
-    }
-
-    return created;
-  }
 
   private async resolveWorkflowStateIds(): Promise<ResolvedWorkflowStates> {
     const config = this.getConfig();

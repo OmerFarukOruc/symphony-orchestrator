@@ -42,11 +42,6 @@ export function normalizePriority(priority: string | number | null | undefined):
   return "low";
 }
 
-export function formatPriority(priority: string | number | null | undefined): string {
-  const value = normalizePriority(priority);
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
 export function priorityRank(priority: string | number | null | undefined): number {
   return PRIORITY_ORDER[normalizePriority(priority)] ?? PRIORITY_ORDER.low;
 }

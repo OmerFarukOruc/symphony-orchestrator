@@ -4,8 +4,7 @@ import express, { type Express } from "express";
 import type { ConfigStore } from "../config/store.js";
 import { registerHttpRoutes } from "./routes.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
-import type { PlanningExecutionResult } from "../planning/api.js";
-import type { PlannedIssue } from "../planning/skill.js";
+
 import type { ConfigOverlayStore } from "../config/overlay.js";
 import type { SecretsStore } from "../secrets/store.js";
 import type { SymphonyLogger } from "../core/types.js";
@@ -25,7 +24,7 @@ export class HttpServer {
       configStore?: ConfigStore;
       configOverlayStore?: ConfigOverlayStore;
       secretsStore?: SecretsStore;
-      executePlan?: (issues: PlannedIssue[]) => Promise<PlanningExecutionResult>;
+
       frontendDir?: string;
       archiveDir?: string;
     },

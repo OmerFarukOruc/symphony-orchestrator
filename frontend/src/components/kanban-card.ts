@@ -1,7 +1,8 @@
 import type { RuntimeIssueView } from "../types";
+import { priorityBadge } from "../ui/priority-badge";
 import { statusChip } from "../ui/status-chip";
 import { flashDiff, setTextWithDiff } from "../utils/diff";
-import { formatPriority, getRetryLabel } from "../utils/issues";
+import { getRetryLabel } from "../utils/issues";
 import { formatRelativeTime, formatTokenUsage } from "../utils/format";
 
 interface KanbanCardOptions {
@@ -77,9 +78,7 @@ export function createKanbanCard(options: KanbanCardOptions): KanbanCardHandle {
     const sig = [issue.priority ?? "low", issue.status, String(issue.modelChangePending)].join("|");
     if (sig === prevMetaSig) return;
 
-    const priBadge = document.createElement("span");
-    priBadge.className = `priority-badge priority-${issue.priority ?? "low"}`;
-    priBadge.textContent = formatPriority(issue.priority);
+    const priBadge = priorityBadge(issue.priority);
     const children: HTMLElement[] = [priBadge, statusChip(issue.status)];
     if (issue.modelChangePending) {
       const pending = document.createElement("span");

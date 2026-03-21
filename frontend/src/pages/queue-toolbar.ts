@@ -67,38 +67,28 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
 } {
   const { toolbar, filters, columns, onRefresh, onChange } = options;
   toolbar.innerHTML = "";
+
   const search = Object.assign(document.createElement("input"), {
     className: "mc-input",
     placeholder: "Search issues\u2026",
   });
   search.value = filters.search;
-  const sort = document.createElement("select");
-  sort.className = "mc-select";
-  ["updated", "priority", "tokens"].forEach((value) => {
-    const option = Object.assign(document.createElement("option"), { value, textContent: `Sort: ${value}` });
-    option.selected = filters.sort === value;
-    sort.append(option);
-  });
+
+  const searchRow = document.createElement("div");
+  searchRow.className = "toolbar-search-row";
+  searchRow.append(search);
+
   const stageBar = document.createElement("div");
   stageBar.className = "mc-toolbar-group";
+
   const priorityBar = document.createElement("div");
   priorityBar.className = "mc-toolbar-group";
-  const density = chip(filters.density === "comfortable" ? "Comfortable" : "Compact", () => {
-    filters.density = filters.density === "comfortable" ? "compact" : "comfortable";
-    syncControls();
-  });
-  density.classList.toggle("is-active", filters.density === "comfortable");
-  const completed = chip(filters.showCompleted ? "Show completed" : "Hide completed", () => {
-    filters.showCompleted = !filters.showCompleted;
-    syncControls();
-  });
-  completed.classList.toggle("is-active", filters.showCompleted);
-  const refreshButton = chip("Refresh from Linear", onRefresh);
+
+  const mergedColumns = mergeColumns(columns);
 
   function renderStages(): void {
-    const merged = mergeColumns(columns);
     stageBar.replaceChildren(
-      ...merged.map((column) => {
+      ...mergedColumns.map((column) => {
         const label = column.count > 0 ? `${column.label} ${column.count}` : column.label;
         const button = chip(label, () => {
           if (filters.stages.has(column.key)) filters.stages.delete(column.key);
@@ -126,10 +116,36 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
     );
   }
 
+  const filterRow = document.createElement("div");
+  filterRow.className = "toolbar-filter-row";
+  filterRow.append(stageBar, priorityBar);
+
+  const sort = document.createElement("select");
+  sort.className = "mc-select";
+  ["updated", "priority", "tokens"].forEach((value) => {
+    const option = Object.assign(document.createElement("option"), { value, textContent: value });
+    option.selected = filters.sort === value;
+    sort.append(option);
+  });
+
+  const density = chip(filters.density === "comfortable" ? "Comfortable" : "Compact", () => {
+    filters.density = filters.density === "comfortable" ? "compact" : "comfortable";
+    syncControls();
+  });
+  density.classList.toggle("is-active", filters.density === "comfortable");
+
+  const completed = chip(filters.showCompleted ? "Hide done" : "Show done", () => {
+    filters.showCompleted = !filters.showCompleted;
+    syncControls();
+  });
+  completed.classList.toggle("is-active", filters.showCompleted);
+
+  const refreshButton = chip("Refresh", onRefresh);
+
   function syncControls(): void {
     density.textContent = filters.density === "comfortable" ? "Comfortable" : "Compact";
     density.classList.toggle("is-active", filters.density === "comfortable");
-    completed.textContent = filters.showCompleted ? "Show completed" : "Hide completed";
+    completed.textContent = filters.showCompleted ? "Hide done" : "Show done";
     completed.classList.toggle("is-active", filters.showCompleted);
     onChange();
   }
@@ -145,25 +161,11 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   renderStages();
   renderPriorities();
 
-  const stageSection = document.createElement("div");
-  stageSection.className = "mc-toolbar-section";
-  const stageLabel = document.createElement("span");
-  stageLabel.className = "mc-toolbar-label";
-  stageLabel.textContent = "Stage";
-  stageSection.append(stageLabel, stageBar);
+  const utilityRow = document.createElement("div");
+  utilityRow.className = "toolbar-utility-row";
+  utilityRow.append(density, sort, completed, refreshButton);
 
-  const prioritySection = document.createElement("div");
-  prioritySection.className = "mc-toolbar-section";
-  const priorityLabel = document.createElement("span");
-  priorityLabel.className = "mc-toolbar-label";
-  priorityLabel.textContent = "Priority";
-  prioritySection.append(priorityLabel, priorityBar);
-
-  const utilityGroup = document.createElement("div");
-  utilityGroup.className = "mc-toolbar-group";
-  utilityGroup.append(density, sort, completed, refreshButton);
-
-  toolbar.append(search, stageSection, prioritySection, utilityGroup);
+  toolbar.append(searchRow, filterRow, utilityRow);
   return {
     search,
     sort,

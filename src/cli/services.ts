@@ -11,7 +11,7 @@ import type { createLogger } from "../core/logger.js";
 import { NotificationManager } from "../notification/manager.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { PathRegistry } from "../workspace/path-registry.js";
-import { createLinearPlanningExecutor } from "../planning/executor.js";
+
 import type { SecretsStore } from "../secrets/store.js";
 import { WorkspaceManager } from "../workspace/manager.js";
 
@@ -72,7 +72,7 @@ export async function createServices(
     configStore,
     configOverlayStore: overlayStore,
     secretsStore,
-    executePlan: createLinearPlanningExecutor({ linearClient }),
+
     archiveDir,
   });
   return { orchestrator, httpServer, notificationManager, linearClient };

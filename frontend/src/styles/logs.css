@@ -291,7 +291,7 @@
 
 /* ── Event chips in log context: refined for scanability ─────────────────── */
 
-.mc-log-row .event-chip {
+.mc-log-row .mc-event-chip {
   flex-shrink: 0;
   min-width: 64px;
   max-width: 120px;
@@ -303,36 +303,36 @@
 }
 
 /* Error chip: strong visual signal */
-.mc-log-row.is-error .event-chip {
+.mc-log-row.is-error .mc-event-chip {
   background: rgba(217, 72, 65, 0.12);
   border-color: rgba(217, 72, 65, 0.25);
   color: var(--status-blocked);
 }
 
 /* Agent chip: action indicator */
-.mc-log-row.is-agent .event-chip {
+.mc-log-row.is-agent .mc-event-chip {
   background: rgba(47, 158, 68, 0.1);
   border-color: rgba(47, 158, 68, 0.2);
   color: var(--status-running);
 }
 
 /* System/state-change chips: muted */
-.mc-log-row.is-system .event-chip,
-.mc-log-row.is-state-change .event-chip {
+.mc-log-row.is-system .mc-event-chip,
+.mc-log-row.is-state-change .mc-event-chip {
   background: var(--bg-muted);
   border-color: transparent;
   color: var(--text-muted);
 }
 
 /* Tool chip: copper accent */
-.mc-log-row.is-tool .event-chip {
+.mc-log-row.is-tool .mc-event-chip {
   background: rgba(192, 132, 79, 0.1);
   border-color: rgba(192, 132, 79, 0.2);
   color: var(--color-copper-400);
 }
 
 /* Usage chip: very muted */
-.mc-log-row.is-usage .event-chip {
+.mc-log-row.is-usage .mc-event-chip {
   background: var(--bg-muted);
   border-color: transparent;
   color: var(--text-secondary);

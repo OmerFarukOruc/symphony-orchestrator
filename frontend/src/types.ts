@@ -107,15 +107,7 @@ export interface RecentEvent {
   content: unknown | null;
 }
 
-export interface PlannedIssue {
-  id: string;
-  title: string;
-  summary: string;
-  acceptanceCriteria: string[];
-  dependencies: string[];
-  priority: "low" | "medium" | "high";
-  labels: string[];
-}
+
 
 export interface RateLimits {
   [key: string]: unknown;
