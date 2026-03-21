@@ -6,6 +6,7 @@ import { statusChip } from "../ui/status-chip";
 import { toast } from "../ui/toast";
 import { flashDiff, setTextWithDiff } from "../utils/diff";
 import { createAttemptsTable } from "./attempts-table";
+import { createButton, createField, createSelectControl, createTextInput } from "./forms.js";
 import { createEventRow } from "./event-row";
 import { createEmptyState } from "./empty-state";
 import { computeDurationSeconds, formatCompactNumber, formatDuration, formatTimestamp } from "../utils/format";
@@ -94,25 +95,25 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
 
   const form = document.createElement("form");
   form.className = "issue-form-grid";
-  const modelInput = Object.assign(document.createElement("input"), {
+  const modelInput = createTextInput({
     className: "mc-input",
     value: detail.configuredModel ?? detail.model ?? "",
     placeholder: "gpt-5.4",
+    required: true,
   });
-  const effortSelect = document.createElement("select");
-  effortSelect.className = "mc-select";
-  REASONING_EFFORT_OPTIONS.forEach((value) => {
-    const option = document.createElement("option");
-    option.value = value === "none" ? "" : value;
-    option.textContent = value;
-    effortSelect.append(option);
+  const effortSelect = createSelectControl({
+    options: REASONING_EFFORT_OPTIONS.map((value) => ({
+      value: value === "none" ? "" : value,
+      label: value,
+    })),
+    value: detail.configuredReasoningEffort ?? detail.reasoningEffort ?? "",
   });
-  effortSelect.value = detail.configuredReasoningEffort ?? detail.reasoningEffort ?? "";
-  const save = document.createElement("button");
-  save.type = "submit";
-  save.className = "mc-button mc-button-ghost";
-  save.textContent = "Save";
-  form.append(modelInput, effortSelect, save);
+  const save = createButton("Save", "ghost", "submit");
+  form.append(
+    createField({ label: "Model", hint: "Applied on the next attempt.", required: true }, modelInput),
+    createField({ label: "Reasoning effort", hint: "Leave blank to follow the active issue default." }, effortSelect),
+    save,
+  );
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
@@ -161,7 +162,12 @@ export function buildActivitySection(detail: IssueDetail): HTMLElement {
   const events = detail.recentEvents.slice(-5);
   if (events.length === 0) {
     list.append(
-      createEmptyState("No streamed activity", "Fresh issue detail will appear here once agents emit events."),
+      createEmptyState(
+        "No streamed activity",
+        "This issue has not emitted any recent events yet. Live logs and archived attempts will appear here after the next worker update.",
+        "View all logs",
+        () => router.navigate(`/issues/${detail.identifier}/logs`),
+      ),
     );
   } else {
     events.forEach((event, index) => {

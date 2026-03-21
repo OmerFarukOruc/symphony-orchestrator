@@ -154,9 +154,11 @@
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-stitch);
   background: var(--bg-elevated);
+  color: var(--text-primary);
   position: relative;
   overflow: hidden;
   animation: toastIn var(--motion-fast) var(--ease-out-quart);
+  cursor: pointer;
 }
 
 .toast::after {
@@ -175,7 +177,7 @@
   border-left: 3px solid var(--status-blocked);
 }
 .toast-warning {
-  border-left: 3px solid var(--status-retrying);
+  border-left: 3px solid var(--status-gate);
 }
 .toast-info {
   border-left: 3px solid var(--status-queued);
@@ -205,6 +207,50 @@
 
 .toast.is-exiting {
   animation: toastOut var(--motion-fast) var(--ease-out-quart) forwards;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-right: var(--space-5);
+}
+
+.toast-message {
+  flex: 1;
+}
+
+.toast-dismiss {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height-xs);
+  height: var(--control-height-xs);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--motion-fast) var(--ease-out-quart),
+    color var(--motion-fast) var(--ease-out-quart),
+    border-color var(--motion-fast) var(--ease-out-quart),
+    background-color var(--motion-fast) var(--ease-out-quart);
+}
+
+.toast:hover .toast-dismiss,
+.toast:focus-within .toast-dismiss {
+  opacity: 1;
+}
+
+.toast-dismiss:hover,
+.toast-dismiss:focus-visible {
+  background: color-mix(in srgb, var(--status-pending-change) 12%, var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--status-pending-change) 28%, var(--border-stitch));
+  color: var(--text-primary);
 }
 
 /* Focus ring animation */

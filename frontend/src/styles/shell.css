@@ -192,6 +192,18 @@
   text-overflow: ellipsis;
 }
 
+/* ── Sidebar item badge (count pill) ─────────────────── */
+
+.sidebar-item-badge {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  line-height: 1;
+  color: var(--color-copper-100);
+  background: color-mix(in srgb, var(--color-copper-500) 80%, transparent);
+  border-color: color-mix(in srgb, var(--color-copper-400) 50%, transparent);
+}
+
 /* ── Sidebar hotkey badge ─────────────────────────────── */
 
 .sidebar-hotkey {

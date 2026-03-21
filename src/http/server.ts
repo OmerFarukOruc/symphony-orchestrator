@@ -57,7 +57,8 @@ export class HttpServer {
     }
     let startedServer: http.Server | null = null;
     await new Promise<void>((resolve, reject) => {
-      const server = this.app.listen(port, "127.0.0.1", () => {
+      const host = process.env.SYMPHONY_BIND ?? "127.0.0.1";
+      const server = this.app.listen(port, host, () => {
         startedServer = server;
         resolve();
       });

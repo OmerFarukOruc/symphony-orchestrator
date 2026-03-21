@@ -99,5 +99,16 @@ export const api = {
   postMasterKey: (key?: string) => post<{ key: string }>("/api/v1/setup/master-key", { key }),
   getLinearProjects: () => get<{ projects: LinearProject[] }>("/api/v1/setup/linear-projects"),
   postLinearProject: (slugId: string) => post<{ ok: boolean }>("/api/v1/setup/linear-project", { slugId }),
+  postOpenaiKey: (key: string) => post<{ valid: boolean }>("/api/v1/setup/openai-key", { key }),
+  postCodexAuth: (authJson: string) => post<{ ok: boolean }>("/api/v1/setup/codex-auth", { authJson }),
+  startDeviceAuth: () =>
+    post<{ userCode: string; verificationUri: string; deviceCode: string; expiresIn: number; interval: number }>(
+      "/api/v1/setup/device-auth/start",
+      {},
+    ),
+  pollDeviceAuth: (deviceCode: string) =>
+    post<{ status: "pending" | "complete" | "expired"; error?: string }>("/api/v1/setup/device-auth/poll", {
+      deviceCode,
+    }),
   postGithubToken: (token: string) => post<{ valid: boolean }>("/api/v1/setup/github-token", { token }),
 };

@@ -19,7 +19,7 @@ export function createTableHeaderCell(label: string): HTMLTableCellElement {
 export function createTableHead(labels: string[]): HTMLTableSectionElement {
   const head = document.createElement("thead");
   const row = document.createElement("tr");
-  labels.forEach((label) => row.append(createTableHeaderCell(label)));
+  row.append(...labels.map(createTableHeaderCell));
   head.append(row);
   return head;
 }
@@ -41,6 +41,11 @@ export function createTableCell(text: string, options: TableCellOptions = {}): H
 
 export function createMonoTableCell(text: string, className = "text-mono"): HTMLTableCellElement {
   return createTableCell(text, { className });
+}
+
+export function setTableCellLabel(cell: HTMLTableCellElement, label: string): HTMLTableCellElement {
+  cell.dataset.label = label;
+  return cell;
 }
 
 export function createTableEmptyRow(message: string, columnCount: number): HTMLTableRowElement {

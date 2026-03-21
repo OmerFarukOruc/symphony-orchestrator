@@ -1,10 +1,16 @@
+import { api } from "../api";
 import { router } from "../router";
+import { buildSidebarBadgeCounts } from "./sidebar-badges.js";
 import { createIcon, createIconSlot } from "./icons";
 import { navGroups, navItems } from "./nav-items";
 
 const STORAGE_KEY = "symphony-sidebar-expanded";
+const MOBILE_BREAKPOINT = "(max-width: 760px)";
 
 let _navHandler: (() => void) | null = null;
+let _toggleHandler: (() => void) | null = null;
+let _mobileHandler: (() => void) | null = null;
+let _cachedMobileQuery: MediaQueryList | null = null;
 
 function readExpandedPref(): boolean {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -24,7 +30,37 @@ function updateActiveState(sidebarEl: HTMLElement): void {
   }
 }
 
-function buildNavItems(groupEl: HTMLElement, groupName: string): void {
+function syncBadgeVisibility(sidebarEl: HTMLElement): void {
+  const expanded = sidebarEl.classList.contains("is-expanded") && !sidebarEl.classList.contains("is-mobile");
+  for (const badge of sidebarEl.querySelectorAll<HTMLElement>(".sidebar-item-badge")) {
+    const count = Number(badge.dataset.count ?? "0");
+    badge.hidden = !expanded || count <= 0;
+  }
+}
+
+function applyBadgeCounts(sidebarEl: HTMLElement, counts: Map<string, number>): void {
+  for (const item of sidebarEl.querySelectorAll<HTMLElement>(".sidebar-item")) {
+    const badge = item.querySelector<HTMLElement>(".sidebar-item-badge");
+    if (!badge) {
+      continue;
+    }
+    const count = counts.get(item.dataset.path ?? "") ?? 0;
+    badge.dataset.count = String(count);
+    badge.textContent = String(count);
+  }
+  syncBadgeVisibility(sidebarEl);
+}
+
+async function loadBadgeCounts(sidebarEl: HTMLElement): Promise<void> {
+  try {
+    const snapshot = await api.getState();
+    applyBadgeCounts(sidebarEl, new Map(Object.entries(buildSidebarBadgeCounts(snapshot))));
+  } catch {
+    applyBadgeCounts(sidebarEl, new Map());
+  }
+}
+
+function buildNavItems(groupEl: HTMLElement, groupName: string, onNavigate: () => void): void {
   const items = navItems.filter((item) => item.group === groupName);
 
   // Create items container for animation
@@ -40,10 +76,16 @@ function buildNavItems(groupEl: HTMLElement, groupName: string): void {
     button.type = "button";
     button.dataset.path = item.path;
     button.title = `${item.name} (${item.hotkey.replace(" ", " then ")})`;
+    button.setAttribute("aria-label", item.name);
 
     const labelSpan = document.createElement("span");
     labelSpan.className = "sidebar-item-label";
     labelSpan.textContent = item.name;
+
+    const badgeSpan = document.createElement("span");
+    badgeSpan.className = "sidebar-item-badge mc-badge is-sm";
+    badgeSpan.dataset.count = "0";
+    badgeSpan.hidden = true;
 
     const hotkeySpan = document.createElement("span");
     hotkeySpan.className = "sidebar-hotkey";
@@ -56,10 +98,14 @@ function buildNavItems(groupEl: HTMLElement, groupName: string): void {
     button.append(
       createIconSlot(item.icon, { slotClassName: "sidebar-icon", size: 18 }),
       labelSpan,
+      badgeSpan,
       hotkeySpan,
       tooltipSpan,
     );
-    button.addEventListener("click", () => router.navigate(item.path));
+    button.addEventListener("click", () => {
+      router.navigate(item.path);
+      onNavigate();
+    });
     itemsInner.append(button);
   }
 
@@ -94,11 +140,10 @@ function buildGroupHeader(groupName: string, groupEl: HTMLElement): HTMLButtonEl
   return header;
 }
 
-function buildCollapseToggle(sidebarEl: HTMLElement): HTMLButtonElement {
+function buildCollapseToggle(onToggle: () => void): { toggle: HTMLButtonElement; label: HTMLSpanElement } {
   const toggle = document.createElement("button");
   toggle.className = "sidebar-collapse-toggle";
   toggle.type = "button";
-  toggle.title = "Collapse sidebar";
 
   const icon = document.createElement("span");
   icon.className = "sidebar-collapse-toggle-icon";
@@ -107,27 +152,97 @@ function buildCollapseToggle(sidebarEl: HTMLElement): HTMLButtonElement {
 
   const label = document.createElement("span");
   label.className = "sidebar-collapse-label";
-  label.textContent = "Collapse";
+  label.textContent = "Toggle";
 
   toggle.append(icon, label);
 
-  toggle.addEventListener("click", () => {
-    const isExpanded = sidebarEl.classList.toggle("is-expanded");
-    saveExpandedPref(isExpanded);
-    toggle.title = isExpanded ? "Collapse sidebar" : "Expand sidebar";
-    label.textContent = isExpanded ? "Collapse" : "Expand";
-  });
+  toggle.addEventListener("click", onToggle);
 
-  return toggle;
+  return { toggle, label };
 }
 
 export function initSidebar(sidebarEl: HTMLElement): void {
   sidebarEl.classList.add("transition-base");
   sidebarEl.replaceChildren();
+  sidebarEl.id = "shell-sidebar";
 
-  if (readExpandedPref()) {
-    sidebarEl.classList.add("is-expanded");
+  const parent = sidebarEl.parentElement;
+  if (!(parent instanceof HTMLElement)) {
+    throw new TypeError("Sidebar parent is required.");
   }
+
+  const backdrop = document.createElement("button");
+  backdrop.type = "button";
+  backdrop.className = "shell-sidebar-backdrop";
+  backdrop.hidden = true;
+  backdrop.setAttribute("aria-label", "Close navigation");
+  parent.insertBefore(backdrop, sidebarEl.nextSibling);
+
+  const mobileQuery = window.matchMedia(MOBILE_BREAKPOINT);
+  let mobileOpen = false;
+
+  function closeMobile(): void {
+    if (!mobileQuery.matches || !mobileOpen) {
+      return;
+    }
+    mobileOpen = false;
+    syncSidebarState();
+  }
+
+  const { toggle, label } = buildCollapseToggle(() => toggleSidebar());
+
+  function dispatchState(): void {
+    window.dispatchEvent(
+      new CustomEvent("shell:sidebar-state", {
+        detail: {
+          mobile: mobileQuery.matches,
+          mobileOpen,
+          expanded: sidebarEl.classList.contains("is-expanded"),
+        },
+      }),
+    );
+    backdrop.hidden = !(mobileQuery.matches && mobileOpen);
+  }
+
+  function syncToggle(): void {
+    if (mobileQuery.matches) {
+      toggle.title = mobileOpen ? "Close navigation" : "Open navigation";
+      label.textContent = mobileOpen ? "Close" : "Menu";
+      return;
+    }
+    const expanded = sidebarEl.classList.contains("is-expanded");
+    toggle.title = expanded ? "Collapse sidebar" : "Expand sidebar";
+    label.textContent = expanded ? "Collapse" : "Expand";
+  }
+
+  function syncSidebarState(): void {
+    sidebarEl.classList.toggle("is-mobile", mobileQuery.matches);
+    if (mobileQuery.matches) {
+      sidebarEl.classList.add("is-expanded");
+      sidebarEl.classList.toggle("is-mobile-open", mobileOpen);
+    } else {
+      mobileOpen = false;
+      sidebarEl.classList.remove("is-mobile-open");
+      sidebarEl.classList.toggle("is-expanded", readExpandedPref());
+    }
+    syncToggle();
+    syncBadgeVisibility(sidebarEl);
+    dispatchState();
+  }
+
+  function toggleSidebar(): void {
+    if (mobileQuery.matches) {
+      mobileOpen = !mobileOpen;
+      syncSidebarState();
+      return;
+    }
+    const expanded = !sidebarEl.classList.contains("is-expanded");
+    saveExpandedPref(expanded);
+    sidebarEl.classList.toggle("is-expanded", expanded);
+    syncSidebarState();
+  }
+
+  sidebarEl.classList.toggle("is-expanded", readExpandedPref());
 
   for (const groupName of navGroups) {
     const group = document.createElement("section");
@@ -136,14 +251,30 @@ export function initSidebar(sidebarEl: HTMLElement): void {
 
     const header = buildGroupHeader(groupName, group);
     group.append(header);
-    buildNavItems(group, groupName);
+    buildNavItems(group, groupName, closeMobile);
     sidebarEl.append(group);
   }
 
-  sidebarEl.append(buildCollapseToggle(sidebarEl));
+  sidebarEl.append(toggle);
+  backdrop.addEventListener("click", closeMobile);
+
+  if (_toggleHandler) window.removeEventListener("shell:toggle-sidebar", _toggleHandler);
+  _toggleHandler = toggleSidebar;
+  window.addEventListener("shell:toggle-sidebar", _toggleHandler);
+
+  if (_mobileHandler && _cachedMobileQuery) _cachedMobileQuery.removeEventListener("change", _mobileHandler);
+  _mobileHandler = syncSidebarState;
+  _cachedMobileQuery = mobileQuery;
+  mobileQuery.addEventListener("change", _mobileHandler);
+
+  void loadBadgeCounts(sidebarEl);
 
   updateActiveState(sidebarEl);
   if (_navHandler) window.removeEventListener("router:navigate", _navHandler);
-  _navHandler = () => updateActiveState(sidebarEl);
+  _navHandler = () => {
+    updateActiveState(sidebarEl);
+    closeMobile();
+  };
   window.addEventListener("router:navigate", _navHandler);
+  syncSidebarState();
 }

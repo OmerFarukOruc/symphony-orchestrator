@@ -27,6 +27,7 @@ export function renderObservabilitySections(
   snapshot: RuntimeSnapshot | null,
   staleCount: number,
   state: ObservabilityState,
+  actions: { onRefresh: () => void },
 ): void {
   container.replaceChildren();
   const metrics = parsePrometheusText(state.metricsRaw);
@@ -48,7 +49,9 @@ export function renderObservabilitySections(
     container.append(
       createEmptyState(
         "Waiting for backend state",
-        "Observability cards will populate after the next /api/v1/state update arrives.",
+        "Observability cards populate after the next /api/v1/state snapshot arrives from the backend.",
+        "Refresh now",
+        actions.onRefresh,
       ),
     );
     return;

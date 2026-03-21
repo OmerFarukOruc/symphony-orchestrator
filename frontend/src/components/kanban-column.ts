@@ -11,9 +11,18 @@ function normalizeStageKey(key: string): string {
   return key.toLowerCase().replaceAll(" ", "_");
 }
 
+function clearDropState(section: HTMLElement): void {
+  section.classList.remove("is-drag-over", "is-drop-reject");
+}
+
+function isDropAllowed(section: HTMLElement): boolean {
+  return section.dataset.dropAllowed !== "false";
+}
+
 export function createKanbanColumn(onToggle: () => void): KanbanColumnHandle {
   const section = document.createElement("section");
   section.className = "kanban-column stagger-item";
+  section.dataset.dropAllowed = "true";
 
   const header = document.createElement("div");
   header.className = "kanban-column-header";
@@ -42,21 +51,42 @@ export function createKanbanColumn(onToggle: () => void): KanbanColumnHandle {
   body.className = "kanban-column-body";
 
   body.addEventListener("dragover", (event) => {
+    if (!isDropAllowed(section)) {
+      clearDropState(section);
+      section.classList.add("is-drop-reject");
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "none";
+      }
+      return;
+    }
     event.preventDefault();
+    clearDropState(section);
     section.classList.add("is-drag-over");
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
   });
   body.addEventListener("dragenter", (event) => {
+    if (!isDropAllowed(section)) {
+      clearDropState(section);
+      section.classList.add("is-drop-reject");
+      return;
+    }
     event.preventDefault();
+    clearDropState(section);
     section.classList.add("is-drag-over");
   });
   body.addEventListener("dragleave", (event) => {
     if (!section.contains(event.relatedTarget as Node)) {
-      section.classList.remove("is-drag-over");
+      clearDropState(section);
     }
   });
   body.addEventListener("drop", (event) => {
+    clearDropState(section);
+    if (!isDropAllowed(section)) {
+      return;
+    }
     event.preventDefault();
-    section.classList.remove("is-drag-over");
     const identifier = event.dataTransfer?.getData("text/plain") ?? "";
     const targetColumnKey = section.dataset.stage ?? "";
     if (!identifier || !targetColumnKey) return;
@@ -77,7 +107,11 @@ export function applyColumnStage(column: KanbanColumnHandle, key: string): void 
 }
 
 export function setDropAllowed(column: KanbanColumnHandle, allowed: boolean): void {
+  column.section.dataset.dropAllowed = String(allowed);
   column.section.classList.toggle("is-drop-forbidden", !allowed);
+  if (allowed) {
+    clearDropState(column.section);
+  }
 }
 
 export type { KanbanColumnHandle };

@@ -1,5 +1,12 @@
 let container: HTMLElement | null = null;
 
+type ToastType = "success" | "error" | "info" | "warning";
+
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 function getContainer(): HTMLElement {
   if (container) {
     return container;
@@ -13,33 +20,52 @@ function getContainer(): HTMLElement {
   return container;
 }
 
-export function toast(
-  message: string,
-  type: "success" | "error" | "info",
-  action?: { label: string; onClick: () => void },
-): void {
+export function toast(message: string, type: ToastType, action?: ToastAction): void {
   const item = document.createElement("div");
-  item.className = `toast toast-${type} fade-in`;
+  item.className = `toast toast-enhanced toast-${type} fade-in`;
   item.setAttribute("role", "status");
   item.setAttribute("aria-live", "polite");
+  item.setAttribute("aria-atomic", "true");
+
+  const content = document.createElement("div");
+  content.className = "toast-content";
+
+  const messageSpan = document.createElement("span");
+  messageSpan.className = "toast-message";
+  messageSpan.textContent = message;
+
+  const dismissButton = document.createElement("button");
+  dismissButton.type = "button";
+  dismissButton.className = "toast-dismiss";
+  dismissButton.setAttribute("aria-label", "Dismiss notification");
+  dismissButton.textContent = "×";
+
+  dismissButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    removeToast(item);
+  });
+
+  item.addEventListener("click", () => {
+    removeToast(item);
+  });
 
   if (action) {
     item.className += " toast-with-action";
-    const messageSpan = document.createElement("span");
-    messageSpan.className = "toast-message";
-    messageSpan.textContent = message;
     const actionBtn = document.createElement("button");
     actionBtn.type = "button";
     actionBtn.className = "mc-button is-sm";
     actionBtn.textContent = action.label;
-    actionBtn.addEventListener("click", () => {
+    actionBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
       action.onClick();
       removeToast(item);
     });
-    item.append(messageSpan, actionBtn);
+    content.append(messageSpan, actionBtn);
   } else {
-    item.textContent = message;
+    content.append(messageSpan);
   }
+
+  item.append(content, dismissButton);
 
   getContainer().append(item);
   window.setTimeout(() => {
@@ -48,7 +74,7 @@ export function toast(
 }
 
 function removeToast(item: HTMLElement): void {
-  if (!item.parentNode) return;
+  if (!item.parentNode || item.classList.contains("is-exiting")) return;
   item.classList.add("is-exiting");
   item.addEventListener(
     "animationend",
@@ -57,8 +83,4 @@ function removeToast(item: HTMLElement): void {
     },
     { once: true },
   );
-}
-
-function clearToasts(): void {
-  getContainer().replaceChildren();
 }

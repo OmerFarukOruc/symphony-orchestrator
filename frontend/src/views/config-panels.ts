@@ -96,7 +96,9 @@ export function renderOverlayEditor(
     main.append(
       createEmptyState(
         "No persistent overrides yet",
-        "Create a path override or switch to raw patch mode to seed the overlay.",
+        "No saved overlay paths exist yet. Start with a path/value override or switch to raw mode for larger edits.",
+        "Switch to path editor",
+        () => actions.onMode("path"),
       ),
     );
   } else {

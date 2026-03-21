@@ -1,4 +1,5 @@
 import type { Router } from "../router";
+import { openShortcutHelp } from "./shortcut-help.js";
 
 let prefixActive = false;
 let prefixTimer = 0;
@@ -31,6 +32,11 @@ export function initKeyboard(router: Router, options: KeyboardOptions = {}): voi
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
       event.preventDefault();
       dispatchKeyEvent("palette:open");
+      return;
+    }
+    if (event.key === "?") {
+      event.preventDefault();
+      openShortcutHelp();
       return;
     }
     if (event.key === "g") {

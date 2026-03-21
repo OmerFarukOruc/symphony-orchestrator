@@ -1,5 +1,6 @@
 import { createEmptyState } from "../components/empty-state";
 import { createPageHeader, createSummaryStrip } from "../components/page-header";
+import { router } from "../router";
 
 export function createWorkspacesPage(): HTMLElement {
   const page = document.createElement("div");
@@ -22,10 +23,11 @@ export function createWorkspacesPage(): HTMLElement {
   body.append(
     createEmptyState(
       "No workspaces",
-      "Workspaces are created automatically when the orchestrator processes issues.",
-      undefined,
-      undefined,
+      "Workspaces are created automatically after Symphony picks up an issue and prepares an isolated checkout.",
+      "Open queue",
+      () => router.navigate("/queue"),
       "queue",
+      { secondaryActionLabel: "Setup guide", secondaryActionHref: "/setup" },
     ),
   );
 

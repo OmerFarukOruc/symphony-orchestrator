@@ -98,7 +98,9 @@ export function createObservabilityPage(): HTMLElement {
     refreshButton.disabled = state.refreshing;
     refreshButton.textContent = state.refreshing ? "Refreshing…" : "Refresh (r)";
     drawerButton.textContent = state.rawDrawerOpen ? "Hide raw metrics (x)" : "Raw metrics (x)";
-    renderObservabilitySections(body, store.getState().snapshot, store.getState().staleCount, state);
+    renderObservabilitySections(body, store.getState().snapshot, store.getState().staleCount, state, {
+      onRefresh: () => void refreshAll(),
+    });
     drawer.render(state.metricsRaw, state.rawDrawerOpen);
   }
 

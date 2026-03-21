@@ -1,5 +1,6 @@
 import { createEmptyState } from "../components/empty-state";
 import { createPageHeader } from "../components/page-header";
+import { router } from "../router";
 
 export function createNotificationsPage(): HTMLElement {
   const page = document.createElement("div");
@@ -19,7 +20,9 @@ export function createNotificationsPage(): HTMLElement {
     chip.className = `mc-filter-chip${ch === "All" ? " is-active" : ""}`;
     chip.textContent = ch;
     chip.addEventListener("click", () => {
-      filterBar.querySelectorAll(".mc-filter-chip").forEach((c) => c.classList.remove("is-active"));
+      for (const element of filterBar.querySelectorAll(".mc-filter-chip")) {
+        element.classList.remove("is-active");
+      }
       chip.classList.add("is-active");
     });
     filterBar.append(chip);
@@ -30,10 +33,11 @@ export function createNotificationsPage(): HTMLElement {
   body.append(
     createEmptyState(
       "No notifications",
-      "Notifications will appear here when webhooks fire or system alerts trigger.",
-      undefined,
-      undefined,
+      "Webhook deliveries and operator alerts land here after notifications are configured and events start flowing.",
+      "Open observability",
+      () => router.navigate("/observability"),
       "events",
+      { secondaryActionLabel: "Review setup", secondaryActionHref: "/setup" },
     ),
   );
 

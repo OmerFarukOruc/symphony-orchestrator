@@ -30,8 +30,7 @@ codex:
   turn_timeout_ms: 120000
   stall_timeout_ms: 300000
   auth:
-    mode: "openai_login"
-    source_home: "/codex-auth"
+    mode: "api_key"
   sandbox:
     image: "symphony-codex:latest"
     network: ""

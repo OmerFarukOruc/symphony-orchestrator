@@ -93,7 +93,12 @@ function renderContent(
   }
   if (!sections.length) {
     content.append(
-      createEmptyState("No settings match that search", "Try a broader keyword such as model, sandbox, or tracker."),
+      createEmptyState(
+        "No settings match that search",
+        "No editable settings matched the current search. Try a broader keyword such as model, sandbox, or tracker.",
+        "Clear search",
+        () => options.onFilter(""),
+      ),
     );
     return;
   }

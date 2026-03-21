@@ -1,6 +1,6 @@
 import type { AttemptSummary } from "../types";
 import { statusChip } from "../ui/status-chip";
-import { applyTableRowInteraction, createMonoTableCell, createTableHead } from "../ui/table";
+import { applyTableRowInteraction, createMonoTableCell, createTableHead, setTableCellLabel } from "../ui/table";
 import {
   computeDurationSeconds,
   formatCompactNumber,
@@ -96,6 +96,7 @@ export function createRunsTable(options: RunsTableOptions): HTMLElement {
 
     const compareCell = document.createElement("td");
     compareCell.className = "runs-compare-cell";
+    compareCell.dataset.label = "Compare";
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = isCompared;
@@ -105,6 +106,7 @@ export function createRunsTable(options: RunsTableOptions): HTMLElement {
     compareCell.append(checkbox);
 
     const runCell = document.createElement("td");
+    runCell.dataset.label = "Run";
     const runWrap = document.createElement("div");
     runWrap.className = "runs-run-cell";
     const runNumber = document.createElement("strong");
@@ -120,23 +122,28 @@ export function createRunsTable(options: RunsTableOptions): HTMLElement {
     runCell.append(runWrap);
 
     const statusCell = document.createElement("td");
+    statusCell.dataset.label = "Status";
     statusCell.append(statusChip(attempt.status));
 
-    const durationCell = createMonoTableCell(durationLabel(attempt));
-    const reasoningCell = createMonoTableCell(attempt.reasoningEffort ?? "—");
-    const tokenCell = createMonoTableCell(tokenBreakdown(attempt));
+    const startCell = setTableCellLabel(createTimeCell(attempt.startedAt), "Start");
+    const endCell = setTableCellLabel(createTimeCell(attempt.endedAt), "End");
+    const durationCell = setTableCellLabel(createMonoTableCell(durationLabel(attempt)), "Duration");
+    const modelCell = setTableCellLabel(createModelCell(attempt.model), "Model");
+    const reasoningCell = setTableCellLabel(createMonoTableCell(attempt.reasoningEffort ?? "—"), "Reasoning");
+    const tokenCell = setTableCellLabel(createMonoTableCell(tokenBreakdown(attempt)), "Tokens");
+    const errorCell = setTableCellLabel(createErrorCell(attempt), "Error");
 
     row.append(
       compareCell,
       runCell,
       statusCell,
-      createTimeCell(attempt.startedAt),
-      createTimeCell(attempt.endedAt),
+      startCell,
+      endCell,
       durationCell,
-      createModelCell(attempt.model),
+      modelCell,
       reasoningCell,
       tokenCell,
-      createErrorCell(attempt),
+      errorCell,
     );
     body.append(row);
   });

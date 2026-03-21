@@ -1,5 +1,6 @@
 import { createEmptyState } from "../components/empty-state";
 import { createPageHeader, createSummaryStrip } from "../components/page-header";
+import { router } from "../router";
 
 export function createGitPage(): HTMLElement {
   const page = document.createElement("div");
@@ -22,10 +23,11 @@ export function createGitPage(): HTMLElement {
   body.append(
     createEmptyState(
       "No git activity",
-      "Git operations and pull requests will appear here as issues are processed.",
-      undefined,
-      undefined,
+      "Branches and pull requests appear here after a run reaches the git automation stage.",
+      "Open queue",
+      () => router.navigate("/queue"),
       "default",
+      { secondaryActionLabel: "Review credentials", secondaryActionHref: "/secrets" },
     ),
   );
 

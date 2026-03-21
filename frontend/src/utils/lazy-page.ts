@@ -1,4 +1,5 @@
 import { skeletonCard } from "../ui/skeleton";
+import { decoratePageRoot } from "../ui/page-motion";
 
 interface PageModule {
   render: (params?: Record<string, string>) => HTMLElement;
@@ -22,15 +23,15 @@ export function lazyPage(importFn: () => Promise<PageModule>): (params?: Record<
 
   return (params?: Record<string, string>) => {
     const container = document.createElement("div");
-    container.className = "page lazy-page";
+    container.className = "page lazy-page lazy-page-skeleton";
 
     if (cached) {
-      return cached.render(params);
+      return decoratePageRoot(cached.render(params));
     }
 
     container.append(skeletonCard());
     void ensureLoaded().then((mod) => {
-      const rendered = mod.render(params);
+      const rendered = decoratePageRoot(mod.render(params));
       if (container.parentNode) {
         container.parentNode.replaceChild(rendered, container);
       } else {

@@ -18,6 +18,8 @@ interface ModalOptions {
 }
 
 export function createModal(options: ModalOptions): ModalController {
+  const titleId = `modal-title-${crypto.randomUUID()}`;
+  const descriptionId = `modal-description-${crypto.randomUUID()}`;
   const root = document.createElement("div");
   root.className = "modal-root";
   root.hidden = true;
@@ -32,25 +34,24 @@ export function createModal(options: ModalOptions): ModalController {
   panel.className = `modal-panel modal-panel-enhanced modal-${options.size ?? "md"}`;
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-modal", "true");
-  panel.setAttribute("aria-labelledby", "modal-title");
+  panel.setAttribute("aria-labelledby", titleId);
 
   const header = document.createElement("header");
   header.className = "modal-header";
   const copy = document.createElement("div");
   copy.className = "modal-copy";
   const title = document.createElement("h2");
-  title.id = "modal-title";
-  title.className = "text-truncate";
-  title.style.maxWidth = "100%";
+  title.id = titleId;
+  title.className = "modal-title text-truncate";
   title.textContent = options.title;
   copy.append(title);
   if (options.description) {
     const description = document.createElement("p");
-    description.id = "modal-description";
-    description.className = "text-secondary text-wrap";
+    description.id = descriptionId;
+    description.className = "modal-description text-secondary text-wrap";
     description.textContent = options.description;
     copy.append(description);
-    panel.setAttribute("aria-describedby", "modal-description");
+    panel.setAttribute("aria-describedby", descriptionId);
   }
 
   const closeButton = document.createElement("button");
@@ -73,7 +74,7 @@ export function createModal(options: ModalOptions): ModalController {
   panel.append(header, errorContainer, body, footer);
   root.append(backdrop, panel);
 
-  let previousFocus: Element | null = null;
+  let previousFocus: HTMLElement | null = null;
 
   const onKey = (event: KeyboardEvent): void => {
     if (event.key === "Escape") {
@@ -108,7 +109,7 @@ export function createModal(options: ModalOptions): ModalController {
   }
 
   function open(): void {
-    previousFocus = document.activeElement;
+    previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     const otherOpenRoots = Array.from(document.querySelectorAll<HTMLElement>(".modal-root:not([hidden])")).filter(
       (other) => other !== root,
@@ -136,24 +137,25 @@ export function createModal(options: ModalOptions): ModalController {
     if (root.hidden) {
       return;
     }
-    // Add closing class for exit animation
     root.classList.add("is-closing");
-
-    // Wait for animation to complete
     const panel = root.querySelector<HTMLElement>(".modal-panel");
+    let closed = false;
     const handleAnimationEnd = (): void => {
+      if (closed) {
+        return;
+      }
+      closed = true;
       root.hidden = true;
       root.setAttribute("aria-hidden", "true");
       root.classList.remove("is-closing");
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
-      if (previousFocus instanceof HTMLElement) {
+      if (previousFocus) {
         previousFocus.focus();
       }
       options.onClose?.();
     };
 
-    // Fallback in case animation doesn't fire
     const timeoutId = window.setTimeout(handleAnimationEnd, 300);
     panel?.addEventListener(
       "animationend",
@@ -169,6 +171,7 @@ export function createModal(options: ModalOptions): ModalController {
     close();
     window.removeEventListener("keydown", onKey);
     document.body.style.overflow = "";
+    root.remove();
   }
 
   function resetContent(): void {

@@ -146,8 +146,19 @@ export function createLogsPage(id: string): HTMLElement {
         createEmptyState(
           mode === "live" ? "Waiting for agent activity" : "No archived events recorded",
           mode === "live"
-            ? "Live issue detail has not emitted timeline events yet."
-            : "Archived attempt data does not include any event rows.",
+            ? "Live issue detail has not emitted timeline events yet. Stay here while the worker starts or refresh to check again."
+            : "Archived attempt data does not include any event rows. Switch back to live mode to watch the current stream.",
+          mode === "live" ? "Refresh logs" : "Switch to live logs",
+          () => {
+            if (mode === "live") {
+              void refresh(true);
+              return;
+            }
+            mode = "live";
+            render();
+            restartPolling();
+            void refresh(true);
+          },
         ),
       );
       return;

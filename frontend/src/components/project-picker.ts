@@ -1,5 +1,7 @@
 import { api } from "../api";
+import { router } from "../router.js";
 import type { LinearProject } from "../types";
+import { createEmptyState } from "./empty-state.js";
 
 interface ProjectPickerOptions {
   /** Called when a project is selected — receives the slugId. */
@@ -41,9 +43,19 @@ export function openProjectPicker(options: ProjectPickerOptions): void {
   }
 
   function renderProjects(projects: LinearProject[]): void {
-    list.textContent = "";
+    list.replaceChildren();
     if (projects.length === 0) {
-      list.textContent = "No projects found. Check your LINEAR_API_KEY.";
+      list.append(
+        createEmptyState(
+          "No projects found",
+          "Symphony could not load any Linear projects for the current credentials. Recheck the API key or finish setup first.",
+          "Open setup",
+          () => {
+            close();
+            router.navigate("/setup");
+          },
+        ),
+      );
       return;
     }
     for (const project of projects) {

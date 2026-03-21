@@ -386,14 +386,16 @@
 
 /* Toast with action button */
 .toast-with-action {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  align-items: stretch;
 }
 
 .toast-with-action .toast-message {
   flex: 1;
   word-wrap: break-word;
+}
+
+.toast-with-action .toast-content {
+  align-items: center;
 }
 
 /* ============================================

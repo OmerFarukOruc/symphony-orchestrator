@@ -12,6 +12,28 @@ function createZoneSeparator(): HTMLElement {
 export function initHeader(headerEl: HTMLElement): void {
   headerEl.replaceChildren();
 
+  const navButton = document.createElement("button");
+  navButton.type = "button";
+  navButton.className = "mc-button is-ghost is-icon-only header-action-btn shell-nav-toggle";
+  navButton.title = "Open navigation";
+  navButton.hidden = true;
+  navButton.setAttribute("aria-controls", "shell-sidebar");
+  navButton.setAttribute("aria-expanded", "false");
+  navButton.setAttribute("aria-label", "Open navigation");
+  navButton.append(createIcon("menu", { size: 18 }));
+  navButton.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("shell:toggle-sidebar"));
+  });
+
+  window.addEventListener("shell:sidebar-state", (event) => {
+    const detail = (event as CustomEvent<{ mobile: boolean; mobileOpen: boolean }>).detail;
+    navButton.hidden = !detail.mobile;
+    navButton.classList.toggle("is-active", detail.mobileOpen);
+    navButton.title = detail.mobileOpen ? "Close navigation" : "Open navigation";
+    navButton.setAttribute("aria-label", detail.mobileOpen ? "Close navigation" : "Open navigation");
+    navButton.setAttribute("aria-expanded", String(detail.mobileOpen));
+  });
+
   const brand = document.createElement("div");
   brand.className = "header-brand";
   const brandIcon = document.createElement("span");
@@ -60,17 +82,20 @@ export function initHeader(headerEl: HTMLElement): void {
   refreshButton.type = "button";
   refreshButton.className = "mc-button is-ghost is-icon-only header-action-btn";
   refreshButton.title = "Refresh";
+  refreshButton.setAttribute("aria-label", "Refresh orchestrator state");
   refreshButton.append(createIcon("refresh", { size: 16 }));
 
   const themeButton = document.createElement("button");
   themeButton.type = "button";
   themeButton.className = "mc-button is-ghost is-icon-only header-action-btn";
   themeButton.title = "Theme";
+  themeButton.setAttribute("aria-label", "Toggle color theme");
   themeButton.append(createIcon("theme", { size: 16 }));
 
   refreshButton.addEventListener("click", async () => {
     refreshButton.disabled = true;
     refreshButton.classList.add("is-disabled");
+    refreshButton.classList.add("is-busy");
     try {
       await api.postRefresh();
       toast("Refresh queued.", "success");
@@ -80,6 +105,7 @@ export function initHeader(headerEl: HTMLElement): void {
     window.setTimeout(() => {
       refreshButton.disabled = false;
       refreshButton.classList.remove("is-disabled");
+      refreshButton.classList.remove("is-busy");
     }, 500);
   });
 
@@ -89,5 +115,5 @@ export function initHeader(headerEl: HTMLElement): void {
   });
 
   actions.append(refreshButton, themeButton);
-  headerEl.append(brand, createZoneSeparator(), command, createZoneSeparator(), actions);
+  headerEl.append(navButton, brand, createZoneSeparator(), command, createZoneSeparator(), actions);
 }

@@ -5,6 +5,7 @@ import {
   createTableCell,
   createTableEmptyRow,
   createTableHead,
+  setTableCellLabel,
 } from "../ui/table";
 import { formatDuration, formatShortTime, formatTokenUsage } from "../utils/format";
 
@@ -37,16 +38,21 @@ export function createAttemptsTable(attempts: AttemptSummary[], onOpen: (attempt
 
   attempts.forEach((attempt) => {
     const row = document.createElement("tr");
-    row.append(
+    const runCell = setTableCellLabel(
       createTableCell(attempt.attemptNumber != null ? String(attempt.attemptNumber) : "—"),
-      createTableCell(attempt.status),
-      createMonoTableCell(formatShortTime(attempt.startedAt)),
-      createMonoTableCell(formatShortTime(attempt.endedAt)),
-      createMonoTableCell(durationForAttempt(attempt)),
-      createMonoTableCell(attempt.model ?? "—"),
-      createMonoTableCell(formatTokenUsage(attempt.tokenUsage?.totalTokens ?? null)),
-      createErrorCell(attempt),
+      "Run",
     );
+    const statusCell = setTableCellLabel(createTableCell(attempt.status), "Status");
+    const startCell = setTableCellLabel(createMonoTableCell(formatShortTime(attempt.startedAt)), "Start");
+    const endCell = setTableCellLabel(createMonoTableCell(formatShortTime(attempt.endedAt)), "End");
+    const durationCell = setTableCellLabel(createMonoTableCell(durationForAttempt(attempt)), "Duration");
+    const modelCell = setTableCellLabel(createMonoTableCell(attempt.model ?? "—"), "Model");
+    const tokensCell = setTableCellLabel(
+      createMonoTableCell(formatTokenUsage(attempt.tokenUsage?.totalTokens ?? null)),
+      "Tokens",
+    );
+    const errorCell = setTableCellLabel(createErrorCell(attempt), "Error");
+    row.append(runCell, statusCell, startCell, endCell, durationCell, modelCell, tokensCell, errorCell);
     applyTableRowInteraction(row, () => onOpen(attempt.attemptId), { keyboard: "enter" });
     body.append(row);
   });

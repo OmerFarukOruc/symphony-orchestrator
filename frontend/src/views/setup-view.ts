@@ -1,7 +1,7 @@
 import { api } from "../api";
 import { router } from "../router";
 
-type SetupStep = "master-key" | "linear-project" | "github-token" | "done";
+type SetupStep = "master-key" | "linear-project" | "openai-key" | "github-token" | "done";
 
 interface SetupState {
   step: SetupStep;
@@ -13,6 +13,9 @@ interface SetupState {
   projects: Array<{ id: unknown; name: unknown; slugId: string; teamKey: unknown }>;
   selectedProject: string | null;
   tokenInput: string;
+  openaiKeyInput: string;
+  authMode: "api_key" | "codex_login";
+  authJsonInput: string;
 }
 
 const state: SetupState = {
@@ -25,6 +28,9 @@ const state: SetupState = {
   projects: [],
   selectedProject: null,
   tokenInput: "",
+  openaiKeyInput: "",
+  authMode: "api_key",
+  authJsonInput: "",
 };
 
 let container: HTMLElement | null = null;
@@ -72,10 +78,11 @@ function buildStepIndicator(): HTMLElement {
   const steps: Array<{ key: SetupStep; label: string; n: string }> = [
     { key: "master-key", label: "Protect secrets", n: "1" },
     { key: "linear-project", label: "Connect Linear", n: "2" },
-    { key: "github-token", label: "Add GitHub", n: "3" },
+    { key: "openai-key", label: "Add OpenAI", n: "3" },
+    { key: "github-token", label: "Add GitHub", n: "4" },
   ];
 
-  const order: SetupStep[] = ["master-key", "linear-project", "github-token", "done"];
+  const order: SetupStep[] = ["master-key", "linear-project", "openai-key", "github-token", "done"];
   const currentIdx = order.indexOf(state.step);
 
   const row = document.createElement("div");
@@ -361,6 +368,198 @@ async function advanceLinearProject(): Promise<void> {
   state.error = null;
   try {
     await api.postLinearProject(state.selectedProject);
+    state.step = "openai-key";
+  } catch (err) {
+    state.error = err instanceof Error ? err.message : String(err);
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── Step: OpenAI Key ─────────────────────────────────────────────────────────
+
+function buildOpenaiKeyStep(): HTMLElement {
+  const el = document.createElement("div");
+
+  const titleRow = buildTitleWithBadge("Connect to OpenAI", "is-required", "Required");
+
+  const sub = document.createElement("div");
+  sub.className = "setup-subtitle";
+  sub.textContent = "Choose how Codex agents authenticate with OpenAI.";
+
+  // ── Auth mode selector cards ──
+  const modeWrap = document.createElement("div");
+  modeWrap.style.cssText =
+    "display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4)";
+
+  const apiKeyCard = document.createElement("div");
+  apiKeyCard.style.cssText =
+    `border:var(--stroke-default) solid ${state.authMode === "api_key" ? "var(--text-accent)" : "var(--border-stitch)"};` +
+    "padding:var(--space-3);background:var(--bg-muted);cursor:pointer;transition:border-color var(--motion-fast) var(--ease-out-quart)";
+  apiKeyCard.innerHTML =
+    '<div style="font-family:var(--font-body);font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:var(--space-1)">API Key</div>' +
+    '<div style="font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5">Paste an OpenAI API key directly. Best for pay-as-you-go accounts.</div>';
+  apiKeyCard.addEventListener("click", () => {
+    state.authMode = "api_key";
+    state.error = null;
+    rerender();
+  });
+
+  const loginCard = document.createElement("div");
+  loginCard.style.cssText =
+    `border:var(--stroke-default) solid ${state.authMode === "codex_login" ? "var(--text-accent)" : "var(--border-stitch)"};` +
+    "padding:var(--space-3);background:var(--bg-muted);cursor:pointer;transition:border-color var(--motion-fast) var(--ease-out-quart)";
+  loginCard.innerHTML =
+    '<div style="font-family:var(--font-body);font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:var(--space-1)">Codex Login</div>' +
+    '<div style="font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5">Use <code>codex login</code> OAuth flow. Best for OpenAI-authenticated accounts.</div>';
+  loginCard.addEventListener("click", () => {
+    state.authMode = "codex_login";
+    state.error = null;
+    rerender();
+  });
+
+  modeWrap.append(apiKeyCard, loginCard);
+  el.append(titleRow, sub, modeWrap);
+
+  // ── API Key mode ──
+  if (state.authMode === "api_key") {
+    const field = document.createElement("div");
+    field.className = "setup-field";
+
+    const label = document.createElement("label");
+    label.className = "setup-label";
+    label.innerHTML =
+      'OpenAI API Key &middot; <a class="setup-link" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Get one →</a>';
+
+    const input = document.createElement("input");
+    input.className = "setup-input";
+    input.type = "password";
+    input.placeholder = "sk-…";
+    input.value = state.openaiKeyInput;
+    input.addEventListener("input", () => {
+      state.openaiKeyInput = input.value;
+    });
+
+    field.append(label, input);
+    el.append(field);
+  }
+
+  // ── Codex Login mode ──
+  if (state.authMode === "codex_login") {
+    const instructions = document.createElement("div");
+    instructions.className = "setup-callout";
+    instructions.innerHTML =
+      '<div style="margin-bottom:var(--space-3)">' +
+      '<strong style="color:var(--text-accent)">⚠ Prerequisite</strong>' +
+      '<div style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:var(--space-1);line-height:1.6">' +
+      'If using <code>--device-auth</code> (recommended for remote/Docker), you must first enable it in your ChatGPT account: ' +
+      '<a class="setup-link" href="https://chatgpt.com/#settings/Security" target="_blank" rel="noopener">ChatGPT Settings → Security</a> → ' +
+      'toggle <strong>"Enable device code authorization for Codex"</strong> on.' +
+      '</div>' +
+      '</div>' +
+      '<strong>Steps:</strong>' +
+      '<ol style="margin:var(--space-2) 0 0;padding-left:var(--space-4);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8">' +
+      '<li>Run <code>codex login --device-auth</code> in your terminal</li>' +
+      '<li>Open <a class="setup-link" href="https://auth.openai.com/codex/device" target="_blank" rel="noopener">auth.openai.com/codex/device</a> and enter the one-time code shown in the terminal</li>' +
+      '<li>Approve the sign-in on the ChatGPT authorization page</li>' +
+      '<li>Once authenticated, find <code>~/.codex/auth.json</code> (run <code>cat ~/.codex/auth.json</code>) and paste below or upload the file</li>' +
+      '</ol>' +
+      '<div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:var(--space-2);font-style:italic">' +
+      'Tip: If you have a browser available, <code>codex login</code> (without <code>--device-auth</code>) opens the OAuth flow directly.' +
+      '</div>';
+
+    const field = document.createElement("div");
+    field.className = "setup-field";
+
+    const label = document.createElement("label");
+    label.className = "setup-label";
+    label.textContent = "auth.json contents";
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "setup-input";
+    textarea.style.cssText = "min-height:100px;font-family:var(--font-mono);font-size:var(--text-xs);resize:vertical";
+    textarea.placeholder = '{"access_token":"...","refresh_token":"...","...":"..."}';
+    textarea.value = state.authJsonInput;
+    textarea.addEventListener("input", () => {
+      state.authJsonInput = textarea.value;
+    });
+
+    // File upload button
+    const uploadRow = document.createElement("div");
+    uploadRow.style.cssText = "display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2)";
+
+    const uploadBtn = document.createElement("button");
+    uploadBtn.className = "mc-button is-ghost is-sm";
+    uploadBtn.textContent = "Upload auth.json";
+    uploadBtn.addEventListener("click", () => {
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".json,application/json";
+      fileInput.addEventListener("change", () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.addEventListener("load", () => {
+          state.authJsonInput = reader.result as string;
+          rerender();
+        });
+        reader.readAsText(file);
+      });
+      fileInput.click();
+    });
+
+    uploadRow.append(uploadBtn);
+    field.append(label, textarea);
+    el.append(instructions, field, uploadRow);
+  }
+
+  if (state.error) {
+    const err = document.createElement("div");
+    err.className = "setup-error";
+    err.textContent = state.error;
+    el.append(err);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "setup-actions";
+
+  const skip = document.createElement("button");
+  skip.className = "mc-button is-ghost is-sm";
+  skip.textContent = "Skip for now";
+  skip.addEventListener("click", () => {
+    state.step = "github-token";
+    state.error = null;
+    rerender();
+  });
+
+  const saveBtn = document.createElement("button");
+  saveBtn.className = "mc-button is-primary";
+  saveBtn.textContent = state.loading ? "Saving…" : "Validate & Save";
+  const hasInput = state.authMode === "api_key" ? !!state.openaiKeyInput : !!state.authJsonInput;
+  saveBtn.disabled = state.loading || !hasInput;
+  saveBtn.addEventListener("click", () => void advanceOpenaiAuth());
+
+  actions.append(skip, saveBtn);
+  el.append(actions);
+
+  return el;
+}
+
+async function advanceOpenaiAuth(): Promise<void> {
+  setLoading(true);
+  state.error = null;
+  try {
+    if (state.authMode === "api_key") {
+      if (!state.openaiKeyInput) return;
+      const result = await api.postOpenaiKey(state.openaiKeyInput);
+      if (!result.valid) {
+        state.error = "Key validation failed — check your key and try again.";
+        return;
+      }
+    } else {
+      if (!state.authJsonInput) return;
+      await api.postCodexAuth(state.authJsonInput);
+    }
     state.step = "github-token";
   } catch (err) {
     state.error = err instanceof Error ? err.message : String(err);
@@ -497,30 +696,18 @@ function buildDoneStep(): HTMLElement {
 
   const desc = document.createElement("div");
   desc.className = "setup-done-desc";
-  desc.textContent = "Symphony is connected and ready. Next: create a workflow file and start Symphony from your terminal.";
-
-  const code = document.createElement("pre");
-  code.className = "mc-code-panel setup-done-code";
-  code.textContent = "node dist/cli.js ./WORKFLOW.example.md --port 4000";
-
-  const docLink = document.createElement("a");
-  docLink.className = "setup-link";
-  docLink.textContent = "View workflow file documentation →";
-  docLink.href = "#";
-  docLink.addEventListener("click", (e) => {
-    e.preventDefault();
-    router.navigate("/");
-  });
+  desc.textContent = "Symphony is connected and ready. Head to the dashboard to see your issues.";
 
   const goBtn = document.createElement("button");
   goBtn.className = "mc-button is-primary";
   goBtn.style.marginTop = "var(--space-5)";
   goBtn.textContent = "Go to Dashboard →";
   goBtn.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("setup:complete"));
     router.navigate("/");
   });
 
-  el.append(icon, title, desc, code, docLink, goBtn);
+  el.append(icon, title, desc, goBtn);
   return el;
 }
 
@@ -532,6 +719,8 @@ function buildStepContent(): HTMLElement {
       return buildMasterKeyStep();
     case "linear-project":
       return buildLinearProjectStep();
+    case "openai-key":
+      return buildOpenaiKeyStep();
     case "github-token":
       return buildGithubTokenStep();
     case "done":
@@ -588,6 +777,8 @@ export function createSetupPage(): HTMLElement {
       state.generatedKey = state.generatedKey ?? "set";
       if (!status.steps.linearProject.done) {
         state.step = "linear-project";
+      } else if (!status.steps.openaiKey.done) {
+        state.step = "openai-key";
       } else if (!status.steps.githubToken.done) {
         state.step = "github-token";
       } else {

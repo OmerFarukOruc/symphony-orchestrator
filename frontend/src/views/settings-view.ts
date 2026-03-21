@@ -122,7 +122,13 @@ export function createSettingsPage(): HTMLElement {
       isEmpty: (data) => buildSettingsSections(data.schema, data.effective).length === 0,
       renderLoading: () => skeletonBlock("320px"),
       renderError: (error) => createEmptyState("Settings unavailable", error, "Retry", () => void load()),
-      renderEmpty: () => createEmptyState("No settings available", "Symphony did not return any editable settings."),
+      renderEmpty: () =>
+        createEmptyState(
+          "No settings available",
+          "Symphony did not return any editable settings.",
+          "Retry",
+          () => void load(),
+        ),
       renderContent: (data) =>
         renderLoadedSettings(rail, content, searchInput, state, data, {
           onFilter: (value) => {

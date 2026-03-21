@@ -1,4 +1,5 @@
 let outletEl: HTMLElement | null = null;
+let routeAnnouncerEl: HTMLElement | null = null;
 
 export function initShell(root: HTMLElement): { sidebarEl: HTMLElement; headerEl: HTMLElement } {
   root.innerHTML = "";
@@ -24,6 +25,12 @@ export function initShell(root: HTMLElement): { sidebarEl: HTMLElement; headerEl
   const headerEl = document.createElement("header");
   headerEl.className = "shell-header";
 
+  routeAnnouncerEl = document.createElement("div");
+  routeAnnouncerEl.className = "sr-only";
+  routeAnnouncerEl.setAttribute("role", "status");
+  routeAnnouncerEl.setAttribute("aria-live", "polite");
+  routeAnnouncerEl.setAttribute("aria-atomic", "true");
+
   outletEl = document.createElement("main");
   outletEl.className = "shell-outlet";
   outletEl.id = "main-content";
@@ -31,7 +38,7 @@ export function initShell(root: HTMLElement): { sidebarEl: HTMLElement; headerEl
   outletEl.setAttribute("aria-label", "Main content");
   outletEl.setAttribute("tabindex", "-1");
 
-  contentEl.append(bannerEl, headerEl, outletEl);
+  contentEl.append(bannerEl, headerEl, routeAnnouncerEl, outletEl);
   root.append(skipLink, sidebarEl, contentEl);
 
   return { sidebarEl, headerEl };
@@ -39,4 +46,8 @@ export function initShell(root: HTMLElement): { sidebarEl: HTMLElement; headerEl
 
 export function getOutlet(): HTMLElement | null {
   return outletEl;
+}
+
+export function getRouteAnnouncer(): HTMLElement | null {
+  return routeAnnouncerEl;
 }

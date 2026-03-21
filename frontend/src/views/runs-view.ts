@@ -84,16 +84,34 @@ export function createRunsPage(issueId: string): HTMLElement {
       return;
     }
     if (state.error) {
-      tableColumn.replaceChildren(createEmptyState("Run history unavailable", state.error));
-      detailColumn.replaceChildren(createEmptyState("No run selected", "Retry once archived runs are available."));
+      tableColumn.replaceChildren(
+        createEmptyState("Run history unavailable", state.error, "Back to issue", () =>
+          router.navigate(`/issues/${state.issueIdentifier}`),
+        ),
+      );
+      detailColumn.replaceChildren(
+        createEmptyState("No run selected", "Retry once archived runs are available.", "View issue logs", () =>
+          router.navigate(`/issues/${state.issueIdentifier}/logs`),
+        ),
+      );
       return;
     }
     if (state.attempts.length === 0) {
       tableColumn.replaceChildren(
-        createEmptyState("No archived runs yet", "This issue has not finished an archived attempt yet."),
+        createEmptyState(
+          "No archived runs yet",
+          "Archived runs appear after the first attempt finishes and Symphony persists the summary.",
+          "View live logs",
+          () => router.navigate(`/issues/${state.issueIdentifier}/logs`),
+        ),
       );
       detailColumn.replaceChildren(
-        createEmptyState("No run selected", "Archived run summaries appear here once the first attempt lands."),
+        createEmptyState(
+          "No run selected",
+          "Archived run summaries appear here once the first attempt lands.",
+          "Back to issue",
+          () => router.navigate(`/issues/${state.issueIdentifier}`),
+        ),
       );
       return;
     }
@@ -130,7 +148,11 @@ export function createRunsPage(issueId: string): HTMLElement {
     }
     const attempt = activeAttempt(state);
     if (!attempt) {
-      detailColumn.replaceChildren(createEmptyState("No run selected", "Pick a run to inspect its summary."));
+      detailColumn.replaceChildren(
+        createEmptyState("No run selected", "Pick a run to inspect its summary.", "Back to issue", () =>
+          router.navigate(`/issues/${state.issueIdentifier}`),
+        ),
+      );
       return;
     }
     if (state.detailLoadingId === attempt.attemptId && !activeAttemptDetail(state)) {

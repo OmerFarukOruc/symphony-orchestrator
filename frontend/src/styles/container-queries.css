@@ -1,0 +1,153 @@
+.overview-page,
+.runs-page,
+.secrets-page,
+.observability-page,
+.kanban-board-wrap,
+.runs-table-wrap,
+.attempts-table-wrap,
+.secrets-table-wrap,
+.kanban-column,
+.observability-section,
+.observability-shell,
+.queue-layout {
+  container-type: inline-size;
+}
+
+.kanban-card,
+.overview-secondary,
+.observability-card,
+.observability-hero,
+.runs-layout,
+.secrets-layout {
+  container-type: inline-size;
+}
+
+@container (max-width: 980px) {
+  .overview-main-grid,
+  .runs-layout,
+  .secrets-layout,
+  .observability-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .runs-detail-column,
+  .observability-raw-drawer {
+    border-left: none;
+    padding-left: 0;
+  }
+}
+
+@container (max-width: 720px) {
+  .overview-hero-band {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .overview-row-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .overview-token-grid,
+  .runs-summary-strip,
+  .runs-compare-cards,
+  .runs-compare-metric,
+  .observability-grid,
+  .observability-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .observability-card-header,
+  .observability-section-header,
+  .observability-raw-header {
+    flex-direction: column;
+  }
+}
+
+@container (max-width: 920px) {
+  .kanban-board {
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+}
+
+@container (max-width: 360px) {
+  .kanban-column-header {
+    flex-wrap: wrap;
+  }
+
+  .kanban-column-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@container (max-width: 320px) {
+  .kanban-card {
+    padding: var(--space-2);
+  }
+
+  .kanban-card-title {
+    font-size: var(--text-sm);
+  }
+
+  .kanban-card-desc {
+    font-size: var(--text-xs);
+  }
+}
+
+@container (max-width: 760px) {
+  .runs-table,
+  .attempts-table {
+    display: block;
+  }
+
+  .runs-table thead,
+  .attempts-table thead {
+    display: none;
+  }
+
+  .runs-table tbody,
+  .attempts-table tbody {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .runs-table tbody tr,
+  .attempts-table tbody tr {
+    display: grid;
+    gap: var(--space-2);
+    border: 1px solid var(--border-stitch);
+    background: var(--bg-surface);
+    padding: var(--space-3);
+  }
+
+  .runs-table td,
+  .attempts-table td {
+    display: grid;
+    grid-template-columns: minmax(88px, 112px) minmax(0, 1fr);
+    gap: var(--space-2);
+    padding: 0;
+    border-bottom: none;
+    align-items: start;
+  }
+
+  .runs-table td::before,
+  .attempts-table td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+  }
+
+  .runs-compare-cell,
+  .runs-run-cell,
+  .runs-time-cell {
+    align-items: start;
+  }
+}

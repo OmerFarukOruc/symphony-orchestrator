@@ -1,4 +1,5 @@
 import { getOutlet } from "./ui/shell";
+import { decoratePageRoot } from "./ui/page-motion";
 
 interface Route {
   path: string;
@@ -8,6 +9,12 @@ interface Route {
 
 interface InternalRoute extends Route {
   keys: string[];
+}
+
+interface RouterNavigateDetail {
+  path: string;
+  params: Record<string, string>;
+  title: string;
 }
 
 function compileRoute(path: string): Pick<InternalRoute, "pattern" | "keys"> {
@@ -31,15 +38,22 @@ function compileRoute(path: string): Pick<InternalRoute, "pattern" | "keys"> {
 
 class Router {
   private routes: InternalRoute[] = [];
+  private guard: ((path: string) => string | null) | null = null;
 
   register(path: string, render: (params: Record<string, string>) => HTMLElement): void {
     const compiled = compileRoute(path);
     this.routes.push({ path, render, ...compiled });
   }
 
+  setGuard(fn: (path: string) => string | null): void {
+    this.guard = fn;
+  }
+
   navigate(path: string): void {
-    if (window.location.pathname !== path) {
-      window.history.pushState({}, "", path);
+    const redirect = this.guard?.(path) ?? null;
+    const target = redirect ?? path;
+    if (window.location.pathname !== target) {
+      window.history.pushState({}, "", target);
     }
     this.renderCurrent();
   }
@@ -66,17 +80,29 @@ class Router {
 
   private renderCurrent(): void {
     const outlet = getOutlet();
-    const matched = this.match(window.location.pathname) ?? this.match("/");
+    const redirect = this.guard?.(window.location.pathname) ?? null;
+    if (redirect && window.location.pathname !== redirect) {
+      window.history.replaceState({}, "", redirect);
+    }
+    const pathname = redirect ?? window.location.pathname;
+    const matched = this.match(pathname) ?? this.match("/");
     if (!outlet || !matched) {
       return;
     }
-    outlet.replaceChildren(matched.route.render(matched.params));
+    const rendered = decoratePageRoot(matched.route.render(matched.params));
+    outlet.replaceChildren(rendered);
+    const title = getRouteTitle(rendered);
     window.dispatchEvent(
       new CustomEvent("router:navigate", {
-        detail: { path: window.location.pathname, params: matched.params },
+        detail: { path: window.location.pathname, params: matched.params, title } satisfies RouterNavigateDetail,
       }),
     );
   }
+}
+
+function getRouteTitle(rendered: HTMLElement): string {
+  const titleElement = rendered.querySelector<HTMLElement>(".page-title, .issue-title, h1");
+  return titleElement?.textContent?.trim() || document.title || "Symphony";
 }
 
 export { type Route, Router };

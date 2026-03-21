@@ -1,0 +1,174 @@
+/* ============================================
+   POLISH MOTION
+   Enhanced motion — page transitions, micro-interactions,
+   and stagger refinements for premium feel.
+   Layered on top of animations.css
+   ============================================ */
+
+/* ── Page transition — cross-fade with slide ──────────── */
+
+.page-enter {
+  animation: polishPageIn var(--motion-slow) var(--ease-out-expo) both;
+}
+
+@keyframes polishPageIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(2px);
+  }
+  40% {
+    filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* ── Auto-stagger refinement ─────────────────────────── */
+
+.page-auto-stagger {
+  --stagger-base-delay: 40ms;
+  animation: polishStaggerIn var(--motion-medium) var(--ease-out-quart) both;
+  animation-delay: calc(var(--stagger-index, 0) * var(--stagger-base-delay));
+}
+
+@keyframes polishStaggerIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Interactive element micro-feedback ───────────────── */
+
+.mc-button,
+.sidebar-item,
+.kanban-card,
+.issue-card,
+.setup-project-card {
+  transition:
+    color var(--motion-fast) var(--ease-out-quart),
+    background-color var(--motion-fast) var(--ease-out-quart),
+    border-color var(--motion-fast) var(--ease-out-quart),
+    box-shadow var(--motion-fast) var(--ease-out-quart),
+    transform var(--motion-fast) var(--ease-out-quint);
+}
+
+.mc-button:active:not(:disabled),
+.setup-project-card:active {
+  transform: scale(0.98);
+  transition-duration: 80ms;
+}
+
+/* ── Focus ring animation ─────────────────────────────── */
+
+.mc-button:focus-visible,
+.mc-input:focus-visible,
+.setup-input:focus-visible,
+.sidebar-item:focus-visible {
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--text-accent));
+  outline-offset: var(--focus-ring-offset, 2px);
+  animation: polishFocusRing var(--motion-fast) var(--ease-out-quart);
+}
+
+@keyframes polishFocusRing {
+  from {
+    outline-offset: 4px;
+    outline-color: transparent;
+  }
+  to {
+    outline-offset: var(--focus-ring-offset, 2px);
+    outline-color: var(--focus-ring-color, var(--text-accent));
+  }
+}
+
+/* ── Skeleton shimmer enhancement ─────────────────────── */
+
+.skeleton {
+  background:
+    linear-gradient(
+      90deg,
+      var(--bg-muted) 0%,
+      color-mix(in srgb, var(--bg-muted) 60%, var(--bg-elevated)) 40%,
+      var(--bg-muted) 80%
+    );
+  background-size: 200% 100%;
+  animation: polishShimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes polishShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ── Toast entrance ───────────────────────────────────── */
+
+.toast {
+  animation: polishToastIn var(--motion-medium) var(--ease-out-quint) both;
+}
+
+.toast.is-exiting {
+  animation: polishToastOut var(--motion-fast) var(--ease-out-quart) both;
+}
+
+@keyframes polishToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes polishToastOut {
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+}
+
+/* ── Reduced motion — respect user preference ─────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .page-auto-stagger {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+  }
+
+  .mc-button,
+  .sidebar-item,
+  .kanban-card,
+  .issue-card,
+  .setup-project-card {
+    transition-duration: 0.01ms;
+  }
+
+  .mc-button:active:not(:disabled),
+  .setup-project-card:active {
+    transform: none;
+  }
+
+  .skeleton {
+    animation: none !important;
+    opacity: 0.5;
+  }
+
+  .toast,
+  .toast.is-exiting {
+    animation-duration: 0.01ms !important;
+  }
+}

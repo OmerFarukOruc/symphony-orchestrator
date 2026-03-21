@@ -1,4 +1,4 @@
-import { createField } from "../components/forms";
+import { createField, createTextInput, createTextareaControl } from "../components/forms";
 import { openConfirmModal } from "../ui/confirm-modal.js";
 import type { SecretsState } from "./secrets-state";
 
@@ -20,15 +20,17 @@ interface DeleteSecretModalOptions {
 }
 
 export function openAddSecretModal(options: AddSecretModalOptions): () => void {
-  const keyInput = Object.assign(document.createElement("input"), {
+  const keyInput = createTextInput({
     className: "mc-input text-mono",
     placeholder: "LINEAR_API_KEY",
     value: options.state.draftKey,
+    required: true,
   });
-  const valueInput = Object.assign(document.createElement("textarea"), {
+  const valueInput = createTextareaControl({
     className: "mc-textarea secrets-value",
     placeholder: "Paste the secret value",
     value: options.state.draftValue,
+    required: true,
   });
 
   keyInput.addEventListener("input", () => {
@@ -41,8 +43,8 @@ export function openAddSecretModal(options: AddSecretModalOptions): () => void {
   const form = document.createElement("div");
   form.className = "form-grid";
   form.append(
-    createField({ label: "Key" }, keyInput),
-    createField({ label: "Value", hint: "Value is never returned after save." }, valueInput),
+    createField({ label: "Key", required: true }, keyInput),
+    createField({ label: "Value", hint: "Value is never returned after save.", required: true }, valueInput),
   );
 
   return openConfirmModal({
@@ -63,13 +65,18 @@ export function openAddSecretModal(options: AddSecretModalOptions): () => void {
 
 export function openDeleteSecretModal(options: DeleteSecretModalOptions): () => void {
   let setConfirmDisabled: ((disabled: boolean) => void) | null = null;
-  const confirmInput = Object.assign(document.createElement("input"), {
+  const confirmInput = createTextInput({
     className: "mc-input text-mono",
     value: options.state.deleteConfirm,
     placeholder: options.state.selectedKey,
+    required: true,
   });
   const field = createField(
-    { label: "Confirmation", hint: `Type ${options.state.selectedKey} exactly to enable deletion.` },
+    {
+      label: "Confirmation",
+      hint: `Type ${options.state.selectedKey} exactly to enable deletion.`,
+      required: true,
+    },
     confirmInput,
   );
 

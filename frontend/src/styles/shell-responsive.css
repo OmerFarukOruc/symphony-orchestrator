@@ -1,0 +1,125 @@
+.shell-content,
+.shell-outlet {
+  min-width: 0;
+}
+
+.shell-content {
+  container-type: inline-size;
+}
+
+.shell-sidebar-backdrop,
+.shell-nav-toggle {
+  display: none;
+}
+
+@container (max-width: 960px) {
+  .shell-header {
+    gap: var(--space-3);
+    padding-inline: var(--space-4);
+  }
+
+  .header-command-trigger {
+    max-width: 280px;
+  }
+
+  .header-command-label {
+    display: none;
+  }
+}
+
+@container (max-width: 720px) {
+  .shell-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    min-height: var(--header-height);
+    padding-inline: var(--space-3);
+  }
+
+  .header-zone-separator,
+  .header-env-badge {
+    display: none;
+  }
+
+  .header-brand-name {
+    display: none;
+  }
+
+  .header-command {
+    min-width: 0;
+    justify-content: stretch;
+  }
+
+  .header-command-trigger {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .header-actions {
+    gap: var(--space-1);
+  }
+
+  .shell-outlet {
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 760px) {
+  .shell-nav-toggle,
+  .shell-sidebar-backdrop {
+    display: inline-flex;
+  }
+
+  .shell-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    border: none;
+    background: color-mix(in srgb, var(--bg-base) 62%, transparent);
+    cursor: pointer;
+  }
+
+  .shell-sidebar.is-mobile {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 100;
+    width: min(86vw, var(--sidebar-width-expanded));
+    max-width: 340px;
+    transform: translateX(-100%);
+    border-right: 1px solid var(--border-stitch);
+    box-shadow: var(--shadow-lg);
+    transition:
+      transform 0.22s var(--ease-out-quart),
+      width 0.22s var(--ease-out-quart);
+  }
+
+  .shell-sidebar.is-mobile.is-mobile-open {
+    transform: translateX(0);
+  }
+
+  .shell-sidebar.is-mobile:not(.is-mobile-open) {
+    pointer-events: none;
+  }
+
+  .shell-sidebar.is-mobile .sidebar-group-label,
+  .shell-sidebar.is-mobile .sidebar-item-label,
+  .shell-sidebar.is-mobile .sidebar-group-toggle,
+  .shell-sidebar.is-mobile .sidebar-hotkey,
+  .shell-sidebar.is-mobile .sidebar-collapse-label {
+    display: inline;
+  }
+
+  .shell-sidebar.is-mobile .sidebar-hotkey {
+    display: block;
+  }
+
+  .shell-sidebar.is-mobile .sidebar-item {
+    justify-content: flex-start;
+    padding: 0 var(--space-2);
+  }
+
+  .shell-sidebar.is-mobile .sidebar-item-tooltip {
+    display: none;
+  }
+}

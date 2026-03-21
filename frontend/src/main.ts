@@ -1,8 +1,12 @@
 import "./agentation-island";
 import "./styles/tokens.css";
+import "./styles/polish-tokens.css";
 import "./styles/animations.css";
+import "./styles/polish-motion.css";
 import "./styles/primitives.css";
 import "./styles/shell.css";
+import "./styles/shell-responsive.css";
+import "./styles/polish-brand.css";
 import "./styles/palette.css";
 import "./styles/components.css";
 import "./styles/diff.css";
@@ -10,6 +14,7 @@ import "./styles/forms.css";
 import "./styles/modal.css";
 import "./styles/hardening.css";
 import "./styles/kanban.css";
+import "./styles/container-queries.css";
 
 import { api } from "./api";
 import { lazyPage } from "./utils/lazy-page";
@@ -18,11 +23,26 @@ import { startPolling } from "./state/polling";
 import { initCommandPalette } from "./ui/command-palette";
 import { initHeader } from "./ui/header";
 import { initKeyboard } from "./ui/keyboard";
-import { initShell } from "./ui/shell";
+import { getRouteAnnouncer, initShell } from "./ui/shell";
 import { initSidebar } from "./ui/sidebar";
 import { initTheme } from "./ui/theme";
 
 let lastIssueContextId: string | null = null;
+
+function setDocumentTitle(pageTitle: string): void {
+  document.title = pageTitle === "Symphony" ? pageTitle : `${pageTitle} · Symphony`;
+}
+
+function announceRouteChange(pageTitle: string): void {
+  const announcer = getRouteAnnouncer();
+  if (!announcer) {
+    return;
+  }
+  announcer.textContent = "";
+  window.setTimeout(() => {
+    announcer.textContent = pageTitle;
+  }, 30);
+}
 
 function rememberIssueContext(path: string): void {
   const matchers = [/^\/issues\/([^/]+)(?:\/[^/]+)?$/, /^\/queue\/([^/]+)$/, /^\/logs\/([^/]+)$/];
@@ -47,15 +67,21 @@ if (!app) {
   throw new Error("#app root not found");
 }
 
+app.classList.add("shell-app");
+
 const { sidebarEl, headerEl } = initShell(app);
 initSidebar(sidebarEl);
 initHeader(headerEl);
 initKeyboard(router, { resolveRunHistoryPath: currentIssueRunsPath });
 initCommandPalette();
 window.addEventListener("router:navigate", (event) => {
-  const detail = (event as CustomEvent<{ path?: string }>).detail;
+  const detail = (event as CustomEvent<{ path?: string; title?: string }>).detail;
   if (detail?.path) {
     rememberIssueContext(detail.path);
+  }
+  if (detail?.title) {
+    setDocumentTitle(detail.title);
+    announceRouteChange(detail.title);
   }
 });
 
@@ -100,14 +126,32 @@ router.register("/setup", setup);
 router.init();
 startPolling();
 
-// Redirect to setup wizard if not yet configured
+// Block all navigation to non-/setup paths until setup is complete
+let setupComplete = false;
+router.setGuard((path) => {
+  if (setupComplete || path === "/setup") return null;
+  return "/setup";
+});
+
 api
   .getSetupStatus()
   .then((status) => {
-    if (!status.configured && window.location.pathname !== "/setup") {
-      router.navigate("/setup");
+    if (status.configured) {
+      setupComplete = true;
+      router.setGuard(() => null);
+      if (window.location.pathname === "/setup") {
+        router.navigate("/");
+      }
     }
   })
   .catch(() => {
-    // Server may not have setup endpoint yet (older version) — ignore
+    // Server may not have setup endpoint yet — allow navigation
+    setupComplete = true;
+    router.setGuard(() => null);
   });
+
+// Listen for setup completion from the setup wizard
+window.addEventListener("setup:complete", () => {
+  setupComplete = true;
+  router.setGuard(() => null);
+});

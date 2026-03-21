@@ -126,6 +126,7 @@ export interface SetupStatus {
   steps: {
     masterKey: { done: boolean };
     linearProject: { done: boolean };
+    openaiKey: { done: boolean };
     githubToken: { done: boolean };
   };
 }

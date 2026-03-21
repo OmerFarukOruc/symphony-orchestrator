@@ -1,5 +1,6 @@
 import { createEmptyState } from "../components/empty-state";
 import { createPageHeader, createSummaryStrip } from "../components/page-header";
+import { router } from "../router";
 
 export function createContainersPage(): HTMLElement {
   const page = document.createElement("div");
@@ -22,10 +23,11 @@ export function createContainersPage(): HTMLElement {
   body.append(
     createEmptyState(
       "No containers",
-      "Containers are provisioned when sandbox mode is enabled.",
-      undefined,
-      undefined,
+      "Containers appear here when sandboxed runs start and Docker-backed execution is enabled.",
+      "Open settings",
+      () => router.navigate("/settings"),
       "default",
+      { secondaryActionLabel: "Setup guide", secondaryActionHref: "/setup" },
     ),
   );
 

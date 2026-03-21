@@ -1,0 +1,174 @@
+/* ============================================
+   POLISH BRAND
+   Premium brand refinements — typography upgrades,
+   surface treatments, and visual consistency polish.
+   Layered on top of shell.css + components.css
+   ============================================ */
+
+/* ── Accessibility: skip link ─────────────────────────── */
+
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: var(--space-3);
+  z-index: var(--z-toast, 500);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-elevated);
+  color: var(--text-accent);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border: 1px solid var(--border-stitch);
+  box-shadow: var(--shadow-md);
+  transition: top var(--motion-fast) var(--ease-out-quart);
+}
+
+.skip-link:focus {
+  top: var(--space-3);
+}
+
+/* ── Screen-reader only utility ───────────────────────── */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Header brand polish ──────────────────────────────── */
+
+.header-brand-icon {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--text-accent) 30%, transparent));
+}
+
+.header-brand-name {
+  background: linear-gradient(
+    135deg,
+    var(--text-primary) 0%,
+    color-mix(in srgb, var(--text-accent) 50%, var(--text-primary)) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Sidebar polish ───────────────────────────────────── */
+
+.shell-sidebar {
+  box-shadow: var(--shadow-inset-sm, none);
+}
+
+.sidebar-item.is-active {
+  box-shadow:
+    inset 3px 0 0 var(--text-accent),
+    inset 0 0 12px -4px color-mix(in srgb, var(--text-accent) 10%, transparent);
+}
+
+.sidebar-item.is-active .sidebar-icon {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--text-accent) 40%, transparent));
+}
+
+/* ── Card / surface polish ────────────────────────────── */
+
+.kanban-card,
+.issue-card {
+  box-shadow:
+    var(--shadow-sm),
+    var(--shadow-inset-sm, none);
+}
+
+.kanban-card:hover,
+.issue-card:hover {
+  box-shadow:
+    var(--shadow-md),
+    var(--shadow-glow-sm, none);
+  transform: translateY(var(--hover-lift, -1px));
+}
+
+/* ── Status chip glow — running state indicator ──────── */
+
+.is-status-running::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid color-mix(in srgb, var(--status-running) 30%, transparent);
+  pointer-events: none;
+  animation: statusGlow 2s ease-in-out infinite;
+}
+
+@keyframes statusGlow {
+  0%, 100% {
+    border-color: color-mix(in srgb, var(--status-running) 20%, transparent);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--status-running) 10%, transparent);
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--status-running) 40%, transparent);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--status-running) 20%, transparent);
+  }
+}
+
+/* ── Setup wizard polish ──────────────────────────────── */
+
+.setup-page {
+  box-shadow: var(--shadow-inset-sm, none);
+}
+
+.setup-step-dot {
+  box-shadow: var(--shadow-sm);
+}
+
+.setup-step-indicator.is-active .setup-step-dot {
+  box-shadow: var(--shadow-glow-sm, var(--shadow-sm));
+}
+
+.setup-project-card.is-selected {
+  box-shadow: var(--shadow-glow-md, var(--shadow-md));
+}
+
+/* ── Input polish ─────────────────────────────────────── */
+
+.setup-input:focus,
+.mc-input:focus {
+  box-shadow:
+    0 0 0 var(--focus-ring-width, 2px) var(--focus-ring-color, var(--text-accent)),
+    var(--shadow-sm);
+  border-color: var(--text-accent);
+}
+
+/* ── Scrollbar polish ─────────────────────────────────── */
+
+.shell-outlet::-webkit-scrollbar {
+  width: 6px;
+}
+
+.shell-outlet::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.shell-outlet::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: var(--radius-full);
+}
+
+.shell-outlet::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Firefox */
+.shell-outlet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+}
+
+/* ── Selection polish ─────────────────────────────────── */
+
+::selection {
+  background: color-mix(in srgb, var(--text-accent) 30%, transparent);
+  color: var(--text-primary);
+}

@@ -12,6 +12,7 @@ interface KanbanCardOptions {
   onOpen: () => void;
   onFullPage: () => void;
   onFocus: () => void;
+  onMove?: (direction: -1 | 1) => void;
 }
 
 export interface KanbanCardHandle {
@@ -60,9 +61,15 @@ export function createKanbanCard(options: KanbanCardOptions): KanbanCardHandle {
 
   const footer = document.createElement("div");
   footer.className = "kanban-card-footer";
+  const footerMeta = document.createElement("span");
+  footerMeta.className = "kanban-card-footer-meta";
   const tokens = document.createElement("span");
   const updated = document.createElement("span");
-  footer.append(tokens, updated);
+  const hint = document.createElement("span");
+  hint.className = "kanban-card-hint";
+  hint.textContent = "↵ open · ⇧↵ full";
+  footerMeta.append(tokens, updated);
+  footer.append(footerMeta, hint);
 
   card.append(identifier, title, desc, labelsRow, meta, retry, footer);
 
@@ -70,6 +77,7 @@ export function createKanbanCard(options: KanbanCardOptions): KanbanCardHandle {
     onOpen: options.onOpen,
     onFullPage: options.onFullPage,
     onFocus: options.onFocus,
+    onMove: options.onMove,
   };
   let prevMetaSig = "";
   let prevRetryVal: string | null = null;
@@ -130,10 +138,14 @@ export function createKanbanCard(options: KanbanCardOptions): KanbanCardHandle {
 
   function update(next: KanbanCardOptions): void {
     const prevTitle = title.textContent ?? "";
-    currentActions = { onOpen: next.onOpen, onFullPage: next.onFullPage, onFocus: next.onFocus };
+    currentActions = { onOpen: next.onOpen, onFullPage: next.onFullPage, onFocus: next.onFocus, onMove: next.onMove };
 
     card.dataset.issueId = next.issue.identifier;
     card.dataset.status = normalizeStatus(next.issue.status);
+    card.setAttribute(
+      "aria-label",
+      `${next.issue.identifier}: ${next.issue.title}. Press Enter to open or Shift plus Enter for full page.`,
+    );
     card.classList.toggle("is-selected", next.selected);
     card.classList.toggle("is-focused", next.focused);
 
@@ -160,6 +172,11 @@ export function createKanbanCard(options: KanbanCardOptions): KanbanCardHandle {
   card.addEventListener("click", () => currentActions.onOpen());
   card.addEventListener("focus", () => currentActions.onFocus());
   card.addEventListener("keydown", (event) => {
+    if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+      event.preventDefault();
+      currentActions.onMove?.(event.key === "ArrowUp" ? -1 : 1);
+      return;
+    }
     if (event.key === "Enter" && event.shiftKey) {
       event.preventDefault();
       currentActions.onFullPage();

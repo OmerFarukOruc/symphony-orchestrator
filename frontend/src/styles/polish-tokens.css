@@ -1,0 +1,46 @@
+/* ============================================
+   POLISH TOKENS
+   Enhanced design tokens for premium feel.
+   Layered on top of design-system.css + tokens.css
+   ============================================ */
+
+:root {
+  /* Refined shadow stack — adds depth without weight */
+  --shadow-glow-sm: 0 0 6px -1px color-mix(in srgb, var(--text-accent) 15%, transparent);
+  --shadow-glow-md: 0 0 12px -2px color-mix(in srgb, var(--text-accent) 20%, transparent);
+  --shadow-inset-sm: inset 0 1px 0 0 rgb(255 255 255 / 0.04);
+  --shadow-inset-subtle: inset 0 -1px 0 0 rgb(0 0 0 / 0.12);
+
+  /* Surface overlays — for glassmorphism-lite effects */
+  --glass-bg: color-mix(in srgb, var(--bg-surface) 85%, transparent);
+  --glass-border: color-mix(in srgb, var(--border-stitch) 60%, transparent);
+  --glass-blur: blur(12px);
+
+  /* Focus ring — refined, accessible, brand-aware */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color: color-mix(in srgb, var(--text-accent) 60%, transparent);
+
+  /* Interaction feedback — subtle color shifts */
+  --hover-lift: -1px;
+  --active-press: 1px;
+  --hover-glow-opacity: 0.06;
+
+  /* Z-index scale — explicit layering */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+
+  /* Polish spacing — micro adjustments */
+  --space-half: 2px;
+  --space-nudge: 6px;
+}
+
+/* Dark theme enhanced shadows */
+[data-theme="dark"] {
+  --shadow-glow-sm: 0 0 8px -1px color-mix(in srgb, var(--text-accent) 20%, transparent);
+  --shadow-glow-md: 0 0 16px -2px color-mix(in srgb, var(--text-accent) 28%, transparent);
+  --shadow-inset-sm: inset 0 1px 0 0 rgb(255 255 255 / 0.06);
+}

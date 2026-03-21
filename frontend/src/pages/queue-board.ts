@@ -1,5 +1,6 @@
 import { createEmptyState } from "../components/empty-state";
 import { createKanbanCard, type KanbanCardHandle } from "../components/kanban-card";
+import { router } from "../router";
 import {
   createKanbanColumn,
   applyColumnStage,
@@ -42,7 +43,11 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
       const sourceSection = card?.closest(".kanban-column") as HTMLElement | null;
       const sourceColumnKey = sourceSection?.dataset.stage ?? null;
       if (!sourceColumnKey) return;
-      options.dragManager!.onDragStart((card as HTMLElement).dataset.issueId ?? "", sourceColumnKey);
+      options.dragManager!.onDragStart((card as HTMLElement).dataset.issueId ?? "", sourceColumnKey, {
+        sourceEl: card as HTMLElement,
+        x: event.clientX,
+        y: event.clientY,
+      });
       // Update forbidden state on all column handles
       for (const [key, handle] of columnHandles) {
         setDropAllowed(handle, options.dragManager!.canDrop(sourceColumnKey, key));
@@ -50,6 +55,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
     });
 
     options.board.addEventListener("dragend", () => {
+      options.dragManager!.onDragEnd();
       for (const handle of columnHandles.values()) {
         setDropAllowed(handle, true);
       }
@@ -111,12 +117,17 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
         const emptyHint = column.terminal
           ? "Completed work is tucked away here."
           : "No active issues yet. They appear when Linear syncs.";
+        const hasFilters =
+          options.filters.search.trim().length > 0 ||
+          options.filters.stages.size > 0 ||
+          options.filters.priority !== "all" ||
+          !options.filters.showCompleted;
         handle.body.replaceChildren(
           createEmptyState(
             `No ${column.label.toLowerCase()} issues`,
-            emptyHint,
-            undefined,
-            undefined,
+            hasFilters ? `${emptyHint} Clear filters to widen the board again.` : emptyHint,
+            hasFilters ? "Clear filters" : "Open overview",
+            hasFilters ? options.clearFilters : () => router.navigate("/"),
             column.terminal ? "terminal" : "queue",
           ),
         );
@@ -142,6 +153,11 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
           focused: ui.focusedColumn === columnIndex && ui.focusedCard === cardIndex,
           onOpen: () => options.onOpenIssue(issue.identifier, false),
           onFullPage: () => options.onOpenIssue(issue.identifier, true),
+          onMove: options.dragManager
+            ? (direction) => {
+                void options.dragManager!.moveByOffset(issue.identifier, column.key, direction, currentColumns);
+              }
+            : undefined,
           onFocus: () => {
             ui.focusedColumn = columnIndex;
             ui.focusedCard = cardIndex;

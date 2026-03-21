@@ -1,0 +1,67 @@
+.kanban-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  display: grid;
+  gap: 2px;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--color-copper-500) 48%, var(--border-stitch));
+  border-left: 4px solid var(--color-copper-500);
+  background: color-mix(in srgb, var(--bg-elevated) 92%, white);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+
+.kanban-drag-ghost-id {
+  color: var(--text-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.kanban-drag-ghost-title {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.queue-page .kanban-column.is-drop-forbidden:not(.is-drop-reject) {
+  opacity: 0.72;
+}
+
+.queue-page .kanban-column.is-drag-over {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-copper-500) 40%, transparent),
+    0 10px 24px -16px color-mix(in srgb, var(--color-copper-700) 45%, transparent);
+}
+
+.queue-page .kanban-column.is-drop-reject {
+  border-color: var(--status-blocked);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--status-blocked) 9%, var(--bg-surface)) 0%,
+    var(--bg-surface) 100%
+  );
+}
+
+.queue-page .kanban-column.is-drop-reject .kanban-column-header {
+  border-bottom-color: color-mix(in srgb, var(--status-blocked) 42%, var(--border-stitch));
+}
+
+.queue-page .kanban-column.is-drop-reject .kanban-column-body::before {
+  content: "Transition not allowed";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  margin-bottom: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 1px dashed color-mix(in srgb, var(--status-blocked) 58%, var(--border-stitch));
+  color: var(--status-blocked);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}

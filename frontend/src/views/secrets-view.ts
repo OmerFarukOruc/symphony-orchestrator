@@ -119,6 +119,7 @@ export function createSecretsPage(): HTMLElement {
 
   function render(): void {
     renderSecretsTable(tableWrap, state.keys, state.selectedKey, {
+      onAdd: openAddModal,
       onSelect: (key) => {
         state.selectedKey = key;
       },
