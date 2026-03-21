@@ -4,7 +4,7 @@
 
 **ALWAYS use `mcp__cocoindex-code__search` as your FIRST tool when exploring or understanding code.** Do NOT default to Read or grep for code exploration. The semantic search MCP tool finds code by meaning, not just text — it is faster, cheaper, and more accurate for navigating this codebase.
 
-- **First choice → `mcp__cocoindex-code__search`**: For ANY query about how something works, where code lives, finding implementations, understanding features, or locating related code. Use natural language: *"authentication logic"*, *"retry handling"*, *"HTTP route definitions"*.
+- **First choice → `mcp__cocoindex-code__search`**: For ANY query about how something works, where code lives, finding implementations, understanding features, or locating related code. Use natural language: _"authentication logic"_, _"retry handling"_, _"HTTP route definitions"_.
 - **Fallback → grep/rg**: ONLY for exact string matches (specific function names, variable names, import paths, error message strings).
 - **Last resort → Read**: ONLY after search/grep has identified the specific file and line range you need.
 
@@ -16,7 +16,7 @@ search(query, limit=5, offset=0, refresh_index=true, languages=["typescript"], p
 
 ## Project Structure & Module Organization
 
-Core source lives in `src/`. Start with `src/cli.ts` for process startup and archive directory setup, `src/orchestrator.ts` for polling, retries, runtime state, and model overrides, and `src/agent-runner.ts` for Codex worker execution. HTTP and dashboard behavior live in `src/http-server.ts` and `src/dashboard-template.ts`. Archived run persistence lives in `src/attempt-store.ts`, workspace lifecycle in `src/workspace-manager.ts`, and Linear transport in `src/linear-client.ts`.
+Core source lives in `src/`. Start with `src/cli/index.ts` for process startup and archive directory setup, `src/orchestrator/orchestrator.ts` for polling, retries, runtime state, and model overrides, and `src/agent-runner/index.ts` for Codex worker execution. HTTP and dashboard behavior live in `src/http/server.ts` and `src/http/routes.ts`. Archived run persistence lives in `src/core/attempt-store.ts`, workspace lifecycle in `src/workspace/manager.ts`, and Linear transport in `src/linear/client.ts`.
 
 Tests live in `tests/` and use fixture data from `tests/fixtures/`. Built artifacts are emitted to `dist/`; treat that directory as generated output, not hand-edited source. Runtime docs and operator guidance live in `README.md`, `WORKFLOW.example.md`, `WORKFLOW.md`, `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/CONFORMANCE_AUDIT.md`, `docs/RELEASING.md`, and `docs/TRUST_AND_AUTH.md`. `EXECPLAN.md` is the implementation log and should stay factual when behavior changes.
 
@@ -51,7 +51,7 @@ Keep classes, modules, and functions small, atomic, and focused on a single resp
 
 ### Class & File Size Limits
 
--  If a class grows past this limit, extract logic into standalone functions in dedicated sub-modules. The class becomes a thin coordinator that delegates to extracted modules.
+- If a class grows past this limit, extract logic into standalone functions in dedicated sub-modules. The class becomes a thin coordinator that delegates to extracted modules.
 - Files containing only type definitions, query strings, or pure constants may exceed this if splitting would hurt readability.
 - Long functions must be broken into named helper functions. If a function has multiple phases (e.g., setup → execute → cleanup), each phase should be its own function.
 
@@ -109,12 +109,13 @@ This project is indexed with [cocoindex-code](https://github.com/cocoindex-io/co
 
 **When to use semantic search vs grep:**
 
-- **Use the `search` MCP tool** for natural language and conceptual queries: *"how does authentication work"*, *"find the retry logic"*, *"where are errors handled"*. It understands meaning, not just text.
+- **Use the `search` MCP tool** for natural language and conceptual queries: _"how does authentication work"_, _"find the retry logic"_, _"where are errors handled"_. It understands meaning, not just text.
 - **Use grep/rg** for exact string matches: specific function names, variable names, imports, error messages.
 
 **Always prefer semantic search first** when exploring unfamiliar parts of the codebase or when the exact identifier is unknown. It saves tokens and finds relevant code that keyword search would miss.
 
 **MCP tool signature:**
+
 ```
 search(query, limit=5, offset=0, refresh_index=true, languages=["typescript"], paths=["src/*"])
 ```
@@ -148,7 +149,6 @@ These rules prevent the recurring code quality issues identified and fixed durin
 - **Name catch parameters `error` or `error_`.** Use `error_` when the parameter shadows an outer `error` variable.
 - **Test positive conditions first.** Write `if (x === undefined)` instead of `if (x !== undefined) { ... } else { ... }`.
 - **Use top-level `await` in ESM entry points.** Prefer `process.exitCode = await main()` over `main().then(...)`.
-
 
 ### Deprecation & Cleanup
 

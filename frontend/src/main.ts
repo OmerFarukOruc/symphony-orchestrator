@@ -139,9 +139,6 @@ api
     if (status.configured) {
       setupComplete = true;
       router.setGuard(() => null);
-      if (window.location.pathname === "/setup") {
-        router.navigate("/");
-      }
     }
   })
   .catch(() => {

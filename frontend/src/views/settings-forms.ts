@@ -17,7 +17,9 @@ interface SettingsFieldRenderOptions {
 
 export function createSettingsField(field: SettingsFieldDefinition, options: SettingsFieldRenderOptions): HTMLElement {
   const control = buildControl(field, options);
-  return createField({ label: field.label, hint: field.hint }, control);
+  const wrapper = createField({ label: field.label, hint: field.hint }, control);
+  wrapper.dataset.fieldKind = field.kind;
+  return wrapper;
 }
 
 export function createSectionAction(label: string, primary = false): HTMLButtonElement {
@@ -71,11 +73,10 @@ function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRend
 
   if (field.actionLabel && options.onAction) {
     const row = document.createElement("div");
-    row.style.cssText = "display:flex;gap:var(--space-2);align-items:center;";
+    row.className = "settings-field-action-row";
     const btn = createButton(field.actionLabel, "ghost");
     btn.addEventListener("click", options.onAction);
     row.append(input, btn);
-    input.style.flex = "1";
     return row;
   }
 

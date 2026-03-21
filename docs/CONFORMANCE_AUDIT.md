@@ -3,7 +3,7 @@
 > Per-requirement spec conformance audit for Symphony Orchestrator.
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.3.0--pre-blue?style=flat-square" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-blue?style=flat-square" />
   <img alt="Status" src="https://img.shields.io/badge/status-shipped-brightgreen?style=flat-square" />
 </p>
 
@@ -11,7 +11,7 @@
 
 ## 📌 Current Release Baseline
 
-The repository is at **`v0.3.0-pre`** (v1.0 plan executed) and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, notifications, planning, a Docker deployment target, and a desktop app shell. This document tracks every atomic requirement from the Symphony Service Specification against the current codebase.
+The repository is at **`v0.2.0`** and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, notifications, a Docker deployment target, and a desktop app shell. This document tracks every atomic requirement from the Symphony Service Specification against the current codebase.
 
 **Legend:** ✅ Implemented · 🟡 Partial / Minor Deviation · ❌ Not Implemented · 🔵 Extension (beyond spec)
 
@@ -617,42 +617,42 @@ The repository is at **`v0.3.0-pre`** (v1.0 plan executed) and implements a full
 
 ## 📊 Conformance Summary
 
-| Spec Section | Total Items | ✅ | 🟡 | ❌ |
-|:-------------|:-----------:|:--:|:--:|:--:|
-| §5 Workflow Specification | 29 | 29 | 0 | 0 |
-| §6 Configuration | 14 | 14 | 0 | 0 |
-| §7 Orchestration State Machine | 22 | 22 | 0 | 0 |
-| §8 Polling, Scheduling, Reconciliation | 26 | 25 | 0 | 1 |
-| §9 Workspace Management and Safety | 17 | 17 | 0 | 0 |
-| §10 Agent Runner Protocol | 38 | 38 | 0 | 0 |
-| §11 Issue Tracker Integration | 18 | 18 | 0 | 0 |
-| §12 Prompt Construction | 6 | 6 | 0 | 0 |
-| §13 Logging, Status, Observability | 18 | 18 | 0 | 0 |
-| §14 Failure Model and Recovery | 13 | 13 | 0 | 0 |
-| §15 Security | 7 | 7 | 0 | 0 |
-| §17 Test and Validation | 30+ | 30 | 0 | 0 |
-| **Total** | **238+** | **238** | **0** | **1** |
+| Spec Section                           | Total Items |   ✅    |  🟡   |  ❌   |
+| :------------------------------------- | :---------: | :-----: | :---: | :---: |
+| §5 Workflow Specification              |     29      |   29    |   0   |   0   |
+| §6 Configuration                       |     14      |   14    |   0   |   0   |
+| §7 Orchestration State Machine         |     22      |   22    |   0   |   0   |
+| §8 Polling, Scheduling, Reconciliation |     26      |   25    |   0   |   1   |
+| §9 Workspace Management and Safety     |     17      |   17    |   0   |   0   |
+| §10 Agent Runner Protocol              |     38      |   38    |   0   |   0   |
+| §11 Issue Tracker Integration          |     18      |   18    |   0   |   0   |
+| §12 Prompt Construction                |      6      |    6    |   0   |   0   |
+| §13 Logging, Status, Observability     |     18      |   18    |   0   |   0   |
+| §14 Failure Model and Recovery         |     13      |   13    |   0   |   0   |
+| §15 Security                           |      7      |    7    |   0   |   0   |
+| §17 Test and Validation                |     30+     |   30    |   0   |   0   |
+| **Total**                              |  **238+**   | **238** | **0** | **1** |
 
 ---
 
 ## 🟡 Resolved Deviations from Spec
 
-| Deviation | Resolution |
-|-----------|------------|
-| `tracker.active_states` | Default changed to `["Todo", "In Progress"]` |
-| `tracker.terminal_states` | Added `"Closed"` to defaults |
-| `agent.max_concurrent_agents` | Default changed to `10` |
-| `agent.max_retry_backoff_ms` | Default changed to `300000` |
-| `tracker.project_slug` | Now **required** for `kind=linear` dispatch validation |
-| `before_remove` logging | Dedicated `before_remove_hook_failed` classification added |
-| §11.4 error categories | `LinearClientError` with 5 typed codes: `linear_transport_error`, `linear_http_error`, `linear_graphql_error`, `linear_unknown_payload`, `linear_missing_end_cursor` |
+| Deviation                     | Resolution                                                                                                                                                           |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tracker.active_states`       | Default changed to `["Todo", "In Progress"]`                                                                                                                         |
+| `tracker.terminal_states`     | Added `"Closed"` to defaults                                                                                                                                         |
+| `agent.max_concurrent_agents` | Default changed to `10`                                                                                                                                              |
+| `agent.max_retry_backoff_ms`  | Default changed to `300000`                                                                                                                                          |
+| `tracker.project_slug`        | Now **required** for `kind=linear` dispatch validation                                                                                                               |
+| `before_remove` logging       | Dedicated `before_remove_hook_failed` classification added                                                                                                           |
+| §11.4 error categories        | `LinearClientError` with 5 typed codes: `linear_transport_error`, `linear_http_error`, `linear_graphql_error`, `linear_unknown_payload`, `linear_missing_end_cursor` |
 
 ---
 
 ## ❌ Not Implemented (Spec-Required)
 
-| Gap | Spec Reference | Tracking Issue |
-|-----|----------------|----------------|
+| Gap                                  | Spec Reference    | Tracking Issue                                                          |
+| ------------------------------------ | ----------------- | ----------------------------------------------------------------------- |
 | SSH host per-host concurrency limits | §8.3 / Appendix A | [#33](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/33) |
 
 ---
@@ -663,41 +663,41 @@ Capabilities shipped that go beyond the spec requirements:
 
 ### Core Runtime Extensions (v0.2.0)
 
-| Extension | Description |
-|-----------|-------------|
-| Per-issue model override | Dashboard/API to change model and reasoning effort per-issue without restarting workers |
-| Per-issue log viewer | Full-page event viewer at `/logs/:issue_identifier` with category filtering and copy-to-clipboard |
-| Durable attempt archive | `.symphony/` directory with persisted attempts and per-attempt event timelines |
-| Attempt detail API | `GET /api/v1/attempts/:attempt_id` for archived event inspection |
-| Attempt listing API | `GET /api/v1/:issue_identifier/attempts` for issue run history |
-| Completion-stop signals | `SYMPHONY_STATUS: DONE` / `BLOCKED` detection stops continuation retries |
-| Docker container sandbox | Full Docker isolation with resource limits, security hardening, OOM detection |
-| Content sanitizer | Secret redaction (API keys, tokens, PATs) in event content before dashboard/logs |
-| Feature flag system | `SYMPHONY_FLAGS` env and `flags.json` for runtime flags |
-| Prometheus metrics | Counter/histogram collector for HTTP, polls, and agent runs |
-| Request tracing | `X-Request-ID` middleware for request correlation |
-| Error tracking | Sentry-ready error tracker with breadcrumbs and context |
-| Developer tooling | ESLint, Prettier, husky, knip, jscpd, TypeDoc |
+| Extension                | Description                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------- |
+| Per-issue model override | Dashboard/API to change model and reasoning effort per-issue without restarting workers           |
+| Per-issue log viewer     | Full-page event viewer at `/logs/:issue_identifier` with category filtering and copy-to-clipboard |
+| Durable attempt archive  | `.symphony/` directory with persisted attempts and per-attempt event timelines                    |
+| Attempt detail API       | `GET /api/v1/attempts/:attempt_id` for archived event inspection                                  |
+| Attempt listing API      | `GET /api/v1/:issue_identifier/attempts` for issue run history                                    |
+| Completion-stop signals  | `SYMPHONY_STATUS: DONE` / `BLOCKED` detection stops continuation retries                          |
+| Docker container sandbox | Full Docker isolation with resource limits, security hardening, OOM detection                     |
+| Content sanitizer        | Secret redaction (API keys, tokens, PATs) in event content before dashboard/logs                  |
+| Feature flag system      | `SYMPHONY_FLAGS` env and `flags.json` for runtime flags                                           |
+| Prometheus metrics       | Counter/histogram collector for HTTP, polls, and agent runs                                       |
+| Request tracing          | `X-Request-ID` middleware for request correlation                                                 |
+| Error tracking           | Sentry-ready error tracker with breadcrumbs and context                                           |
+| Developer tooling        | ESLint, Prettier, husky, knip, jscpd, TypeDoc                                                     |
 
 ### v1.0 Plan Extensions
 
-| Extension | Phase | Description |
-|-----------|:-----:|-------------|
-| Dispatch extraction | 1 | `sortIssuesForDispatch()` and `isBlockedByNonTerminal()` extracted as pure tested functions |
-| CDN-free dashboard | 1 | All CDN dependencies removed; vanilla CSS + system fonts |
-| `GET /metrics` | 1 | Prometheus text endpoint wired to `globalMetrics` |
-| Lifecycle notifications | 2 | Pluggable `NotificationChannel` interface, Slack Block Kit backend, fire-and-forget |
-| Built-in git operations | 3 | `GitManager` (clone/branch/commit/push/PR), `RepoRouter` (identifier prefix + label matching) |
-| GitHub API tool | 3 | Agent-available `github_api` tool (read-only: `add_pr_comment`, `get_pr_status`) |
-| Secrets management | 4 | AES-256-GCM encrypted store, CRUD API, `$SECRET:key` config resolution, audit log |
-| Docker service deployment | 5 | Multi-stage Dockerfile, `PathRegistry` for container→host path translation, `.env.example` |
-| Container workflow | 5 | `WORKFLOW.docker.md` with container-specific paths, `DATA_DIR` env support |
-| Persistent config overlay | 6 | Additive YAML overlay on top of WORKFLOW.md, API-managed, live merge on change |
-| Kanban state machine | 7 | Configurable stages and transitions, dynamic dashboard columns |
-| CI extensions | 8 | `integration` + `docker-build` jobs added to `ci.yml`; Docker lifecycle + E2E smoke tests |
-| Desktop app | 9 | Tauri v2 desktop shell with Rust backend for service lifecycle management |
-| Issue planning skill | 10 | Goal→issues decomposition via `PlanningSkill`, planning API, Linear issue creation |
-| Visual verification skill | 11 | Merged `agent-browser` + dogfood QA skill for headed Chromium dashboard testing, pixel diffing, and annotated screenshots |
+| Extension                 | Phase | Description                                                                                                               |
+| ------------------------- | :---: | ------------------------------------------------------------------------------------------------------------------------- |
+| Dispatch extraction       |   1   | `sortIssuesForDispatch()` and `isBlockedByNonTerminal()` extracted as pure tested functions                               |
+| CDN-free dashboard        |   1   | All CDN dependencies removed; vanilla CSS + system fonts                                                                  |
+| `GET /metrics`            |   1   | Prometheus text endpoint wired to `globalMetrics`                                                                         |
+| Lifecycle notifications   |   2   | Pluggable `NotificationChannel` interface, Slack Block Kit backend, fire-and-forget                                       |
+| Built-in git operations   |   3   | `GitManager` (clone/branch/commit/push/PR), `RepoRouter` (identifier prefix + label matching)                             |
+| GitHub API tool           |   3   | Agent-available `github_api` tool (read-only: `add_pr_comment`, `get_pr_status`)                                          |
+| Secrets management        |   4   | AES-256-GCM encrypted store, CRUD API, `$SECRET:key` config resolution, audit log                                         |
+| Docker service deployment |   5   | Multi-stage Dockerfile, `PathRegistry` for container→host path translation, `.env.example`                                |
+| Container workflow        |   5   | `WORKFLOW.docker.md` with container-specific paths, `DATA_DIR` env support                                                |
+| Persistent config overlay |   6   | Additive YAML overlay on top of WORKFLOW.md, API-managed, live merge on change                                            |
+| Kanban state machine      |   7   | Configurable stages and transitions, dynamic dashboard columns                                                            |
+| CI extensions             |   8   | `integration` + `docker-build` jobs added to `ci.yml`; Docker lifecycle + E2E smoke tests                                 |
+| Desktop app               |   9   | Tauri v2 desktop shell with Rust backend for service lifecycle management                                                 |
+| Issue planning skill      |  10   | Goal→issues decomposition via `PlanningSkill`, planning API, Linear issue creation                                        |
+| Visual verification skill |  11   | Merged `agent-browser` + dogfood QA skill for headed Chromium dashboard testing, pixel diffing, and annotated screenshots |
 
 ---
 

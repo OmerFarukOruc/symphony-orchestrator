@@ -225,6 +225,7 @@ export interface AgentConfig {
   maxConcurrentAgentsByState: Record<string, number>;
   maxTurns: number;
   maxRetryBackoffMs: number;
+  maxContinuationAttempts: number;
 }
 
 export interface SandboxSecurityConfig {

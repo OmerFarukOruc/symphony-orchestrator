@@ -25,11 +25,11 @@ flowchart TB
     style P fill:#059669,stroke:#047857,color:#fff
 ```
 
-| Layer | Component | Responsibility |
-|:-----:|-----------|----------------|
-| **1** | **Symphony** | Decides when to launch work and what workspace directory the worker can use |
-| **2** | **Codex** | Decides how to execute each turn, including approvals and any configured MCP servers |
-| **3** | **Provider / Proxy** | Decides which backing account or route handles the actual model call |
+| Layer | Component            | Responsibility                                                                       |
+| :---: | -------------------- | ------------------------------------------------------------------------------------ |
+| **1** | **Symphony**         | Decides when to launch work and what workspace directory the worker can use          |
+| **2** | **Codex**            | Decides how to execute each turn, including approvals and any configured MCP servers |
+| **3** | **Provider / Proxy** | Decides which backing account or route handles the actual model call                 |
 
 ---
 
@@ -38,10 +38,10 @@ flowchart TB
 > [!WARNING]
 > The recommended v0.2 posture is deliberately **high trust** — appropriate **only** for local, operator-controlled environments:
 
-| Setting | Value |
-|---------|-------|
-| `approval_policy` | `"never"` |
-| `thread_sandbox` | `"danger-full-access"` |
+| Setting               | Value                          |
+| --------------------- | ------------------------------ |
+| `approval_policy`     | `"never"`                      |
+| `thread_sandbox`      | `"danger-full-access"`         |
 | `turn_sandbox_policy` | `{ type: "dangerFullAccess" }` |
 
 Symphony now generates a fresh per-attempt container-local `CODEX_HOME` for every worker run. API-key flows render provider config into that runtime home, and `openai_login` flows read `auth.json` from `codex.auth.source_home` and inject it into the container runtime home.
@@ -71,13 +71,13 @@ Symphony runs the Codex agent inside a Docker container using a `node:22-bookwor
 
 **Key properties:**
 
-| Property | How |
-|----------|-----|
-| **Path identity** | Workspace and archive paths are bind-mounted at the same absolute path inside the container |
-| **Auth preservation** | `openai_login` reads `auth.json` from `codex.auth.source_home` and injects it into the container-local runtime home before launch |
-| **Host permissions** | Container runs as `--user $(id -u):$(id -g)` — files it creates are owned by the host user |
-| **Provider decoupling** | Symphony renders the runtime config, but the configured provider still decides how model calls are routed |
-| **Network** | Default is Docker's default bridge (full internet). Operators can pre-provision a restricted network and reference it by name |
+| Property                | How                                                                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Path identity**       | Workspace and archive paths are bind-mounted at the same absolute path inside the container                                       |
+| **Auth preservation**   | `openai_login` reads `auth.json` from `codex.auth.source_home` and injects it into the container-local runtime home before launch |
+| **Host permissions**    | Container runs as `--user $(id -u):$(id -g)` — files it creates are owned by the host user                                        |
+| **Provider decoupling** | Symphony renders the runtime config, but the configured provider still decides how model calls are routed                         |
+| **Network**             | Default is Docker's default bridge (full internet). Operators can pre-provision a restricted network and reference it by name     |
 
 > [!NOTE]
 > Named Docker volumes (used for build caches) survive container and image replacement, but **not** `docker system prune --volumes`. Operator docs should warn against pruning volumes prefixed with `symphony-`.
@@ -127,12 +127,12 @@ When empty (default), Docker's built-in default seccomp profile applies.
 
 Every sandbox container is tagged with observability labels:
 
-| Label | Value |
-|-------|-------|
-| `symphony.issue` | Issue identifier (e.g. `NIN-5`) |
-| `symphony.model` | Model in use (e.g. `gpt-5.4`) |
-| `symphony.workspace` | Workspace directory path |
-| `symphony.started-at` | UTC ISO-8601 start timestamp |
+| Label                 | Value                           |
+| --------------------- | ------------------------------- |
+| `symphony.issue`      | Issue identifier (e.g. `NIN-5`) |
+| `symphony.model`      | Model in use (e.g. `gpt-5.4`)   |
+| `symphony.workspace`  | Workspace directory path        |
+| `symphony.started-at` | UTC ISO-8601 start timestamp    |
 
 Filter containers with: `docker ps --filter label=symphony.issue=NIN-5`
 
@@ -175,13 +175,12 @@ That means the service container must be able to read the mounted source home di
 The local loopback HTTP surface now includes operator-only configuration and secret management routes:
 
 - `GET /metrics`
-- `POST /api/v1/plan`
-- `POST /api/v1/plan/execute`
 - `GET /api/v1/config`
+- `GET /api/v1/config/schema`
 - `GET /api/v1/config/overlay`
 - `PUT /api/v1/config/overlay`
+- `PATCH /api/v1/config/overlay/:path`
 - `DELETE /api/v1/config/overlay/:path`
-- `GET /api/v1/config/schema`
 - `GET /api/v1/secrets`
 - `POST /api/v1/secrets/:key`
 - `DELETE /api/v1/secrets/:key`
@@ -194,10 +193,21 @@ The optional desktop shell under `desktop/` stays inside the same trust boundary
 
 ## 🔑 Required Credentials
 
-| Credential | Source | Purpose |
-|------------|--------|---------|
-| **Linear access** | `tracker.api_key` (typically `$LINEAR_API_KEY`) | Polling issues from Linear |
-| **Codex auth** | Either provider env vars on the host or `auth.json` under `codex.auth.source_home` | Authenticating model calls |
+| Credential        | Source                                                                             | Purpose                                   |
+| ----------------- | ---------------------------------------------------------------------------------- | ----------------------------------------- |
+| **Linear access** | `tracker.api_key` (typically `$LINEAR_API_KEY`)                                    | Polling issues from Linear                |
+| **Codex auth**    | Either provider env vars on the host or `auth.json` under `codex.auth.source_home` | Authenticating model calls                |
+| **GitHub PAT**    | Optional, stored via setup wizard or `$GITHUB_TOKEN`                               | Creating pull requests for completed work |
+
+### Credential Entry via Setup Wizard
+
+The setup wizard at `/setup` stores all credentials in the encrypted secrets store. For OpenAI auth, the wizard offers two modes:
+
+- **API Key**: paste an `sk-...` key directly
+- **Codex Login**: paste `~/.codex/auth.json` obtained via `codex login --device-auth`
+
+> [!IMPORTANT]
+> The `codex login --device-auth` flow requires first enabling device code authorization in [ChatGPT Settings → Security](https://chatgpt.com/#settings/Security). OpenAI's device auth endpoint is Cloudflare-protected, preventing programmatic access from servers or web apps — the CLI binary must be run locally.
 
 ---
 
@@ -205,6 +215,7 @@ The optional desktop shell under `desktop/` stays inside the same trust boundary
 
 > [!NOTE]
 > This failure is a **Codex runtime startup problem**, not a Symphony orchestration bug:
+>
 > ```text
 > error code=startup_failed msg="thread/start failed because a required MCP server did not initialize"
 > ```

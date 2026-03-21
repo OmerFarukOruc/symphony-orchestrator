@@ -15,6 +15,7 @@ Symphony polls Linear for candidate issues, creates a workspace per issue, launc
 > Already familiar with Symphony? Skip to [Prerequisites](#-prerequisites) for the full setup reference.
 
 **1. Install and build**
+
 ```bash
 git clone <repo-url> && cd symphony-orchestrator
 npm install && npm run build
@@ -22,24 +23,21 @@ bash bin/build-sandbox.sh
 ```
 
 **2. Start Symphony**
+
 ```bash
 export LINEAR_API_KEY="lin_api_..."
 export LINEAR_PROJECT_SLUG="your-linear-project-slug"
 node dist/cli.js ./WORKFLOW.example.md --port 4000
 ```
-Open http://127.0.0.1:4000 — the setup wizard opens automatically if you haven't configured Symphony yet.
 
-**3. Complete the setup wizard**
-The wizard walks you through connecting a Linear project and adding credentials. It takes 3–5 minutes.
+Open http://127.0.0.1:4000 — the **setup wizard** opens automatically and walks you through:
 
-**4. Set Codex auth**
-```bash
-export OPENAI_API_KEY="sk-..."   # API key path
-# — or —
-codex login                       # ChatGPT/Codex subscription path
-```
+1. **Protect secrets** — generates an encryption master key
+2. **Connect Linear** — paste your API key and select a project
+3. **Add OpenAI** — paste an API key or use Codex Login (see [Setup Wizard](#-setup-wizard))
+4. **Add GitHub** — paste a GitHub PAT (optional)
 
-**5. Verify it works**
+**3. Verify it works**
 Set a Linear issue to "In Progress". Within one poll cycle (default: 30s), Symphony picks it up and the dashboard shows it running.
 
 ---
@@ -248,6 +246,24 @@ node dist/cli.js ./WORKFLOW.example.md --port 4000
 
 ## 🐳 Run the Service in Docker
 
+### Zero-Environment Docker Compose
+
+Symphony supports a zero-configuration Docker start — no environment variables needed upfront:
+
+```bash
+docker compose up --build
+```
+
+Open http://localhost:4000 and the **setup wizard** guides you through all credentials. All data is stored in named Docker volumes:
+
+| Volume                | Purpose                                                      |
+| --------------------- | ------------------------------------------------------------ |
+| `symphony-archives`   | Encrypted secrets, config overlay, auth tokens, run archives |
+| `symphony-workspaces` | Cloned repositories for each issue                           |
+| `codex-auth`          | OpenAI Codex login tokens                                    |
+
+### Traditional Docker Compose
+
 ```bash
 cp .env.example .env
 # fill in absolute host paths and credentials
@@ -290,6 +306,7 @@ flowchart TD
 ```
 
 **Control plane responsibilities:**
+
 - Polls Linear for issues
 - Creates/manages workspaces and git clones
 - Serves the dashboard and HTTP API
@@ -297,6 +314,7 @@ flowchart TD
 - Dispatches run requests to the data plane
 
 **Data plane responsibilities:**
+
 - Receives dispatch requests with pre-computed config
 - Spawns and manages Codex worker containers
 - Streams events back to control plane via SSE
@@ -306,21 +324,90 @@ The data plane is **not exposed to the host** — it only listens on the private
 
 **When to use remote dispatch mode:**
 
-| Scenario | Benefit |
-|----------|---------|
-| Hot upgrades (#96) | Upgrade control plane without killing active agents |
-| Multi-host SSH workers (#33) | Data plane runs on remote hosts |
-| Interactive workspaces (#70) | WebSocket proxy routes to correct data plane |
-| Multi-repo orchestration (#50) | Multiple data planes with different checkouts |
+| Scenario                       | Benefit                                             |
+| ------------------------------ | --------------------------------------------------- |
+| Hot upgrades (#96)             | Upgrade control plane without killing active agents |
+| Multi-host SSH workers (#33)   | Data plane runs on remote hosts                     |
+| Interactive workspaces (#70)   | WebSocket proxy routes to correct data plane        |
+| Multi-repo orchestration (#50) | Multiple data planes with different checkouts       |
 
 > [!NOTE]
 > Remote dispatch mode is opt-in. The default `DISPATCH_MODE=local` runs everything in one process with no behavior changes from prior versions.
+
+---
+
+## 🧙 Setup Wizard
+
+When Symphony starts without a master key configured, it enters **setup mode** and serves a step-by-step wizard at `/setup`. The wizard enforces a navigation guard — all routes redirect to `/setup` until configuration is complete.
+
+### Wizard Steps
+
+| Step                   | What it does                                                                                                                                                                                               | Required?      |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| **1. Protect secrets** | Calls `POST /api/v1/setup/master-key` to generate and persist the encryption key that protects stored credentials on disk.                                                                                 | Yes            |
+| **2. Connect Linear**  | Stores `LINEAR_API_KEY` via `POST /api/v1/secrets/:key`, lists projects with `GET /api/v1/setup/linear-projects`, then saves the selected `tracker.project_slug` with `POST /api/v1/setup/linear-project`. | Yes            |
+| **3. Add OpenAI**      | Uses `POST /api/v1/setup/openai-key` for API-key mode or `POST /api/v1/setup/codex-auth` for uploaded `auth.json` login mode.                                                                              | Yes            |
+| **4. Add GitHub**      | Optionally validates and stores a GitHub PAT with `POST /api/v1/setup/github-token`.                                                                                                                       | No (skippable) |
+
+After completing all steps, click **"Go to Dashboard"** to unlock normal navigation.
+
+> [!NOTE]
+> The backend also exposes `POST /api/v1/setup/device-auth/start` and `POST /api/v1/setup/device-auth/poll` for OpenAI device-code login flows. The current built-in wizard still documents the CLI-first `codex login` flow and supports pasting or uploading `auth.json`.
+
+### OpenAI Authentication Options
+
+#### API Key Mode
+
+Paste an `sk-...` API key directly. Symphony validates it and stores it in the encrypted secrets store.
+
+#### Codex Login Mode
+
+Use your ChatGPT/Codex subscription instead of an API key:
+
+1. **Enable device code auth** in your ChatGPT account: [ChatGPT Settings → Security](https://chatgpt.com/#settings/Security) → toggle **"Enable device code authorization for Codex"** on
+2. Run `codex login --device-auth` in your terminal
+3. Open [auth.openai.com/codex/device](https://auth.openai.com/codex/device) and enter the one-time code
+4. Approve the sign-in on the ChatGPT authorization page
+5. Paste the contents of `~/.codex/auth.json` into the wizard (or use the upload button)
+
+> [!TIP]
+> If you have a local browser available, `codex login` (without `--device-auth`) opens the OAuth flow directly — no device code needed.
+
+> [!IMPORTANT]
+> OpenAI's device authorization endpoint is Cloudflare-protected and cannot be called directly from a web app or server. The `codex login` CLI binary must be run locally, then the resulting `auth.json` is uploaded to the wizard.
+
+### Reset & Re-run Setup
+
+To re-configure credentials without a full factory reset:
+
+1. Navigate to **System → Setup** in the sidebar (or go to `/setup` directly)
+2. Click **"Reset & Re-run Setup"** on the done screen
+3. Confirm the dialog — all API keys (Linear, OpenAI, GitHub) are cleared
+4. The wizard restarts from Step 2 (the master key is preserved)
+
+### Factory Reset (Full)
+
+To start completely fresh including a new master key:
+
+```bash
+docker compose down -v && docker compose up --build -d
+```
+
+The `-v` flag deletes all named volumes. You lose:
+
+- Master key and all encrypted secrets
+- Config overlay (project slug, auth mode, custom settings)
+- OpenAI `auth.json` login tokens
+- Agent run archives and logs
+- Cloned workspaces (re-cloned on next dispatch)
+
+What you keep: source code, Docker images, external services (Linear issues, GitHub repos, OpenAI account).
 
 ## ⚙️ Persistent Overlay and Secrets
 
 `WORKFLOW.md` is still the primary config source and still live-reloads on file change. Symphony now adds two operator-only persistent layers on top:
 
-- Config overlay: stored as YAML under the archive data root and exposed through `/api/v1/config*`
+- Config overlay: stored as YAML under the archive data root and exposed through `/api/v1/config*` (including `/api/v1/config/schema`)
 - Secrets store: stored encrypted at rest under the archive data root and exposed through `/api/v1/secrets*`
 
 If Symphony finds an existing `secrets.enc` that cannot be decrypted with the current `MASTER_KEY`, startup now fails fast and leaves the encrypted file untouched. Fix the key mismatch before retrying.
@@ -503,11 +590,11 @@ Symphony creates and reads several directories at runtime. This section document
 
 ### Host-Side Paths
 
-| Path                                        | Source                                             | Purpose                                                                                    | Safe to delete?                                     |
-| ------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| `.symphony/` (next to workflow file)        | `src/cli.ts` — default `archiveDir`                | Archived attempts, event streams, issue index, config overlay, and encrypted secrets store | ⚠️ You lose all historical attempt data             |
-| `../symphony-workspaces/` (sibling of repo) | `src/config.ts` — default `workspace.root`         | Per-issue workspace directories (one subdirectory per issue identifier)                    | ✅ Yes — workspaces are re-created on next dispatch |
-| `~/.codex/`                                 | `src/config.ts` — default `codex.auth.source_home` | Codex CLI auth credentials (`auth.json`) read for `openai_login` mode                      | ⚠️ You'll need to re-run `codex login`              |
+| Path                                        | Source                                                     | Purpose                                                                                    | Safe to delete?                                     |
+| ------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| `.symphony/` (next to workflow file)        | `src/cli/index.ts` — default `archiveDir`                  | Archived attempts, event streams, issue index, config overlay, and encrypted secrets store | ⚠️ You lose all historical attempt data             |
+| `../symphony-workspaces/` (sibling of repo) | `src/config/builders.ts` — default `workspace.root`        | Per-issue workspace directories (one subdirectory per issue identifier)                    | ✅ Yes — workspaces are re-created on next dispatch |
+| `~/.codex/`                                 | `src/config/builders.ts` — default `codex.auth.sourceHome` | Codex CLI auth credentials (`auth.json`) read for `openai_login` mode                      | ⚠️ You'll need to re-run `codex login`              |
 
 > [!NOTE]
 > The archive directory can be overridden with `--log-dir` or the `DATA_DIR` environment variable. The workspace root can be overridden via `workspace.root` in the workflow file. The auth source home can be overridden via `codex.auth.source_home`.
@@ -518,8 +605,8 @@ These paths exist only inside worker containers and are **not** on the host file
 
 | Path                       | Source                                         | Purpose                                                                                                                                               |
 | -------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/tmp/symphony-codex-home` | `src/docker-spawn.ts` — `CONTAINER_CODEX_HOME` | Ephemeral per-attempt `CODEX_HOME` with generated `config.toml` and optional `auth.json` — created at container startup, destroyed with the container |
-| `/home/agent`              | `src/docker-spawn.ts` — `CONTAINER_HOME`       | Container `HOME` backed by a named Docker volume (`symphony-cache-<runId>`) for npm/pip/git caches                                                    |
+| `/tmp/symphony-codex-home` | `src/docker/spawn.ts` — `CONTAINER_CODEX_HOME` | Ephemeral per-attempt `CODEX_HOME` with generated `config.toml` and optional `auth.json` — created at container startup, destroyed with the container |
+| `/home/agent`              | `src/docker/spawn.ts` — `CONTAINER_HOME`       | Container `HOME` backed by a named Docker volume (`symphony-cache-<runId>`) for npm/pip/git caches                                                    |
 
 ### Named Docker Volumes
 
@@ -534,24 +621,37 @@ These paths exist only inside worker containers and are **not** on the host file
 
 ## 📡 JSON API Reference
 
-| Method   | Endpoint                             | Description                                                                         |
-| -------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
-| `GET`    | `/metrics`                           | Prometheus-format service metrics                                                   |
-| `GET`    | `/api/v1/state`                      | Snapshot — queued, running, retrying, completed, workflow columns, and token totals |
-| `POST`   | `/api/v1/refresh`                    | Trigger immediate reconciliation pass                                               |
-| `GET`    | `/api/v1/:issue_identifier`          | Issue detail, recent events, archived attempts                                      |
-| `GET`    | `/api/v1/:issue_identifier/attempts` | Archived attempts + current live attempt id                                         |
-| `GET`    | `/api/v1/attempts/:attempt_id`       | Archived per-attempt event timeline                                                 |
-| `POST`   | `/api/v1/:issue_identifier/model`    | Save per-issue model override                                                       |
-| `GET`    | `/api/v1/config`                     | Effective merged operator config                                                    |
-| `GET`    | `/api/v1/config/overlay`             | Persistent overlay values only                                                      |
-| `PUT`    | `/api/v1/config/overlay`             | Update overlay values                                                               |
-| `DELETE` | `/api/v1/config/overlay/:path`       | Remove one overlay path                                                             |
-| `GET`    | `/api/v1/secrets`                    | List configured secret keys                                                         |
-| `POST`   | `/api/v1/secrets/:key`               | Store one secret                                                                    |
-| `DELETE` | `/api/v1/secrets/:key`               | Delete one secret                                                                   |
-| `POST`   | `/api/v1/plan`                       | Generate a structured implementation plan                                           |
-| `POST`   | `/api/v1/plan/execute`               | Create Linear issues from a generated plan                                          |
+| Method   | Endpoint                               | Description                                                                           |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------------------- |
+| `GET`    | `/metrics`                             | Prometheus-format service metrics                                                     |
+| `GET`    | `/api/v1/runtime`                      | Runtime metadata such as version, workflow path, data directory, and provider summary |
+| `GET`    | `/api/v1/state`                        | Snapshot — queued, running, retrying, completed, workflow columns, and token totals   |
+| `POST`   | `/api/v1/refresh`                      | Trigger immediate reconciliation pass                                                 |
+| `GET`    | `/api/v1/transitions`                  | List available workflow transitions per issue                                         |
+| `GET`    | `/api/v1/:issue_identifier`            | Issue detail, recent events, and archived attempts                                    |
+| `GET`    | `/api/v1/:issue_identifier/attempts`   | Archived attempts plus current live attempt id                                        |
+| `GET`    | `/api/v1/attempts/:attempt_id`         | Archived per-attempt event timeline                                                   |
+| `POST`   | `/api/v1/:issue_identifier/model`      | Save per-issue model override                                                         |
+| `POST`   | `/api/v1/:issue_identifier/transition` | Transition an issue to another workflow state                                         |
+| `GET`    | `/api/v1/config`                       | Effective merged operator config                                                      |
+| `GET`    | `/api/v1/config/schema`                | Config API schema and example overlay payloads                                        |
+| `GET`    | `/api/v1/config/overlay`               | Persistent overlay values only                                                        |
+| `PUT`    | `/api/v1/config/overlay`               | Apply an overlay patch                                                                |
+| `PATCH`  | `/api/v1/config/overlay/:path`         | Set one overlay path to a specific value                                              |
+| `DELETE` | `/api/v1/config/overlay/:path`         | Remove one overlay path                                                               |
+| `GET`    | `/api/v1/secrets`                      | List configured secret keys                                                           |
+| `POST`   | `/api/v1/secrets/:key`                 | Store one secret                                                                      |
+| `DELETE` | `/api/v1/secrets/:key`                 | Delete one secret                                                                     |
+| `GET`    | `/api/v1/setup/status`                 | Setup wizard completion status for each step                                          |
+| `POST`   | `/api/v1/setup/master-key`             | Set or regenerate the encryption master key                                           |
+| `GET`    | `/api/v1/setup/linear-projects`        | List Linear projects using the configured `LINEAR_API_KEY`                            |
+| `POST`   | `/api/v1/setup/linear-project`         | Save the selected Linear project slug into `tracker.project_slug`                     |
+| `POST`   | `/api/v1/setup/openai-key`             | Validate and store an OpenAI API key                                                  |
+| `POST`   | `/api/v1/setup/codex-auth`             | Upload `auth.json` for Codex Login mode                                               |
+| `POST`   | `/api/v1/setup/device-auth/start`      | Start the OpenAI device authorization flow and return user/device codes               |
+| `POST`   | `/api/v1/setup/device-auth/poll`       | Poll device authorization status and persist tokens when the flow completes           |
+| `POST`   | `/api/v1/setup/github-token`           | Validate and store a GitHub PAT                                                       |
+| `POST`   | `/api/v1/setup/reset`                  | Clear stored secrets plus auth-mode overlay values and restart setup                  |
 
 ---
 
@@ -618,9 +718,9 @@ Symphony includes a `visual-verify` skill and project-level `agent-browser` conf
 
 ### Prerequisites
 
-| Requirement       | Details                                                                   |
-| ----------------- | ------------------------------------------------------------------------- |
-| **agent-browser** | `npm i -g agent-browser && agent-browser install`                         |
+| Requirement       | Details                                           |
+| ----------------- | ------------------------------------------------- |
+| **agent-browser** | `npm i -g agent-browser && agent-browser install` |
 
 ### Project Configuration
 
@@ -634,7 +734,8 @@ The `agent-browser.json` at project root configures headed mode with screenshots
 }
 ```
 
-> **Note:** `agent-browser` uses its own bundled Chromium. Run `agent-browser install` to download it. No `executablePath` is needed.
+> [!NOTE]
+> `agent-browser` uses its own bundled Chromium. Run `agent-browser install` to download it. No `executablePath` is needed.
 
 ### Quick Verify Workflow
 

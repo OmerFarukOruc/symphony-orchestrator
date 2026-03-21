@@ -259,6 +259,35 @@ async function reconcileOutcomeAgainstLatestIssueState(
   }
 
   if (outcome.kind === "normal") {
+    const maxContinuations = ctx.getConfig().agent.maxContinuationAttempts;
+    const nextAttempt = (attempt ?? 0) + 1;
+    if (nextAttempt > maxContinuations) {
+      const message = `agent did not emit SYMPHONY_STATUS after ${maxContinuations} continuations`;
+      ctx.notify({
+        type: "worker_failed",
+        severity: "critical",
+        timestamp: nowIso(),
+        message,
+        issue: issueRef(latestIssue),
+        attempt,
+      });
+      ctx.completedViews.set(
+        latestIssue.identifier,
+        buildOutcomeView(latestIssue, workspace, entry, modelSelection, {
+          status: "failed",
+          attempt,
+          error: "max_continuations_exceeded",
+          message,
+        }),
+      );
+      ctx.releaseIssueClaim(latestIssue.id);
+      await ctx.deps.attemptStore.updateAttempt(entry.runId, {
+        status: "failed",
+        errorCode: "max_continuations_exceeded",
+        errorMessage: message,
+      });
+      return;
+    }
     queueRetryWithLog(ctx, latestIssue, attempt, 1000, "continuation");
     return;
   }

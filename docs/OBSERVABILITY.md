@@ -11,53 +11,54 @@ The currently shipped operator surface includes:
 - `GET /api/v1/state` with `codex_totals`, `rate_limits`, and `recent_events`
 - `workflow_columns` in the state snapshot for dashboard-stage rendering
 - `GET /metrics` with Prometheus-format service metrics
+- Request tracing via `X-Request-ID` headers (auto-generated or preserved from client)
+- Error tracking initialized on CLI startup (Sentry-compatible when `SENTRY_DSN` is set)
 - Archived attempt and event history under `.symphony/`
 - Structured logger support used throughout the runtime
 
-The repository also contains helper modules for request tracing and error tracking, but those two are still optional and are **not** wired into the default HTTP server or CLI startup path.
-
 ## Metrics Helper
 
-`src/metrics.ts` is now exposed by the default server at `GET /metrics`.
+`src/observability/metrics.ts` is now exposed by the default server at `GET /metrics`.
 
 ### Available Metrics
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `symphony_http_requests_total` | Counter | Total HTTP requests by method and status |
-| `symphony_http_request_duration_seconds` | Histogram | Request latency distribution |
-| `symphony_orchestrator_polls_total` | Counter | Orchestrator poll cycles by status |
-| `symphony_agent_runs_total` | Counter | Agent run completions by outcome |
+| Metric                                   | Type      | Description                              |
+| ---------------------------------------- | --------- | ---------------------------------------- |
+| `symphony_http_requests_total`           | Counter   | Total HTTP requests by method and status |
+| `symphony_http_request_duration_seconds` | Histogram | Request latency distribution             |
+| `symphony_orchestrator_polls_total`      | Counter   | Orchestrator poll cycles by status       |
+| `symphony_agent_runs_total`              | Counter   | Agent run completions by outcome         |
 
 These are the metrics the default server now emits.
 
 ---
 
-## Request Tracing Helper
+## Request Tracing
 
-`src/tracing.ts` provides middleware that preserves or generates `X-Request-ID`, but the default `HttpServer` does **not** currently attach it to all responses.
+`src/observability/tracing.ts` provides middleware that preserves or generates `X-Request-ID`. This middleware is **enabled by default** in the HTTP server.
 
-If you integrate the middleware, the behavior is:
+The behavior is:
 
 - **Incoming**: If the client sends `X-Request-ID`, it's preserved
 - **Generated**: Otherwise a UUID v4 is generated
 - **Response**: The ID is always returned in the response headers
 
-The logger can be enriched with the request ID via `getRequestId(req)` from `src/tracing.ts`.
+The logger can be enriched with the request ID via `getRequestId(req)` from `src/observability/tracing.ts`.
 
 ---
 
-## Error Tracking Helper
+## Error Tracking
 
-`src/error-tracking.ts` can initialize a Sentry-compatible tracker when `SENTRY_DSN` is set, but the default CLI does **not** currently call it during startup.
+`src/core/error-tracking.ts` is initialized on CLI startup. When `SENTRY_DSN` is set, it provides Sentry-compatible error tracking.
 
-If you opt into that integration later:
+To enable Sentry integration:
 
 ```bash
 export SENTRY_DSN=https://your-key@sentry.io/project-id
 ```
 
 When enabled:
+
 - Exceptions are captured with full stack traces
 - Breadcrumbs track the last 100 operations
 - Context (issue identifier, attempt count) is attached to errors
@@ -79,7 +80,7 @@ export SYMPHONY_FLAGS="new_dashboard,parallel_agents"
 echo '{"experimental_retry": true}' > flags.json
 ```
 
-Check flag state via `isEnabled("flag_name")` from `src/feature-flags.ts`.
+Check flag state via `isEnabled("flag_name")` from `src/core/feature-flags.ts`.
 
 ---
 
@@ -122,5 +123,5 @@ groups:
 - [x] Runtime snapshot includes workflow columns for configurable dashboard stages
 - [x] Archived attempts preserve event history for postmortems
 - [x] `/metrics` is exposed by the default server
-- [ ] `X-Request-ID` tracing is enabled in the default server
-- [ ] `SENTRY_DSN` is wired into the default CLI startup path
+- [x] `X-Request-ID` tracing is enabled in the default server
+- [x] Error tracking is initialized on CLI startup (Sentry-compatible when `SENTRY_DSN` is set)

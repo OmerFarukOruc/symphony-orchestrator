@@ -8,7 +8,7 @@
 
 **Symptoms**: CLI exits immediately, HTTP server doesn't bind.
 
-1. **Check port conflicts** — `HttpServer.start()` in `src/http-server.ts` binds to the configured port (default: 4000).
+1. **Check port conflicts** — `HttpServer.start()` in `src/http/server.ts` binds to the configured port (default: 4000).
    ```bash
    lsof -i :4000
    ```
@@ -82,7 +82,7 @@
    ```bash
    curl -X POST http://127.0.0.1:4000/api/v1/refresh
    ```
-3. **Review workspace** — check if the workspace directory exists and has expected content. Workspace management lives in `src/workspace-manager.ts`.
+3. **Review workspace** — check if the workspace directory exists and has expected content. Workspace management lives in `src/workspace/manager.ts`.
 4. **Stall timeout** — the orchestrator detects stalls via `codex.stall_timeout_ms`. Set it to `0` or a negative value to disable stall cancellation during debugging.
 
 ---

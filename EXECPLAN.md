@@ -14,7 +14,7 @@ The implementation request came from `/home/oruc/Desktop/implementation_plan.md`
 
 - [x] (2026-03-17 00:16Z) Read `.agent/PLANS.md`, `/home/oruc/Desktop/implementation_plan.md`, `EXECPLAN.md`, and the current repository structure to reconcile the requested roadmap with the actual codebase.
 - [x] (2026-03-17 00:19Z) Confirmed the repository already ships pieces assumed by the external plan, including `src/metrics.ts`, archived-attempt storage, and the current dashboard/log pages, so the plan must be adapted rather than copied verbatim.
-- [x] (2026-03-17 00:22Z) Replaced the stale prior ExecPlan with this repository-specific living document tied to `/home/oruc/Desktop/symphony-orchestrator`.
+- [x] (2026-03-17 00:22Z) Replaced the stale prior ExecPlan with this repository-specific living document tied to this repository.
 - [x] (2026-03-17 02:31Z) Implemented Phase 1.1 in `src/linear-client.ts` and `tests/linear-client.test.ts`: added `LinearErrorCode`, `LinearClientError`, malformed payload detection, transport and HTTP classification, and null-cursor pagination guards in all paginated fetch paths.
 - [x] (2026-03-17 02:31Z) Implemented Phase 1.2 in `src/http-server.ts` and `tests/http-server.test.ts`: added `GET /metrics` returning Prometheus text with the expected content type.
 - [x] (2026-03-17 02:31Z) Implemented Phase 1.3 in `src/orchestrator/dispatch.ts`, `src/orchestrator.ts`, and `tests/dispatch.test.ts`: extracted pure sorting and blocker helpers and wired the orchestrator to use them.
@@ -112,7 +112,7 @@ The main lesson from the full unattended pass is that broad roadmaps become trac
 
 ## Context and Orientation
 
-The repository root is `/home/oruc/Desktop/symphony-orchestrator`. The main entry point is `src/cli.ts`, which reads a workflow file, builds a `ConfigStore`, initializes persistence, starts the orchestrator, and serves the local HTTP interface. `src/orchestrator.ts` is the control loop that polls Linear, sorts candidate issues, manages retries, launches workers, and assembles runtime snapshots. `src/agent-runner.ts` wraps the Codex app-server protocol and Docker runtime wiring. `src/http-server.ts` exposes the dashboard at `/` plus the JSON API under `/api/v1/*`. `src/linear-client.ts` is the GraphQL client for Linear, and its failure classification matters because the orchestrator depends on predictable retry behavior.
+The main entry point is `src/cli/index.ts`, which reads a workflow file, builds a `ConfigStore`, initializes persistence, starts the orchestrator, and serves the local HTTP interface. `src/orchestrator/orchestrator.ts` is the control loop that polls Linear, sorts candidate issues, manages retries, launches workers, and assembles runtime snapshots. `src/agent-runner/index.ts` wraps the Codex app-server protocol and Docker runtime wiring. `src/http/server.ts` and `src/http/routes.ts` expose the dashboard at `/` plus the JSON API under `/api/v1/*`. `src/linear/client.ts` is the GraphQL client for Linear, and its failure classification matters because the orchestrator depends on predictable retry behavior.
 
 A “dispatch helper” in this plan means a pure function that can be called without constructing the whole orchestrator class. This matters because sorting and blocker checks are easier to test and reason about when they do not depend on timers, stateful maps, or network calls. A “typed Linear error” means a normal JavaScript `Error` subclass whose `code` property tells the rest of the service whether the failure came from transport, HTTP status, GraphQL errors, malformed payloads, or an impossible pagination response.
 
@@ -130,42 +130,42 @@ Once those edits land, run the targeted tests for the changed areas and then the
 
 ## Concrete Steps
 
-All commands in this section must be run from `/home/oruc/Desktop/symphony-orchestrator`.
+All commands in this section must be run from the repository root.
 
-1. Read the current implementation and tests before editing:
+1.  Read the current implementation and tests before editing:
 
-       sed -n '1,260p' src/linear-client.ts
-       sed -n '1,260p' src/http-server.ts
-       sed -n '880,980p' src/orchestrator.ts
-       sed -n '1,280p' tests/linear-client.test.ts
-       sed -n '1,280p' tests/http-server.test.ts
+    sed -n '1,260p' src/linear-client.ts
+    sed -n '1,260p' src/http-server.ts
+    sed -n '880,980p' src/orchestrator.ts
+    sed -n '1,280p' tests/linear-client.test.ts
+    sed -n '1,280p' tests/http-server.test.ts
 
-2. Implement the Linear error and pagination changes in `src/linear-client.ts` and update `tests/linear-client.test.ts`.
+2.  Implement the Linear error and pagination changes in `src/linear-client.ts` and update `tests/linear-client.test.ts`.
 
-3. Add `src/orchestrator/dispatch.ts`, update `src/orchestrator.ts`, and add or extend the dispatch and HTTP tests.
+3.  Add `src/orchestrator/dispatch.ts`, update `src/orchestrator.ts`, and add or extend the dispatch and HTTP tests.
 
-4. Replace the remote assets in `src/dashboard-template.ts` and `src/logs-template.ts` with inline CSS and local icon substitutions.
+4.  Replace the remote assets in `src/dashboard-template.ts` and `src/logs-template.ts` with inline CSS and local icon substitutions.
 
-5. Run focused validation while iterating:
+5.  Run focused validation while iterating:
 
-       npm test -- --run tests/linear-client.test.ts tests/http-server.test.ts tests/orchestrator.test.ts tests/dispatch.test.ts
+        npm test -- --run tests/linear-client.test.ts tests/http-server.test.ts tests/orchestrator.test.ts tests/dispatch.test.ts
 
-   Observed result on 2026-03-17: Vitest passed with 4 files and 35 tests. The targeted run covered the new Linear error taxonomy, `/metrics`, the dispatch helper extraction, and the orchestrator dispatch path.
+    Observed result on 2026-03-17: Vitest passed with 4 files and 35 tests. The targeted run covered the new Linear error taxonomy, `/metrics`, the dispatch helper extraction, and the orchestrator dispatch path.
 
-6. Run the full repository validation:
+6.  Run the full repository validation:
 
-       npm test
-       npm run build
+        npm test
+        npm run build
 
-   Observed result on 2026-03-17 after the final integration pass: the full Vitest suite passed with 33 files and 176 tests, and `npm run build` completed successfully.
+    Observed result on 2026-03-17 after the final integration pass: the full Vitest suite passed with 33 files and 176 tests, and `npm run build` completed successfully.
 
-7. Confirm the HTML templates are offline-safe:
+7.  Confirm the HTML templates are offline-safe:
 
-       rg -n "cdn.tailwindcss.com|fonts.googleapis.com|material-symbols-outlined" src/dashboard-template.ts src/logs-template.ts
+        rg -n "cdn.tailwindcss.com|fonts.googleapis.com|material-symbols-outlined" src/dashboard-template.ts src/logs-template.ts
 
-   Observed result on 2026-03-17: no matches.
+    Observed result on 2026-03-17: no matches.
 
-8. Record the outcome in this file with timestamps and short evidence snippets.
+8.  Record the outcome in this file with timestamps and short evidence snippets.
 
 ## Validation and Acceptance
 
@@ -181,7 +181,7 @@ Fourth, `npm test` and `npm run build` pass. This was reconfirmed on 2026-03-17 
 
        rg -n "cdn.tailwindcss.com|fonts.googleapis.com|material-symbols-outlined" src/dashboard-template.ts src/logs-template.ts
 
-   Observed result on 2026-03-17: no matches.
+Observed result on 2026-03-17: no matches.
 
 ## Idempotence and Recovery
 
@@ -261,7 +261,7 @@ At the end of Phase 1, `src/http-server.ts` must expose `GET /metrics` that retu
 
     Content-Type: text/plain; version=0.0.4; charset=utf-8
 
-Revision note: on 2026-03-17 this ExecPlan was rewritten because the previous file still described an earlier repository path and an outdated project snapshot. The new version aligns the plan with `/home/oruc/Desktop/symphony-orchestrator`, decomposes the requested external roadmap into atomic repository tasks, and sets Phase 1 as the active implementation milestone.
+Revision note: on 2026-03-17 this ExecPlan was rewritten because the previous file still described an earlier repository path and an outdated project snapshot. The new version aligns the plan with this repository, decomposes the requested external roadmap into atomic repository tasks, and sets Phase 1 as the active implementation milestone.
 
 Revision note: later on 2026-03-17 the ExecPlan was updated again to reflect the completed final integrations. The planning execution backend, workflow-column dashboard rendering, and desktop lifecycle shell are now recorded as landed work, validation evidence has been refreshed to the current `npm test` and `npm run build` results, and the remaining blockers were narrowed to push credentials plus unavailable local Rust tooling.
 
@@ -357,82 +357,82 @@ The final milestone is polish and validation. Run the desktop visual pass again 
 
 All commands in this section must be run from `/home/oruc/Desktop/codex`.
 
-1. Re-open the key frontend files before editing so the redesign starts from the actual current structure:
+1.  Re-open the key frontend files before editing so the redesign starts from the actual current structure:
 
-       sed -n '1,220p' frontend/src/components/page-header.ts
-       sed -n '1,240p' frontend/src/pages/overview-view.ts
-       sed -n '1,220p' frontend/src/pages/queue-view.ts
-       sed -n '1,260p' frontend/src/components/issue-inspector.ts
-       sed -n '1,260p' frontend/src/components/issue-inspector-sections.ts
-       sed -n '1,260p' frontend/src/pages/logs-view.ts
-       sed -n '1,240p' frontend/src/views/observability-view.ts
+    sed -n '1,220p' frontend/src/components/page-header.ts
+    sed -n '1,240p' frontend/src/pages/overview-view.ts
+    sed -n '1,220p' frontend/src/pages/queue-view.ts
+    sed -n '1,260p' frontend/src/components/issue-inspector.ts
+    sed -n '1,260p' frontend/src/components/issue-inspector-sections.ts
+    sed -n '1,260p' frontend/src/pages/logs-view.ts
+    sed -n '1,240p' frontend/src/views/observability-view.ts
 
-2. Implement the shared hierarchy pass first:
+2.  Implement the shared hierarchy pass first:
 
-       frontend/src/styles/components.css
-       frontend/src/styles/shell.css
-       frontend/src/components/page-header.ts
+        frontend/src/styles/components.css
+        frontend/src/styles/shell.css
+        frontend/src/components/page-header.ts
 
-   Acceptance target: page headers, toolbars, and work surfaces no longer share the same visual weight by default.
+    Acceptance target: page headers, toolbars, and work surfaces no longer share the same visual weight by default.
 
-3. Implement the queue and issue-detail redesign second:
+3.  Implement the queue and issue-detail redesign second:
 
-       frontend/src/pages/queue-view.ts
-       frontend/src/pages/queue-board.ts
-       frontend/src/pages/queue-toolbar.ts
-       frontend/src/components/kanban-card.ts
-       frontend/src/components/issue-inspector.ts
-       frontend/src/components/issue-inspector-sections.ts
-       frontend/src/styles/kanban.css
-       frontend/src/styles/queue.css
-       frontend/src/styles/issue.css
+        frontend/src/pages/queue-view.ts
+        frontend/src/pages/queue-board.ts
+        frontend/src/pages/queue-toolbar.ts
+        frontend/src/components/kanban-card.ts
+        frontend/src/components/issue-inspector.ts
+        frontend/src/components/issue-inspector-sections.ts
+        frontend/src/styles/kanban.css
+        frontend/src/styles/queue.css
+        frontend/src/styles/issue.css
 
-   Acceptance target: board columns communicate workflow stage first; cards communicate runtime status second; the drawer leads with identity, state, and next action.
+    Acceptance target: board columns communicate workflow stage first; cards communicate runtime status second; the drawer leads with identity, state, and next action.
 
-4. Implement the overview redesign third:
+4.  Implement the overview redesign third:
 
-       frontend/src/pages/overview-view.ts
-       frontend/src/styles/overview.css
+        frontend/src/pages/overview-view.ts
+        frontend/src/styles/overview.css
 
-   Acceptance target: the page can be understood by scanning only the major headings, KPI labels, and event summaries.
+    Acceptance target: the page can be understood by scanning only the major headings, KPI labels, and event summaries.
 
-5. Implement the logs redesign fourth:
+5.  Implement the logs redesign fourth:
 
-       frontend/src/pages/logs-view.ts
-       frontend/src/components/log-row.ts
-       frontend/src/styles/logs.css
+        frontend/src/pages/logs-view.ts
+        frontend/src/components/log-row.ts
+        frontend/src/styles/logs.css
 
-   Acceptance target: the logs layout no longer depends on `height: calc(100vh - ...)` and still behaves correctly with the shell/header in place.
+    Acceptance target: the logs layout no longer depends on `height: calc(100vh - ...)` and still behaves correctly with the shell/header in place.
 
-6. Implement the observability polish fifth:
+6.  Implement the observability polish fifth:
 
-       frontend/src/views/observability-view.ts
-       frontend/src/views/observability-sections.ts
-       frontend/src/views/observability-cards.ts
-       frontend/src/styles/observability.css
+        frontend/src/views/observability-view.ts
+        frontend/src/views/observability-sections.ts
+        frontend/src/views/observability-cards.ts
+        frontend/src/styles/observability.css
 
-   Acceptance target: the page retains its current strengths while presenting a clearer first-read priority order.
+    Acceptance target: the page retains its current strengths while presenting a clearer first-read priority order.
 
-7. Run targeted validation while iterating:
+7.  Run targeted validation while iterating:
 
-       npm run typecheck:frontend
-       npm run build
-       npm test
+    npm run typecheck:frontend
+    npm run build
+    npm test
 
-8. Run desktop visual verification after each major milestone or at minimum after milestones 2, 4, and 6:
+8.  Run desktop visual verification after each major milestone or at minimum after milestones 2, 4, and 6:
 
-       agent-browser --session ui-review open http://127.0.0.1:4173/
-       agent-browser --session ui-review screenshot archive/screenshots/overview-after.png
-       agent-browser --session ui-review open http://127.0.0.1:4173/queue
-       agent-browser --session ui-review screenshot archive/screenshots/queue-after.png
-       agent-browser --session ui-review open http://127.0.0.1:4173/issues/NIN-21/logs
-       agent-browser --session ui-review screenshot archive/screenshots/logs-after.png
-       agent-browser --session ui-review open http://127.0.0.1:4173/observability
-       agent-browser --session ui-review screenshot archive/screenshots/observability-after.png
-       agent-browser --session ui-review errors
-       agent-browser --session ui-review console
+    agent-browser --session ui-review open http://127.0.0.1:4173/
+    agent-browser --session ui-review screenshot archive/screenshots/overview-after.png
+    agent-browser --session ui-review open http://127.0.0.1:4173/queue
+    agent-browser --session ui-review screenshot archive/screenshots/queue-after.png
+    agent-browser --session ui-review open http://127.0.0.1:4173/issues/NIN-21/logs
+    agent-browser --session ui-review screenshot archive/screenshots/logs-after.png
+    agent-browser --session ui-review open http://127.0.0.1:4173/observability
+    agent-browser --session ui-review screenshot archive/screenshots/observability-after.png
+    agent-browser --session ui-review errors
+    agent-browser --session ui-review console
 
-9. Update this ExecPlan section with real timestamps, observed validation output, and any design debt intentionally deferred after the implementation lands.
+9.  Update this ExecPlan section with real timestamps, observed validation output, and any design debt intentionally deferred after the implementation lands.
 
 ### Validation and Acceptance
 

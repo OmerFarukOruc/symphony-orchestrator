@@ -234,7 +234,7 @@ function buildLinearProjectStep(): HTMLElement {
   label.textContent = "Linear API Key";
 
   const inputRow = document.createElement("div");
-  inputRow.style.cssText = "display:flex;gap:var(--space-2);align-items:center;";
+  inputRow.className = "setup-input-row";
 
   // Inline status badge
   const statusBadge = document.createElement("div");
@@ -389,16 +389,13 @@ function buildOpenaiKeyStep(): HTMLElement {
 
   // ── Auth mode selector cards ──
   const modeWrap = document.createElement("div");
-  modeWrap.style.cssText =
-    "display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4)";
+  modeWrap.className = "setup-auth-grid";
 
   const apiKeyCard = document.createElement("div");
-  apiKeyCard.style.cssText =
-    `border:var(--stroke-default) solid ${state.authMode === "api_key" ? "var(--text-accent)" : "var(--border-stitch)"};` +
-    "padding:var(--space-3);background:var(--bg-muted);cursor:pointer;transition:border-color var(--motion-fast) var(--ease-out-quart)";
+  apiKeyCard.className = `setup-auth-card${state.authMode === "api_key" ? " is-selected" : ""}`;
   apiKeyCard.innerHTML =
-    '<div style="font-family:var(--font-body);font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:var(--space-1)">API Key</div>' +
-    '<div style="font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5">Paste an OpenAI API key directly. Best for pay-as-you-go accounts.</div>';
+    '<div class="setup-auth-card-title">API Key</div>' +
+    '<div class="setup-auth-card-desc">Paste an OpenAI API key directly. Best for pay-as-you-go accounts.</div>';
   apiKeyCard.addEventListener("click", () => {
     state.authMode = "api_key";
     state.error = null;
@@ -406,12 +403,10 @@ function buildOpenaiKeyStep(): HTMLElement {
   });
 
   const loginCard = document.createElement("div");
-  loginCard.style.cssText =
-    `border:var(--stroke-default) solid ${state.authMode === "codex_login" ? "var(--text-accent)" : "var(--border-stitch)"};` +
-    "padding:var(--space-3);background:var(--bg-muted);cursor:pointer;transition:border-color var(--motion-fast) var(--ease-out-quart)";
+  loginCard.className = `setup-auth-card${state.authMode === "codex_login" ? " is-selected" : ""}`;
   loginCard.innerHTML =
-    '<div style="font-family:var(--font-body);font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:var(--space-1)">Codex Login</div>' +
-    '<div style="font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5">Use <code>codex login</code> OAuth flow. Best for OpenAI-authenticated accounts.</div>';
+    '<div class="setup-auth-card-title">Codex Login</div>' +
+    '<div class="setup-auth-card-desc">Use <code>codex login</code> OAuth flow. Best for OpenAI-authenticated accounts.</div>';
   loginCard.addEventListener("click", () => {
     state.authMode = "codex_login";
     state.error = null;
@@ -438,6 +433,7 @@ function buildOpenaiKeyStep(): HTMLElement {
     input.value = state.openaiKeyInput;
     input.addEventListener("input", () => {
       state.openaiKeyInput = input.value;
+      updateSaveBtn();
     });
 
     field.append(label, input);
@@ -482,11 +478,12 @@ function buildOpenaiKeyStep(): HTMLElement {
     textarea.value = state.authJsonInput;
     textarea.addEventListener("input", () => {
       state.authJsonInput = textarea.value;
+      updateSaveBtn();
     });
 
     // File upload button
     const uploadRow = document.createElement("div");
-    uploadRow.style.cssText = "display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2)";
+    uploadRow.className = "setup-upload-row";
 
     const uploadBtn = document.createElement("button");
     uploadBtn.className = "mc-button is-ghost is-sm";
@@ -538,6 +535,11 @@ function buildOpenaiKeyStep(): HTMLElement {
   const hasInput = state.authMode === "api_key" ? !!state.openaiKeyInput : !!state.authJsonInput;
   saveBtn.disabled = state.loading || !hasInput;
   saveBtn.addEventListener("click", () => void advanceOpenaiAuth());
+
+  function updateSaveBtn(): void {
+    const has = state.authMode === "api_key" ? !!state.openaiKeyInput : !!state.authJsonInput;
+    saveBtn.disabled = state.loading || !has;
+  }
 
   actions.append(skip, saveBtn);
   el.append(actions);
@@ -707,7 +709,58 @@ function buildDoneStep(): HTMLElement {
     router.navigate("/");
   });
 
-  el.append(icon, title, desc, goBtn);
+  const divider = document.createElement("hr");
+  divider.className = "setup-divider";
+
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "mc-button is-ghost is-sm setup-reset-btn";
+  resetBtn.textContent = "Reset & Re-run Setup";
+  resetBtn.addEventListener("click", async () => {
+    if (!confirm("This will clear all stored secrets (Linear, OpenAI, GitHub keys). Are you sure?")) return;
+    resetBtn.disabled = true;
+    resetBtn.textContent = "Resetting…";
+    try {
+      await api.resetSetup();
+      state.error = null;
+      state.generatedKey = null;
+      state.apiKeyInput = "";
+      state.apiKeyVerified = false;
+      state.projects = [];
+      state.selectedProject = null;
+      state.tokenInput = "";
+      state.openaiKeyInput = "";
+      state.authMode = "api_key";
+      state.authJsonInput = "";
+      // Re-check backend status to find the correct starting step
+      try {
+        const status = await api.getSetupStatus();
+        if (!status.steps.masterKey.done) {
+          state.step = "master-key";
+          state.generatedKey = null;
+        } else {
+          state.generatedKey = "set";
+          if (!status.steps.linearProject.done) {
+            state.step = "linear-project";
+          } else if (!status.steps.openaiKey.done) {
+            state.step = "openai-key";
+          } else if (!status.steps.githubToken.done) {
+            state.step = "github-token";
+          } else {
+            state.step = "done";
+          }
+        }
+      } catch {
+        state.step = "master-key";
+      }
+      rerender();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err));
+      resetBtn.disabled = false;
+      resetBtn.textContent = "Reset & Re-run Setup";
+    }
+  });
+
+  el.append(icon, title, desc, goBtn, divider, resetBtn);
   return el;
 }
 
