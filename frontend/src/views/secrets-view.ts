@@ -15,7 +15,7 @@ export function createSecretsPage(): HTMLElement {
   page.className = "page secrets-page fade-in";
   const addButton = createButton("New secret", "primary");
   const header = createPageHeader(
-    "Secrets",
+    "Credentials",
     "Store API keys and tokens securely. Values are encrypted and never shown after saving.",
     { actions: addButton },
   );
@@ -23,7 +23,7 @@ export function createSecretsPage(): HTMLElement {
   const helpCallout = document.createElement("section");
   helpCallout.className = "secrets-help-callout mc-panel";
   helpCallout.innerHTML = `
-    <h2>What secrets should I store?</h2>
+    <h2>What credentials should I store?</h2>
     <ul>
       <li><code>LINEAR_API_KEY</code> — Your Linear API token for issue tracking</li>
       <li><code>OPENAI_API_KEY</code> — OpenAI API key for Codex/LLM access</li>
