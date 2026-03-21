@@ -248,30 +248,75 @@ body {
 
 /* ============================================
    SURFACE HIERARCHY TOKENS
-   Three-tier system: Primary (command), Standard, Quiet (support)
+   Three-tier system: Primary (command), Standard (content), Quiet (support)
+
+   ── TIER USAGE GUIDELINES ─────────────────────────────────────
+
+   PRIMARY SURFACE
+   - Use for: Command panels, live data displays, primary actions
+   - Character: Commanding presence, highest visual weight
+   - Features: Copper accent border (left), subtle elevation shadow,
+               slightly elevated background, stronger border
+   - Examples: Active run panels, command input areas, live status cards
+
+   STANDARD SURFACE
+   - Use for: Default containers, list items, content cards
+   - Character: Balanced, readable, default treatment
+   - Features: Basic 1px border, surface background, no accent
+   - Examples: Issue cards, event rows, stat cards, toolbars
+
+   QUIET SURFACE
+   - Use for: Metadata, secondary info, supporting content
+   - Character: Minimal presence, recedes visually
+   - Features: No border, muted background, lowest contrast
+   - Examples: Metadata labels, secondary text areas, empty states
+
+   ── VISUAL HIERARCHY RULES ────────────────────────────────────
+
+   1. Primary surfaces should draw the eye first
+   2. Standard surfaces provide the main content structure
+   3. Quiet surfaces should never compete for attention
+   4. Never nest same-tier surfaces (e.g., primary within primary)
+
    ============================================ */
 
 :root {
   /* Primary Surface — commanding presence, copper accent */
-  --surface-primary-border: var(--border-default);
+  --surface-primary-border: var(--border-strong);
   --surface-primary-border-accent: var(--text-accent);
   --surface-primary-bg: var(--bg-surface);
   --surface-primary-border-width: 1px;
   --surface-primary-accent-width: 3px;
+  --surface-primary-shadow: var(--shadow-sm);
+  --surface-primary-text: var(--text-primary);
 
   /* Standard Surface — default bordered containers */
   --surface-standard-border: var(--border-default);
   --surface-standard-bg: var(--bg-surface);
   --surface-standard-border-width: 1px;
+  --surface-standard-shadow: none;
+  --surface-standard-text: var(--text-primary);
 
   /* Quiet Surface — subtle, minimal frame */
   --surface-quiet-border: transparent;
-  --surface-quiet-bg: transparent;
+  --surface-quiet-bg: var(--bg-muted);
+  --surface-quiet-shadow: none;
+  --surface-quiet-text: var(--text-secondary);
 }
 
 [data-theme="dark"] {
-  /* Primary Surface — slightly elevated in dark mode */
-  --surface-primary-bg: color-mix(in srgb, var(--bg-elevated) 40%, var(--bg-surface));
+  /* Primary Surface — elevated and accentuated in dark mode */
+  --surface-primary-bg: color-mix(in srgb, var(--bg-elevated) 50%, var(--bg-surface));
+  --surface-primary-border: var(--border-strong);
+  --surface-primary-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.35);
+
+  /* Standard Surface — clean default in dark mode */
+  --surface-standard-bg: var(--bg-surface);
+  --surface-standard-border: var(--border-default);
+
+  /* Quiet Surface — subtle muted background in dark mode */
+  --surface-quiet-bg: var(--bg-muted);
+  --surface-quiet-text: var(--text-muted);
 }
 
 /* ============================================
