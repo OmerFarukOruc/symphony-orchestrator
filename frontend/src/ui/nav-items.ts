@@ -39,7 +39,7 @@ export const navItems: NavItem[] = [
   },
   {
     group: "Configure",
-    name: "Secrets",
+    name: "Credentials",
     path: "/secrets",
     hotkey: "g s",
     icon: "secrets",
