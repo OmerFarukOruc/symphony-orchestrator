@@ -141,7 +141,7 @@ export interface RuntimeIssueView {
 export interface WorkflowColumnView {
   key: string;
   label: string;
-  kind: "backlog" | "todo" | "active" | "terminal" | "other";
+  kind: "backlog" | "todo" | "active" | "gate" | "terminal" | "other";
   terminal: boolean;
   count: number;
   issues: RuntimeIssueView[];
@@ -300,7 +300,7 @@ export interface ServerConfig {
   port: number;
 }
 
-export type StateStageKind = "backlog" | "todo" | "active" | "terminal";
+export type StateStageKind = "backlog" | "todo" | "active" | "gate" | "terminal";
 
 export interface StateStageConfig {
   name: string;

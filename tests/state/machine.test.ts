@@ -57,4 +57,52 @@ describe("StateMachine", () => {
       reason: "invalid transition: done -> todo",
     });
   });
+
+  it("includes gate stages in known states", () => {
+    const machine = new StateMachine({
+      stages: [
+        { key: "todo", terminal: false },
+        { key: "in progress", terminal: false },
+        { key: "gate review", terminal: false },
+        { key: "done", terminal: true },
+      ],
+    });
+    expect(machine.isKnownState("gate review")).toBe(true);
+    expect(machine.isTerminalState("gate review")).toBe(false);
+  });
+
+  it("allows transitions to and from gate stages", () => {
+    const machine = new StateMachine({
+      stages: [
+        { key: "todo", terminal: false },
+        { key: "in progress", terminal: false },
+        { key: "gate review", terminal: false },
+        { key: "done", terminal: true },
+      ],
+      transitions: {
+        todo: ["in progress"],
+        "in progress": ["gate review"],
+        "gate review": ["done", "in progress"],
+      },
+    });
+    expect(machine.canTransition("in progress", "gate review")).toBe(true);
+    expect(machine.canTransition("gate review", "done")).toBe(true);
+    expect(machine.canTransition("gate review", "in progress")).toBe(true);
+    expect(machine.canTransition("todo", "gate review")).toBe(false);
+  });
+
+  it("gate stages do not block re-entry by default (no explicit transitions)", () => {
+    const machine = new StateMachine({
+      stages: [
+        { key: "todo", terminal: false },
+        { key: "gate review", terminal: false },
+        { key: "done", terminal: true },
+      ],
+    });
+    // Without explicit transitions, non-terminal stages can go anywhere
+    expect(machine.canTransition("gate review", "todo")).toBe(true);
+    expect(machine.canTransition("gate review", "done")).toBe(true);
+    // Terminal stages cannot go back
+    expect(machine.canTransition("done", "gate review")).toBe(false);
+  });
 });

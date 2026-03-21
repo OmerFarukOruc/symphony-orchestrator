@@ -139,7 +139,7 @@ export function createIssueInspector(options: IssueInspectorOptions): {
       header.append(actions);
     }
 
-    summaryStats.priority.update(detail.priority ?? "—");
+    summaryStats.priority.update(String(detail.priority ?? "—"));
     summaryStats.workflow.update(detail.state || "—");
     summaryStats.model.update(detail.model ?? "—");
     summaryStats.reasoning.update(detail.reasoningEffort ?? "—");

@@ -19,7 +19,7 @@ export interface RuntimeSnapshot {
 export interface WorkflowColumn {
   key: string;
   label: string;
-  kind: string;
+  kind: "backlog" | "todo" | "active" | "gate" | "terminal" | "other";
   terminal: boolean;
   count: number;
   issues: RuntimeIssueView[];

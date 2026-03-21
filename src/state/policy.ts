@@ -41,6 +41,15 @@ export function isActiveState(state: string, config: ServiceConfig): boolean {
   return normalizeStateList(config.tracker.activeStates).includes(normalizeStateValue(state));
 }
 
+export function isGateState(state: string, config: ServiceConfig): boolean {
+  if (config.stateMachine) {
+    return config.stateMachine.stages.some(
+      (stage) => normalizeStateValue(stage.name) === normalizeStateValue(state) && stage.kind === "gate",
+    );
+  }
+  return false;
+}
+
 export function isTodoState(state: string, config?: ServiceConfig): boolean {
   if (config?.stateMachine) {
     return config.stateMachine.stages.some(

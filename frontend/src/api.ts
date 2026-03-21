@@ -98,6 +98,11 @@ export const api = {
       model: payload.model,
       reasoning_effort: payload.reasoningEffort,
     }),
+  getTransitions: () => get<{ transitions: Record<string, string[]> }>("/api/v1/transitions"),
+  postTransition: (id: string, targetState: string) =>
+    post<{ ok: boolean; from?: string; to?: string; reason?: string }>(`/api/v1/${encodeURIComponent(id)}/transition`, {
+      target_state: targetState,
+    }),
   getMetrics: () => get<string>("/metrics"),
   getSetupStatus: () => get<SetupStatus>("/api/v1/setup/status"),
   postMasterKey: (key?: string) => post<{ key: string }>("/api/v1/setup/master-key", { key }),

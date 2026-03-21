@@ -11,6 +11,7 @@ import type { SecretsStore } from "../secrets/store.js";
 import type { SymphonyLogger } from "../core/types.js";
 import { globalMetrics } from "../observability/metrics.js";
 import { tracingMiddleware } from "../observability/tracing.js";
+import type { LinearClient } from "../linear/client.js";
 
 export class HttpServer {
   private readonly app: Express;
@@ -20,6 +21,7 @@ export class HttpServer {
     private readonly deps: {
       orchestrator: Orchestrator;
       logger: SymphonyLogger;
+      linearClient?: LinearClient;
       configStore?: ConfigStore;
       configOverlayStore?: ConfigOverlayStore;
       secretsStore?: SecretsStore;

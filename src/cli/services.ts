@@ -68,6 +68,7 @@ export async function createServices(
   const httpServer = new HttpServer({
     orchestrator,
     logger: logger.child({ component: "http" }),
+    linearClient,
     configStore,
     configOverlayStore: overlayStore,
     secretsStore,

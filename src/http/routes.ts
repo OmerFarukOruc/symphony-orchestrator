@@ -15,7 +15,10 @@ import { registerSetupApi } from "../setup/api.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleModelUpdate } from "./model-handler.js";
+import { handleTransition } from "./transition-handler.js";
+import { handleGetTransitions } from "./transitions-api.js";
 import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
+import type { LinearClient } from "../linear/client.js";
 
 import rateLimit from "express-rate-limit";
 
@@ -23,6 +26,7 @@ const frontendDist = join(process.cwd(), "dist/frontend");
 
 interface HttpRouteDeps {
   orchestrator: Orchestrator;
+  linearClient?: LinearClient;
   configStore?: ConfigStore;
   configOverlayStore?: ConfigOverlayStore;
   secretsStore?: SecretsStore;
@@ -95,6 +99,15 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
     .all((_req, res) => {
       methodNotAllowed(res);
     });
+
+  app
+    .route("/api/v1/transitions")
+    .get((req, res) => {
+      handleGetTransitions({ orchestrator: deps.orchestrator, configStore: deps.configStore }, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
 }
 
 function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
@@ -125,6 +138,19 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/attempts/:attempt_id")
     .get((req, res) => {
       handleAttemptDetail(deps.orchestrator, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/:issue_identifier/transition")
+    .post(async (req, res) => {
+      await handleTransition(
+        { orchestrator: deps.orchestrator, linearClient: deps.linearClient, configStore: deps.configStore },
+        req,
+        res,
+      );
     })
     .all((_req, res) => {
       methodNotAllowed(res);

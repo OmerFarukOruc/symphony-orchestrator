@@ -6,6 +6,7 @@ import type { AppState } from "../state/store";
 import type { WorkflowColumn } from "../types";
 import { registerPageCleanup } from "../utils/page";
 import { createQueueBoardRenderer } from "./queue-board";
+import { createDragStateManager } from "./drag-state";
 import { handleQueueKeyboard } from "./queue-keyboard";
 import { createFilters, createUiState } from "./queue-state";
 import { buildQueueToolbar } from "./queue-toolbar";
@@ -52,6 +53,7 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
       .join("|");
   }
 
+  const dragManager = createDragStateManager();
   const boardRenderer = createQueueBoardRenderer({
     board,
     filters,
@@ -60,6 +62,7 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
     clearFilters,
     requestRender: renderBoard,
     onOpenIssue: (issueId, fullPage) => router.navigate(fullPage ? `/issues/${issueId}` : `/queue/${issueId}`),
+    dragManager,
   });
 
   function renderToolbar(): void {

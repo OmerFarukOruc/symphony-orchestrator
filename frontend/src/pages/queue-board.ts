@@ -1,9 +1,15 @@
 import { createEmptyState } from "../components/empty-state";
 import { createKanbanCard, type KanbanCardHandle } from "../components/kanban-card";
-import { createKanbanColumn, applyColumnStage, type KanbanColumnHandle } from "../components/kanban-column";
+import {
+  createKanbanColumn,
+  applyColumnStage,
+  setDropAllowed,
+  type KanbanColumnHandle,
+} from "../components/kanban-column";
 import type { WorkflowColumn } from "../types";
 import { skeletonColumn } from "../ui/skeleton";
 import { filterColumn, type QueueFilters, type QueueUiState } from "./queue-state";
+import type { DragStateManager } from "./drag-state";
 
 interface QueueBoardRendererOptions {
   board: HTMLElement;
@@ -13,6 +19,7 @@ interface QueueBoardRendererOptions {
   clearFilters: () => void;
   requestRender: () => void;
   onOpenIssue: (issueId: string, fullPage: boolean) => void;
+  dragManager?: DragStateManager;
 }
 
 export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
@@ -21,6 +28,33 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
 } {
   const columnHandles = new Map<string, KanbanColumnHandle>();
   const cardHandles = new Map<string, KanbanCardHandle>();
+  let currentColumns: WorkflowColumn[] = [];
+
+  if (options.dragManager) {
+    options.board.addEventListener("kanban-drop", (event) => {
+      const { identifier, targetColumnKey } = (event as CustomEvent<{ identifier: string; targetColumnKey: string }>)
+        .detail;
+      void options.dragManager!.onDrop(identifier, targetColumnKey, currentColumns);
+    });
+
+    options.board.addEventListener("dragstart", (event) => {
+      const card = (event.target as HTMLElement).closest(".kanban-card");
+      const sourceSection = card?.closest(".kanban-column") as HTMLElement | null;
+      const sourceColumnKey = sourceSection?.dataset.stage ?? null;
+      if (!sourceColumnKey) return;
+      options.dragManager!.onDragStart((card as HTMLElement).dataset.issueId ?? "", sourceColumnKey);
+      // Update forbidden state on all column handles
+      for (const [key, handle] of columnHandles) {
+        setDropAllowed(handle, options.dragManager!.canDrop(sourceColumnKey, key));
+      }
+    });
+
+    options.board.addEventListener("dragend", () => {
+      for (const handle of columnHandles.values()) {
+        setDropAllowed(handle, true);
+      }
+    });
+  }
 
   function renderLoading(): void {
     options.board.replaceChildren(
@@ -54,6 +88,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
     /* Even when no issues match, render all columns with their per-column
        empty states so the Kanban board structure stays visible. */
 
+    currentColumns = columns;
     const nextIssueIds = new Set<string>();
     const ui = options.getUi();
     const sections = columns.map((column, columnIndex) => {
@@ -62,6 +97,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
       applyColumnStage(handle, column.key);
       handle.section.classList.toggle("is-collapsed", ui.collapsed.has(column.key));
       handle.section.classList.toggle("is-focused", ui.focusedColumn === columnIndex);
+      handle.section.classList.toggle("is-gate", column.kind === "gate");
       handle.section.style.setProperty("--stagger-index", String(columnIndex));
       handle.label.textContent = column.label;
       handle.count.textContent = String(list.length);

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   listWorkflowStages,
   isActiveState,
+  isGateState,
   isTerminalState,
   isTodoState,
   normalizeStateList,
@@ -79,6 +80,7 @@ function createStateMachineConfig(): ServiceConfig {
         { name: "Backlog", kind: "backlog" },
         { name: "Todo", kind: "todo" },
         { name: "In Progress", kind: "active" },
+        { name: "Gate Review", kind: "gate" },
         { name: "Done", kind: "terminal" },
       ],
       transitions: {},
@@ -142,6 +144,7 @@ describe("isActiveState", () => {
     expect(isActiveState("Todo", config)).toBe(true);
     expect(isActiveState("Done", config)).toBe(false);
     expect(isActiveState("Backlog", config)).toBe(false); // backlog is not active
+    expect(isActiveState("Gate Review", config)).toBe(false); // gate is not active
   });
 });
 
@@ -172,6 +175,28 @@ describe("isTerminalState", () => {
     expect(isTerminalState("Done", config)).toBe(true);
     expect(isTerminalState("In Progress", config)).toBe(false);
     expect(isTerminalState("Backlog", config)).toBe(false);
+  });
+});
+
+describe("isGateState", () => {
+  it("returns false when no state machine is configured", () => {
+    const config = createConfig();
+    expect(isGateState("Gate Review", config)).toBe(false);
+    expect(isGateState("In Progress", config)).toBe(false);
+  });
+
+  it("returns true for gate stages when state machine is configured", () => {
+    const config = createStateMachineConfig();
+    expect(isGateState("Gate Review", config)).toBe(true);
+    expect(isGateState("gate review", config)).toBe(true);
+  });
+
+  it("returns false for non-gate stages when state machine is configured", () => {
+    const config = createStateMachineConfig();
+    expect(isGateState("In Progress", config)).toBe(false);
+    expect(isGateState("Todo", config)).toBe(false);
+    expect(isGateState("Done", config)).toBe(false);
+    expect(isGateState("Backlog", config)).toBe(false);
   });
 });
 
@@ -246,8 +271,10 @@ describe("listWorkflowStages", () => {
   it("uses state machine stages when configured", () => {
     const config = createStateMachineConfig();
     const stages = listWorkflowStages(config);
-    expect(stages.map((s) => s.label)).toEqual(["Backlog", "Todo", "In Progress", "Done"]);
+    expect(stages.map((s) => s.label)).toEqual(["Backlog", "Todo", "In Progress", "Gate Review", "Done"]);
     expect(stages.find((s) => s.label === "Backlog")?.kind).toBe("backlog");
+    expect(stages.find((s) => s.label === "Gate Review")?.kind).toBe("gate");
+    expect(stages.find((s) => s.label === "Gate Review")?.terminal).toBe(false);
     expect(stages.find((s) => s.label === "Done")?.terminal).toBe(true);
   });
 });

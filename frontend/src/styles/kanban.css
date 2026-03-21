@@ -66,6 +66,10 @@
   border-top-color: var(--status-retrying);
   background: color-mix(in srgb, var(--status-retrying) 3%, var(--bg-surface));
 }
+.kanban-column.is-gate {
+  border-top-color: var(--status-gate);
+  background: color-mix(in srgb, var(--status-gate) 3%, var(--bg-surface));
+}
 
 /* ─── Column Header ─── */
 
@@ -94,6 +98,7 @@
 .kanban-column[data-stage="completed"] .kanban-column-dot { background: var(--status-completed); }
 .kanban-column[data-stage="blocked"] .kanban-column-dot { background: var(--status-blocked); }
 .kanban-column[data-stage="retrying"] .kanban-column-dot { background: var(--status-retrying); }
+.kanban-column.is-gate .kanban-column-dot { background: var(--status-gate); }
 
 .kanban-column-label {
   font-family: var(--font-heading);
@@ -285,6 +290,28 @@
 .kanban-card-retry {
   font-size: var(--text-xs);
   color: var(--status-retrying);
+}
+
+/* ─── Drag and Drop ─── */
+
+.kanban-card.is-dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  cursor: grabbing;
+}
+
+.kanban-column.is-drag-over {
+  border-color: var(--text-accent);
+  background: color-mix(in srgb, var(--text-accent) 5%, var(--bg-surface));
+}
+
+.kanban-column.is-drop-forbidden {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kanban-column.is-drop-forbidden * {
+  pointer-events: none;
 }
 
 /* ─── Animations ─── */

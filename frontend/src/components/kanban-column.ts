@@ -41,12 +41,43 @@ export function createKanbanColumn(onToggle: () => void): KanbanColumnHandle {
   const body = document.createElement("div");
   body.className = "kanban-column-body";
 
+  body.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    section.classList.add("is-drag-over");
+  });
+  body.addEventListener("dragenter", (event) => {
+    event.preventDefault();
+    section.classList.add("is-drag-over");
+  });
+  body.addEventListener("dragleave", (event) => {
+    if (!section.contains(event.relatedTarget as Node)) {
+      section.classList.remove("is-drag-over");
+    }
+  });
+  body.addEventListener("drop", (event) => {
+    event.preventDefault();
+    section.classList.remove("is-drag-over");
+    const identifier = event.dataTransfer?.getData("text/plain") ?? "";
+    const targetColumnKey = section.dataset.stage ?? "";
+    if (!identifier || !targetColumnKey) return;
+    section.dispatchEvent(
+      new CustomEvent("kanban-drop", {
+        bubbles: true,
+        detail: { identifier, targetColumnKey },
+      }),
+    );
+  });
+
   section.append(header, body);
   return { section, label, count, dot, toggle, body };
 }
 
 export function applyColumnStage(column: KanbanColumnHandle, key: string): void {
   column.section.dataset.stage = normalizeStageKey(key);
+}
+
+export function setDropAllowed(column: KanbanColumnHandle, allowed: boolean): void {
+  column.section.classList.toggle("is-drop-forbidden", !allowed);
 }
 
 export type { KanbanColumnHandle };

@@ -123,7 +123,7 @@ export function normalizeStateMachine(value: unknown): StateMachineConfig | null
     .map((stage): StateStageConfig | null => {
       const name = asString(stage.name);
       const kind = asString(stage.kind);
-      if (!name || !["backlog", "todo", "active", "terminal"].includes(kind)) {
+      if (!name || !["backlog", "todo", "active", "gate", "terminal"].includes(kind)) {
         return null;
       }
       return {

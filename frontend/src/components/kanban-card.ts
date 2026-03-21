@@ -150,6 +150,14 @@ export function createKanbanCard(options: KanbanCardOptions): KanbanCardHandle {
     if (prevTitle && prevTitle !== next.issue.title) flashDiff(card);
   }
 
+  card.draggable = true;
+  card.addEventListener("dragstart", (event) => {
+    event.dataTransfer?.setData("text/plain", card.dataset.issueId ?? "");
+    card.classList.add("is-dragging");
+  });
+  card.addEventListener("dragend", () => {
+    card.classList.remove("is-dragging");
+  });
   card.addEventListener("click", () => currentActions.onOpen());
   card.addEventListener("focus", () => currentActions.onFocus());
   card.addEventListener("keydown", (event) => {
