@@ -6,7 +6,7 @@ export function createWelcomePage(): HTMLElement {
   hero.className = "welcome-hero";
   hero.innerHTML = `
     <h1 class="welcome-hero-title">Symphony</h1>
-    <p class="welcome-hero-subtitle">Autonomous issue orchestration.</p>
+    <p class="welcome-hero-subtitle">Your AI coding assistant for Linear.</p>
     <p class="welcome-hero-version">v0.2.0</p>
   `;
 
@@ -21,26 +21,26 @@ export function createWelcomePage(): HTMLElement {
   const steps = [
     {
       n: "1",
-      title: "Create a workflow file",
-      desc: "Define your issue sources, agent config, and orchestration rules in a YAML file.",
+      title: "Choose your project",
+      desc: "Tell Symphony which Linear project to watch and how to handle issues.",
       link: "View example",
     },
     {
       n: "2",
-      title: "Set up credentials",
-      desc: "Add your Linear API key and AI provider keys.",
-      link: "Open Secrets",
+      title: "Add your credentials",
+      desc: "Add your Linear API key and AI provider keys in Credentials.",
+      link: "Open Credentials",
     },
     {
       n: "3",
-      title: "Configure your environment",
-      desc: "Set sandbox mode, polling interval, and agent limits.",
+      title: "Review settings",
+      desc: "Adjust sandbox mode, polling interval, and agent limits.",
       link: "Open Settings",
     },
     {
       n: "4",
-      title: "Start orchestrating",
-      desc: "Run Symphony with your workflow file and watch it process issues.",
+      title: "Start Symphony",
+      desc: "Run Symphony from your terminal and watch it process issues.",
       link: null,
     },
   ];
@@ -78,7 +78,7 @@ export function createWelcomePage(): HTMLElement {
         e.preventDefault();
         const paths: Record<string, string> = {
           "View example": "/planner",
-          "Open Secrets": "/secrets",
+          "Open Credentials": "/secrets",
           "Open Settings": "/settings",
         };
         if (paths[step.link!]) {
@@ -102,7 +102,7 @@ export function createWelcomePage(): HTMLElement {
   const footer = document.createElement("p");
   footer.className = "welcome-footer";
   footer.textContent =
-    "This page appears when no active workflow is detected. Start a workflow to see Mission Control.";
+    "This page appears when no workflow is active. Run Symphony from the terminal to start.";
 
   page.append(hero, checklist, footer);
   return page;
