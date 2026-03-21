@@ -15,35 +15,66 @@
 
 ---
 
-## 🌟 Inspiration
+## What Symphony does
 
-This project draws direct inspiration from **[OpenAI's Symphony](https://github.com/openai/symphony)** — a framework that turns project work into isolated, autonomous implementation runs, allowing teams to *manage work* instead of *supervising coding agents*. We loved the vision of connecting a project tracker (Linear) to autonomous Codex agents and built our own TypeScript implementation tailored for local, single-host operator use.
+Symphony connects to your Linear project, picks up actionable issues, and runs an AI coding agent on each one inside a sandboxed Docker container. When the agent finishes, Symphony posts results back to Linear.
 
-> [!NOTE]
-> While OpenAI's Symphony provides a [spec](https://github.com/openai/symphony/blob/main/SPEC.md) and an Elixir reference implementation, **Symphony Orchestrator** is an independent TypeScript implementation that follows the same core philosophy: poll Linear → create workspaces → launch agents → report results.
+- Polls a Linear project for actionable issues
+- Launches Codex inside Docker per issue, with workspace isolation
+- Reports results and archives attempt history locally
 
 ---
 
-## 📐 Architecture
+## Before you start
 
-```mermaid
-flowchart TD
-    A["🗂️ Linear"] -->|poll| B["🎵 Symphony"]
-    B -->|create| C["📁 Workspace"]
-    B -->|launch| D["🐳 Docker"]
-    D -->|contains| G["🤖 Codex"]
-    G -->|JSON-RPC| B
-    B -->|persist| E["💾 Archive"]
-    B -->|serve| F["🖥️ Dashboard & API"]
+| Requirement | Details |
+|---|---|
+| **Node.js 22+** | `node --version` should print `v22` or higher |
+| **Docker** | Running engine — `docker info` should succeed |
+| **Linear API key** | From Linear → Settings → API → Personal API keys |
+| **Codex auth** | Either `OPENAI_API_KEY` or `codex login` |
 
-    style A fill:#7c3aed,stroke:#6d28d9,color:#fff
-    style B fill:#2563eb,stroke:#1d4ed8,color:#fff
-    style C fill:#059669,stroke:#047857,color:#fff
-    style D fill:#0ea5e9,stroke:#0284c7,color:#fff
-    style G fill:#d97706,stroke:#b45309,color:#fff
-    style E fill:#6366f1,stroke:#4f46e5,color:#fff
-    style F fill:#dc2626,stroke:#b91c1c,color:#fff
+---
+
+## 5-minute quick start
+
+**1. Install and build**
+
+```bash
+npm install && npm run build && bash bin/build-sandbox.sh
 ```
+
+**2. Start Symphony**
+
+```bash
+node dist/cli.js ./WORKFLOW.example.md --port 4000
+```
+
+Open http://127.0.0.1:4000 in your browser.
+
+**3. Complete setup**
+
+The setup wizard opens automatically. Connect your Linear project and add credentials (3–5 min).
+
+**4. Set your Codex auth**
+
+```bash
+export OPENAI_API_KEY="sk-..."   # API key path
+# — or —
+codex login                       # ChatGPT/Codex subscription path
+```
+
+**5. Create a Linear issue and watch it run**
+
+Set an issue to "In Progress" in your configured project. Symphony picks it up within one poll interval.
+
+---
+
+## How to know it worked
+
+- The dashboard at `/` shows the issue under **Board** or **Overview**
+- `GET http://127.0.0.1:4000/api/v1/state` returns `"running": [...]` with your issue
+- The `.symphony/` directory gains a new attempt JSON file
 
 ---
 
@@ -72,50 +103,33 @@ flowchart TD
 
 ---
 
-## 🚀 Quick Start
+## 🪟 Desktop Shell
 
-> [!IMPORTANT]
-> Requires **Node.js 22** or newer.
+The repository also includes a lightweight Tauri desktop wrapper under `desktop/` that can start and stop the local Symphony service and embed the existing dashboard in a desktop iframe shell.
 
-```bash
-# 1. Install dependencies
-npm install
+Build the TypeScript service first with `npm run build`, then run the desktop app from `desktop/src-tauri` with your normal Tauri workflow.
 
-# 2. Run the test suite
-npm test
+---
 
-# 3. Build the project
-npm run build
+## 📄 Workflow Files
 
-# 4. Build the Docker sandbox image
-bash bin/build-sandbox.sh
+| File | Purpose |
+|------|---------|
+| `WORKFLOW.example.md` | Portable example for normal local setup |
+| `WORKFLOW.md` | Checked-in live smoke workflow for this repo |
 
-# 5. Choose one Codex auth path
-#    API key flow:
-export OPENAI_API_KEY="sk-..."
-#    or ChatGPT/Codex login flow:
-#    codex login
+> [!TIP]
+> Symphony now generates a fresh temporary container-local `CODEX_HOME` for every attempt. Use `WORKFLOW.example.md` for API-key or custom provider flows, and `WORKFLOW.md` for a local `codex login` smoke path that copies `~/.codex/auth.json` into the container runtime home.
 
-# 5.5. Point Symphony at the Linear project it should dispatch from
-export LINEAR_PROJECT_SLUG="your-linear-project-slug"
+Both checked-in workflow files expect `LINEAR_PROJECT_SLUG` in the host environment, so the same repo checkout can be reused across projects without editing tracked files.
 
-# 6. Dry-start with the portable example workflow
-node dist/cli.js ./WORKFLOW.example.md
-```
-
-You can get the project slug directly from the Linear project URL. In:
+You can get the project slug from the Linear project URL:
 
 ```text
 https://linear.app/<workspace>/project/<project-slug>/overview
 ```
 
-the slug is the segment after `/project/`. Example:
-
-```text
-https://linear.app/ninetech/project/symphony-test-e1e26e4576d1/overview
-```
-
-means:
+Example: `https://linear.app/ninetech/project/symphony-test-e1e26e4576d1/overview` → slug is `symphony-test-e1e26e4576d1`.
 
 ```bash
 export LINEAR_PROJECT_SLUG="symphony-test-e1e26e4576d1"
@@ -132,75 +146,6 @@ If `LINEAR_API_KEY` is missing, startup also fails clearly:
 ```text
 error code=missing_tracker_api_key msg="tracker.api_key is required after env resolution"
 ```
-
-### 🖥️ Start the Service
-
-```bash
-node dist/cli.js ./WORKFLOW.example.md --port 4000
-```
-
-Then open the dashboard at **[http://127.0.0.1:4000/](http://127.0.0.1:4000/)** or query the API:
-
-```bash
-curl -s http://127.0.0.1:4000/api/v1/state
-```
-
-### 🪟 Desktop Shell
-
-The repository also includes a lightweight Tauri desktop wrapper under `desktop/` that can start and stop the local Symphony service and embed the existing dashboard in a desktop iframe shell.
-
-Build the TypeScript service first with `npm run build`, then run the desktop app from `desktop/src-tauri` with your normal Tauri workflow.
-
-### ✅ First Live Smoke Issue
-
-For the first end-to-end proving run, use an issue that does not depend on repository files being present in the workspace.
-
-Create a Linear issue in an active state such as `In Progress` with this title:
-
-```text
-SMOKE: create workspace proof file
-```
-
-And this description:
-
-```md
-Goal: prove Symphony can pick up a live issue, launch Codex, write a file in the issue workspace, and archive the attempt.
-
-Steps:
-1. Create `SYMPHONY_SMOKE_RESULT.md` in the workspace for this issue.
-2. Include:
-   - the issue identifier
-   - the current UTC timestamp
-   - the current working directory
-   - the output of `pwd`
-   - the output of `ls -la`
-   - one line saying whether the workspace looks empty or repo-backed
-3. Do not modify files outside the issue workspace.
-4. Stop after the file exists and the summary is written.
-```
-
-Verification:
-
-- Watch `GET /api/v1/state` for the issue to appear under `running`.
-- Check `GET /api/v1/<ISSUE>` or `GET /api/v1/<ISSUE>/attempts` for a recorded attempt.
-- Inspect the workspace under `workspace.root/<ISSUE>`. With the default workflow this resolves to `../symphony-workspaces/<ISSUE>` (a sibling directory of the project repo).
-- After the first successful attempt lands, move the Linear issue to `Done` or another terminal state so Symphony stops scheduling follow-up turns.
-
-The checked-in workflows now also tell the agent to finish with `SYMPHONY_STATUS: DONE` when the issue is complete, or `SYMPHONY_STATUS: BLOCKED` when progress is no longer possible. Symphony uses that signal to stop local continuation turns for one-shot issues.
-
----
-
-## 📄 Workflow Files
-
-| File | Purpose |
-|------|---------|
-| `WORKFLOW.example.md` | Portable example for normal local setup |
-| `WORKFLOW.md` | Checked-in live smoke workflow for this repo |
-
-> [!TIP]
-> Symphony now generates a fresh temporary container-local `CODEX_HOME` for every attempt. Use `WORKFLOW.example.md` for API-key or custom provider flows, and `WORKFLOW.md` for a local `codex login` smoke path that copies `~/.codex/auth.json` into the container runtime home.
-
-Both checked-in workflow files expect `LINEAR_PROJECT_SLUG` in the host environment, so the same repo checkout can be reused across projects without editing tracked files.
 
 ### Auth Modes
 
@@ -330,6 +275,45 @@ LINEAR_API_KEY=... npm run test:integration
 
 ---
 
+## ✅ First Live Smoke Issue
+
+For the first end-to-end proving run, use an issue that does not depend on repository files being present in the workspace.
+
+Create a Linear issue in an active state such as `In Progress` with this title:
+
+```text
+SMOKE: create workspace proof file
+```
+
+And this description:
+
+```md
+Goal: prove Symphony can pick up a live issue, launch Codex, write a file in the issue workspace, and archive the attempt.
+
+Steps:
+1. Create `SYMPHONY_SMOKE_RESULT.md` in the workspace for this issue.
+2. Include:
+   - the issue identifier
+   - the current UTC timestamp
+   - the current working directory
+   - the output of `pwd`
+   - the output of `ls -la`
+   - one line saying whether the workspace looks empty or repo-backed
+3. Do not modify files outside the issue workspace.
+4. Stop after the file exists and the summary is written.
+```
+
+Verification:
+
+- Watch `GET /api/v1/state` for the issue to appear under `running`.
+- Check `GET /api/v1/<ISSUE>` or `GET /api/v1/<ISSUE>/attempts` for a recorded attempt.
+- Inspect the workspace under `workspace.root/<ISSUE>`. With the default workflow this resolves to `../symphony-workspaces/<ISSUE>` (a sibling directory of the project repo).
+- After the first successful attempt lands, move the Linear issue to `Done` or another terminal state so Symphony stops scheduling follow-up turns.
+
+The checked-in workflows now also tell the agent to finish with `SYMPHONY_STATUS: DONE` when the issue is complete, or `SYMPHONY_STATUS: BLOCKED` when progress is no longer possible. Symphony uses that signal to stop local continuation turns for one-shot issues.
+
+---
+
 ## 🔒 Live Proving Notes
 
 > [!WARNING]
@@ -340,6 +324,38 @@ Example success-oriented log line:
 ```text
 level=info msg="worker retry queued" issue_id=abc123 issue_identifier=MT-882 attempt=2 delay_ms=10000 reason="turn_failed"
 ```
+
+---
+
+## 📐 Architecture
+
+```mermaid
+flowchart TD
+    A["🗂️ Linear"] -->|poll| B["🎵 Symphony"]
+    B -->|create| C["📁 Workspace"]
+    B -->|launch| D["🐳 Docker"]
+    D -->|contains| G["🤖 Codex"]
+    G -->|JSON-RPC| B
+    B -->|persist| E["💾 Archive"]
+    B -->|serve| F["🖥️ Dashboard & API"]
+
+    style A fill:#7c3aed,stroke:#6d28d9,color:#fff
+    style B fill:#2563eb,stroke:#1d4ed8,color:#fff
+    style C fill:#059669,stroke:#047857,color:#fff
+    style D fill:#0ea5e9,stroke:#0284c7,color:#fff
+    style G fill:#d97706,stroke:#b45309,color:#fff
+    style E fill:#6366f1,stroke:#4f46e5,color:#fff
+    style F fill:#dc2626,stroke:#b91c1c,color:#fff
+```
+
+---
+
+## 🌟 Background
+
+This project draws direct inspiration from **[OpenAI's Symphony](https://github.com/openai/symphony)** — a framework that turns project work into isolated, autonomous implementation runs, allowing teams to *manage work* instead of *supervising coding agents*. We loved the vision of connecting a project tracker (Linear) to autonomous Codex agents and built our own TypeScript implementation tailored for local, single-host operator use.
+
+> [!NOTE]
+> While OpenAI's Symphony provides a [spec](https://github.com/openai/symphony/blob/main/SPEC.md) and an Elixir reference implementation, **Symphony Orchestrator** is an independent TypeScript implementation that follows the same core philosophy: poll Linear → create workspaces → launch agents → report results.
 
 ---
 
