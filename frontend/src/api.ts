@@ -111,4 +111,5 @@ export const api = {
       deviceCode,
     }),
   postGithubToken: (token: string) => post<{ valid: boolean }>("/api/v1/setup/github-token", { token }),
+  resetSetup: () => post<{ ok: boolean }>("/api/v1/setup/reset", {}),
 };

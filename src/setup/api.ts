@@ -43,6 +43,24 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
     })
     .all((_req, res) => methodNotAllowed(res));
 
+  // POST /api/v1/setup/reset
+  app
+    .route("/api/v1/setup/reset")
+    .post(async (_req, res) => {
+      try {
+        await Promise.all(deps.secretsStore.list().map((key) => deps.secretsStore.delete(key)));
+        await Promise.all([
+          deps.configOverlayStore.set("codex.auth.mode", ""),
+          deps.configOverlayStore.set("codex.auth.source_home", ""),
+        ]);
+        res.json({ ok: true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to reset configuration";
+        res.status(500).json({ error: { code: "reset_failed", message } });
+      }
+    })
+    .all((_req, res) => methodNotAllowed(res));
+
   // POST /api/v1/setup/master-key
   app
     .route("/api/v1/setup/master-key")

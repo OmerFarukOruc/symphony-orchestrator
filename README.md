@@ -27,12 +27,12 @@ Symphony connects to your Linear project, picks up actionable issues, and runs a
 
 ## Before you start
 
-| Requirement | Details |
-|---|---|
-| **Node.js 22+** | `node --version` should print `v22` or higher |
-| **Docker** | Running engine — `docker info` should succeed |
+| Requirement        | Details                                          |
+| ------------------ | ------------------------------------------------ |
+| **Node.js 22+**    | `node --version` should print `v22` or higher    |
+| **Docker**         | Running engine — `docker info` should succeed    |
 | **Linear API key** | From Linear → Settings → API → Personal API keys |
-| **Codex auth** | Either `OPENAI_API_KEY` or `codex login` |
+| **Codex auth**     | Either `OPENAI_API_KEY` or `codex login`         |
 
 ---
 
@@ -80,26 +80,26 @@ Set an issue to "In Progress" in your configured project. Symphony picks it up w
 
 ## ✨ What Ships in v0.2.0
 
-| Feature | Description |
-|---------|-------------|
-| **Local orchestration** | Single-host polling loop for Linear issues |
-| **Docker sandbox** | Agent runs inside a `node:22` container with Codex CLI, resource limits, security hardening, and OOM detection |
-| **Workspace isolation** | One directory per issue with lifecycle hooks & cleanup |
-| **Codex integration** | `codex app-server` process management via JSON-RPC |
+| Feature                        | Description                                                                                                                                          |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Local orchestration**        | Single-host polling loop for Linear issues                                                                                                           |
+| **Docker sandbox**             | Agent runs inside a `node:22` container with Codex CLI, resource limits, security hardening, and OOM detection                                       |
+| **Workspace isolation**        | One directory per issue with lifecycle hooks & cleanup                                                                                               |
+| **Codex integration**          | `codex app-server` process management via JSON-RPC                                                                                                   |
 | **Spec-conformance hardening** | Config-driven tracker endpoint and state policy, dispatch sorting, blocker filtering, per-state concurrency, retry revalidation, and startup cleanup |
-| **Retry & stall handling** | Configurable backoff, turn/stall timeouts, read timeouts |
-| **Model overrides** | Per-issue model selection saved by the operator, applied on next run |
-| **Archived attempts** | Durable attempt summaries & event timelines under `.symphony/` |
-| **Run inspection helper** | Repo-root `./symphony-logs` helper for archive-first issue and attempt inspection |
-| **Dashboard & API** | Local web UI at `/` and full JSON API under `/api/v1/*` |
-| **Prometheus metrics** | Local `GET /metrics` endpoint for scrape-friendly service metrics |
-| **Notifications** | Slack webhook lifecycle notifications with verbosity controls |
-| **Git automation** | Optional repo routing, clone/bootstrap, commit/push, and PR creation on `SYMPHONY_STATUS: DONE` |
-| **Config overlay & secrets** | Persistent config overlay plus encrypted local secrets API |
-| **Planning API** | Goal-to-issue planning endpoints under `/api/v1/plan*` |
-| **Desktop shell** | Minimal Tauri host that can start/stop `node dist/cli.js` and embed the dashboard |
-| **Strict TypeScript** | Full type safety with deterministic Vitest coverage |
-| **Visual verification** | `agent-browser` + bundled Chromium for dashboard screenshot diffing and QA |
+| **Retry & stall handling**     | Configurable backoff, turn/stall timeouts, read timeouts                                                                                             |
+| **Model overrides**            | Per-issue model selection saved by the operator, applied on next run                                                                                 |
+| **Archived attempts**          | Durable attempt summaries & event timelines under `.symphony/`                                                                                       |
+| **Run inspection helper**      | Repo-root `./symphony-logs` helper for archive-first issue and attempt inspection                                                                    |
+| **Dashboard & API**            | Local web UI at `/` and full JSON API under `/api/v1/*`                                                                                              |
+| **Prometheus metrics**         | Local `GET /metrics` endpoint for scrape-friendly service metrics                                                                                    |
+| **Notifications**              | Slack webhook lifecycle notifications with verbosity controls                                                                                        |
+| **Git automation**             | Optional repo routing, clone/bootstrap, commit/push, and PR creation on `SYMPHONY_STATUS: DONE`                                                      |
+| **Config overlay & secrets**   | Persistent config overlay plus encrypted local secrets API                                                                                           |
+| **Setup wizard**               | Guided setup flow for master key, Linear, OpenAI, and GitHub credentials                                                                             |
+| **Desktop shell**              | Minimal Tauri host that can start/stop `node dist/cli.js` and embed the dashboard                                                                    |
+| **Strict TypeScript**          | Full type safety with deterministic Vitest coverage                                                                                                  |
+| **Visual verification**        | `agent-browser` + bundled Chromium for dashboard screenshot diffing and QA                                                                           |
 
 ---
 
@@ -113,10 +113,10 @@ Build the TypeScript service first with `npm run build`, then run the desktop ap
 
 ## 📄 Workflow Files
 
-| File | Purpose |
-|------|---------|
-| `WORKFLOW.example.md` | Portable example for normal local setup |
-| `WORKFLOW.md` | Checked-in live smoke workflow for this repo |
+| File                  | Purpose                                      |
+| --------------------- | -------------------------------------------- |
+| `WORKFLOW.example.md` | Portable example for normal local setup      |
+| `WORKFLOW.md`         | Checked-in live smoke workflow for this repo |
 
 > [!TIP]
 > Symphony now generates a fresh temporary container-local `CODEX_HOME` for every attempt. Use `WORKFLOW.example.md` for API-key or custom provider flows, and `WORKFLOW.md` for a local `codex login` smoke path that copies `~/.codex/auth.json` into the container runtime home.
@@ -158,25 +158,48 @@ error code=missing_tracker_api_key msg="tracker.api_key is required after env re
 
 ## 📡 JSON API
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | Local operator dashboard |
-| `GET` | `/metrics` | Prometheus metrics |
-| `GET` | `/api/v1/state` | Runtime snapshot — queued, running, retrying, completed, workflow columns, and token totals |
-| `POST` | `/api/v1/refresh` | Trigger immediate orchestration refresh |
-| `GET` | `/api/v1/:issue` | Issue detail, recent events, archived attempts |
-| `GET` | `/api/v1/:issue/attempts` | Archived attempts + current live attempt id |
-| `GET` | `/api/v1/attempts/:id` | Archived event stream for a specific attempt |
-| `POST` | `/api/v1/:issue/model` | Save per-issue model override |
-| `GET` | `/api/v1/config` | Effective merged operator config |
-| `GET` | `/api/v1/config/overlay` | Persistent overlay values only |
-| `PUT` | `/api/v1/config/overlay` | Update overlay values |
-| `DELETE` | `/api/v1/config/overlay/:path` | Remove one overlay path |
-| `GET` | `/api/v1/secrets` | List configured secret keys |
-| `POST` | `/api/v1/secrets/:key` | Store one secret |
-| `DELETE` | `/api/v1/secrets/:key` | Delete one secret |
-| `POST` | `/api/v1/plan` | Generate a structured implementation plan |
-| `POST` | `/api/v1/plan/execute` | Create Linear issues from a generated plan |
+### Core Endpoints
+
+| Method | Endpoint                               | Description                                                                                 |
+| ------ | -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `GET`  | `/`                                    | Local operator dashboard                                                                    |
+| `GET`  | `/metrics`                             | Prometheus metrics                                                                          |
+| `GET`  | `/api/v1/runtime`                      | Runtime info — version, workflow path, feature flags                                        |
+| `GET`  | `/api/v1/state`                        | Runtime snapshot — queued, running, retrying, completed, workflow columns, and token totals |
+| `POST` | `/api/v1/refresh`                      | Trigger immediate orchestration refresh                                                     |
+| `GET`  | `/api/v1/transitions`                  | List available Linear workflow transitions                                                  |
+| `GET`  | `/api/v1/:issue_identifier`            | Issue detail, recent events, archived attempts                                              |
+| `GET`  | `/api/v1/:issue_identifier/attempts`   | Archived attempts + current live attempt id                                                 |
+| `GET`  | `/api/v1/attempts/:attempt_id`         | Archived event stream for a specific attempt                                                |
+| `POST` | `/api/v1/:issue_identifier/model`      | Save per-issue model override                                                               |
+| `POST` | `/api/v1/:issue_identifier/transition` | Transition a Linear issue to a new state                                                    |
+
+### Config & Secrets Endpoints
+
+| Method   | Endpoint                       | Description                      |
+| -------- | ------------------------------ | -------------------------------- |
+| `GET`    | `/api/v1/config`               | Effective merged operator config |
+| `GET`    | `/api/v1/config/overlay`       | Persistent overlay values only   |
+| `PUT`    | `/api/v1/config/overlay`       | Update overlay values            |
+| `DELETE` | `/api/v1/config/overlay/:path` | Remove one overlay path          |
+| `GET`    | `/api/v1/secrets`              | List configured secret keys      |
+| `POST`   | `/api/v1/secrets/:key`         | Store one secret                 |
+| `DELETE` | `/api/v1/secrets/:key`         | Delete one secret                |
+
+### Setup Wizard Endpoints
+
+| Method | Endpoint                          | Description                               |
+| ------ | --------------------------------- | ----------------------------------------- |
+| `GET`  | `/api/v1/setup/status`            | Setup wizard progress and step completion |
+| `POST` | `/api/v1/setup/reset`             | Reset all configuration                   |
+| `POST` | `/api/v1/setup/master-key`        | Initialize encryption master key          |
+| `GET`  | `/api/v1/setup/linear-projects`   | List available Linear projects            |
+| `POST` | `/api/v1/setup/linear-project`    | Select a Linear project                   |
+| `POST` | `/api/v1/setup/openai-key`        | Validate and store OpenAI API key         |
+| `POST` | `/api/v1/setup/codex-auth`        | Store Codex auth.json                     |
+| `POST` | `/api/v1/setup/device-auth/start` | Start OAuth device flow                   |
+| `POST` | `/api/v1/setup/device-auth/poll`  | Poll for OAuth tokens                     |
+| `POST` | `/api/v1/setup/github-token`      | Validate and store GitHub token           |
 
 ### Example: Model Override
 
@@ -239,6 +262,7 @@ Symphony persists attempt summaries and per-attempt event streams under the repo
 ```
 
 This archive powers:
+
 - 📊 Issue detail attempt history
 - 📜 Attempt detail API responses
 - 🔄 Dashboard retry/run inspection after restarts
@@ -291,6 +315,7 @@ And this description:
 Goal: prove Symphony can pick up a live issue, launch Codex, write a file in the issue workspace, and archive the attempt.
 
 Steps:
+
 1. Create `SYMPHONY_SMOKE_RESULT.md` in the workspace for this issue.
 2. Include:
    - the issue identifier
@@ -338,6 +363,9 @@ flowchart TD
     G -->|JSON-RPC| B
     B -->|persist| E["💾 Archive"]
     B -->|serve| F["🖥️ Dashboard & API"]
+    B -->|notify| N["📬 Notifications"]
+    B -->|PR| H["🐙 GitHub"]
+    F -->|setup| S["⚙️ Setup Wizard"]
 
     style A fill:#7c3aed,stroke:#6d28d9,color:#fff
     style B fill:#2563eb,stroke:#1d4ed8,color:#fff
@@ -346,13 +374,16 @@ flowchart TD
     style G fill:#d97706,stroke:#b45309,color:#fff
     style E fill:#6366f1,stroke:#4f46e5,color:#fff
     style F fill:#dc2626,stroke:#b91c1c,color:#fff
+    style N fill:#e11d48,stroke:#be123c,color:#fff
+    style H fill:#1f2937,stroke:#111827,color:#fff
+    style S fill:#854d0e,stroke:#713f12,color:#fff
 ```
 
 ---
 
 ## 🌟 Background
 
-This project draws direct inspiration from **[OpenAI's Symphony](https://github.com/openai/symphony)** — a framework that turns project work into isolated, autonomous implementation runs, allowing teams to *manage work* instead of *supervising coding agents*. We loved the vision of connecting a project tracker (Linear) to autonomous Codex agents and built our own TypeScript implementation tailored for local, single-host operator use.
+This project draws direct inspiration from **[OpenAI's Symphony](https://github.com/openai/symphony)** — a framework that turns project work into isolated, autonomous implementation runs, allowing teams to _manage work_ instead of _supervising coding agents_. We loved the vision of connecting a project tracker (Linear) to autonomous Codex agents and built our own TypeScript implementation tailored for local, single-host operator use.
 
 > [!NOTE]
 > While OpenAI's Symphony provides a [spec](https://github.com/openai/symphony/blob/main/SPEC.md) and an Elixir reference implementation, **Symphony Orchestrator** is an independent TypeScript implementation that follows the same core philosophy: poll Linear → create workspaces → launch agents → report results.
@@ -361,34 +392,35 @@ This project draws direct inspiration from **[OpenAI's Symphony](https://github.
 
 ## 📚 Documentation Map
 
-| Document | Purpose |
-|----------|---------|
-| [`docs/OPERATOR_GUIDE.md`](docs/OPERATOR_GUIDE.md) | Day-to-day setup and operations guide |
-| [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) | Metrics, traces, logging, and alerting notes |
-| [`docs/ROADMAP_AND_STATUS.md`](docs/ROADMAP_AND_STATUS.md) | Issue-linked feature roadmap across 4 tiers |
-| [`docs/CONFORMANCE_AUDIT.md`](docs/CONFORMANCE_AUDIT.md) | Per-requirement spec conformance audit |
-| [`docs/RELEASING.md`](docs/RELEASING.md) | Release preparation checklist |
-| [`docs/RUNBOOKS.md`](docs/RUNBOOKS.md) | Troubleshooting playbooks for common operator failures |
-| [`docs/TRUST_AND_AUTH.md`](docs/TRUST_AND_AUTH.md) | Trust boundary and auth model |
-| [`WORKFLOW.example.md`](WORKFLOW.example.md) | Portable example workflow |
-| [`WORKFLOW.md`](WORKFLOW.md) | Checked-in live smoke workflow |
-| [`EXECPLAN.md`](EXECPLAN.md) | Internal execution history and implementation log |
-| [`skills/visual-verify/SKILL.md`](skills/visual-verify/SKILL.md) | Visual verification skill for dashboard UI testing |
+| Document                                                         | Purpose                                                |
+| ---------------------------------------------------------------- | ------------------------------------------------------ |
+| [`docs/OPERATOR_GUIDE.md`](docs/OPERATOR_GUIDE.md)               | Day-to-day setup and operations guide                  |
+| [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md)                 | Metrics, traces, logging, and alerting notes           |
+| [`docs/ROADMAP_AND_STATUS.md`](docs/ROADMAP_AND_STATUS.md)       | Issue-linked feature roadmap across 4 tiers            |
+| [`docs/CONFORMANCE_AUDIT.md`](docs/CONFORMANCE_AUDIT.md)         | Per-requirement spec conformance audit                 |
+| [`docs/RELEASING.md`](docs/RELEASING.md)                         | Release preparation checklist                          |
+| [`docs/RUNBOOKS.md`](docs/RUNBOOKS.md)                           | Troubleshooting playbooks for common operator failures |
+| [`docs/TRUST_AND_AUTH.md`](docs/TRUST_AND_AUTH.md)               | Trust boundary and auth model                          |
+| [`WORKFLOW.example.md`](WORKFLOW.example.md)                     | Portable example workflow                              |
+| [`WORKFLOW.md`](WORKFLOW.md)                                     | Checked-in live smoke workflow                         |
+| [`EXECPLAN.md`](EXECPLAN.md)                                     | Internal execution history and implementation log      |
+| [`skills/visual-verify/SKILL.md`](skills/visual-verify/SKILL.md) | Visual verification skill for dashboard UI testing     |
 
 ---
 
 ## 🧭 Files to Know First
 
-| File | Role |
-|------|------|
-| `src/cli.ts` | Startup, validation, archive directory selection, shutdown |
-| `src/orchestrator.ts` | Polling, reconciliation, retries, snapshot building, model overrides |
-| `src/agent-runner.ts` | Codex app-server client, Docker container lifecycle, and dynamic tool handling |
-| `src/docker-spawn.ts` | Builds `docker run` argument array from sandbox config |
-| `src/docker-lifecycle.ts` | Container stop, OOM inspection, and removal helpers |
-| `src/http-server.ts` | Dashboard and API routes |
-| `src/attempt-store.ts` | Archived attempt and event persistence |
-| `src/workspace-manager.ts` | Workspace creation, hooks, and cleanup |
+| File                               | Role                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| `src/cli/index.ts`                 | Startup, validation, archive directory selection, shutdown                     |
+| `src/orchestrator/orchestrator.ts` | Polling, reconciliation, retries, snapshot building, model overrides           |
+| `src/agent-runner/index.ts`        | Codex app-server client, Docker container lifecycle, and dynamic tool handling |
+| `src/docker/spawn.ts`              | Builds `docker run` argument array from sandbox config                         |
+| `src/docker/lifecycle.ts`          | Container stop, OOM inspection, and removal helpers                            |
+| `src/http/server.ts`               | Express server setup and middleware                                            |
+| `src/http/routes.ts`               | API route registration                                                         |
+| `src/core/attempt-store.ts`        | Archived attempt and event persistence                                         |
+| `src/workspace/manager.ts`         | Workspace creation, hooks, and cleanup                                         |
 
 ---
 
@@ -396,9 +428,9 @@ This project draws direct inspiration from **[OpenAI's Symphony](https://github.
 
 The recommended `v0.2` operating mode is intentionally **high trust** and **local-only**.
 
-- Symphony decides *when* to launch work and *which workspace* to use
-- Codex decides *how* each turn executes
-- The configured provider or proxy decides *how* the model call is routed
+- Symphony decides _when_ to launch work and _which workspace_ to use
+- Codex decides _how_ each turn executes
+- The configured provider or proxy decides _how_ the model call is routed
 
 > [!CAUTION]
 > This posture (`danger-full-access` sandbox, `never` approval policy) is appropriate **only** for local, operator-controlled environments. See [`docs/TRUST_AND_AUTH.md`](docs/TRUST_AND_AUTH.md) for the full trust and auth model.

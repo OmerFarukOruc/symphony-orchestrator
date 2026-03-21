@@ -3,6 +3,19 @@ import { buildDiffText, prettyJson, redactPath } from "./config-helpers";
 import { buildSectionPatchPlan } from "./settings-patches";
 import { getValueAtPath, setValueAtPath } from "./settings-paths";
 
+/** Section IDs used throughout settings for navigation and conditional logic. */
+export const SECTION_IDS = {
+  TRACKER: "tracker",
+  MODEL_PROVIDER_AUTH: "model-provider-auth",
+  SANDBOX: "sandbox",
+  AGENT: "agent",
+  REPOSITORIES_GITHUB: "repositories-github",
+  NOTIFICATIONS: "notifications",
+  WORKFLOW_STAGES: "workflow-stages",
+  FEATURE_FLAGS: "feature-flags",
+  RUNTIME_PATHS: "runtime-paths",
+} as const;
+
 export interface SettingsFieldOption {
   value: string;
   label: string;
@@ -12,6 +25,9 @@ export interface SettingsFieldDefinition {
   path: string;
   label: string;
   kind: "text" | "number" | "textarea" | "select" | "boolean" | "json" | "list" | "readonly";
+  group?: string;
+  groupDescription?: string;
+  advanced?: boolean;
   hint?: string;
   placeholder?: string;
   options?: SettingsFieldOption[];
@@ -31,6 +47,14 @@ export interface SettingsSectionDefinition {
   fields: SettingsFieldDefinition[];
   prefixes: string[];
   saveLabel: string;
+}
+
+export interface SettingsFieldGroup {
+  id: string;
+  title: string;
+  description?: string;
+  advanced: boolean;
+  fields: SettingsFieldDefinition[];
 }
 
 export function buildSettingsSections(
@@ -176,6 +200,31 @@ export function getSectionById(
   return buildSettingsSections(schema, effective).find((section) => section.id === sectionId);
 }
 
+export function sectionGroups(section: SettingsSectionDefinition): SettingsFieldGroup[] {
+  const groups = new Map<string, SettingsFieldGroup>();
+  section.fields.forEach((field, index) => {
+    const title = field.group?.trim() || "Settings";
+    const advanced = field.advanced === true;
+    const key = `${advanced ? "advanced" : "core"}:${title}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.fields.push(field);
+      if (!existing.description && field.groupDescription) {
+        existing.description = field.groupDescription;
+      }
+      return;
+    }
+    groups.set(key, {
+      id: `${section.id}-group-${index}`,
+      title,
+      description: field.groupDescription,
+      advanced,
+      fields: [field],
+    });
+  });
+  return Array.from(groups.values());
+}
+
 function buildSchemaSections(schema: Record<string, unknown> | null): SettingsSectionDefinition[] {
   const sections = Array.isArray(schema?.sections) ? schema.sections : [];
   const parsedSections: SettingsSectionDefinition[] = [];
@@ -229,71 +278,153 @@ function buildDefaultSections(effective: Record<string, unknown>): SettingsSecti
     {
       id: "tracker",
       title: "Tracker",
-      description: "Where Symphony pulls work from and which workflow states count as active or terminal.",
-      badge: "Novice-friendly",
+      description: "Connect Symphony to your issue tracker and define which states mean 'in progress' vs 'done'.",
+      badge: "Start here",
       prefixes: ["tracker"],
       saveLabel: "Save tracker",
       fields: [
         {
           path: "tracker.kind",
-          label: "Tracker kind",
+          label: "Issue tracker",
           kind: "select",
+          group: "Connection",
+          groupDescription: "Choose the tracker Symphony should read work from.",
           options: [{ value: "linear", label: "Linear" }],
         },
         {
           path: "tracker.endpoint",
-          label: "Tracker endpoint",
+          label: "Endpoint override",
           kind: "text",
-          hint: "Defaults to Linear GraphQL unless overridden.",
+          group: "Advanced connection",
+          groupDescription: "Only change this if you route tracker traffic through a custom endpoint.",
+          advanced: true,
+          hint: "Leave blank to use Linear's default GraphQL endpoint.",
         },
         {
           path: "tracker.project_slug",
-          label: "Project slug",
+          label: "Linear project",
           kind: "text",
-          hint: "The Linear project slug Symphony dispatches from.",
+          group: "Connection",
+          hint: "Pick the Linear project Symphony should dispatch from.",
           actionLabel: "Browse",
           actionKind: "browse-linear-projects",
         },
-        { path: "tracker.active_states", label: "Active states", kind: "list", hint: "One state per line." },
-        { path: "tracker.terminal_states", label: "Terminal states", kind: "list", hint: "One state per line." },
+        {
+          path: "tracker.active_states",
+          label: "States that mean work is active",
+          kind: "list",
+          group: "Workflow meaning",
+          groupDescription: "Tell Symphony which tracker states mean an issue is ready or in progress.",
+          hint: "One state per line. Example: Todo, In Progress.",
+          placeholder: "Todo\nIn Progress",
+        },
+        {
+          path: "tracker.terminal_states",
+          label: "States that mean work is done",
+          kind: "list",
+          group: "Workflow meaning",
+          hint: "One state per line. Example: Done, Canceled.",
+          placeholder: "Done\nCanceled",
+        },
       ],
     },
     {
       id: "model-provider-auth",
       title: "Model provider / auth",
-      description: "Default Codex model, provider routing, and operator authentication settings.",
+      description:
+        "Choose the default model, decide how Symphony authenticates, and override provider routing if needed.",
       badge: "Core runtime",
       prefixes: ["codex.model", "codex.reasoning_effort", "codex.auth", "codex.provider"],
       saveLabel: "Save provider settings",
       fields: [
-        { path: "codex.model", label: "Default model", kind: "text" },
+        {
+          path: "codex.model",
+          label: "Default model",
+          kind: "text",
+          group: "Default model",
+          groupDescription: "Set the model Symphony should use unless an issue override is saved.",
+        },
         {
           path: "codex.reasoning_effort",
           label: "Reasoning effort",
           kind: "select",
+          group: "Default model",
           options: REASONING_EFFORT_OPTIONS.map((value) => ({ value, label: value })),
         },
         {
           path: "codex.auth.mode",
-          label: "Auth mode",
+          label: "How to authenticate",
           kind: "select",
+          group: "Authentication",
+          groupDescription: "Use an API key or your local OpenAI login, depending on how you run Codex.",
           options: [
             { value: "api_key", label: "API key" },
             { value: "openai_login", label: "OpenAI login" },
           ],
         },
-        { path: "codex.auth.source_home", label: "Auth source home", kind: "text" },
-        { path: "codex.provider.id", label: "Provider id", kind: "text", placeholder: "custom" },
-        { path: "codex.provider.name", label: "Provider name", kind: "text" },
-        { path: "codex.provider.base_url", label: "Base URL", kind: "text" },
-        { path: "codex.provider.env_key", label: "API key env var", kind: "text", redact: true },
-        { path: "codex.provider.wire_api", label: "Wire API", kind: "text", placeholder: "responses" },
-        { path: "codex.provider.requires_openai_auth", label: "Requires OpenAI auth", kind: "boolean" },
+        {
+          path: "codex.auth.source_home",
+          label: "Auth directory",
+          kind: "text",
+          group: "Authentication",
+          advanced: true,
+          hint: "Local directory where auth credentials are stored.",
+        },
+        {
+          path: "codex.provider.id",
+          label: "Provider id",
+          kind: "text",
+          group: "Provider routing",
+          groupDescription: "Only fill these in when routing Codex through a custom or OpenAI-compatible provider.",
+          advanced: true,
+          placeholder: "custom",
+        },
+        {
+          path: "codex.provider.name",
+          label: "Provider name",
+          kind: "text",
+          group: "Provider routing",
+          advanced: true,
+        },
+        {
+          path: "codex.provider.base_url",
+          label: "Base URL",
+          kind: "text",
+          group: "Provider routing",
+          advanced: true,
+        },
+        {
+          path: "codex.provider.env_key",
+          label: "API key env var",
+          kind: "text",
+          group: "Provider routing",
+          advanced: true,
+          redact: true,
+          hint: "Name of the environment variable holding your API key.",
+        },
+        {
+          path: "codex.provider.wire_api",
+          label: "API protocol",
+          kind: "text",
+          group: "Provider routing",
+          advanced: true,
+          placeholder: "responses",
+          hint: "Wire protocol used to communicate with this provider (e.g. responses).",
+        },
+        {
+          path: "codex.provider.requires_openai_auth",
+          label: "Requires OpenAI authentication",
+          kind: "boolean",
+          group: "Provider routing",
+          advanced: true,
+        },
         {
           path: "codex.provider.env_http_headers",
-          label: "Provider header env mapping",
+          label: "Custom HTTP header env vars",
           kind: "json",
-          hint: "JSON object of header name to env var name.",
+          group: "Provider routing",
+          advanced: true,
+          hint: "Map of HTTP header names to environment variable names.",
         },
       ],
     },
@@ -305,24 +436,115 @@ function buildDefaultSections(effective: Record<string, unknown>): SettingsSecti
       prefixes: ["codex.approval_policy", "codex.thread_sandbox", "codex.turn_sandbox_policy", "codex.sandbox"],
       saveLabel: "Save sandbox",
       fields: [
-        { path: "codex.approval_policy", label: "Approval policy", kind: "json" },
-        { path: "codex.thread_sandbox", label: "Thread sandbox", kind: "text" },
-        { path: "codex.turn_sandbox_policy", label: "Turn sandbox policy", kind: "json" },
-        { path: "codex.sandbox.image", label: "Sandbox image", kind: "text" },
-        { path: "codex.sandbox.network", label: "Network", kind: "text" },
-        { path: "codex.sandbox.security.no_new_privileges", label: "No new privileges", kind: "boolean" },
-        { path: "codex.sandbox.security.drop_capabilities", label: "Drop capabilities", kind: "boolean" },
-        { path: "codex.sandbox.security.gvisor", label: "Use gVisor", kind: "boolean" },
-        { path: "codex.sandbox.resources.memory", label: "Memory", kind: "text" },
-        { path: "codex.sandbox.resources.cpus", label: "CPUs", kind: "text" },
-        { path: "codex.sandbox.resources.tmpfs_size", label: "tmpfs size", kind: "text" },
+        {
+          path: "codex.approval_policy",
+          label: "Approval policy",
+          kind: "json",
+          group: "Safety",
+          groupDescription: "Decide which actions need explicit approval before they run.",
+          hint: "Controls which operations require human approval before execution.",
+        },
+        {
+          path: "codex.thread_sandbox",
+          label: "Thread sandbox",
+          kind: "text",
+          group: "Container",
+          groupDescription: "Choose the default sandbox mode and container image for each turn.",
+        },
+        {
+          path: "codex.turn_sandbox_policy",
+          label: "Turn sandbox policy",
+          kind: "json",
+          group: "Safety",
+          advanced: true,
+          hint: "Per-turn policy overriding the default sandbox behavior.",
+        },
+        { path: "codex.sandbox.image", label: "Sandbox image", kind: "text", group: "Container" },
+        {
+          path: "codex.sandbox.network",
+          label: "Network access",
+          kind: "text",
+          group: "Container",
+          advanced: true,
+        },
+        {
+          path: "codex.sandbox.security.no_new_privileges",
+          label: "No new privileges",
+          kind: "boolean",
+          group: "Safety",
+          advanced: true,
+        },
+        {
+          path: "codex.sandbox.security.drop_capabilities",
+          label: "Drop capabilities",
+          kind: "boolean",
+          group: "Safety",
+          advanced: true,
+        },
+        {
+          path: "codex.sandbox.security.gvisor",
+          label: "Use gVisor",
+          kind: "boolean",
+          group: "Safety",
+          advanced: true,
+        },
+        {
+          path: "codex.sandbox.resources.memory",
+          label: "Memory",
+          kind: "text",
+          group: "Resources",
+          groupDescription: "Optional resource caps for each sandboxed run.",
+          advanced: true,
+        },
+        { path: "codex.sandbox.resources.cpus", label: "CPUs", kind: "text", group: "Resources", advanced: true },
+        {
+          path: "codex.sandbox.resources.tmpfs_size",
+          label: "Tmpfs size",
+          kind: "text",
+          group: "Resources",
+          advanced: true,
+        },
+      ],
+    },
+    {
+      id: "agent",
+      title: "Agent",
+      description: "Concurrency, retry limits, and continuation controls for worker agents.",
+      badge: "Core runtime",
+      prefixes: ["agent"],
+      saveLabel: "Save agent settings",
+      fields: [
+        {
+          path: "agent.max_concurrent_agents",
+          label: "Max concurrent agents",
+          kind: "number",
+          group: "Throughput",
+          groupDescription: "Control how much work Symphony runs in parallel.",
+        },
+        { path: "agent.max_turns", label: "Max turns", kind: "number", group: "Throughput" },
+        {
+          path: "agent.max_continuation_attempts",
+          label: "Max continuation attempts",
+          kind: "number",
+          group: "Continuation",
+          groupDescription: "Prevent long-running issues from looping forever without a stop signal.",
+          hint: "How many times an agent can retry without emitting a stop signal before being stopped. Default: 5.",
+        },
+        {
+          path: "agent.max_retry_backoff_ms",
+          label: "Max retry backoff (ms)",
+          kind: "number",
+          group: "Retries",
+          groupDescription: "Tune how long Symphony waits before retrying failed work.",
+          advanced: true,
+        },
       ],
     },
     {
       id: "repositories-github",
       title: "Repositories / GitHub",
       description: "Shaped views over repo routing and GitHub automation config — no extra hidden state.",
-      badge: "Shaped view",
+      badge: "Integration",
       prefixes: ["repos", "github"],
       saveLabel: "Save repository settings",
       fields: [
@@ -341,7 +563,7 @@ function buildDefaultSections(effective: Record<string, unknown>): SettingsSecti
       id: "notifications",
       title: "Notifications",
       description: "Slack delivery settings surfaced directly from notifications config.",
-      badge: "Shaped view",
+      badge: "Integration",
       prefixes: ["notifications"],
       saveLabel: "Save notifications",
       fields: [
@@ -406,7 +628,7 @@ function buildDefaultSections(effective: Record<string, unknown>): SettingsSecti
       title: "Runtime / paths",
       description:
         "Where Symphony runs, stores workspaces, and listens locally. Missing metadata is shown as not exposed yet.",
-      badge: "Operator confidence",
+      badge: "Runtime info",
       prefixes: ["workspace", "hooks", "polling", "server", "runtime"],
       saveLabel: "Save runtime settings",
       fields: [

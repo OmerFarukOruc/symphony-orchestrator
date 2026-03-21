@@ -72,7 +72,7 @@ function makeConfig(overrides: Partial<ServiceConfig["tracker"]> = {}): ServiceC
       terminalStates: ["Done", "Canceled"],
       ...overrides,
     },
-    agent: { maxConcurrentAgents: 5, maxConcurrentAgentsByState: {}, maxTurns: 10, maxRetryBackoffMs: 300000 },
+    agent: { maxConcurrentAgents: 5, maxConcurrentAgentsByState: {}, maxTurns: 10, maxRetryBackoffMs: 300000, maxContinuationAttempts: 5 },
   } as unknown as ServiceConfig;
 }
 
@@ -356,6 +356,39 @@ describe("handleWorkerOutcome - continuation retry", () => {
 
     const [, , delayMs] = ctx.queueRetry.mock.calls[0] as [unknown, number, number, unknown];
     expect(delayMs).toBe(5000);
+  });
+});
+
+describe("handleWorkerOutcome - max continuation cap", () => {
+  it("stops retrying after maxContinuationAttempts is exceeded", async () => {
+    const config = makeConfig();
+    config.agent.maxContinuationAttempts = 3;
+    const ctx = makeCtx({ config });
+    const entry = makeEntry({ lastAgentMessageContent: null });
+    ctx.runningEntries.set("issue-1", entry);
+
+    // attempt=3 → nextAttempt=4 > maxContinuationAttempts=3 → should stop
+    await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 3);
+
+    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.releaseIssueClaim).toHaveBeenCalledWith("issue-1");
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_failed" }));
+    const view = ctx.completedViews.get("MT-1") as Record<string, unknown>;
+    expect(view.status).toBe("failed");
+    expect(view.error).toBe("max_continuations_exceeded");
+  });
+
+  it("still retries when under the continuation limit", async () => {
+    const config = makeConfig();
+    config.agent.maxContinuationAttempts = 3;
+    const ctx = makeCtx({ config });
+    const entry = makeEntry({ lastAgentMessageContent: null });
+    ctx.runningEntries.set("issue-1", entry);
+
+    // attempt=2 → nextAttempt=3 <= maxContinuationAttempts=3 → should retry
+    await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 2);
+
+    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 3, 1000, "continuation");
   });
 });
 

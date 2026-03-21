@@ -30,12 +30,12 @@ export function updateSettingsHeader(
   loadState: AsyncState<SettingsPageData>,
 ): void {
   if (loadState.loading) {
-    subtitle.textContent = "Loading grouped settings and operator-facing paths.";
+    subtitle.textContent = "Loading your tracker, provider, and runtime settings.";
     schemaBadge.textContent = "Loading";
     return;
   }
   if (loadState.error) {
-    subtitle.textContent = "Settings could not be loaded. Retry after fixing the underlying API or network issue.";
+    subtitle.textContent = "Settings could not be loaded. Retry after fixing the API or network issue.";
     schemaBadge.textContent = "Unavailable";
     return;
   }
@@ -46,8 +46,8 @@ export function updateSettingsHeader(
   }
   syncLoadedData(state, loadState.data);
   subtitle.textContent = isSchemaLimited(state.schema)
-    ? "Schema is limited, so these grouped cards fall back to shaped config views with plain underlying paths."
-    : "Schema-aware grouped settings with live section diffs and operator-facing paths.";
+    ? "Configure your tracker, provider, and sandbox so Symphony can start processing issues."
+    : "Select a section to review how Symphony connects, authenticates, and runs work.";
   schemaBadge.textContent = isSchemaLimited(state.schema) ? "Schema limited" : "Schema guided";
 }
 

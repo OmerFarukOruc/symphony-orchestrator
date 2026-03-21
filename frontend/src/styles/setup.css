@@ -307,3 +307,66 @@
   padding: var(--space-3) var(--space-4);
   max-width: 420px;
 }
+
+/* Auth mode selector cards */
+.setup-auth-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.setup-auth-card {
+  border: var(--stroke-default) solid var(--border-stitch);
+  padding: var(--space-3);
+  background: var(--bg-muted);
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-out-quart);
+}
+
+.setup-auth-card.is-selected {
+  border-color: var(--text-accent);
+}
+
+.setup-auth-card-title {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.setup-auth-card-desc {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Divider in done step */
+.setup-divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: var(--space-5) 0 var(--space-3);
+}
+
+/* Reset button in done step */
+.setup-reset-btn {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+/* Input row with status badge */
+.setup-input-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* Upload row */
+.setup-upload-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
