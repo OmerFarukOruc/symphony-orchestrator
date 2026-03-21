@@ -139,21 +139,19 @@ export async function refreshQueueViews(ctx: {
 
   const nextDetailViews = new Map<string, IssueView>();
   for (const issue of issues) {
-    if (!ctx.claimedIssueIds.has(issue.id)) {
-      const selection = ctx.resolveModelSelection(issue.identifier);
-      nextDetailViews.set(
-        issue.identifier,
-        issueView(issue, {
-          configuredModel: selection.model,
-          configuredReasoningEffort: selection.reasoningEffort,
-          configuredModelSource: selection.source,
-          modelChangePending: false,
-          model: selection.model,
-          reasoningEffort: selection.reasoningEffort,
-          modelSource: selection.source,
-        }),
-      );
-    }
+    const selection = ctx.resolveModelSelection(issue.identifier);
+    nextDetailViews.set(
+      issue.identifier,
+      issueView(issue, {
+        configuredModel: selection.model,
+        configuredReasoningEffort: selection.reasoningEffort,
+        configuredModelSource: selection.source,
+        modelChangePending: false,
+        model: selection.model,
+        reasoningEffort: selection.reasoningEffort,
+        modelSource: selection.source,
+      }),
+    );
   }
   ctx.detailViews.clear();
   nextDetailViews.forEach((detailView, identifier) => ctx.detailViews.set(identifier, detailView));

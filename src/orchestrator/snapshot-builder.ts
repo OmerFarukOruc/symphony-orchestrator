@@ -91,7 +91,7 @@ export function buildSnapshot(deps: SnapshotBuilderDeps, callbacks: SnapshotBuil
       running,
       retrying,
       queued,
-      completed,
+      completed: [...completed, ...callbacks.getDetailViews().values()],
     }),
     codexTotals: {
       ...codexTotals,
