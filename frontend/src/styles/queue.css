@@ -21,35 +21,225 @@
   padding: 0 0 var(--space-2) 0;
 }
 
-.queue-column {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  gap: var(--space-3);
-  min-height: 60vh;
-  padding: var(--space-4);
-  border: var(--surface-standard-border-width) solid var(--surface-standard-border);
-  border-top: var(--surface-primary-accent-width) solid var(--surface-standard-border);
-  background: var(--surface-standard-bg);
-  transition:
-    border-color var(--motion-fast) var(--ease-out-quart),
-    background-color var(--motion-fast) var(--ease-out-quart);
+/* ============================================
+   QUEUE-SPECIFIC KANBAN ENHANCEMENTS
+   Sharper columns, clearer states, visual variety
+   ============================================ */
+
+/* ─── Column Enhancements ─── */
+
+/* Base column within queue page - more prominent borders */
+.queue-page .kanban-column {
+  border-width: 2px;
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-left-color: var(--border-stitch);
 }
 
-.queue-column[data-stage="todo"] {
-  border-top-color: var(--status-queued);
+/* Stage-specific column styling with left border accent */
+.queue-page .kanban-column[data-stage="todo"] {
+  border-left-color: var(--status-queued);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--status-queued) 4%, var(--bg-surface)) 0%,
+    var(--bg-surface) 100%
+  );
 }
-.queue-column[data-stage="in_progress"] {
-  border-top-color: var(--status-running);
-  background: var(--surface-primary-bg);
+
+.queue-page .kanban-column[data-stage="in_progress"] {
+  border-left-color: var(--status-running);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--status-running) 6%, var(--bg-surface)) 0%,
+    var(--bg-surface) 100%
+  );
 }
-.queue-column[data-stage="review"] {
-  border-top-color: var(--status-claimed);
+
+.queue-page .kanban-column[data-stage="review"] {
+  border-left-color: var(--status-claimed);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--status-claimed) 4%, var(--bg-surface)) 0%,
+    var(--bg-surface) 100%
+  );
 }
-.queue-column[data-stage="done"] {
-  border-top-color: var(--status-completed);
+
+.queue-page .kanban-column[data-stage="done"] {
+  border-left-color: var(--status-completed);
+  background: var(--bg-surface);
 }
-.queue-column[data-stage="blocked"] {
-  border-top-color: var(--status-blocked);
+
+.queue-page .kanban-column[data-stage="blocked"] {
+  border-left-color: var(--status-blocked);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--status-blocked) 5%, var(--bg-surface)) 0%,
+    var(--bg-surface) 100%
+  );
+}
+
+/* Focused column - operator's current focus */
+.queue-page .kanban-column.is-focused {
+  border-color: color-mix(in srgb, var(--color-copper-500) 50%, var(--border-stitch));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-copper-500) 25%, transparent);
+}
+
+/* Gate column - approval checkpoint */
+.queue-page .kanban-column.is-gate {
+  border-left-color: var(--status-gate);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--status-gate) 5%, var(--bg-surface)) 0%,
+    var(--bg-surface) 100%
+  );
+}
+
+/* Column header - more prominent labels */
+.queue-page .kanban-column-header {
+  padding: var(--space-4);
+  border-bottom: 2px solid var(--border-stitch);
+}
+
+.queue-page .kanban-column-label {
+  font-weight: 700;
+  letter-spacing: var(--tracking-snug);
+}
+
+.queue-page .kanban-column-count {
+  padding: 2px 8px;
+  background: var(--bg-muted);
+  font-weight: 600;
+}
+
+/* ─── Card Enhancements ─── */
+
+/* Base card within queue - sharper borders */
+.queue-page .kanban-card {
+  border: 2px solid transparent;
+  border-left-width: 4px;
+  transition:
+    transform var(--motion-fast) var(--ease-out-quart),
+    box-shadow var(--motion-fast) var(--ease-out-quart),
+    border-color var(--motion-fast) var(--ease-out-quart),
+    background-color var(--motion-fast) var(--ease-out-quart),
+    outline var(--motion-instant) var(--ease-out-quart);
+}
+
+/* Card hover - more pronounced lift */
+.queue-page .kanban-card:hover {
+  transform: translateY(-3px) scale(1.005);
+  box-shadow:
+    0 8px 16px -4px rgb(0 0 0 / 0.15),
+    0 4px 8px -2px rgb(0 0 0 / 0.1);
+  border-color: var(--border-stitch);
+}
+
+/* Active/press state */
+.queue-page .kanban-card:active {
+  transform: translateY(-1px) scale(0.995);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Selected card - copper prominence */
+.queue-page .kanban-card.is-selected {
+  border-color: color-mix(in srgb, var(--color-copper-500) 60%, var(--border-stitch));
+  border-left-color: var(--color-copper-500);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-copper-500) 8%, var(--bg-elevated)) 0%,
+    var(--bg-elevated) 100%
+  );
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-copper-500) 30%, transparent),
+    0 4px 12px -2px color-mix(in srgb, var(--color-copper-600) 15%, transparent);
+}
+
+/* Focused card - keyboard nav highlight */
+.queue-page .kanban-card.is-focused {
+  border-color: color-mix(in srgb, var(--color-copper-500) 45%, var(--border-stitch));
+  border-left-color: var(--color-copper-400);
+  outline: 2px solid var(--color-copper-500);
+  outline-offset: 2px;
+}
+
+/* Status-specific card borders - more saturated */
+.queue-page .kanban-card[data-status="queued"] {
+  border-left-color: var(--status-queued);
+}
+
+.queue-page .kanban-card[data-status="claimed"] {
+  border-left-color: var(--status-claimed);
+}
+
+.queue-page .kanban-card[data-status="running"] {
+  border-left-color: var(--status-running);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--status-running) 6%, var(--bg-elevated)) 0%,
+    var(--bg-elevated) 40%
+  );
+}
+
+.queue-page .kanban-card[data-status="retrying"] {
+  border-left-color: var(--status-retrying);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--status-retrying) 6%, var(--bg-elevated)) 0%,
+    var(--bg-elevated) 40%
+  );
+}
+
+.queue-page .kanban-card[data-status="blocked"] {
+  border-left-color: var(--status-blocked);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--status-blocked) 6%, var(--bg-elevated)) 0%,
+    var(--bg-elevated) 40%
+  );
+}
+
+.queue-page .kanban-card[data-status="completed"] {
+  border-left-color: var(--status-completed);
+  opacity: 0.75;
+}
+
+/* Running card pulse - enhanced */
+.queue-page .kanban-card[data-status="running"]::after {
+  width: 3px;
+  height: 70%;
+  background: linear-gradient(
+    180deg,
+    var(--status-running) 0%,
+    color-mix(in srgb, var(--status-running) 40%, transparent) 50%,
+    var(--status-running) 100%
+  );
+  animation: kanban-pulse-strong 1.5s ease-in-out infinite;
+}
+
+@keyframes kanban-pulse-strong {
+  0%, 100% { opacity: 1; width: 3px; }
+  50% { opacity: 0.4; width: 4px; }
+}
+
+/* Priority visual variety via card title weight */
+.queue-page .kanban-card:has(.priority-urgent) .kanban-card-title,
+.queue-page .kanban-card:has(.priority-high) .kanban-card-title {
+  font-weight: 700;
+}
+
+/* Drag state */
+.queue-page .kanban-card.is-dragging {
+  opacity: 0.6;
+  transform: scale(0.96) rotate(2deg);
+}
+
+.queue-page .kanban-column.is-drag-over {
+  border-color: var(--color-copper-400);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-copper-400) 6%, var(--bg-surface)) 0%,
+    var(--bg-surface) 100%
+  );
 }
 .queue-column-header,
 .queue-column-actions,
@@ -236,5 +426,34 @@
     height: 70vh;
     border-left: none;
     border-top: 1px solid var(--border-stitch);
+  }
+}
+
+/* ============================================
+   REDUCED MOTION
+   Respect user preference for reduced motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .queue-page .kanban-card {
+    transition: none;
+  }
+
+  .queue-page .kanban-card:hover {
+    transform: none;
+  }
+
+  .queue-page .kanban-card:active {
+    transform: none;
+  }
+
+  .queue-page .kanban-card[data-status="running"]::after {
+    animation: none;
+    opacity: 1;
+    width: 3px;
+  }
+
+  .queue-page .kanban-card.is-dragging {
+    transform: scale(0.96);
   }
 }
