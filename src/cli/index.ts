@@ -68,12 +68,18 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const startError = await safeStartConfigStore(configStore);
   if (startError !== null) return startError;
 
+  const SETUP_MODE_ERRORS = new Set(["missing_tracker_api_key", "missing_tracker_project_slug"]);
   if (!needsSetup) {
     const validationError = configStore.validateDispatch();
     if (validationError) {
-      printValidationError(validationError);
-      await configStore.stop();
-      return 1;
+      if (SETUP_MODE_ERRORS.has(validationError.code)) {
+        logger.warn({ code: validationError.code }, "missing credentials — starting in setup mode");
+        needsSetup = true;
+      } else {
+        printValidationError(validationError);
+        await configStore.stop();
+        return 1;
+      }
     }
   }
 

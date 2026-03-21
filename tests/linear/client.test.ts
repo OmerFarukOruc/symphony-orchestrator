@@ -3,7 +3,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { LinearClient, LinearClientError } from "../../src/linear/client.js";
 import { createLogger } from "../../src/core/logger.js";
 import type { PlannedIssue } from "../../src/planning/skill.js";
-import type { ServiceConfig } from "../../src/core/types.js";
+import type { ServiceConfig, SymphonyLogger } from "../../src/core/types.js";
+
+function getRequestBody(fetchMock: ReturnType<typeof vi.fn>, callIndex: number): Record<string, unknown> {
+  const calls = fetchMock.mock.calls as Array<[string, { body?: unknown }] | []>;
+  return JSON.parse(String(calls[callIndex]?.[1]?.body ?? "{}")) as Record<string, unknown>;
+}
+
+function getRequestVariables(fetchMock: ReturnType<typeof vi.fn>, callIndex: number): Record<string, unknown> {
+  return (getRequestBody(fetchMock, callIndex).variables as Record<string, unknown> | undefined) ?? {};
+}
 
 function createConfig(): ServiceConfig {
   return {
@@ -13,7 +22,7 @@ function createConfig(): ServiceConfig {
       endpoint: "https://api.linear.app/graphql",
       projectSlug: "EXAMPLE",
       activeStates: ["In Progress"],
-      terminalStates: ["Done", "Completed", "Canceled", "Cancelled", "Duplicate"],
+      terminalStates: ["Done", "Completed", "Canceled", "Duplicate"],
     },
     polling: { intervalMs: 30000 },
     workspace: {
@@ -41,7 +50,21 @@ function createConfig(): ServiceConfig {
       turnSandboxPolicy: { type: "dangerFullAccess" },
       readTimeoutMs: 1000,
       turnTimeoutMs: 10000,
+      drainTimeoutMs: 0,
+      startupTimeoutMs: 5000,
       stallTimeoutMs: 10000,
+      auth: { mode: "api_key", sourceHome: "/tmp" },
+      provider: null,
+      sandbox: {
+        image: "node:22",
+        network: "none",
+        security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false, seccompProfile: "" },
+        resources: { memory: "1g", memoryReservation: "512m", memorySwap: "2g", cpus: "1", tmpfsSize: "100m" },
+        extraMounts: [],
+        envPassthrough: [],
+        logs: { driver: "json-file", maxSize: "10m", maxFile: 3 },
+        egressAllowlist: [],
+      },
     },
     server: { port: 4000 },
   };
@@ -92,6 +115,45 @@ function issuesPayload(options?: {
         },
       },
     },
+  };
+}
+
+function workflowStatesPayload(states: Array<{ id: string; name: string }>): Record<string, unknown> {
+  return {
+    data: {
+      workflowStates: {
+        nodes: states,
+      },
+    },
+  };
+}
+
+function projectLookupPayload(teamId: string): Record<string, unknown> {
+  return {
+    data: {
+      projects: {
+        nodes: [
+          {
+            id: "project-1",
+            teams: {
+              nodes: [{ id: teamId }],
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+function createMockLogger(): SymphonyLogger {
+  return {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    child: vi.fn(function child() {
+      return createMockLogger();
+    }),
   };
 }
 
@@ -238,8 +300,129 @@ describe("LinearClient", () => {
       "https://linear.example.test/graphql",
       expect.objectContaining({
         method: "POST",
-        body: expect.stringContaining('"activeStates":["In Progress","Review"]'),
+        body: expect.stringContaining(
+          '"activeStates":["In Progress","Review","Done","Completed","Canceled","Duplicate"]',
+        ),
       }),
+    );
+  });
+
+  it("returns non-empty name-based candidate results without fallback retry", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => issuesPayload(),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new LinearClient(() => createConfig(), createLogger());
+    const issues = await client.fetchCandidateIssues();
+
+    expect(issues).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const requestBody = getRequestBody(fetchMock, 0);
+    expect(requestBody.query).toContain("SymphonyCandidateIssues");
+    expect(requestBody.query).not.toContain("SymphonyWorkflowStates");
+  });
+
+  it("retries candidate fetches by resolved workflow state ids after zero name-based results", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => issuesPayload({ nodes: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => projectLookupPayload("team-1"),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () =>
+          workflowStatesPayload([
+            { id: "state-1", name: "in progress" },
+            { id: "state-2", name: "Review" },
+          ]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => issuesPayload({ nodes: [issueNode({ id: "issue-2", identifier: "MT-99" })] }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config = createConfig();
+    config.tracker.activeStates = ["In Progress", "review"];
+
+    const client = new LinearClient(() => config, createLogger());
+    const issues = await client.fetchCandidateIssues();
+
+    expect(issues).toEqual([
+      expect.objectContaining({
+        id: "issue-2",
+        identifier: "MT-99",
+      }),
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+
+    const projectLookupBody = getRequestBody(fetchMock, 1);
+    expect(projectLookupBody.query).toContain("SymphonyPlanProject");
+    expect(projectLookupBody.variables).toEqual({ projectSlug: "EXAMPLE" });
+
+    const workflowStatesBody = getRequestBody(fetchMock, 2);
+    expect(workflowStatesBody.query).toContain("SymphonyWorkflowStates");
+    expect(workflowStatesBody.variables).toEqual({ teamId: "team-1" });
+
+    const fallbackBody = getRequestBody(fetchMock, 3);
+    expect(fallbackBody.query).toContain("SymphonyCandidateIssuesByStateIds");
+    expect(fallbackBody.variables).toEqual({ after: null, stateIds: ["state-1", "state-2"], projectSlug: "EXAMPLE" });
+  });
+
+  it("returns [] and logs one warning when workflow states cannot be resolved", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => issuesPayload({ nodes: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => projectLookupPayload("team-1"),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => workflowStatesPayload([{ id: "state-1", name: "Backlog" }]),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const logger = createMockLogger();
+    const client = new LinearClient(() => createConfig(), logger);
+
+    await expect(client.fetchCandidateIssues()).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activeStates: ["In Progress"],
+        projectSlug: "EXAMPLE",
+        teamId: "team-1",
+        unresolvedStates: ["In Progress"],
+      }),
+      "linear candidate issue fallback could not resolve workflow states",
     );
   });
 
@@ -346,20 +529,21 @@ describe("LinearClient", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(4);
 
-    const projectLookupBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const projectLookupBody = getRequestBody(fetchMock, 0);
     expect(projectLookupBody.query).toContain("query SymphonyPlanProject");
-    expect(projectLookupBody.variables).toEqual({ projectSlug: "EXAMPLE" });
+    expect(getRequestVariables(fetchMock, 0)).toEqual({ projectSlug: "EXAMPLE" });
 
-    const labelLookupBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    const labelLookupBody = getRequestBody(fetchMock, 1);
     expect(labelLookupBody.query).toContain("query SymphonyPlanLabels");
-    expect(labelLookupBody.variables).toEqual({
+    expect(getRequestVariables(fetchMock, 1)).toEqual({
       teamId: "team-1",
       names: ["backend", "api", "frontend"],
     });
 
-    const firstCreateBody = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
+    const firstCreateBody = getRequestBody(fetchMock, 2);
+    const firstCreateVariables = getRequestVariables(fetchMock, 2);
     expect(firstCreateBody.query).toContain("mutation SymphonyCreateIssue");
-    expect(firstCreateBody.variables.input).toEqual(
+    expect(firstCreateVariables.input).toEqual(
       expect.objectContaining({
         teamId: "team-1",
         projectId: "project-1",
@@ -368,10 +552,10 @@ describe("LinearClient", () => {
         labelIds: ["label-1", "label-2"],
       }),
     );
-    expect(firstCreateBody.variables.input.description).toContain("Plan item: PLAN-1");
+    expect((firstCreateVariables.input as Record<string, unknown>).description).toContain("Plan item: PLAN-1");
 
-    const secondCreateBody = JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body));
-    expect(secondCreateBody.variables.input).toEqual(
+    const secondCreateVariables = getRequestVariables(fetchMock, 3);
+    expect(secondCreateVariables.input).toEqual(
       expect.objectContaining({
         teamId: "team-1",
         projectId: "project-1",
@@ -380,7 +564,7 @@ describe("LinearClient", () => {
         labelIds: ["label-3"],
       }),
     );
-    expect(secondCreateBody.variables.input.description).toContain("- ABC-101");
+    expect((secondCreateVariables.input as Record<string, unknown>).description).toContain("- ABC-101");
   });
 
   it("fails clearly when plan execution cannot resolve a unique team", async () => {

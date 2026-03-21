@@ -9,6 +9,7 @@ interface SetupState {
   error: string | null;
   generatedKey: string | null;
   apiKeyInput: string;
+  apiKeyVerified: boolean;
   projects: Array<{ id: unknown; name: unknown; slugId: string; teamKey: unknown }>;
   selectedProject: string | null;
   tokenInput: string;
@@ -20,6 +21,7 @@ const state: SetupState = {
   error: null,
   generatedKey: null,
   apiKeyInput: "",
+  apiKeyVerified: false,
   projects: [],
   selectedProject: null,
   tokenInput: "",
@@ -186,8 +188,17 @@ function buildLinearProjectStep(): HTMLElement {
 
   const sub = document.createElement("div");
   sub.className = "setup-subtitle";
-  sub.textContent = "Enter your Linear API key to load your projects, then select one to track.";
+  sub.innerHTML =
+    "Enter your Linear API key, then select a project to track. " +
+    '<a class="setup-link" href="https://linear.app/settings/account/security/api-keys/new" target="_blank" rel="noopener">Create a personal API key →</a>';
 
+  const callout = document.createElement("div");
+  callout.className = "setup-callout";
+  callout.innerHTML =
+    "When creating the key, enable <strong>Read</strong> and <strong>Write</strong> permissions " +
+    "with <strong>All teams you have access to</strong> selected.";
+
+  // ── API key input row ──
   const field = document.createElement("div");
   field.className = "setup-field";
 
@@ -195,27 +206,68 @@ function buildLinearProjectStep(): HTMLElement {
   label.className = "setup-label";
   label.textContent = "Linear API Key";
 
+  const inputRow = document.createElement("div");
+  inputRow.style.cssText = "display:flex;gap:var(--space-2);align-items:center;";
+
+  // Inline status badge
+  const statusBadge = document.createElement("div");
+  statusBadge.className = "setup-key-status";
+  if (state.loading) {
+    statusBadge.textContent = "Verifying…";
+    statusBadge.style.color = "var(--text-muted)";
+  } else if (state.apiKeyVerified) {
+    statusBadge.textContent = "✓ Valid";
+    statusBadge.style.color = "var(--status-running)";
+  } else if (state.error) {
+    statusBadge.textContent = "✗ Invalid";
+    statusBadge.style.color = "var(--status-blocked)";
+  }
+
+  const verifyBtn = document.createElement("button");
+  verifyBtn.className = "mc-button is-primary is-sm";
+  verifyBtn.style.marginTop = "var(--space-2)";
+  verifyBtn.textContent = state.loading ? "Verifying…" : state.apiKeyVerified ? "Re-verify" : "Verify Key";
+  verifyBtn.disabled = state.loading || !state.apiKeyInput;
+  verifyBtn.addEventListener("click", () => void loadLinearProjects());
+
   const input = document.createElement("input");
   input.className = "setup-input";
+  input.style.flex = "1";
   input.type = "password";
   input.placeholder = "lin_api_…";
   input.value = state.apiKeyInput;
   input.addEventListener("input", () => {
     state.apiKeyInput = input.value;
+    verifyBtn.disabled = state.loading || !state.apiKeyInput;
+    if (state.apiKeyVerified) {
+      state.apiKeyVerified = false;
+      state.projects = [];
+      state.selectedProject = null;
+      rerender();
+    }
   });
 
-  const loadBtn = document.createElement("button");
-  loadBtn.className = "mc-button is-ghost is-sm";
-  loadBtn.style.marginTop = "var(--space-2)";
-  loadBtn.textContent = state.loading ? "Loading…" : "Load Projects";
-  loadBtn.disabled = state.loading;
-  loadBtn.addEventListener("click", () => void loadLinearProjects());
+  inputRow.append(input, statusBadge);
 
-  field.append(label, input, loadBtn);
+  field.append(label, inputRow, verifyBtn);
 
-  el.append(title, sub, field);
+  el.append(title, sub, callout, field);
 
-  if (state.projects.length > 0) {
+  // Error shown under the verify button
+  if (state.error && !state.apiKeyVerified) {
+    const err = document.createElement("div");
+    err.className = "setup-error";
+    err.textContent = state.error;
+    el.append(err);
+  }
+
+  // Project grid — only shown after successful verify
+  if (state.apiKeyVerified && state.projects.length > 0) {
+    const gridLabel = document.createElement("div");
+    gridLabel.className = "setup-label";
+    gridLabel.style.marginTop = "var(--space-4)";
+    gridLabel.textContent = "Select a project";
+
     const grid = document.createElement("div");
     grid.className = "setup-project-grid";
 
@@ -238,14 +290,7 @@ function buildLinearProjectStep(): HTMLElement {
       });
       grid.append(card);
     }
-    el.append(grid);
-  }
-
-  if (state.error) {
-    const err = document.createElement("div");
-    err.className = "setup-error";
-    err.textContent = state.error;
-    el.append(err);
+    el.append(gridLabel, grid);
   }
 
   const actions = document.createElement("div");
@@ -276,13 +321,15 @@ async function loadLinearProjects(): Promise<void> {
   if (!state.apiKeyInput) return;
   setLoading(true);
   state.error = null;
-  // Store the API key in secrets first so the backend can use it
+  state.apiKeyVerified = false;
   try {
     await api.postSecret("LINEAR_API_KEY", state.apiKeyInput);
     const result = await api.getLinearProjects();
     state.projects = result.projects;
+    state.apiKeyVerified = true;
   } catch (err) {
     state.error = err instanceof Error ? err.message : String(err);
+    state.projects = [];
   } finally {
     setLoading(false);
   }
@@ -313,9 +360,38 @@ function buildGithubTokenStep(): HTMLElement {
 
   const sub = document.createElement("div");
   sub.className = "setup-subtitle";
-  sub.innerHTML =
-    "Add a GitHub personal access token to enable PR creation. " +
-    '<a class="setup-link" href="https://github.com/settings/tokens/new?scopes=repo&description=Symphony+Orchestrator" target="_blank" rel="noopener">Generate token →</a>';
+  sub.textContent = "Add a GitHub token to enable PR creation. Choose one method below.";
+
+  const optionWrap = document.createElement("div");
+  optionWrap.style.cssText =
+    "display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4)";
+
+  const optA = document.createElement("div");
+  optA.style.cssText =
+    "border:var(--stroke-default) solid var(--border-stitch);padding:var(--space-3);background:var(--bg-muted)";
+  optA.innerHTML =
+    '<div style="font-family:var(--font-body);font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:var(--space-2)">' +
+    'Fine-grained <span style="font-weight:400;color:var(--text-muted);font-size:var(--text-xs)">(recommended)</span></div>' +
+    '<a class="setup-link" style="display:inline-block;margin-bottom:var(--space-3)" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Create token →</a>' +
+    '<ol style="margin:0;padding-left:var(--space-4);font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8">' +
+    "<li>Name it <strong>Symphony</strong></li>" +
+    "<li>Repository access → <strong>Only select repositories</strong> → pick repos</li>" +
+    "<li>Permissions → Repository → <strong>Contents</strong> and <strong>Pull requests</strong>: Read and write</li>" +
+    "<li>Generate token</li>" +
+    "</ol>";
+
+  const optB = document.createElement("div");
+  optB.style.cssText =
+    "border:var(--stroke-default) solid var(--border-stitch);padding:var(--space-3);background:var(--bg-muted)";
+  optB.innerHTML =
+    '<div style="font-family:var(--font-body);font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:var(--space-2)">Classic</div>' +
+    '<a class="setup-link" style="display:inline-block;margin-bottom:var(--space-3)" href="https://github.com/settings/tokens/new?scopes=repo&description=Symphony+Orchestrator" target="_blank" rel="noopener">Create token →</a>' +
+    '<ol style="margin:0;padding-left:var(--space-4);font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8">' +
+    "<li>Check the <strong>repo</strong> scope</li>" +
+    "<li>Generate token</li>" +
+    "</ol>";
+
+  optionWrap.append(optA, optB);
 
   const field = document.createElement("div");
   field.className = "setup-field";
@@ -324,17 +400,24 @@ function buildGithubTokenStep(): HTMLElement {
   label.className = "setup-label";
   label.textContent = "Personal Access Token";
 
+  const validate = document.createElement("button");
+  validate.className = "mc-button is-primary";
+  validate.textContent = state.loading ? "Validating…" : "Validate & Save";
+  validate.disabled = state.loading || !state.tokenInput;
+  validate.addEventListener("click", () => void advanceGithubToken());
+
   const input = document.createElement("input");
   input.className = "setup-input";
   input.type = "password";
-  input.placeholder = "ghp_…";
+  input.placeholder = "ghp_… or github_pat_…";
   input.value = state.tokenInput;
   input.addEventListener("input", () => {
     state.tokenInput = input.value;
+    validate.disabled = state.loading || !state.tokenInput;
   });
 
   field.append(label, input);
-  el.append(title, sub, field);
+  el.append(title, sub, optionWrap, field);
 
   if (state.error) {
     const err = document.createElement("div");
@@ -354,12 +437,6 @@ function buildGithubTokenStep(): HTMLElement {
     state.error = null;
     rerender();
   });
-
-  const validate = document.createElement("button");
-  validate.className = "mc-button is-primary";
-  validate.textContent = state.loading ? "Validating…" : "Validate & Save";
-  validate.disabled = state.loading || !state.tokenInput;
-  validate.addEventListener("click", () => void advanceGithubToken());
 
   actions.append(skip, validate);
   el.append(actions);
@@ -451,14 +528,28 @@ export function createSetupPage(): HTMLElement {
   page.className = "setup-page fade-in";
   container = page;
 
-  // Auto-generate a key on first load
-  void (async () => {
-    if (!state.generatedKey) {
-      await generateAndSetKey();
-    } else {
+  // Drive step from server state on every load
+  void api
+    .getSetupStatus()
+    .then((status) => {
+      if (!status.steps.masterKey.done) {
+        if (!state.generatedKey) void generateAndSetKey();
+        return;
+      }
+      // Master key exists — always derive correct step from server
+      state.generatedKey = state.generatedKey ?? "set";
+      if (!status.steps.linearProject.done) {
+        state.step = "linear-project";
+      } else if (!status.steps.githubToken.done) {
+        state.step = "github-token";
+      } else {
+        state.step = "done";
+      }
       rerender();
-    }
-  })();
+    })
+    .catch(() => {
+      if (!state.generatedKey) void generateAndSetKey();
+    });
 
   page.append(buildPage());
   return page;

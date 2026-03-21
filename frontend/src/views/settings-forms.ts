@@ -6,6 +6,8 @@ interface SettingsFieldRenderOptions {
   value: string;
   onInput: (value: string) => void;
   onFocus: () => void;
+  /** Called when the field has an actionLabel and the user clicks the action button. */
+  onAction?: () => void;
 }
 
 export function createSettingsField(field: SettingsFieldDefinition, options: SettingsFieldRenderOptions): HTMLElement {
@@ -69,5 +71,16 @@ function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRend
   input.readOnly = field.editable === false;
   input.addEventListener("input", () => options.onInput(input.value));
   input.addEventListener("focus", options.onFocus);
+
+  if (field.actionLabel && options.onAction) {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:var(--space-2);align-items:center;";
+    const btn = createButton(field.actionLabel, "ghost");
+    btn.addEventListener("click", options.onAction);
+    row.append(input, btn);
+    input.style.flex = "1";
+    return row;
+  }
+
   return input;
 }

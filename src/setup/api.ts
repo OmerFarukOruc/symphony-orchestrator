@@ -41,6 +41,11 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
   app
     .route("/api/v1/setup/master-key")
     .post(async (req, res) => {
+      if (deps.secretsStore.isInitialized()) {
+        res.status(409).json({ error: { code: "already_initialized", message: "Master key is already set" } });
+        return;
+      }
+
       const body = req.body;
       const providedKey = isRecord(body) && typeof body.key === "string" && body.key ? body.key : null;
       const key = providedKey ?? randomBytes(32).toString("hex");
@@ -115,6 +120,7 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
       }
 
       await deps.configOverlayStore.set("tracker.project_slug", slugId);
+      await deps.orchestrator.start();
       deps.orchestrator.requestRefresh("setup");
 
       res.json({ ok: true });

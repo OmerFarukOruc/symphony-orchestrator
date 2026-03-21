@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { fetchCandidateIssues, fetchIssueStatesByIds, fetchIssuesByStates } from "../../src/linear/issue-pagination.js";
+import {
+  fetchCandidateIssues,
+  fetchCandidateIssuesByStateIds,
+  fetchIssueStatesByIds,
+  fetchIssuesByStates,
+} from "../../src/linear/issue-pagination.js";
 import { LinearClientError } from "../../src/linear/errors.js";
 import type { Issue, ServiceConfig } from "../../src/core/types.js";
 
@@ -47,7 +52,7 @@ function makeConfig(overrides: Partial<ServiceConfig["tracker"]> = {}): ServiceC
       },
     },
     server: { port: 4000 },
-  } as unknown as ServiceConfig;
+  } as ServiceConfig;
 }
 
 function makeIssueNode(id: string): unknown {
@@ -68,11 +73,11 @@ function makeIssueNode(id: string): unknown {
 }
 
 function fakeNormalizeIssue(node: unknown): Issue {
-  const n = node as Record<string, unknown>;
+  const issue = node as Record<string, unknown>;
   return {
-    id: n.id as string,
-    identifier: n.identifier as string,
-    title: n.title as string,
+    id: issue.id as string,
+    identifier: issue.identifier as string,
+    title: issue.title as string,
     description: null,
     priority: 1,
     state: "In Progress",
@@ -117,10 +122,37 @@ describe("fetchCandidateIssues", () => {
     const nodes = [makeIssueNode("1"), makeIssueNode("2")];
     const runGraphQL = vi.fn().mockResolvedValue(makeSinglePageResponse(nodes));
     const deps = { runGraphQL, getConfig: () => makeConfig() };
+
     const issues = await fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue);
+
     expect(issues).toHaveLength(2);
     expect(issues[0].id).toBe("1");
     expect(issues[1].id).toBe("2");
+  });
+
+  it("passes activeStates and projectSlug variables", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue(makeSinglePageResponse([makeIssueNode("1")]));
+    const deps = { runGraphQL, getConfig: () => makeConfig({ projectSlug: "OPS" }) };
+
+    await fetchCandidateIssues(deps, (hasProjectSlug) => `query:${String(hasProjectSlug)}`, fakeNormalizeIssue);
+
+    expect(runGraphQL).toHaveBeenCalledWith("query:true", {
+      activeStates: ["In Progress", "Done"],
+      projectSlug: "OPS",
+      after: null,
+    });
+  });
+
+  it("omits projectSlug variables when config has none", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue(makeSinglePageResponse([makeIssueNode("1")]));
+    const deps = { runGraphQL, getConfig: () => makeConfig({ projectSlug: null }) };
+
+    await fetchCandidateIssues(deps, (hasProjectSlug) => `query:${String(hasProjectSlug)}`, fakeNormalizeIssue);
+
+    expect(runGraphQL).toHaveBeenCalledWith("query:false", {
+      activeStates: ["In Progress", "Done"],
+      after: null,
+    });
   });
 
   it("fetches multiple pages until exhausted", async () => {
@@ -130,7 +162,9 @@ describe("fetchCandidateIssues", () => {
       .mockResolvedValueOnce(makePagedResponse([makeIssueNode("2")], "cursor-2"))
       .mockResolvedValueOnce(makeSinglePageResponse([makeIssueNode("3")]));
     const deps = { runGraphQL, getConfig: () => makeConfig() };
+
     const issues = await fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue);
+
     expect(issues).toHaveLength(3);
     expect(runGraphQL).toHaveBeenCalledTimes(3);
   });
@@ -138,12 +172,14 @@ describe("fetchCandidateIssues", () => {
   it("throws LinearClientError when data is missing", async () => {
     const runGraphQL = vi.fn().mockResolvedValue({});
     const deps = { runGraphQL, getConfig: () => makeConfig() };
+
     await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toThrow(LinearClientError);
   });
 
   it("throws LinearClientError when issues is missing", async () => {
     const runGraphQL = vi.fn().mockResolvedValue({ data: {} });
     const deps = { runGraphQL, getConfig: () => makeConfig() };
+
     await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toThrow(LinearClientError);
   });
 
@@ -152,6 +188,7 @@ describe("fetchCandidateIssues", () => {
       data: { issues: { nodes: "not-array", pageInfo: { hasNextPage: false, endCursor: null } } },
     });
     const deps = { runGraphQL, getConfig: () => makeConfig() };
+
     await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toThrow(LinearClientError);
   });
 
@@ -165,7 +202,62 @@ describe("fetchCandidateIssues", () => {
       },
     });
     const deps = { runGraphQL, getConfig: () => makeConfig() };
+
     await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toThrow(LinearClientError);
+  });
+});
+
+describe("fetchCandidateIssuesByStateIds", () => {
+  it("returns empty array for empty state ids", async () => {
+    const runGraphQL = vi.fn();
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    const result = await fetchCandidateIssuesByStateIds(deps, [], () => "query", fakeNormalizeIssue);
+
+    expect(result).toEqual([]);
+    expect(runGraphQL).not.toHaveBeenCalled();
+  });
+
+  it("passes stateIds and projectSlug variables", async () => {
+    const runGraphQL = vi
+      .fn()
+      .mockResolvedValueOnce(makePagedResponse([makeIssueNode("1")], "cursor-1"))
+      .mockResolvedValueOnce(makeSinglePageResponse([makeIssueNode("2")]));
+    const deps = { runGraphQL, getConfig: () => makeConfig({ projectSlug: "OPS" }) };
+
+    const issues = await fetchCandidateIssuesByStateIds(
+      deps,
+      ["state-1", "state-2"],
+      (hasProjectSlug) => `state-query:${String(hasProjectSlug)}`,
+      fakeNormalizeIssue,
+    );
+
+    expect(issues).toHaveLength(2);
+    expect(runGraphQL.mock.calls[0]).toEqual([
+      "state-query:true",
+      { stateIds: ["state-1", "state-2"], projectSlug: "OPS", after: null },
+    ]);
+    expect(runGraphQL.mock.calls[1]).toEqual([
+      "state-query:true",
+      { stateIds: ["state-1", "state-2"], projectSlug: "OPS", after: "cursor-1" },
+    ]);
+  });
+
+  it("omits projectSlug for stateIds fallback when config has none", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue(makeSinglePageResponse([makeIssueNode("1")]));
+    const deps = { runGraphQL, getConfig: () => makeConfig({ projectSlug: null }) };
+
+    await fetchCandidateIssuesByStateIds(
+      deps,
+      ["state-1"],
+      (hasProjectSlug) => `state-query:${String(hasProjectSlug)}`,
+      fakeNormalizeIssue,
+    );
+
+    expect(runGraphQL).toHaveBeenCalledWith("state-query:false", {
+      stateIds: ["state-1"],
+      after: null,
+    });
   });
 });
 
@@ -173,7 +265,9 @@ describe("fetchIssueStatesByIds", () => {
   it("returns empty array for empty ids", async () => {
     const runGraphQL = vi.fn();
     const deps = { runGraphQL, getConfig: () => makeConfig() };
+
     const result = await fetchIssueStatesByIds(deps, [], 50, () => "query", fakeNormalizeIssue);
+
     expect(result).toEqual([]);
     expect(runGraphQL).not.toHaveBeenCalled();
   });
@@ -184,12 +278,12 @@ describe("fetchIssueStatesByIds", () => {
       .mockResolvedValueOnce(makeSinglePageResponse([makeIssueNode("1"), makeIssueNode("2")]))
       .mockResolvedValueOnce(makeSinglePageResponse([makeIssueNode("3")]));
     const deps = { runGraphQL, getConfig: () => makeConfig() };
+
     const issues = await fetchIssueStatesByIds(deps, ["1", "2", "3"], 2, () => "query", fakeNormalizeIssue);
+
     expect(issues).toHaveLength(3);
     expect(runGraphQL).toHaveBeenCalledTimes(2);
-    // First call with first 2 IDs
     expect(runGraphQL.mock.calls[0][1]).toMatchObject({ ids: ["1", "2"] });
-    // Second call with remaining ID
     expect(runGraphQL.mock.calls[1][1]).toMatchObject({ ids: ["3"] });
   });
 });
@@ -198,7 +292,9 @@ describe("fetchIssuesByStates", () => {
   it("returns empty array for empty states", async () => {
     const runGraphQL = vi.fn();
     const deps = { runGraphQL, getConfig: () => makeConfig() };
+
     const result = await fetchIssuesByStates(deps, [], () => "query", fakeNormalizeIssue);
+
     expect(result).toEqual([]);
     expect(runGraphQL).not.toHaveBeenCalled();
   });
@@ -207,7 +303,9 @@ describe("fetchIssuesByStates", () => {
     const nodes = [makeIssueNode("5"), makeIssueNode("6")];
     const runGraphQL = vi.fn().mockResolvedValue(makeSinglePageResponse(nodes));
     const deps = { runGraphQL, getConfig: () => makeConfig() };
+
     const issues = await fetchIssuesByStates(deps, ["Done"], () => "query", fakeNormalizeIssue);
+
     expect(issues).toHaveLength(2);
     expect(runGraphQL).toHaveBeenCalledWith("query", { states: ["Done"], after: null });
   });

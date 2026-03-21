@@ -1,5 +1,6 @@
 import { api } from "../api";
 import { createPageHeader } from "../components/page-header";
+import { openProjectPicker } from "../components/project-picker";
 import { toast } from "../ui/toast";
 import { registerPageCleanup } from "../utils/page";
 
@@ -130,6 +131,18 @@ export function createSettingsPage(): HTMLElement {
         render();
       },
       onSaveSection: (sectionId) => void saveSection(sectionId),
+      onFieldAction: (_sectionId, fieldPath, actionKind) => {
+        if (actionKind === "browse-linear-projects") {
+          openProjectPicker({
+            onSelect: (slugId) => {
+              const trackerDrafts = (state.drafts["tracker"] ??= {});
+              trackerDrafts[fieldPath] = slugId;
+              render();
+              toast(`Project slug set to ${slugId}`, "success");
+            },
+          });
+        }
+      },
     });
   }
 

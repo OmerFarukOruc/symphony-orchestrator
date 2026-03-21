@@ -19,16 +19,6 @@ interface PaginationDependencies {
   getConfig: () => ServiceConfig;
 }
 
-/**
- * Validates and extracts the issues connection from a GraphQL response.
- *
- * Checks that the response contains a valid `data` object with an `issues`
- * connection that has `nodes` array and `pageInfo` object with required fields.
- *
- * @param payload - The GraphQL response payload to extract from
- * @returns The extracted issues connection with nodes and pagination info
- * @throws {LinearClientError} If the payload structure is invalid
- */
 function extractIssuesConnection(payload: GraphQLResponse): IssuesConnection {
   if (Object.hasOwn(payload, "data") === false || typeof payload.data !== "object" || payload.data === null) {
     throw new LinearClientError("linear_unknown_payload", "linear graphql response missing data object");
@@ -67,16 +57,6 @@ function extractIssuesConnection(payload: GraphQLResponse): IssuesConnection {
   };
 }
 
-/**
- * Validates pagination cursor consistency.
- *
- * Ensures that when `hasNextPage` is true, a valid `endCursor` is present.
- * This invariant must hold for pagination to continue safely.
- *
- * @param pageInfo - The pagination info object with hasNextPage and endCursor
- * @param issueCount - The current count of issues fetched (used in error message)
- * @throws {LinearClientError} If hasNextPage is true but endCursor is null
- */
 function ensurePaginationCursor(
   pageInfo: { hasNextPage: boolean; endCursor: string | null },
   issueCount: number,
@@ -89,11 +69,6 @@ function ensurePaginationCursor(
   }
 }
 
-/**
- * Runs a single paginated GraphQL query loop and collects normalized issues.
- *
- * Shared by all fetch functions to eliminate the repeated do-while pagination pattern.
- */
 async function paginateQuery(
   deps: PaginationDependencies,
   query: string,
@@ -113,17 +88,13 @@ async function paginateQuery(
   return issues;
 }
 
-/**
- * Fetches candidate issues with full pagination support.
- *
- * Repeatedly queries the GraphQL API until all pages are consumed,
- * extracting and normalizing issues from each page.
- *
- * @param deps - Dependencies for GraphQL execution and config access
- * @param buildCandidateIssuesQuery - Function to build the GraphQL query string
- * @param normalizeIssue - Function to normalize a GraphQL node into an Issue
- * @returns Array of all fetched issues across all pages
- */
+function buildCandidateIssueVariables(config: ServiceConfig, key: "activeStates" | "stateIds", values: string[]) {
+  return {
+    [key]: values,
+    ...(config.tracker.projectSlug ? { projectSlug: config.tracker.projectSlug } : {}),
+  };
+}
+
 export async function fetchCandidateIssues(
   deps: PaginationDependencies,
   buildCandidateIssuesQuery: (hasProjectSlug: boolean) => string,
@@ -131,30 +102,24 @@ export async function fetchCandidateIssues(
 ): Promise<Issue[]> {
   const config = deps.getConfig();
   const query = buildCandidateIssuesQuery(Boolean(config.tracker.projectSlug));
-  return paginateQuery(
-    deps,
-    query,
-    {
-      activeStates: config.tracker.activeStates,
-      ...(config.tracker.projectSlug ? { projectSlug: config.tracker.projectSlug } : {}),
-    },
-    normalizeIssue,
-  );
+  const allStates = [...config.tracker.activeStates, ...config.tracker.terminalStates];
+  return paginateQuery(deps, query, buildCandidateIssueVariables(config, "activeStates", allStates), normalizeIssue);
 }
 
-/**
- * Fetches issues by ID with chunking and pagination.
- *
- * Splits the ID list into pages (PAGE_SIZE chunks) and fetches each chunk
- * with full pagination support. Each chunk may itself span multiple pages.
- *
- * @param deps - Dependencies for GraphQL execution and config access
- * @param ids - Array of issue IDs to fetch
- * @param pageSize - Number of IDs per chunk (typically PAGE_SIZE constant)
- * @param buildIssuesByIdsQuery - Function to build the GraphQL query string
- * @param normalizeIssue - Function to normalize a GraphQL node into an Issue
- * @returns Array of all fetched issues across all chunks and pages
- */
+export async function fetchCandidateIssuesByStateIds(
+  deps: PaginationDependencies,
+  stateIds: string[],
+  buildCandidateIssuesByStateIdsQuery: (hasProjectSlug: boolean) => string,
+  normalizeIssue: (node: unknown) => Issue,
+): Promise<Issue[]> {
+  if (stateIds.length === 0) {
+    return [];
+  }
+  const config = deps.getConfig();
+  const query = buildCandidateIssuesByStateIdsQuery(Boolean(config.tracker.projectSlug));
+  return paginateQuery(deps, query, buildCandidateIssueVariables(config, "stateIds", stateIds), normalizeIssue);
+}
+
 export async function fetchIssueStatesByIds(
   deps: PaginationDependencies,
   ids: string[],
@@ -174,18 +139,6 @@ export async function fetchIssueStatesByIds(
   return results.flat();
 }
 
-/**
- * Fetches issues by state with pagination.
- *
- * Fetches all issues matching the provided state names, consuming all pages
- * until no more results are available.
- *
- * @param deps - Dependencies for GraphQL execution and config access
- * @param states - Array of state names to filter by
- * @param buildIssuesByStatesQuery - Function to build the GraphQL query string
- * @param normalizeIssue - Function to normalize a GraphQL node into an Issue
- * @returns Array of all fetched issues matching the specified states
- */
 export async function fetchIssuesByStates(
   deps: PaginationDependencies,
   states: string[],

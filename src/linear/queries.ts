@@ -63,6 +63,26 @@ export function buildCandidateIssuesQuery(includeProjectFilter: boolean): string
   `;
 }
 
+export function buildCandidateIssuesByStateIdsQuery(includeProjectFilter: boolean): string {
+  const projectFilter = includeProjectFilter ? "project: { slugId: { eq: $projectSlug } }" : "";
+  return `
+    query SymphonyCandidateIssuesByStateIds($after: String, $stateIds: [ID!]${includeProjectFilter ? ", $projectSlug: String!" : ""}) {
+      issues(first: ${PAGE_SIZE}, after: $after, filter: {
+        state: { id: { in: $stateIds } }
+        ${projectFilter}
+      }) {
+        nodes {
+          ${ISSUE_FIELDS}
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  `;
+}
+
 export function buildIssuesByIdsQuery(): string {
   return `
     query SymphonyIssuesByIds($ids: [ID!], $after: String) {

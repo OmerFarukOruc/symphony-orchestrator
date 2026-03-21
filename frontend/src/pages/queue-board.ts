@@ -47,23 +47,12 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
   }
 
   function render(columns: WorkflowColumn[]): void {
-    const eligible = columns.flatMap((column) => filterColumn(column, options.filters));
     if (columns.length === 0) {
       renderLoading();
       return;
     }
-    if (eligible.length === 0) {
-      options.board.replaceChildren(
-        createEmptyState(
-          "No issues match current filters",
-          "Broaden your search, clear stage filters, or show completed columns.",
-          "Clear filters",
-          options.clearFilters,
-          "queue",
-        ),
-      );
-      return;
-    }
+    /* Even when no issues match, render all columns with their per-column
+       empty states so the Kanban board structure stays visible. */
 
     const nextIssueIds = new Set<string>();
     const ui = options.getUi();

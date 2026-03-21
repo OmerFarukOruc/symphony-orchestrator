@@ -16,6 +16,8 @@ interface SettingsRenderOptions {
   onToggleDiff: (sectionId: string) => void;
   onTogglePaths: (sectionId: string) => void;
   onSaveSection: (sectionId: string) => void;
+  /** Called when a field-level action button is clicked (e.g. "Browse" for project slug). */
+  onFieldAction?: (sectionId: string, fieldPath: string, actionKind: string) => void;
 }
 
 export function renderSettingsLayout(
@@ -131,6 +133,10 @@ function renderContent(
           onFocus: () => {
             state.selectedSectionId = section.id;
           },
+          onAction:
+            field.actionKind && options.onFieldAction
+              ? () => options.onFieldAction!(section.id, field.path, field.actionKind!)
+              : undefined,
         }),
       );
     });

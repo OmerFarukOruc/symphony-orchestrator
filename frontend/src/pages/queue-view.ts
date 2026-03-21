@@ -45,7 +45,11 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
   let lastColumnFingerprint = "";
 
   function getColumnFingerprint(cols: WorkflowColumn[]): string {
-    return cols.map((c) => `${c.key}:${c.count ?? 0}`).join("|");
+    return cols
+      .map(
+        (c) => `${c.key}:${c.count ?? 0}:${c.issues.map((i) => `${i.identifier}:${i.status}:${i.priority}`).join(",")}`,
+      )
+      .join("|");
   }
 
   const boardRenderer = createQueueBoardRenderer({
@@ -63,7 +67,18 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
       toolbar,
       filters,
       columns,
-      onRefresh: () => void api.postRefresh(),
+      onRefresh: (() => {
+        let refreshing = false;
+        return () => {
+          if (refreshing) return;
+          refreshing = true;
+          void api.postRefresh().finally(() => {
+            setTimeout(() => {
+              refreshing = false;
+            }, 3000);
+          });
+        };
+      })(),
       onChange: renderBoard,
     });
     searchInput = built.search;
@@ -98,16 +113,16 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
     if (ui.collapsed.size === 0 && columns.length > 0) {
       ui = createUiState(columns);
     }
-    const fp = getColumnFingerprint(columns);
-    if (fp !== lastColumnFingerprint) {
-      lastColumnFingerprint = fp;
-      renderToolbar();
-    }
     if (!state.snapshot) {
       boardRenderer.renderLoading();
       return;
     }
-    renderBoard();
+    const fp = getColumnFingerprint(columns);
+    if (fp !== lastColumnFingerprint) {
+      lastColumnFingerprint = fp;
+      renderToolbar();
+      renderBoard();
+    }
   }
 
   function onKey(event: KeyboardEvent): void {

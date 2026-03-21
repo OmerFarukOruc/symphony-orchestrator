@@ -2,7 +2,7 @@ import type { ServiceConfig, StateStageKind } from "../core/types.js";
 import { StateMachine } from "./machine.js";
 
 export const DEFAULT_ACTIVE_STATES = ["Todo", "In Progress"];
-export const DEFAULT_TERMINAL_STATES = ["Done", "Completed", "Closed", "Canceled", "Cancelled", "Duplicate"];
+export const DEFAULT_TERMINAL_STATES = ["Done", "Completed", "Closed", "Canceled", "Duplicate"];
 const STATE_MACHINE_CACHE = new WeakMap<object, StateMachine>();
 
 function normalizeStateValue(state: string): string {

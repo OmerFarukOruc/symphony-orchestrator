@@ -3,6 +3,10 @@ tracker:
   kind: linear
   api_key: $LINEAR_API_KEY
   project_slug: $LINEAR_PROJECT_SLUG
+  active_states:
+    - Backlog
+    - Todo
+    - In Progress
 polling:
   interval_ms: 30000
 workspace:

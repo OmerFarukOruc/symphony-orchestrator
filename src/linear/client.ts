@@ -1,12 +1,13 @@
 import type { PlannedIssue } from "../planning/skill.js";
 import { normalizePlanningPriority, buildPlannedIssueDescription } from "./plan-helpers.js";
 import { resolvePlanTarget } from "./plan-target.js";
-import { asBooleanOrNull, asRecord, asStringOrNull } from "../utils/type-guards.js";
+import { asArray, asBooleanOrNull, asRecord, asStringOrNull } from "../utils/type-guards.js";
 import { normalizeIssue } from "./issue-parser.js";
 import type { Issue, ServiceConfig, SymphonyLogger } from "../core/types.js";
 import {
   PAGE_SIZE,
   buildCandidateIssuesQuery,
+  buildCandidateIssuesByStateIdsQuery,
   buildIssuesByIdsQuery,
   buildIssuesByStatesQuery,
   buildProjectLookupQuery,
@@ -30,6 +31,25 @@ interface LinearCreatedIssue {
   url: string | null;
 }
 
+interface ResolvedWorkflowStates {
+  stateIds: string[];
+  teamId: string | null;
+  unresolvedStates: string[];
+}
+
+function buildWorkflowStateLookupQuery(includeTeamFilter: boolean): string {
+  return `
+    query SymphonyWorkflowStates${includeTeamFilter ? "($teamId: String!)" : ""} {
+      workflowStates(first: 250${includeTeamFilter ? ", filter: { team: { id: { eq: $teamId } } }" : ""}) {
+        nodes {
+          id
+          name
+        }
+      }
+    }
+  `;
+}
+
 async function readJsonResponse(response: Response): Promise<GraphQLResponse> {
   try {
     return (await response.json()) as GraphQLResponse;
@@ -47,14 +67,34 @@ export class LinearClient {
   ) {}
 
   async fetchCandidateIssues(): Promise<Issue[]> {
-    return fetchCandidateIssues(
+    const config = this.getConfig();
+    const issues = await fetchCandidateIssues(
       {
         runGraphQL: (query, variables) => this.runGraphQL(query, variables),
-        getConfig: () => this.getConfig(),
+        getConfig: () => config,
       },
       (hasProjectSlug) => buildCandidateIssuesQuery(hasProjectSlug),
       normalizeIssue,
     );
+    if (issues.length > 0) {
+      return issues;
+    }
+
+    const resolvedStates = await this.resolveWorkflowStateIds();
+    if (resolvedStates.stateIds.length === 0) {
+      this.logger.warn(
+        {
+          activeStates: config.tracker.activeStates,
+          projectSlug: config.tracker.projectSlug,
+          teamId: resolvedStates.teamId,
+          unresolvedStates: resolvedStates.unresolvedStates,
+        },
+        "linear candidate issue fallback could not resolve workflow states",
+      );
+      return [];
+    }
+
+    return this.fetchCandidateIssuesByStateIds(config, resolvedStates.stateIds);
   }
 
   async fetchIssueStatesByIds(ids: string[]): Promise<Issue[]> {
@@ -133,6 +173,64 @@ export class LinearClient {
     }
 
     return created;
+  }
+
+  private async resolveWorkflowStateIds(): Promise<ResolvedWorkflowStates> {
+    const config = this.getConfig();
+    const teamId = await this.resolveWorkflowTeamId(config);
+    const payload = await this.runGraphQL(buildWorkflowStateLookupQuery(Boolean(teamId)), teamId ? { teamId } : {});
+    const nodes = asArray(asRecord(asRecord(payload.data).workflowStates).nodes).map((node) => asRecord(node));
+    const stateIdsByName = new Map<string, string[]>();
+
+    for (const node of nodes) {
+      const id = asStringOrNull(node.id);
+      const name = asStringOrNull(node.name)?.trim().toLowerCase();
+      if (!id || !name) {
+        continue;
+      }
+      stateIdsByName.set(name, [...(stateIdsByName.get(name) ?? []), id]);
+    }
+
+    const stateIds: string[] = [];
+    const unresolvedStates: string[] = [];
+    for (const configuredState of config.tracker.activeStates) {
+      const resolvedIds = stateIdsByName.get(configuredState.trim().toLowerCase());
+      if (!resolvedIds || resolvedIds.length === 0) {
+        unresolvedStates.push(configuredState);
+        continue;
+      }
+      stateIds.push(...resolvedIds);
+    }
+
+    return {
+      stateIds: [...new Set(stateIds)],
+      teamId,
+      unresolvedStates,
+    };
+  }
+
+  private async resolveWorkflowTeamId(config: ServiceConfig): Promise<string | null> {
+    if (!config.tracker.projectSlug) {
+      return null;
+    }
+    const payload = await this.runGraphQL(buildProjectLookupQuery(), { projectSlug: config.tracker.projectSlug });
+    const projects = asRecord(asRecord(payload.data).projects);
+    const project = asRecord(asArray(projects.nodes).at(0));
+    return asStringOrNull(asRecord(asArray(asRecord(project.teams).nodes).at(0)).id);
+  }
+
+  private async fetchCandidateIssuesByStateIds(config: ServiceConfig, stateIds: string[]): Promise<Issue[]> {
+    return fetchCandidateIssues(
+      {
+        runGraphQL: (query, variables) => {
+          const { activeStates: _activeStates, ...rest } = variables;
+          return this.runGraphQL(query, { ...rest, stateIds });
+        },
+        getConfig: () => ({ ...config, tracker: { ...config.tracker, activeStates: stateIds } }),
+      },
+      (hasProjectSlug) => buildCandidateIssuesByStateIdsQuery(hasProjectSlug),
+      normalizeIssue,
+    );
   }
 
   async runGraphQL(

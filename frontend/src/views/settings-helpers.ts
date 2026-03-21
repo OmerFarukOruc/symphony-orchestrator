@@ -17,6 +17,10 @@ export interface SettingsFieldDefinition {
   options?: SettingsFieldOption[];
   redact?: boolean;
   editable?: boolean;
+  /** Label for an inline action button rendered beside the control. */
+  actionLabel?: string;
+  /** Identifier used by the settings renderer to wire up the correct action handler. */
+  actionKind?: string;
 }
 
 export interface SettingsSectionDefinition {
@@ -247,6 +251,8 @@ function buildDefaultSections(effective: Record<string, unknown>): SettingsSecti
           label: "Project slug",
           kind: "text",
           hint: "The Linear project slug Symphony dispatches from.",
+          actionLabel: "Browse",
+          actionKind: "browse-linear-projects",
         },
         { path: "tracker.active_states", label: "Active states", kind: "list", hint: "One state per line." },
         { path: "tracker.terminal_states", label: "Terminal states", kind: "list", hint: "One state per line." },
