@@ -1,10 +1,6 @@
 /* ============================================
    SURFACE HIERARCHY
-   ============================================
-
-   Primary: Commanding, high contrast — live data, primary actions
-   Standard: Current treatment, default for most content
-   Quiet: No border, transparent background, for metadata and secondary info
+   See design-system.css for tier usage guidelines.
    ============================================ */
 
 /* ── Base Surface Classes ───────────────────────────────────── */
@@ -13,18 +9,24 @@
   border: var(--surface-primary-border-width) solid var(--surface-primary-border);
   border-left: var(--surface-primary-accent-width) solid var(--surface-primary-border-accent);
   background: var(--surface-primary-bg);
+  box-shadow: var(--surface-primary-shadow);
+  color: var(--surface-primary-text);
   padding: var(--space-5);
 }
 
 .surface-standard {
   border: var(--surface-standard-border-width) solid var(--surface-standard-border);
   background: var(--surface-standard-bg);
+  box-shadow: var(--surface-standard-shadow);
+  color: var(--surface-standard-text);
   padding: var(--space-4);
 }
 
 .surface-quiet {
-  border: 1px solid transparent;
+  border: 1px solid var(--surface-quiet-border);
   background: var(--surface-quiet-bg);
+  box-shadow: var(--surface-quiet-shadow);
+  color: var(--surface-quiet-text);
   padding: var(--space-4);
 }
 
@@ -33,9 +35,11 @@
 .mc-command,
 .mc-live-panel,
 .mc-status-primary {
-  border: var(--stroke-default) solid var(--border-stitch);
+  border: var(--stroke-default) solid var(--surface-primary-border);
   border-left: var(--stroke-emphasis) solid var(--text-accent);
   background: var(--surface-primary-bg);
+  box-shadow: var(--surface-primary-shadow);
+  color: var(--surface-primary-text);
   padding: var(--space-5);
 }
 
@@ -69,7 +73,8 @@
 .mc-empty-state,
 .mc-metadata {
   border: var(--stroke-default) solid transparent;
-  background: transparent;
+  background: var(--surface-quiet-bg);
+  color: var(--surface-quiet-text);
   padding: var(--space-4);
 }
 
