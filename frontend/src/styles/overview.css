@@ -11,33 +11,32 @@
 
 /* ============================================
    HERO METRICS BAND — "Now" at a glance
-   Copper accent marks this as the live zone
-   PRIMARY SURFACE
+   Informative band, not the primary focus
+   STANDARD SURFACE — reduced visual weight
    ============================================ */
 
 .overview-hero-band {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
-  padding: var(--space-4) var(--space-5);
-  background: var(--surface-primary-bg);
-  border: var(--surface-primary-border-width) solid var(--surface-primary-border);
-  border-left: var(--surface-primary-accent-width) solid var(--surface-primary-border-accent);
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-standard-bg);
+  border: var(--surface-standard-border-width) solid var(--surface-standard-border);
 }
 
 .overview-hero-label {
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: var(--tracking-wider);
-  color: var(--text-accent);
+  color: var(--text-muted);
 }
 
 .overview-hero-metrics {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-5);
   flex-wrap: wrap;
 }
 
@@ -49,17 +48,17 @@
 
 .overview-live-value {
   font-family: var(--font-heading);
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: 700;
   line-height: 1;
   letter-spacing: var(--tracking-tight);
   font-feature-settings: var(--font-features-tabular);
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .overview-live-label {
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
@@ -88,8 +87,16 @@
   padding: var(--space-5);
   background: var(--surface-primary-bg);
   border: var(--surface-primary-border-width) solid var(--surface-primary-border);
-  border-left: var(--surface-primary-accent-width) solid var(--surface-primary-border-accent);
-  min-height: 320px;
+  border-left: 4px solid var(--surface-primary-border-accent);
+  min-height: 360px;
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .overview-attention-zone {
+  background: color-mix(in srgb, var(--bg-elevated) 60%, var(--bg-surface));
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 color-mix(in srgb, var(--border-default) 30%, transparent);
 }
 
 .overview-attention-list {
@@ -101,12 +108,12 @@
 /* ============================================
    SECONDARY SIDEBAR
    Token burn + Recent events + Terminal
-   STANDARD SURFACE — default bordered containers
+   QUIET SURFACE — reduced visual presence
    ============================================ */
 
 .overview-secondary {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .overview-token-section,
@@ -114,9 +121,15 @@
 .overview-terminal-section {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--surface-standard-bg);
-  border: var(--surface-standard-border-width) solid var(--surface-standard-border);
+  padding: var(--space-3);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-muted);
+}
+
+[data-theme="dark"] .overview-token-section,
+[data-theme="dark"] .overview-recent-section,
+[data-theme="dark"] .overview-terminal-section {
+  background: color-mix(in srgb, var(--bg-muted) 40%, var(--bg-base));
 }
 
 .overview-token-grid {
@@ -152,6 +165,15 @@
   margin: 0;
 }
 
+/* Secondary section titles are smaller */
+.overview-secondary .overview-section-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
 /* ============================================
    ISSUE ROWS
    ============================================ */
@@ -175,6 +197,7 @@
 
 .overview-attention-item {
   border-left: 3px solid var(--status-queued);
+  box-shadow: var(--shadow-sm);
 }
 
 .overview-attention-item[data-status="blocked"] {
@@ -189,6 +212,12 @@
 
 .overview-attention-item[data-status="running"] {
   border-left-color: var(--status-running);
+}
+
+/* Terminal items in secondary are quieter */
+.overview-terminal-item {
+  padding: var(--space-3);
+  background: var(--bg-muted);
 }
 
 .overview-row-meta {
@@ -208,6 +237,13 @@
   line-height: 1.1;
   letter-spacing: var(--tracking-tight);
   font-feature-settings: var(--font-features-tabular);
+}
+
+/* Terminal item titles are smaller */
+.overview-terminal-item strong {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 .overview-small {
@@ -281,7 +317,7 @@
   }
 
   .overview-attention-zone {
-    min-height: 240px;
+    min-height: 280px;
   }
 
   .overview-token-grid {
@@ -293,7 +329,7 @@
   .overview-hero-band {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-4);
+    gap: var(--space-3);
   }
 
   .overview-hero-metrics {
