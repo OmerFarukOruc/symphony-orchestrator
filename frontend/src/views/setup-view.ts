@@ -44,13 +44,35 @@ function _setError(msg: string | null): void {
   rerender();
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function buildTitleWithBadge(
+  text: string,
+  badgeClass: "is-required" | "is-optional",
+  badgeText: string,
+): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "setup-title-row";
+
+  const title = document.createElement("div");
+  title.className = "setup-title";
+  title.textContent = text;
+
+  const badge = document.createElement("span");
+  badge.className = `setup-badge ${badgeClass}`;
+  badge.textContent = badgeText;
+
+  row.append(title, badge);
+  return row;
+}
+
 // ── Step indicator ────────────────────────────────────────────────────────────
 
 function buildStepIndicator(): HTMLElement {
   const steps: Array<{ key: SetupStep; label: string; n: string }> = [
-    { key: "master-key", label: "Master Key", n: "1" },
-    { key: "linear-project", label: "Linear", n: "2" },
-    { key: "github-token", label: "GitHub", n: "3" },
+    { key: "master-key", label: "Protect secrets", n: "1" },
+    { key: "linear-project", label: "Connect Linear", n: "2" },
+    { key: "github-token", label: "Add GitHub", n: "3" },
   ];
 
   const order: SetupStep[] = ["master-key", "linear-project", "github-token", "done"];
@@ -95,11 +117,11 @@ function buildMasterKeyStep(): HTMLElement {
 
   const title = document.createElement("div");
   title.className = "setup-title";
-  title.textContent = "Set Master Key";
+  title.textContent = "Protect your secrets";
 
   const sub = document.createElement("div");
   sub.className = "setup-subtitle";
-  sub.textContent = "Symphony encrypts your secrets with this key. A random key has been generated for you.";
+  sub.textContent = "Symphony uses an encryption key to protect stored credentials on your machine. A key has been generated for you — copy it somewhere safe before continuing.";
 
   const callout = document.createElement("div");
   callout.className = "setup-callout";
@@ -182,14 +204,12 @@ function advanceMasterKey(): void {
 function buildLinearProjectStep(): HTMLElement {
   const el = document.createElement("div");
 
-  const title = document.createElement("div");
-  title.className = "setup-title";
-  title.textContent = "Connect Linear Project";
+  const titleRow = buildTitleWithBadge("Connect to Linear", "is-required", "Required");
 
   const sub = document.createElement("div");
   sub.className = "setup-subtitle";
   sub.innerHTML =
-    "Enter your Linear API key, then select a project to track. " +
+    "Enter your Linear API key and choose the project Symphony should track. " +
     '<a class="setup-link" href="https://linear.app/settings/account/security/api-keys/new" target="_blank" rel="noopener">Create a personal API key →</a>';
 
   const callout = document.createElement("div");
@@ -251,7 +271,7 @@ function buildLinearProjectStep(): HTMLElement {
 
   field.append(label, inputRow, verifyBtn);
 
-  el.append(title, sub, callout, field);
+  el.append(titleRow, sub, callout, field);
 
   // Error shown under the verify button
   if (state.error && !state.apiKeyVerified) {
@@ -354,13 +374,11 @@ async function advanceLinearProject(): Promise<void> {
 function buildGithubTokenStep(): HTMLElement {
   const el = document.createElement("div");
 
-  const title = document.createElement("div");
-  title.className = "setup-title";
-  title.textContent = "GitHub Token (optional)";
+  const titleRow = buildTitleWithBadge("Add GitHub access", "is-optional", "Optional");
 
   const sub = document.createElement("div");
   sub.className = "setup-subtitle";
-  sub.textContent = "Add a GitHub token to enable PR creation. Choose one method below.";
+  sub.textContent = "Add a token to enable automatic PR creation. You can skip this and add it later from Credentials.";
 
   const optionWrap = document.createElement("div");
   optionWrap.style.cssText =
@@ -417,7 +435,7 @@ function buildGithubTokenStep(): HTMLElement {
   });
 
   field.append(label, input);
-  el.append(title, sub, optionWrap, field);
+  el.append(titleRow, sub, optionWrap, field);
 
   if (state.error) {
     const err = document.createElement("div");
@@ -431,7 +449,7 @@ function buildGithubTokenStep(): HTMLElement {
 
   const skip = document.createElement("button");
   skip.className = "mc-button is-ghost is-sm";
-  skip.textContent = "Skip";
+  skip.textContent = "Skip for now";
   skip.addEventListener("click", () => {
     state.step = "done";
     state.error = null;
@@ -475,11 +493,24 @@ function buildDoneStep(): HTMLElement {
 
   const title = document.createElement("div");
   title.className = "setup-done-title";
-  title.textContent = "Setup complete";
+  title.textContent = "You're all set";
 
   const desc = document.createElement("div");
   desc.className = "setup-done-desc";
-  desc.textContent = "Symphony is configured and ready to orchestrate.";
+  desc.textContent = "Symphony is connected and ready. Next: create a workflow file and start Symphony from your terminal.";
+
+  const code = document.createElement("pre");
+  code.className = "mc-code-panel setup-done-code";
+  code.textContent = "node dist/cli.js ./WORKFLOW.example.md --port 4000";
+
+  const docLink = document.createElement("a");
+  docLink.className = "setup-link";
+  docLink.textContent = "View workflow file documentation →";
+  docLink.href = "#";
+  docLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    router.navigate("/planner");
+  });
 
   const goBtn = document.createElement("button");
   goBtn.className = "mc-button is-primary";
@@ -489,7 +520,7 @@ function buildDoneStep(): HTMLElement {
     router.navigate("/");
   });
 
-  el.append(icon, title, desc, goBtn);
+  el.append(icon, title, desc, code, docLink, goBtn);
   return el;
 }
 
@@ -510,6 +541,23 @@ function buildStepContent(): HTMLElement {
 
 function buildPage(): HTMLElement {
   const wrap = document.createElement("div");
+
+  if (state.step === "master-key") {
+    const intro = document.createElement("div");
+    intro.className = "setup-intro";
+
+    const introHeading = document.createElement("h2");
+    introHeading.className = "setup-intro-heading";
+    introHeading.textContent = "Welcome to Symphony";
+
+    const introSub = document.createElement("p");
+    introSub.className = "setup-intro-sub";
+    introSub.textContent =
+      "This takes about 3–5 minutes. You'll connect Symphony to your project tracker and add the credentials it needs.";
+
+    intro.append(introHeading, introSub);
+    wrap.append(intro);
+  }
 
   if (state.step !== "done") {
     wrap.append(buildStepIndicator());

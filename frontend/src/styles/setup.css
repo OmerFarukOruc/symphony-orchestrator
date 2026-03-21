@@ -239,3 +239,71 @@
   font-size: var(--text-sm);
   color: var(--text-accent);
 }
+
+/* Wizard intro header */
+.setup-intro {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.setup-intro-heading {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+.setup-intro-sub {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Title row with badge */
+.setup-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.setup-title-row .setup-title {
+  margin-bottom: 0;
+}
+
+/* Required / Optional badges */
+.setup-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px var(--space-2);
+  border: var(--stroke-default) solid;
+  flex-shrink: 0;
+}
+
+.setup-badge.is-required {
+  color: var(--text-accent);
+  border-color: var(--text-accent);
+  background: transparent;
+}
+
+.setup-badge.is-optional {
+  color: var(--text-muted);
+  border-color: var(--border-strong);
+  background: transparent;
+}
+
+/* Done screen code block */
+.setup-done-code {
+  margin: var(--space-4) auto;
+  text-align: left;
+  font-size: var(--text-xs);
+  padding: var(--space-3) var(--space-4);
+  max-width: 420px;
+}
