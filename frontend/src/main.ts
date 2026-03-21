@@ -65,7 +65,7 @@ const issue = lazyPage(() => import("./pages/issue"));
 const runs = lazyPage(() => import("./pages/runs"));
 const logs = lazyPage(() => import("./pages/logs"));
 const attempt = lazyPage(() => import("./pages/attempt"));
-const planner = lazyPage(() => import("./pages/planner"));
+
 const config = lazyPage(() => import("./pages/config"));
 const secrets = lazyPage(() => import("./pages/secrets"));
 const observability = lazyPage(() => import("./pages/observability"));
@@ -85,7 +85,7 @@ router.register("/issues/:id/runs", runs);
 router.register("/issues/:id/logs", logs);
 router.register("/logs/:id", logs);
 router.register("/attempts/:id", attempt);
-router.register("/planner", planner);
+
 router.register("/config", config);
 router.register("/secrets", secrets);
 router.register("/observability", observability);

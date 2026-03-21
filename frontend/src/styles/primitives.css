@@ -124,7 +124,7 @@
   background: var(--bg-surface);
 }
 
-.status-chip {
+.mc-status-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -134,7 +134,7 @@
   font-weight: 500;
 }
 
-.status-chip-dot {
+.mc-status-chip-dot {
   font-size: 10px;
 }
 
@@ -272,7 +272,7 @@
   flex-wrap: wrap;
 }
 
-.filter-chip {
+.mc-filter-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -288,12 +288,12 @@
     border-color var(--motion-fast) var(--ease-out-quart);
 }
 
-.filter-chip:hover {
+.mc-filter-chip:hover {
   border-color: var(--border-strong);
   color: var(--text-primary);
 }
 
-.filter-chip.is-active {
+.mc-filter-chip.is-active {
   color: var(--text-accent);
   border-color: var(--text-accent);
 }

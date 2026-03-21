@@ -3,7 +3,6 @@ import type {
   AttemptSummary,
   IssueDetail,
   LinearProject,
-  PlannedIssue,
   RuntimeInfo,
   RuntimeSnapshot,
   SetupStatus,
@@ -84,15 +83,7 @@ export const api = {
   getSecrets: () => get<{ keys: string[] }>("/api/v1/secrets"),
   postSecret: (key: string, value: string) => post<void>(`/api/v1/secrets/${encodeURIComponent(key)}`, { value }),
   deleteSecret: (key: string) => del(`/api/v1/secrets/${encodeURIComponent(key)}`),
-  postPlan: (payload: { goal: string; maxIssues?: number; labels?: string[] }) =>
-    post<{ goal: string; generatedAt: string; issues: PlannedIssue[]; prompt: string }>("/api/v1/plan", {
-      goal: payload.goal,
-      maxIssues: payload.maxIssues,
-      max_issues: payload.maxIssues,
-      labels: payload.labels,
-    }),
-  postPlanExecute: (issues: PlannedIssue[]) =>
-    post<{ created: number; external_ids: string[] }>("/api/v1/plan/execute", { issues }),
+
   postModelOverride: (id: string, payload: { model: string; reasoningEffort: string }) =>
     post<void>(`/api/v1/${encodeURIComponent(id)}/model`, {
       model: payload.model,

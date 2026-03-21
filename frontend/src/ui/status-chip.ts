@@ -23,10 +23,10 @@ function capitalizeStatus(status: string): string {
 export function statusChip(status: string): HTMLElement {
   const normalized = normalizeStatus(status);
   const chip = document.createElement("span");
-  chip.className = `status-chip status-${normalized}`;
+  chip.className = `mc-status-chip status-${normalized}`;
 
   const dot = document.createElement("span");
-  dot.className = "status-chip-dot";
+  dot.className = "mc-status-chip-dot";
   dot.setAttribute("aria-hidden", "true");
   dot.textContent = "◉";
 

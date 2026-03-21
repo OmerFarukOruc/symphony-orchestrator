@@ -252,10 +252,27 @@
 .queue-column-actions,
 .queue-toolbar {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.toolbar-search-row,
+.toolbar-filter-row,
+.toolbar-utility-row {
+  display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-4);
+  gap: var(--space-3);
   flex-wrap: wrap;
+}
+
+.toolbar-search-row .mc-input {
+  flex: 1 1 320px;
+  min-width: 200px;
+}
+
+.toolbar-filter-row .mc-toolbar-group + .mc-toolbar-group {
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--border-stitch);
 }
 
 /* Stage filter chips with clear toggle states */
@@ -291,23 +308,6 @@
 .queue-toolbar .mc-toolbar-group .mc-chip.is-active:hover {
   background: var(--color-copper-500);
   border-color: var(--color-copper-600);
-}
-
-/* Section dividers */
-.queue-toolbar .mc-toolbar-section {
-  padding-right: var(--space-4);
-  border-right: 1px solid var(--border-stitch);
-}
-
-.queue-toolbar .mc-toolbar-section:last-of-type {
-  padding-right: 0;
-  border-right: none;
-}
-
-.queue-toolbar .mc-input {
-  flex: 0 1 220px;
-  min-width: 140px;
-  width: auto;
 }
 
 .queue-column-list {

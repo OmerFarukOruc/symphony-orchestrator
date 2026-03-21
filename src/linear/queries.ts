@@ -150,30 +150,4 @@ export function buildTeamLookupQuery(): string {
   `;
 }
 
-export function buildLabelLookupQuery(): string {
-  return `
-    query SymphonyPlanLabels($teamId: String!, $names: [String!]) {
-      issueLabels(first: 250, filter: { team: { id: { eq: $teamId } }, name: { in: $names } }) {
-        nodes {
-          id
-          name
-        }
-      }
-    }
-  `;
-}
 
-export function buildIssueCreateMutation(): string {
-  return `
-    mutation SymphonyCreateIssue($input: IssueCreateInput!) {
-      issueCreate(input: $input) {
-        success
-        issue {
-          id
-          identifier
-          url
-        }
-      }
-    }
-  `;
-}

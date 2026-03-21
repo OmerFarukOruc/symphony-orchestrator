@@ -16,10 +16,10 @@ export function createNotificationsPage(): HTMLElement {
   for (const ch of channels) {
     const chip = document.createElement("button");
     chip.type = "button";
-    chip.className = `filter-chip${ch === "All" ? " is-active" : ""}`;
+    chip.className = `mc-filter-chip${ch === "All" ? " is-active" : ""}`;
     chip.textContent = ch;
     chip.addEventListener("click", () => {
-      filterBar.querySelectorAll(".filter-chip").forEach((c) => c.classList.remove("is-active"));
+      filterBar.querySelectorAll(".mc-filter-chip").forEach((c) => c.classList.remove("is-active"));
       chip.classList.add("is-active");
     });
     filterBar.append(chip);

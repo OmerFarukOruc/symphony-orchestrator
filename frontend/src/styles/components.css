@@ -518,10 +518,10 @@
 .event-row-time,
 .attempts-table .text-mono,
 .issue-card-identifier,
-.inline-badge,
-.priority-badge,
+.mc-inline-badge,
+.mc-priority-badge,
 .mc-badge,
-.event-chip {
+.mc-event-chip {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
@@ -570,7 +570,7 @@
 }
 
 /* Status chip transitions */
-.status-chip,
+.mc-status-chip,
 .mc-badge.is-status-queued,
 .mc-chip.is-status-queued,
 .mc-badge.is-status-running,
@@ -704,67 +704,48 @@
   background: currentColor;
 }
 
-/* Legacy class aliases (for backward compatibility) */
-.status-chip,
-.filter-chip,
-.event-chip,
-.inline-badge,
-.priority-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 3px 8px;
-  border: var(--stroke-default) solid var(--border-stitch);
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  line-height: 1;
-}
-
-.status-chip {
+.mc-status-chip {
   gap: 6px;
   padding: 4px 10px;
 }
 
-.status-chip-dot {
+.mc-status-chip-dot {
   font-size: var(--text-2xs);
 }
 
-.filter-chip {
+.mc-filter-chip {
   cursor: pointer;
   transition:
     color var(--motion-fast) var(--ease-out-quart),
     border-color var(--motion-fast) var(--ease-out-quart);
 }
 
-.filter-chip:hover {
+.mc-filter-chip:hover {
   border-color: var(--border-strong);
   color: var(--text-primary);
 }
 
-.filter-chip.is-active {
+.mc-filter-chip.is-active {
   color: var(--text-accent);
   border-color: var(--text-accent);
 }
 
-.event-chip-agent {
+.mc-event-chip-agent {
   color: var(--status-running);
 }
-.event-chip-system {
+.mc-event-chip-system {
   color: var(--status-queued);
 }
-.event-chip-error {
+.mc-event-chip-error {
   color: var(--status-blocked);
 }
-.event-chip-state-change {
+.mc-event-chip-state-change {
   color: var(--status-retrying);
 }
-.event-chip-tool {
+.mc-event-chip-tool {
   color: var(--color-copper-400);
 }
-.event-chip-usage {
+.mc-event-chip-usage {
   color: var(--text-secondary);
 }
 

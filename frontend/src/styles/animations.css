@@ -101,7 +101,7 @@
   }
 }
 
-.status-running .status-chip-dot {
+.status-running .mc-status-chip-dot {
   animation: statusPulse 2s ease-in-out infinite;
 }
 
@@ -126,7 +126,7 @@
   .timeline-enter,
   .expand-in,
   .skeleton,
-  .status-running .status-chip-dot,
+  .status-running .mc-status-chip-dot,
   .toast.is-exiting,
   .modal-root.is-closing .modal-backdrop,
   .modal-root.is-closing .modal-panel {
@@ -188,7 +188,7 @@
   .issue-card,
   .event-row,
   .attempts-table tbody tr,
-  .status-chip,
+  .mc-status-chip,
   .mc-badge.is-status-queued,
   .mc-chip.is-status-queued,
   .mc-badge.is-status-running,

@@ -45,7 +45,7 @@ export function initKeyboard(router: Router, options: KeyboardOptions = {}): voi
       const destinations: Record<string, string> = {
         o: "/",
         q: "/queue",
-        p: "/planner",
+
         c: "/config",
         s: "/secrets",
         m: "/observability",

@@ -23,13 +23,7 @@ export const navItems: NavItem[] = [
     hotkey: "g q",
     icon: "board",
   },
-  {
-    group: "Operate",
-    name: "Planner",
-    path: "/planner",
-    hotkey: "g p",
-    icon: "planner",
-  },
+
   {
     group: "Configure",
     name: "Config",

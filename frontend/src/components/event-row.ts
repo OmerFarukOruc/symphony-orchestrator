@@ -1,5 +1,5 @@
 import type { RecentEvent } from "../types";
-import { classifyEvent, eventTypeLabel } from "../utils/events";
+import { eventChip } from "../ui/event-chip";
 import { formatRelativeTime, formatShortTime } from "../utils/format";
 
 export function createEventRow(event: RecentEvent, compact = false): HTMLElement {
@@ -14,9 +14,7 @@ export function createEventRow(event: RecentEvent, compact = false): HTMLElement
   time.dateTime = event.at;
   time.textContent = compact ? formatShortTime(event.at) : formatRelativeTime(event.at);
 
-  const chip = document.createElement("span");
-  chip.className = `event-chip event-chip-${classifyEvent(event)}`;
-  chip.textContent = eventTypeLabel(event.event);
+  const chip = eventChip(event);
 
   meta.append(time, chip);
 

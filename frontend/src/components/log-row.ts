@@ -1,5 +1,6 @@
 import type { RecentEvent } from "../types";
-import { classifyEvent, eventTypeLabel, stringifyPayload } from "../utils/events";
+import { classifyEvent, stringifyPayload } from "../utils/events";
+import { eventChip } from "../ui/event-chip";
 import { formatShortTime } from "../utils/format";
 
 interface LogRowOptions {
@@ -65,9 +66,7 @@ export function createLogRow(options: LogRowOptions): HTMLElement {
   timestamp.dateTime = event.at;
   timestamp.textContent = formatShortTime(event.at);
 
-  const chip = document.createElement("span");
-  chip.className = `event-chip event-chip-${eventClass}`;
-  chip.textContent = eventTypeLabel(event.event);
+  const chip = eventChip(event);
   chip.title = event.event;
 
   const message = document.createElement("p");

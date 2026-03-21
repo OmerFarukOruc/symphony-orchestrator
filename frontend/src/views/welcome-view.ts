@@ -77,7 +77,7 @@ export function createWelcomePage(): HTMLElement {
       linkEl.addEventListener("click", (e) => {
         e.preventDefault();
         const paths: Record<string, string> = {
-          "View example": "/planner",
+          "View example": "/config",
           "Open Credentials": "/secrets",
           "Open Settings": "/settings",
         };

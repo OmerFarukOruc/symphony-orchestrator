@@ -1,7 +1,8 @@
 import type { RuntimeIssueView } from "../types";
+import { priorityBadge } from "../ui/priority-badge";
 import { statusChip } from "../ui/status-chip";
 import { flashDiff, setTextWithDiff } from "../utils/diff";
-import { formatPriority, getRetryLabel } from "../utils/issues";
+import { getRetryLabel } from "../utils/issues";
 import { formatRelativeTime, formatTokenUsage } from "../utils/format";
 
 interface IssueCardOptions {
@@ -62,13 +63,11 @@ export function createIssueCard(options: IssueCardOptions): IssueCardHandle {
     if (nextSignature === metaSignature) {
       return;
     }
-    const priority = document.createElement("span");
-    priority.className = `priority-badge priority-${issue.priority ?? "low"}`;
-    priority.textContent = formatPriority(issue.priority);
+    const priority = priorityBadge(issue.priority);
     const children: HTMLElement[] = [priority, statusChip(issue.status)];
     if (issue.modelChangePending) {
       const pending = document.createElement("span");
-      pending.className = "inline-badge";
+      pending.className = "mc-inline-badge";
       pending.textContent = "Next run pending";
       children.push(pending);
     }

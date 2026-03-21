@@ -509,7 +509,7 @@ function buildDoneStep(): HTMLElement {
   docLink.href = "#";
   docLink.addEventListener("click", (e) => {
     e.preventDefault();
-    router.navigate("/planner");
+    router.navigate("/");
   });
 
   const goBtn = document.createElement("button");
