@@ -10,7 +10,43 @@ Symphony polls Linear for candidate issues, creates a workspace per issue, launc
 
 ---
 
+## Quick start (5 minutes)
+
+> Already familiar with Symphony? Skip to [Prerequisites](#-prerequisites) for the full setup reference.
+
+**1. Install and build**
+```bash
+git clone <repo-url> && cd symphony-orchestrator
+npm install && npm run build
+bash bin/build-sandbox.sh
+```
+
+**2. Start Symphony**
+```bash
+export LINEAR_API_KEY="lin_api_..."
+export LINEAR_PROJECT_SLUG="your-linear-project-slug"
+node dist/cli.js ./WORKFLOW.example.md --port 4000
+```
+Open http://127.0.0.1:4000 — the setup wizard opens automatically if you haven't configured Symphony yet.
+
+**3. Complete the setup wizard**
+The wizard walks you through connecting a Linear project and adding credentials. It takes 3–5 minutes.
+
+**4. Set Codex auth**
+```bash
+export OPENAI_API_KEY="sk-..."   # API key path
+# — or —
+codex login                       # ChatGPT/Codex subscription path
+```
+
+**5. Verify it works**
+Set a Linear issue to "In Progress". Within one poll cycle (default: 30s), Symphony picks it up and the dashboard shows it running.
+
+---
+
 ## 📋 Prerequisites
+
+Make sure the following are in place before running Symphony:
 
 | Requirement             | Details                                                            |
 | ----------------------- | ------------------------------------------------------------------ |
@@ -21,6 +57,8 @@ Symphony polls Linear for candidate issues, creates a workspace per issue, launc
 | **Codex auth**          | Working auth setup for your `codex app-server` command             |
 
 ---
+
+> **Note for new users:** The sections below are the complete operations reference. For day-one setup, the quick start above is all you need.
 
 ## 🌐 Deployment Architecture
 
