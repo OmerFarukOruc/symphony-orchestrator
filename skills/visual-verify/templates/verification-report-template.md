@@ -26,7 +26,7 @@
 
 ## Environment
 
-- Browser: Brave (headed mode via agent-browser)
+- Browser: Bundled Chromium (headed mode via agent-browser)
 - Viewport: 1280x720 (default)
 - Dashboard version: (run `git rev-parse --short HEAD`)
 - MASTER_KEY: set (do not log the value)

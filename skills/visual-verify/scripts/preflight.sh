@@ -39,11 +39,11 @@ else
   fail "agent-browser not found — install: npm install -g agent-browser"
 fi
 
-# 2. brave-browser
-if command -v brave-browser > /dev/null 2>&1; then
-  pass "brave-browser found: $(command -v brave-browser)"
+# 2. Bundled Chrome (agent-browser uses its own Chromium)
+if agent-browser install --dry-run > /dev/null 2>&1; then
+  pass "Bundled Chrome available (via agent-browser)"
 else
-  fail "brave-browser not found — install Brave Browser"
+  fail "Bundled Chrome not available — run: agent-browser install"
 fi
 
 # 3. agent-browser.json

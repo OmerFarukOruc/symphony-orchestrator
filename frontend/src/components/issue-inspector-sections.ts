@@ -152,21 +152,6 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
   return section;
 }
 
-export function buildHeaderActions(detail: IssueDetail): HTMLElement {
-  const actions = document.createElement("div");
-  actions.className = "mc-actions";
-  if (!detail.workspacePath) {
-    return actions;
-  }
-  actions.append(
-    button("Copy workspace path", async () => {
-      await navigator.clipboard.writeText(detail.workspacePath ?? "");
-      toast("Workspace path copied.", "success");
-    }),
-  );
-  return actions;
-}
-
 export function buildActivitySection(detail: IssueDetail): HTMLElement {
   const section = document.createElement("section");
   section.className = "issue-section mc-panel expand-in";
@@ -189,7 +174,7 @@ export function buildActivitySection(detail: IssueDetail): HTMLElement {
   const link = document.createElement("a");
   link.className = "mc-button mc-button-ghost";
   link.href = `/issues/${detail.identifier}/logs`;
-  link.textContent = "View all logs →";
+  link.textContent = "View all logs";
   section.append(list, link);
   return section;
 }

@@ -2,7 +2,7 @@
 name: visual-verify
 description: >
   Visually verify Symphony dashboard and logs UI changes using agent-browser
-  with Brave in headed mode. Use when the user asks to verify UI, QA the
+  with its bundled Chrome. Use when the user asks to verify UI, QA the
   dashboard, dogfood the app, take screenshots, compare before and after,
   check CSS or layout changes, inspect visual regressions, or exercise browser
   automation against Symphony's local web UI. Also use after editing
@@ -10,9 +10,9 @@ description: >
   Do not use this skill for generic browser automation, non-Symphony sites,
   or backend-only debugging without a visual verification goal.
 compatibility: >
-  Requires local Symphony UI at http://127.0.0.1:4000, agent-browser,
-  brave-browser, MASTER_KEY env var, LINEAR_API_KEY env var, and the
-  repo-root agent-browser.json config.
+  Requires local Symphony UI at http://127.0.0.1:4000, agent-browser
+  (with bundled Chrome via `agent-browser install`), MASTER_KEY env var,
+  LINEAR_API_KEY env var, and the repo-root agent-browser.json config.
 metadata:
   author: symphony
   version: 2.0.0
@@ -42,8 +42,8 @@ If preflight passes, skip to the workflow. If it fails, fix the reported issues 
 ### Manual checks (if preflight is unavailable)
 
 1. **agent-browser is installed:** `command -v agent-browser`
-2. **brave-browser is available:** `command -v brave-browser`
-3. **agent-browser.json** exists at project root (configures Brave + headed mode)
+2. **Bundled Chrome is installed:** `agent-browser install` (downloads Chromium for agent-browser)
+3. **agent-browser.json** exists at project root (configures headed mode)
 4. **Required environment variables** are set:
    - `MASTER_KEY` — used by SecretsStore for encrypted config (any non-empty value works for local QA, e.g. `MASTER_KEY="local-qa-key"`)
    - `LINEAR_API_KEY` — required for workflow polling
@@ -337,6 +337,51 @@ agent-browser --session symphony-qa close
 ```
 
 Update the report summary to reflect actual issue counts and severity breakdown. Set the overall verdict: pass (0 critical/high), conditional pass, or fail.
+
+## Annotation-Driven QA (Agentation)
+
+This project ships with [Agentation](https://www.agentation.com/mcp) (`agentation-mcp` MCP server) for browser-to-agent annotation feedback. Use it as a complement to Quick Verify or Full QA when you want the human to point at specific elements in the live UI.
+
+### Prerequisites
+
+- `agentation-mcp` is configured as an MCP server (see `opencode.json` or your agent's MCP config)
+- Symphony UI is running at `http://127.0.0.1:4000`
+
+### Watch Mode (hands-free annotation loop)
+
+The human annotates elements in the browser toolbar; the agent picks them up automatically:
+
+```
+1. Agent calls  agentation_watch_annotations  (blocks until annotations appear)
+2. New annotations arrive → agent receives a batch
+3. For each annotation:
+   a. agentation_acknowledge  — mark as seen
+   b. Make the code fix
+   c. agentation_resolve      — mark as done (annotation disappears from browser)
+4. Loop back to step 1
+```
+
+This is already wired into `AGENTS.md` — tell the agent "watch mode" and it enters this loop.
+
+### Critique Mode (agent self-review)
+
+The agent opens a headed browser, scrolls through the page, and creates annotations on your behalf:
+
+```bash
+# Prompt the agent with:
+Critique the UI at http://127.0.0.1:4000
+```
+
+The agent will navigate the page, identify 5-8 design issues (hierarchy, spacing, typography, navigation, CTAs), and submit annotations through the toolbar. You review them in the browser and decide what to fix.
+
+### When to use which workflow
+
+| Workflow | Best for |
+|---|---|
+| Quick Verify | Single targeted change, before/after pixel diff |
+| Full QA | Release readiness, broad UI changes, dogfooding |
+| Watch Mode | Iterative human→agent feedback on live UI |
+| Critique Mode | Agent-driven design review, catching polish issues |
 
 ## Evidence Rules
 

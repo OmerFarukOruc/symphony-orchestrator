@@ -7,6 +7,64 @@
   gap: var(--space-4);
 }
 
+/* ── Hero metric zone ────────────────────────────────────────────────────── */
+
+.observability-hero {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: var(--stroke-default) solid var(--border-stitch);
+  border-left: var(--stroke-emphasis) solid var(--text-accent);
+  background: var(--surface-primary-bg);
+}
+
+.observability-hero-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.observability-hero-value {
+  font-family: var(--font-heading);
+  font-size: clamp(28px, 3vw, 42px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: var(--tracking-tightest);
+  font-feature-settings: var(--font-features-tabular);
+  color: var(--text-primary);
+}
+
+.observability-hero-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-muted);
+}
+
+/* ── Anomaly states for hero metrics ─────────────────────────────────────── */
+
+.observability-hero-metric.is-warning .observability-hero-value {
+  color: var(--status-retrying);
+}
+
+.observability-hero-metric.is-danger .observability-hero-value {
+  color: var(--status-blocked);
+}
+
+.observability-hero-metric.is-warning,
+.observability-hero-metric.is-danger {
+  padding: var(--space-3);
+  margin: calc(var(--space-3) * -1);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--status-retrying) 8%, transparent);
+}
+
+.observability-hero-metric.is-danger {
+  background: color-mix(in srgb, var(--status-blocked) 8%, transparent);
+}
+
 .observability-shell {
   grid-template-columns: minmax(0, 1fr) minmax(340px, 0.42fr);
   align-items: start;
@@ -34,14 +92,31 @@
   border: 1px solid var(--border-stitch);
   padding: var(--space-4);
   background: var(--bg-surface);
+  transition: border-color var(--motion-fast) var(--ease-out-quart);
+}
+
+.observability-card.is-primary {
+  border-left: var(--stroke-emphasis) solid var(--text-accent);
+  background: var(--surface-primary-bg);
 }
 
 .observability-card.tone-warning {
   border-color: var(--status-retrying);
+  background: color-mix(in srgb, var(--status-retrying) 4%, var(--bg-surface));
 }
 
 .observability-card.tone-danger {
   border-color: var(--status-blocked);
+  background: color-mix(in srgb, var(--status-blocked) 6%, var(--bg-surface));
+}
+
+.observability-card.tone-warning .observability-value,
+.observability-card.tone-danger .observability-value {
+  color: var(--status-blocked);
+}
+
+.observability-card.tone-warning .observability-value {
+  color: var(--status-retrying);
 }
 
 .observability-card h3,
@@ -99,6 +174,12 @@
   top: 0;
   border-left: 1px solid var(--border-stitch);
   padding-left: var(--space-5);
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.observability-raw-drawer.is-collapsed {
+  max-height: 200px;
 }
 
 .observability-raw-body {
@@ -133,10 +214,18 @@
     min-width: 0;
     max-width: none;
   }
+
+  .observability-hero {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
   .observability-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .observability-hero {
     grid-template-columns: 1fr;
   }
 }

@@ -8,6 +8,7 @@ import { createIcon } from "../ui/icons";
 import { stringifyPayload } from "../utils/events";
 
 type Mode = "live" | "archive";
+type Density = "compact" | "comfortable";
 
 function copyEvents(events: RecentEvent[]): Promise<void> {
   return navigator.clipboard.writeText(events.map((event) => `${event.at} ${event.event} ${event.message}`).join("\n"));
@@ -60,6 +61,7 @@ export function createLogsPage(id: string): HTMLElement {
 
   const autoToggle = makeIconBtn("scrollDown", "Auto-scroll to bottom");
   const expandToggle = makeIconBtn("unfold", "Expand payloads");
+  const densityToggle = makeIconBtn("dense", "Compact mode");
   const copyButton = makeIconBtn("copy", "Copy visible logs");
   copyButton.addEventListener("click", () => {
     void copyEvents(filtered()).then(() => {
@@ -74,7 +76,7 @@ export function createLogsPage(id: string): HTMLElement {
 
   const viewActions = document.createElement("div");
   viewActions.className = "logs-view-actions";
-  viewActions.append(autoToggle, expandToggle, copyButton);
+  viewActions.append(densityToggle, autoToggle, expandToggle, copyButton);
   controls.append(typeBar, search, viewActions);
 
   // ── Log scroll area ───────────────────────────────────────────────────────
@@ -98,6 +100,7 @@ export function createLogsPage(id: string): HTMLElement {
   let typeFilter = "all";
   let searchText = "";
   let autoScroll = true;
+  let density: Density = "compact";
   let data: { title: string; issueId: string; events: RecentEvent[] } = { title: "Loading…", issueId: id, events: [] };
   let timer = 0;
   const expandedEvents = new Set<string>();
@@ -132,7 +135,10 @@ export function createLogsPage(id: string): HTMLElement {
     liveBtn.classList.toggle("is-active", mode === "live");
     archiveBtn.classList.toggle("is-active", mode === "archive");
     autoToggle.classList.toggle("is-active", autoScroll);
+    densityToggle.classList.toggle("is-active", density === "compact");
     expandToggle.classList.toggle("is-active", expandedEvents.size > 0);
+    scroll.classList.toggle("is-compact", density === "compact");
+    scroll.classList.toggle("is-comfortable", density === "comfortable");
     renderTypeFilters();
     const events = filtered();
     if (events.length === 0) {
@@ -209,6 +215,10 @@ export function createLogsPage(id: string): HTMLElement {
   });
   autoToggle.addEventListener("click", () => {
     autoScroll = !autoScroll;
+    render();
+  });
+  densityToggle.addEventListener("click", () => {
+    density = density === "compact" ? "comfortable" : "compact";
     render();
   });
   expandToggle.addEventListener("click", () => {

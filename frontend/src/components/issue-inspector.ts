@@ -4,13 +4,12 @@ import { router } from "../router";
 import { statusChip } from "../ui/status-chip";
 import { skeletonCard } from "../ui/skeleton";
 import { flashDiff, setTextWithDiff } from "../utils/diff";
-import { formatTimestamp } from "../utils/format";
+import { formatCompactNumber, computeDurationSeconds, formatDuration, formatTimestamp } from "../utils/format";
 import {
   buildActivitySection,
   buildAttemptsSection,
   createSummaryStat,
   buildDescriptionSection,
-  buildHeaderActions,
   buildModelSection,
   buildWorkspaceSection,
 } from "./issue-inspector-sections";
@@ -47,26 +46,18 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     className: "issue-identifier",
   });
   const title = Object.assign(document.createElement("h1"), { className: "issue-title" });
-  const headerTop = document.createElement("div");
-  headerTop.className = "issue-header-top";
-  const updatedAt = document.createElement("div");
+  const headerMeta = document.createElement("div");
+  headerMeta.className = "issue-header-meta";
   const statusSlot = document.createElement("div");
+  const updatedAt = document.createElement("span");
+  updatedAt.className = "text-secondary";
+
+  // Primary actions row
+  const headerActions = document.createElement("div");
+  headerActions.className = "issue-header-actions";
   const logsLink = Object.assign(document.createElement("a"), {
-    className: "mc-button mc-button-ghost",
+    className: "mc-button mc-button-primary",
     textContent: "View Logs",
-  });
-  const runsLink = Object.assign(document.createElement("a"), {
-    className: "mc-button mc-button-ghost",
-    textContent: "View Runs",
-  });
-  const fullPageButton = document.createElement("button");
-  fullPageButton.type = "button";
-  fullPageButton.className = "mc-button mc-button-ghost";
-  fullPageButton.textContent = "Full Page";
-  fullPageButton.addEventListener("click", () => {
-    if (currentId) {
-      router.navigate(`/issues/${currentId}`);
-    }
   });
   const linearLink = Object.assign(document.createElement("a"), {
     className: "mc-button mc-button-ghost",
@@ -74,38 +65,47 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     rel: "noreferrer",
     textContent: "Linear",
   });
-  headerTop.append(updatedAt, statusSlot, logsLink, runsLink);
+  headerActions.append(logsLink, linearLink);
+
+  headerMeta.append(statusSlot, updatedAt);
+
+  let currentId = options.initialId ?? "";
+
   if (options.mode === "drawer") {
-    headerTop.append(fullPageButton);
+    const fullPageButton = document.createElement("button");
+    fullPageButton.type = "button";
+    fullPageButton.className = "mc-button mc-button-ghost";
+    fullPageButton.textContent = "Full Page";
+    fullPageButton.addEventListener("click", () => {
+      if (currentId) {
+        router.navigate(`/issues/${currentId}`);
+      }
+    });
+    headerActions.append(fullPageButton);
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
     closeBtn.className = "mc-button mc-button-ghost drawer-close-btn";
     closeBtn.setAttribute("aria-label", "Close panel");
     closeBtn.textContent = "✕";
     closeBtn.addEventListener("click", () => options.onClose?.());
-    header.append(identifier, title, headerTop, closeBtn);
+    header.append(identifier, title, headerMeta, headerActions, closeBtn);
   } else {
-    header.append(identifier, title, headerTop);
+    header.append(identifier, title, headerMeta, headerActions);
   }
 
   const summaryStats = {
     priority: createSummaryStat("Priority"),
-    workflow: createSummaryStat("Workflow"),
     model: createSummaryStat("Model"),
-    reasoning: createSummaryStat("Reasoning"),
-    source: createSummaryStat("Override source"),
-    retry: createSummaryStat("Retry ETA"),
+    tokens: createSummaryStat("Tokens"),
+    duration: createSummaryStat("Duration"),
   };
   summary.replaceChildren(
     summaryStats.priority.element,
-    summaryStats.workflow.element,
     summaryStats.model.element,
-    summaryStats.reasoning.element,
-    summaryStats.source.element,
-    summaryStats.retry.element,
+    summaryStats.tokens.element,
+    summaryStats.duration.element,
   );
 
-  let currentId = options.initialId ?? "";
   let poll = 0;
   let hydrated = false;
 
@@ -121,36 +121,20 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     const nextStatus = statusChip(detail.status);
     statusSlot.replaceChildren(nextStatus);
     logsLink.href = `/issues/${detail.identifier}/logs`;
-    runsLink.href = `/issues/${detail.identifier}/runs`;
     linearLink.href = detail.url ?? "#";
     linearLink.hidden = !detail.url;
-    if (detail.url && !headerTop.contains(linearLink)) {
-      headerTop.append(linearLink);
-    }
-    if (!detail.url && headerTop.contains(linearLink)) {
-      linearLink.remove();
-    }
-
-    const actions = buildHeaderActions(detail);
-    const existingActions = header.querySelector(".mc-actions");
-    if (existingActions) {
-      existingActions.replaceWith(actions);
-    } else {
-      header.append(actions);
-    }
 
     summaryStats.priority.update(String(detail.priority ?? "—"));
-    summaryStats.workflow.update(detail.state || "—");
     summaryStats.model.update(detail.model ?? "—");
-    summaryStats.reasoning.update(detail.reasoningEffort ?? "—");
-    summaryStats.source.update(detail.modelSource ?? "—");
-    summaryStats.retry.update(detail.next_retry_due_at ? formatTimestamp(detail.next_retry_due_at) : "—");
+    summaryStats.tokens.update(formatCompactNumber(detail.tokenUsage?.totalTokens ?? null));
+    summaryStats.duration.update(formatDuration(computeDurationSeconds(detail.startedAt, detail.updated_at ?? detail.updatedAt)));
 
+    // Section order: Description → Activity → Workspace/Git → Model Override → Attempts
     const sections = [
       buildDescriptionSection(detail),
+      buildActivitySection(detail),
       buildWorkspaceSection(detail),
       buildModelSection(detail),
-      buildActivitySection(detail),
       buildAttemptsSection(detail),
     ];
     if (content.children.length > 0) {

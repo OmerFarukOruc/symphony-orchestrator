@@ -1,4 +1,18 @@
-# Repository Guidelines
+# Symphony Orchestrator
+
+## Code Search — MANDATORY
+
+**ALWAYS use `mcp__cocoindex-code__search` as your FIRST tool when exploring or understanding code.** Do NOT default to Read or grep for code exploration. The semantic search MCP tool finds code by meaning, not just text — it is faster, cheaper, and more accurate for navigating this codebase.
+
+- **First choice → `mcp__cocoindex-code__search`**: For ANY query about how something works, where code lives, finding implementations, understanding features, or locating related code. Use natural language: *"authentication logic"*, *"retry handling"*, *"HTTP route definitions"*.
+- **Fallback → grep/rg**: ONLY for exact string matches (specific function names, variable names, import paths, error message strings).
+- **Last resort → Read**: ONLY after search/grep has identified the specific file and line range you need.
+
+```
+search(query, limit=5, offset=0, refresh_index=true, languages=["typescript"], paths=["src/*"])
+```
+
+---
 
 ## Project Structure & Module Organization
 
@@ -79,7 +93,7 @@ Use `agent-browser` for web automation. Run `agent-browser --help` for all comma
 
 **When to use:** After editing `dashboard-template.ts`, `logs-template.ts`, or any file that affects the Symphony web UI. Also use when asked to "dogfood", "QA", "visual check", or "screenshot" the dashboard. Read `skills/visual-verify/SKILL.md` for the full visual-verify workflow.
 
-**Brave auto-connect:** Brave runs with `--remote-debugging-port=9222`; `autoConnect` is set in `agent-browser.json`, so no new window is opened.
+**Chrome:** `agent-browser` uses its own bundled Chrome (installed via `agent-browser install`). No custom browser path or auto-connect needed.
 
 **Core workflow:**
 
@@ -140,3 +154,9 @@ These rules prevent the recurring code quality issues identified and fixed durin
 
 - **Remove deprecated type aliases immediately.** When marking a type as `@deprecated`, migrate all call sites in the same PR — do not leave deprecated references.
 - **Avoid `Todo` in comments/examples.** SonarCloud flags any occurrence of `TODO` (case-insensitive). Use alternative wording in JSDoc examples (e.g. `"Triage"` instead of `"Todo"`).
+
+## Watch Mode
+
+When I say "watch mode", call agentation_watch_annotations in a loop.
+For each annotation: acknowledge it, make the fix, then resolve it with a summary.
+Continue watching until I say stop or timeout is reached.

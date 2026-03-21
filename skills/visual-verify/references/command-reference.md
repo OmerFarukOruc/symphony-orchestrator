@@ -172,11 +172,12 @@ Project-level config in `agent-browser.json`:
 
 ```json
 {
-  "executablePath": "/usr/bin/brave-browser",
   "headed": true,
   "screenshotDir": "./archive/screenshots",
   "screenshotFormat": "png"
 }
 ```
+
+> **Note:** `agent-browser` uses its own bundled Chromium. Run `agent-browser install` to download it. No `executablePath` is needed.
 
 Priority: `~/.agent-browser/config.json` < `./agent-browser.json` < env vars < CLI flags.

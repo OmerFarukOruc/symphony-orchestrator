@@ -99,7 +99,7 @@ Set an issue to "In Progress" in your configured project. Symphony picks it up w
 | **Planning API** | Goal-to-issue planning endpoints under `/api/v1/plan*` |
 | **Desktop shell** | Minimal Tauri host that can start/stop `node dist/cli.js` and embed the dashboard |
 | **Strict TypeScript** | Full type safety with deterministic Vitest coverage |
-| **Visual verification** | `agent-browser` + Brave headed mode for dashboard screenshot diffing and QA |
+| **Visual verification** | `agent-browser` + bundled Chromium for dashboard screenshot diffing and QA |
 
 ---
 

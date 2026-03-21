@@ -76,10 +76,8 @@ export function buildAttentionList(columns: WorkflowColumn[]): RuntimeIssueView[
     .slice(0, 6);
 }
 
-export function latestTerminalIssues(columns: WorkflowColumn[]): RuntimeIssueView[] {
-  return columns
-    .filter((column) => column.terminal)
-    .flatMap((column) => column.issues)
+export function latestTerminalIssues(completed: RuntimeIssueView[]): RuntimeIssueView[] {
+  return [...completed]
     .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
     .slice(0, 8);
 }

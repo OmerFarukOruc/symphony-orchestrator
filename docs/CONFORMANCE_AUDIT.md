@@ -697,7 +697,7 @@ Capabilities shipped that go beyond the spec requirements:
 | CI extensions | 8 | `integration` + `docker-build` jobs added to `ci.yml`; Docker lifecycle + E2E smoke tests |
 | Desktop app | 9 | Tauri v2 desktop shell with Rust backend for service lifecycle management |
 | Issue planning skill | 10 | Goal→issues decomposition via `PlanningSkill`, planning API, Linear issue creation |
-| Visual verification skill | 11 | Merged `agent-browser` + dogfood QA skill for headed Brave dashboard testing, pixel diffing, and annotated screenshots |
+| Visual verification skill | 11 | Merged `agent-browser` + dogfood QA skill for headed Chromium dashboard testing, pixel diffing, and annotated screenshots |
 
 ---
 

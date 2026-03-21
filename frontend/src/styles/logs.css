@@ -1,14 +1,16 @@
-/* ── Page layout ─────────────────────────────────────────────────────────── */
+/* ── Page layout with flexbox resilience ─────────────────────────────────── */
 
 .logs-page {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  height: 100%;
+  min-height: 0; /* Allow shrinking in flex context */
 }
 
 /* ── Header: breadcrumb + Live/Archive tabs ──────────────────────────────── */
 
 .logs-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -50,6 +52,7 @@
 /* ── Filter bar: chips + search + icon actions ───────────────────────────── */
 
 .logs-control {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -109,11 +112,30 @@
 /* ── Log scroll area ─────────────────────────────────────────────────────── */
 
 .logs-scroll {
-  /* shell-header(48) + outlet-padding(48) + logs-header(~48) + logs-control(~52) */
-  height: calc(100vh - 196px);
-  min-height: 200px;
+  flex: 1 1 auto;
+  min-height: 120px;
   overflow-y: auto;
   overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* ── Density modes for logs ─────────────────────────────────────────────── */
+
+.logs-scroll.is-compact .mc-log-row {
+  padding: var(--space-1) var(--space-4);
+  gap: var(--space-2);
+}
+
+.logs-scroll.is-compact .mc-log-time {
+  font-size: var(--text-2xs);
+}
+
+.logs-scroll.is-compact .mc-log-message {
+  font-size: var(--text-xs);
+}
+
+.logs-scroll.is-comfortable .mc-log-row {
+  padding: var(--space-3) var(--space-5);
 }
 
 .mc-log-row {

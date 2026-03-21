@@ -614,27 +614,27 @@ The helper emits JSON and prefers `issue-index.json` when present, while still f
 
 ## 🔭 Visual Verification of Dashboard UI
 
-Symphony includes a `visual-verify` skill and project-level `agent-browser` configuration for visually verifying dashboard UI changes using Brave in headed mode.
+Symphony includes a `visual-verify` skill and project-level `agent-browser` configuration for visually verifying dashboard UI changes using bundled Chromium in headed mode.
 
 ### Prerequisites
 
 | Requirement       | Details                                                                   |
 | ----------------- | ------------------------------------------------------------------------- |
 | **agent-browser** | `npm i -g agent-browser && agent-browser install`                         |
-| **Brave browser** | Installed and in `PATH` (or set `executablePath` in `agent-browser.json`) |
 
 ### Project Configuration
 
-The `agent-browser.json` at project root configures Brave as the headed browser engine with screenshots saved to `archive/screenshots/`:
+The `agent-browser.json` at project root configures headed mode with screenshots saved to `archive/screenshots/`:
 
 ```json
 {
-  "executablePath": "/usr/bin/brave-browser",
   "headed": true,
   "screenshotDir": "./archive/screenshots",
   "screenshotFormat": "png"
 }
 ```
+
+> **Note:** `agent-browser` uses its own bundled Chromium. Run `agent-browser install` to download it. No `executablePath` is needed.
 
 ### Quick Verify Workflow
 

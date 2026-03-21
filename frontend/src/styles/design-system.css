@@ -247,6 +247,34 @@ body {
 }
 
 /* ============================================
+   SURFACE HIERARCHY TOKENS
+   Three-tier system: Primary (command), Standard, Quiet (support)
+   ============================================ */
+
+:root {
+  /* Primary Surface — commanding presence, copper accent */
+  --surface-primary-border: var(--border-default);
+  --surface-primary-border-accent: var(--text-accent);
+  --surface-primary-bg: var(--bg-surface);
+  --surface-primary-border-width: 1px;
+  --surface-primary-accent-width: 3px;
+
+  /* Standard Surface — default bordered containers */
+  --surface-standard-border: var(--border-default);
+  --surface-standard-bg: var(--bg-surface);
+  --surface-standard-border-width: 1px;
+
+  /* Quiet Surface — subtle, minimal frame */
+  --surface-quiet-border: transparent;
+  --surface-quiet-bg: transparent;
+}
+
+[data-theme="dark"] {
+  /* Primary Surface — slightly elevated in dark mode */
+  --surface-primary-bg: color-mix(in srgb, var(--bg-elevated) 40%, var(--bg-surface));
+}
+
+/* ============================================
    COMPONENT CLASSES
    ============================================ */
 

@@ -1,23 +1,46 @@
 /* ============================================
    SURFACE HIERARCHY
    ============================================
-   
+
    Primary: Commanding, high contrast — live data, primary actions
-   Secondary: Standard bordered containers — supporting content
-   Tertiary: Subtle, minimal frame — passive metadata
+   Standard: Current treatment, default for most content
+   Quiet: No border, transparent background, for metadata and secondary info
    ============================================ */
 
-/* Primary Surfaces — commanding presence */
+/* ── Base Surface Classes ───────────────────────────────────── */
+
+.surface-primary {
+  border: var(--surface-primary-border-width) solid var(--surface-primary-border);
+  border-left: var(--surface-primary-accent-width) solid var(--surface-primary-border-accent);
+  background: var(--surface-primary-bg);
+  padding: var(--space-5);
+}
+
+.surface-standard {
+  border: var(--surface-standard-border-width) solid var(--surface-standard-border);
+  background: var(--surface-standard-bg);
+  padding: var(--space-4);
+}
+
+.surface-quiet {
+  border: 1px solid transparent;
+  background: var(--surface-quiet-bg);
+  padding: var(--space-4);
+}
+
+/* ── Primary Surfaces — commanding presence ───────────────────── */
+
 .mc-command,
 .mc-live-panel,
 .mc-status-primary {
   border: var(--stroke-default) solid var(--border-stitch);
   border-left: var(--stroke-emphasis) solid var(--text-accent);
-  background: var(--bg-surface);
+  background: var(--surface-primary-bg);
   padding: var(--space-5);
 }
 
-/* Secondary Surfaces — standard containers */
+/* ── Standard Surfaces — default containers ───────────────────── */
+
 .mc-panel,
 .mc-stat-card,
 .mc-toolbar,
@@ -27,7 +50,21 @@
   padding: var(--space-4);
 }
 
-/* Tertiary Surfaces — subtle, minimal */
+/* Primary variant for stat cards */
+.mc-stat-card.is-primary {
+  border-left: var(--stroke-emphasis) solid var(--text-accent);
+  background: var(--surface-primary-bg);
+  padding: var(--space-5);
+}
+
+/* Quiet variant for stat cards */
+.mc-stat-card.is-quiet {
+  border-color: transparent;
+  background: transparent;
+}
+
+/* ── Quiet Surfaces — subtle, minimal ─────────────────────────── */
+
 .mc-drawer,
 .mc-empty-state,
 .mc-metadata {
@@ -284,13 +321,21 @@
 
 /* Button variants — ghost */
 .mc-button.is-ghost {
-  background: color-mix(in srgb, var(--color-copper-500) 12%, var(--bg-elevated));
-  border-color: color-mix(in srgb, var(--color-copper-500) 34%, var(--border-stitch));
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
 }
 
 .mc-button.is-ghost:hover {
-  background: color-mix(in srgb, var(--color-copper-500) 18%, var(--bg-elevated));
-  border-color: color-mix(in srgb, var(--color-copper-500) 50%, var(--border-stitch));
+  background: var(--bg-muted);
+  border-color: var(--border-stitch);
+  color: var(--text-secondary);
+}
+
+.mc-button.is-ghost.is-active {
+  background: color-mix(in srgb, var(--color-copper-400) 12%, var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--color-copper-400) 30%, var(--border-stitch));
+  color: var(--text-accent);
 }
 
 /* Button variants — icon-only */
@@ -380,8 +425,21 @@
 
 /* Legacy class aliases (for backward compatibility) */
 .mc-button-ghost {
-  background: color-mix(in srgb, var(--color-copper-500) 12%, var(--bg-elevated));
-  border-color: color-mix(in srgb, var(--color-copper-500) 34%, var(--border-stitch));
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+
+.mc-button-ghost:hover {
+  background: var(--bg-muted);
+  border-color: var(--border-stitch);
+  color: var(--text-secondary);
+}
+
+.mc-button-ghost.is-active {
+  background: color-mix(in srgb, var(--color-copper-400) 12%, var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--color-copper-400) 30%, var(--border-stitch));
+  color: var(--text-accent);
 }
 
 .header-action-btn {
@@ -635,20 +693,22 @@
   cursor: pointer;
   transition:
     color var(--motion-fast) var(--ease-out-quart),
-    border-color var(--motion-fast) var(--ease-out-quart);
+    border-color var(--motion-fast) var(--ease-out-quart),
+    background-color var(--motion-fast) var(--ease-out-quart);
 }
 
 .mc-badge.is-interactive:hover,
 .mc-chip.is-interactive:hover {
-  border-color: var(--border-strong);
+  border-color: var(--border-stitch);
   color: var(--text-primary);
-  background: color-mix(in srgb, var(--text-accent) 8%, var(--bg-elevated));
+  background: var(--bg-muted);
 }
 
 .mc-badge.is-interactive.is-active,
 .mc-chip.is-interactive.is-active {
   color: var(--text-accent);
   border-color: var(--text-accent);
+  background: color-mix(in srgb, var(--text-accent) 12%, var(--bg-elevated));
 }
 
 /* Badge with dot indicator */

@@ -264,3 +264,212 @@ At the end of Phase 1, `src/http-server.ts` must expose `GET /metrics` that retu
 Revision note: on 2026-03-17 this ExecPlan was rewritten because the previous file still described an earlier repository path and an outdated project snapshot. The new version aligns the plan with `/home/oruc/Desktop/symphony-orchestrator`, decomposes the requested external roadmap into atomic repository tasks, and sets Phase 1 as the active implementation milestone.
 
 Revision note: later on 2026-03-17 the ExecPlan was updated again to reflect the completed final integrations. The planning execution backend, workflow-column dashboard rendering, and desktop lifecycle shell are now recorded as landed work, validation evidence has been refreshed to the current `npm test` and `npm run build` results, and the remaining blockers were narrowed to push credentials plus unavailable local Rust tooling.
+
+## 2026-03-21 Next Slice: Desktop-First Dashboard Frontend Refresh
+
+This section is a new execution slice for the Vite frontend under `frontend/`. It is intentionally scoped to desktop and large-tablet operator usage only. Mobile and narrow-screen redesign work is explicitly deferred to a later slice and must not be mixed into this implementation unless the scope changes.
+
+### Purpose / Big Picture
+
+After this change, an operator using Symphony on a desktop-class viewport should experience the dashboard as a coherent control plane rather than a collection of themed pages. The visible improvement should be structural, not cosmetic: clearer hierarchy, more trustworthy queue semantics, a calmer issue drawer, stronger overview storytelling, and denser-but-more-readable logs and observability surfaces. The first proof is visual and behavioral rather than backend-oriented: the same live data should read faster, require less scanning, and produce fewer state ambiguities without changing the underlying API contract.
+
+### Scope Boundaries
+
+In scope for this slice:
+
+- Desktop and large-tablet layout quality for the shell, overview, queue, issue drawer, logs, and observability pages.
+- Information hierarchy, surface treatment, spacing, typography, motion, and operator-facing copy adjustments.
+- Queue board visual semantics, especially the distinction between workflow stage and runtime status.
+- Refactoring frontend components and CSS tokens where necessary to support the design cleanup.
+
+Out of scope for this slice:
+
+- Mobile and narrow-screen redesign, responsive shell conversion, off-canvas navigation, and phone-specific layouts.
+- New backend endpoints, new orchestration features, or changes to the persisted snapshot schema unless a frontend bug cannot be fixed without them.
+- Replacing the existing frontend stack or introducing a new UI framework.
+
+### Progress
+
+- [x] (2026-03-21 10:41Z) Reviewed the live frontend on `http://127.0.0.1:4173` against the running local backend on `http://127.0.0.1:4000` and captured current screenshots for overview, queue, queue drawer, logs, and observability.
+- [x] (2026-03-21 10:46Z) Confirmed the immediate next roadmap should be desktop-first and that mobile/responsive work is intentionally deferred from this execution slice.
+- [x] (2026-03-21 10:51Z) Read the current frontend structure in `frontend/src/{pages,components,views,styles,ui}` and identified the main design seams: shell hierarchy, page-header system, queue semantics, drawer composition, and logs layout rigidity.
+- [ ] Define the new surface hierarchy and page-header rules in shared styles and components before touching page-specific composition.
+- [ ] Implement desktop shell and hierarchy cleanup without changing the current route model or keyboard flow.
+- [ ] Rework overview, queue, issue drawer, logs, and observability in that order, validating after each milestone with browser screenshots and targeted regression checks.
+- [ ] Run repository validation and a desktop visual QA pass, then update this ExecPlan section with shipped outcomes, surprises, and evidence.
+
+### Current Diagnosis
+
+- The visual identity is already strong enough to keep: the copper/slate palette in `frontend/src/styles/design-system.css`, the `Space Grotesk` + `Manrope` typography pairing, and the dark operator-tool framing should stay.
+- The current weakness is not lack of styling; it is over-equalized hierarchy. `mc-strip`, `mc-toolbar`, `mc-panel`, and `mc-stat-card` all read too similarly, so the UI spends too much visual energy boxing content instead of directing attention.
+- The queue board currently mixes workflow stage and runtime status in a way that can confuse operators. A card can sit inside an “In Progress” column while visually presenting itself as “Done” or “Completed”. That ambiguity must be resolved at the design layer before polish work.
+- The issue drawer contains useful information but presents it in a metadata-first order. Operators need object identity, present state, and next action first; static fields can follow.
+- The logs page is functionally good but structurally brittle because it depends on fixed viewport math and a visually uniform stripe list.
+- The observability page is the strongest reference surface and should guide the rest of the redesign rather than being redesigned independently in a conflicting direction.
+
+### Surprises & Discoveries
+
+- Observation: the current live backend state can already expose contradictory-feeling queue visuals without any frontend bug in routing.
+  Evidence: during live review on 2026-03-21, `/api/v1/state` returned completed issues inside the `workflow_columns` entry labeled `"In Progress"`, while the queue cards rendered completed-style badges from item status. This means the redesign must make stage-versus-runtime semantics explicit instead of assuming upstream data will always be intuitively aligned.
+
+- Observation: the current frontend is already modular enough that the redesign can be staged safely.
+  Evidence: the shell, page headers, queue board, issue drawer, and observability sections each have distinct component/style files such as `frontend/src/ui/shell.ts`, `frontend/src/components/page-header.ts`, `frontend/src/pages/queue-view.ts`, `frontend/src/components/issue-inspector.ts`, and `frontend/src/views/observability-sections.ts`.
+
+- Observation: the main dashboard quality gap is composition, not missing affordances.
+  Evidence: the live UI already has keyboard navigation, command palette entry points, drawer routing, filters, and status chips; what feels weak is relative emphasis, grouping, and reading order.
+
+- Observation: mobile breakpoints are not just “unfinished”; they are a separate architectural problem.
+  Evidence: a phone-width browser pass at `390x844` showed the desktop rail remaining inline and consuming a large portion of the viewport, which is incompatible with the desktop-first goals of this slice and should stay out of scope for now.
+
+### Decision Log
+
+- Decision: keep this execution slice desktop-first and explicitly defer mobile/responsive work.
+  Rationale: the shell architecture and viewport tradeoffs for mobile are substantial enough that bundling them into the visual refresh would dilute focus and slow the main desktop operator improvements.
+  Date/Author: 2026-03-21 / Codex
+
+- Decision: treat observability as the reference page for quality and restraint.
+  Rationale: among the current pages, observability already shows the clearest large-number hierarchy, strongest sectional grouping, and most cohesive visual identity.
+  Date/Author: 2026-03-21 / Codex
+
+- Decision: fix visual semantics before decorative polish.
+  Rationale: queue state trustworthiness, drawer information order, and page hierarchy are operator-facing correctness problems, not mere aesthetics. Those need to be settled before motion or micro-polish work.
+  Date/Author: 2026-03-21 / Codex
+
+- Decision: keep the current frontend stack and route structure intact.
+  Rationale: the current Vite app already has sufficient modularity and the redesign should reduce risk by preserving router, API client, store, and keyboard contracts unless a concrete implementation blocker appears.
+  Date/Author: 2026-03-21 / Codex
+
+### Plan of Work
+
+The first milestone is to establish a shared desktop hierarchy system. Update the shared surface primitives in `frontend/src/styles/components.css`, the shell framing in `frontend/src/styles/shell.css`, and the reusable header helper in `frontend/src/components/page-header.ts` so the app has clearer distinctions between primary command areas, normal work surfaces, and quiet support surfaces. This milestone should not yet redesign specific pages beyond what is necessary to prove the new hierarchy works.
+
+The second milestone is the queue and issue-detail axis, because this is the operational core of the product. Update `frontend/src/pages/queue-view.ts`, the queue board renderer and toolbar helpers, `frontend/src/components/kanban-card.ts`, `frontend/src/components/issue-inspector.ts`, `frontend/src/components/issue-inspector-sections.ts`, and the related style files (`frontend/src/styles/kanban.css`, `frontend/src/styles/queue.css`, `frontend/src/styles/issue.css`) so workflow stage, runtime status, and operator actions no longer compete visually. The board should read by stage first, while per-card runtime state becomes a secondary but still visible signal.
+
+The third milestone is the overview page. Redesign `frontend/src/pages/overview-view.ts` and `frontend/src/styles/overview.css` so the page tells a stronger operational story: what needs attention now, what is active now, and what changed recently. The current equal-weight card mosaic should be replaced by a more decisive composition that still works when data is sparse.
+
+The fourth milestone is the logs page. Refine `frontend/src/pages/logs-view.ts`, `frontend/src/components/log-row.ts`, and `frontend/src/styles/logs.css` so the logs surface behaves like a durable reading tool instead of a brittle fixed-height list. Replace hard-coded layout math with a layout that survives shell/header changes, preserve live/archive mode and filters, and tighten the timestamp/type/message rhythm for faster scanning.
+
+The fifth milestone is observability polish. Reuse the successful aspects of `frontend/src/views/observability-view.ts`, `frontend/src/views/observability-sections.ts`, and `frontend/src/styles/observability.css`, but give the page a clearer first-read hierarchy by promoting the most actionable metrics and reducing the visual dominance of secondary raw-data chrome.
+
+The final milestone is polish and validation. Run the desktop visual pass again across all touched routes, verify there are no console or page errors, run the repository’s frontend and repo-wide validation commands, and update this ExecPlan with the real shipped outcome plus any follow-up backlog that should remain explicitly deferred.
+
+### Concrete Steps
+
+All commands in this section must be run from `/home/oruc/Desktop/codex`.
+
+1. Re-open the key frontend files before editing so the redesign starts from the actual current structure:
+
+       sed -n '1,220p' frontend/src/components/page-header.ts
+       sed -n '1,240p' frontend/src/pages/overview-view.ts
+       sed -n '1,220p' frontend/src/pages/queue-view.ts
+       sed -n '1,260p' frontend/src/components/issue-inspector.ts
+       sed -n '1,260p' frontend/src/components/issue-inspector-sections.ts
+       sed -n '1,260p' frontend/src/pages/logs-view.ts
+       sed -n '1,240p' frontend/src/views/observability-view.ts
+
+2. Implement the shared hierarchy pass first:
+
+       frontend/src/styles/components.css
+       frontend/src/styles/shell.css
+       frontend/src/components/page-header.ts
+
+   Acceptance target: page headers, toolbars, and work surfaces no longer share the same visual weight by default.
+
+3. Implement the queue and issue-detail redesign second:
+
+       frontend/src/pages/queue-view.ts
+       frontend/src/pages/queue-board.ts
+       frontend/src/pages/queue-toolbar.ts
+       frontend/src/components/kanban-card.ts
+       frontend/src/components/issue-inspector.ts
+       frontend/src/components/issue-inspector-sections.ts
+       frontend/src/styles/kanban.css
+       frontend/src/styles/queue.css
+       frontend/src/styles/issue.css
+
+   Acceptance target: board columns communicate workflow stage first; cards communicate runtime status second; the drawer leads with identity, state, and next action.
+
+4. Implement the overview redesign third:
+
+       frontend/src/pages/overview-view.ts
+       frontend/src/styles/overview.css
+
+   Acceptance target: the page can be understood by scanning only the major headings, KPI labels, and event summaries.
+
+5. Implement the logs redesign fourth:
+
+       frontend/src/pages/logs-view.ts
+       frontend/src/components/log-row.ts
+       frontend/src/styles/logs.css
+
+   Acceptance target: the logs layout no longer depends on `height: calc(100vh - ...)` and still behaves correctly with the shell/header in place.
+
+6. Implement the observability polish fifth:
+
+       frontend/src/views/observability-view.ts
+       frontend/src/views/observability-sections.ts
+       frontend/src/views/observability-cards.ts
+       frontend/src/styles/observability.css
+
+   Acceptance target: the page retains its current strengths while presenting a clearer first-read priority order.
+
+7. Run targeted validation while iterating:
+
+       npm run typecheck:frontend
+       npm run build
+       npm test
+
+8. Run desktop visual verification after each major milestone or at minimum after milestones 2, 4, and 6:
+
+       agent-browser --session ui-review open http://127.0.0.1:4173/
+       agent-browser --session ui-review screenshot archive/screenshots/overview-after.png
+       agent-browser --session ui-review open http://127.0.0.1:4173/queue
+       agent-browser --session ui-review screenshot archive/screenshots/queue-after.png
+       agent-browser --session ui-review open http://127.0.0.1:4173/issues/NIN-21/logs
+       agent-browser --session ui-review screenshot archive/screenshots/logs-after.png
+       agent-browser --session ui-review open http://127.0.0.1:4173/observability
+       agent-browser --session ui-review screenshot archive/screenshots/observability-after.png
+       agent-browser --session ui-review errors
+       agent-browser --session ui-review console
+
+9. Update this ExecPlan section with real timestamps, observed validation output, and any design debt intentionally deferred after the implementation lands.
+
+### Validation and Acceptance
+
+This slice is accepted only when all of the following are true.
+
+First, the desktop shell and page hierarchy clearly distinguish primary operational surfaces from supporting chrome. The visual proof is that the main work region on overview, queue, logs, and observability is obvious on first scan without relying on hover or route familiarity.
+
+Second, queue semantics are clearer than the current baseline. A user should be able to tell the difference between workflow stage and runtime state without reading contradictory primary signals. The final queue visuals must not imply that the same status is simultaneously the column’s main meaning and the card’s main meaning when those differ.
+
+Third, the issue drawer must present operator context in a cleaner order. The first visible region should identify the issue, show its current state, and offer the most relevant actions. Description/activity must not be buried under low-priority metadata.
+
+Fourth, the logs page must remain stable without fixed viewport subtraction math. The scrolling container must still behave correctly, but the layout should survive reasonable shell/header changes without re-tuning a magic number.
+
+Fifth, observability must remain at least as legible as it is today and should become more decisive about what matters first. The redesign must not flatten it back into a generic card grid.
+
+Sixth, `npm run typecheck:frontend`, `npm run build`, and `npm test` must all pass after the slice lands.
+
+Seventh, a desktop visual QA pass across `/`, `/queue`, `/issues/:id/logs`, and `/observability` must complete without browser console or page errors.
+
+### Idempotence and Recovery
+
+All work in this slice should be safe to land incrementally because the frontend is already modularized by page and shared primitive. If a partial redesign produces a worse hierarchy, continue by finishing the current milestone rather than reverting unrelated cleanup. If a page-specific change reveals that a shared primitive is too rigid, refactor the primitive and keep the page-specific diff small instead of forking one-off styles. If a proposed change starts drifting into mobile behavior, stop and record that drift as deferred work rather than solving it opportunistically.
+
+### Artifacts and Notes
+
+Important evidence gathered before implementation of this slice:
+
+    $ curl -sS -i http://127.0.0.1:4000/
+    HTTP/1.1 200 OK
+
+    $ curl -sS -i http://127.0.0.1:4000/api/v1/state
+    HTTP/1.1 200 OK
+
+    $ agent-browser --session ui-review screenshot archive/screenshots/overview.png
+    $ agent-browser --session ui-review screenshot archive/screenshots/queue.png
+    $ agent-browser --session ui-review screenshot archive/screenshots/queue-drawer.png
+    $ agent-browser --session ui-review screenshot archive/screenshots/logs.png
+    $ agent-browser --session ui-review screenshot archive/screenshots/observability.png
+
+Desktop review note from 2026-03-21: the strongest current page is observability, the most urgent clarity problem is queue semantics plus drawer information order, and mobile behavior was intentionally deferred from this roadmap after a narrow-width sanity pass showed it needs its own architectural slice.

@@ -240,12 +240,17 @@
   color: var(--text-accent);
 }
 
+<<<<<<< Updated upstream
 /* Wizard intro header */
+=======
+/* Wizard intro — shown above step indicator on first step */
+>>>>>>> Stashed changes
 .setup-intro {
   text-align: center;
   margin-bottom: var(--space-6);
 }
 
+<<<<<<< Updated upstream
 .setup-intro-heading {
   font-family: var(--font-heading);
   font-size: var(--text-lg);
@@ -255,13 +260,28 @@
 }
 
 .setup-intro-sub {
+=======
+.setup-intro h2 {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.setup-intro p {
+>>>>>>> Stashed changes
   font-family: var(--font-body);
   font-size: var(--text-sm);
   color: var(--text-muted);
   margin: 0;
 }
 
+<<<<<<< Updated upstream
 /* Title row with badge */
+=======
+/* Title row — flex row holding title and badge */
+>>>>>>> Stashed changes
 .setup-title-row {
   display: flex;
   align-items: center;
@@ -273,6 +293,7 @@
   margin-bottom: 0;
 }
 
+<<<<<<< Updated upstream
 /* Required / Optional badges */
 .setup-badge {
   display: inline-flex;
@@ -284,10 +305,22 @@
   text-transform: uppercase;
   padding: 2px var(--space-2);
   border: var(--stroke-default) solid;
+=======
+/* Badge / pill chip */
+.setup-badge {
+  display: inline-block;
+  border-radius: 9999px;
+  padding: 2px var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.4;
+>>>>>>> Stashed changes
   flex-shrink: 0;
 }
 
 .setup-badge.is-required {
+<<<<<<< Updated upstream
   color: var(--text-accent);
   border-color: var(--text-accent);
   background: transparent;
@@ -306,4 +339,15 @@
   font-size: var(--text-xs);
   padding: var(--space-3) var(--space-4);
   max-width: 420px;
+=======
+  background: var(--color-copper-100);
+  color: var(--color-copper-700);
+  border: var(--stroke-default) solid var(--color-copper-300);
+}
+
+.setup-badge.is-optional {
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  border: var(--stroke-default) solid var(--border-default);
+>>>>>>> Stashed changes
 }

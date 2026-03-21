@@ -15,7 +15,19 @@
   gap: var(--space-3);
 }
 
-.issue-header-top,
+.issue-header-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.issue-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 .issue-summary-strip,
 .issue-meta-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -82,7 +94,6 @@
 }
 
 @media (max-width: 900px) {
-  .issue-header-top,
   .issue-summary-strip,
   .issue-meta-grid,
   .issue-form-grid {
