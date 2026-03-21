@@ -3,16 +3,23 @@ import { createIcon } from "./icons";
 import { toggleTheme } from "./theme";
 import { toast } from "./toast";
 
+function createZoneSeparator(): HTMLElement {
+  const separator = document.createElement("div");
+  separator.className = "header-zone-separator";
+  return separator;
+}
+
 export function initHeader(headerEl: HTMLElement): void {
   headerEl.replaceChildren();
 
   const brand = document.createElement("div");
   brand.className = "header-brand";
+  const brandIcon = document.createElement("span");
+  brandIcon.className = "header-brand-icon";
+  brandIcon.append(createIcon("planner", { size: 20 }));
   const titleSpan = document.createElement("span");
+  titleSpan.className = "header-brand-name";
   titleSpan.textContent = "Symphony";
-  const sep = document.createElement("span");
-  sep.className = "header-separator";
-  sep.textContent = "·";
   const badgeSpan = document.createElement("span");
   badgeSpan.className = "mc-badge header-env-badge";
   const dot = document.createElement("span");
@@ -24,19 +31,23 @@ export function initHeader(headerEl: HTMLElement): void {
   badgeSpan.append(dot, envLabel);
   badgeSpan.title =
     "Local mode — Symphony is running on your machine. Issues are processed in sandboxed Docker containers for security.";
-  brand.append(titleSpan, sep, badgeSpan);
+  brand.append(brandIcon, titleSpan, badgeSpan);
 
   const command = document.createElement("div");
   command.className = "header-command";
   const commandButton = document.createElement("button");
   commandButton.type = "button";
   commandButton.className = "header-command-trigger";
+  const searchIcon = document.createElement("span");
+  searchIcon.className = "header-command-icon";
+  searchIcon.append(createIcon("overview", { size: 14 }));
   const cmdLabel = document.createElement("span");
+  cmdLabel.className = "header-command-label";
   cmdLabel.textContent = "Search routes, issues, actions\u2026";
   const cmdHint = document.createElement("span");
   cmdHint.className = "header-command-hint";
   cmdHint.textContent = "Ctrl+K";
-  commandButton.append(cmdLabel, cmdHint);
+  commandButton.append(searchIcon, cmdLabel, cmdHint);
   commandButton.addEventListener("click", () => {
     window.dispatchEvent(new CustomEvent("palette:open"));
   });
@@ -78,5 +89,5 @@ export function initHeader(headerEl: HTMLElement): void {
   });
 
   actions.append(refreshButton, themeButton);
-  headerEl.append(brand, command, actions);
+  headerEl.append(brand, createZoneSeparator(), command, createZoneSeparator(), actions);
 }
