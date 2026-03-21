@@ -1,17 +1,27 @@
-import { api } from "../api";
-import { createPageHeader } from "../components/page-header";
-import { openProjectPicker } from "../components/project-picker";
-import { toast } from "../ui/toast";
-import { registerPageCleanup } from "../utils/page";
+import { api } from "../api.js";
+import { createEmptyState } from "../components/empty-state.js";
+import { createPageHeader } from "../components/page-header.js";
+import { openProjectPicker } from "../components/project-picker.js";
+import { registerKeyboardScope } from "../ui/keyboard-scope.js";
+import { skeletonBlock } from "../ui/skeleton.js";
+import { toast } from "../ui/toast.js";
+import { createAsyncState, handleError, withLoading } from "../utils/async-state.js";
+import { renderAsyncState } from "../utils/render-guards.js";
 
-import { buildSettingsSections, getSectionById, isSchemaLimited } from "./settings-helpers";
-import { buildSectionPatchPlan } from "./settings-patches";
-import { handleSettingsKeyboard } from "./settings-keyboard";
-import { renderSettingsLayout } from "./settings-sections";
-import { createSettingsState } from "./settings-state";
+import { buildSettingsSections, getSectionById } from "./settings-helpers.js";
+import { createSettingsKeyboardHandler } from "./settings-keyboard.js";
+import { buildSectionPatchPlan } from "./settings-patches.js";
+import { createSettingsState } from "./settings-state.js";
+import {
+  isSettingsPageData,
+  renderLoadedSettings,
+  type SettingsPageData,
+  updateSettingsHeader,
+} from "./settings-view-render.js";
 
 export function createSettingsPage(): HTMLElement {
   const state = createSettingsState();
+  const loadState = createAsyncState<SettingsPageData>();
   const page = document.createElement("div");
   page.className = "page settings-page fade-in";
   const schemaBadge = document.createElement("span");
@@ -36,27 +46,35 @@ export function createSettingsPage(): HTMLElement {
   page.append(header, shell);
 
   async function load(): Promise<void> {
-    state.loading = true;
-    render();
+    loadState.error = null;
+    state.error = null;
     try {
-      const [effective, overlayResponse, schema] = await Promise.all([
-        api.getConfig(),
-        api.getConfigOverlay(),
-        api.getConfigSchema().catch(() => null),
-      ]);
-      state.effective = effective;
-      state.overlay = overlayResponse.overlay;
-      state.schema = (schema as Record<string, unknown> | null) ?? null;
-      state.error = null;
+      loadState.data = await withLoading(
+        loadState,
+        async () => {
+          const [effective, overlayResponse, schema] = await Promise.all([
+            api.getConfig(),
+            api.getConfigOverlay(),
+            api.getConfigSchema().catch(() => null),
+          ]);
+          return {
+            effective,
+            overlay: overlayResponse.overlay,
+            schema: isSettingsPageData(schema) ? schema : null,
+          };
+        },
+        { onChange: render },
+      );
     } catch (error) {
-      state.error = error instanceof Error ? error.message : "Failed to load settings.";
-    } finally {
-      state.loading = false;
-      render();
+      handleError(loadState, error, "Failed to load settings.");
     }
+    render();
   }
 
   async function saveSection(sectionId: string): Promise<void> {
+    if (!loadState.data) {
+      return;
+    }
     const section = getSectionById(state.schema, state.effective, sectionId);
     if (!section || state.savingSectionId) {
       return;
@@ -99,62 +117,66 @@ export function createSettingsPage(): HTMLElement {
   }
 
   function render(): void {
-    const sections = buildSettingsSections(state.schema, state.effective);
-    if (!sections.some((section) => section.id === state.selectedSectionId)) {
-      state.selectedSectionId = sections[0]?.id ?? "tracker";
-    }
-    subtitle.textContent = isSchemaLimited(state.schema)
-      ? "Schema is limited, so these grouped cards fall back to shaped config views with plain underlying paths."
-      : "Schema-aware grouped settings with live section diffs and operator-facing paths.";
-    schemaBadge.textContent = isSchemaLimited(state.schema) ? "Schema limited" : "Schema guided";
-    renderSettingsLayout(rail, content, searchInput, state, sections, {
-      onFilter: (value) => {
-        state.filter = value;
-        render();
-        searchInput.focus();
-      },
-      onSelectSection: (sectionId) => {
-        state.selectedSectionId = sectionId;
-        render();
-        document.getElementById(`settings-${sectionId}`)?.scrollIntoView({ block: "start", behavior: "smooth" });
-      },
-      onToggleDiff: (sectionId) => {
-        if (state.expandedDiffs.has(sectionId)) state.expandedDiffs.delete(sectionId);
-        else state.expandedDiffs.add(sectionId);
-        state.selectedSectionId = sectionId;
-        render();
-      },
-      onTogglePaths: (sectionId) => {
-        if (state.expandedPaths.has(sectionId)) state.expandedPaths.delete(sectionId);
-        else state.expandedPaths.add(sectionId);
-        state.selectedSectionId = sectionId;
-        render();
-      },
-      onSaveSection: (sectionId) => void saveSection(sectionId),
-      onFieldAction: (_sectionId, fieldPath, actionKind) => {
-        if (actionKind === "browse-linear-projects") {
-          openProjectPicker({
-            onSelect: (slugId) => {
-              const trackerDrafts = (state.drafts["tracker"] ??= {});
-              trackerDrafts[fieldPath] = slugId;
-              render();
-              toast(`Project slug set to ${slugId}`, "success");
-            },
-          });
-        }
-      },
+    updateSettingsHeader(subtitle, schemaBadge, state, loadState);
+    renderAsyncState(shell, loadState, {
+      isEmpty: (data) => buildSettingsSections(data.schema, data.effective).length === 0,
+      renderLoading: () => skeletonBlock("320px"),
+      renderError: (error) => createEmptyState("Settings unavailable", error, "Retry", () => void load()),
+      renderEmpty: () => createEmptyState("No settings available", "Symphony did not return any editable settings."),
+      renderContent: (data) =>
+        renderLoadedSettings(rail, content, searchInput, state, data, {
+          onFilter: (value) => {
+            state.filter = value;
+            render();
+            searchInput.focus();
+          },
+          onSelectSection: (sectionId) => {
+            state.selectedSectionId = sectionId;
+            render();
+            document.getElementById(`settings-${sectionId}`)?.scrollIntoView({ block: "start", behavior: "smooth" });
+          },
+          onToggleDiff: (sectionId) => {
+            if (state.expandedDiffs.has(sectionId)) {
+              state.expandedDiffs.delete(sectionId);
+            } else {
+              state.expandedDiffs.add(sectionId);
+            }
+            state.selectedSectionId = sectionId;
+            render();
+          },
+          onTogglePaths: (sectionId) => {
+            if (state.expandedPaths.has(sectionId)) {
+              state.expandedPaths.delete(sectionId);
+            } else {
+              state.expandedPaths.add(sectionId);
+            }
+            state.selectedSectionId = sectionId;
+            render();
+          },
+          onSaveSection: (sectionId) => void saveSection(sectionId),
+          onBrowseLinearProjects: (fieldPath) => {
+            openProjectPicker({
+              onSelect: (slugId) => {
+                const trackerDrafts = state.drafts["tracker"] ?? {};
+                state.drafts["tracker"] = trackerDrafts;
+                trackerDrafts[fieldPath] = slugId;
+                render();
+                toast(`Project slug set to ${slugId}`, "success");
+              },
+            });
+          },
+        }),
     });
   }
 
-  const onKey = (event: KeyboardEvent): void => {
-    handleSettingsKeyboard(event, {
+  registerKeyboardScope(
+    createSettingsKeyboardHandler({
       onFocusSearch: () => searchInput.focus(),
       onSaveCurrentSection: () => void saveSection(currentVisibleSectionId()),
-    });
-  };
-
-  window.addEventListener("keydown", onKey);
+    }),
+    { ignoreInputs: false, scope: page },
+  );
+  render();
   void load();
-  registerPageCleanup(page, () => window.removeEventListener("keydown", onKey));
   return page;
 }

@@ -135,4 +135,88 @@
     animation-iteration-count: 1 !important;
     transform: none !important;
   }
+
+  .sidebar-group-items {
+    transition-duration: 0.01ms;
+  }
+
+  .mc-list-item:focus-visible,
+  .mc-rail-item:focus-visible,
+  .mc-button:focus-visible {
+    animation-duration: 0.01ms !important;
+  }
+
+  .kanban-column.stagger-item,
+  .kanban-card.stagger-item {
+    animation-duration: 0.01ms;
+  }
+
+  .kanban-card:hover {
+    transform: none;
+  }
+
+  .kanban-card[data-status="running"]::after {
+    animation-duration: 0.01ms;
+  }
+
+  .queue-page .kanban-card {
+    transition: none;
+  }
+
+  .queue-page .kanban-card:hover {
+    transform: none;
+  }
+
+  .queue-page .kanban-card:active {
+    transform: none;
+  }
+
+  .queue-page .kanban-card[data-status="running"]::after {
+    animation: none;
+    opacity: 1;
+    width: 3px;
+  }
+
+  .queue-page .kanban-card.is-dragging {
+    transform: scale(0.96);
+  }
+
+  .mc-button,
+  .mc-input,
+  .mc-select,
+  .mc-chip,
+  .issue-card,
+  .event-row,
+  .attempts-table tbody tr,
+  .status-chip,
+  .mc-badge.is-status-queued,
+  .mc-chip.is-status-queued,
+  .mc-badge.is-status-running,
+  .mc-chip.is-status-running,
+  .mc-badge.is-status-retrying,
+  .mc-chip.is-status-retrying,
+  .mc-badge.is-status-blocked,
+  .mc-chip.is-status-blocked,
+  .mc-badge.is-status-completed,
+  .mc-chip.is-status-completed,
+  .mc-badge.is-status-claimed,
+  .mc-chip.is-status-claimed {
+    transition-duration: 0.01ms;
+  }
+
+  .toast,
+  .drawer {
+    animation-duration: 0.01ms !important;
+  }
+
+  .skeleton-line,
+  .skeleton-block {
+    animation: none !important;
+    opacity: 0.6;
+  }
+
+  .is-status-running::before,
+  .is-status-claimed::before {
+    animation: none !important;
+  }
 }

@@ -5,12 +5,41 @@ const PRIORITY_ORDER: Record<string, number> = {
   high: 1,
   medium: 2,
   low: 3,
+  none: 4,
 };
+
+/** Linear numeric priority mapping: 0=none, 1=urgent, 2=high, 3=medium, 4=low */
+const LINEAR_PRIORITY_MAP: Record<number, string> = {
+  0: "none",
+  1: "urgent",
+  2: "high",
+  3: "medium",
+  4: "low",
+};
+
+function isLinearNumericPriority(value: number): boolean {
+  return value >= 0 && value <= 4;
+}
 
 export function normalizePriority(priority: string | number | null | undefined): string {
   if (priority === null || priority === undefined) return "low";
+
+  if (typeof priority === "number" && isLinearNumericPriority(priority)) {
+    return LINEAR_PRIORITY_MAP[priority] ?? "low";
+  }
+
   const value = String(priority).trim().toLowerCase();
-  return PRIORITY_ORDER[value] !== undefined ? value : "low";
+
+  if (PRIORITY_ORDER[value] !== undefined) {
+    return value;
+  }
+
+  const numericValue = Number.parseInt(value, 10);
+  if (!Number.isNaN(numericValue) && isLinearNumericPriority(numericValue)) {
+    return LINEAR_PRIORITY_MAP[numericValue] ?? "low";
+  }
+
+  return "low";
 }
 
 export function formatPriority(priority: string | number | null | undefined): string {
@@ -77,9 +106,7 @@ export function buildAttentionList(columns: WorkflowColumn[]): RuntimeIssueView[
 }
 
 export function latestTerminalIssues(completed: RuntimeIssueView[]): RuntimeIssueView[] {
-  return [...completed]
-    .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
-    .slice(0, 8);
+  return [...completed].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt)).slice(0, 8);
 }
 
 function recentEventKey(event: RecentEvent): string {

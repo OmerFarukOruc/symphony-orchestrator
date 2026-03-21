@@ -1,50 +1,95 @@
-import { createButton, createField } from "../components/forms";
-import type { ModalController } from "../components/modal";
+import { createField } from "../components/forms";
+import { openConfirmModal } from "../ui/confirm-modal.js";
 import type { SecretsState } from "./secrets-state";
 
-export function renderAddSecretModal(
-  modal: ModalController,
-  state: SecretsState,
-  keyInput: HTMLInputElement,
-  valueInput: HTMLTextAreaElement,
-  onSave: () => void,
-): void {
-  keyInput.value = state.draftKey;
-  valueInput.value = state.draftValue;
-  modal.resetContent();
+interface SecretDraft {
+  key: string;
+  value: string;
+}
+
+interface AddSecretModalOptions {
+  state: SecretsState;
+  onClose?: () => void;
+  onSave: (draft: SecretDraft) => boolean | Promise<boolean>;
+}
+
+interface DeleteSecretModalOptions {
+  state: SecretsState;
+  onClose?: () => void;
+  onDelete: () => boolean | Promise<boolean>;
+}
+
+export function openAddSecretModal(options: AddSecretModalOptions): () => void {
+  const keyInput = Object.assign(document.createElement("input"), {
+    className: "mc-input text-mono",
+    placeholder: "LINEAR_API_KEY",
+    value: options.state.draftKey,
+  });
+  const valueInput = Object.assign(document.createElement("textarea"), {
+    className: "mc-textarea secrets-value",
+    placeholder: "Paste the secret value",
+    value: options.state.draftValue,
+  });
+
+  keyInput.addEventListener("input", () => {
+    options.state.draftKey = keyInput.value;
+  });
+  valueInput.addEventListener("input", () => {
+    options.state.draftValue = valueInput.value;
+  });
+
   const form = document.createElement("div");
   form.className = "form-grid";
   form.append(
     createField({ label: "Key" }, keyInput),
     createField({ label: "Value", hint: "Value is never returned after save." }, valueInput),
   );
-  modal.body.append(form);
-  const cancel = createButton("Cancel");
-  const save = createButton(state.saving ? "Saving…" : "Save secret", "primary");
-  save.disabled = state.saving;
-  cancel.addEventListener("click", () => modal.close());
-  save.addEventListener("click", onSave);
-  modal.footer.append(cancel, save);
+
+  return openConfirmModal({
+    title: "Add secret",
+    body: form,
+    cancelLabel: "Cancel",
+    confirmLabel: "Save secret",
+    pendingLabel: "Saving…",
+    variant: "primary",
+    onClose: options.onClose,
+    onConfirm: () =>
+      options.onSave({
+        key: keyInput.value.trim(),
+        value: valueInput.value,
+      }),
+  });
 }
 
-export function renderDeleteSecretModal(modal: ModalController, state: SecretsState, onDelete: () => void): void {
-  modal.resetContent();
+export function openDeleteSecretModal(options: DeleteSecretModalOptions): () => void {
+  let setConfirmDisabled: ((disabled: boolean) => void) | null = null;
   const confirmInput = Object.assign(document.createElement("input"), {
     className: "mc-input text-mono",
-    value: state.deleteConfirm,
-    placeholder: state.selectedKey,
+    value: options.state.deleteConfirm,
+    placeholder: options.state.selectedKey,
   });
-  confirmInput.addEventListener("input", () => {
-    state.deleteConfirm = confirmInput.value;
-    renderDeleteSecretModal(modal, state, onDelete);
-  });
-  modal.body.append(
-    createField({ label: "Confirmation", hint: `Type ${state.selectedKey} exactly to enable deletion.` }, confirmInput),
+  const field = createField(
+    { label: "Confirmation", hint: `Type ${options.state.selectedKey} exactly to enable deletion.` },
+    confirmInput,
   );
-  const cancel = createButton("Cancel");
-  const confirm = createButton(state.deleting ? "Deleting…" : "Delete key", "primary");
-  confirm.disabled = state.deleting || state.deleteConfirm !== state.selectedKey;
-  cancel.addEventListener("click", () => modal.close());
-  confirm.addEventListener("click", onDelete);
-  modal.footer.append(cancel, confirm);
+
+  confirmInput.addEventListener("input", () => {
+    options.state.deleteConfirm = confirmInput.value;
+    setConfirmDisabled?.(options.state.deleteConfirm !== options.state.selectedKey);
+  });
+
+  return openConfirmModal({
+    title: "Delete secret",
+    body: field,
+    cancelLabel: "Cancel",
+    confirmLabel: "Delete key",
+    pendingLabel: "Deleting…",
+    variant: "danger",
+    onClose: options.onClose,
+    onConfirm: options.onDelete,
+    onOpen: ({ setConfirmDisabled: fn }) => {
+      setConfirmDisabled = fn;
+      setConfirmDisabled(options.state.deleteConfirm !== options.state.selectedKey);
+    },
+  });
 }

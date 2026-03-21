@@ -1,3 +1,5 @@
+import { createKeyboardCommandMap } from "../ui/keyboard-commands.js";
+
 interface PlannerKeyboardOptions {
   hasPlan: boolean;
   modalOpen: boolean;
@@ -8,39 +10,33 @@ interface PlannerKeyboardOptions {
   onCloseExecute: () => void;
 }
 
-export function handlePlannerKeyboard(event: KeyboardEvent, options: PlannerKeyboardOptions): boolean {
-  if (
-    event.target instanceof HTMLElement &&
-    (event.target.tagName === "INPUT" || event.target.tagName === "TEXTAREA" || event.target.tagName === "SELECT")
-  ) {
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      event.preventDefault();
-      options.onGenerate();
-      return true;
-    }
-    return false;
-  }
-  if (event.key === "j" && options.hasPlan) {
-    options.onNext();
-    return true;
-  }
-  if (event.key === "k" && options.hasPlan) {
-    options.onPrev();
-    return true;
-  }
-  if (event.key === "Enter" && event.shiftKey && options.hasPlan) {
-    event.preventDefault();
-    options.onOpenExecute();
-    return true;
-  }
-  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-    event.preventDefault();
-    options.onGenerate();
-    return true;
-  }
-  if (event.key === "Escape" && options.modalOpen) {
-    options.onCloseExecute();
-    return true;
-  }
-  return false;
+export function createPlannerKeyboardHandler(options: PlannerKeyboardOptions): (event: KeyboardEvent) => boolean {
+  return createKeyboardCommandMap(
+    {
+      j: {
+        preventDefault: false,
+        run: () => options.onNext(),
+        when: () => options.hasPlan,
+      },
+      k: {
+        preventDefault: false,
+        run: () => options.onPrev(),
+        when: () => options.hasPlan,
+      },
+      "Shift+Enter": {
+        run: () => options.onOpenExecute(),
+        when: () => options.hasPlan,
+      },
+      "Mod+Enter": {
+        allowInInputs: true,
+        run: () => options.onGenerate(),
+      },
+      Escape: {
+        preventDefault: false,
+        run: () => options.onCloseExecute(),
+        when: () => options.modalOpen,
+      },
+    },
+    { typingTargetOptions: { includeSelect: true } },
+  );
 }

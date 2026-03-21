@@ -1,22 +1,16 @@
+import { createKeyboardCommandMap } from "../ui/keyboard-commands.js";
+
 interface SettingsKeyboardOptions {
   onFocusSearch: () => void;
   onSaveCurrentSection: () => void;
 }
 
-export function handleSettingsKeyboard(event: KeyboardEvent, options: SettingsKeyboardOptions): boolean {
-  const isTyping =
-    event.target instanceof HTMLInputElement ||
-    event.target instanceof HTMLTextAreaElement ||
-    (event.target instanceof HTMLElement && event.target.isContentEditable);
-  if (event.key === "/" && !isTyping) {
-    event.preventDefault();
-    options.onFocusSearch();
-    return true;
-  }
-  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-    event.preventDefault();
-    options.onSaveCurrentSection();
-    return true;
-  }
-  return false;
+export function createSettingsKeyboardHandler(options: SettingsKeyboardOptions): (event: KeyboardEvent) => boolean {
+  return createKeyboardCommandMap({
+    "/": () => options.onFocusSearch(),
+    "Mod+Enter": {
+      allowInInputs: true,
+      run: () => options.onSaveCurrentSection(),
+    },
+  });
 }

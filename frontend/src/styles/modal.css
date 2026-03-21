@@ -11,6 +11,16 @@
   display: none;
 }
 
+.overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.overlay-root[hidden] {
+  display: none;
+}
+
 .modal-backdrop {
   position: absolute;
   inset: 0;
@@ -99,6 +109,39 @@
 
 .modal-body {
   padding: var(--space-5);
+}
+
+.confirm-modal-shell,
+.confirm-modal-copy,
+.confirm-modal-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.confirm-modal-footer {
+  gap: var(--space-2);
+}
+
+.confirm-modal-button--warning {
+  background: var(--status-retrying);
+  border-color: var(--status-retrying);
+  color: #fff;
+}
+
+.confirm-modal-button--warning:hover {
+  background: color-mix(in srgb, var(--status-retrying) 88%, black);
+  border-color: color-mix(in srgb, var(--status-retrying) 88%, black);
+}
+
+.confirm-modal-button--danger {
+  background: var(--status-blocked);
+  border-color: var(--status-blocked);
+  color: #fff;
+}
+
+.confirm-modal-button--danger:hover {
+  background: color-mix(in srgb, var(--status-blocked) 88%, black);
+  border-color: color-mix(in srgb, var(--status-blocked) 88%, black);
 }
 
 .modal-footer {

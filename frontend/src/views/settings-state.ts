@@ -2,7 +2,6 @@ export interface SettingsState {
   effective: Record<string, unknown>;
   overlay: Record<string, unknown>;
   schema: Record<string, unknown> | null;
-  loading: boolean;
   savingSectionId: string | null;
   error: string | null;
   filter: string;
@@ -17,7 +16,6 @@ export function createSettingsState(): SettingsState {
     effective: {},
     overlay: {},
     schema: null,
-    loading: true,
     savingSectionId: null,
     error: null,
     filter: "",

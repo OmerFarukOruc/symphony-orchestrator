@@ -88,12 +88,17 @@
   --color-gray-900: #0f172a;
 
   /* Status colors — semantic */
+  --status-backlog: #94a3b8;
+  --status-triage: #8b8fa0;
   --status-queued: #4f7cff;
   --status-claimed: #7c62d6;
   --status-running: #2f9e44;
   --status-retrying: #d98a1c;
   --status-blocked: #d94841;
   --status-completed: #7b8797;
+  --status-closed: #6b8072;
+  --status-cancelled: #6b737e;
+  --status-duplicate: #8a7f94;
   --status-pending-change: #b45837;
 
   /* ============================================
@@ -151,12 +156,17 @@
   --interactive-primary-text: #0c1016;
 
   /* Status colors — slightly brighter in dark mode for legibility */
+  --status-backlog: #a8b5c4;
+  --status-triage: #9ea2b4;
   --status-queued: #6b8fff;
   --status-claimed: #9d84e8;
   --status-running: #4db86a;
   --status-retrying: #e8a33c;
   --status-blocked: #e86060;
   --status-completed: #8b99a8;
+  --status-closed: #82a090;
+  --status-cancelled: #7c8590;
+  --status-duplicate: #a095ab;
   --status-pending-change: #c96e4a;
 }
 
@@ -433,9 +443,10 @@ body {
 
 /* ============================================
    COMPONENT CLASSES
+   @deprecated — Use mc-* classes instead
    ============================================ */
 
-/* Badges/Pills */
+/* @deprecated — Use .mc-badge instead */
 .badge,
 .pill {
   display: inline-flex;
@@ -492,7 +503,7 @@ body {
   color: var(--status-queued);
 }
 
-/* Buttons */
+/* @deprecated — Use .mc-button instead */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -543,13 +554,14 @@ body {
   color: var(--text-primary);
 }
 
+/* @deprecated — Use .mc-button.is-icon-only instead */
 .btn-icon {
   width: var(--control-height-md);
   height: var(--control-height-md);
   padding: 0;
 }
 
-/* Cards */
+/* @deprecated — Use .mc-panel instead */
 .card {
   padding: var(--space-5);
   background: var(--bg-surface);
@@ -578,7 +590,7 @@ body {
   background: transparent;
 }
 
-/* Form elements */
+/* @deprecated — Use .mc-input instead */
 .input,
 .select,
 .textarea {
@@ -609,7 +621,7 @@ body {
   color: var(--text-muted);
 }
 
-/* Status indicators */
+/* @deprecated — Use .mc-badge.has-dot instead */
 .status-dot {
   width: 7px;
   height: 7px;

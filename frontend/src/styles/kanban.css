@@ -37,38 +37,56 @@
 }
 
 /* Status-tinted column tops */
+.kanban-column[data-stage="backlog"] {
+  border-top-color: var(--status-backlog);
+  background: color-mix(in srgb, var(--status-backlog) 8%, var(--bg-surface));
+}
+.kanban-column[data-stage="triage"] {
+  border-top-color: var(--status-triage);
+  background: color-mix(in srgb, var(--status-triage) 8%, var(--bg-surface));
+}
 .kanban-column[data-stage="todo"] {
   border-top-color: var(--status-queued);
-  background: color-mix(in srgb, var(--status-queued) 3%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-queued) 8%, var(--bg-surface));
 }
 .kanban-column[data-stage="in_progress"] {
   border-top-color: var(--status-running);
-  background: color-mix(in srgb, var(--status-running) 3%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-running) 8%, var(--bg-surface));
 }
 .kanban-column[data-stage="review"],
 .kanban-column[data-stage="in_review"] {
   border-top-color: var(--status-claimed);
-  background: color-mix(in srgb, var(--status-claimed) 3%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-claimed) 8%, var(--bg-surface));
 }
 .kanban-column[data-stage="done"],
 .kanban-column[data-stage="completed"] {
   border-top-color: var(--status-completed);
+  background: color-mix(in srgb, var(--status-completed) 8%, var(--bg-surface));
 }
 .kanban-column[data-stage="blocked"] {
   border-top-color: var(--status-blocked);
-  background: color-mix(in srgb, var(--status-blocked) 3%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-blocked) 8%, var(--bg-surface));
 }
 .kanban-column[data-stage="cancelled"],
 .kanban-column[data-stage="canceled"] {
-  border-top-color: var(--text-muted);
+  border-top-color: var(--status-cancelled);
+  background: color-mix(in srgb, var(--status-cancelled) 8%, var(--bg-surface));
+}
+.kanban-column[data-stage="closed"] {
+  border-top-color: var(--status-closed);
+  background: color-mix(in srgb, var(--status-closed) 8%, var(--bg-surface));
+}
+.kanban-column[data-stage="duplicate"] {
+  border-top-color: var(--status-duplicate);
+  background: color-mix(in srgb, var(--status-duplicate) 8%, var(--bg-surface));
 }
 .kanban-column[data-stage="retrying"] {
   border-top-color: var(--status-retrying);
-  background: color-mix(in srgb, var(--status-retrying) 3%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-retrying) 8%, var(--bg-surface));
 }
 .kanban-column.is-gate {
   border-top-color: var(--status-gate);
-  background: color-mix(in srgb, var(--status-gate) 3%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-gate) 8%, var(--bg-surface));
 }
 
 /* ─── Column Header ─── */
@@ -90,15 +108,45 @@
 }
 
 /* Dot colors inherit from column stage */
-.kanban-column[data-stage="todo"] .kanban-column-dot { background: var(--status-queued); }
-.kanban-column[data-stage="in_progress"] .kanban-column-dot { background: var(--status-running); }
+.kanban-column[data-stage="backlog"] .kanban-column-dot {
+  background: var(--status-backlog);
+}
+.kanban-column[data-stage="triage"] .kanban-column-dot {
+  background: var(--status-triage);
+}
+.kanban-column[data-stage="todo"] .kanban-column-dot {
+  background: var(--status-queued);
+}
+.kanban-column[data-stage="in_progress"] .kanban-column-dot {
+  background: var(--status-running);
+}
 .kanban-column[data-stage="review"] .kanban-column-dot,
-.kanban-column[data-stage="in_review"] .kanban-column-dot { background: var(--status-claimed); }
+.kanban-column[data-stage="in_review"] .kanban-column-dot {
+  background: var(--status-claimed);
+}
 .kanban-column[data-stage="done"] .kanban-column-dot,
-.kanban-column[data-stage="completed"] .kanban-column-dot { background: var(--status-completed); }
-.kanban-column[data-stage="blocked"] .kanban-column-dot { background: var(--status-blocked); }
-.kanban-column[data-stage="retrying"] .kanban-column-dot { background: var(--status-retrying); }
-.kanban-column.is-gate .kanban-column-dot { background: var(--status-gate); }
+.kanban-column[data-stage="completed"] .kanban-column-dot {
+  background: var(--status-completed);
+}
+.kanban-column[data-stage="blocked"] .kanban-column-dot {
+  background: var(--status-blocked);
+}
+.kanban-column[data-stage="cancelled"] .kanban-column-dot,
+.kanban-column[data-stage="canceled"] .kanban-column-dot {
+  background: var(--status-cancelled);
+}
+.kanban-column[data-stage="closed"] .kanban-column-dot {
+  background: var(--status-closed);
+}
+.kanban-column[data-stage="duplicate"] .kanban-column-dot {
+  background: var(--status-duplicate);
+}
+.kanban-column[data-stage="retrying"] .kanban-column-dot {
+  background: var(--status-retrying);
+}
+.kanban-column.is-gate .kanban-column-dot {
+  background: var(--status-gate);
+}
 
 .kanban-column-label {
   font-family: var(--font-heading);
@@ -178,13 +226,27 @@
 }
 
 /* Status left-border colors */
-.kanban-card[data-status="queued"] { border-left-color: var(--status-queued); }
-.kanban-card[data-status="claimed"] { border-left-color: var(--status-claimed); }
-.kanban-card[data-status="running"] { border-left-color: var(--status-running); }
-.kanban-card[data-status="retrying"] { border-left-color: var(--status-retrying); }
-.kanban-card[data-status="blocked"] { border-left-color: var(--status-blocked); }
-.kanban-card[data-status="completed"] { border-left-color: var(--status-completed); }
-.kanban-card[data-status="pending_change"] { border-left-color: var(--status-pending-change); }
+.kanban-card[data-status="queued"] {
+  border-left-color: var(--status-queued);
+}
+.kanban-card[data-status="claimed"] {
+  border-left-color: var(--status-claimed);
+}
+.kanban-card[data-status="running"] {
+  border-left-color: var(--status-running);
+}
+.kanban-card[data-status="retrying"] {
+  border-left-color: var(--status-retrying);
+}
+.kanban-card[data-status="blocked"] {
+  border-left-color: var(--status-blocked);
+}
+.kanban-card[data-status="completed"] {
+  border-left-color: var(--status-completed);
+}
+.kanban-card[data-status="pending_change"] {
+  border-left-color: var(--status-pending-change);
+}
 
 /* Hover — lift + shadow */
 .kanban-card:hover {
@@ -328,8 +390,13 @@
 }
 
 @keyframes kanban-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .kanban-column.stagger-item,
@@ -337,25 +404,64 @@
   animation: kanban-enter var(--motion-medium) var(--ease-out-quart) calc(var(--stagger-index, 0) * 80ms) both;
 }
 
+/* ─── Density: Compact ─── */
+
+.kanban-board.is-compact {
+  gap: var(--space-2);
+}
+
+.kanban-board.is-compact .kanban-card {
+  padding: var(--space-2);
+  gap: var(--space-1);
+}
+
+.kanban-board.is-compact .kanban-card-desc,
+.kanban-board.is-compact .kanban-card-labels,
+.kanban-board.is-compact .kanban-card-retry {
+  display: none;
+}
+
+.kanban-board.is-compact .kanban-card-title {
+  font-size: var(--text-xs);
+}
+
+.kanban-board.is-compact .kanban-card-identifier {
+  font-size: var(--text-2xs, 10px);
+}
+
+.kanban-board.is-compact .kanban-card-meta {
+  gap: var(--space-1);
+}
+
+.kanban-board.is-compact .kanban-card-footer {
+  font-size: var(--text-2xs, 10px);
+}
+
+.kanban-board.is-compact .kanban-column-body {
+  gap: var(--space-1);
+  padding: var(--space-2);
+}
+
+/* ─── Density: Comfortable ─── */
+
+.kanban-board.is-comfortable .kanban-card {
+  padding: var(--space-4);
+  gap: var(--space-3);
+}
+
+.kanban-board.is-comfortable .kanban-card-title {
+  line-height: var(--leading-relaxed);
+}
+
+.kanban-board.is-comfortable .kanban-card-desc {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
 /* ─── Responsive ─── */
 
 @media (max-width: 1180px) {
   .kanban-board {
     grid-auto-columns: minmax(240px, 300px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .kanban-column.stagger-item,
-  .kanban-card.stagger-item {
-    animation-duration: 0.01ms;
-  }
-
-  .kanban-card:hover {
-    transform: none;
-  }
-
-  .kanban-card[data-status="running"]::after {
-    animation-duration: 0.01ms;
   }
 }

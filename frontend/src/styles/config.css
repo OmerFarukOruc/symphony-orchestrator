@@ -90,20 +90,6 @@
   padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
   font-size: var(--text-ui);
-  cursor: pointer;
-  border-left: 2px solid transparent;
-  transition:
-    color var(--motion-fast) var(--ease-out-quart),
-    border-color var(--motion-fast) var(--ease-out-quart);
-}
-
-.config-rail-item:hover {
-  color: var(--text-primary);
-}
-
-.config-rail-item.is-active {
-  color: var(--text-accent);
-  border-left-color: var(--text-accent);
 }
 
 .config-rail-item .type-badge {

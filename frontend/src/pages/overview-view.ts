@@ -279,7 +279,7 @@ export function createOverviewPage(): HTMLElement {
     // Recent events
     fillList(
       recentList,
-      snapshot.recent_events.slice(0, 5).map((event) => createEventRow(event, true)),
+      snapshot.recent_events.slice(-5).map((event) => createEventRow(event, true)),
     );
 
     // Terminal issues

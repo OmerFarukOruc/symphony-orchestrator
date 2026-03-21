@@ -97,7 +97,7 @@ function pushRecentEvent(
   recentEvents: RecentEvent[],
   event: RecentEvent & { usage?: unknown; rateLimits?: unknown },
 ): void {
-  recentEvents.unshift({
+  recentEvents.push({
     at: event.at,
     issueId: event.issueId,
     issueIdentifier: event.issueIdentifier,
@@ -107,7 +107,7 @@ function pushRecentEvent(
     content: event.content ?? null,
   });
   if (recentEvents.length > 250) {
-    recentEvents.length = 250;
+    recentEvents.shift();
   }
 }
 

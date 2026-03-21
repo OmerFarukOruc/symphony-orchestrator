@@ -1,10 +1,11 @@
-import { api } from "../api";
-import { createEmptyState } from "../components/empty-state";
-import { createPageHeader } from "../components/page-header";
-import { router } from "../router";
-import { toast } from "../ui/toast";
-import { skeletonBlock } from "../ui/skeleton";
-import { registerPageCleanup } from "../utils/page";
+import { api } from "../api.js";
+import { createEmptyState } from "../components/empty-state.js";
+import { createPageHeader } from "../components/page-header.js";
+import { router } from "../router.js";
+import { toast } from "../ui/toast.js";
+import { skeletonBlock } from "../ui/skeleton.js";
+import { isTypingTarget } from "../utils/dom.js";
+import { registerPageCleanup } from "../utils/page.js";
 
 import {
   activeAttempt,
@@ -19,18 +20,10 @@ import {
   setRunsError,
   shouldLoadActiveDetail,
   toggleCompareAttempt,
-} from "./runs-state";
-import { renderRunsLoadingPanel, renderRunsSummary } from "./runs-detail";
-import { createRunsCompare } from "./runs-compare";
-import { createRunsTable } from "./runs-table";
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    (target instanceof HTMLElement && target.isContentEditable)
-  );
-}
+} from "./runs-state.js";
+import { renderRunsLoadingPanel, renderRunsSummary } from "./runs-detail.js";
+import { createRunsCompare } from "./runs-compare.js";
+import { createRunsTable } from "./runs-table.js";
 
 export function createRunsPage(issueId: string): HTMLElement {
   const state = createRunsState(issueId);

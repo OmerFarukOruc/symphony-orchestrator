@@ -99,7 +99,7 @@ export function createLogsPage(id: string): HTMLElement {
   let mode: Mode = "live";
   let typeFilter = "all";
   let searchText = "";
-  let autoScroll = true;
+  let autoScroll = false;
   let density: Density = "compact";
   let data: { title: string; issueId: string; events: RecentEvent[] } = { title: "Loading…", issueId: id, events: [] };
   let timer = 0;

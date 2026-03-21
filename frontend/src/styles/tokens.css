@@ -13,47 +13,46 @@
   /* Legacy surface aliases */
   --bg-canvas: var(--bg-base);
   --border-stitch: var(--border-default);
-  --border-strong: var(--border-subtle);
 
   /* Gate stage — amber, distinct from retrying */
   --status-gate: #f59e0b;
 
   /* Typography scale - app specific */
-  --text-2xs: 0.625rem;      /* 10px — group headers, type badges */
-  --text-xxs: 0.6875rem;     /* 11px — toolbar labels, table headers */
-  --text-xs: 0.75rem;        /* 12px — secondary labels */
-  --text-ui: 0.8125rem;      /* 13px — secondary UI text, descriptions */
-  --text-sm: 0.875rem;       /* 14px — base UI text */
+  --text-2xs: 0.625rem; /* 10px — group headers, type badges */
+  --text-xxs: 0.6875rem; /* 11px — toolbar labels, table headers */
+  --text-xs: 0.75rem; /* 12px — secondary labels */
+  --text-ui: 0.8125rem; /* 13px — secondary UI text, descriptions */
+  --text-sm: 0.875rem; /* 14px — base UI text */
   --text-sm-plus: 0.9375rem; /* 15px — subsection headings */
-  --text-md: 1rem;           /* 16px — section titles */
-  --text-lg: 1.125rem;       /* 18px */
-  --text-xl: 1.25rem;        /* 20px — KPI numbers */
+  --text-md: 1rem; /* 16px — section titles */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.25rem; /* 20px — KPI numbers */
   --text-2xl: clamp(1.375rem, 2.5vw, 1.75rem);
   --text-hero: clamp(1.75rem, 4vw, 2.625rem);
 
   /* Letter-spacing (tracking) tokens */
-  --tracking-tightest: -0.03em;  /* hero/KPI numbers, 22px+ headings */
-  --tracking-tight:    -0.02em;  /* headings 20–28px */
-  --tracking-snug:     -0.01em;  /* medium headings 16–20px, brand wordmark */
-  --tracking-normal:    0em;     /* body text */
-  --tracking-wide:      0.02em;  /* mono badges, inline identifiers */
-  --tracking-wider:     0.04em;  /* uppercase mono labels */
-  --tracking-widest:    0.08em;  /* UPPERCASE issue identifiers */
-  --tracking-caps:      0.1em;   /* sidebar group headers, all-caps micro */
+  --tracking-tightest: -0.03em; /* hero/KPI numbers, 22px+ headings */
+  --tracking-tight: -0.02em; /* headings 20–28px */
+  --tracking-snug: -0.01em; /* medium headings 16–20px, brand wordmark */
+  --tracking-normal: 0em; /* body text */
+  --tracking-wide: 0.02em; /* mono badges, inline identifiers */
+  --tracking-wider: 0.04em; /* uppercase mono labels */
+  --tracking-widest: 0.08em; /* UPPERCASE issue identifiers */
+  --tracking-caps: 0.1em; /* sidebar group headers, all-caps micro */
 
   /* Line-height (leading) tokens */
-  --leading-none:    1;    /* badges, buttons, single-line UI elements */
-  --leading-tight:   1.2;  /* display numbers, KPI values, hero headings */
-  --leading-snug:    1.35; /* card titles */
-  --leading-normal:  1.5;  /* body text */
-  --leading-relaxed: 1.6;  /* code panels, log output */
-  --leading-loose:   1.65; /* long-form reading content */
+  --leading-none: 1; /* badges, buttons, single-line UI elements */
+  --leading-tight: 1.2; /* display numbers, KPI values, hero headings */
+  --leading-snug: 1.35; /* card titles */
+  --leading-normal: 1.5; /* body text */
+  --leading-relaxed: 1.6; /* code panels, log output */
+  --leading-loose: 1.65; /* long-form reading content */
 
   /* Font feature tokens */
-  --font-features-default:  "kern" 1, "liga" 1, "calt" 1;
-  --font-features-tabular:  "kern" 1, "tnum" 1, "lnum" 1;
+  --font-features-default: "kern" 1, "liga" 1, "calt" 1;
+  --font-features-tabular: "kern" 1, "tnum" 1, "lnum" 1;
   --font-features-mono-num: "tnum" 1, "lnum" 1, "zero" 1;
-  --font-features-heading:  "kern" 1, "liga" 1, "calt" 1, "ss01" 1;
+  --font-features-heading: "kern" 1, "liga" 1, "calt" 1, "ss01" 1;
 
   /* Control heights */
   --control-height-xs: 28px;

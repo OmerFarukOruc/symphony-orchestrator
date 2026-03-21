@@ -217,8 +217,15 @@
 }
 
 @keyframes kanban-pulse-strong {
-  0%, 100% { opacity: 1; width: 3px; }
-  50% { opacity: 0.4; width: 4px; }
+  0%,
+  100% {
+    opacity: 1;
+    width: 3px;
+  }
+  50% {
+    opacity: 0.4;
+    width: 4px;
+  }
 }
 
 /* Priority visual variety via card title weight */
@@ -426,34 +433,5 @@
     height: 70vh;
     border-left: none;
     border-top: 1px solid var(--border-stitch);
-  }
-}
-
-/* ============================================
-   REDUCED MOTION
-   Respect user preference for reduced motion
-   ============================================ */
-
-@media (prefers-reduced-motion: reduce) {
-  .queue-page .kanban-card {
-    transition: none;
-  }
-
-  .queue-page .kanban-card:hover {
-    transform: none;
-  }
-
-  .queue-page .kanban-card:active {
-    transform: none;
-  }
-
-  .queue-page .kanban-card[data-status="running"]::after {
-    animation: none;
-    opacity: 1;
-    width: 3px;
-  }
-
-  .queue-page .kanban-card.is-dragging {
-    transform: scale(0.96);
   }
 }

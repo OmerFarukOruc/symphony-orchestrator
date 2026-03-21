@@ -1,11 +1,11 @@
 import { api } from "../api";
 import { createButton } from "../components/forms";
-import { createModal } from "../components/modal";
 import { createPageHeader } from "../components/page-header";
 import { toast } from "../ui/toast";
+import { isTypingTarget } from "../utils/dom.js";
 import { registerPageCleanup } from "../utils/page";
 import { handleSecretsKeyboard } from "./secrets-keyboard";
-import { renderAddSecretModal, renderDeleteSecretModal } from "./secrets-modals";
+import { openAddSecretModal, openDeleteSecretModal } from "./secrets-modals";
 import { createSecretsState } from "./secrets-state";
 import { renderSecretsTable } from "./secrets-table";
 
@@ -43,21 +43,9 @@ export function createSecretsPage(): HTMLElement {
     "Symphony stores only secret keys in the UI. Values remain write-only, encrypted at rest, and redacted from subsequent reads.";
   trust.innerHTML = `<h2>Encryption boundary</h2><p class="text-secondary">${trustCopy}</p>`;
   body.append(trust);
-  const addModal = createModal({
-    title: "Add secret",
-    description: "Values are entered once and cannot be recovered later.",
-  });
-  const deleteModal = createModal({ title: "Delete secret", description: "Type the key name to confirm destruction." });
-  page.append(header, helpCallout, body, addModal.root, deleteModal.root);
-
-  const keyInput = Object.assign(document.createElement("input"), {
-    className: "mc-input text-mono",
-    placeholder: "LINEAR_API_KEY",
-  });
-  const valueInput = Object.assign(document.createElement("textarea"), {
-    className: "mc-textarea secrets-value",
-    placeholder: "Paste the secret value",
-  });
+  page.append(header, helpCallout, body);
+  let closeAddModal: (() => void) | null = null;
+  let closeDeleteModal: (() => void) | null = null;
 
   async function load(): Promise<void> {
     state.loading = true;
@@ -74,45 +62,59 @@ export function createSecretsPage(): HTMLElement {
     }
   }
 
-  async function saveSecret(): Promise<void> {
-    state.draftKey = keyInput.value.trim();
-    state.draftValue = valueInput.value;
-    if (!state.draftKey || !state.draftValue) {
+  async function saveSecret(draft: { key: string; value: string }): Promise<boolean> {
+    state.draftKey = draft.key;
+    state.draftValue = draft.value;
+    if (!draft.key || !draft.value) {
       toast("Key and value are required.", "error");
-      return;
+      return false;
     }
-    state.saving = true;
-    renderAddSecretModal(addModal, state, keyInput, valueInput, () => void saveSecret());
     try {
-      await api.postSecret(state.draftKey, state.draftValue);
-      toast(`Secret ${state.draftKey} saved.`, "success");
+      await api.postSecret(draft.key, draft.value);
+      toast(`Secret ${draft.key} saved.`, "success");
       state.draftKey = "";
       state.draftValue = "";
-      addModal.close();
       await load();
+      return true;
     } catch (error) {
       toast(error instanceof Error ? error.message : "Failed to save secret.", "error");
-    } finally {
-      state.saving = false;
-      renderAddSecretModal(addModal, state, keyInput, valueInput, () => void saveSecret());
+      return false;
     }
   }
 
-  async function deleteSecret(): Promise<void> {
-    state.deleting = true;
-    renderDeleteSecretModal(deleteModal, state, () => void deleteSecret());
+  async function deleteSecret(): Promise<boolean> {
     try {
       await api.deleteSecret(state.selectedKey);
       toast(`Secret ${state.selectedKey} deleted.`, "success");
       state.deleteConfirm = "";
-      deleteModal.close();
       await load();
+      return true;
     } catch (error) {
       toast(error instanceof Error ? error.message : "Failed to delete secret.", "error");
-    } finally {
-      state.deleting = false;
-      renderDeleteSecretModal(deleteModal, state, () => void deleteSecret());
+      return false;
     }
+  }
+
+  function openAddModal(): void {
+    closeAddModal?.();
+    closeAddModal = openAddSecretModal({
+      state,
+      onClose: () => {
+        closeAddModal = null;
+      },
+      onSave: saveSecret,
+    });
+  }
+
+  function openDeleteModal(): void {
+    closeDeleteModal?.();
+    closeDeleteModal = openDeleteSecretModal({
+      state,
+      onClose: () => {
+        closeDeleteModal = null;
+      },
+      onDelete: deleteSecret,
+    });
   }
 
   function render(): void {
@@ -127,11 +129,9 @@ export function createSecretsPage(): HTMLElement {
       onDelete: (key) => {
         state.selectedKey = key;
         state.deleteConfirm = "";
-        renderDeleteSecretModal(deleteModal, state, () => void deleteSecret());
-        deleteModal.open();
+        openDeleteModal();
       },
     });
-    renderAddSecretModal(addModal, state, keyInput, valueInput, () => void saveSecret());
     if (state.error) {
       trust.querySelector("p")!.textContent = state.error;
     } else {
@@ -139,30 +139,23 @@ export function createSecretsPage(): HTMLElement {
     }
   }
 
-  addButton.addEventListener("click", () => {
-    renderAddSecretModal(addModal, state, keyInput, valueInput, () => void saveSecret());
-    addModal.open();
-  });
+  addButton.addEventListener("click", openAddModal);
 
   function onKey(event: KeyboardEvent): void {
-    const isTyping = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
+    const isTyping = isTypingTarget(event.target);
     handleSecretsKeyboard(event, {
       selectedKey: state.selectedKey,
-      addOpen: addModal.isOpen(),
-      deleteOpen: deleteModal.isOpen(),
+      addOpen: closeAddModal !== null,
+      deleteOpen: closeDeleteModal !== null,
       isTyping,
-      onNew: () => {
-        renderAddSecretModal(addModal, state, keyInput, valueInput, () => void saveSecret());
-        addModal.open();
-      },
+      onNew: openAddModal,
       onDelete: () => {
         state.deleteConfirm = "";
-        renderDeleteSecretModal(deleteModal, state, () => void deleteSecret());
-        deleteModal.open();
+        openDeleteModal();
       },
       onClose: () => {
-        if (addModal.isOpen()) addModal.close();
-        if (deleteModal.isOpen()) deleteModal.close();
+        closeAddModal?.();
+        closeDeleteModal?.();
       },
     });
   }
@@ -170,8 +163,8 @@ export function createSecretsPage(): HTMLElement {
   window.addEventListener("keydown", onKey);
   void load();
   registerPageCleanup(page, () => {
-    addModal.destroy();
-    deleteModal.destroy();
+    closeAddModal?.();
+    closeDeleteModal?.();
     window.removeEventListener("keydown", onKey);
   });
   return page;

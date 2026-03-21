@@ -1,13 +1,14 @@
-import { api } from "../api";
-import { createButton } from "../components/forms";
-import { createModal } from "../components/modal";
-import { toast } from "../ui/toast";
-import { registerPageCleanup } from "../utils/page";
-import { renderPlannerContent } from "./planner-content";
-import { createPlannerForm } from "./planner-form";
-import { buildCreatedLinks, parseLabels } from "./planner-helpers";
-import { handlePlannerKeyboard } from "./planner-keyboard";
-import { createPlannerState } from "./planner-state";
+import { api } from "../api.js";
+import { createButton } from "../components/forms.js";
+import { createModal } from "../components/modal.js";
+import { registerKeyboardScope } from "../ui/keyboard-scope.js";
+import { toast } from "../ui/toast.js";
+import { registerPageCleanup } from "../utils/page.js";
+import { renderPlannerContent } from "./planner-content.js";
+import { createPlannerForm } from "./planner-form.js";
+import { buildCreatedLinks, parseLabels } from "./planner-helpers.js";
+import { createPlannerKeyboardHandler } from "./planner-keyboard.js";
+import { createPlannerState } from "./planner-state.js";
 
 export function createPlannerPage(): HTMLElement {
   const state = createPlannerState();
@@ -147,8 +148,8 @@ export function createPlannerPage(): HTMLElement {
     }
   }
 
-  function onKey(event: KeyboardEvent): void {
-    const handled = handlePlannerKeyboard(event, {
+  registerKeyboardScope(
+    createPlannerKeyboardHandler({
       hasPlan: Boolean(state.plan?.length),
       modalOpen: modal.isOpen(),
       onPrev: () => {
@@ -162,17 +163,12 @@ export function createPlannerPage(): HTMLElement {
       onGenerate: () => void generatePlan(),
       onOpenExecute: () => openExecuteModal(),
       onCloseExecute: () => modal.close(),
-    });
-    if (handled) {
-      return;
-    }
-  }
-
-  window.addEventListener("keydown", onKey);
+    }),
+    { ignoreInputs: false, scope: page },
+  );
   renderMain();
   registerPageCleanup(page, () => {
     modal.destroy();
-    window.removeEventListener("keydown", onKey);
   });
   return page;
 }

@@ -128,12 +128,50 @@ export function handleNotification(input: NotificationInput): void {
   }
 
   const level = asString(method) ?? "unknown_method";
+  const mapped = mapCodexNotification(level, params);
   input.onEvent({
     at: new Date().toISOString(),
     issueId: input.issue.id,
     issueIdentifier: input.issue.identifier,
     sessionId: composeSessionId(input.threadId, input.turnId),
-    event: "other_message",
-    message: sanitizeContent(level) || "other",
+    event: mapped.event,
+    message: mapped.message,
   });
+}
+
+const CODEX_NOTIFICATION_LABELS: Record<string, { event: string; message: string }> = {
+  "codex/event/task_started": { event: "agent_started", message: "Agent started working" },
+  "codex/event/task_complete": { event: "agent_complete", message: "Agent completed work" },
+  "codex/event/item_started": { event: "step_started", message: "Agent began a step" },
+  "codex/event/item_completed": { event: "step_completed", message: "Agent finished a step" },
+  "codex/event/agent_message": { event: "agent_message", message: "Agent sent a message" },
+  "codex/event/agent_message_delta": { event: "agent_streaming", message: "Agent streaming text" },
+  "codex/event/agent_message_content_delta": { event: "agent_streaming", message: "Agent streaming text" },
+  "codex/event/token_count": { event: "token_usage", message: "Token usage updated" },
+  "codex/event/turn_diff": { event: "turn_diff", message: "Turn diff computed" },
+  "codex/event/exec_command_begin": { event: "tool_exec", message: "Running shell command" },
+  "codex/event/exec_command_end": { event: "tool_exec", message: "Shell command finished" },
+  "codex/event/exec_command_output_delta": { event: "tool_output", message: "Command output streaming" },
+  "codex/event/patch_apply_begin": { event: "tool_edit", message: "Applying file changes" },
+  "codex/event/patch_apply_end": { event: "tool_edit", message: "File changes applied" },
+  "codex/event/mcp_startup_complete": { event: "system", message: "MCP tools initialized" },
+  "thread/started": { event: "session", message: "Thread session opened" },
+  "thread/status/changed": { event: "session", message: "Thread status changed" },
+  "account/rateLimits/updated": { event: "rate_limits", message: "API rate limits updated" },
+  "item/agentMessage/delta": { event: "agent_streaming", message: "Agent streaming text" },
+  "item/fileChange/outputDelta": { event: "tool_output", message: "File change output streaming" },
+};
+
+function mapCodexNotification(method: string, params: Record<string, unknown>): { event: string; message: string } {
+  const mapped = CODEX_NOTIFICATION_LABELS[method];
+  if (mapped) {
+    return mapped;
+  }
+
+  const msg = asString(params.message) ?? asString(params.text) ?? asString(params.description);
+  if (msg) {
+    return { event: "agent_output", message: sanitizeContent(msg) || method };
+  }
+
+  return { event: "other", message: method };
 }

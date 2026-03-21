@@ -51,7 +51,7 @@ function makeDeps(overrides: Partial<OrchestratorDeps> = {}): OrchestratorDeps {
 }
 
 describe("buildCtx — pushEvent", () => {
-  it("prepends events to recentEvents", () => {
+  it("appends events to recentEvents", () => {
     const state = makeState();
     const ctx = buildCtx(state, makeDeps());
     ctx.pushEvent({
@@ -88,7 +88,7 @@ describe("buildCtx — pushEvent", () => {
       message: "new msg",
     });
     expect(state.recentEvents.length).toBe(250);
-    expect(state.recentEvents[0].event).toBe("new-event");
+    expect(state.recentEvents[249].event).toBe("new-event");
   });
 });
 

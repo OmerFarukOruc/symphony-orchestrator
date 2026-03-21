@@ -111,7 +111,7 @@ describe("AttemptStore", () => {
     expect(await readdir(path.join(baseDir, "events"))).toEqual([`${attempt.attemptId}.jsonl`]);
   });
 
-  it("stores events chronologically but returns them in reverse chronological order", async () => {
+  it("stores and returns events in chronological order", async () => {
     const baseDir = await createTempDir();
     const store = await createStore(baseDir);
 
@@ -138,10 +138,10 @@ describe("AttemptStore", () => {
       .map((line) => JSON.parse(line) as AttemptEvent);
 
     expect(persistedEvents).toEqual([firstEvent, secondEvent]);
-    expect(store.getEvents("attempt-1")).toEqual([secondEvent, firstEvent]);
+    expect(store.getEvents("attempt-1")).toEqual([firstEvent, secondEvent]);
 
     const restartedStore = await createStore(baseDir);
-    expect(restartedStore.getEvents("attempt-1")).toEqual([secondEvent, firstEvent]);
+    expect(restartedStore.getEvents("attempt-1")).toEqual([firstEvent, secondEvent]);
   });
 
   it("indexes attempts by issue, rebuilds that index from archives, and guards against duplicate attempt ids", async () => {
@@ -277,7 +277,7 @@ describe("AttemptStore", () => {
 
     const store = await createStore(baseDir);
 
-    expect(store.getEvents(attempt.attemptId)).toEqual([newerEvent, olderEvent]);
+    expect(store.getEvents(attempt.attemptId)).toEqual([olderEvent, newerEvent]);
 
     await waitFor(async () => {
       const migratedEvents = (await readFile(path.join(eventsDir, `${attempt.attemptId}.jsonl`), "utf8"))

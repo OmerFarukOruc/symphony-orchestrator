@@ -1,6 +1,7 @@
 import { api } from "../api";
 import { createModal } from "../components/modal";
 import { createPageHeader } from "../components/page-header";
+import { registerKeyboardScope } from "../ui/keyboard-scope.js";
 import { registerPageCleanup } from "../utils/page";
 import { flattenConfig, prettyJson } from "./config-helpers";
 import { createConfigActions } from "./config-actions";
@@ -158,11 +159,10 @@ export function createConfigPage(): HTMLElement {
     });
   }
 
-  window.addEventListener("keydown", onKey);
+  registerKeyboardScope(onKey, { scope: page });
   void load();
   registerPageCleanup(page, () => {
     modal.destroy();
-    window.removeEventListener("keydown", onKey);
   });
   return page;
 }
