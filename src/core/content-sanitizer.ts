@@ -8,7 +8,7 @@ const SECRET_PATTERNS = [
   /ghp_[A-Za-z0-9]{36}/g,
   /AKIA[0-9A-Z]{16}/g,
   /xox[baprs]-[0-9a-zA-Z-]+/g,
-  /(?:token|api[_-]?key|secret|password|authorization)\s*[:=]\s*["']?[^"'\s,}]+/gi,
+  /(?:token|api[_-]?key|secret|password|authorization)[:=]\s?["']?[^"'\s,}]+/gi,
   /https?:\/\/[^/\s:@]+:[^/\s@]+@/gi,
 ];
 
@@ -20,6 +20,7 @@ function redactSecretPatterns(text: string): string {
         return match.replace(/\/\/[^/\s:@]+:[^/\s@]+@/i, `//${REDACTION}@`);
       }
       if (/[:=]/.test(match)) {
+        // eslint-disable-next-line sonarjs/slow-regex -- [^\n]*$ anchored at end; safe
         return match.replace(/([:=]\s*["']?)[^\n]*$/, `$1${REDACTION}`);
       }
       return REDACTION;

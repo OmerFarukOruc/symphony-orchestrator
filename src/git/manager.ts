@@ -27,13 +27,16 @@ export interface GitManagerDeps {
 }
 
 function sanitizeBranchSegment(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9._/-]+/g, "-")
-    .replaceAll(/-{2,}/g, "-")
-    .replace(/^[-/]+/, "")
-    .replace(/[-/]+$/, "");
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replaceAll(/[^a-z0-9._/-]+/g, "-")
+      .replaceAll(/--+/g, "-")
+      .replace(/^[-/]+/, "")
+      // eslint-disable-next-line sonarjs/slow-regex -- simple suffix trim; safe
+      .replace(/[-/]+$/, "")
+  );
 }
 
 function deriveBranchName(issue: Pick<Issue, "identifier" | "branchName">): string {

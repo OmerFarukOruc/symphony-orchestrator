@@ -46,7 +46,8 @@ class LoggerErrorTracker implements ErrorTracker {
     private readonly dsn: string,
     private readonly logger: SymphonyLogger,
   ) {
-    logger.info({ dsn: dsn.replace(/\/\/[^@]*@/, "//<redacted>@") }, "Sentry error tracking initialized");
+    // eslint-disable-next-line sonarjs/slow-regex -- [^@]+ bounded by literal @; safe
+    logger.info({ dsn: dsn.replaceAll(/\/\/[^@]+@/g, "//<redacted>@") }, "Sentry error tracking initialized");
   }
 
   captureException(error: Error, context?: Record<string, unknown>): void {

@@ -44,6 +44,6 @@ describe("config-workflow integration", () => {
     expect(body.length).toBeGreaterThan(0);
 
     // Should contain Liquid template variables used by agent-runner
-    expect(body).toMatch(/\{\{.*issue.*\}\}/);
+    expect(body).toMatch(/\{\{\s*issue\b/);
   });
 });

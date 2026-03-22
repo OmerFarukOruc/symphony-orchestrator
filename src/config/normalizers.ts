@@ -181,6 +181,7 @@ export function normalizeTurnSandboxPolicy(value: Record<string, unknown>): { ty
  * Normalize approval policy configuration.
  * Passes through strings, returns default for empty objects.
  */
+// eslint-disable-next-line sonarjs/function-return-type -- union return is intentional
 export function normalizeApprovalPolicy(value: unknown): string | Record<string, unknown> {
   if (typeof value === "string") {
     return value;

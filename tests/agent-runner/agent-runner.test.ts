@@ -21,7 +21,8 @@ async function createTempDir(): Promise<string> {
 }
 
 function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
+  const escaped = value.replace(/'/g, "'\\''");
+  return "'" + escaped + "'";
 }
 
 function baseIssue(): Issue {
