@@ -3,6 +3,8 @@ import { store } from "../state/store";
 import type { AppState } from "../state/store";
 import type { RuntimeIssueView } from "../types";
 import { createEventRow } from "../components/event-row";
+import { createSystemHealthBadge } from "../components/system-health-badge";
+import { createStallEventsTable } from "../components/stall-events-table";
 import { buildAttentionList, latestTerminalIssues } from "../utils/issues";
 import { formatCompactNumber, formatDuration, formatRateLimitHeadroom, formatRelativeTime } from "../utils/format";
 import { flashDiff, setTextWithDiff } from "../utils/diff";
@@ -226,12 +228,28 @@ export function createOverviewPage(): HTMLElement {
   terminalSection.append(terminalList);
   secondary.append(terminalSection);
 
+  // System health section
+  const healthSection = document.createElement("div");
+  healthSection.className = "overview-health-section";
+  healthSection.append(createSectionHeader("System health", "Watchdog"));
+  const { root: healthBadge, update: updateHealthBadge } = createSystemHealthBadge();
+  healthSection.append(healthBadge);
+  secondary.append(healthSection);
+
+  // Stall events section
+  const stallSection = document.createElement("div");
+  stallSection.className = "overview-stall-section";
+  stallSection.append(createSectionHeader("Stall events"));
+  const { root: stallList, update: updateStallEvents } = createStallEventsTable();
+  stallSection.append(stallList);
+  secondary.append(stallSection);
+
   // Assemble main grid
   mainGrid.append(attentionZone, secondary);
   page.append(mainGrid);
 
   // Loading state
-  const loadingSections = [attentionZone, tokenSection, recentSection, terminalSection];
+  const loadingSections = [attentionZone, tokenSection, recentSection, terminalSection, healthSection, stallSection];
   for (const section of loadingSections) {
     section.setAttribute("aria-busy", "true");
   }
@@ -287,6 +305,12 @@ export function createOverviewPage(): HTMLElement {
       terminalList,
       latestTerminalIssues(snapshot.completed).map((issue) => issueRow(issue, "terminal")),
     );
+
+    // System health badge
+    updateHealthBadge(snapshot.system_health);
+
+    // Stall events table
+    updateStallEvents(snapshot.stall_events);
 
     // Calm empty states
     if (attentionList.childElementCount === 0) {

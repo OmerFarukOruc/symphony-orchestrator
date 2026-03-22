@@ -308,6 +308,188 @@
 }
 
 /* ============================================
+   SYSTEM HEALTH BADGE
+   Watchdog status indicator — green / amber / red
+   ============================================ */
+
+.overview-health-section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-stitch);
+  border-radius: var(--radius-md);
+}
+
+.system-health-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--bg-muted);
+  font-size: var(--text-sm);
+  transition: background 200ms ease, border-color 200ms ease;
+}
+
+/* Status dot */
+.system-health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+
+.system-health-badge.is-healthy .system-health-dot {
+  background: var(--status-running);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-running) 25%, transparent);
+}
+
+.system-health-badge.is-degraded .system-health-dot {
+  background: var(--status-retrying);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-retrying) 25%, transparent);
+}
+
+.system-health-badge.is-critical .system-health-dot {
+  background: var(--status-blocked);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-blocked) 25%, transparent);
+  animation: health-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes health-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Background tints per status */
+.system-health-badge.is-degraded {
+  background: color-mix(in srgb, var(--status-retrying) 6%, var(--bg-muted));
+  border-color: color-mix(in srgb, var(--status-retrying) 20%, transparent);
+}
+
+.system-health-badge.is-critical {
+  background: color-mix(in srgb, var(--status-blocked) 6%, var(--bg-muted));
+  border-color: color-mix(in srgb, var(--status-blocked) 20%, transparent);
+}
+
+/* Status label */
+.system-health-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.system-health-badge.is-degraded .system-health-label {
+  color: var(--status-retrying);
+}
+
+.system-health-badge.is-critical .system-health-label {
+  color: var(--status-blocked);
+}
+
+/* Message */
+.system-health-message {
+  flex: 1;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Timestamp */
+.system-health-checked-at {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ============================================
+   STALL EVENTS TABLE
+   Recent stalled-agent kills timeline
+   ============================================ */
+
+.overview-stall-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.stall-events-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.stall-events-empty {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  padding: var(--space-2) 0;
+  margin: 0;
+}
+
+.stall-event-row {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-muted);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--status-retrying);
+}
+
+.stall-event-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.stall-event-issue {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.stall-event-duration {
+  font-size: var(--text-2xs);
+}
+
+.mc-badge-warn {
+  background: color-mix(in srgb, var(--status-retrying) 15%, transparent);
+  color: var(--status-retrying);
+}
+
+.stall-event-detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.stall-event-agent {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 20ch;
+}
+
+.stall-event-killed-at {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ============================================
    RESPONSIVE
    ============================================ */
 
