@@ -13,19 +13,6 @@ export function buildIssueCommentMutation(): string {
   `;
 }
 
-export function buildWorkflowStateLookupAllQuery(): string {
-  return `
-    query SymphonyAllWorkflowStates {
-      workflowStates(first: 250) {
-        nodes {
-          id
-          name
-        }
-      }
-    }
-  `;
-}
-
 export function buildIssueTransitionMutation(): string {
   return `
     mutation SymphonyIssueTransition($issueId: String!, $stateId: String!) {

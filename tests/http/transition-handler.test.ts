@@ -30,30 +30,16 @@ function makeOrchestrator(detail: Record<string, unknown> | null = null) {
   };
 }
 
-function makeLinearClient(stateId = "state-uuid-123") {
+function makeLinearClient(stateId: string | null = "state-uuid-123") {
   return {
-    runGraphQL: vi.fn().mockImplementation((query: string) => {
-      if (query.includes("SymphonyAllWorkflowStates")) {
-        return Promise.resolve({
-          data: {
-            workflowStates: {
-              nodes: [
-                { id: stateId, name: "In Progress" },
-                { id: "other-uuid", name: "Done" },
-              ],
-            },
-          },
-        });
-      }
-      // issueUpdate mutation
-      return Promise.resolve({
-        data: {
-          issueUpdate: {
-            success: true,
-            issue: { id: "issue-uuid", identifier: "MT-1", state: { name: "In Progress" } },
-          },
+    resolveStateId: vi.fn().mockResolvedValue(stateId),
+    runGraphQL: vi.fn().mockResolvedValue({
+      data: {
+        issueUpdate: {
+          success: true,
+          issue: { id: "issue-uuid", identifier: "MT-1", state: { name: "In Progress" } },
         },
-      });
+      },
     }),
   };
 }

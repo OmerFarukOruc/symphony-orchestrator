@@ -12,7 +12,6 @@ import {
 import { fetchCandidateIssues, fetchIssueStatesByIds, fetchIssuesByStates } from "./issue-pagination.js";
 import { LinearClientError } from "./errors.js";
 import {
-  buildWorkflowStateLookupAllQuery as buildAllStatesQuery,
   buildIssueTransitionMutation,
   buildIssueCommentMutation,
 } from "./transition-query.js";
@@ -175,10 +174,14 @@ export class LinearClient {
 
   /**
    * Resolve the Linear state ID for a given state name (case-insensitive).
+   * Uses team-filtered lookup when a project slug is configured, so that
+   * the correct team's state is selected in multi-team workspaces.
    * Returns null if the state name cannot be matched.
    */
   async resolveStateId(stateName: string): Promise<string | null> {
-    const payload = await this.runGraphQL(buildAllStatesQuery());
+    const config = this.getConfig();
+    const teamId = await this.resolveWorkflowTeamId(config);
+    const payload = await this.runGraphQL(buildWorkflowStateLookupQuery(Boolean(teamId)), teamId ? { teamId } : {});
     const nodes = asArray(asRecord(asRecord(payload.data).workflowStates).nodes).map((n) => asRecord(n));
     const target = stateName.trim().toLowerCase();
     for (const node of nodes) {

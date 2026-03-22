@@ -1,11 +1,11 @@
 import type { Request, Response } from "express";
 
 import type { LinearClient } from "../linear/client.js";
-import { buildWorkflowStateLookupAllQuery, buildIssueTransitionMutation } from "../linear/transition-query.js";
+import { buildIssueTransitionMutation } from "../linear/transition-query.js";
 import type { Orchestrator } from "../orchestrator/orchestrator.js";
 import { StateMachine } from "../state/machine.js";
 import type { ConfigStore } from "../config/store.js";
-import { asArray, asBooleanOrNull, asRecord, asStringOrNull } from "../utils/type-guards.js";
+import { asBooleanOrNull, asRecord, asStringOrNull } from "../utils/type-guards.js";
 
 interface TransitionDeps {
   orchestrator: Orchestrator;
@@ -56,21 +56,10 @@ export async function handleTransition(deps: TransitionDeps, req: Request, res: 
     return;
   }
 
-  // Resolve Linear workflow state UUID
-  const statesPayload = await deps.linearClient.runGraphQL(buildWorkflowStateLookupAllQuery());
-  const stateNodes = asArray(asRecord(asRecord(statesPayload.data).workflowStates).nodes).map((n) => asRecord(n));
-  const matchingState = stateNodes.find(
-    (n) => (asStringOrNull(n.name) ?? "").trim().toLowerCase() === targetState.trim().toLowerCase(),
-  );
-
-  if (!matchingState) {
-    res.status(422).json({ ok: false, reason: `No Linear state found matching: ${targetState}` });
-    return;
-  }
-
-  const stateId = asStringOrNull(matchingState.id);
+  // Resolve Linear workflow state UUID (team-filtered when project slug is configured)
+  const stateId = await deps.linearClient.resolveStateId(targetState);
   if (!stateId) {
-    res.status(422).json({ ok: false, reason: `Linear state ID missing for: ${targetState}` });
+    res.status(422).json({ ok: false, reason: `No Linear state found matching: ${targetState}` });
     return;
   }
 
