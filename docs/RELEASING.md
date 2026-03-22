@@ -27,9 +27,6 @@ npm test
 # Build
 npm run build
 
-# Desktop wrapper asset sanity
-node --check desktop/web/app.js
-
 # Dry-start (no credentials needed)
 node dist/cli.js ./WORKFLOW.example.md
 ```
@@ -39,12 +36,6 @@ If you have real credentials available:
 ```bash
 # Live integration (optional)
 LINEAR_API_KEY=... npm run test:integration
-```
-
-If you have a Rust/Tauri toolchain available:
-
-```bash
-cargo check --manifest-path desktop/src-tauri/Cargo.toml
 ```
 
 ---

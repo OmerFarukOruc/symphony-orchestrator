@@ -187,8 +187,6 @@ The local loopback HTTP surface now includes operator-only configuration and sec
 
 These routes are intentionally loopback-local like the rest of the dashboard/API surface. They are suitable for trusted operator environments, not public exposure.
 
-The optional desktop shell under `desktop/` stays inside the same trust boundary. It is a local wrapper that starts and stops the same loopback-bound service and embeds the existing dashboard; it does not add a separate remote control plane.
-
 ---
 
 ## 🔑 Required Credentials

@@ -174,25 +174,6 @@ export LINEAR_PROJECT_SLUG="symphony-test-e1e26e4576d1"
 
 ---
 
-## 🖥️ Desktop Shell
-
-The repository also includes a minimal Tauri desktop shell under `desktop/`. It starts and stops the same built Symphony service you would launch from the terminal and embeds the existing dashboard in an iframe.
-
-Desktop flow:
-
-- run `npm install`
-- run `npm run build`
-- start the Tauri app from `desktop/src-tauri`
-- use the wrapper controls to call `desktop_status`, `desktop_start_service`, and `desktop_stop_service`
-
-Current caveats:
-
-- the desktop host expects `node` on `PATH`
-- it launches `dist/cli.js` from the repository root
-- Rust/Tauri validation requires a working local `cargo` toolchain
-
----
-
 ## 📦 Install and Validate
 
 ```bash
@@ -724,12 +705,12 @@ Symphony includes a `visual-verify` skill and project-level `agent-browser` conf
 
 ### Project Configuration
 
-The `agent-browser.json` at project root configures headed mode with screenshots saved to `archive/screenshots/`:
+The `agent-browser.json` at project root configures headed mode with screenshots saved to `docs/archive/screenshots/`:
 
 ```json
 {
   "headed": true,
-  "screenshotDir": "./archive/screenshots",
+  "screenshotDir": "./docs/archive/screenshots",
   "screenshotFormat": "png"
 }
 ```
@@ -748,15 +729,15 @@ node dist/cli.js ./WORKFLOW.example.md --port 4000
 # 2. Baseline screenshot
 agent-browser open http://127.0.0.1:4000
 agent-browser wait --load networkidle
-agent-browser screenshot --annotate archive/screenshots/before.png
+agent-browser screenshot --annotate docs/archive/screenshots/before.png
 
 # 3. Make code changes, then reload
 agent-browser reload
 agent-browser wait --load networkidle
-agent-browser screenshot --annotate archive/screenshots/after.png
+agent-browser screenshot --annotate docs/archive/screenshots/after.png
 
 # 4. Pixel diff
-agent-browser diff screenshot --baseline archive/screenshots/before.png
+agent-browser diff screenshot --baseline docs/archive/screenshots/before.png
 
 # 5. Cleanup
 agent-browser close

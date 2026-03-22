@@ -27,35 +27,6 @@
 
 ---
 
-## Desktop Shell Won't Start or Won't Control the Service
-
-**Symptoms**: The Tauri wrapper opens but the service stays stopped, the iframe stays blank, or the desktop controls fail immediately.
-
-1. **Build the TypeScript service first** — the desktop host launches `dist/cli.js`, so `npm run build` must have succeeded from repo root.
-   ```bash
-   npm run build
-   ```
-2. **Check Node on PATH** — the Rust host shells out to `node`.
-   ```bash
-   which node
-   node --version
-   ```
-3. **Check the default workflow path** — the desktop host prefers `WORKFLOW.example.md`, then falls back to `WORKFLOW.md`.
-   ```bash
-   ls WORKFLOW.example.md WORKFLOW.md
-   ```
-4. **Validate the desktop web wrapper assets** — if the wrapper UI was edited, make sure the plain files still parse.
-   ```bash
-   node --check desktop/web/app.js
-   node -e 'JSON.parse(require("fs").readFileSync("desktop/src-tauri/tauri.conf.json","utf8")); console.log("ok")'
-   ```
-5. **If Rust tooling is available, verify the host build**:
-   ```bash
-   cargo check --manifest-path desktop/src-tauri/Cargo.toml
-   ```
-
----
-
 ## Linear API Rate Limiting
 
 **Symptoms**: Dashboard shows non-null `rate_limits`, Codex requests are being throttled, or Linear calls start failing under sustained load.
