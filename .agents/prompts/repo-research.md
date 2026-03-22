@@ -186,8 +186,6 @@ Create a research artifact summarizing:
 - Be thorough in research but concise in writing — no fluff.
 - If unsure whether something fits Symphony's scope, flag it as "Consider"
   in the summary rather than silently adding it.
-- **Respect Symphony's architecture**: small modules (<200 LOC), strict ESM,
-  extracted helpers, context interfaces. Recommendations must be compatible.
 - When suggesting implementation, reference specific Symphony modules that
   would be affected (e.g., "extend `src/orchestrator.ts`" or "new module
   `src/metrics/collector.ts`").
