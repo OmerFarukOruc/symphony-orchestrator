@@ -27,7 +27,7 @@ import {
 } from "./worker-launcher.js";
 import { handleWorkerFailure } from "./worker-failure.js";
 import { handleWorkerOutcome } from "./worker-outcome.js";
-import { detectAndKillStalledWorkers } from "./stall-detector.js";
+import { detectAndKillStalledWorkers, type StallEvent } from "./stall-detector.js";
 import { globalMetrics } from "../observability/metrics.js";
 
 /**
@@ -97,7 +97,7 @@ export interface OrchestratorState {
   issueModelOverrides: Map<string, Omit<ModelSelection, "source">>;
   sessionUsageTotals: Map<string, TokenUsageSnapshot>;
   codexTotals: { inputTokens: number; outputTokens: number; totalTokens: number; secondsRunning: number };
-  stallEvents: import("./stall-detector.js").StallEvent[];
+  stallEvents: StallEvent[];
 }
 
 function notifyChannel(deps: OrchestratorDeps, event: NotificationEvent): void {

@@ -79,6 +79,8 @@ function makeConfig(overrides: Partial<ServiceConfig["tracker"]> = {}): ServiceC
       maxTurns: 10,
       maxRetryBackoffMs: 300000,
       maxContinuationAttempts: 5,
+      successState: null,
+      stallTimeoutMs: 1200000,
     },
   } as unknown as ServiceConfig;
 }
@@ -103,6 +105,9 @@ function makeCtx(
     deps: {
       linearClient: {
         fetchIssueStatesByIds: vi.fn().mockResolvedValue(latestIssue ? [latestIssue] : [makeIssue()]),
+        resolveStateId: vi.fn().mockResolvedValue(null),
+        updateIssueState: vi.fn().mockResolvedValue(undefined),
+        createComment: vi.fn().mockResolvedValue(undefined),
       },
       attemptStore: {
         updateAttempt: vi.fn().mockResolvedValue(undefined),
@@ -114,7 +119,7 @@ function makeCtx(
         commitAndPush: vi.fn().mockResolvedValue({ pushed: false, branchName: "mt-1" }),
         createPullRequest: vi.fn().mockResolvedValue({ html_url: "https://github.com/org/repo/pull/1" }),
       },
-      logger: { info: vi.fn() },
+      logger: { info: vi.fn(), warn: vi.fn() },
     },
     isRunning: () => isRunning,
     getConfig: () => config,
