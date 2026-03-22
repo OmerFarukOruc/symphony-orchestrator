@@ -11,6 +11,11 @@ import {
 } from "./queries.js";
 import { fetchCandidateIssues, fetchIssueStatesByIds, fetchIssuesByStates } from "./issue-pagination.js";
 import { LinearClientError } from "./errors.js";
+import {
+  buildWorkflowStateLookupAllQuery as buildAllStatesQuery,
+  buildIssueTransitionMutation,
+  buildIssueCommentMutation,
+} from "./transition-query.js";
 
 export { LinearClientError } from "./errors.js";
 
@@ -166,6 +171,63 @@ export class LinearClient {
       (hasProjectSlug) => buildCandidateIssuesByStateIdsQuery(hasProjectSlug),
       normalizeIssue,
     );
+  }
+
+  /**
+   * Resolve the Linear state ID for a given state name (case-insensitive).
+   * Returns null if the state name cannot be matched.
+   */
+  async resolveStateId(stateName: string): Promise<string | null> {
+    const payload = await this.runGraphQL(buildAllStatesQuery());
+    const nodes = asArray(asRecord(asRecord(payload.data).workflowStates).nodes).map((n) => asRecord(n));
+    const target = stateName.trim().toLowerCase();
+    for (const node of nodes) {
+      const id = asStringOrNull(node.id);
+      const name = asStringOrNull(node.name)?.trim().toLowerCase();
+      if (id && name === target) return id;
+    }
+    return null;
+  }
+
+  /**
+   * Transition a Linear issue to the given state ID.
+   * Retries up to 3 times with exponential backoff. Non-blocking on failure.
+   */
+  async updateIssueState(issueId: string, stateId: string): Promise<void> {
+    await this.withRetry("updateIssueState", async () => {
+      await this.runGraphQL(buildIssueTransitionMutation(), { issueId, stateId });
+    });
+  }
+
+  /**
+   * Post a comment on a Linear issue.
+   * Retries up to 3 times with exponential backoff. Non-blocking on failure.
+   */
+  async createComment(issueId: string, body: string): Promise<void> {
+    await this.withRetry("createComment", async () => {
+      await this.runGraphQL(buildIssueCommentMutation(), { issueId, body });
+    });
+  }
+
+  private async withRetry(operation: string, fn: () => Promise<void>): Promise<void> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await fn();
+        return;
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          this.logger.warn(
+            { operation, attempt, error: String(error) },
+            "linear write-back failed after max retries (non-fatal)",
+          );
+          return;
+        }
+        const delayMs = 1000 * 2 ** (attempt - 1);
+        this.logger.warn({ operation, attempt, delayMs, error: String(error) }, "linear write-back retry");
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
   }
 
   async runGraphQL(

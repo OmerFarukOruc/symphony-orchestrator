@@ -1,4 +1,17 @@
-/** GraphQL query/mutation builders for issue state transitions. */
+/** GraphQL query/mutation builders for issue state transitions and comments. */
+
+export function buildIssueCommentMutation(): string {
+  return `
+    mutation SymphonyIssueCommentCreate($issueId: String!, $body: String!) {
+      commentCreate(input: { issueId: $issueId, body: $body }) {
+        success
+        comment {
+          id
+        }
+      }
+    }
+  `;
+}
 
 export function buildWorkflowStateLookupAllQuery(): string {
   return `
