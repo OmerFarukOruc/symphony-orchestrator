@@ -33,36 +33,11 @@ export class DispatchClient implements RunAttemptDispatcher {
       dispatchUrl: this.deps.dispatchUrl,
     });
 
-    // Pre-compute Codex runtime config (TOML + auth.json)
-    const { configToml, authJsonBase64 } = await prepareCodexRuntimeConfig(config.codex);
-    const requiredEnvNames = getRequiredProviderEnvNames(config.codex);
-
-    // Build the dispatch request payload
-    const dispatchRequest: DispatchRequest = {
-      issue: input.issue,
-      attempt: input.attempt,
-      modelSelection: input.modelSelection,
-      promptTemplate: input.promptTemplate,
-      workspace: input.workspace,
-      config,
-      codexRuntimeConfigToml: configToml,
-      codexRuntimeAuthJsonBase64: authJsonBase64,
-      codexRequiredEnvNames: requiredEnvNames,
-    };
+    const dispatchRequest = await this.buildDispatchRequest(input, config);
 
     logger.debug({ runId: input.issue.id }, "Dispatching runAttempt to data plane");
 
-    // POST to data plane and handle SSE stream
-    const response = await fetch(this.deps.dispatchUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.deps.secret}`,
-        Accept: "text/event-stream",
-      },
-      body: JSON.stringify(dispatchRequest),
-      signal: input.signal,
-    });
+    const response = await this.sendDispatchRequest(dispatchRequest, input.signal);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -74,56 +49,113 @@ export class DispatchClient implements RunAttemptDispatcher {
       throw new Error("Dispatch response has no body");
     }
 
-    // Parse SSE stream
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let outcome: RunOutcome | null = null;
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        // Process complete SSE messages (separated by double newline)
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() ?? ""; // Keep incomplete message in buffer
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-
-          // Parse SSE data line
-          const dataMatch = line.match(/^data:\s*(.+)$/s);
-          if (!dataMatch) {
-            logger.warn({ line }, "Malformed SSE line, skipping");
-            continue;
-          }
-
-          try {
-            const message: DispatchStreamMessage = JSON.parse(dataMatch[1]);
-
-            if (message.type === "event") {
-              // Forward event to the onEvent callback
-              input.onEvent(message.payload);
-            } else if (message.type === "outcome") {
-              outcome = message.payload;
-              logger.debug({ outcome }, "Received outcome from data plane");
-            }
-          } catch (parseError) {
-            logger.warn({ line, error: String(parseError) }, "Failed to parse SSE message");
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
-
-    if (!outcome) {
-      throw new Error("Dispatch stream ended without outcome");
-    }
-
-    return outcome;
+    return parseDispatchStream(response.body, input.onEvent, logger);
   }
+
+  private async buildDispatchRequest(
+    input: {
+      issue: Issue;
+      attempt: number | null;
+      modelSelection: ModelSelection;
+      promptTemplate: string;
+      workspace: Workspace;
+    },
+    config: ServiceConfig,
+  ): Promise<DispatchRequest> {
+    const { configToml, authJsonBase64 } = await prepareCodexRuntimeConfig(config.codex);
+    const requiredEnvNames = getRequiredProviderEnvNames(config.codex);
+
+    return {
+      issue: input.issue,
+      attempt: input.attempt,
+      modelSelection: input.modelSelection,
+      promptTemplate: input.promptTemplate,
+      workspace: input.workspace,
+      config,
+      codexRuntimeConfigToml: configToml,
+      codexRuntimeAuthJsonBase64: authJsonBase64,
+      codexRequiredEnvNames: requiredEnvNames,
+    };
+  }
+
+  private async sendDispatchRequest(dispatchRequest: DispatchRequest, signal: AbortSignal): Promise<Response> {
+    return fetch(this.deps.dispatchUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.deps.secret}`,
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify(dispatchRequest),
+      signal,
+    });
+  }
+}
+
+function parseSseLine(
+  line: string,
+  onEvent: AgentRunnerEventHandler,
+  logger: {
+    debug: (meta: Record<string, unknown>, msg: string) => void;
+    warn: (meta: Record<string, unknown>, msg: string) => void;
+  },
+): RunOutcome | null {
+  if (!line.trim()) return null;
+
+  const dataMatch = /^data:\s*(.+)$/s.exec(line);
+  if (!dataMatch) {
+    logger.warn({ line }, "Malformed SSE line, skipping");
+    return null;
+  }
+
+  try {
+    const message: DispatchStreamMessage = JSON.parse(dataMatch[1]);
+    if (message.type === "event") {
+      onEvent(message.payload);
+    } else if (message.type === "outcome") {
+      logger.debug({ outcome: message.payload }, "Received outcome from data plane");
+      return message.payload;
+    }
+  } catch (parseError) {
+    logger.warn({ line, error: String(parseError) }, "Failed to parse SSE message");
+  }
+  return null;
+}
+
+async function parseDispatchStream(
+  body: ReadableStream<Uint8Array>,
+  onEvent: AgentRunnerEventHandler,
+  logger: {
+    debug: (meta: Record<string, unknown>, msg: string) => void;
+    warn: (meta: Record<string, unknown>, msg: string) => void;
+  },
+): Promise<RunOutcome> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let outcome: RunOutcome | null = null;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const parsed = parseSseLine(line, onEvent, logger);
+        if (parsed) outcome = parsed;
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (!outcome) {
+    throw new Error("Dispatch stream ended without outcome");
+  }
+
+  return outcome;
 }

@@ -84,6 +84,7 @@ export class WorkspaceManager {
   }
 
   async prepareForAttempt(workspace: Workspace): Promise<void> {
+    this.assertWorkspaceWithinRoot(workspace);
     for (const transientDirectory of TRANSIENT_DIRECTORIES) {
       const target = path.resolve(workspace.path, transientDirectory);
       if (isWithinRoot(workspace.path, target)) {
@@ -127,6 +128,13 @@ export class WorkspaceManager {
     await rm(workspacePath, { recursive: true, force: true });
   }
 
+  private assertWorkspaceWithinRoot(workspace: Workspace): void {
+    const root = this.getConfig().workspace.root;
+    if (!isWithinRoot(root, workspace.path)) {
+      throw new TypeError(`workspace path escaped root: ${workspace.path}`);
+    }
+  }
+
   private async runHook(
     hook: string | null,
     workspace: Workspace,
@@ -136,6 +144,7 @@ export class WorkspaceManager {
     if (!hook) {
       return;
     }
+    this.assertWorkspaceWithinRoot(workspace);
 
     const timeoutMs = this.getConfig().workspace.hooks.timeoutMs;
     await new Promise<void>((resolve, reject) => {

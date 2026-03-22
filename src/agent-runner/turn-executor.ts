@@ -145,40 +145,54 @@ function resolveTokenUsage(
   );
 }
 
+function checkAbort(input: AgentRunnerTurnExecutionInput, state: AgentRunnerTurnExecutionState): RunOutcome | null {
+  if (input.runInput.signal.aborted) {
+    return outcomeForAbort(input.runInput.signal, state.threadId, state.turnId, state.turnCount);
+  }
+  return null;
+}
+
+async function handleTurnLoop(
+  input: AgentRunnerTurnExecutionInput,
+  state: AgentRunnerTurnExecutionState,
+): Promise<RunOutcome | null> {
+  while (state.turnCount < input.config.agent.maxTurns) {
+    const abortOutcome = checkAbort(input, state);
+    if (abortOutcome) return abortOutcome;
+
+    const prompt = state.turnCount === 0 ? input.prompt : CONTINUATION_PROMPT;
+    const result = await runSingleTurn(input, state, prompt);
+    if (result.kind === "stop") return null;
+    if (result.kind === "outcome") return result.outcome;
+
+    const lastContent = input.getLastAgentMessageContent?.() ?? null;
+    if (detectStopSignal(lastContent)) return null;
+  }
+  return null;
+}
+
+function handleExecutionError(
+  error: unknown,
+  input: AgentRunnerTurnExecutionInput,
+  state: AgentRunnerTurnExecutionState,
+): RunOutcome {
+  const fatalOutcome = checkFatalFailure(state);
+  if (fatalOutcome) return fatalOutcome;
+
+  if (input.runInput.signal.aborted) {
+    return outcomeForAbort(input.runInput.signal, state.threadId, state.turnId, state.turnCount);
+  }
+  return classifyRunError(error, state.threadId, state.turnId, state.turnCount);
+}
+
 export async function executeTurns(
   input: AgentRunnerTurnExecutionInput,
   state: AgentRunnerTurnExecutionState,
 ): Promise<RunOutcome> {
   try {
-    while (state.turnCount < input.config.agent.maxTurns) {
-      if (input.runInput.signal.aborted) {
-        return outcomeForAbort(input.runInput.signal, state.threadId, state.turnId, state.turnCount);
-      }
-
-      const prompt = state.turnCount === 0 ? input.prompt : CONTINUATION_PROMPT;
-      const result = await runSingleTurn(input, state, prompt);
-      if (result.kind === "stop") {
-        break;
-      }
-      if (result.kind === "outcome") {
-        return result.outcome;
-      }
-
-      const lastContent = input.getLastAgentMessageContent?.() ?? null;
-      if (detectStopSignal(lastContent)) {
-        break;
-      }
-    }
-
-    return classifyExitState(input, state);
+    const loopOutcome = await handleTurnLoop(input, state);
+    return loopOutcome ?? classifyExitState(input, state);
   } catch (error) {
-    const fatalOutcome = checkFatalFailure(state);
-    if (fatalOutcome) {
-      return fatalOutcome;
-    }
-    if (input.runInput.signal.aborted) {
-      return outcomeForAbort(input.runInput.signal, state.threadId, state.turnId, state.turnCount);
-    }
-    return classifyRunError(error, state.threadId, state.turnId, state.turnCount);
+    return handleExecutionError(error, input, state);
   }
 }
