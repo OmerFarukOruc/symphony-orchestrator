@@ -103,6 +103,43 @@ Use `agent-browser` for web automation. Run `agent-browser --help` for all comma
 4. Re-snapshot after page changes
 5. `agent-browser errors` / `agent-browser console` — check for JS errors after UI changes
 
+## gstack
+
+**For all web browsing, use the `/browse` skill from gstack.** Never use `mcp__claude-in-chrome__*` tools.
+
+gstack is a fast headless browser for QA testing and site dogfooding. It provides skills for development workflows and browser automation.
+
+### Available Skills
+
+| Skill | Purpose |
+|-------|---------|
+| `/office-hours` | Brainstorming a new idea |
+| `/plan-ceo-review` | Reviewing a plan (strategy) |
+| `/plan-eng-review` | Reviewing a plan (architecture) |
+| `/plan-design-review` | Reviewing a plan (design) |
+| `/design-consultation` | Creating a design system |
+| `/review` | Code review before merge |
+| `/ship` | Ready to deploy / create PR |
+| `/land-and-deploy` | Deploy and verify |
+| `/canary` | Canary deployment |
+| `/browse` | Web browsing and automation |
+| `/qa` | Test the app |
+| `/qa-only` | QA without code changes |
+| `/design-review` | Visual design audit |
+| `/setup-browser-cookies` | Setup browser cookies for testing |
+| `/setup-deploy` | Setup deployment environment |
+| `/retro` | Weekly retrospective |
+| `/investigate` | Debugging errors |
+| `/document-release` | Post-ship doc updates |
+| `/codex` | Second opinion / adversarial code review |
+| `/careful` | Working with production/live systems |
+| `/freeze` | Scope edits to one module/directory |
+| `/guard` | Maximum safety mode |
+| `/unfreeze` | Remove edit restrictions |
+| `/gstack-upgrade` | Upgrade gstack to latest version |
+
+**If gstack skills aren't working**, run `cd .claude/skills/gstack && ./setup` to build the binary and register skills.
+
 ## Semantic Code Search (CocoIndex)
 
 This project is indexed with [cocoindex-code](https://github.com/cocoindex-io/cocoindex-code) using the `nomic-ai/CodeRankEmbed` embedding model (137M params, ~1 GB VRAM, GPU-accelerated, 8192-token context). An MCP server (`ccc mcp`) exposes a `search` tool for semantic code search.
