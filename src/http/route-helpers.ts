@@ -45,6 +45,21 @@ export function serializeSnapshot(snapshot: RuntimeSnapshot & Record<string, unk
       message: event.message,
       content: event.content ?? null,
     })),
+    stall_events: snapshot.stallEvents?.map((e) => ({
+      at: e.at,
+      issue_id: e.issueId,
+      issue_identifier: e.issueIdentifier,
+      silent_ms: e.silentMs,
+      timeout_ms: e.timeoutMs,
+    })),
+    system_health: snapshot.systemHealth
+      ? {
+          status: snapshot.systemHealth.status,
+          checked_at: snapshot.systemHealth.checkedAt,
+          running_count: snapshot.systemHealth.runningCount,
+          message: snapshot.systemHealth.message,
+        }
+      : undefined,
   };
 }
 

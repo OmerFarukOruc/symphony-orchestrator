@@ -43,9 +43,9 @@ export function createSystemHealthBadge(): {
     root.classList.add(`is-${health.status}`);
     label.textContent = health.status;
     message.textContent = health.message;
-    checkedAt.textContent = formatRelativeTime(health.checkedAt);
-    checkedAt.dateTime = health.checkedAt;
-    checkedAt.title = health.checkedAt;
+    checkedAt.textContent = formatRelativeTime(health.checked_at);
+    checkedAt.dateTime = health.checked_at;
+    checkedAt.title = health.checked_at;
   }
 
   return { root, update };

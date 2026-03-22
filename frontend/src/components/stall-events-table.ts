@@ -20,28 +20,28 @@ function createStallRow(event: StallEventView): HTMLElement {
 
   const issueId = document.createElement("strong");
   issueId.className = "text-mono stall-event-issue";
-  issueId.textContent = event.issueId;
+  issueId.textContent = event.issue_identifier;
 
   const duration = document.createElement("span");
   duration.className = "stall-event-duration mc-badge mc-badge-warn";
-  duration.textContent = `stalled ${formatStalledDuration(event.stalledForMs)}`;
+  duration.textContent = `silent ${formatStalledDuration(event.silent_ms)}`;
 
   meta.append(issueId, duration);
 
   const detail = document.createElement("div");
   detail.className = "stall-event-detail";
 
-  const agentEl = document.createElement("span");
-  agentEl.className = "stall-event-agent text-mono";
-  agentEl.textContent = event.agentId;
+  const timeoutEl = document.createElement("span");
+  timeoutEl.className = "stall-event-agent text-mono";
+  timeoutEl.textContent = `timeout ${formatStalledDuration(event.timeout_ms)}`;
 
   const killedAtEl = document.createElement("time");
   killedAtEl.className = "stall-event-killed-at";
-  killedAtEl.dateTime = event.killedAt;
-  killedAtEl.textContent = formatRelativeTime(event.killedAt);
-  killedAtEl.title = event.killedAt;
+  killedAtEl.dateTime = event.at;
+  killedAtEl.textContent = formatRelativeTime(event.at);
+  killedAtEl.title = event.at;
 
-  detail.append(agentEl, killedAtEl);
+  detail.append(timeoutEl, killedAtEl);
   row.append(meta, detail);
   return row;
 }

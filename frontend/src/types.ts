@@ -109,20 +109,18 @@ export interface RecentEvent {
   content: unknown | null;
 }
 
-
-
 export interface StallEventView {
-  issueId: string;
-  agentId: string;
-  stalledForMs: number;
-  killedAt: string;
+  at: string;
+  issue_id: string;
+  issue_identifier: string;
+  silent_ms: number;
+  timeout_ms: number;
 }
 
 export interface SystemHealth {
   status: "healthy" | "degraded" | "critical";
-  checkedAt: string;
-  runningCount: number;
-  recentStalls: StallEventView[];
+  checked_at: string;
+  running_count: number;
   message: string;
 }
 

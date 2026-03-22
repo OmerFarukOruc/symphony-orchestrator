@@ -14,7 +14,7 @@
 import type { StallEvent } from "./stall-detector.js";
 import type { HealthStatus } from "../core/types.js";
 
-export type { HealthStatus };
+export type { HealthStatus } from "../core/types.js";
 
 export interface WatchdogHealth {
   status: HealthStatus;
@@ -97,10 +97,10 @@ export class Watchdog {
 
     this.health = { status, checkedAt, runningCount, recentStalls, message };
 
-    if (status !== "healthy") {
-      this.ctx.logger.warn({ status, runningCount, stalls: recentStalls.length }, `watchdog: ${message}`);
-    } else {
+    if (status === "healthy") {
       this.ctx.logger.info({ status, runningCount }, "watchdog: health check passed");
+    } else {
+      this.ctx.logger.warn({ status, runningCount, stalls: recentStalls.length }, `watchdog: ${message}`);
     }
   }
 }
