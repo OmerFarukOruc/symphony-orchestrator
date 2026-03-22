@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { LinearClient } from "../../src/linear/client.js";
 import { createMockLogger } from "../helpers.js";
 

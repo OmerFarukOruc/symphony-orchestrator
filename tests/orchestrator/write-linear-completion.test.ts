@@ -5,7 +5,7 @@
  * flush the microtask queue with setTimeout(0) after the outer await.
  */
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { handleWorkerOutcome } from "../../src/orchestrator/worker-outcome.js";
 import type { Issue, ModelSelection, RunOutcome, ServiceConfig, Workspace } from "../../src/core/types.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";

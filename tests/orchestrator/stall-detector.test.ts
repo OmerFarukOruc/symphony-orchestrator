@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { detectAndKillStalledWorkers } from "../../src/orchestrator/stall-detector.js";
 import type { StallDetectorContext, StallEvent } from "../../src/orchestrator/stall-detector.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
