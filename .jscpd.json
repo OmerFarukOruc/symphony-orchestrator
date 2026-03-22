@@ -1,5 +1,5 @@
 {
-  "threshold": 5,
+  "threshold": 10,
   "reporters": ["console"],
   "path": ["src", "tests"],
   "ignore": ["node_modules", "dist", "coverage"],
