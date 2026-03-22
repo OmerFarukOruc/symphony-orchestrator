@@ -14,11 +14,19 @@ interface OutcomeContext {
   completedViews: Map<string, ReturnType<typeof issueView>>;
   detailViews: Map<string, ReturnType<typeof issueView>>;
   deps: {
-    linearClient: { fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[]> };
+    linearClient: {
+      fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[]>;
+      resolveStateId: (stateName: string) => Promise<string | null>;
+      updateIssueState: (issueId: string, stateId: string) => Promise<void>;
+      createComment: (issueId: string, body: string) => Promise<void>;
+    };
     attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
     workspaceManager: { removeWorkspace: (identifier: string) => Promise<void> };
     gitManager?: Pick<GitManager, "commitAndPush" | "createPullRequest">;
-    logger: { info: (meta: Record<string, unknown>, message: string) => void };
+    logger: {
+      info: (meta: Record<string, unknown>, message: string) => void;
+      warn: (meta: Record<string, unknown>, message: string) => void;
+    };
   };
   isRunning: () => boolean;
   getConfig: () => ServiceConfig;
@@ -129,6 +137,68 @@ function handleCancelledOrHardFailure(
   ctx.releaseIssueClaim(issue.id);
 }
 
+/**
+ * Write completion status back to Linear.
+ * Transitions the issue to successState (if configured) and posts a rich comment.
+ * All errors are non-blocking — logged as warnings.
+ */
+async function writeLinearCompletion(
+  ctx: OutcomeContext,
+  issue: Issue,
+  entry: RunningEntry,
+  outcome: { pullRequestUrl: string | null; stopSignal: "done" | "blocked" },
+  attempt: number | null,
+): Promise<void> {
+  const config = ctx.getConfig();
+  const successState = config.agent.successState;
+
+  const lines: string[] = ["**Symphony agent completed** ✓"];
+  if (entry.tokenUsage) {
+    lines.push(`- **Tokens:** ${entry.tokenUsage.totalTokens.toLocaleString()} (in: ${entry.tokenUsage.inputTokens.toLocaleString()}, out: ${entry.tokenUsage.outputTokens.toLocaleString()})`);
+  }
+  const durationSecs = Math.round((Date.now() - entry.startedAtMs) / 1000);
+  lines.push(`- **Duration:** ${durationSecs}s`);
+  if (attempt !== null) {
+    lines.push(`- **Attempt:** ${attempt}`);
+  }
+  if (outcome.pullRequestUrl) {
+    lines.push(`- **PR:** ${outcome.pullRequestUrl}`);
+  }
+  const commentBody = lines.join("\n");
+
+  if (outcome.stopSignal === "done" && successState) {
+    try {
+      const stateId = await ctx.deps.linearClient.resolveStateId(successState);
+      if (stateId) {
+        await ctx.deps.linearClient.updateIssueState(issue.id, stateId);
+        ctx.deps.logger.info(
+          { issue_identifier: issue.identifier, successState },
+          "linear issue transitioned to success state",
+        );
+      } else {
+        ctx.deps.logger.warn(
+          { issue_identifier: issue.identifier, successState },
+          "success state not found in linear — skipping transition",
+        );
+      }
+    } catch (error) {
+      ctx.deps.logger.warn(
+        { issue_identifier: issue.identifier, error: String(error) },
+        "linear state transition failed (non-fatal)",
+      );
+    }
+  }
+
+  try {
+    await ctx.deps.linearClient.createComment(issue.id, commentBody);
+  } catch (error) {
+    ctx.deps.logger.warn(
+      { issue_identifier: issue.identifier, error: String(error) },
+      "linear completion comment failed (non-fatal)",
+    );
+  }
+}
+
 async function handleStopSignal(
   ctx: OutcomeContext,
   stopSignal: StopSignal,
@@ -186,6 +256,9 @@ async function handleStopSignal(
   if (isBlocked) {
     ctx.releaseIssueClaim(issue.id);
   }
+
+  // Write completion back to Linear (non-blocking).
+  void writeLinearCompletion(ctx, issue, entry, { pullRequestUrl, stopSignal }, attempt);
 }
 
 function queueRetryWithLog(
