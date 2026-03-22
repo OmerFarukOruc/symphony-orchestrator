@@ -226,7 +226,7 @@ export class LinearClient {
           );
           return;
         }
-        const delayMs = 1000 * 2 ** (attempt - 1);
+        const delayMs = 1000 * 2 ** (attempt - 1) * (0.5 + Math.random() * 0.5);
         this.logger.warn({ operation, attempt, delayMs, error: String(error) }, "linear write-back retry");
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }

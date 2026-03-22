@@ -149,6 +149,7 @@ async function writeLinearCompletion(
   outcome: { pullRequestUrl: string | null; stopSignal: "done" | "blocked" },
   attempt: number | null,
 ): Promise<void> {
+  try {
   const config = ctx.getConfig();
   const successState = config.agent.successState;
 
@@ -195,6 +196,12 @@ async function writeLinearCompletion(
     ctx.deps.logger.warn(
       { issue_identifier: issue.identifier, error: String(error) },
       "linear completion comment failed (non-fatal)",
+    );
+  }
+  } catch (error) {
+    ctx.deps.logger.warn(
+      { issue_identifier: issue.identifier, error: String(error) },
+      "writeLinearCompletion: unexpected error (non-fatal)",
     );
   }
 }
