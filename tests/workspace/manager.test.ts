@@ -90,4 +90,16 @@ describe("WorkspaceManager", () => {
     const manager = new WorkspaceManager(() => createConfig(root), createLogger());
     await expect(manager.ensureWorkspace("MT_99")).rejects.toThrow("workspace target is not a directory");
   });
+
+  it("rejects workspace path that escapes root", async () => {
+    const root = await createTempDir();
+    const manager = new WorkspaceManager(() => createConfig(root), createLogger());
+
+    const escapedWorkspace = {
+      path: path.resolve(root, "..", "escaped"),
+      workspaceKey: "escaped",
+      createdNow: false,
+    };
+    await expect(manager.prepareForAttempt(escapedWorkspace)).rejects.toThrow(TypeError);
+  });
 });
