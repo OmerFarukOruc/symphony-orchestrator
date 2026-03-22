@@ -6,6 +6,16 @@ import type { ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js"
 
 const TRANSIENT_DIRECTORIES = ["tmp", ".elixir_ls"];
 
+/** Well-known, non-writable system directories allowed in hook PATH. */
+const SAFE_PATH_DIRS = new Set(["/usr/local/bin", "/usr/bin", "/bin", "/usr/local/sbin", "/usr/sbin", "/sbin"]);
+
+/** Filter PATH to only include fixed, non-writable system directories. */
+export function buildSafePath(): string {
+  const current = process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin";
+  const filtered = current.split(":").filter((dir) => SAFE_PATH_DIRS.has(dir));
+  return filtered.length > 0 ? filtered.join(":") : "/usr/local/bin:/usr/bin:/bin";
+}
+
 function isWithinRoot(root: string, candidate: string): boolean {
   const relative = path.relative(root, candidate);
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
@@ -152,7 +162,7 @@ export class WorkspaceManager {
         cwd: workspace.path,
         env: {
           ...process.env,
-          PATH: process.env.PATH,
+          PATH: buildSafePath(),
           SYMPHONY_WORKSPACE_PATH: workspace.path,
           SYMPHONY_ISSUE_IDENTIFIER: sanitizedIdentifier,
         },

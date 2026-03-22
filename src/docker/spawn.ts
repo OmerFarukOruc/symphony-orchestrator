@@ -10,7 +10,7 @@ const CONTAINER_HOME = "/home/agent";
  * size and permissions (see buildResourceAndLogArgs). The container
  * also runs with --cap-drop=ALL and --security-opt=no-new-privileges.
  */
-const CONTAINER_CODEX_HOME = "/tmp/symphony-codex-home";
+const CONTAINER_CODEX_HOME = "/tmp/symphony-codex-home"; // NOSONAR — container-internal path, not host
 
 export interface DockerRunInput {
   sandboxConfig: SandboxConfig;

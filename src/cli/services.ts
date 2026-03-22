@@ -39,7 +39,7 @@ export async function createServices(
   const agentRunner: RunAttemptDispatcher =
     dispatchMode === "remote"
       ? new DispatchClient({
-          dispatchUrl: process.env.DISPATCH_URL ?? "http://data-plane:9100/dispatch",
+          dispatchUrl: process.env.DISPATCH_URL ?? "http://data-plane:9100/dispatch", // NOSONAR — internal service-to-service on private network
           secret: process.env.DISPATCH_SHARED_SECRET ?? "",
           getConfig: () => configStore.getConfig(),
           logger: logger.child({ component: "dispatch-client" }),
