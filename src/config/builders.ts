@@ -88,6 +88,8 @@ function deriveAgentConfig(agent: Record<string, unknown>): ServiceConfig["agent
     maxTurns: asNumber(agent.max_turns, 20),
     maxRetryBackoffMs: asNumber(agent.max_retry_backoff_ms, 300000),
     maxContinuationAttempts: asNumber(agent.max_continuation_attempts, 5),
+    successState: asString(agent.success_state) || null,
+    stallTimeoutMs: asNumber(agent.stall_timeout_ms, 1200000),
   };
 }
 
