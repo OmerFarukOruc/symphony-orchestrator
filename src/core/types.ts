@@ -155,8 +155,10 @@ export interface StallEventView {
   timeoutMs: number;
 }
 
+export type HealthStatus = "healthy" | "degraded" | "critical";
+
 export interface SystemHealth {
-  status: "healthy" | "degraded" | "critical";
+  status: HealthStatus;
   checkedAt: string;
   runningCount: number;
   message: string;

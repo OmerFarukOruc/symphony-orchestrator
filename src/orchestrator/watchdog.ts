@@ -12,9 +12,9 @@
  */
 
 import type { StallEvent } from "./stall-detector.js";
-import type { RuntimeIssueView } from "../core/types.js";
+import type { HealthStatus } from "../core/types.js";
 
-export type HealthStatus = "healthy" | "degraded" | "critical";
+export type { HealthStatus };
 
 export interface WatchdogHealth {
   status: HealthStatus;
@@ -116,5 +116,3 @@ export function buildHealthSnapshot(health: WatchdogHealth): Record<string, unkn
   };
 }
 
-/** Placeholder for future runtime views if needed. */
-export type { RuntimeIssueView };
