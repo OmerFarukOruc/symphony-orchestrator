@@ -115,4 +115,3 @@ export function buildHealthSnapshot(health: WatchdogHealth): Record<string, unkn
     message: health.message,
   };
 }
-
