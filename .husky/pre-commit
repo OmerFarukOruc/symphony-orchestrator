@@ -1,1 +1,6 @@
+#!/bin/sh
+# ── Pre-commit: fast staged-file checks ──────────────────────────────
+# Mirrors CI Phase 1 checks on staged files only (fast).
+# lint-staged runs eslint --fix + prettier --write on staged *.ts files.
+
 npx lint-staged

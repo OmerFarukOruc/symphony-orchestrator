@@ -1,1 +1,23 @@
+#!/bin/sh
+# ── Pre-push: full CI-mirror gate ────────────────────────────────────
+# Catches everything CI Phase 1 + Phase 2 would catch, locally.
+# If any step fails, the push is aborted.
+
+set -e
+
+echo "🔨 Building..."
+npm run build
+
+echo "🔍 Linting..."
+npm run lint
+
+echo "🎨 Checking formatting..."
+npm run format:check
+
+echo "🧪 Running tests..."
+npm test
+
+echo "🧹 Checking for dead code..."
 npm run knip
+
+echo "✅ All pre-push checks passed!"

@@ -31,6 +31,36 @@ Use Node.js 22 or newer.
 - `npm run dev -- ./WORKFLOW.example.md` runs the CLI directly through `tsx`.
 - `node dist/cli.js ./WORKFLOW.example.md --port 4000` runs the built service.
 
+## Pre-commit & Pre-push Checks — MANDATORY
+
+Git hooks enforce local quality gates that mirror CI. **Never bypass them with `--no-verify`.**
+
+### Pre-commit (`.husky/pre-commit`)
+
+Runs `npx lint-staged` on staged files — applies ESLint auto-fix and Prettier formatting to staged `*.ts` files automatically.
+
+### Pre-push (`.husky/pre-push`)
+
+Runs the full CI-mirror gate before any push is allowed:
+
+1. `npm run build` — TypeScript compilation
+2. `npm run lint` — ESLint checks
+3. `npm run format:check` — Prettier formatting verification
+4. `npm test` — Vitest test suite
+5. `npm run knip` — dead code / unused export analysis
+
+If any step fails, the push is aborted.
+
+### Agent Verification Checklist
+
+**Before every commit**, agents MUST run at minimum:
+
+```bash
+npm run build && npm run lint && npm run format:check && npm test
+```
+
+If formatting issues are found, fix them with `npm run format` before committing. Do not commit code that has not passed all four checks. The pre-push hook enforces this, but agents should catch issues early at commit time to avoid wasted cycles.
+
 ## Coding Style & Naming Conventions
 
 This repo uses strict ESM TypeScript with `moduleResolution: "NodeNext"`. Follow the existing style: 2-space indentation, double quotes, semicolons, `const` by default, and small focused modules. Use `PascalCase` for classes, `camelCase` for functions and variables, and keep test files named `*.test.ts`.
