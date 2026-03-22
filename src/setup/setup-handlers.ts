@@ -99,9 +99,7 @@ export function handleGetLinearProjects(deps: SetupApiDeps) {
     }
 
     if (!response.ok) {
-      res
-        .status(502)
-        .json({ error: { code: "linear_api_error", message: `Linear API returned ${response.status}` } });
+      res.status(502).json({ error: { code: "linear_api_error", message: `Linear API returned ${response.status}` } });
       return;
     }
 

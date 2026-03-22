@@ -189,5 +189,4 @@ function registerExtensionApis(app: Express, deps: HttpRouteDeps): void {
       archiveDir: deps.archiveDir,
     });
   }
-
 }

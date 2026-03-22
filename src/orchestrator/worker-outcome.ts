@@ -249,12 +249,7 @@ async function handleNormalContinuation(
   queueRetryWithLog(ctx, latestIssue, attempt, 1000, "continuation");
 }
 
-function handleErrorRetry(
-  ctx: OutcomeContext,
-  outcome: RunOutcome,
-  latestIssue: Issue,
-  attempt: number | null,
-): void {
+function handleErrorRetry(ctx: OutcomeContext, outcome: RunOutcome, latestIssue: Issue, attempt: number | null): void {
   const nextAttempt = (attempt ?? 0) + 1;
   const delayMs = Math.min(10_000 * 2 ** Math.max(0, nextAttempt - 1), ctx.getConfig().agent.maxRetryBackoffMs);
   queueRetryWithLog(ctx, latestIssue, attempt, delayMs, outcome.errorCode ?? "turn_failed");
@@ -361,5 +356,3 @@ export async function handleWorkerOutcome(
 
   await reconcileOutcomeAgainstLatestIssueState(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
 }
-
-

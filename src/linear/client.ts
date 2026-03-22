@@ -1,4 +1,3 @@
-
 import { asArray, asRecord, asStringOrNull } from "../utils/type-guards.js";
 import { normalizeIssue } from "./issue-parser.js";
 import type { Issue, ServiceConfig, SymphonyLogger } from "../core/types.js";
@@ -19,8 +18,6 @@ interface GraphQLResponse {
   data?: Record<string, unknown>;
   errors?: unknown[];
 }
-
-
 
 interface ResolvedWorkflowStates {
   stateIds: string[];
@@ -112,8 +109,6 @@ export class LinearClient {
       normalizeIssue,
     );
   }
-
-
 
   private async resolveWorkflowStateIds(): Promise<ResolvedWorkflowStates> {
     const config = this.getConfig();

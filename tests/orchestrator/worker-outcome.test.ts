@@ -73,7 +73,13 @@ function makeConfig(overrides: Partial<ServiceConfig["tracker"]> = {}): ServiceC
       terminalStates: ["Done", "Canceled"],
       ...overrides,
     },
-    agent: { maxConcurrentAgents: 5, maxConcurrentAgentsByState: {}, maxTurns: 10, maxRetryBackoffMs: 300000, maxContinuationAttempts: 5 },
+    agent: {
+      maxConcurrentAgents: 5,
+      maxConcurrentAgentsByState: {},
+      maxTurns: 10,
+      maxRetryBackoffMs: 300000,
+      maxContinuationAttempts: 5,
+    },
   } as unknown as ServiceConfig;
 }
 

@@ -12,7 +12,11 @@ import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
 import { SecretsStore } from "../../src/secrets/store.js";
 import { registerSetupApi } from "../../src/setup/api.js";
 import { WorkspaceManager } from "../../src/workspace/manager.js";
-import { createMockLogger, createJsonResponse as jsonResponse, createTextResponse as textResponse } from "../helpers.js";
+import {
+  createMockLogger,
+  createJsonResponse as jsonResponse,
+  createTextResponse as textResponse,
+} from "../helpers.js";
 
 const { existsSyncMock, mkdirMock, writeFileMock, startDeviceAuthMock, pollDeviceAuthMock, saveDeviceAuthTokensMock } =
   vi.hoisted(() => ({
@@ -574,6 +578,4 @@ describe("registerSetupApi", () => {
       },
     });
   });
-
 });
-

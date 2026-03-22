@@ -10,9 +10,6 @@ function getRequestBody(fetchMock: ReturnType<typeof vi.fn>, callIndex: number):
   return JSON.parse(String(calls[callIndex]?.[1]?.body ?? "{}")) as Record<string, unknown>;
 }
 
-
-
-
 function createConfig(): ServiceConfig {
   return {
     tracker: {
@@ -425,6 +422,4 @@ describe("LinearClient", () => {
       "linear candidate issue fallback could not resolve workflow states",
     );
   });
-
-
 });
