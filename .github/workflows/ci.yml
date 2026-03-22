@@ -45,7 +45,6 @@ jobs:
         run: npx knip
       - name: Duplicate code analysis
         run: npx jscpd
-        continue-on-error: true
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -130,3 +129,23 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:integration
+
+  # ── Gate: single required check for branch protection ──────────────
+  build-and-test:
+    name: build-and-test
+    if: always()
+    needs: [build, test, gitleaks, semgrep, codeql, docker-build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [ "${{ needs.build.result }}" != "success" ] ||
+             [ "${{ needs.test.result }}" != "success" ] ||
+             [ "${{ needs.gitleaks.result }}" != "success" ] ||
+             [ "${{ needs.semgrep.result }}" != "success" ] ||
+             [ "${{ needs.codeql.result }}" != "success" ] ||
+             [ "${{ needs.docker-build.result }}" != "success" ]; then
+            echo "❌ One or more required jobs failed"
+            exit 1
+          fi
+          echo "✅ All required jobs passed"

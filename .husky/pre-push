@@ -20,4 +20,7 @@ npm test
 echo "🧹 Checking for dead code..."
 npm run knip
 
+echo "🔍 Checking for duplicate code..."
+npm run jscpd
+
 echo "✅ All pre-push checks passed!"
