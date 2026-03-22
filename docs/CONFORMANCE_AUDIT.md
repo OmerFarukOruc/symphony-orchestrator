@@ -11,7 +11,7 @@
 
 ## 📌 Current Release Baseline
 
-The repository is at **`v0.2.0`** and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, notifications, a Docker deployment target, and a desktop app shell. This document tracks every atomic requirement from the Symphony Service Specification against the current codebase.
+The repository is at **`v0.2.0`** and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, notifications, and a Docker deployment target. This document tracks every atomic requirement from the Symphony Service Specification against the current codebase.
 
 **Legend:** ✅ Implemented · 🟡 Partial / Minor Deviation · ❌ Not Implemented · 🔵 Extension (beyond spec)
 
@@ -695,7 +695,7 @@ Capabilities shipped that go beyond the spec requirements:
 | Persistent config overlay |   6   | Additive YAML overlay on top of WORKFLOW.md, API-managed, live merge on change                                            |
 | Kanban state machine      |   7   | Configurable stages and transitions, dynamic dashboard columns                                                            |
 | CI extensions             |   8   | `integration` + `docker-build` jobs added to `ci.yml`; Docker lifecycle + E2E smoke tests                                 |
-| Desktop app               |   9   | Tauri v2 desktop shell with Rust backend for service lifecycle management                                                 |
+| ~~Desktop app~~           |   9   | ~~Tauri v2 desktop shell~~ — **Removed** in favor of CLI-first operation                                                 |
 | Issue planning skill      |  10   | Goal→issues decomposition via `PlanningSkill`, planning API, Linear issue creation                                        |
 | Visual verification skill |  11   | Merged `agent-browser` + dogfood QA skill for headed Chromium dashboard testing, pixel diffing, and annotated screenshots |
 

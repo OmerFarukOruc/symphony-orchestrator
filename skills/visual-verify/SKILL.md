@@ -91,7 +91,7 @@ Use this for a focused change to the dashboard or logs page. This is the default
 mkdir -p archive/screenshots
 agent-browser open http://127.0.0.1:4000
 agent-browser wait --load networkidle
-agent-browser screenshot --annotate archive/screenshots/before.png
+agent-browser screenshot --annotate docs/archive/screenshots/before.png
 ```
 
 The `--annotate` flag overlays numbered labels (`[1]`, `[2]`, …) on interactive elements. Each label maps to a ref (`@e1`, `@e2`) for interaction.
@@ -103,13 +103,13 @@ For logs-page verification, navigate from the dashboard into a real issue log vi
 ```bash
 agent-browser reload
 agent-browser wait --load networkidle
-agent-browser screenshot --annotate archive/screenshots/after.png
+agent-browser screenshot --annotate docs/archive/screenshots/after.png
 ```
 
 ### 3. Run a pixel diff
 
 ```bash
-agent-browser diff screenshot --baseline archive/screenshots/before.png -o archive/screenshots/diff.png
+agent-browser diff screenshot --baseline docs/archive/screenshots/before.png -o docs/archive/screenshots/diff.png
 ```
 
 Output includes a mismatch percentage and a diff image with changed pixels highlighted in red.
@@ -136,10 +136,10 @@ Use this after major UI changes, before releases, or when the user asks to "dogf
 ### 1. Initialize
 
 ```bash
-mkdir -p dogfood-output/screenshots dogfood-output/videos
+mkdir -p docs/archive/dogfood-output/screenshots docs/archive/dogfood-output/videos
 ```
 
-Create `dogfood-output/report.md` from the template at `skills/visual-verify/templates/verification-report-template.md`. Fill in the date, session name, and environment info.
+Create `docs/archive/dogfood-output/report.md` from the template at `skills/visual-verify/templates/verification-report-template.md`. Fill in the date, session name, and environment info.
 
 Open the browser session:
 
@@ -162,7 +162,7 @@ If errors appear at this stage, record them as **infrastructure issues** in the 
 Start from the dashboard. Take a baseline screenshot and interactive snapshot:
 
 ```bash
-agent-browser --session symphony-qa screenshot --annotate dogfood-output/screenshots/dashboard-main.png
+agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/dashboard-main.png
 agent-browser --session symphony-qa snapshot -i
 agent-browser --session symphony-qa errors
 agent-browser --session symphony-qa console
@@ -179,7 +179,7 @@ Work through each area in order. At each step: screenshot, snapshot, check error
 Verify all four columns render and cards display correctly:
 
 ```bash
-agent-browser --session symphony-qa screenshot --annotate dogfood-output/screenshots/kanban-board.png
+agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/kanban-board.png
 agent-browser --session symphony-qa snapshot -i
 ```
 
@@ -195,7 +195,7 @@ agent-browser --session symphony-qa snapshot -i
 agent-browser --session symphony-qa click @e<N>
 agent-browser --session symphony-qa wait 1000
 agent-browser --session symphony-qa snapshot -i
-agent-browser --session symphony-qa screenshot --annotate dogfood-output/screenshots/detail-panel.png
+agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/detail-panel.png
 agent-browser --session symphony-qa errors
 ```
 
@@ -216,17 +216,17 @@ Test each filter button:
 # Test Running filter
 agent-browser --session symphony-qa click ".filter-button[data-filter='running']"
 agent-browser --session symphony-qa wait 500
-agent-browser --session symphony-qa screenshot dogfood-output/screenshots/filter-running.png
+agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/filter-running.png
 
 # Test Retrying filter
 agent-browser --session symphony-qa click ".filter-button[data-filter='retrying']"
 agent-browser --session symphony-qa wait 500
-agent-browser --session symphony-qa screenshot dogfood-output/screenshots/filter-retrying.png
+agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/filter-retrying.png
 
 # Test Completed filter
 agent-browser --session symphony-qa click ".filter-button[data-filter='completed']"
 agent-browser --session symphony-qa wait 500
-agent-browser --session symphony-qa screenshot dogfood-output/screenshots/filter-completed.png
+agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/filter-completed.png
 
 # Reset to All
 agent-browser --session symphony-qa click ".filter-button[data-filter='all']"
@@ -238,14 +238,14 @@ agent-browser --session symphony-qa wait 500
 ```bash
 agent-browser --session symphony-qa fill "#searchInput" "test"
 agent-browser --session symphony-qa wait 500
-agent-browser --session symphony-qa screenshot dogfood-output/screenshots/search-active.png
+agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/search-active.png
 agent-browser --session symphony-qa fill "#searchInput" ""
 ```
 
 #### Step 3e — Status Bar
 
 ```bash
-agent-browser --session symphony-qa screenshot --annotate -s "section" dogfood-output/screenshots/status-bar.png
+agent-browser --session symphony-qa screenshot --annotate -s "section" docs/archive/dogfood-output/screenshots/status-bar.png
 ```
 
 Check: `#queuedCount`, `#runningCount`, `#retryingCount`, `#completedCount`, `#uptimeValue`, `#rateLimitValue` are visible.
@@ -259,7 +259,7 @@ agent-browser --session symphony-qa snapshot -i
 # Click the logs link in the detail panel, or navigate directly:
 # agent-browser --session symphony-qa open http://127.0.0.1:4000/logs/<issue_identifier>
 agent-browser --session symphony-qa wait --load networkidle
-agent-browser --session symphony-qa screenshot --annotate dogfood-output/screenshots/logs-page.png
+agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/logs-page.png
 agent-browser --session symphony-qa snapshot -i
 agent-browser --session symphony-qa errors
 agent-browser --session symphony-qa console
@@ -278,13 +278,13 @@ agent-browser --session symphony-qa wait --load networkidle
 
 ```bash
 agent-browser --session symphony-qa set viewport 1920 1080
-agent-browser --session symphony-qa screenshot dogfood-output/screenshots/viewport-desktop.png
+agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/viewport-desktop.png
 
 agent-browser --session symphony-qa set viewport 768 1024
-agent-browser --session symphony-qa screenshot dogfood-output/screenshots/viewport-tablet.png
+agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/viewport-tablet.png
 
 agent-browser --session symphony-qa set viewport 375 812
-agent-browser --session symphony-qa screenshot dogfood-output/screenshots/viewport-mobile.png
+agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/viewport-mobile.png
 
 # Reset to default
 agent-browser --session symphony-qa set viewport 1280 720
@@ -304,13 +304,13 @@ Document issues as you find them — do not batch them for later.
 **For interactive bugs** (require interaction to reproduce):
 
 ```bash
-agent-browser --session symphony-qa record start dogfood-output/videos/issue-NNN-repro.webm
+agent-browser --session symphony-qa record start docs/archive/dogfood-output/videos/issue-NNN-repro.webm
 # Walk through steps with sleep 1 between actions
-agent-browser --session symphony-qa screenshot dogfood-output/screenshots/issue-NNN-step-1.png
+agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/issue-NNN-step-1.png
 sleep 1
 # ... perform action ...
 sleep 1
-agent-browser --session symphony-qa screenshot --annotate dogfood-output/screenshots/issue-NNN-result.png
+agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/issue-NNN-result.png
 sleep 2
 agent-browser --session symphony-qa record stop
 ```
@@ -318,10 +318,10 @@ agent-browser --session symphony-qa record stop
 **For static/visible-on-load bugs** (typos, layout glitches):
 
 ```bash
-agent-browser --session symphony-qa screenshot --annotate dogfood-output/screenshots/issue-NNN.png
+agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/issue-NNN.png
 ```
 
-Append each issue to `dogfood-output/report.md` immediately with:
+Append each issue to `docs/archive/dogfood-output/report.md` immediately with:
 
 - severity (consult `references/issue-taxonomy.md`)
 - page (`/` or `/logs/:issue_identifier`)
@@ -453,7 +453,7 @@ This skill uses **`agent-browser` CLI commands** run via bash/shell. All command
 
 **File operations:** When the skill says "create a file from the template", use whatever file-creation tool your agent provides (bash `cp`, `write_to_file`, `apply_patch`, etc.). The important thing is that the file gets created with the template content.
 
-**Screenshot paths:** Quick Verify uses `archive/screenshots/` (matches `agent-browser.json`'s `screenshotDir`). Full QA uses `dogfood-output/screenshots/` (explicitly set in each command).
+**Screenshot paths:** Quick Verify uses `docs/archive/screenshots/` (matches `agent-browser.json`'s `screenshotDir`). Full QA uses `docs/archive/dogfood-output/screenshots/` (explicitly set in each command).
 
 ## References
 

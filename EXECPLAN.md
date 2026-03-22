@@ -422,13 +422,13 @@ All commands in this section must be run from `/home/oruc/Desktop/codex`.
 8.  Run desktop visual verification after each major milestone or at minimum after milestones 2, 4, and 6:
 
     agent-browser --session ui-review open http://127.0.0.1:4173/
-    agent-browser --session ui-review screenshot archive/screenshots/overview-after.png
+    agent-browser --session ui-review screenshot docs/archive/screenshots/overview-after.png
     agent-browser --session ui-review open http://127.0.0.1:4173/queue
-    agent-browser --session ui-review screenshot archive/screenshots/queue-after.png
+    agent-browser --session ui-review screenshot docs/archive/screenshots/queue-after.png
     agent-browser --session ui-review open http://127.0.0.1:4173/issues/NIN-21/logs
-    agent-browser --session ui-review screenshot archive/screenshots/logs-after.png
+    agent-browser --session ui-review screenshot docs/archive/screenshots/logs-after.png
     agent-browser --session ui-review open http://127.0.0.1:4173/observability
-    agent-browser --session ui-review screenshot archive/screenshots/observability-after.png
+    agent-browser --session ui-review screenshot docs/archive/screenshots/observability-after.png
     agent-browser --session ui-review errors
     agent-browser --session ui-review console
 
@@ -466,10 +466,10 @@ Important evidence gathered before implementation of this slice:
     $ curl -sS -i http://127.0.0.1:4000/api/v1/state
     HTTP/1.1 200 OK
 
-    $ agent-browser --session ui-review screenshot archive/screenshots/overview.png
-    $ agent-browser --session ui-review screenshot archive/screenshots/queue.png
-    $ agent-browser --session ui-review screenshot archive/screenshots/queue-drawer.png
-    $ agent-browser --session ui-review screenshot archive/screenshots/logs.png
-    $ agent-browser --session ui-review screenshot archive/screenshots/observability.png
+    $ agent-browser --session ui-review screenshot docs/archive/screenshots/overview.png
+    $ agent-browser --session ui-review screenshot docs/archive/screenshots/queue.png
+    $ agent-browser --session ui-review screenshot docs/archive/screenshots/queue-drawer.png
+    $ agent-browser --session ui-review screenshot docs/archive/screenshots/logs.png
+    $ agent-browser --session ui-review screenshot docs/archive/screenshots/observability.png
 
 Desktop review note from 2026-03-21: the strongest current page is observability, the most urgent clarity problem is queue semantics plus drawer information order, and mobile behavior was intentionally deferred from this roadmap after a narrow-width sanity pass showed it needs its own architectural slice.

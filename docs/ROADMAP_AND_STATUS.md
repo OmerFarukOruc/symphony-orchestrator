@@ -112,7 +112,7 @@ Infrastructure work, scale-out, and deeper observability.
 | [#45](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/45)   | Host health monitoring + auto-failover; per-provider health cache with TTL, consecutive-error tolerance _(jinyang)_                                                 | core                     | v2 Phase 4, jinyang                     |
 | [#46](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/46)   | Tracker write APIs — orchestrator-driven transitions; working write-back impl: completion comments + state update _(hatice)_                                        | core                     | v2 Phase 5, hatice                      |
 | [#52](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/52)   | Richer reporting — Prometheus, OTLP, webhook presets; SQLite-backed persistent metrics for historical trends _(pilot)_                                              | observability, api       | Follow-up, pilot                        |
-| [#53](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/53)   | Desktop packaging — Tauri builds, release artifacts; Electron sidecar pattern _(Orchestra)_; electron-vite _(Eva)_; Tauri + npx CLI pattern _(vibe-kanban)_         | desktop                  | Follow-up, Orchestra, Eva, vibe-kanban  |
+| [#53](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/53)   | ~~Desktop packaging~~ — **Removed.** Tauri shell deleted; CLI-first approach preferred                                                                              | ~~desktop~~              | Follow-up, Orchestra, Eva, vibe-kanban  |
 | [#69](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/69)   | File-watch triggers — reactive agent dispatch on file changes with debounce                                                                                         | core                     | thepopebot                              |
 | [#70](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/70)   | Interactive agent workspaces — browser terminal access; workspace-per-issue model with browser preview (#105); diff viewer (#106) _(Orchestra, Eva, vibe-kanban)_   | dashboard, core          | thepopebot, Orchestra, Eva, vibe-kanban |
 | [#107](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/107) | Relay/tunnel remote access — encrypted WebSocket relay with pairing-code auth, NAT traversal, self-hostable relay server                                            | core, api                | vibe-kanban                             |
@@ -183,7 +183,7 @@ graph TD
 | **Total**                  | **89** |                                                   |
 
 > [!NOTE]
-> Several T2/T3 issues have **partial implementations shipped as extensions** (see [CONFORMANCE_AUDIT.md §Extensions](CONFORMANCE_AUDIT.md#-extensions-beyond-spec)): #54 (request tracing/error tracking), #56 (Docker sandbox), #61 (per-state concurrency), #76 (Kanban state machine), #53 (Tauri desktop shell). These issues remain open for scope beyond what shipped.
+> Several T2/T3 issues have **partial implementations shipped as extensions** (see [CONFORMANCE_AUDIT.md §Extensions](CONFORMANCE_AUDIT.md#-extensions-beyond-spec)): #54 (request tracing/error tracking), #56 (Docker sandbox), #61 (per-state concurrency), #76 (Kanban state machine). #53 (Tauri desktop shell) was removed in favor of CLI-first operation.
 
 ---
 

@@ -173,7 +173,7 @@ Project-level config in `agent-browser.json`:
 ```json
 {
   "headed": true,
-  "screenshotDir": "./archive/screenshots",
+  "screenshotDir": "./docs/archive/screenshots",
   "screenshotFormat": "png"
 }
 ```

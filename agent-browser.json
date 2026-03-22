@@ -1,5 +1,5 @@
 {
   "headed": true,
-  "screenshotDir": "./archive/screenshots",
+  "screenshotDir": "./docs/archive/screenshots",
   "screenshotFormat": "png"
 }

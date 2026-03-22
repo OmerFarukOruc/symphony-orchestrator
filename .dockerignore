@@ -6,7 +6,7 @@ dist/
 .git/
 .github/
 tests/
-archive/
+docs/archive/
 skills/
 
 # Config & docs (keep tsconfig.json — needed by Docker build)
