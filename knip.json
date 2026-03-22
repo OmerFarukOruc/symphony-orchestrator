@@ -1,17 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "project": [
-    "src/**/*.ts",
-    "frontend/**/*.ts",
-    "tests/**/*.ts"
-  ],
-  "entry": [
-    "src/dispatch/entrypoint.ts"
-  ],
-  "ignore": [
-    ".github/**",
-    ".husky/**"
-  ],
+  "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts"],
+  "entry": ["src/dispatch/entrypoint.ts"],
+  "ignore": [".github/**", ".husky/**"],
   "ignoreFiles": [
     "frontend/src/components/issue-card.ts",
     "frontend/src/pages/page-factory.ts",
@@ -31,14 +22,5 @@
     "vite",
     "vitest"
   ],
-  "ignoreDependencies": [
-    "agentation-mcp",
-    "eslint",
-    "husky",
-    "jscpd",
-    "lint-staged",
-    "prettier",
-    "tsx",
-    "typedoc"
-  ]
+  "ignoreDependencies": ["agentation-mcp", "eslint", "husky", "jscpd", "lint-staged", "prettier", "tsx", "typedoc"]
 }

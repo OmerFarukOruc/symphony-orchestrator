@@ -2,11 +2,13 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { Watchdog, buildHealthSnapshot } from "../../src/orchestrator/watchdog.js";
 import type { StallEvent } from "../../src/orchestrator/stall-detector.js";
 
-function makeCtx(overrides: {
-  runningCount?: number;
-  queuedCount?: number;
-  recentStalls?: StallEvent[];
-} = {}) {
+function makeCtx(
+  overrides: {
+    runningCount?: number;
+    queuedCount?: number;
+    recentStalls?: StallEvent[];
+  } = {},
+) {
   return {
     getRunningCount: vi.fn(() => overrides.runningCount ?? 0),
     getQueuedCount: vi.fn(() => overrides.queuedCount ?? 0),

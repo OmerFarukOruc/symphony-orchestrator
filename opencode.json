@@ -3,21 +3,13 @@
   "mcp": {
     "agentation": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "agentation-mcp",
-        "server"
-      ],
+      "command": ["npx", "-y", "agentation-mcp", "server"],
       "enabled": true,
       "environment": {}
     },
     "perplexity-answer": {
       "type": "local",
-      "command": [
-        "node",
-        "/home/oruc/Desktop/workspace/perplexity-answer-mcp-server/dist/index.js"
-      ],
+      "command": ["node", "/home/oruc/Desktop/workspace/perplexity-answer-mcp-server/dist/index.js"],
       "enabled": true,
       "environment": {}
     }

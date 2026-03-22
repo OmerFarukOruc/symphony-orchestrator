@@ -50,7 +50,12 @@ function makeConfig(stallTimeoutMs: number): ServiceConfig {
   } as ServiceConfig;
 }
 
-function makeEntry(overrides: Partial<Pick<RunningEntry, "lastEventAtMs" | "abortController" | "status">> & { id?: string; identifier?: string } = {}): RunningEntry {
+function makeEntry(
+  overrides: Partial<Pick<RunningEntry, "lastEventAtMs" | "abortController" | "status">> & {
+    id?: string;
+    identifier?: string;
+  } = {},
+): RunningEntry {
   const ac = overrides.abortController ?? new AbortController();
   return {
     runId: "run-1",

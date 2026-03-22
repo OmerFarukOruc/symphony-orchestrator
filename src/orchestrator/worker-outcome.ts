@@ -1,40 +1,11 @@
-import type { GitManager } from "../git/manager.js";
-import type { NotificationEvent } from "../notification/channel.js";
-import type { RunOutcome, ServiceConfig, Workspace, Issue, ModelSelection } from "../core/types.js";
+import type { RunOutcome, Workspace, Issue, ModelSelection } from "../core/types.js";
 import { isActiveState, isTerminalState } from "../state/policy.js";
-import { isHardFailure, issueView, nowIso } from "./views.js";
+import { isHardFailure, nowIso } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
 import { buildOutcomeView } from "./outcome-view-builder.js";
 import { executeGitPostRun } from "./git-post-run.js";
 import { detectStopSignal, type StopSignal } from "../core/signal-detection.js";
-
-/** Shared context type for all outcome handlers. */
-interface OutcomeContext {
-  runningEntries: Map<string, RunningEntry>;
-  completedViews: Map<string, ReturnType<typeof issueView>>;
-  detailViews: Map<string, ReturnType<typeof issueView>>;
-  deps: {
-    linearClient: {
-      fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[]>;
-      resolveStateId: (stateName: string) => Promise<string | null>;
-      updateIssueState: (issueId: string, stateId: string) => Promise<void>;
-      createComment: (issueId: string, body: string) => Promise<void>;
-    };
-    attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
-    workspaceManager: { removeWorkspace: (identifier: string) => Promise<void> };
-    gitManager?: Pick<GitManager, "commitAndPush" | "createPullRequest">;
-    logger: {
-      info: (meta: Record<string, unknown>, message: string) => void;
-      warn: (meta: Record<string, unknown>, message: string) => void;
-    };
-  };
-  isRunning: () => boolean;
-  getConfig: () => ServiceConfig;
-  releaseIssueClaim: (issueId: string) => void;
-  resolveModelSelection: (identifier: string) => ModelSelection;
-  notify: (event: NotificationEvent) => void;
-  queueRetry: (issue: Issue, attempt: number, delayMs: number, error: string | null) => void;
-}
+import type { OutcomeContext } from "./context.js";
 
 function outcomeToStatus(kind: RunOutcome["kind"]): string {
   const statusMap: Record<RunOutcome["kind"], string> = {
@@ -46,11 +17,9 @@ function outcomeToStatus(kind: RunOutcome["kind"]): string {
   };
   return statusMap[kind];
 }
-
 function issueRef(issue: Issue) {
   return { id: issue.id, identifier: issue.identifier, title: issue.title, state: issue.state, url: issue.url };
 }
-
 function handleServiceStopped(
   ctx: OutcomeContext,
   outcome: RunOutcome,
@@ -79,7 +48,6 @@ function handleServiceStopped(
     }),
   );
 }
-
 async function finalizeTerminalOrCleanupOutcome(
   ctx: OutcomeContext,
   outcome: RunOutcome,
@@ -106,7 +74,6 @@ async function finalizeTerminalOrCleanupOutcome(
   );
   ctx.releaseIssueClaim(issue.id);
 }
-
 function handleCancelledOrHardFailure(
   ctx: OutcomeContext,
   outcome: RunOutcome,
@@ -137,11 +104,7 @@ function handleCancelledOrHardFailure(
   ctx.releaseIssueClaim(issue.id);
 }
 
-/**
- * Write completion status back to Linear.
- * Transitions the issue to successState (if configured) and posts a rich comment.
- * All errors are non-blocking — logged as warnings.
- */
+/** Write completion status back to Linear (non-blocking). */
 async function writeLinearCompletion(
   ctx: OutcomeContext,
   issue: Issue,
@@ -150,54 +113,56 @@ async function writeLinearCompletion(
   attempt: number | null,
 ): Promise<void> {
   try {
-  const config = ctx.getConfig();
-  const successState = config.agent.successState;
+    const config = ctx.getConfig();
+    const successState = config.agent.successState;
 
-  const lines: string[] = ["**Symphony agent completed** ✓"];
-  if (entry.tokenUsage) {
-    lines.push(`- **Tokens:** ${entry.tokenUsage.totalTokens.toLocaleString()} (in: ${entry.tokenUsage.inputTokens.toLocaleString()}, out: ${entry.tokenUsage.outputTokens.toLocaleString()})`);
-  }
-  const durationSecs = Math.round((Date.now() - entry.startedAtMs) / 1000);
-  lines.push(`- **Duration:** ${durationSecs}s`);
-  if (attempt !== null) {
-    lines.push(`- **Attempt:** ${attempt}`);
-  }
-  if (outcome.pullRequestUrl) {
-    lines.push(`- **PR:** ${outcome.pullRequestUrl}`);
-  }
-  const commentBody = lines.join("\n");
+    const lines: string[] = ["**Symphony agent completed** ✓"];
+    if (entry.tokenUsage) {
+      lines.push(
+        `- **Tokens:** ${entry.tokenUsage.totalTokens.toLocaleString()} (in: ${entry.tokenUsage.inputTokens.toLocaleString()}, out: ${entry.tokenUsage.outputTokens.toLocaleString()})`,
+      );
+    }
+    const durationSecs = Math.round((Date.now() - entry.startedAtMs) / 1000);
+    lines.push(`- **Duration:** ${durationSecs}s`);
+    if (attempt !== null) {
+      lines.push(`- **Attempt:** ${attempt}`);
+    }
+    if (outcome.pullRequestUrl) {
+      lines.push(`- **PR:** ${outcome.pullRequestUrl}`);
+    }
+    const commentBody = lines.join("\n");
 
-  if (outcome.stopSignal === "done" && successState) {
-    try {
-      const stateId = await ctx.deps.linearClient.resolveStateId(successState);
-      if (stateId) {
-        await ctx.deps.linearClient.updateIssueState(issue.id, stateId);
-        ctx.deps.logger.info(
-          { issue_identifier: issue.identifier, successState },
-          "linear issue transitioned to success state",
-        );
-      } else {
+    if (outcome.stopSignal === "done" && successState) {
+      try {
+        const stateId = await ctx.deps.linearClient.resolveStateId(successState);
+        if (stateId) {
+          await ctx.deps.linearClient.updateIssueState(issue.id, stateId);
+          ctx.deps.logger.info(
+            { issue_identifier: issue.identifier, successState },
+            "linear issue transitioned to success state",
+          );
+        } else {
+          ctx.deps.logger.warn(
+            { issue_identifier: issue.identifier, successState },
+            "success state not found in linear — skipping transition",
+          );
+        }
+      } catch (error) {
         ctx.deps.logger.warn(
-          { issue_identifier: issue.identifier, successState },
-          "success state not found in linear — skipping transition",
+          { issue_identifier: issue.identifier, error: String(error) },
+          "linear state transition failed (non-fatal)",
         );
       }
+    }
+
+    try {
+      await ctx.deps.linearClient.createComment(issue.id, commentBody);
     } catch (error) {
       ctx.deps.logger.warn(
         { issue_identifier: issue.identifier, error: String(error) },
-        "linear state transition failed (non-fatal)",
+        "linear completion comment failed (non-fatal)",
       );
     }
-  }
-
-  try {
-    await ctx.deps.linearClient.createComment(issue.id, commentBody);
-  } catch (error) {
-    ctx.deps.logger.warn(
-      { issue_identifier: issue.identifier, error: String(error) },
-      "linear completion comment failed (non-fatal)",
-    );
-  }
   } catch (error) {
     ctx.deps.logger.warn(
       { issue_identifier: issue.identifier, error: String(error) },
@@ -328,13 +293,11 @@ async function handleNormalContinuation(
   }
   queueRetryWithLog(ctx, latestIssue, attempt, 1000, "continuation");
 }
-
 function handleErrorRetry(ctx: OutcomeContext, outcome: RunOutcome, latestIssue: Issue, attempt: number | null): void {
   const nextAttempt = (attempt ?? 0) + 1;
   const delayMs = Math.min(10_000 * 2 ** Math.max(0, nextAttempt - 1), ctx.getConfig().agent.maxRetryBackoffMs);
   queueRetryWithLog(ctx, latestIssue, attempt, delayMs, outcome.errorCode ?? "turn_failed");
 }
-
 async function reconcileOutcomeAgainstLatestIssueState(
   ctx: OutcomeContext,
   outcome: RunOutcome,
@@ -391,7 +354,6 @@ async function reconcileOutcomeAgainstLatestIssueState(
 
   handleErrorRetry(ctx, outcome, latestIssue, attempt);
 }
-
 export async function handleWorkerOutcome(
   ctx: OutcomeContext,
   outcome: RunOutcome,

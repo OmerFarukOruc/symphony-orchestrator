@@ -9,6 +9,35 @@ import type {
 import type { OrchestratorDeps, RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
 import type { StallEvent } from "./stall-detector.js";
 import type { NotificationEvent } from "../notification/channel.js";
+import type { GitManager } from "../git/manager.js";
+
+/** Shared context type for outcome handlers. Used internally by worker-outcome.ts. */
+export interface OutcomeContext {
+  runningEntries: Map<string, RunningEntry>;
+  completedViews: Map<string, RuntimeIssueView>;
+  detailViews: Map<string, RuntimeIssueView>;
+  deps: {
+    linearClient: {
+      fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[]>;
+      resolveStateId: (stateName: string) => Promise<string | null>;
+      updateIssueState: (issueId: string, stateId: string) => Promise<void>;
+      createComment: (issueId: string, body: string) => Promise<void>;
+    };
+    attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
+    workspaceManager: { removeWorkspace: (identifier: string) => Promise<void> };
+    gitManager?: Pick<GitManager, "commitAndPush" | "createPullRequest">;
+    logger: {
+      info: (meta: Record<string, unknown>, message: string) => void;
+      warn: (meta: Record<string, unknown>, message: string) => void;
+    };
+  };
+  isRunning: () => boolean;
+  getConfig: () => ServiceConfig;
+  releaseIssueClaim: (issueId: string) => void;
+  resolveModelSelection: (identifier: string) => ModelSelection;
+  notify: (event: NotificationEvent) => void;
+  queueRetry: (issue: Issue, attempt: number, delayMs: number, error: string | null) => void;
+}
 
 export interface OrchestratorContext {
   running: boolean;

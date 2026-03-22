@@ -11,10 +11,7 @@ import {
 } from "./queries.js";
 import { fetchCandidateIssues, fetchIssueStatesByIds, fetchIssuesByStates } from "./issue-pagination.js";
 import { LinearClientError } from "./errors.js";
-import {
-  buildIssueTransitionMutation,
-  buildIssueCommentMutation,
-} from "./transition-query.js";
+import { buildIssueTransitionMutation, buildIssueCommentMutation } from "./transition-query.js";
 
 export { LinearClientError } from "./errors.js";
 

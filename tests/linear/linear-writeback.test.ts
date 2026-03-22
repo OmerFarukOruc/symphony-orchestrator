@@ -85,9 +85,9 @@ describe("LinearClient.resolveStateId", () => {
   });
 
   it("returns null when state name not found", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      okResponse({ workflowStates: { nodes: [{ id: "state-done", name: "Done" }] } }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(okResponse({ workflowStates: { nodes: [{ id: "state-done", name: "Done" }] } }));
     const client = makeClient(fetchMock);
     const id = await client.resolveStateId("nonexistent");
     expect(id).toBeNull();
@@ -97,18 +97,23 @@ describe("LinearClient.resolveStateId", () => {
 describe("LinearClient.updateIssueState", () => {
   it("calls the issueUpdate mutation with the correct variables", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      okResponse({ issueUpdate: { success: true, issue: { id: "issue-1", identifier: "MT-1", state: { name: "Done" } } } }),
+      okResponse({
+        issueUpdate: { success: true, issue: { id: "issue-1", identifier: "MT-1", state: { name: "Done" } } },
+      }),
     );
     const client = makeClient(fetchMock);
     await client.updateIssueState("issue-1", "state-done");
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as { variables: { issueId: string; stateId: string } };
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+      variables: { issueId: string; stateId: string };
+    };
     expect(body.variables.issueId).toBe("issue-1");
     expect(body.variables.stateId).toBe("state-done");
   });
 
   it("retries on failure and succeeds on second attempt", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockRejectedValueOnce(new Error("network error"))
       .mockResolvedValueOnce(okResponse({ issueUpdate: { success: true } }));
     const client = makeClient(fetchMock);
@@ -126,13 +131,15 @@ describe("LinearClient.updateIssueState", () => {
 
 describe("LinearClient.createComment", () => {
   it("calls the commentCreate mutation with the correct variables", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      okResponse({ commentCreate: { success: true, comment: { id: "comment-1" } } }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(okResponse({ commentCreate: { success: true, comment: { id: "comment-1" } } }));
     const client = makeClient(fetchMock);
     await client.createComment("issue-1", "Agent completed ✓");
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as { variables: { issueId: string; body: string } };
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+      variables: { issueId: string; body: string };
+    };
     expect(body.variables.issueId).toBe("issue-1");
     expect(body.variables.body).toBe("Agent completed ✓");
   });

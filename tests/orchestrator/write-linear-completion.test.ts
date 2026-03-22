@@ -36,7 +36,15 @@ function makeWorkspace(): Workspace {
 }
 
 function makeOutcome(overrides: Partial<RunOutcome> = {}): RunOutcome {
-  return { kind: "normal", errorCode: null, errorMessage: null, threadId: null, turnId: null, turnCount: 1, ...overrides };
+  return {
+    kind: "normal",
+    errorCode: null,
+    errorMessage: null,
+    threadId: null,
+    turnId: null,
+    turnCount: 1,
+    ...overrides,
+  };
 }
 
 function makeEntry(overrides: Partial<RunningEntry> = {}): RunningEntry {
@@ -62,23 +70,34 @@ function makeEntry(overrides: Partial<RunningEntry> = {}): RunningEntry {
   } as RunningEntry;
 }
 
-function makeCtx(overrides: {
-  successState?: string | null;
-  resolveStateIdResult?: string | null;
-  resolveStateIdError?: Error;
-} = {}) {
-  const resolveStateId =
-    overrides.resolveStateIdError
-      ? vi.fn().mockRejectedValue(overrides.resolveStateIdError)
-      : vi.fn().mockResolvedValue(overrides.resolveStateIdResult ?? null);
+function makeCtx(
+  overrides: {
+    successState?: string | null;
+    resolveStateIdResult?: string | null;
+    resolveStateIdError?: Error;
+  } = {},
+) {
+  const resolveStateId = overrides.resolveStateIdError
+    ? vi.fn().mockRejectedValue(overrides.resolveStateIdError)
+    : vi.fn().mockResolvedValue(overrides.resolveStateIdResult ?? null);
 
   const updateIssueState = vi.fn().mockResolvedValue(undefined);
   const createComment = vi.fn().mockResolvedValue(undefined);
 
   const config = {
-    tracker: { kind: "linear", apiKey: "k", endpoint: "e", projectSlug: null, activeStates: ["In Progress"], terminalStates: ["Done"] },
+    tracker: {
+      kind: "linear",
+      apiKey: "k",
+      endpoint: "e",
+      projectSlug: null,
+      activeStates: ["In Progress"],
+      terminalStates: ["Done"],
+    },
     polling: { intervalMs: 30000 },
-    workspace: { root: "/tmp", hooks: { afterCreate: null, beforeRun: null, afterRun: null, beforeRemove: null, timeoutMs: 1000 } },
+    workspace: {
+      root: "/tmp",
+      hooks: { afterCreate: null, beforeRun: null, afterRun: null, beforeRemove: null, timeoutMs: 1000 },
+    },
     agent: {
       maxConcurrentAgents: 5,
       maxConcurrentAgentsByState: {},
@@ -111,7 +130,9 @@ function makeCtx(overrides: {
     isRunning: () => true,
     getConfig: () => config,
     releaseIssueClaim: vi.fn(),
-    resolveModelSelection: vi.fn().mockReturnValue({ model: "gpt-4o", reasoningEffort: "high", source: "default" } as ModelSelection),
+    resolveModelSelection: vi
+      .fn()
+      .mockReturnValue({ model: "gpt-4o", reasoningEffort: "high", source: "default" } as ModelSelection),
     notify: vi.fn(),
     queueRetry: vi.fn(),
   };
