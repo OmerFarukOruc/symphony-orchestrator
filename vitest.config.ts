@@ -17,6 +17,9 @@ export default defineConfig({
         "src/core/types.ts",
         // CLI entrypoint (requires integration test)
         "src/dispatch/entrypoint.ts",
+        "src/cli/index.ts",
+        // Frontend — needs browser testing, not Node unit tests
+        "frontend/src/**",
       ],
       thresholds: {
         statements: 82,
