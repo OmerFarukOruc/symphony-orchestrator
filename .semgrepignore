@@ -1,0 +1,9 @@
+# Third-party / vendored skills
+.claude/skills/gstack/
+
+# Agents directory (external tooling, not our source)
+.agents/skills/
+
+# Build output
+dist/
+node_modules/

@@ -15,4 +15,5 @@ COPY WORKFLOW.docker.md ./WORKFLOW.md
 RUN mkdir -p /data/archives /data/workspaces && chown -R node:node /data
 ENV DATA_DIR=/data
 EXPOSE 4000
+USER node
 ENTRYPOINT ["node", "dist/cli/index.js"]
