@@ -102,14 +102,15 @@ function parseSseLine(
 ): RunOutcome | null {
   if (!line.trim()) return null;
 
-  const dataMatch = /^data:\s*(.+)$/s.exec(line);
-  if (!dataMatch) {
+  const trimmed = line.trimStart();
+  if (!trimmed.startsWith("data:")) {
     logger.warn({ line }, "Malformed SSE line, skipping");
     return null;
   }
+  const payload = trimmed.slice(5).trimStart();
 
   try {
-    const message: DispatchStreamMessage = JSON.parse(dataMatch[1]);
+    const message: DispatchStreamMessage = JSON.parse(payload);
     if (message.type === "event") {
       onEvent(message.payload);
     } else if (message.type === "outcome") {
