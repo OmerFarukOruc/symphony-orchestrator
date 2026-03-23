@@ -43,9 +43,9 @@
     "chokidar": "^5.0.0",
     "express": "^5.1.0",
     "express-rate-limit": "^8.3.1",
-    "liquidjs": "^10.24.0",
+    "liquidjs": "^10.25.1",
     "winston": "^3.18.3",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
