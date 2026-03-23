@@ -1,36 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts", "playwright.config.ts"],
+  "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts"],
   "entry": ["src/dispatch/entrypoint.ts"],
-  "ignore": [".github/**", ".husky/**"],
-  "ignoreFiles": [
-    "frontend/src/components/issue-card.ts",
-    "frontend/src/pages/page-factory.ts",
-    "frontend/src/utils/escape.ts"
-  ],
+  "ignoreFiles": ["frontend/src/components/issue-card.ts", "frontend/src/pages/page-factory.ts", "tests/e2e/**"],
   "ignoreExportsUsedInFile": true,
-  "ignoreBinaries": [
-    "eslint",
-    "husky",
-    "jscpd",
-    "knip",
-    "lint-staged",
-    "prettier",
-    "tsc",
-    "tsx",
-    "typedoc",
-    "vite",
-    "vitest"
-  ],
-  "ignoreDependencies": [
-    "@playwright/test",
-    "agentation-mcp",
-    "eslint",
-    "husky",
-    "jscpd",
-    "lint-staged",
-    "prettier",
-    "tsx",
-    "typedoc"
-  ]
+  "ignoreDependencies": ["agentation-mcp"]
 }

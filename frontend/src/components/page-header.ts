@@ -36,30 +36,3 @@ export function createPageHeader(title: string, subtitle: string, options: PageH
 
   return header;
 }
-
-export interface SummaryStripItem {
-  label: string;
-  value: string;
-}
-
-export function createSummaryStripItem(label: string, value: string): HTMLElement {
-  const item = document.createElement("div");
-  item.className = "summary-strip-item";
-  const labelSpan = document.createElement("span");
-  labelSpan.className = "summary-strip-label";
-  labelSpan.textContent = label;
-  const valueSpan = document.createElement("span");
-  valueSpan.className = "summary-strip-value";
-  valueSpan.textContent = value;
-  item.append(labelSpan, valueSpan);
-  return item;
-}
-
-export function createSummaryStrip(items: SummaryStripItem[]): HTMLElement {
-  const strip = document.createElement("div");
-  strip.className = "summary-strip";
-  for (const item of items) {
-    strip.append(createSummaryStripItem(item.label, item.value));
-  }
-  return strip;
-}
