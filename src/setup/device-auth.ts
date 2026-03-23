@@ -119,6 +119,7 @@ export async function saveDeviceAuthTokens(
 
   await configOverlayStore.set("codex.auth.mode", "openai_login");
   await configOverlayStore.set("codex.auth.source_home", authDir);
+  await configOverlayStore.delete("codex.provider");
 
   return { ok: true };
 }
