@@ -26,3 +26,11 @@ export function asStringRecord(value: unknown): Record<string, string> {
   }
   return result;
 }
+
+/**
+ * Extract a human-readable error message from an unknown error value.
+ * Returns the fallback string if the error is not an Error instance.
+ */
+export function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}

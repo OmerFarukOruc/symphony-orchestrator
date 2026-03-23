@@ -14,7 +14,7 @@ import {
 } from "../linear/queries.js";
 import type { Orchestrator } from "../orchestrator/orchestrator.js";
 import type { SecretsStore } from "../secrets/store.js";
-import { isRecord } from "../utils/type-guards.js";
+import { getErrorMessage, isRecord } from "../utils/type-guards.js";
 import { pollDeviceAuth, saveDeviceAuthTokens, startDeviceAuth } from "./device-auth.js";
 
 export interface SetupApiDeps {
@@ -56,7 +56,7 @@ export function handlePostReset(deps: SetupApiDeps) {
       ]);
       res.json({ ok: true });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to reset configuration";
+      const message = getErrorMessage(error, "Failed to reset configuration");
       res.status(500).json({ error: { code: "reset_failed", message } });
     }
   };
@@ -164,12 +164,14 @@ export function handlePostOpenaiKey(deps: SetupApiDeps) {
     }
 
     if (valid) {
-      await deps.secretsStore.set("OPENAI_API_KEY", key);
-      await deps.configOverlayStore.set("codex.auth.mode", "api_key");
-      await deps.configOverlayStore.set("codex.provider.name", "CLIProxyAPI");
-      await deps.configOverlayStore.set("codex.provider.base_url", "http://localhost:8317/v1");
-      await deps.configOverlayStore.set("codex.provider.env_key", "OPENAI_API_KEY");
-      await deps.configOverlayStore.set("codex.provider.wire_api", "responses");
+      await Promise.all([
+        deps.secretsStore.set("OPENAI_API_KEY", key),
+        deps.configOverlayStore.set("codex.auth.mode", "api_key"),
+        deps.configOverlayStore.set("codex.provider.name", "CLIProxyAPI"),
+        deps.configOverlayStore.set("codex.provider.base_url", "http://localhost:8317/v1"),
+        deps.configOverlayStore.set("codex.provider.env_key", "OPENAI_API_KEY"),
+        deps.configOverlayStore.set("codex.provider.wire_api", "responses"),
+      ]);
     }
 
     res.json({ valid });
@@ -197,10 +199,11 @@ export function handlePostCodexAuth(deps: SetupApiDeps) {
       await mkdir(authDir, { recursive: true });
       await writeFile(path.join(authDir, "auth.json"), authJson, { encoding: "utf8", mode: 0o600 });
 
-      await deps.configOverlayStore.set("codex.auth.mode", "openai_login");
-      await deps.configOverlayStore.set("codex.auth.source_home", authDir);
-      // Clear any previous provider config from API key mode
-      await deps.configOverlayStore.delete("codex.provider");
+      await Promise.all([
+        deps.configOverlayStore.set("codex.auth.mode", "openai_login"),
+        deps.configOverlayStore.set("codex.auth.source_home", authDir),
+        deps.configOverlayStore.delete("codex.provider"),
+      ]);
 
       res.json({ ok: true });
     } catch (error) {
@@ -378,18 +381,30 @@ async function createTestIssue(apiKey: string, projectSlug: string): Promise<{ i
   return { identifier: result.issue.identifier, url: result.issue.url };
 }
 
-async function createSymphonyLabel(apiKey: string, projectSlug: string): Promise<{ id: string; name: string }> {
+async function createSymphonyLabel(
+  apiKey: string,
+  projectSlug: string,
+): Promise<{ id: string; name: string; alreadyExists: boolean }> {
   const project = await lookupProject(apiKey, projectSlug);
   const teamId = project.teams?.nodes?.[0]?.id;
   if (!teamId) {
     throw new Error("No team found for the selected project");
   }
 
-  const data = await callLinearGraphQL(apiKey, buildCreateLabelMutation(), {
-    teamId,
-    name: "symphony",
-    color: "#2563eb",
-  });
+  let data: LinearGraphQLResponse;
+  try {
+    data = await callLinearGraphQL(apiKey, buildCreateLabelMutation(), {
+      teamId,
+      name: "symphony",
+      color: "#2563eb",
+    });
+  } catch (error) {
+    const message = getErrorMessage(error, "");
+    if (message.toLowerCase().includes("duplicate")) {
+      return { id: "", name: "symphony", alreadyExists: true };
+    }
+    throw error;
+  }
 
   const result = (data.data as Record<string, unknown>)?.issueLabelCreate as
     | { success?: boolean; issueLabel?: { id?: string; name?: string } }
@@ -399,7 +414,7 @@ async function createSymphonyLabel(apiKey: string, projectSlug: string): Promise
     throw new Error("Linear did not confirm label creation");
   }
 
-  return { id: result.issueLabel.id, name: result.issueLabel.name };
+  return { id: result.issueLabel.id, name: result.issueLabel.name, alreadyExists: false };
 }
 
 export function handlePostCreateTestIssue(deps: SetupApiDeps) {
@@ -421,7 +436,7 @@ export function handlePostCreateTestIssue(deps: SetupApiDeps) {
       const { identifier, url } = await createTestIssue(apiKey, projectSlug);
       res.json({ ok: true, issueIdentifier: identifier, issueUrl: url });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create test issue";
+      const message = getErrorMessage(error, "Failed to create test issue");
       res.status(502).json({ error: { code: "linear_api_error", message } });
     }
   };
@@ -443,10 +458,10 @@ export function handlePostCreateLabel(deps: SetupApiDeps) {
     }
 
     try {
-      const { id, name } = await createSymphonyLabel(apiKey, projectSlug);
-      res.json({ ok: true, labelId: id, labelName: name });
+      const { id, name, alreadyExists } = await createSymphonyLabel(apiKey, projectSlug);
+      res.json({ ok: true, labelId: id, labelName: name, alreadyExists });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create label";
+      const message = getErrorMessage(error, "Failed to create label");
       res.status(502).json({ error: { code: "linear_api_error", message } });
     }
   };
