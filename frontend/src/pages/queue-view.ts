@@ -14,6 +14,8 @@ import { buildQueueToolbar } from "./queue-toolbar";
 export function createQueuePage(params?: Record<string, string>): HTMLElement {
   const page = document.createElement("div");
   page.className = "page queue-page fade-in";
+  const mainPane = document.createElement("div");
+  mainPane.className = "queue-main-pane";
   const toolbar = document.createElement("section");
   toolbar.className = "mc-toolbar queue-toolbar";
   const layout = document.createElement("section");
@@ -22,20 +24,17 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
   boardWrap.className = "kanban-board-wrap";
   const board = document.createElement("div");
   board.className = "kanban-board";
-  const backdrop = document.createElement("div");
-  backdrop.className = "drawer-overlay";
-  backdrop.hidden = true;
-  backdrop.addEventListener("click", () => router.navigate("/queue"));
   const inspector = createIssueInspector({
     mode: "drawer",
     initialId: params?.id,
     onClose: () => router.navigate("/queue"),
   });
   inspector.element.hidden = !params?.id;
-  if (params?.id) backdrop.hidden = false;
+  if (params?.id) layout.classList.add("has-panel");
   boardWrap.append(board);
-  layout.append(boardWrap);
-  page.append(toolbar, layout, backdrop, inspector.element);
+  mainPane.append(toolbar, boardWrap);
+  layout.append(mainPane, inspector.element);
+  page.append(layout);
 
   const filters = createFilters();
   let ui = createUiState(store.getState().snapshot?.workflow_columns ?? []);
@@ -45,12 +44,12 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
   let filterButton: HTMLButtonElement | null = null;
   let lastColumnFingerprint = "";
 
+  function issueFingerprint(i: { identifier: string; status: string; priority: string | number | null }): string {
+    return `${i.identifier}:${i.status}:${String(i.priority)}`;
+  }
+
   function getColumnFingerprint(cols: WorkflowColumn[]): string {
-    return cols
-      .map(
-        (c) => `${c.key}:${c.count ?? 0}:${c.issues.map((i) => `${i.identifier}:${i.status}:${i.priority}`).join(",")}`,
-      )
-      .join("|");
+    return cols.map((c) => `${c.key}:${c.count ?? 0}:${c.issues.map(issueFingerprint).join(",")}`).join("|");
   }
 
   const dragManager = createDragStateManager();
@@ -75,7 +74,7 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
         return () => {
           if (refreshing) return;
           refreshing = true;
-          void api.postRefresh().finally(() => {
+          api.postRefresh().finally(() => {
             setTimeout(() => {
               refreshing = false;
             }, 3000);
@@ -92,9 +91,9 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
     routeId = id;
     const open = Boolean(id);
     inspector.element.hidden = !open;
-    backdrop.hidden = !open;
+    layout.classList.toggle("has-panel", open);
     if (open) {
-      void inspector.load(id);
+      inspector.load(id).catch(() => {});
     }
   }
 

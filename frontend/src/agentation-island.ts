@@ -2,9 +2,9 @@
 // into a dedicated root so it doesn't interfere with the vanilla app.
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
-import { Agentation } from "agentation";
+import { Agentation, type AgentationProps } from "agentation";
 
 const root = document.createElement("div");
 root.id = "agentation-root";
 document.body.appendChild(root);
-createRoot(root).render(createElement(Agentation, { endpoint: "http://localhost:4747" }));
+createRoot(root).render(createElement<AgentationProps>(Agentation, { endpoint: "http://localhost:4747" }));

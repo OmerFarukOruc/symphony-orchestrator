@@ -1,5 +1,5 @@
 import { createEmptyState } from "../components/empty-state";
-import { createPageHeader, createSummaryStrip } from "../components/page-header";
+import { createPageHeader } from "../components/page-header";
 import { router } from "../router";
 
 export function createContainersPage(): HTMLElement {
@@ -11,26 +11,19 @@ export function createContainersPage(): HTMLElement {
     "Monitor sandboxed agent containers — health, resource usage, and lifecycle events.",
   );
 
-  const summaryStrip = createSummaryStrip([
-    { label: "Running", value: "0" },
-    { label: "Stopped", value: "0" },
-    { label: "Errored", value: "0" },
-    { label: "Avg CPU", value: "—" },
-  ]);
-
   const body = document.createElement("section");
   body.className = "page-body";
   body.append(
     createEmptyState(
-      "No containers",
-      "Containers appear here when sandboxed runs start and Docker-backed execution is enabled.",
-      "Open settings",
-      () => router.navigate("/settings"),
-      "default",
-      { secondaryActionLabel: "Setup guide", secondaryActionHref: "/setup" },
+      "Container telemetry needs backend API support",
+      "This page will show running sandboxes, lifecycle state, CPU and memory usage, and container failures once the backend exposes container status and stats APIs. Until then, use Overview to reach issue details for live runs and Observability for backend metrics.",
+      "Open overview",
+      () => router.navigate("/"),
+      "network",
+      { secondaryActionLabel: "Open observability", secondaryActionHref: "/observability" },
     ),
   );
 
-  page.append(header, summaryStrip, body);
+  page.append(header, body);
   return page;
 }

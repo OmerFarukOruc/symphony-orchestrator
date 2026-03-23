@@ -43,6 +43,7 @@ export interface RuntimeIssueView {
   labels: string[];
   startedAt: string | null;
   lastEventAt: string | null;
+  nextRetryDueAt?: string | null;
   tokenUsage: { inputTokens: number; outputTokens: number; totalTokens: number } | null;
   model: string | null;
   reasoningEffort: string | null;
@@ -69,9 +70,17 @@ export interface IssueDetail extends RuntimeIssueView {
   blocked_by?: string[];
   branch_name?: string;
   pull_request_url?: string;
+  nextRetryDueAt?: string | null;
   next_retry_due_at?: string;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface AbortIssueResponse {
+  ok: true;
+  status: "stopping";
+  already_stopping: boolean;
+  requested_at: string;
 }
 
 export interface AttemptSummary {
@@ -151,4 +160,56 @@ export interface LinearProject {
   name: unknown;
   slugId: string;
   teamKey: unknown;
+}
+
+/* ---- Git Context ---- */
+
+export interface GitPullView {
+  number: number;
+  title: string;
+  author: string;
+  state: string;
+  updatedAt: string;
+  url: string;
+  headBranch: string;
+  checksStatus: string | null;
+}
+
+export interface GitCommitView {
+  sha: string;
+  message: string;
+  author: string;
+  date: string;
+}
+
+export interface GitRepoView {
+  repoUrl: string;
+  defaultBranch: string;
+  identifierPrefix: string | null;
+  label: string | null;
+  githubOwner: string | null;
+  githubRepo: string | null;
+  configured: boolean;
+  github?: {
+    description: string | null;
+    visibility: string;
+    openPrCount: number;
+    pulls: GitPullView[];
+    recentCommits: GitCommitView[];
+  };
+}
+
+export interface ActiveBranchView {
+  identifier: string;
+  branchName: string;
+  status: string;
+  workspacePath: string | null;
+  issueTitle: string;
+  pullRequestUrl: string | null;
+}
+
+export interface GitContextResponse {
+  repos: GitRepoView[];
+  activeBranches: ActiveBranchView[];
+  githubAvailable: boolean;
 }

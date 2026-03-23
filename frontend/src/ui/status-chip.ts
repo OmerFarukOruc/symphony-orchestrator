@@ -1,8 +1,10 @@
 const STATUS_LABELS: Record<string, string> = {
   running: "Running",
+  stopping: "Stopping…",
   retrying: "Retrying",
   blocked: "Blocked",
   completed: "Done",
+  cancelled: "Cancelled",
   failed: "Failed",
   queued: "Queued",
   claimed: "Claimed",
@@ -10,7 +12,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function normalizeStatus(status: string): string {
-  return status.trim().toLowerCase().replace(/\s+/g, "_");
+  return status.trim().toLowerCase().replaceAll(/\s+/g, "_");
 }
 
 function capitalizeStatus(status: string): string {

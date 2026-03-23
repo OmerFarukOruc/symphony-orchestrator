@@ -15,6 +15,7 @@ import "./styles/modal.css";
 import "./styles/hardening.css";
 import "./styles/kanban.css";
 import "./styles/container-queries.css";
+import "./styles/git.css";
 
 import { api } from "./api";
 import { lazyPage } from "./utils/lazy-page";

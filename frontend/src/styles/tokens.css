@@ -74,9 +74,32 @@
   --stroke-emphasis: 3px;
 
   /* Shell dimensions */
-  --sidebar-width-collapsed: 48px;
+  --sidebar-width-collapsed: 56px;
   --sidebar-width-expanded: 220px;
   --header-height: 48px;
+  --dashboard-h2-size: 1.125rem;
+  --dashboard-h3-size: 1rem;
+  --dashboard-number-lg: clamp(1.875rem, 3vw, 2.75rem);
+  --dashboard-panel-min-height: 15rem;
+
+  --tone-live-bg: color-mix(in srgb, var(--status-running) 6%, var(--bg-surface));
+  --tone-warning-bg: color-mix(in srgb, var(--status-retrying) 8%, var(--bg-surface));
+  --tone-danger-bg: color-mix(in srgb, var(--status-blocked) 8%, var(--bg-surface));
+  --tone-warning-border: var(--status-retrying);
+  --tone-danger-border: var(--status-blocked);
+
+  --brand-signal-seam: repeating-linear-gradient(
+    90deg,
+    transparent 0 10px,
+    color-mix(in srgb, var(--text-accent) 70%, transparent) 10px 16px,
+    transparent 16px 24px
+  );
+}
+
+[data-theme="dark"] {
+  --tone-live-bg: color-mix(in srgb, var(--status-running) 10%, var(--bg-surface));
+  --tone-warning-bg: color-mix(in srgb, var(--status-retrying) 12%, var(--bg-surface));
+  --tone-danger-bg: color-mix(in srgb, var(--status-blocked) 12%, var(--bg-surface));
 }
 
 html,

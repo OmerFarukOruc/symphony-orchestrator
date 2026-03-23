@@ -370,3 +370,214 @@
   gap: var(--space-2);
   margin-top: var(--space-2);
 }
+
+.setup-device-auth-panel,
+.setup-manual-auth {
+  display: grid;
+  gap: var(--space-3);
+  border: var(--stroke-default) solid var(--border-stitch);
+  background: var(--bg-muted);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.setup-device-auth-header,
+.setup-manual-auth-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.setup-device-auth-copy {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.setup-device-auth-actions,
+.setup-device-auth-status,
+.setup-device-auth-card {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.setup-device-auth-actions {
+  grid-template-columns: repeat(auto-fit, minmax(180px, max-content));
+}
+
+.setup-device-auth-status-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.setup-device-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px var(--space-2);
+  border: var(--stroke-default) solid currentColor;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.setup-device-auth-badge.is-starting,
+.setup-device-auth-badge.is-pending {
+  color: var(--status-retrying);
+}
+
+.setup-device-auth-badge.is-complete {
+  color: var(--status-running);
+}
+
+.setup-device-auth-badge.is-expired {
+  color: var(--status-blocked);
+}
+
+.setup-device-auth-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.setup-device-auth-card {
+  padding: var(--space-3);
+  border: var(--stroke-default) solid var(--border-stitch);
+  background: var(--bg-surface);
+}
+
+.setup-device-auth-card-label {
+  font-family: var(--font-body);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-muted);
+}
+
+.setup-device-auth-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.setup-device-auth-card-value {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.setup-device-auth-card-value.is-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  letter-spacing: var(--tracking-wide);
+}
+
+.setup-device-auth-link {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+/* ── Pipeline flow diagram ──────────────────────────────────── */
+
+.setup-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--bg-muted);
+  border: var(--stroke-default) solid var(--border-stitch);
+}
+
+.setup-flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 90px;
+}
+
+.setup-flow-icon {
+  font-size: 24px;
+}
+
+.setup-flow-label {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.setup-flow-sub {
+  font-family: var(--font-body);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+.setup-flow-arrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  color: var(--text-muted);
+  padding: 0 var(--space-1);
+}
+
+/* ── Quick start cards ──────────────────────────────────────── */
+
+.setup-quick-start-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.setup-quick-start-card {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--stroke-default) solid var(--border-stitch);
+  background: var(--bg-muted);
+  transition: border-color var(--motion-fast) var(--ease-out-quart);
+}
+
+.setup-quick-start-card.is-success {
+  border-color: var(--status-running);
+}
+
+.setup-quick-start-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+  padding-top: 2px;
+}
+
+.setup-quick-start-title {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.setup-quick-start-desc {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-3);
+}
+
+.setup-quick-start-success {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--status-running);
+}

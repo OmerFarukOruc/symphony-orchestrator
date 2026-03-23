@@ -23,7 +23,9 @@ export function buildSection(title: string, widgets: WidgetDescriptor[]): HTMLEl
   header.append(headerWrap);
   const grid = document.createElement("div");
   grid.className = "observability-grid";
-  widgets.forEach((widget) => grid.append(createWidgetCard(widget)));
+  widgets.forEach((widget) => {
+    grid.append(createWidgetCard(widget));
+  });
   section.append(header, grid);
   return section;
 }
@@ -44,9 +46,14 @@ export function buildCadenceSeries(capturedAtSeries: number[]): number[] {
   return series.length ? series : [0];
 }
 
+function widgetCardClassName(tone?: string): string {
+  const base = "mc-stat-card observability-card";
+  return tone ? base + " tone-" + tone : base;
+}
+
 function createWidgetCard(widget: WidgetDescriptor): HTMLElement {
   const card = createStatCardShell({
-    className: `mc-stat-card observability-card${widget.tone ? ` tone-${widget.tone}` : ""}`,
+    className: widgetCardClassName(widget.tone),
   });
   const header = createStatCardHeader({
     title: widget.title,
@@ -61,14 +68,51 @@ function createWidgetCard(widget: WidgetDescriptor): HTMLElement {
   detail.className = "text-secondary observability-detail";
   detail.textContent = widget.detail;
   card.append(header, value, detail);
-  if (widget.sparkline?.length) {
+  const sparklineSeries = widget.sparkline;
+  if (sparklineSeries?.length && sparklineSeries.some((value) => value !== sparklineSeries[0])) {
     const sparkline = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    sparkline.setAttribute("viewBox", "0 0 100 28");
+    sparkline.setAttribute("viewBox", "0 0 100 36");
     sparkline.setAttribute("class", "observability-sparkline");
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", buildSparklinePath(widget.sparkline));
-    sparkline.append(path);
+
+    const lineD = buildSparklinePath(sparklineSeries);
+
+    const area = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    area.setAttribute("d", `${lineD} L 100,36 L 0,36 Z`);
+    area.setAttribute("class", "observability-chart-area");
+
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    line.setAttribute("d", lineD);
+    line.setAttribute("class", "observability-chart-line");
+
+    const baseline = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    baseline.setAttribute("x1", "0");
+    baseline.setAttribute("y1", "35");
+    baseline.setAttribute("x2", "100");
+    baseline.setAttribute("y2", "35");
+    baseline.setAttribute("class", "observability-chart-axis");
+
+    const minVal = Math.min(...sparklineSeries);
+    const minLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    minLabel.setAttribute("x", "0");
+    minLabel.setAttribute("y", "34");
+    minLabel.setAttribute("class", "observability-chart-label");
+    minLabel.textContent = formatChartLabel(minVal);
+
+    const maxVal = Math.max(...sparklineSeries);
+    const maxLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    maxLabel.setAttribute("x", "100");
+    maxLabel.setAttribute("y", "10");
+    maxLabel.setAttribute("text-anchor", "end");
+    maxLabel.setAttribute("class", "observability-chart-label");
+    maxLabel.textContent = formatChartLabel(maxVal);
+
+    sparkline.append(area, line, baseline, minLabel, maxLabel);
     card.append(sparkline);
+  } else if (sparklineSeries?.length) {
+    const unavailable = document.createElement("p");
+    unavailable.className = "observability-chart-unavailable";
+    unavailable.textContent = "Trend unavailable";
+    card.append(unavailable);
   }
   if (widget.list?.length) {
     const list = document.createElement("ul");
@@ -81,4 +125,11 @@ function createWidgetCard(widget: WidgetDescriptor): HTMLElement {
     card.append(list);
   }
   return card;
+}
+
+function formatChartLabel(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(1);
 }

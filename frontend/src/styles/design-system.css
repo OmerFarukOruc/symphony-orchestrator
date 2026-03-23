@@ -140,15 +140,15 @@
   --bg-subtle: #243040;
 
   --text-primary: #e8edf3;
-  --text-secondary: #8b99a8;
-  --text-muted: #546070;
-  --text-subtle: #3d4f60;
+  --text-secondary: #a3b0be;
+  --text-muted: #7a8796;
+  --text-subtle: #617181;
   --text-accent: #c96e4a;
 
-  --border-default: #2a3548;
-  --border-subtle: #1e2d3d;
-  --border-muted: #182030;
-  --border-strong: #3d4f62;
+  --border-default: #314052;
+  --border-subtle: #233143;
+  --border-muted: #1b2535;
+  --border-strong: #4a5d73;
 
   --interactive-primary: #c96e4a;
   --interactive-primary-hover: #da9478;
@@ -156,17 +156,17 @@
   --interactive-primary-text: #0c1016;
 
   /* Status colors — slightly brighter in dark mode for legibility */
-  --status-backlog: #a8b5c4;
-  --status-triage: #9ea2b4;
+  --status-backlog: #b3bfcc;
+  --status-triage: #aeb3c2;
   --status-queued: #6b8fff;
   --status-claimed: #9d84e8;
   --status-running: #4db86a;
   --status-retrying: #e8a33c;
   --status-blocked: #e86060;
-  --status-completed: #8b99a8;
-  --status-closed: #82a090;
-  --status-cancelled: #7c8590;
-  --status-duplicate: #a095ab;
+  --status-completed: #9daab8;
+  --status-closed: #93af9f;
+  --status-cancelled: #959faa;
+  --status-duplicate: #b0a5bc;
   --status-pending-change: #c96e4a;
 }
 
@@ -270,7 +270,7 @@
 
 html {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   color: var(--text-primary);
   background: var(--bg-base);
@@ -437,7 +437,7 @@ body {
 
 .text-action {
   font-family: var(--font-body);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 500;
 }
 
@@ -453,7 +453,7 @@ body {
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-2);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--font-medium);
   background: var(--bg-muted);
   color: var(--text-secondary);
@@ -487,19 +487,23 @@ body {
 }
 
 [data-theme="dark"] .badge-success {
-  background: color-mix(in srgb, var(--status-running) 15%, transparent);
+  background: color-mix(in srgb, var(--status-running) 20%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--status-running) 34%, transparent);
   color: var(--status-running);
 }
 [data-theme="dark"] .badge-warning {
-  background: color-mix(in srgb, var(--status-retrying) 15%, transparent);
+  background: color-mix(in srgb, var(--status-retrying) 20%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--status-retrying) 34%, transparent);
   color: var(--status-retrying);
 }
 [data-theme="dark"] .badge-danger {
-  background: color-mix(in srgb, var(--status-blocked) 15%, transparent);
+  background: color-mix(in srgb, var(--status-blocked) 20%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--status-blocked) 34%, transparent);
   color: var(--status-blocked);
 }
 [data-theme="dark"] .badge-info {
-  background: color-mix(in srgb, var(--status-queued) 15%, transparent);
+  background: color-mix(in srgb, var(--status-queued) 20%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--status-queued) 34%, transparent);
   color: var(--status-queued);
 }
 
@@ -510,7 +514,7 @@ body {
   justify-content: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: var(--font-medium);
   font-family: var(--font-body);
   border: 1px solid transparent;
@@ -596,7 +600,7 @@ body {
 .textarea {
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-family: var(--font-sans);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);

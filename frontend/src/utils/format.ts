@@ -60,6 +60,32 @@ export function formatRelativeTime(value: string | null | undefined): string {
   return "—";
 }
 
+export function formatCountdown(value: string | null | undefined, now = Date.now()): string {
+  const date = asDate(value);
+  if (!date) {
+    return "—";
+  }
+  const diffSeconds = Math.round((date.getTime() - now) / 1000);
+  if (Math.abs(diffSeconds) < 1) {
+    return "now";
+  }
+
+  const totalSeconds = Math.abs(diffSeconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts: string[] = [];
+  if (hours > 0) {
+    parts.push(`${hours}h`);
+  }
+  if (minutes > 0 || hours > 0) {
+    parts.push(`${minutes}m`);
+  }
+  parts.push(`${seconds}s`);
+  const duration = parts.join(" ");
+  return diffSeconds > 0 ? `in ${duration}` : `${duration} ago`;
+}
+
 export function formatTimestamp(value: string | null | undefined): string {
   const date = asDate(value);
   if (!date) {
@@ -80,6 +106,32 @@ export function formatShortTime(value: string | null | undefined): string {
     return "—";
   }
   return new Intl.DateTimeFormat("en", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+export function formatCompactTimestamp(value: string | null | undefined): string {
+  const date = asDate(value);
+  if (!date) {
+    return "—";
+  }
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDiff = Math.round((startOfToday.getTime() - startOfDate.getTime()) / 86_400_000);
+  const timeText = formatShortTime(value);
+  if (dayDiff === 0) {
+    return `Today, ${timeText}`;
+  }
+  if (dayDiff === 1) {
+    return `Yesterday, ${timeText}`;
+  }
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

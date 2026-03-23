@@ -204,6 +204,10 @@
   border-color: color-mix(in srgb, var(--color-copper-400) 50%, transparent);
 }
 
+.sidebar-item-badge[hidden] {
+  display: none;
+}
+
 /* ── Sidebar hotkey badge ─────────────────────────────── */
 
 .sidebar-hotkey {
@@ -249,31 +253,63 @@
   opacity: 1;
 }
 
-/* Collapsed mode — intentional design */
+/* Collapsed mode — icon-only design */
 .shell-sidebar:not(.is-expanded) {
   background: var(--bg-surface);
+  align-items: center;
+  padding: var(--space-3) 0 var(--space-2);
+  gap: var(--space-3);
+}
+
+/* Hide group headers when collapsed (they become empty buttons) */
+.shell-sidebar:not(.is-expanded) .sidebar-group-header {
+  display: none;
+}
+
+/* Remove group spacing when headers are hidden */
+.shell-sidebar:not(.is-expanded) .sidebar-group {
+  width: 100%;
+  align-items: center;
+  padding: 0;
+}
+
+.shell-sidebar:not(.is-expanded) .sidebar-group + .sidebar-group {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+}
+
+.shell-sidebar:not(.is-expanded) .sidebar-group-items-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .shell-sidebar:not(.is-expanded) .sidebar-item {
   justify-content: center;
+  width: calc(var(--sidebar-width-collapsed) - 14px);
   padding: 0;
+  min-height: calc(var(--sidebar-width-collapsed) - 14px);
+  margin: 0 auto;
+  border-left: none;
+  border-radius: 12px;
+}
+
+.shell-sidebar:not(.is-expanded) .sidebar-item-badge {
+  display: none;
 }
 
 .shell-sidebar:not(.is-expanded) .sidebar-item.is-active {
-  background: var(--bg-elevated);
+  border-left-width: 0;
+  background: color-mix(in srgb, var(--text-accent) 16%, var(--bg-elevated));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--text-accent) 45%, transparent),
+    inset 0 0 18px -8px color-mix(in srgb, var(--text-accent) 45%, transparent);
 }
 
 /* Visual indicator for collapsed active item */
 .shell-sidebar:not(.is-expanded) .sidebar-item.is-active::after {
-  content: "";
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 4px;
-  background: var(--text-accent);
-  border-radius: 50%;
+  content: none;
 }
 
 @media (max-width: 800px) {
@@ -298,6 +334,7 @@
   cursor: pointer;
   font-family: var(--font-body);
   font-size: var(--text-sm);
+  min-height: var(--control-height-xl);
   transition:
     color var(--motion-fast) var(--ease-out-quart),
     background-color var(--motion-fast) var(--ease-out-quart);
@@ -318,6 +355,15 @@
 
 .shell-sidebar:not(.is-expanded) .sidebar-collapse-toggle-icon {
   transform: rotate(180deg);
+}
+
+.shell-sidebar:not(.is-expanded) .sidebar-collapse-toggle {
+  width: calc(var(--sidebar-width-collapsed) - 14px);
+  min-height: calc(var(--sidebar-width-collapsed) - 14px);
+  margin: auto auto 0;
+  padding: 0;
+  border-top: none;
+  border-radius: 12px;
 }
 
 .sidebar-collapse-label {
@@ -346,6 +392,7 @@
   align-items: center;
   gap: var(--space-4);
   padding: 0 var(--space-5);
+  border-top: 2px solid var(--text-accent);
 }
 
 .shell-outlet {
@@ -389,7 +436,7 @@
 .header-brand {
   font-family: var(--font-heading);
   font-weight: 700;
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   color: var(--text-primary);
   letter-spacing: var(--tracking-snug);
   gap: var(--space-2);

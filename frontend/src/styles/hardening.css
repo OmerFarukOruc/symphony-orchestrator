@@ -301,23 +301,23 @@
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
   }
 
   /* Keep instant feedback visible */
   .skeleton-line,
   .skeleton-block {
-    animation: none !important;
+    animation: none;
     opacity: 0.6;
   }
 
   /* Remove pulsing animations */
   .is-status-running::before,
   .is-status-claimed::before {
-    animation: none !important;
+    animation: none;
   }
 }
 

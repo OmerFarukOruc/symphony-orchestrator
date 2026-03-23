@@ -10,6 +10,16 @@ import { formatCompactNumber, formatDuration, formatRateLimitHeadroom, formatRel
 import { flashDiff, setTextWithDiff } from "../utils/diff";
 import { registerPageCleanup } from "../utils/page";
 
+const EMPTY_STATE_DISMISSED_KEY = "symphony-empty-state-dismissed";
+
+function isGettingStartedDismissed(): boolean {
+  return localStorage.getItem(EMPTY_STATE_DISMISSED_KEY) === "true";
+}
+
+function dismissGettingStarted(): void {
+  localStorage.setItem(EMPTY_STATE_DISMISSED_KEY, "true");
+}
+
 /**
  * Creates a live metric pill for the hero band.
  * Small, inline stat with value and label.
@@ -131,25 +141,21 @@ function fillList(container: HTMLElement, items: HTMLElement[]): void {
   }
 }
 
-/**
- * Creates a calm empty state for the primary attention zone.
- * Intentionally minimal - no icon, just subtle text.
- */
-function createCalmEmptyState(
+function createTeachingEmptyState(
   title: string,
   detail: string,
   actionLabel?: string,
   onAction?: () => void,
 ): HTMLElement {
   const box = document.createElement("div");
-  box.className = "overview-calm-empty";
+  box.className = "overview-teaching-empty";
 
   const heading = document.createElement("h3");
-  heading.className = "overview-calm-title";
+  heading.className = "overview-teaching-empty-title";
   heading.textContent = title;
 
   const text = document.createElement("p");
-  text.className = "overview-calm-detail";
+  text.className = "overview-teaching-empty-detail";
   text.textContent = detail;
 
   box.append(heading, text);
@@ -157,13 +163,61 @@ function createCalmEmptyState(
   if (actionLabel && onAction) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "mc-button mc-button-ghost";
+    button.className = "mc-button mc-button-secondary";
     button.textContent = actionLabel;
     button.addEventListener("click", onAction);
     box.append(button);
   }
 
   return box;
+}
+
+function createGettingStartedCard(onDismiss: () => void): HTMLElement {
+  const card = document.createElement("div");
+  card.className = "overview-getting-started";
+
+  const dismiss = document.createElement("button");
+  dismiss.type = "button";
+  dismiss.className = "overview-getting-started-dismiss";
+  dismiss.textContent = "×";
+  dismiss.setAttribute("aria-label", "Dismiss");
+  dismiss.addEventListener("click", () => {
+    dismissGettingStarted();
+    onDismiss();
+  });
+
+  const heading = document.createElement("h3");
+  heading.className = "overview-getting-started-title";
+  heading.textContent = "No issues yet";
+
+  const desc = document.createElement("p");
+  desc.className = "overview-getting-started-desc";
+  desc.textContent =
+    "Symphony is polling your Linear project every 30 seconds. Create an issue and move it to In Progress to get started.";
+
+  const steps = document.createElement("div");
+  steps.className = "overview-getting-started-steps";
+
+  const stepItems = [
+    { n: "1", text: "Create an issue in Linear" },
+    { n: "2", text: "Move it to In Progress" },
+    { n: "3", text: "Symphony picks it up within 30 seconds" },
+  ];
+
+  for (const s of stepItems) {
+    const step = document.createElement("div");
+    step.className = "overview-getting-started-step";
+    const dot = document.createElement("span");
+    dot.className = "overview-getting-started-step-n";
+    dot.textContent = s.n;
+    const label = document.createElement("span");
+    label.textContent = s.text;
+    step.append(dot, label);
+    steps.append(step);
+  }
+
+  card.append(dismiss, heading, desc, steps);
+  return card;
 }
 
 export function createOverviewPage(): HTMLElement {
@@ -173,6 +227,28 @@ export function createOverviewPage(): HTMLElement {
   // Hero metrics band - the strong top "Now" strip
   const { band: heroBand, metrics: heroMetrics } = createHeroMetricsBand();
   page.append(heroBand);
+
+  // Getting started card (shown when dashboard is empty)
+  const gettingStartedContainer = document.createElement("div");
+  let gettingStartedEl: HTMLElement | null = null;
+
+  function showGettingStarted(): void {
+    if (gettingStartedEl || isGettingStartedDismissed()) return;
+    gettingStartedEl = createGettingStartedCard(() => {
+      gettingStartedEl?.remove();
+      gettingStartedEl = null;
+    });
+    gettingStartedContainer.append(gettingStartedEl);
+  }
+
+  function hideGettingStarted(): void {
+    if (gettingStartedEl) {
+      gettingStartedEl.remove();
+      gettingStartedEl = null;
+    }
+  }
+
+  page.append(gettingStartedContainer);
 
   // Main content grid: Primary attention zone + secondary sidebar
   const mainGrid = document.createElement("section");
@@ -187,7 +263,6 @@ export function createOverviewPage(): HTMLElement {
   attentionList.className = "overview-attention-list";
   attentionZone.append(attentionList);
 
-  // Secondary sidebar: Token burn + Recent events stacked
   const secondary = document.createElement("aside");
   secondary.className = "overview-secondary";
 
@@ -208,6 +283,30 @@ export function createOverviewPage(): HTMLElement {
   tokenSection.append(tokenGrid);
   secondary.append(tokenSection);
 
+  const quickActions = document.createElement("div");
+  quickActions.className = "overview-quick-actions";
+
+  const quickTitle = document.createElement("h2");
+  quickTitle.className = "overview-section-title";
+  quickTitle.textContent = "Quick actions";
+  quickActions.append(quickTitle);
+
+  const actions = [
+    { label: "View queue", path: "/queue" },
+    { label: "Observability", path: "/observability" },
+    { label: "Git & PRs", path: "/git" },
+  ];
+
+  for (const action of actions) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "overview-quick-action-btn";
+    btn.textContent = action.label;
+    btn.addEventListener("click", () => router.navigate(action.path));
+    quickActions.append(btn);
+  }
+  secondary.append(quickActions);
+
   // Recent events section
   const recentSection = document.createElement("div");
   recentSection.className = "overview-recent-section";
@@ -216,7 +315,6 @@ export function createOverviewPage(): HTMLElement {
   const recentList = document.createElement("div");
   recentList.className = "overview-events";
   recentSection.append(recentList);
-  secondary.append(recentSection);
 
   // Terminal issues section (lower priority)
   const terminalSection = document.createElement("div");
@@ -226,7 +324,6 @@ export function createOverviewPage(): HTMLElement {
   const terminalList = document.createElement("div");
   terminalList.className = "overview-list";
   terminalSection.append(terminalList);
-  secondary.append(terminalSection);
 
   // System health section
   const healthSection = document.createElement("div");
@@ -234,7 +331,6 @@ export function createOverviewPage(): HTMLElement {
   healthSection.append(createSectionHeader("System health", "Watchdog"));
   const { root: healthBadge, update: updateHealthBadge } = createSystemHealthBadge();
   healthSection.append(healthBadge);
-  secondary.append(healthSection);
 
   // Stall events section
   const stallSection = document.createElement("div");
@@ -242,11 +338,15 @@ export function createOverviewPage(): HTMLElement {
   stallSection.append(createSectionHeader("Stall events"));
   const { root: stallList, update: updateStallEvents } = createStallEventsTable();
   stallSection.append(stallList);
-  secondary.append(stallSection);
 
   // Assemble main grid
   mainGrid.append(attentionZone, secondary);
   page.append(mainGrid);
+
+  const lowerGrid = document.createElement("section");
+  lowerGrid.className = "overview-lower-grid";
+  lowerGrid.append(recentSection, healthSection, terminalSection, stallSection);
+  page.append(lowerGrid);
 
   // Loading state
   const loadingSections = [attentionZone, tokenSection, recentSection, terminalSection, healthSection, stallSection];
@@ -294,6 +394,19 @@ export function createOverviewPage(): HTMLElement {
       attentionIssues.map((issue) => issueRow(issue, "attention")),
     );
 
+    // Getting started card — show when dashboard is completely empty
+    const isEmpty =
+      snapshot.counts.running === 0 &&
+      snapshot.counts.retrying === 0 &&
+      snapshot.queued.length === 0 &&
+      snapshot.completed.length === 0 &&
+      attentionIssues.length === 0;
+    if (isEmpty) {
+      showGettingStarted();
+    } else {
+      hideGettingStarted();
+    }
+
     // Recent events
     fillList(
       recentList,
@@ -312,13 +425,12 @@ export function createOverviewPage(): HTMLElement {
     // Stall events table
     updateStallEvents(snapshot.stall_events);
 
-    // Calm empty states
     if (attentionList.childElementCount === 0) {
       attentionList.replaceChildren(
-        createCalmEmptyState(
+        createTeachingEmptyState(
           "All clear",
-          "No issues require intervention. Blocked, retrying, and pending override issues will surface here.",
-          "View queue",
+          "No issues need attention right now. Blocked, retrying, or pending issues will appear here.",
+          "Open queue",
           () => router.navigate("/queue"),
         ),
       );
@@ -326,19 +438,16 @@ export function createOverviewPage(): HTMLElement {
 
     if (recentList.childElementCount === 0) {
       recentList.replaceChildren(
-        createCalmEmptyState(
+        createTeachingEmptyState(
           "Awaiting activity",
-          "Workflow events will appear here as they occur.",
+          "Workflow events will appear here as the orchestrator processes issues.",
         ),
       );
     }
 
     if (terminalList.childElementCount === 0) {
       terminalList.replaceChildren(
-        createCalmEmptyState(
-          "No terminal issues",
-          "Completed and failed work will collect here.",
-        ),
+        createTeachingEmptyState("No completed work yet", "Finished and failed issues will collect here for review."),
       );
     }
   }

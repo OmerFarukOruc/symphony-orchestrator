@@ -1,6 +1,6 @@
 import type { RecentEvent } from "../types";
 import { eventChip } from "../ui/event-chip";
-import { formatRelativeTime, formatShortTime } from "../utils/format";
+import { formatCompactTimestamp, formatRelativeTime } from "../utils/format";
 
 export function createEventRow(event: RecentEvent, compact = false): HTMLElement {
   const row = document.createElement("article");
@@ -12,7 +12,7 @@ export function createEventRow(event: RecentEvent, compact = false): HTMLElement
   const time = document.createElement("time");
   time.className = "event-row-time text-mono";
   time.dateTime = event.at;
-  time.textContent = compact ? formatShortTime(event.at) : formatRelativeTime(event.at);
+  time.textContent = compact ? formatCompactTimestamp(event.at) : formatRelativeTime(event.at);
 
   const chip = eventChip(event);
 

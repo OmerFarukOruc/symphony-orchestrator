@@ -74,6 +74,18 @@
   }
 }
 
+@media (min-width: 1181px) {
+  @container (max-width: 920px) {
+    .queue-layout.has-panel .kanban-board {
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(280px, 320px);
+      grid-template-columns: none;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+  }
+}
+
 @container (max-width: 360px) {
   .kanban-column-header {
     flex-wrap: wrap;

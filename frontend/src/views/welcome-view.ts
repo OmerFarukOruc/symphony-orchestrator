@@ -96,13 +96,12 @@ export function createWelcomePage(): HTMLElement {
 
   const codeBlock = document.createElement("pre");
   codeBlock.className = "welcome-code-block mc-code-panel";
-  codeBlock.textContent = "node dist/cli.js ./WORKFLOW.example.md --port 4000";
+  codeBlock.textContent = "node dist/cli/index.js ./WORKFLOW.example.md --port 4000";
   checklist.append(codeBlock);
 
   const footer = document.createElement("p");
   footer.className = "welcome-footer";
-  footer.textContent =
-    "This page appears when no workflow is active. Run Symphony from the terminal to start.";
+  footer.textContent = "This page appears when no workflow is active. Run Symphony from the terminal to start.";
 
   page.append(hero, checklist, footer);
   return page;

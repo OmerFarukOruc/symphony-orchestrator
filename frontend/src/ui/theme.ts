@@ -2,7 +2,6 @@ type Theme = "dark" | "light";
 export type ThemePreference = Theme | "system";
 
 const STORAGE_KEY = "symphony-theme";
-const THEME_PREFERENCES: ThemePreference[] = ["dark", "light", "system"];
 
 let mediaQueryList: MediaQueryList | null = null;
 let listeningForSystemTheme = false;
@@ -63,7 +62,6 @@ export function initTheme(): void {
 
 export function toggleTheme(): Theme {
   const currentPreference = getThemePreference();
-  const currentIndex = THEME_PREFERENCES.indexOf(currentPreference);
-  const nextPreference = THEME_PREFERENCES[(currentIndex + 1) % THEME_PREFERENCES.length] ?? "system";
+  const nextPreference: Theme = currentPreference === "dark" ? "light" : "dark";
   return applyThemePreference(nextPreference);
 }

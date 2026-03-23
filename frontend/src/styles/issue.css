@@ -18,19 +18,25 @@
 .issue-header-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .issue-header-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .issue-summary-strip,
 .issue-meta-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.issue-retry-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .issue-title {
@@ -68,16 +74,26 @@
 
 .issue-section h2 {
   font-family: var(--font-heading);
-  font-size: var(--text-sm-plus);
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-secondary);
+  letter-spacing: var(--tracking-snug);
 }
 
 .issue-summary-item,
 .issue-meta-item {
   padding: var(--space-3);
   border: 1px solid var(--border-stitch);
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 64%, transparent);
+}
+
+.issue-summary-item {
+  min-width: 0;
+}
+
+.issue-summary-item strong,
+.issue-meta-item strong {
+  min-width: 0;
 }
 
 .issue-body-copy,
@@ -94,6 +110,7 @@
 }
 
 @media (max-width: 900px) {
+  .issue-retry-strip,
   .issue-summary-strip,
   .issue-meta-grid,
   .issue-form-grid {

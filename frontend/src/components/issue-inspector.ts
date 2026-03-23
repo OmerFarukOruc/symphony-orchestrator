@@ -5,26 +5,21 @@ import { statusChip } from "../ui/status-chip";
 import { skeletonCard } from "../ui/skeleton";
 import { flashDiff, setTextWithDiff } from "../utils/diff";
 import { formatCompactNumber, computeDurationSeconds, formatDuration, formatTimestamp } from "../utils/format";
+import { createSummaryStat } from "./issue-inspector-common.js";
+import { buildRetrySection } from "./issue-inspector-retry-section.js";
 import {
   buildActivitySection,
   buildAttemptsSection,
-  createSummaryStat,
   buildDescriptionSection,
   buildModelSection,
   buildWorkspaceSection,
 } from "./issue-inspector-sections";
+import { createIssueAbortAction } from "./issue-inspector-abort";
 
 interface IssueInspectorOptions {
   mode: "page" | "drawer";
   initialId?: string;
   onClose?: () => void;
-}
-
-function mergeDetail(
-  detail: IssueDetail,
-  attempts: { attempts: IssueDetail["attempts"]; current_attempt_id: string | null },
-): IssueDetail {
-  return { ...detail, attempts: attempts.attempts, currentAttemptId: attempts.current_attempt_id };
 }
 
 export function createIssueInspector(options: IssueInspectorOptions): {
@@ -33,15 +28,22 @@ export function createIssueInspector(options: IssueInspectorOptions): {
   destroy: () => void;
 } {
   const root = document.createElement("div");
-  root.className = options.mode === "drawer" ? "issue-inspector queue-drawer drawer" : "issue-page";
+  root.className =
+    options.mode === "drawer"
+      ? "issue-inspector issue-inspector-shell queue-drawer drawer"
+      : "issue-page issue-inspector-shell";
   const header = document.createElement("section");
-  header.className = "issue-section mc-panel";
+  header.className = "issue-header issue-section mc-panel";
   const summary = document.createElement("section");
   summary.className = "issue-section mc-panel issue-summary-strip";
   const content = document.createElement("div");
-  content.className = "issue-inspector";
+  content.className = "issue-inspector issue-inspector-body";
   root.append(header, summary, content);
 
+  const headerTop = document.createElement("div");
+  headerTop.className = "issue-header-top";
+  const titleBlock = document.createElement("div");
+  titleBlock.className = "issue-header-title-block";
   const identifier = Object.assign(document.createElement("div"), {
     className: "issue-identifier",
   });
@@ -50,22 +52,27 @@ export function createIssueInspector(options: IssueInspectorOptions): {
   headerMeta.className = "issue-header-meta";
   const statusSlot = document.createElement("div");
   const updatedAt = document.createElement("span");
-  updatedAt.className = "text-secondary";
+  updatedAt.className = "text-secondary issue-updated-at";
+  titleBlock.append(identifier, title);
+  headerTop.append(titleBlock);
 
   // Primary actions row
   const headerActions = document.createElement("div");
   headerActions.className = "issue-header-actions";
   const logsLink = Object.assign(document.createElement("a"), {
-    className: "mc-button mc-button-primary",
-    textContent: "View Logs",
+    className: "mc-button mc-button-ghost is-primary",
+    textContent: "Open logs",
   });
-  const linearLink = Object.assign(document.createElement("a"), {
+  logsLink.setAttribute("aria-label", "Open issue logs");
+  const trackerLink = Object.assign(document.createElement("a"), {
     className: "mc-button mc-button-ghost",
     target: "_blank",
     rel: "noreferrer",
-    textContent: "Linear",
+    textContent: "Open tracker",
   });
-  headerActions.append(logsLink, linearLink);
+  trackerLink.setAttribute("aria-label", "Open issue in tracker");
+  const abortAction = createIssueAbortAction({ requestRefresh: refresh });
+  headerActions.append(abortAction.button, logsLink, trackerLink);
 
   headerMeta.append(statusSlot, updatedAt);
 
@@ -75,7 +82,8 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     const fullPageButton = document.createElement("button");
     fullPageButton.type = "button";
     fullPageButton.className = "mc-button mc-button-ghost";
-    fullPageButton.textContent = "Full Page";
+    fullPageButton.textContent = "Open full issue";
+    fullPageButton.setAttribute("aria-label", "Open full issue page");
     fullPageButton.addEventListener("click", () => {
       if (currentId) {
         router.navigate(`/issues/${currentId}`);
@@ -88,9 +96,9 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     closeBtn.setAttribute("aria-label", "Close panel");
     closeBtn.textContent = "✕";
     closeBtn.addEventListener("click", () => options.onClose?.());
-    header.append(identifier, title, headerMeta, headerActions, closeBtn);
+    header.append(headerTop, headerMeta, headerActions, closeBtn);
   } else {
-    header.append(identifier, title, headerMeta, headerActions);
+    header.append(headerTop, headerMeta, headerActions);
   }
 
   const summaryStats = {
@@ -113,32 +121,40 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     content.replaceChildren(skeletonCard(), skeletonCard(), skeletonCard());
   }
 
-  function render(detail: IssueDetail): void {
+  function render(detail: IssueDetail, preserveScroll = false): void {
+    const bodyScrollTop = preserveScroll ? content.scrollTop : 0;
     const previousTitle = title.textContent ?? "";
     setTextWithDiff(identifier, detail.identifier);
     setTextWithDiff(title, detail.title);
-    setTextWithDiff(updatedAt, formatTimestamp(detail.updated_at ?? detail.updatedAt));
+    setTextWithDiff(updatedAt, `Updated ${formatTimestamp(detail.updated_at ?? detail.updatedAt)}`);
     const nextStatus = statusChip(detail.status);
     statusSlot.replaceChildren(nextStatus);
     logsLink.href = `/issues/${detail.identifier}/logs`;
-    linearLink.href = detail.url ?? "#";
-    linearLink.hidden = !detail.url;
+    trackerLink.href = detail.url ?? "#";
+    trackerLink.hidden = !detail.url;
+    abortAction.sync(detail);
+    headerActions.hidden = false;
+    summary.hidden = false;
 
     summaryStats.priority.update(String(detail.priority ?? "—"));
     summaryStats.model.update(detail.model ?? "—");
     summaryStats.tokens.update(formatCompactNumber(detail.tokenUsage?.totalTokens ?? null));
-    summaryStats.duration.update(formatDuration(computeDurationSeconds(detail.startedAt, detail.updated_at ?? detail.updatedAt)));
+    summaryStats.duration.update(
+      formatDuration(computeDurationSeconds(detail.startedAt, detail.updated_at ?? detail.updatedAt)),
+    );
 
-    // Section order: Description → Activity → Workspace/Git → Model Override → Attempts
     const sections = [
       buildDescriptionSection(detail),
+      buildRetrySection(detail),
       buildActivitySection(detail),
       buildWorkspaceSection(detail),
       buildModelSection(detail),
       buildAttemptsSection(detail),
-    ];
+    ].filter((section): section is HTMLElement => section instanceof HTMLElement);
     if (content.children.length > 0) {
-      sections.forEach((s) => s.classList.remove("expand-in"));
+      sections.forEach((section) => {
+        section.classList.remove("expand-in");
+      });
     }
     content.replaceChildren(...sections);
     Array.from(content.children).forEach((section, index) => {
@@ -146,6 +162,9 @@ export function createIssueInspector(options: IssueInspectorOptions): {
         section.style.setProperty("--stagger-index", String(index));
       }
     });
+    if (preserveScroll) {
+      content.scrollTop = bodyScrollTop;
+    }
     if (previousTitle && previousTitle !== detail.title) {
       flashDiff(header);
     }
@@ -155,18 +174,21 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     if (!currentId) {
       return;
     }
+    const preserveScroll = hydrated;
     if (!hydrated) {
       renderLoading();
     }
     const [detail, attempts] = await Promise.all([api.getIssue(currentId), api.getAttempts(currentId)]);
     hydrated = true;
-    render(mergeDetail(detail, attempts));
+    render({ ...detail, attempts: attempts.attempts, currentAttemptId: attempts.current_attempt_id }, preserveScroll);
   }
 
   async function load(id: string): Promise<void> {
     currentId = id;
     hydrated = false;
+    abortAction.sync(null);
     content.replaceChildren();
+    content.scrollTop = 0;
     await refresh();
     window.clearInterval(poll);
     poll = window.setInterval(() => {
@@ -181,7 +203,11 @@ export function createIssueInspector(options: IssueInspectorOptions): {
   if (currentId) {
     void load(currentId);
   } else {
-    header.textContent = "Select an issue";
+    identifier.textContent = "Inspector";
+    title.textContent = "Select an issue to inspect";
+    updatedAt.textContent = "Choose a card from the board.";
+    headerActions.hidden = true;
+    summary.hidden = true;
   }
   return { element: root, load, destroy };
 }

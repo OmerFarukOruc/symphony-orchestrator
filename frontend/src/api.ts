@@ -1,6 +1,8 @@
 import type {
+  AbortIssueResponse,
   AttemptRecord,
   AttemptSummary,
+  GitContextResponse,
   IssueDetail,
   LinearProject,
   RuntimeInfo,
@@ -66,6 +68,10 @@ export const api = {
     if (!id) return Promise.reject(new Error("issue id is required"));
     return get<IssueDetail>(`/api/v1/${encodeURIComponent(id)}`);
   },
+  postAbortIssue: (id: string) => {
+    if (!id) return Promise.reject(new Error("issue id is required"));
+    return send<AbortIssueResponse>("POST", `/api/v1/${encodeURIComponent(id)}/abort`);
+  },
   getAttempts: (id: string) => {
     if (!id) return Promise.resolve({ attempts: [] as AttemptSummary[], current_attempt_id: null });
     return get<{ attempts: AttemptSummary[]; current_attempt_id: string | null }>(
@@ -112,4 +118,12 @@ export const api = {
     }),
   postGithubToken: (token: string) => post<{ valid: boolean }>("/api/v1/setup/github-token", { token }),
   resetSetup: () => post<{ ok: boolean }>("/api/v1/setup/reset", {}),
+  createTestIssue: () =>
+    post<{ ok: boolean; issueIdentifier: string; issueUrl: string }>("/api/v1/setup/create-test-issue", {}),
+  createLabel: () =>
+    post<{ ok: boolean; labelId: string; labelName: string; alreadyExists?: boolean }>(
+      "/api/v1/setup/create-label",
+      {},
+    ),
+  getGitContext: () => get<GitContextResponse>("/api/v1/git/context"),
 };

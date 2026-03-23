@@ -1,5 +1,14 @@
 import { api } from "../api";
 import { router } from "../router";
+import { registerPageCleanup } from "../utils/page";
+import { createSetupDeviceAuthController } from "./setup-openai-controller";
+import {
+  buildOpenaiKeyStep as buildOpenaiKeyStepContent,
+  type DeviceAuthStatus,
+  type OpenaiAuthMode,
+  type OpenaiSetupStepState,
+} from "./setup-openai-step";
+import { buildTitleWithBadge } from "./setup-shared";
 
 type SetupStep = "master-key" | "linear-project" | "openai-key" | "github-token" | "done";
 
@@ -14,8 +23,25 @@ interface SetupState {
   selectedProject: string | null;
   tokenInput: string;
   openaiKeyInput: string;
-  authMode: "api_key" | "codex_login";
+  authMode: OpenaiAuthMode;
   authJsonInput: string;
+  showManualAuthFallback: boolean;
+  deviceAuthStatus: DeviceAuthStatus;
+  deviceAuthUserCode: string;
+  deviceAuthVerificationUri: string;
+  deviceAuthDeviceCode: string;
+  deviceAuthIntervalSeconds: number;
+  deviceAuthExpiresAt: number | null;
+  deviceAuthError: string | null;
+  testIssueLoading: boolean;
+  testIssueCreated: boolean;
+  testIssueIdentifier: string | null;
+  testIssueUrl: string | null;
+  testIssueError: string | null;
+  labelLoading: boolean;
+  labelCreated: boolean;
+  labelName: string | null;
+  labelError: string | null;
 }
 
 const state: SetupState = {
@@ -31,9 +57,30 @@ const state: SetupState = {
   openaiKeyInput: "",
   authMode: "api_key",
   authJsonInput: "",
+  showManualAuthFallback: false,
+  deviceAuthStatus: "idle",
+  deviceAuthUserCode: "",
+  deviceAuthVerificationUri: "",
+  deviceAuthDeviceCode: "",
+  deviceAuthIntervalSeconds: 0,
+  deviceAuthExpiresAt: null,
+  deviceAuthError: null,
+  testIssueLoading: false,
+  testIssueCreated: false,
+  testIssueIdentifier: null,
+  testIssueUrl: null,
+  testIssueError: null,
+  labelLoading: false,
+  labelCreated: false,
+  labelName: null,
+  labelError: null,
 };
 
 let container: HTMLElement | null = null;
+const deviceAuthController = createSetupDeviceAuthController(state, {
+  rerender,
+  moveToGithubStep,
+});
 
 function rerender(): void {
   if (!container) return;
@@ -45,32 +92,7 @@ function setLoading(loading: boolean): void {
   rerender();
 }
 
-function _setError(msg: string | null): void {
-  state.error = msg;
-  rerender();
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function buildTitleWithBadge(
-  text: string,
-  badgeClass: "is-required" | "is-optional",
-  badgeText: string,
-): HTMLElement {
-  const row = document.createElement("div");
-  row.className = "setup-title-row";
-
-  const title = document.createElement("div");
-  title.className = "setup-title";
-  title.textContent = text;
-
-  const badge = document.createElement("span");
-  badge.className = `setup-badge ${badgeClass}`;
-  badge.textContent = badgeText;
-
-  row.append(title, badge);
-  return row;
-}
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -128,7 +150,8 @@ function buildMasterKeyStep(): HTMLElement {
 
   const sub = document.createElement("div");
   sub.className = "setup-subtitle";
-  sub.textContent = "Symphony uses an encryption key to protect stored credentials on your machine. A key has been generated for you — copy it somewhere safe before continuing.";
+  sub.textContent =
+    "Symphony uses an encryption key to protect stored credentials on your machine. A key has been generated for you — copy it somewhere safe before continuing.";
 
   const callout = document.createElement("div");
   callout.className = "setup-callout";
@@ -147,7 +170,7 @@ function buildMasterKeyStep(): HTMLElement {
   copyBtn.textContent = "Copy";
   copyBtn.addEventListener("click", () => {
     if (state.generatedKey) {
-      void navigator.clipboard.writeText(state.generatedKey);
+      navigator.clipboard.writeText(state.generatedKey).catch(() => {});
       copyBtn.textContent = "Copied!";
       setTimeout(() => {
         copyBtn.textContent = "Copy";
@@ -164,7 +187,9 @@ function buildMasterKeyStep(): HTMLElement {
   regen.className = "mc-button is-ghost is-sm";
   regen.textContent = "Regenerate";
   regen.disabled = state.loading;
-  regen.addEventListener("click", () => void generateAndSetKey());
+  regen.addEventListener("click", () => {
+    generateAndSetKey().catch(() => {});
+  });
 
   const next = document.createElement("button");
   next.className = "mc-button is-primary";
@@ -208,6 +233,45 @@ function advanceMasterKey(): void {
 
 // ── Step: Linear Project ─────────────────────────────────────────────────────
 
+function applyStatusBadge(badge: HTMLElement): void {
+  if (state.loading) {
+    badge.textContent = "Verifying…";
+    badge.style.color = "var(--text-muted)";
+  } else if (state.apiKeyVerified) {
+    badge.textContent = "✓ Valid";
+    badge.style.color = "var(--status-running)";
+  } else if (state.error) {
+    badge.textContent = "✗ Invalid";
+    badge.style.color = "var(--status-blocked)";
+  }
+}
+
+function buildProjectGrid(): HTMLElement {
+  const grid = document.createElement("div");
+  grid.className = "setup-project-grid";
+
+  for (const p of state.projects) {
+    const card = document.createElement("div");
+    card.className = `setup-project-card${state.selectedProject === p.slugId ? " is-selected" : ""}`;
+
+    const name = document.createElement("div");
+    name.className = "setup-project-name";
+    name.textContent = String(p.name);
+
+    const slug = document.createElement("div");
+    slug.className = "setup-project-slug";
+    slug.textContent = p.slugId;
+
+    card.append(name, slug);
+    card.addEventListener("click", () => {
+      state.selectedProject = p.slugId;
+      rerender();
+    });
+    grid.append(card);
+  }
+  return grid;
+}
+
 function buildLinearProjectStep(): HTMLElement {
   const el = document.createElement("div");
 
@@ -236,26 +300,18 @@ function buildLinearProjectStep(): HTMLElement {
   const inputRow = document.createElement("div");
   inputRow.className = "setup-input-row";
 
-  // Inline status badge
   const statusBadge = document.createElement("div");
   statusBadge.className = "setup-key-status";
-  if (state.loading) {
-    statusBadge.textContent = "Verifying…";
-    statusBadge.style.color = "var(--text-muted)";
-  } else if (state.apiKeyVerified) {
-    statusBadge.textContent = "✓ Valid";
-    statusBadge.style.color = "var(--status-running)";
-  } else if (state.error) {
-    statusBadge.textContent = "✗ Invalid";
-    statusBadge.style.color = "var(--status-blocked)";
-  }
+  applyStatusBadge(statusBadge);
 
   const verifyBtn = document.createElement("button");
   verifyBtn.className = "mc-button is-primary is-sm";
   verifyBtn.style.marginTop = "var(--space-2)";
   verifyBtn.textContent = state.loading ? "Verifying…" : state.apiKeyVerified ? "Re-verify" : "Verify Key";
   verifyBtn.disabled = state.loading || !state.apiKeyInput;
-  verifyBtn.addEventListener("click", () => void loadLinearProjects());
+  verifyBtn.addEventListener("click", () => {
+    loadLinearProjects().catch(() => {});
+  });
 
   const input = document.createElement("input");
   input.className = "setup-input";
@@ -280,7 +336,6 @@ function buildLinearProjectStep(): HTMLElement {
 
   el.append(titleRow, sub, callout, field);
 
-  // Error shown under the verify button
   if (state.error && !state.apiKeyVerified) {
     const err = document.createElement("div");
     err.className = "setup-error";
@@ -288,36 +343,12 @@ function buildLinearProjectStep(): HTMLElement {
     el.append(err);
   }
 
-  // Project grid — only shown after successful verify
   if (state.apiKeyVerified && state.projects.length > 0) {
     const gridLabel = document.createElement("div");
     gridLabel.className = "setup-label";
     gridLabel.style.marginTop = "var(--space-4)";
     gridLabel.textContent = "Select a project";
-
-    const grid = document.createElement("div");
-    grid.className = "setup-project-grid";
-
-    for (const p of state.projects) {
-      const card = document.createElement("div");
-      card.className = `setup-project-card${state.selectedProject === p.slugId ? " is-selected" : ""}`;
-
-      const name = document.createElement("div");
-      name.className = "setup-project-name";
-      name.textContent = String(p.name);
-
-      const slug = document.createElement("div");
-      slug.className = "setup-project-slug";
-      slug.textContent = p.slugId;
-
-      card.append(name, slug);
-      card.addEventListener("click", () => {
-        state.selectedProject = p.slugId;
-        rerender();
-      });
-      grid.append(card);
-    }
-    el.append(gridLabel, grid);
+    el.append(gridLabel, buildProjectGrid());
   }
 
   const actions = document.createElement("div");
@@ -336,7 +367,9 @@ function buildLinearProjectStep(): HTMLElement {
   next.className = "mc-button is-primary";
   next.textContent = state.loading ? "Saving…" : "Next →";
   next.disabled = state.loading || !state.selectedProject;
-  next.addEventListener("click", () => void advanceLinearProject());
+  next.addEventListener("click", () => {
+    advanceLinearProject().catch(() => {});
+  });
 
   actions.append(skip, next);
   el.append(actions);
@@ -376,175 +409,57 @@ async function advanceLinearProject(): Promise<void> {
   }
 }
 
-// ── Step: OpenAI Key ─────────────────────────────────────────────────────────
-
 function buildOpenaiKeyStep(): HTMLElement {
-  const el = document.createElement("div");
+  const openaiStepState: OpenaiSetupStepState = {
+    loading: state.loading,
+    error: state.error,
+    openaiKeyInput: state.openaiKeyInput,
+    authMode: state.authMode,
+    authJsonInput: state.authJsonInput,
+    showManualAuthFallback: state.showManualAuthFallback,
+    deviceAuthStatus: state.deviceAuthStatus,
+    deviceAuthUserCode: state.deviceAuthUserCode,
+    deviceAuthVerificationUri: state.deviceAuthVerificationUri,
+    deviceAuthIntervalSeconds: state.deviceAuthIntervalSeconds,
+    deviceAuthExpiresAt: state.deviceAuthExpiresAt,
+    deviceAuthError: state.deviceAuthError,
+  };
 
-  const titleRow = buildTitleWithBadge("Connect to OpenAI", "is-required", "Required");
-
-  const sub = document.createElement("div");
-  sub.className = "setup-subtitle";
-  sub.textContent = "Choose how Codex agents authenticate with OpenAI.";
-
-  // ── Auth mode selector cards ──
-  const modeWrap = document.createElement("div");
-  modeWrap.className = "setup-auth-grid";
-
-  const apiKeyCard = document.createElement("div");
-  apiKeyCard.className = `setup-auth-card${state.authMode === "api_key" ? " is-selected" : ""}`;
-  apiKeyCard.innerHTML =
-    '<div class="setup-auth-card-title">API Key</div>' +
-    '<div class="setup-auth-card-desc">Paste an OpenAI API key directly. Best for pay-as-you-go accounts.</div>';
-  apiKeyCard.addEventListener("click", () => {
-    state.authMode = "api_key";
-    state.error = null;
-    rerender();
+  return buildOpenaiKeyStepContent(openaiStepState, {
+    onSelectAuthMode: (mode) => {
+      deviceAuthController.selectOpenaiAuthMode(mode);
+    },
+    onOpenaiKeyInput: (value) => {
+      state.openaiKeyInput = value;
+    },
+    onAuthJsonInput: (value) => {
+      state.authJsonInput = value;
+      rerender();
+    },
+    onStartDeviceAuth: () => {
+      deviceAuthController.startDeviceAuthFlow().catch(() => {});
+    },
+    onToggleManualAuthFallback: () => {
+      state.showManualAuthFallback = !state.showManualAuthFallback;
+      rerender();
+    },
+    onAdvance: () => {
+      void advanceOpenaiAuth();
+    },
+    onSkip: () => {
+      deviceAuthController.clearDeviceAuthState();
+      state.step = "github-token";
+      state.error = null;
+      rerender();
+    },
   });
+}
 
-  const loginCard = document.createElement("div");
-  loginCard.className = `setup-auth-card${state.authMode === "codex_login" ? " is-selected" : ""}`;
-  loginCard.innerHTML =
-    '<div class="setup-auth-card-title">Codex Login</div>' +
-    '<div class="setup-auth-card-desc">Use <code>codex login</code> OAuth flow. Best for OpenAI-authenticated accounts.</div>';
-  loginCard.addEventListener("click", () => {
-    state.authMode = "codex_login";
-    state.error = null;
-    rerender();
-  });
-
-  modeWrap.append(apiKeyCard, loginCard);
-  el.append(titleRow, sub, modeWrap);
-
-  // ── API Key mode ──
-  if (state.authMode === "api_key") {
-    const field = document.createElement("div");
-    field.className = "setup-field";
-
-    const label = document.createElement("label");
-    label.className = "setup-label";
-    label.innerHTML =
-      'OpenAI API Key &middot; <a class="setup-link" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Get one →</a>';
-
-    const input = document.createElement("input");
-    input.className = "setup-input";
-    input.type = "password";
-    input.placeholder = "sk-…";
-    input.value = state.openaiKeyInput;
-    input.addEventListener("input", () => {
-      state.openaiKeyInput = input.value;
-      updateSaveBtn();
-    });
-
-    field.append(label, input);
-    el.append(field);
-  }
-
-  // ── Codex Login mode ──
-  if (state.authMode === "codex_login") {
-    const instructions = document.createElement("div");
-    instructions.className = "setup-callout";
-    instructions.innerHTML =
-      '<div style="margin-bottom:var(--space-3)">' +
-      '<strong style="color:var(--text-accent)">⚠ Prerequisite</strong>' +
-      '<div style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:var(--space-1);line-height:1.6">' +
-      'If using <code>--device-auth</code> (recommended for remote/Docker), you must first enable it in your ChatGPT account: ' +
-      '<a class="setup-link" href="https://chatgpt.com/#settings/Security" target="_blank" rel="noopener">ChatGPT Settings → Security</a> → ' +
-      'toggle <strong>"Enable device code authorization for Codex"</strong> on.' +
-      '</div>' +
-      '</div>' +
-      '<strong>Steps:</strong>' +
-      '<ol style="margin:var(--space-2) 0 0;padding-left:var(--space-4);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8">' +
-      '<li>Run <code>codex login --device-auth</code> in your terminal</li>' +
-      '<li>Open <a class="setup-link" href="https://auth.openai.com/codex/device" target="_blank" rel="noopener">auth.openai.com/codex/device</a> and enter the one-time code shown in the terminal</li>' +
-      '<li>Approve the sign-in on the ChatGPT authorization page</li>' +
-      '<li>Once authenticated, find <code>~/.codex/auth.json</code> (run <code>cat ~/.codex/auth.json</code>) and paste below or upload the file</li>' +
-      '</ol>' +
-      '<div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:var(--space-2);font-style:italic">' +
-      'Tip: If you have a browser available, <code>codex login</code> (without <code>--device-auth</code>) opens the OAuth flow directly.' +
-      '</div>';
-
-    const field = document.createElement("div");
-    field.className = "setup-field";
-
-    const label = document.createElement("label");
-    label.className = "setup-label";
-    label.textContent = "auth.json contents";
-
-    const textarea = document.createElement("textarea");
-    textarea.className = "setup-input";
-    textarea.style.cssText = "min-height:100px;font-family:var(--font-mono);font-size:var(--text-xs);resize:vertical";
-    textarea.placeholder = '{"access_token":"...","refresh_token":"...","...":"..."}';
-    textarea.value = state.authJsonInput;
-    textarea.addEventListener("input", () => {
-      state.authJsonInput = textarea.value;
-      updateSaveBtn();
-    });
-
-    // File upload button
-    const uploadRow = document.createElement("div");
-    uploadRow.className = "setup-upload-row";
-
-    const uploadBtn = document.createElement("button");
-    uploadBtn.className = "mc-button is-ghost is-sm";
-    uploadBtn.textContent = "Upload auth.json";
-    uploadBtn.addEventListener("click", () => {
-      const fileInput = document.createElement("input");
-      fileInput.type = "file";
-      fileInput.accept = ".json,application/json";
-      fileInput.addEventListener("change", () => {
-        const file = fileInput.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.addEventListener("load", () => {
-          state.authJsonInput = reader.result as string;
-          rerender();
-        });
-        reader.readAsText(file);
-      });
-      fileInput.click();
-    });
-
-    uploadRow.append(uploadBtn);
-    field.append(label, textarea);
-    el.append(instructions, field, uploadRow);
-  }
-
-  if (state.error) {
-    const err = document.createElement("div");
-    err.className = "setup-error";
-    err.textContent = state.error;
-    el.append(err);
-  }
-
-  const actions = document.createElement("div");
-  actions.className = "setup-actions";
-
-  const skip = document.createElement("button");
-  skip.className = "mc-button is-ghost is-sm";
-  skip.textContent = "Skip for now";
-  skip.addEventListener("click", () => {
-    state.step = "github-token";
-    state.error = null;
-    rerender();
-  });
-
-  const saveBtn = document.createElement("button");
-  saveBtn.className = "mc-button is-primary";
-  saveBtn.textContent = state.loading ? "Saving…" : "Validate & Save";
-  const hasInput = state.authMode === "api_key" ? !!state.openaiKeyInput : !!state.authJsonInput;
-  saveBtn.disabled = state.loading || !hasInput;
-  saveBtn.addEventListener("click", () => void advanceOpenaiAuth());
-
-  function updateSaveBtn(): void {
-    const has = state.authMode === "api_key" ? !!state.openaiKeyInput : !!state.authJsonInput;
-    saveBtn.disabled = state.loading || !has;
-  }
-
-  actions.append(skip, saveBtn);
-  el.append(actions);
-
-  return el;
+function moveToGithubStep(): void {
+  deviceAuthController.clearDeviceAuthState();
+  state.error = null;
+  state.step = "github-token";
+  rerender();
 }
 
 async function advanceOpenaiAuth(): Promise<void> {
@@ -562,7 +477,8 @@ async function advanceOpenaiAuth(): Promise<void> {
       if (!state.authJsonInput) return;
       await api.postCodexAuth(state.authJsonInput);
     }
-    state.step = "github-token";
+    moveToGithubStep();
+    return;
   } catch (err) {
     state.error = err instanceof Error ? err.message : String(err);
   } finally {
@@ -683,6 +599,111 @@ async function advanceGithubToken(): Promise<void> {
 
 // ── Done ─────────────────────────────────────────────────────────────────────
 
+function buildFlowDiagram(): HTMLElement {
+  const flow = document.createElement("div");
+  flow.className = "setup-flow";
+
+  const steps = [
+    { icon: "📋", label: "Linear Issue", sub: "Create or tag" },
+    { icon: "🎵", label: "Symphony", sub: "Agent works" },
+    { icon: "🐙", label: "GitHub PR", sub: "Results delivered" },
+  ];
+
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    const step = document.createElement("div");
+    step.className = "setup-flow-step";
+
+    const icon = document.createElement("div");
+    icon.className = "setup-flow-icon";
+    icon.textContent = s.icon;
+
+    const label = document.createElement("div");
+    label.className = "setup-flow-label";
+    label.textContent = s.label;
+
+    const sub = document.createElement("div");
+    sub.className = "setup-flow-sub";
+    sub.textContent = s.sub;
+
+    step.append(icon, label, sub);
+    flow.append(step);
+
+    if (i < steps.length - 1) {
+      const arrow = document.createElement("div");
+      arrow.className = "setup-flow-arrow";
+      arrow.textContent = "→";
+      flow.append(arrow);
+    }
+  }
+
+  return flow;
+}
+
+function buildQuickStartCard(opts: {
+  icon: string;
+  title: string;
+  desc: string;
+  buttonText: string;
+  loading: boolean;
+  created: boolean;
+  createdText: string;
+  createdLink?: string | null;
+  error: string | null;
+  onClick: () => void;
+}): HTMLElement {
+  const card = document.createElement("div");
+  card.className = `setup-quick-start-card${opts.loading ? " is-loading" : ""}${opts.created ? " is-success" : ""}`;
+
+  const iconEl = document.createElement("div");
+  iconEl.className = "setup-quick-start-icon";
+  iconEl.textContent = opts.icon;
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "setup-quick-start-title";
+  titleEl.textContent = opts.title;
+
+  const descEl = document.createElement("div");
+  descEl.className = "setup-quick-start-desc";
+  descEl.textContent = opts.desc;
+
+  const body = document.createElement("div");
+  body.append(titleEl, descEl);
+
+  if (opts.error) {
+    const err = document.createElement("div");
+    err.className = "setup-error";
+    err.textContent = opts.error;
+    body.append(err);
+  }
+
+  if (opts.created) {
+    const success = document.createElement("div");
+    success.className = "setup-quick-start-success";
+    success.textContent = `✓ ${opts.createdText}`;
+    if (opts.createdLink) {
+      const link = document.createElement("a");
+      link.className = "setup-link";
+      link.href = opts.createdLink;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = " View →";
+      success.append(link);
+    }
+    body.append(success);
+  } else {
+    const btn = document.createElement("button");
+    btn.className = "mc-button is-primary is-sm";
+    btn.textContent = opts.loading ? "Creating…" : opts.buttonText;
+    btn.disabled = opts.loading;
+    btn.addEventListener("click", () => opts.onClick());
+    body.append(btn);
+  }
+
+  card.append(iconEl, body);
+  return card;
+}
+
 function buildDoneStep(): HTMLElement {
   const el = document.createElement("div");
   el.className = "setup-done";
@@ -698,11 +719,48 @@ function buildDoneStep(): HTMLElement {
 
   const desc = document.createElement("div");
   desc.className = "setup-done-desc";
-  desc.textContent = "Symphony is connected and ready. Head to the dashboard to see your issues.";
+  desc.textContent = "Symphony is connected and polling. Here's how it works:";
+
+  const flow = buildFlowDiagram();
+
+  const quickStartLabel = document.createElement("div");
+  quickStartLabel.className = "setup-label";
+  quickStartLabel.style.marginTop = "var(--space-6)";
+  quickStartLabel.textContent = "Quick Start";
+
+  const cards = document.createElement("div");
+  cards.className = "setup-quick-start-grid";
+
+  const testIssueCard = buildQuickStartCard({
+    icon: "⚡",
+    title: "Create a test issue",
+    desc: "Creates a Linear issue and moves it to In Progress. Symphony will pick it up within 30 seconds.",
+    buttonText: "Create Test Issue",
+    loading: state.testIssueLoading,
+    created: state.testIssueCreated,
+    createdText: state.testIssueIdentifier ? `Created ${state.testIssueIdentifier}` : "Created",
+    createdLink: state.testIssueUrl,
+    error: state.testIssueError,
+    onClick: () => void handleCreateTestIssue(),
+  });
+
+  const labelCard = buildQuickStartCard({
+    icon: "🏷️",
+    title: "Create Symphony label",
+    desc: "Adds a symphony label to your Linear team for tagging issues you want Symphony to handle.",
+    buttonText: "Create Label",
+    loading: state.labelLoading,
+    created: state.labelCreated,
+    createdText: state.labelName ? `Label "${state.labelName}" ready` : "Created",
+    error: state.labelError,
+    onClick: () => void handleCreateLabel(),
+  });
+
+  cards.append(testIssueCard, labelCard);
 
   const goBtn = document.createElement("button");
   goBtn.className = "mc-button is-primary";
-  goBtn.style.marginTop = "var(--space-5)";
+  goBtn.style.marginTop = "var(--space-6)";
   goBtn.textContent = "Go to Dashboard →";
   goBtn.addEventListener("click", () => {
     window.dispatchEvent(new CustomEvent("setup:complete"));
@@ -731,6 +789,17 @@ function buildDoneStep(): HTMLElement {
       state.openaiKeyInput = "";
       state.authMode = "api_key";
       state.authJsonInput = "";
+      state.showManualAuthFallback = false;
+      state.testIssueLoading = false;
+      state.testIssueCreated = false;
+      state.testIssueIdentifier = null;
+      state.testIssueUrl = null;
+      state.testIssueError = null;
+      state.labelLoading = false;
+      state.labelCreated = false;
+      state.labelName = null;
+      state.labelError = null;
+      deviceAuthController.clearDeviceAuthState();
       // Re-check backend status to find the correct starting step
       try {
         const status = await api.getSetupStatus();
@@ -760,8 +829,41 @@ function buildDoneStep(): HTMLElement {
     }
   });
 
-  el.append(icon, title, desc, goBtn, divider, resetBtn);
+  el.append(icon, title, desc, flow, quickStartLabel, cards, goBtn, divider, resetBtn);
   return el;
+}
+
+async function handleCreateTestIssue(): Promise<void> {
+  state.testIssueLoading = true;
+  state.testIssueError = null;
+  rerender();
+  try {
+    const result = await api.createTestIssue();
+    state.testIssueCreated = true;
+    state.testIssueIdentifier = result.issueIdentifier;
+    state.testIssueUrl = result.issueUrl;
+  } catch (err) {
+    state.testIssueError = err instanceof Error ? err.message : String(err);
+  } finally {
+    state.testIssueLoading = false;
+    rerender();
+  }
+}
+
+async function handleCreateLabel(): Promise<void> {
+  state.labelLoading = true;
+  state.labelError = null;
+  rerender();
+  try {
+    const result = await api.createLabel();
+    state.labelCreated = true;
+    state.labelName = result.labelName;
+  } catch (err) {
+    state.labelError = err instanceof Error ? err.message : String(err);
+  } finally {
+    state.labelLoading = false;
+    rerender();
+  }
 }
 
 // ── Main render ──────────────────────────────────────────────────────────────
@@ -817,13 +919,17 @@ export function createSetupPage(): HTMLElement {
   const page = document.createElement("div");
   page.className = "setup-page fade-in";
   container = page;
+  registerPageCleanup(page, () => {
+    deviceAuthController.clearDeviceAuthState();
+    container = null;
+  });
 
   // Drive step from server state on every load
-  void api
+  api
     .getSetupStatus()
     .then((status) => {
       if (!status.steps.masterKey.done) {
-        if (!state.generatedKey) void generateAndSetKey();
+        if (!state.generatedKey) generateAndSetKey().catch(() => {});
         return;
       }
       // Master key exists — always derive correct step from server
@@ -840,7 +946,7 @@ export function createSetupPage(): HTMLElement {
       rerender();
     })
     .catch(() => {
-      if (!state.generatedKey) void generateAndSetKey();
+      if (!state.generatedKey) generateAndSetKey().catch(() => {});
     });
 
   page.append(buildPage());

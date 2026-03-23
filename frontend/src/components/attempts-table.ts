@@ -33,7 +33,7 @@ export function createAttemptsTable(attempts: AttemptSummary[], onOpen: (attempt
   const body = document.createElement("tbody");
 
   if (attempts.length === 0) {
-    body.append(createTableEmptyRow("No runs recorded yet.", 8));
+    body.append(createTableEmptyRow("No attempts yet.", 8));
   }
 
   attempts.forEach((attempt) => {

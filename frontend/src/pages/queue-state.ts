@@ -23,15 +23,15 @@ export function createFilters(): QueueFilters {
     priority: "all",
     density: "comfortable",
     sort: "updated",
-    showCompleted: false,
+    showCompleted: true,
   };
 }
 
-export function createUiState(columns: WorkflowColumn[]): QueueUiState {
+export function createUiState(_columns: WorkflowColumn[]): QueueUiState {
   return {
     focusedColumn: 0,
     focusedCard: 0,
-    collapsed: new Set(columns.filter((column) => column.terminal).map((column) => column.key)),
+    collapsed: new Set<string>(),
   };
 }
 

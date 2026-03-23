@@ -1,4 +1,5 @@
 import "../styles/issue.css";
+import "../styles/issue-inspector-rail.css";
 
 import { createIssuePage } from "./issue-view";
 

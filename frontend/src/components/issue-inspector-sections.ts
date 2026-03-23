@@ -4,38 +4,17 @@ import type { IssueDetail } from "../types";
 import { router } from "../router";
 import { statusChip } from "../ui/status-chip";
 import { toast } from "../ui/toast";
-import { flashDiff, setTextWithDiff } from "../utils/diff";
 import { createAttemptsTable } from "./attempts-table";
 import { createButton, createField, createSelectControl, createTextInput } from "./forms.js";
 import { createEventRow } from "./event-row";
 import { createEmptyState } from "./empty-state";
 import { computeDurationSeconds, formatCompactNumber, formatDuration, formatTimestamp } from "../utils/format";
-
-function kv(label: string, value: string): HTMLElement {
-  const item = document.createElement("div");
-  item.className = "issue-meta-item";
-  const caption = document.createElement("span");
-  caption.className = "text-secondary";
-  caption.textContent = label;
-  const strong = document.createElement("strong");
-  strong.textContent = value;
-  item.append(caption, strong);
-  return item;
-}
-
-function button(label: string, onClick: () => void, variant = "mc-button-ghost"): HTMLButtonElement {
-  const element = document.createElement("button");
-  element.type = "button";
-  element.className = `mc-button ${variant}`;
-  element.textContent = label;
-  element.addEventListener("click", onClick);
-  return element;
-}
+import { applyStagger, button, kv } from "./issue-inspector-common.js";
 
 export function buildDescriptionSection(detail: IssueDetail): HTMLElement {
   const section = document.createElement("section");
   section.className = "issue-section mc-panel expand-in";
-  section.append(Object.assign(document.createElement("h2"), { textContent: "Description & blockers" }));
+  section.append(Object.assign(document.createElement("h2"), { textContent: "Details & blockers" }));
   const body = document.createElement("div");
   body.className = detail.description ? "issue-body-copy" : "issue-placeholder";
   body.textContent = detail.description?.trim() || "Not exposed yet";
@@ -61,7 +40,7 @@ export function buildDescriptionSection(detail: IssueDetail): HTMLElement {
 export function buildWorkspaceSection(detail: IssueDetail): HTMLElement {
   const section = document.createElement("section");
   section.className = "issue-section mc-panel expand-in";
-  section.append(Object.assign(document.createElement("h2"), { textContent: "Run / workspace / git" }));
+  section.append(Object.assign(document.createElement("h2"), { textContent: "Workspace & git" }));
   const grid = document.createElement("div");
   grid.className = "issue-meta-grid";
   grid.append(
@@ -75,7 +54,7 @@ export function buildWorkspaceSection(detail: IssueDetail): HTMLElement {
   const actions = document.createElement("div");
   actions.className = "mc-actions";
   actions.append(
-    button("Copy workspace path", async () => {
+    button("Copy workspace", async () => {
       await navigator.clipboard.writeText(detail.workspacePath ?? "");
       toast("Workspace path copied.", "success");
     }),
@@ -87,7 +66,7 @@ export function buildWorkspaceSection(detail: IssueDetail): HTMLElement {
 export function buildModelSection(detail: IssueDetail): HTMLElement {
   const section = document.createElement("section");
   section.className = "issue-section mc-panel expand-in";
-  section.append(Object.assign(document.createElement("h2"), { textContent: "Model routing" }));
+  section.append(Object.assign(document.createElement("h2"), { textContent: "Model settings" }));
 
   const active = document.createElement("div");
   active.className = "issue-summary-strip";
@@ -163,24 +142,21 @@ export function buildActivitySection(detail: IssueDetail): HTMLElement {
   if (events.length === 0) {
     list.append(
       createEmptyState(
-        "No streamed activity",
+        "No recent activity",
         "This issue has not emitted any recent events yet. Live logs and archived attempts will appear here after the next worker update.",
-        "View all logs",
+        "Open logs",
         () => router.navigate(`/issues/${detail.identifier}/logs`),
       ),
     );
   } else {
-    events.forEach((event, index) => {
-      const row = createEventRow(event, true);
-      row.classList.add("stagger-item");
-      row.style.setProperty("--stagger-index", String(index));
-      list.append(row);
-    });
+    const rows = events.map((event) => createEventRow(event, true));
+    applyStagger(rows);
+    list.append(...rows);
   }
   const link = document.createElement("a");
   link.className = "mc-button mc-button-ghost";
   link.href = `/issues/${detail.identifier}/logs`;
-  link.textContent = "View all logs";
+  link.textContent = "Open logs";
   section.append(list, link);
   return section;
 }
@@ -191,27 +167,4 @@ export function buildAttemptsSection(detail: IssueDetail): HTMLElement {
   section.append(Object.assign(document.createElement("h2"), { textContent: "Attempts" }));
   section.append(createAttemptsTable(detail.attempts, (attemptId) => router.navigate(`/attempts/${attemptId}`)));
   return section;
-}
-
-export function createSummaryStat(label: string): {
-  element: HTMLElement;
-  update: (value: string) => void;
-} {
-  const element = document.createElement("div");
-  element.className = "issue-summary-item";
-  const caption = document.createElement("span");
-  caption.className = "text-secondary";
-  caption.textContent = label;
-  const value = document.createElement("strong");
-  element.append(caption, value);
-  return {
-    element,
-    update: (nextValue: string) => {
-      const before = value.textContent ?? "";
-      setTextWithDiff(value, nextValue);
-      if (before && before !== nextValue) {
-        flashDiff(element);
-      }
-    },
-  };
 }

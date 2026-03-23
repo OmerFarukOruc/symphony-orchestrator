@@ -11,36 +11,19 @@ export function createNotificationsPage(): HTMLElement {
     "Webhook deliveries, system alerts, and operator notifications in one timeline.",
   );
 
-  const filterBar = document.createElement("div");
-  filterBar.className = "filter-bar";
-  const channels = ["All", "Slack", "System", "Alerts"];
-  for (const ch of channels) {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = `mc-filter-chip${ch === "All" ? " is-active" : ""}`;
-    chip.textContent = ch;
-    chip.addEventListener("click", () => {
-      for (const element of filterBar.querySelectorAll(".mc-filter-chip")) {
-        element.classList.remove("is-active");
-      }
-      chip.classList.add("is-active");
-    });
-    filterBar.append(chip);
-  }
-
   const body = document.createElement("section");
   body.className = "page-body";
   body.append(
     createEmptyState(
-      "No notifications",
-      "Webhook deliveries and operator alerts land here after notifications are configured and events start flowing.",
-      "Open observability",
-      () => router.navigate("/observability"),
+      "Notification history needs backend API support",
+      "This page will show webhook deliveries, Slack and system alerts, and notification history once the backend exposes notification delivery and alert timeline APIs. Until then, use Overview to open issue details for issue-specific events and Observability for live service signals.",
+      "Open overview",
+      () => router.navigate("/"),
       "events",
-      { secondaryActionLabel: "Review setup", secondaryActionHref: "/setup" },
+      { secondaryActionLabel: "Open observability", secondaryActionHref: "/observability" },
     ),
   );
 
-  page.append(header, filterBar, body);
+  page.append(header, body);
   return page;
 }

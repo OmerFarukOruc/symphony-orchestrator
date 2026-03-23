@@ -3,10 +3,46 @@ import { createIcon } from "./icons";
 import { toggleTheme } from "./theme";
 import { toast } from "./toast";
 
+const MOBILE_BREAKPOINT = "(max-width: 760px)";
+
+type SidebarStateDetail = {
+  mobile: boolean;
+  mobileOpen: boolean;
+};
+
+export function getHeaderNavButtonState(detail: SidebarStateDetail): {
+  visible: boolean;
+  title: string;
+  ariaExpanded: string;
+} {
+  return {
+    visible: detail.mobile,
+    title: detail.mobileOpen ? "Close navigation" : "Open navigation",
+    ariaExpanded: String(detail.mobileOpen),
+  };
+}
+
 function createZoneSeparator(): HTMLElement {
   const separator = document.createElement("div");
   separator.className = "header-zone-separator";
   return separator;
+}
+
+function syncHeaderNavButton(headerEl: HTMLElement, navButton: HTMLButtonElement, detail: SidebarStateDetail): void {
+  const state = getHeaderNavButtonState(detail);
+  navButton.classList.toggle("is-active", detail.mobileOpen);
+  navButton.title = state.title;
+  navButton.setAttribute("aria-label", state.title);
+  navButton.setAttribute("aria-expanded", state.ariaExpanded);
+
+  if (state.visible) {
+    if (navButton.parentElement !== headerEl) {
+      headerEl.prepend(navButton);
+    }
+    return;
+  }
+
+  navButton.remove();
 }
 
 export function initHeader(headerEl: HTMLElement): void {
@@ -16,7 +52,6 @@ export function initHeader(headerEl: HTMLElement): void {
   navButton.type = "button";
   navButton.className = "mc-button is-ghost is-icon-only header-action-btn shell-nav-toggle";
   navButton.title = "Open navigation";
-  navButton.hidden = true;
   navButton.setAttribute("aria-controls", "shell-sidebar");
   navButton.setAttribute("aria-expanded", "false");
   navButton.setAttribute("aria-label", "Open navigation");
@@ -26,12 +61,8 @@ export function initHeader(headerEl: HTMLElement): void {
   });
 
   window.addEventListener("shell:sidebar-state", (event) => {
-    const detail = (event as CustomEvent<{ mobile: boolean; mobileOpen: boolean }>).detail;
-    navButton.hidden = !detail.mobile;
-    navButton.classList.toggle("is-active", detail.mobileOpen);
-    navButton.title = detail.mobileOpen ? "Close navigation" : "Open navigation";
-    navButton.setAttribute("aria-label", detail.mobileOpen ? "Close navigation" : "Open navigation");
-    navButton.setAttribute("aria-expanded", String(detail.mobileOpen));
+    const detail = (event as CustomEvent<SidebarStateDetail>).detail;
+    syncHeaderNavButton(headerEl, navButton, detail);
   });
 
   const brand = document.createElement("div");
@@ -115,5 +146,9 @@ export function initHeader(headerEl: HTMLElement): void {
   });
 
   actions.append(refreshButton, themeButton);
-  headerEl.append(navButton, brand, createZoneSeparator(), command, createZoneSeparator(), actions);
+  headerEl.append(brand, createZoneSeparator(), command, createZoneSeparator(), actions);
+  syncHeaderNavButton(headerEl, navButton, {
+    mobile: window.matchMedia(MOBILE_BREAKPOINT).matches,
+    mobileOpen: false,
+  });
 }
