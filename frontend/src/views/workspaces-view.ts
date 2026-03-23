@@ -191,6 +191,7 @@ export function createWorkspacesPage(): HTMLElement {
   }
 
   async function handleRemove(workspaceKey: string): Promise<void> {
+    if (!confirm(`Remove workspace ${workspaceKey}? This deletes all workspace files.`)) return;
     try {
       await api.removeWorkspace(workspaceKey);
       await fetchAndRender();
