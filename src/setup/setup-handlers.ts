@@ -6,6 +6,12 @@ import { randomBytes } from "node:crypto";
 import type { Request, Response } from "express";
 
 import type { ConfigOverlayStore } from "../config/overlay.js";
+import {
+  buildCreateIssueMutation,
+  buildCreateLabelMutation,
+  buildProjectLookupQuery,
+  buildTeamStatesQuery,
+} from "../linear/queries.js";
 import type { Orchestrator } from "../orchestrator/orchestrator.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { isRecord } from "../utils/type-guards.js";
@@ -261,5 +267,179 @@ export function handlePostGithubToken(deps: SetupApiDeps) {
     }
 
     res.json({ valid });
+  };
+}
+
+const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
+
+interface LinearGraphQLResponse {
+  data?: Record<string, unknown>;
+  errors?: Array<{ message: string }>;
+}
+
+async function callLinearGraphQL(
+  apiKey: string,
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<LinearGraphQLResponse> {
+  const response = await fetch(LINEAR_ENDPOINT, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: apiKey },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Linear API returned ${response.status}: ${body}`);
+  }
+
+  const data = (await response.json()) as LinearGraphQLResponse;
+  if (data.errors?.length) {
+    throw new Error(data.errors.map((e) => e.message).join("; "));
+  }
+
+  return data;
+}
+
+function getLinearApiKey(deps: SetupApiDeps): string {
+  return deps.secretsStore.get("LINEAR_API_KEY") ?? process.env.LINEAR_API_KEY ?? "";
+}
+
+function readProjectSlug(overlay: Record<string, unknown>): string | undefined {
+  const slug = overlay["tracker.project_slug"] ?? (overlay.tracker as Record<string, unknown>)?.project_slug;
+  return typeof slug === "string" ? slug : undefined;
+}
+
+interface ProjectNode {
+  id: string;
+  name: string;
+  slugId: string;
+  teams?: { nodes?: Array<{ id: string; key: string }> };
+}
+
+async function lookupProject(apiKey: string, projectSlug: string): Promise<ProjectNode> {
+  const data = await callLinearGraphQL(apiKey, buildProjectLookupQuery(), { projectSlug });
+  const nodes = ((data.data as Record<string, unknown>)?.projects as Record<string, unknown>)?.nodes as
+    | ProjectNode[]
+    | undefined;
+  const project = nodes?.[0];
+  if (!project) {
+    throw new Error(`Project "${projectSlug}" not found`);
+  }
+  return project;
+}
+
+async function lookupInProgressStateId(apiKey: string, teamId: string): Promise<string> {
+  const data = await callLinearGraphQL(apiKey, buildTeamStatesQuery(), { teamId });
+  const states = ((data.data as Record<string, unknown>)?.team as Record<string, unknown>)?.states as
+    | { nodes?: Array<{ id: string; name: string }> }
+    | undefined;
+  const inProgress = states?.nodes?.find((s) => s.name.toLowerCase() === "in progress");
+  if (!inProgress) {
+    throw new Error('No "In Progress" state found for the team');
+  }
+  return inProgress.id;
+}
+
+async function createTestIssue(apiKey: string, projectSlug: string): Promise<{ identifier: string; url: string }> {
+  const project = await lookupProject(apiKey, projectSlug);
+  const teamId = project.teams?.nodes?.[0]?.id;
+  if (!teamId) {
+    throw new Error("No team found for the selected project");
+  }
+
+  const stateId = await lookupInProgressStateId(apiKey, teamId);
+  const data = await callLinearGraphQL(apiKey, buildCreateIssueMutation(), {
+    teamId,
+    projectId: project.id,
+    title: "Symphony smoke test",
+    description:
+      "This issue was created automatically to verify your Symphony setup. " +
+      "Symphony should pick it up within one poll cycle and run a sandboxed agent.",
+    stateId,
+  });
+
+  const result = (data.data as Record<string, unknown>)?.issueCreate as
+    | { success?: boolean; issue?: { identifier?: string; url?: string } }
+    | undefined;
+
+  if (!result?.success || !result.issue?.identifier || !result.issue?.url) {
+    throw new Error("Linear did not confirm issue creation");
+  }
+
+  return { identifier: result.issue.identifier, url: result.issue.url };
+}
+
+async function createSymphonyLabel(apiKey: string, projectSlug: string): Promise<{ id: string; name: string }> {
+  const project = await lookupProject(apiKey, projectSlug);
+  const teamId = project.teams?.nodes?.[0]?.id;
+  if (!teamId) {
+    throw new Error("No team found for the selected project");
+  }
+
+  const data = await callLinearGraphQL(apiKey, buildCreateLabelMutation(), {
+    teamId,
+    name: "symphony",
+    color: "#2563eb",
+  });
+
+  const result = (data.data as Record<string, unknown>)?.issueLabelCreate as
+    | { success?: boolean; issueLabel?: { id?: string; name?: string } }
+    | undefined;
+
+  if (!result?.success || !result.issueLabel?.id || !result.issueLabel?.name) {
+    throw new Error("Linear did not confirm label creation");
+  }
+
+  return { id: result.issueLabel.id, name: result.issueLabel.name };
+}
+
+export function handlePostCreateTestIssue(deps: SetupApiDeps) {
+  return async (_req: Request, res: Response) => {
+    const apiKey = getLinearApiKey(deps);
+    if (!apiKey) {
+      res.status(400).json({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });
+      return;
+    }
+
+    const overlay = deps.configOverlayStore.toMap();
+    const projectSlug = readProjectSlug(overlay);
+    if (!projectSlug) {
+      res.status(400).json({ error: { code: "missing_project", message: "No Linear project selected" } });
+      return;
+    }
+
+    try {
+      const { identifier, url } = await createTestIssue(apiKey, projectSlug);
+      res.json({ ok: true, issueIdentifier: identifier, issueUrl: url });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create test issue";
+      res.status(502).json({ error: { code: "linear_api_error", message } });
+    }
+  };
+}
+
+export function handlePostCreateLabel(deps: SetupApiDeps) {
+  return async (_req: Request, res: Response) => {
+    const apiKey = getLinearApiKey(deps);
+    if (!apiKey) {
+      res.status(400).json({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });
+      return;
+    }
+
+    const overlay = deps.configOverlayStore.toMap();
+    const projectSlug = readProjectSlug(overlay);
+    if (!projectSlug) {
+      res.status(400).json({ error: { code: "missing_project", message: "No Linear project selected" } });
+      return;
+    }
+
+    try {
+      const { id, name } = await createSymphonyLabel(apiKey, projectSlug);
+      res.json({ ok: true, labelId: id, labelName: name });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create label";
+      res.status(502).json({ error: { code: "linear_api_error", message } });
+    }
   };
 }
