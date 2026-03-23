@@ -1,17 +1,10 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "agentation": {
-      "type": "local",
-      "command": ["npx", "-y", "agentation-mcp", "server"],
-      "enabled": true,
-      "environment": {}
-    },
-    "perplexity-answer": {
-      "type": "local",
-      "command": ["node", "/home/oruc/Desktop/workspace/perplexity-answer-mcp-server/dist/index.js"],
-      "enabled": true,
-      "environment": {}
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp?exaApiKey=895610f5-94c8-4896-a514-cd38be47e47b&tools=web_search_exa,web_search_advanced_exa,get_code_context_exa,crawling_exa,company_research_exa,people_search_exa,deep_researcher_start,deep_researcher_check,deep_search_exa",
+      "enabled": true
     }
   }
 }

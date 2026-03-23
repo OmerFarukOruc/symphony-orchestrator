@@ -28,7 +28,7 @@ npm test
 npm run build
 
 # Dry-start (no credentials needed)
-node dist/cli.js ./WORKFLOW.example.md
+node dist/cli/index.js ./WORKFLOW.example.md
 ```
 
 If you have real credentials available:

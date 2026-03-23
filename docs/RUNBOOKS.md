@@ -22,7 +22,7 @@
    ```
 4. **Check workflow file** — ensure the YAML front matter in your workflow file is valid.
    ```bash
-   node dist/cli.js ./WORKFLOW.md
+   node dist/cli/index.js ./WORKFLOW.md
    ```
 
 ---

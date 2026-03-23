@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts"],
+  "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts", "playwright.config.ts"],
   "entry": ["src/dispatch/entrypoint.ts"],
   "ignore": [".github/**", ".husky/**"],
   "ignoreFiles": [
@@ -22,5 +22,15 @@
     "vite",
     "vitest"
   ],
-  "ignoreDependencies": ["agentation-mcp", "eslint", "husky", "jscpd", "lint-staged", "prettier", "tsx", "typedoc"]
+  "ignoreDependencies": [
+    "@playwright/test",
+    "agentation-mcp",
+    "eslint",
+    "husky",
+    "jscpd",
+    "lint-staged",
+    "prettier",
+    "tsx",
+    "typedoc"
+  ]
 }

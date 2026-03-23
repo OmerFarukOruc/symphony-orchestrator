@@ -36,19 +36,6 @@ codex:
   read_timeout_ms: 5000
   turn_timeout_ms: 120000
   stall_timeout_ms: 300000
-  ## Auth: uncomment ONE of the two blocks below.
-  ## Option A – API key via local CLIProxyAPI proxy (active)
-  auth:
-    mode: "api_key"
-  provider:
-    name: "CLIProxyAPI"
-    base_url: "http://localhost:8317/v1"
-    env_key: "OPENAI_API_KEY"
-    wire_api: "responses"
-  ## Option B – OpenAI browser login (uncomment below, comment Option A above)
-  # auth:
-  #   mode: "openai_login"
-  #   source_home: "~/.codex"
   sandbox:
     image: "symphony-codex:latest"
     network: ""
@@ -77,9 +64,16 @@ repos:
     github_owner: "OmerFarukOruc"
     github_repo: "symphony-orchestrator"
     github_token_env: "GITHUB_TOKEN"
+  - repo_url: "https://github.com/OmerFarukOruc/sentinel-test-arena.git"
+    default_branch: "main"
+    identifier_prefix: "STA"
+    github_owner: "OmerFarukOruc"
+    github_repo: "sentinel-test-arena"
+    github_token_env: "GITHUB_TOKEN"
 server:
   port: 4000
 ---
+
 You are working on Linear issue {{ issue.identifier }}: "{{ issue.title }}"
 {% if issue.description %}
 

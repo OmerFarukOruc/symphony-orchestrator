@@ -28,8 +28,10 @@ Use Node.js 22 or newer.
 - `npm test` runs the main Vitest suite.
 - `npm run test:watch` starts Vitest in watch mode for local iteration.
 - `npm run test:integration` runs the opt-in integration config; set `LINEAR_API_KEY` first when you want real credential coverage.
+- `npx playwright test --project=smoke` runs the Playwright E2E smoke tests (37 tests) against a Vite dev server with mocked API routes.
+- `npx playwright test --project=visual` runs visual regression tests (3 baselines). Use `--update-snapshots` to regenerate reference screenshots.
 - `npm run dev -- ./WORKFLOW.example.md` runs the CLI directly through `tsx`.
-- `node dist/cli.js ./WORKFLOW.example.md --port 4000` runs the built service.
+- `node dist/cli/index.js ./WORKFLOW.example.md --port 4000` runs the built service.
 
 ## Pre-commit & Pre-push Checks — MANDATORY
 
@@ -70,6 +72,17 @@ Match the current import pattern by using `.js` extensions in local TypeScript i
 ## Testing Guidelines
 
 Add or update Vitest coverage for every behavior change. Prefer deterministic unit tests in `tests/*.test.ts`; use fixtures in `tests/fixtures/` instead of live services where possible. Reserve `tests/live.integration.test.ts` for environment-dependent checks that should skip cleanly when credentials are absent.
+
+### Playwright E2E Tests
+
+Dashboard UI changes must be validated with the Playwright E2E suite in `tests/e2e/`. The suite uses Page Object Models in `tests/e2e/pages/`, a full mock API layer in `tests/e2e/mocks/`, and custom fixtures in `tests/e2e/fixtures/test.ts`. Key conventions:
+
+- **Page Object Models**: One POM per page/component in `tests/e2e/pages/`. All extend `BasePage` for shared helpers.
+- **Mock API**: `ApiMock` intercepts all `/api/v1/*` routes. Use `ScenarioBuilder` for fluent test setup. Add data factories in `tests/e2e/mocks/data/`.
+- **Smoke tests**: `tests/e2e/specs/smoke/*.smoke.spec.ts` — deterministic, no real backend. Run with `--project=smoke`.
+- **Visual tests**: `tests/e2e/specs/visual/*.visual.spec.ts` — screenshot comparison. Run with `--project=visual`. Use `--update-snapshots` to regenerate baselines.
+- **Clock freezing**: Use `freezeClock(page)` from `tests/e2e/support/clock.ts` before visual tests for deterministic timestamps.
+- **Unhandled API guard**: `installUnhandledApiGuard(page)` aborts any unmocked API calls — installed automatically by the fixture.
 
 When behavior changes affect the operator surface, verify both code and docs together. At minimum, keep `README.md`, workflow examples, and the relevant `docs/*.md` files aligned with the actual API, trust posture, and runtime behavior.
 

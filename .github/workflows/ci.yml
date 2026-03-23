@@ -130,11 +130,89 @@ jobs:
       - run: npm ci
       - run: npm run test:integration
 
+  # ── Phase 5: E2E Tests ───────────────────────────────────────────────
+  e2e-smoke:
+    name: E2E Smoke (${{ matrix.shard }}/${{ strategy.job-total }})
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run E2E smoke tests (shard ${{ matrix.shard }})
+        run: npx playwright test --project=smoke --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+      - name: Upload blob report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 14
+
+  e2e-smoke-report:
+    name: E2E Smoke Report
+    if: always()
+    needs: e2e-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Download all blob reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+      - name: Merge reports
+        run: npx playwright merge-reports --reporter=html all-blob-reports
+      - uses: actions/upload-artifact@v7
+        with:
+          name: e2e-smoke-html-report
+          path: playwright-report/
+          retention-days: 14
+
+  e2e-visual:
+    name: E2E Visual Regression
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run visual regression tests
+        run: npx playwright test --project=visual
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-visual-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
   # ── Gate: single required check for branch protection ──────────────
   build-and-test:
     name: build-and-test
     if: always()
-    needs: [build, test, gitleaks, semgrep, codeql, docker-build]
+    needs: [build, test, gitleaks, semgrep, codeql, docker-build, e2e-smoke]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -144,7 +222,8 @@ jobs:
              [ "${{ needs.gitleaks.result }}" != "success" ] ||
              [ "${{ needs.semgrep.result }}" != "success" ] ||
              [ "${{ needs.codeql.result }}" != "success" ] ||
-             [ "${{ needs.docker-build.result }}" != "success" ]; then
+             [ "${{ needs.docker-build.result }}" != "success" ] ||
+             [ "${{ needs.e2e-smoke.result }}" != "success" ]; then
             echo "❌ One or more required jobs failed"
             exit 1
           fi
