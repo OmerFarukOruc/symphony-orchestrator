@@ -1,0 +1,24 @@
+/**
+ * Injected before visual snapshots to suppress non-deterministic rendering.
+ * Disables all animations, transitions, and blinking cursors.
+ */
+
+*,
+*::before,
+*::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  caret-color: transparent !important;
+  scroll-behavior: auto !important;
+}
+
+/* Hide scrollbars for consistent screenshots */
+::-webkit-scrollbar {
+  display: none !important;
+}
+
+* {
+  scrollbar-width: none !important;
+}
