@@ -6,6 +6,8 @@ import {
   handleGetLinearProjects,
   handleGetStatus,
   handlePostCodexAuth,
+  handlePostCreateLabel,
+  handlePostCreateTestIssue,
   handlePostDeviceAuthPoll,
   handlePostDeviceAuthStart,
   handlePostGithubToken,
@@ -66,5 +68,15 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
   app
     .route("/api/v1/setup/github-token")
     .post(handlePostGithubToken(deps))
+    .all((_req, res) => methodNotAllowed(res));
+
+  app
+    .route("/api/v1/setup/create-test-issue")
+    .post(handlePostCreateTestIssue(deps))
+    .all((_req, res) => methodNotAllowed(res));
+
+  app
+    .route("/api/v1/setup/create-label")
+    .post(handlePostCreateLabel(deps))
     .all((_req, res) => methodNotAllowed(res));
 }

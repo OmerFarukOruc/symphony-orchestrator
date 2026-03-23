@@ -135,3 +135,50 @@ export function buildProjectLookupQuery(): string {
     }
   `;
 }
+
+export function buildTeamStatesQuery(): string {
+  return `
+    query SymphonyTeamStates($teamId: ID!) {
+      team(id: $teamId) {
+        id
+        name
+        states {
+          nodes {
+            id
+            name
+            type
+          }
+        }
+      }
+    }
+  `;
+}
+
+export function buildCreateIssueMutation(): string {
+  return `
+    mutation SymphonyCreateIssue($teamId: String!, $projectId: String!, $title: String!, $description: String, $stateId: String) {
+      issueCreate(input: { teamId: $teamId, projectId: $projectId, title: $title, description: $description, stateId: $stateId }) {
+        success
+        issue {
+          id
+          identifier
+          url
+        }
+      }
+    }
+  `;
+}
+
+export function buildCreateLabelMutation(): string {
+  return `
+    mutation SymphonyCreateLabel($teamId: String!, $name: String!, $color: String) {
+      issueLabelCreate(input: { teamId: $teamId, name: $name, color: $color }) {
+        success
+        issueLabel {
+          id
+          name
+        }
+      }
+    }
+  `;
+}

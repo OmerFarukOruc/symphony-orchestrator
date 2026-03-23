@@ -36,12 +36,13 @@ export function buildRunningIssueView(
   resolveModelSelection: (identifier: string) => ModelSelection,
 ): RuntimeIssueView {
   const configuredSelection = resolveModelSelection(entry.issue.identifier);
+  const action = entry.status === "stopping" ? "stopping" : "running";
   return issueView(entry.issue, {
     workspaceKey: entry.workspace.workspaceKey,
     workspacePath: entry.workspace.path,
     status: entry.status,
     attempt: entry.attempt,
-    message: `running in ${entry.workspace.path}`,
+    message: `${action} in ${entry.workspace.path}`,
     startedAt: new Date(entry.startedAtMs).toISOString(),
     lastEventAt: new Date(entry.lastEventAtMs).toISOString(),
     tokenUsage: entry.tokenUsage,
@@ -57,6 +58,7 @@ export function buildRetryIssueView(
   resolveModelSelection: (identifier: string) => ModelSelection,
 ): RuntimeIssueView {
   const configuredSelection = resolveModelSelection(entry.identifier);
+  const nextRetryDueAt = new Date(entry.dueAtMs).toISOString();
   return issueView(entry.issue, {
     ...buildModelViewFields(configuredSelection, {
       model: configuredSelection.model,
@@ -68,6 +70,7 @@ export function buildRetryIssueView(
     status: "retrying",
     attempt: entry.attempt,
     error: entry.error,
-    message: `retry due at ${new Date(entry.dueAtMs).toISOString()}`,
+    message: `retry due at ${nextRetryDueAt}`,
+    nextRetryDueAt,
   });
 }
