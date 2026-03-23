@@ -138,7 +138,7 @@ export function buildProjectLookupQuery(): string {
 
 export function buildTeamStatesQuery(): string {
   return `
-    query SymphonyTeamStates($teamId: ID!) {
+    query SymphonyTeamStates($teamId: String!) {
       team(id: $teamId) {
         id
         name

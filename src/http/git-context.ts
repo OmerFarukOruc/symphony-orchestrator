@@ -87,14 +87,14 @@ async function githubGet(path: string, options: GitHubFetchOptions): Promise<unk
   return response.json();
 }
 
-import { asNumber, asString } from "../config/coercion.js";
+import { asNumber, asRecord, asString } from "../config/coercion.js";
 
 function parseRepoPulls(raw: unknown): GitPullView[] {
   if (!Array.isArray(raw)) return [];
   return raw.slice(0, 10).map((pr) => {
-    const record = pr as Record<string, unknown>;
-    const user = record.user as Record<string, unknown> | null;
-    const head = record.head as Record<string, unknown> | null;
+    const record = asRecord(pr);
+    const user = asRecord(record.user);
+    const head = asRecord(record.head);
     return {
       number: asNumber(record.number, 0),
       title: asString(record.title),
@@ -111,9 +111,9 @@ function parseRepoPulls(raw: unknown): GitPullView[] {
 function parseRepoCommits(raw: unknown): GitCommitView[] {
   if (!Array.isArray(raw)) return [];
   return raw.slice(0, 5).map((entry) => {
-    const record = entry as Record<string, unknown>;
-    const commit = record.commit as Record<string, unknown> | null;
-    const author = commit?.author as Record<string, unknown> | null;
+    const record = asRecord(entry);
+    const commit = asRecord(record.commit);
+    const author = asRecord(commit.author);
     return {
       sha: asString(record.sha).slice(0, 7),
       message: asString(commit?.message).split("\n")[0],
@@ -199,7 +199,7 @@ async function enrichConfiguredRepo(
         ),
       ]);
 
-      const repoRecord = repoData as Record<string, unknown>;
+      const repoRecord = asRecord(repoData);
       const pulls = parseRepoPulls(pullsData);
       view.github = {
         description: asString(repoRecord.description) || null,

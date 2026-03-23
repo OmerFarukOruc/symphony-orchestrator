@@ -4,6 +4,7 @@ import { createPageHeader } from "../components/page-header";
 import { registerKeyboardScope } from "../ui/keyboard-scope.js";
 import { registerPageCleanup } from "../utils/page";
 import { flattenConfig, prettyJson } from "./config-helpers";
+import { getValueAtPath } from "./settings-paths";
 import { createConfigActions } from "./config-actions";
 import { handleConfigKeyboard } from "./config-keyboard";
 import { renderOverlayPanel, renderSchemaPanel, renderDiffPanel, renderEmptyState } from "./config-panels";
@@ -140,14 +141,7 @@ export function createConfigPage(): HTMLElement {
         state.selectedPath = path;
         state.mode = "path";
         // Extract value from effective config
-        state.pathValue = prettyJson(
-          path
-            .split(".")
-            .reduce<unknown>(
-              (acc, key) => (acc && typeof acc === "object" ? (acc as Record<string, unknown>)[key] : undefined),
-              state.effective,
-            ) ?? "",
-        );
+        state.pathValue = prettyJson(getValueAtPath(state.effective, path) ?? "");
         render();
       },
     });
@@ -169,14 +163,7 @@ export function createConfigPage(): HTMLElement {
         },
         onSelectPath: (path) => {
           state.selectedPath = path;
-          state.pathValue = prettyJson(
-            path
-              .split(".")
-              .reduce<unknown>(
-                (acc, key) => (acc && typeof acc === "object" ? (acc as Record<string, unknown>)[key] : undefined),
-                state.overlay,
-              ) ?? "",
-          );
+          state.pathValue = prettyJson(getValueAtPath(state.overlay, path) ?? "");
           render();
         },
         onSavePath: () => {
