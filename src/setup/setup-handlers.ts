@@ -52,6 +52,7 @@ export function handlePostReset(deps: SetupApiDeps) {
       await Promise.all([
         deps.configOverlayStore.set("codex.auth.mode", ""),
         deps.configOverlayStore.set("codex.auth.source_home", ""),
+        deps.configOverlayStore.delete("codex.provider"),
       ]);
       res.json({ ok: true });
     } catch (error) {
@@ -164,6 +165,11 @@ export function handlePostOpenaiKey(deps: SetupApiDeps) {
 
     if (valid) {
       await deps.secretsStore.set("OPENAI_API_KEY", key);
+      await deps.configOverlayStore.set("codex.auth.mode", "api_key");
+      await deps.configOverlayStore.set("codex.provider.name", "CLIProxyAPI");
+      await deps.configOverlayStore.set("codex.provider.base_url", "http://localhost:8317/v1");
+      await deps.configOverlayStore.set("codex.provider.env_key", "OPENAI_API_KEY");
+      await deps.configOverlayStore.set("codex.provider.wire_api", "responses");
     }
 
     res.json({ valid });
@@ -193,6 +199,8 @@ export function handlePostCodexAuth(deps: SetupApiDeps) {
 
       await deps.configOverlayStore.set("codex.auth.mode", "openai_login");
       await deps.configOverlayStore.set("codex.auth.source_home", authDir);
+      // Clear any previous provider config from API key mode
+      await deps.configOverlayStore.delete("codex.provider");
 
       res.json({ ok: true });
     } catch (error) {
