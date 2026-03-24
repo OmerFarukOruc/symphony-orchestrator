@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { isBlockedByNonTerminal, sortIssuesForDispatch } from "./dispatch.js";
 import { issueView, nowIso } from "./views.js";
+import { prepareWorkspaceForLaunch as prepareWorkspace } from "./workspace-preparation.js";
 import { isActiveState, isTodoState, normalizeStateKey } from "../state/policy.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type {
@@ -108,30 +109,6 @@ type LaunchContext = {
     attempt: number | null,
   ) => Promise<void>;
 };
-
-async function prepareWorkspace(
-  ctx: LaunchContext,
-  issue: Issue,
-): Promise<Awaited<ReturnType<typeof ctx.deps.workspaceManager.ensureWorkspace>>> {
-  try {
-    const workspace = await ctx.deps.workspaceManager.ensureWorkspace(issue.identifier, issue);
-    if (ctx.deps.configStore.getConfig().workspace.strategy === "directory") {
-      const repoMatch = ctx.deps.repoRouter?.matchIssue(issue) ?? null;
-      if (repoMatch && workspace.createdNow && ctx.deps.gitManager) {
-        await ctx.deps.gitManager.cloneInto(
-          repoMatch,
-          workspace.path,
-          issue,
-          ctx.deps.configStore.getConfig().workspace.branchPrefix,
-        );
-      }
-    }
-    return workspace;
-  } catch (error) {
-    ctx.releaseIssueClaim(issue.id);
-    throw error;
-  }
-}
 
 function buildRunningEntry(
   ctx: LaunchContext,
