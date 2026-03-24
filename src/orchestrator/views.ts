@@ -5,9 +5,15 @@ export function nowIso(): string {
 }
 
 export function isHardFailure(errorCode: string | null): boolean {
-  return ["startup_failed", "turn_input_required", "inactive", "terminal", "shutdown", "cancelled"].includes(
-    errorCode ?? "",
-  );
+  return [
+    "startup_failed",
+    "turn_input_required",
+    "inactive",
+    "terminal",
+    "shutdown",
+    "cancelled",
+    "auth_token_expired",
+  ].includes(errorCode ?? "");
 }
 
 export function issueView(issue: Issue, extra?: Partial<RuntimeIssueView>): RuntimeIssueView {

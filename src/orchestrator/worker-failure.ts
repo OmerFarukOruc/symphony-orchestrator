@@ -1,6 +1,7 @@
 import type { Issue } from "../core/types.js";
 import { nowIso } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
+import { TokenRefreshError } from "../codex/token-refresh.js";
 
 /** Context required by the worker-failure handler. */
 export interface WorkerFailureContext {
@@ -59,11 +60,13 @@ export async function handleWorkerFailure(
     message: String(error),
   });
 
+  const errorCode = error instanceof TokenRefreshError ? error.code : "worker_failed";
+
   try {
     await ctx.deps.attemptStore.updateAttempt(entry.runId, {
       status: "failed",
       endedAt: nowIso(),
-      errorCode: "worker_failed",
+      errorCode,
       errorMessage: String(error),
       tokenUsage: entry.tokenUsage,
       threadId: null,

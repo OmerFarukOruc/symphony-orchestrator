@@ -21,6 +21,8 @@ export interface DockerRunInput {
   pathRegistry?: PathRegistry;
   runtimeConfigToml: string;
   runtimeAuthJsonBase64?: string | null;
+  /** Codex CLI credential filename (e.g. codex-user@example.com-plus.json). */
+  authFilename?: string | null;
   requiredEnv?: string[];
   issueIdentifier?: string;
   model?: string;
@@ -108,7 +110,7 @@ function buildResourceAndLogArgs(args: string[], sandboxConfig: SandboxConfig): 
   );
 }
 
-function buildEntrypointScript(egressAllowlist: string[]): string {
+function buildEntrypointScript(egressAllowlist: string[], options?: { unsetApiKey?: boolean; authFilename?: string }): string {
   const steps = ["set -euo pipefail", "umask 077"];
 
   if (egressAllowlist.length > 0) {
@@ -119,7 +121,7 @@ function buildEntrypointScript(egressAllowlist: string[]): string {
       "  iptables -A OUTPUT -p udp --dport 53 -j ACCEPT",
       "  iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT",
       "  for domain in $SYMPHONY_EGRESS_ALLOWLIST; do",
-      "    for ip in $(getent hosts \"$domain\" 2>/dev/null | awk '{print $1}' | head -5); do",
+      '    for ip in $(getent hosts "$domain" 2>/dev/null | awk \'{print $1}\' | head -5); do',
       '      iptables -A OUTPUT -d "$ip" -j ACCEPT',
       "    done",
       "  done",
@@ -128,13 +130,21 @@ function buildEntrypointScript(egressAllowlist: string[]): string {
     );
   }
 
+  const authFilename = options?.authFilename ?? "auth.json";
   steps.push(
     'rm -rf "$CODEX_HOME"',
     'mkdir -p "$CODEX_HOME"',
     'printf "%s" "$SYMPHONY_CODEX_CONFIG_TOML" > "$CODEX_HOME/config.toml"',
-    'if [ -n "${SYMPHONY_CODEX_AUTH_JSON_B64:-}" ]; then printf "%s" "$SYMPHONY_CODEX_AUTH_JSON_B64" | base64 -d > "$CODEX_HOME/auth.json"; fi',
-    'exec bash -lc "$SYMPHONY_CODEX_COMMAND"',
+    `if [ -n "\${SYMPHONY_CODEX_AUTH_JSON_B64:-}" ]; then printf "%s" "$SYMPHONY_CODEX_AUTH_JSON_B64" | base64 -d > "$CODEX_HOME/${authFilename}"; fi`,
   );
+
+  // When using openai_login auth, prevent stale OPENAI_API_KEY from the host
+  // environment from overriding the token-based auth flow inside Codex CLI.
+  if (options?.unsetApiKey) {
+    steps.push("unset OPENAI_API_KEY 2>/dev/null || true");
+  }
+
+  steps.push('exec bash -lc "$SYMPHONY_CODEX_COMMAND"');
 
   return steps.join("; ");
 }
@@ -178,7 +188,10 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
     args.push("--cap-add=NET_ADMIN", "-e", `SYMPHONY_EGRESS_ALLOWLIST=${egressAllowlist.join(" ")}`);
   }
 
-  args.push(sandboxConfig.image, "bash", "-lc", buildEntrypointScript(egressAllowlist));
+  args.push(sandboxConfig.image, "bash", "-lc", buildEntrypointScript(egressAllowlist, {
+    unsetApiKey: Boolean(input.runtimeAuthJsonBase64),
+    authFilename: input.authFilename ?? undefined,
+  }));
 
   return { program: "docker", args, containerName, cacheVolumeName };
 }

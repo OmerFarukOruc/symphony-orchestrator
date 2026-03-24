@@ -103,6 +103,7 @@ export function createDataPlaneServer(secret: string): express.Application {
       const precomputedRuntimeConfig: PrecomputedRuntimeConfig = {
         configToml: codexRuntimeConfigToml,
         authJsonBase64: codexRuntimeAuthJsonBase64,
+        authFilename: null,
       };
 
       try {

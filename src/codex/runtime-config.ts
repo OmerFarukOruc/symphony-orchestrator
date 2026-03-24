@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { Buffer } from "node:buffer";
 
 import type { CodexConfig, CodexProviderConfig } from "../core/types.js";
+import { isTokenExpired, refreshAccessToken } from "./token-refresh.js";
 
 const DIRECT_OPENAI_PROVIDER_ID = "symphony_openai_api";
 const DIRECT_OPENAI_BASE_URL = "https://api.openai.com/v1";
@@ -9,6 +10,8 @@ const DIRECT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 interface PreparedCodexRuntimeConfig {
   configToml: string;
   authJsonBase64: string | null;
+  /** Codex CLI credential filename derived from JWT claims (e.g. codex-user@example.com-plus.json). */
+  authFilename: string | null;
 }
 
 function formatTomlString(value: string): string {
@@ -51,6 +54,23 @@ function effectiveProvider(config: CodexConfig): CodexProviderConfig | null {
       envKeyInstructions: null,
       wireApi: "responses",
       requiresOpenaiAuth: false,
+      httpHeaders: {},
+      envHttpHeaders: {},
+      queryParams: {},
+    };
+  }
+
+  // openai_login mode without a custom provider — use OpenAI directly with
+  // JWT-based auth from the credential file instead of an API key env var.
+  if (config.auth.mode === "openai_login") {
+    return {
+      id: "symphony_openai_auth",
+      name: "OpenAI",
+      baseUrl: DIRECT_OPENAI_BASE_URL,
+      envKey: null,
+      envKeyInstructions: null,
+      wireApi: "responses",
+      requiresOpenaiAuth: true,
       httpHeaders: {},
       envHttpHeaders: {},
       queryParams: {},
@@ -145,15 +165,62 @@ export function getRequiredProviderEnvNames(config: CodexConfig): string[] {
 
 export async function prepareCodexRuntimeConfig(config: CodexConfig): Promise<PreparedCodexRuntimeConfig> {
   const authJsonPath = `${config.auth.sourceHome}/auth.json`;
-  const authJsonBase64 =
-    config.auth.mode === "openai_login"
-      ? Buffer.from(await readAuthJson(authJsonPath), "utf8").toString("base64")
-      : null;
+  let authJsonBase64: string | null = null;
+  let authFilename: string | null = null;
+
+  if (config.auth.mode === "openai_login") {
+    let authJson = await readAuthJson(authJsonPath);
+    if (isTokenExpired(authJson)) {
+      authJson = await refreshAccessToken(authJsonPath);
+    }
+    authJsonBase64 = Buffer.from(authJson, "utf8").toString("base64");
+    authFilename = deriveCodexAuthFilename(authJson);
+  }
 
   return {
     configToml: buildConfigToml(config),
     authJsonBase64,
+    authFilename,
   };
+}
+
+/**
+ * Derive the credential filename Codex CLI expects from the auth.json content.
+ *
+ * Codex CLI looks for files named `codex-{email}-{plan}.json` (or
+ * `codex-{accountHashPrefix}-{email}-{plan}.json` for team plans).
+ * The email and plan type are extracted from the `id_token` JWT claims.
+ */
+function deriveCodexAuthFilename(authJson: string): string {
+  try {
+    const auth = JSON.parse(authJson) as { id_token?: string; email?: string; account_id?: string };
+    const idToken = auth.id_token;
+    if (!idToken) return "auth.json";
+
+    const parts = idToken.split(".");
+    if (parts.length < 2) return "auth.json";
+
+    const payload = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as {
+      email?: string;
+      "https://api.openai.com/auth"?: { chatgpt_plan_type?: string; chatgpt_account_id?: string };
+    };
+
+    const email = payload.email ?? auth.email;
+    const authInfo = payload["https://api.openai.com/auth"];
+    const planType = authInfo?.chatgpt_plan_type;
+    const accountId = authInfo?.chatgpt_account_id ?? auth.account_id;
+
+    if (!email || !planType) return "auth.json";
+
+    const normalizedPlan = planType.trim().toLowerCase();
+    if (normalizedPlan === "team" && accountId) {
+      const hashPrefix = accountId.slice(0, 8);
+      return `codex-${hashPrefix}-${email}-${normalizedPlan}.json`;
+    }
+    return `codex-${email}-${normalizedPlan}.json`;
+  } catch {
+    return "auth.json";
+  }
 }
 
 async function readAuthJson(authJsonPath: string): Promise<string> {
