@@ -327,7 +327,7 @@ When Symphony starts without a master key configured, it enters **setup mode** a
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
 | **1. Protect secrets** | Calls `POST /api/v1/setup/master-key` to generate and persist the encryption key that protects stored credentials on disk.                                                                                 | Yes            |
 | **2. Connect Linear**  | Stores `LINEAR_API_KEY` via `POST /api/v1/secrets/:key`, lists projects with `GET /api/v1/setup/linear-projects`, then saves the selected `tracker.project_slug` with `POST /api/v1/setup/linear-project`. | Yes            |
-| **3. Add OpenAI**      | Uses `POST /api/v1/setup/openai-key` for API-key mode, browser PKCE sign-in via `POST /api/v1/setup/pkce-auth/start`, or `POST /api/v1/setup/codex-auth` for manual `auth.json` upload. | Yes            |
+| **3. Add OpenAI**      | Uses `POST /api/v1/setup/openai-key` for API-key mode, browser PKCE sign-in via `POST /api/v1/setup/pkce-auth/start`, or `POST /api/v1/setup/codex-auth` for manual `auth.json` upload.                    | Yes            |
 | **4. Add GitHub**      | Optionally validates and stores a GitHub PAT with `POST /api/v1/setup/github-token`.                                                                                                                       | No (skippable) |
 
 After completing all steps, click **"Go to Dashboard"** to unlock normal navigation.
@@ -629,10 +629,10 @@ Symphony creates and reads several directories at runtime. This section document
 
 These paths exist only inside worker containers and are **not** on the host filesystem:
 
-| Path                       | Source                                         | Purpose                                                                                                                                               |
-| -------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/tmp/symphony-codex-home` | `src/docker/spawn.ts` — `CONTAINER_CODEX_HOME` | Ephemeral per-attempt `CODEX_HOME` with generated `config.toml` and optional `auth.json` — created at container startup, destroyed with the container |
-| `/home/agent`              | `src/docker/spawn.ts` — `CONTAINER_HOME`       | Container `HOME` backed by a named Docker volume (`symphony-cache-<runId>`) for npm/pip/git caches                                                    |
+| Path                         | Source                                         | Purpose                                                                                                                                                                         |
+| ---------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/home/agent/.codex-runtime` | `src/docker/spawn.ts` — `CONTAINER_CODEX_HOME` | Ephemeral per-attempt `CODEX_HOME` with generated `config.toml`, trusted-project entries, and optional `auth.json` — created at container startup, destroyed with the container |
+| `/home/agent`                | `src/docker/spawn.ts` — `CONTAINER_HOME`       | Container `HOME` backed by a named Docker volume (`symphony-cache-<runId>`) for npm/pip/git caches                                                                              |
 
 ### Named Docker Volumes
 
@@ -674,8 +674,8 @@ These paths exist only inside worker containers and are **not** on the host file
 | `POST`   | `/api/v1/setup/linear-project`         | Save the selected Linear project slug into `tracker.project_slug`                     |
 | `POST`   | `/api/v1/setup/openai-key`             | Validate and store an OpenAI API key                                                  |
 | `POST`   | `/api/v1/setup/codex-auth`             | Upload `auth.json` for Codex Login mode                                               |
-| `POST`   | `/api/v1/setup/pkce-auth/start`        | Start the browser-based PKCE login flow and return the auth URL                      |
-| `GET`    | `/api/v1/setup/pkce-auth/status`       | Poll PKCE authorization status; exchanges code for tokens when the callback arrives  |
+| `POST`   | `/api/v1/setup/pkce-auth/start`        | Start the browser-based PKCE login flow and return the auth URL                       |
+| `GET`    | `/api/v1/setup/pkce-auth/status`       | Poll PKCE authorization status; exchanges code for tokens when the callback arrives   |
 | `POST`   | `/api/v1/setup/github-token`           | Validate and store a GitHub PAT                                                       |
 | `POST`   | `/api/v1/setup/reset`                  | Clear stored secrets plus auth-mode overlay values and restart setup                  |
 
