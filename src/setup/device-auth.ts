@@ -169,11 +169,23 @@ function handleCallbackRequest(req: IncomingMessage, res: ServerResponse, sessio
   // Token exchange happens in the handler that polls status
 }
 
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
+function escapeHtml(text: string): string {
+  return text.replaceAll(/[&<>"']/g, (char) => HTML_ESCAPE_MAP[char] ?? char);
+}
+
 function respondWithHtml(res: ServerResponse, success: boolean, errorMessage: string | null): void {
   const title = success ? "Authentication Successful" : "Authentication Failed";
   const body = success
     ? "<h2>✓ Signed in successfully!</h2><p>You can close this window and return to the Symphony setup wizard.</p>"
-    : `<h2>Authentication Failed</h2><p>${errorMessage ?? "Unknown error"}</p><p>Close this window and try again.</p>`;
+    : `<h2>Authentication Failed</h2><p>${escapeHtml(errorMessage ?? "Unknown error")}</p><p>Close this window and try again.</p>`;
   const color = success ? "#22c55e" : "#ef4444";
 
   const html = `<!DOCTYPE html>

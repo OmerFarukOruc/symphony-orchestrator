@@ -170,6 +170,7 @@ describe("setup reconfigure flow", () => {
       steps: {
         masterKey: { done: true },
         linearProject: { done: false },
+        repoRoute: { done: false },
         openaiKey: { done: true },
         githubToken: { done: false },
       },
@@ -183,6 +184,7 @@ describe("setup reconfigure flow", () => {
       steps: {
         masterKey: { done: false },
         linearProject: { done: false },
+        repoRoute: { done: false },
         openaiKey: { done: false },
         githubToken: { done: false },
       },

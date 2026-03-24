@@ -103,7 +103,8 @@ export function createSetupDeviceAuthController(state: SetupDeviceAuthState, dep
       state.deviceAuthError = message;
       // Only show manual fallback for non-network errors — if the auth endpoint
       // is unreachable, pasting auth.json won't help either.
-      state.showManualAuthFallback = !message.includes("auth.openai.com");
+      const isNetworkError = message.toLowerCase().includes("network") || message.toLowerCase().includes("fetch");
+      state.showManualAuthFallback = !isNetworkError;
     }
 
     deps.rerender();

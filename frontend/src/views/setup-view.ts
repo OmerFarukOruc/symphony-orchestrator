@@ -2,6 +2,7 @@ import { api } from "../api";
 import { router } from "../router";
 import { registerPageCleanup } from "../utils/page";
 import { createSingleFlight } from "../utils/single-flight";
+import { buildRepoConfigStep, type RepoConfigStepActions, type RepoConfigStepState } from "./setup-repo-step";
 import { createSetupDeviceAuthController } from "./setup-openai-controller";
 import {
   buildOpenaiKeyStep as buildOpenaiKeyStepContent,
@@ -11,7 +12,7 @@ import {
 } from "./setup-openai-step";
 import { buildTitleWithBadge } from "./setup-shared";
 
-type SetupStep = "master-key" | "linear-project" | "openai-key" | "github-token" | "done";
+type SetupStep = "master-key" | "linear-project" | "repo-config" | "openai-key" | "github-token" | "done";
 
 interface SetupState {
   step: SetupStep;
@@ -22,6 +23,12 @@ interface SetupState {
   apiKeyVerified: boolean;
   projects: Array<{ id: unknown; name: unknown; slugId: string; teamKey: unknown }>;
   selectedProject: string | null;
+  teamKey: string | null;
+  repoUrlInput: string;
+  defaultBranchInput: string;
+  labelInput: string;
+  showRepoAdvanced: boolean;
+  repoRoutes: Array<Record<string, unknown>>;
   tokenInput: string;
   openaiKeyInput: string;
   authMode: OpenaiAuthMode;
@@ -56,6 +63,12 @@ const state: SetupState = {
   apiKeyVerified: false,
   projects: [],
   selectedProject: null,
+  teamKey: null,
+  repoUrlInput: "",
+  defaultBranchInput: "main",
+  labelInput: "",
+  showRepoAdvanced: false,
+  repoRoutes: [],
   tokenInput: "",
   openaiKeyInput: "",
   authMode: "api_key",
@@ -105,11 +118,12 @@ function buildStepIndicator(): HTMLElement {
   const steps: Array<{ key: SetupStep; label: string; n: string }> = [
     { key: "master-key", label: "Protect secrets", n: "1" },
     { key: "linear-project", label: "Connect Linear", n: "2" },
-    { key: "openai-key", label: "Add OpenAI", n: "3" },
-    { key: "github-token", label: "Add GitHub", n: "4" },
+    { key: "repo-config", label: "Link repo", n: "3" },
+    { key: "openai-key", label: "Add OpenAI", n: "4" },
+    { key: "github-token", label: "Add GitHub", n: "5" },
   ];
 
-  const order: SetupStep[] = ["master-key", "linear-project", "openai-key", "github-token", "done"];
+  const order: SetupStep[] = ["master-key", "linear-project", "repo-config", "openai-key", "github-token", "done"];
   const currentIdx = order.indexOf(state.step);
 
   const row = document.createElement("div");
@@ -183,7 +197,11 @@ function buildMasterKeyStep(): HTMLElement {
 
     const badge = document.createElement("div");
     badge.className = "setup-callout";
-    badge.innerHTML = "✓ <strong>Master key is configured.</strong> Your stored secrets are encrypted and protected.";
+    const badgeIcon = document.createTextNode("✓ ");
+    const badgeStrong = document.createElement("strong");
+    badgeStrong.textContent = "Master key is configured. ";
+    const badgeText = document.createTextNode("Your stored secrets are encrypted and protected.");
+    badge.append(badgeIcon, badgeStrong, badgeText);
 
     const actions = document.createElement("div");
     actions.className = "setup-actions";
@@ -209,6 +227,12 @@ function buildMasterKeyStep(): HTMLElement {
         state.apiKeyVerified = false;
         state.projects = [];
         state.selectedProject = null;
+        state.teamKey = null;
+        state.repoUrlInput = "";
+        state.defaultBranchInput = "main";
+        state.labelInput = "";
+        state.showRepoAdvanced = false;
+        state.repoRoutes = [];
         state.tokenInput = "";
         state.openaiKeyInput = "";
         await generateAndSetKey();
@@ -242,8 +266,15 @@ function buildMasterKeyStep(): HTMLElement {
 
   const callout = document.createElement("div");
   callout.className = "setup-callout";
-  callout.innerHTML =
-    "<strong>Important:</strong> Save this key somewhere safe. It cannot be recovered if lost — you will need to delete <code>.symphony/secrets.enc</code> and re-enter your secrets.";
+  const calloutStrong = document.createElement("strong");
+  calloutStrong.textContent = "Important: ";
+  const calloutText1 = document.createTextNode(
+    "Save this key somewhere safe. It cannot be recovered if lost — you will need to delete ",
+  );
+  const calloutCode = document.createElement("code");
+  calloutCode.textContent = ".symphony/secrets.enc";
+  const calloutText2 = document.createTextNode(" and re-enter your secrets.");
+  callout.append(calloutStrong, calloutText1, calloutCode, calloutText2);
 
   const keyDisplay = document.createElement("div");
   keyDisplay.className = "setup-key-display";
@@ -372,15 +403,28 @@ function buildLinearProjectStep(): HTMLElement {
 
   const sub = document.createElement("div");
   sub.className = "setup-subtitle";
-  sub.innerHTML =
-    "Enter your Linear API key and choose the project Symphony should track. " +
-    '<a class="setup-link" href="https://linear.app/settings/account/security/api-keys/new" target="_blank" rel="noopener">Create a personal API key →</a>';
+  const subText = document.createTextNode("Enter your Linear API key and choose the project Symphony should track. ");
+  const subLink = document.createElement("a");
+  subLink.className = "setup-link";
+  subLink.href = "https://linear.app/settings/account/security/api-keys/new";
+  subLink.target = "_blank";
+  subLink.rel = "noopener";
+  subLink.textContent = "Create a personal API key →";
+  sub.append(subText, subLink);
 
   const callout = document.createElement("div");
   callout.className = "setup-callout";
-  callout.innerHTML =
-    "When creating the key, enable <strong>Read</strong> and <strong>Write</strong> permissions " +
-    "with <strong>All teams you have access to</strong> selected.";
+  const calloutText1 = document.createTextNode("When creating the key, enable ");
+  const readStrong = document.createElement("strong");
+  readStrong.textContent = "Read";
+  const calloutText2 = document.createTextNode(" and ");
+  const writeStrong = document.createElement("strong");
+  writeStrong.textContent = "Write";
+  const calloutText3 = document.createTextNode(" permissions with ");
+  const allTeamsStrong = document.createElement("strong");
+  allTeamsStrong.textContent = "All teams you have access to";
+  const calloutText4 = document.createTextNode(" selected.");
+  callout.append(calloutText1, readStrong, calloutText2, writeStrong, calloutText3, allTeamsStrong, calloutText4);
 
   // ── API key input row ──
   const field = document.createElement("div");
@@ -442,12 +486,22 @@ function buildLinearProjectStep(): HTMLElement {
       const successBanner = document.createElement("div");
       successBanner.className = "setup-callout";
       successBanner.style.marginTop = "var(--space-4)";
-      const linkHtml = state.createdProjectUrl
-        ? ` <a class="setup-link" href="${state.createdProjectUrl}" target="_blank" rel="noopener">View in Linear →</a>`
-        : "";
-      successBanner.innerHTML =
-        `✓ <strong>Project "${state.createdProjectName}" created successfully!</strong> ` +
-        `It's selected below and ready to use.${linkHtml}`;
+
+      const icon = document.createTextNode("✓ ");
+      const strong = document.createElement("strong");
+      strong.textContent = `Project "${state.createdProjectName}" created successfully! `;
+      const text = document.createTextNode("It's selected below and ready to use.");
+      successBanner.append(icon, strong, text);
+
+      if (state.createdProjectUrl) {
+        const link = document.createElement("a");
+        link.className = "setup-link";
+        link.href = state.createdProjectUrl;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = " View in Linear →";
+        successBanner.append(link);
+      }
       el.append(successBanner);
     }
 
@@ -460,8 +514,10 @@ function buildLinearProjectStep(): HTMLElement {
     const emptyMsg = document.createElement("div");
     emptyMsg.className = "setup-callout";
     emptyMsg.style.marginTop = "var(--space-4)";
-    emptyMsg.innerHTML =
-      "<strong>No projects found.</strong> Create one below or in Linear directly.";
+    const emptyStrong = document.createElement("strong");
+    emptyStrong.textContent = "No projects found. ";
+    const emptyText = document.createTextNode("Create one below or in Linear directly.");
+    emptyMsg.append(emptyStrong, emptyText);
 
     const createRow = document.createElement("div");
     createRow.style.display = "flex";
@@ -563,11 +619,91 @@ async function advanceLinearProject(): Promise<void> {
   state.error = null;
   try {
     await api.postLinearProject(state.selectedProject);
+    const selectedProj = state.projects.find((p) => p.slugId === state.selectedProject);
+    state.teamKey = selectedProj?.teamKey ? String(selectedProj.teamKey) : null;
+    state.step = "repo-config";
+  } catch (err) {
+    state.error = err instanceof Error ? err.message : String(err);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function buildRepoConfigStepSetup(): HTMLElement {
+  const repoStepState: RepoConfigStepState = {
+    loading: state.loading,
+    error: state.error,
+    teamKey: state.teamKey,
+    repoUrlInput: state.repoUrlInput,
+    defaultBranchInput: state.defaultBranchInput,
+    labelInput: state.labelInput,
+    showAdvanced: state.showRepoAdvanced,
+    routes: state.repoRoutes,
+  };
+
+  const repoStepActions: RepoConfigStepActions = {
+    onRepoUrlInput: (value) => {
+      state.repoUrlInput = value;
+    },
+    onDefaultBranchInput: (value) => {
+      state.defaultBranchInput = value;
+    },
+    onLabelInput: (value) => {
+      state.labelInput = value;
+    },
+    onToggleAdvanced: () => {
+      state.showRepoAdvanced = !state.showRepoAdvanced;
+      rerender();
+    },
+    onSave: () => {
+      void advanceRepoConfig();
+    },
+    onSkip: () => {
+      state.step = "openai-key";
+      state.error = null;
+      rerender();
+    },
+    onDeleteRoute: (index) => {
+      void handleDeleteRepoRoute(index);
+    },
+  };
+
+  return buildRepoConfigStep(repoStepState, repoStepActions);
+}
+
+async function advanceRepoConfig(): Promise<void> {
+  if (!state.repoUrlInput.trim()) return;
+  setLoading(true);
+  state.error = null;
+  try {
+    const identifierPrefix = state.teamKey ? state.teamKey.toUpperCase() : "DEFAULT";
+    await api.postRepoRoute({
+      repoUrl: state.repoUrlInput.trim(),
+      defaultBranch: state.defaultBranchInput.trim() || "main",
+      identifierPrefix,
+      label: state.labelInput.trim() || undefined,
+    });
+    const result = await api.getRepoRoutes();
+    state.repoRoutes = result.routes;
     state.step = "openai-key";
   } catch (err) {
     state.error = err instanceof Error ? err.message : String(err);
   } finally {
     setLoading(false);
+  }
+}
+
+async function handleDeleteRepoRoute(index: number): Promise<void> {
+  setLoading(true);
+  state.error = null;
+  try {
+    const result = await api.deleteRepoRoute(index);
+    state.repoRoutes = result.routes;
+  } catch (err) {
+    state.error = err instanceof Error ? err.message : String(err);
+  } finally {
+    setLoading(false);
+    rerender();
   }
 }
 
@@ -671,27 +807,83 @@ function buildGithubTokenStep(): HTMLElement {
   const optA = document.createElement("div");
   optA.style.cssText =
     "border:var(--stroke-default) solid var(--border-stitch);padding:var(--space-3);background:var(--bg-muted)";
-  optA.innerHTML =
-    '<div style="font-family:var(--font-body);font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:var(--space-2)">' +
-    'Fine-grained <span style="font-weight:400;color:var(--text-muted);font-size:var(--text-xs)">(recommended)</span></div>' +
-    '<a class="setup-link" style="display:inline-block;margin-bottom:var(--space-3)" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Create token →</a>' +
-    '<ol style="margin:0;padding-left:var(--space-4);font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8">' +
-    "<li>Name it <strong>Symphony</strong></li>" +
-    "<li>Repository access → <strong>Only select repositories</strong> → pick repos</li>" +
-    "<li>Permissions → Repository → <strong>Contents</strong> and <strong>Pull requests</strong>: Read and write</li>" +
-    "<li>Generate token</li>" +
-    "</ol>";
+
+  const optATitle = document.createElement("div");
+  optATitle.style.cssText =
+    "font-family:var(--font-body);font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:var(--space-2)";
+  const optATitleText = document.createTextNode("Fine-grained ");
+  const optARecommended = document.createElement("span");
+  optARecommended.style.cssText = "font-weight:400;color:var(--text-muted);font-size:var(--text-xs)";
+  optARecommended.textContent = "(recommended)";
+  optATitle.append(optATitleText, optARecommended);
+
+  const optALink = document.createElement("a");
+  optALink.className = "setup-link";
+  optALink.style.cssText = "display:inline-block;margin-bottom:var(--space-3)";
+  optALink.href = "https://github.com/settings/personal-access-tokens/new";
+  optALink.target = "_blank";
+  optALink.rel = "noopener";
+  optALink.textContent = "Create token →";
+
+  const optAList = document.createElement("ol");
+  optAList.style.cssText =
+    "margin:0;padding-left:var(--space-4);font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8";
+
+  const optAItems = [
+    ["Name it ", "Symphony"],
+    ["Repository access → ", "Only select repositories", " → pick repos"],
+    ["Permissions → Repository → ", "Contents", " and ", "Pull requests", ": Read and write"],
+    ["Generate token"],
+  ];
+  for (const parts of optAItems) {
+    const li = document.createElement("li");
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 2 === 1) {
+        const strong = document.createElement("strong");
+        strong.textContent = parts[i];
+        li.append(strong);
+      } else {
+        li.append(document.createTextNode(parts[i]));
+      }
+    }
+    optAList.append(li);
+  }
+
+  optA.append(optATitle, optALink, optAList);
 
   const optB = document.createElement("div");
   optB.style.cssText =
     "border:var(--stroke-default) solid var(--border-stitch);padding:var(--space-3);background:var(--bg-muted)";
-  optB.innerHTML =
-    '<div style="font-family:var(--font-body);font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:var(--space-2)">Classic</div>' +
-    '<a class="setup-link" style="display:inline-block;margin-bottom:var(--space-3)" href="https://github.com/settings/tokens/new?scopes=repo&description=Symphony+Orchestrator" target="_blank" rel="noopener">Create token →</a>' +
-    '<ol style="margin:0;padding-left:var(--space-4);font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8">' +
-    "<li>Check the <strong>repo</strong> scope</li>" +
-    "<li>Generate token</li>" +
-    "</ol>";
+
+  const optBTitle = document.createElement("div");
+  optBTitle.style.cssText =
+    "font-family:var(--font-body);font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:var(--space-2)";
+  optBTitle.textContent = "Classic";
+
+  const optBLink = document.createElement("a");
+  optBLink.className = "setup-link";
+  optBLink.style.cssText = "display:inline-block;margin-bottom:var(--space-3)";
+  optBLink.href = "https://github.com/settings/tokens/new?scopes=repo&description=Symphony+Orchestrator";
+  optBLink.target = "_blank";
+  optBLink.rel = "noopener";
+  optBLink.textContent = "Create token →";
+
+  const optBList = document.createElement("ol");
+  optBList.style.cssText =
+    "margin:0;padding-left:var(--space-4);font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8";
+
+  const optBLi1 = document.createElement("li");
+  const optBLi1Text1 = document.createTextNode("Check the ");
+  const optBLi1Strong = document.createElement("strong");
+  optBLi1Strong.textContent = "repo";
+  const optBLi1Text2 = document.createTextNode(" scope");
+  optBLi1.append(optBLi1Text1, optBLi1Strong, optBLi1Text2);
+
+  const optBLi2 = document.createElement("li");
+  optBLi2.textContent = "Generate token";
+
+  optBList.append(optBLi1, optBLi2);
+  optB.append(optBTitle, optBLink, optBList);
 
   optionWrap.append(optA, optB);
 
@@ -952,6 +1144,12 @@ function buildDoneStep(): HTMLElement {
       state.apiKeyVerified = false;
       state.projects = [];
       state.selectedProject = null;
+      state.teamKey = null;
+      state.repoUrlInput = "";
+      state.defaultBranchInput = "main";
+      state.labelInput = "";
+      state.showRepoAdvanced = false;
+      state.repoRoutes = [];
       state.tokenInput = "";
       state.openaiKeyInput = "";
       state.authMode = "api_key";
@@ -967,7 +1165,6 @@ function buildDoneStep(): HTMLElement {
       state.labelName = null;
       state.labelError = null;
       deviceAuthController.clearDeviceAuthState();
-      // Re-check backend status to find the correct starting step
       try {
         const status = await api.getSetupStatus();
         if (!status.steps.masterKey.done) {
@@ -977,6 +1174,8 @@ function buildDoneStep(): HTMLElement {
           state.generatedKey = "set";
           if (!status.steps.linearProject.done) {
             state.step = "linear-project";
+          } else if (!status.steps.repoRoute.done) {
+            state.step = "repo-config";
           } else if (!status.steps.openaiKey.done) {
             state.step = "openai-key";
           } else if (!status.steps.githubToken.done) {
@@ -1041,6 +1240,8 @@ function buildStepContent(): HTMLElement {
       return buildMasterKeyStep();
     case "linear-project":
       return buildLinearProjectStep();
+    case "repo-config":
+      return buildRepoConfigStepSetup();
     case "openai-key":
       return buildOpenaiKeyStep();
     case "github-token":

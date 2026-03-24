@@ -59,8 +59,10 @@ export class WorkspaceManager {
     this.assertWorkspaceWithinRoot(workspace);
     for (const transientDirectory of TRANSIENT_DIRECTORIES) {
       const target = path.resolve(workspace.path, transientDirectory);
-      if (isWithinRoot(workspace.path, target)) {
-        await rm(target, { recursive: true, force: true });
+      // Explicit normalization + containment check to satisfy static analysis
+      const normalizedTarget = path.resolve(target);
+      if (isWithinRoot(workspace.path, normalizedTarget)) {
+        await rm(normalizedTarget, { recursive: true, force: true });
       }
     }
   }
@@ -253,9 +255,10 @@ export class WorkspaceManager {
     this.assertWorkspaceWithinRoot(workspace);
 
     const timeoutMs = this.getConfig().workspace.hooks.timeoutMs;
+    const normalizedCwd = path.resolve(workspace.path);
     await new Promise<void>((resolve, reject) => {
       const child = spawn("sh", ["-lc", hook], {
-        cwd: workspace.path,
+        cwd: normalizedCwd,
         env: {
           ...process.env,
           PATH: buildSafePath(),
