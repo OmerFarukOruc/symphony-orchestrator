@@ -1,5 +1,18 @@
 import { buildTitleWithBadge } from "./setup-shared";
 
+const FIELD_IDS = {
+  url: "setup-repo-url",
+  urlHint: "setup-repo-url-hint",
+  urlError: "setup-repo-url-error",
+  branch: "setup-repo-branch",
+  branchHint: "setup-repo-branch-hint",
+  label: "setup-repo-label",
+  labelHint: "setup-repo-label-hint",
+  advanced: "setup-repo-advanced",
+} as const;
+
+const GITHUB_REPO_URL = /^https:\/\/(?:www\.)?github\.com\/[\w.-]+\/[\w.-]+(?:\.git)?\/?$/i;
+
 export interface RepoConfigStepState {
   loading: boolean;
   error: string | null;
@@ -21,71 +34,71 @@ export interface RepoConfigStepActions {
   onDeleteRoute: (index: number) => void;
 }
 
+function getRepoUrlValidationMessage(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return GITHUB_REPO_URL.test(trimmed) ? null : "Enter a GitHub repository URL like https://github.com/org/repo.";
+}
+
 function buildExistingRoutes(
   routes: Array<Record<string, unknown>>,
   actions: RepoConfigStepActions,
+  loading: boolean,
 ): HTMLElement | null {
   if (routes.length === 0) {
     return null;
   }
 
-  const wrap = document.createElement("div");
+  const wrap = document.createElement("section");
   wrap.className = "setup-repo-routes";
-  wrap.style.marginTop = "var(--space-4)";
 
   const label = document.createElement("div");
   label.className = "setup-label";
   label.textContent = "Linked repositories";
-  wrap.append(label);
 
-  const list = document.createElement("div");
-  list.style.display = "flex";
-  list.style.flexDirection = "column";
-  list.style.gap = "var(--space-2)";
+  const list = document.createElement("ul");
+  list.className = "setup-repo-route-list";
 
-  for (let i = 0; i < routes.length; i++) {
-    const route = routes[i];
-    const row = document.createElement("div");
+  routes.forEach((route, index) => {
+    const repoUrl = String(route.repo_url ?? "");
+    const identifierPrefix = String(route.identifier_prefix ?? "");
+
+    const row = document.createElement("li");
     row.className = "setup-repo-route-row";
-    row.style.cssText =
-      "display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-3);border:var(--stroke-default) solid var(--border-stitch);background:var(--bg-muted)";
 
     const info = document.createElement("div");
-    info.style.flex = "1";
-    info.style.fontFamily = "var(--font-mono)";
-    info.style.fontSize = "var(--text-xs)";
+    info.className = "setup-repo-route-info";
 
     const prefix = document.createElement("span");
-    prefix.style.cssText = "font-weight:700;color:var(--text-primary);margin-right:var(--space-2)";
-    prefix.textContent = String(route.identifier_prefix ?? "");
+    prefix.className = "setup-repo-route-prefix";
+    prefix.textContent = identifierPrefix;
 
     const url = document.createElement("span");
-    url.style.color = "var(--text-secondary)";
-    url.textContent = String(route.repo_url ?? "");
+    url.className = "setup-repo-route-url";
+    url.textContent = repoUrl;
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "mc-button is-ghost is-sm setup-repo-remove";
+    removeButton.textContent = "Remove";
+    removeButton.disabled = loading;
+    removeButton.setAttribute("aria-label", `Remove linked repository ${repoUrl || identifierPrefix}`);
+    removeButton.addEventListener("click", () => actions.onDeleteRoute(index));
 
     info.append(prefix, url);
-
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "mc-button is-ghost is-sm";
-    deleteBtn.textContent = "Remove";
-    deleteBtn.style.color = "var(--status-blocked)";
-    deleteBtn.addEventListener("click", () => {
-      actions.onDeleteRoute(i);
-    });
-
-    row.append(info, deleteBtn);
+    row.append(info, removeButton);
     list.append(row);
-  }
+  });
 
-  wrap.append(list);
+  wrap.append(label, list);
   return wrap;
 }
 
 export function buildRepoConfigStep(state: RepoConfigStepState, actions: RepoConfigStepActions): HTMLElement {
   const el = document.createElement("div");
-
   const titleRow = buildTitleWithBadge("Link your repository", "is-optional", "Optional");
-
   const sub = document.createElement("div");
   sub.className = "setup-subtitle";
   sub.textContent = "Tell Symphony which GitHub repo to target when handling issues from this Linear project.";
@@ -93,135 +106,172 @@ export function buildRepoConfigStep(state: RepoConfigStepState, actions: RepoCon
   const callout = document.createElement("div");
   callout.className = "setup-callout";
   callout.textContent =
-    "Repos are optional — Symphony can use directory strategy without them. " +
-    "But linking a repo enables direct branch pushes and PR creation.";
-
+    "Repos are optional — Symphony can use directory strategy without them. But linking a repo enables direct branch pushes and PR creation.";
   el.append(titleRow, sub, callout);
 
-  const existingRoutes = buildExistingRoutes(state.routes, actions);
+  const existingRoutes = buildExistingRoutes(state.routes, actions, state.loading);
   if (existingRoutes) {
     el.append(existingRoutes);
   }
 
   const prefixField = document.createElement("div");
   prefixField.className = "setup-field";
-  prefixField.style.marginTop = "var(--space-4)";
-
-  const prefixLabel = document.createElement("label");
+  const prefixLabel = document.createElement("div");
   prefixLabel.className = "setup-label";
   prefixLabel.textContent = "Identifier prefix";
-
   const prefixChip = document.createElement("div");
-  prefixChip.style.cssText =
-    "display:inline-flex;align-items:center;padding:var(--space-1) var(--space-3);background:var(--bg-muted);border:var(--stroke-default) solid var(--border-stitch);font-family:var(--font-mono);font-size:var(--text-sm);font-weight:700;color:var(--text-primary)";
+  prefixChip.className = "setup-repo-prefix-chip";
   prefixChip.textContent = state.teamKey ?? "N/A";
-
   const prefixHint = document.createElement("div");
   prefixHint.className = "setup-hint";
   prefixHint.textContent = "Derived from your Linear team key. Issues with this prefix will target the repo below.";
-
   prefixField.append(prefixLabel, prefixChip, prefixHint);
 
   const urlField = document.createElement("div");
   urlField.className = "setup-field";
-
   const urlLabel = document.createElement("label");
   urlLabel.className = "setup-label";
+  urlLabel.htmlFor = FIELD_IDS.url;
   urlLabel.textContent = "GitHub repository URL";
-
   const urlInput = document.createElement("input");
+  urlInput.id = FIELD_IDS.url;
   urlInput.className = "setup-input";
   urlInput.type = "url";
+  urlInput.required = true;
+  urlInput.setAttribute("autocomplete", "url");
   urlInput.placeholder = "https://github.com/org/repo";
   urlInput.value = state.repoUrlInput;
-  urlInput.addEventListener("input", () => {
-    actions.onRepoUrlInput(urlInput.value);
-  });
-
-  urlField.append(urlLabel, urlInput);
+  urlInput.setAttribute("aria-describedby", `${FIELD_IDS.urlHint} ${FIELD_IDS.urlError}`);
+  const urlHint = document.createElement("div");
+  urlHint.id = FIELD_IDS.urlHint;
+  urlHint.className = "setup-hint";
+  urlHint.textContent = "Use the full GitHub repository URL.";
+  const urlError = document.createElement("div");
+  urlError.id = FIELD_IDS.urlError;
+  urlError.className = "setup-error";
+  urlError.hidden = true;
+  urlError.setAttribute("role", "alert");
+  urlField.append(urlLabel, urlInput, urlHint, urlError);
 
   const branchField = document.createElement("div");
   branchField.className = "setup-field";
-
   const branchLabel = document.createElement("label");
   branchLabel.className = "setup-label";
+  branchLabel.htmlFor = FIELD_IDS.branch;
   branchLabel.textContent = "Default branch";
-
   const branchInput = document.createElement("input");
+  branchInput.id = FIELD_IDS.branch;
   branchInput.className = "setup-input";
+  branchInput.autocomplete = "off";
   branchInput.placeholder = "main";
   branchInput.value = state.defaultBranchInput;
-  branchInput.addEventListener("input", () => {
-    actions.onDefaultBranchInput(branchInput.value);
-  });
-
-  branchField.append(branchLabel, branchInput);
-
+  branchInput.setAttribute("aria-describedby", FIELD_IDS.branchHint);
+  const branchHint = document.createElement("div");
+  branchHint.id = FIELD_IDS.branchHint;
+  branchHint.className = "setup-hint";
+  branchHint.textContent = "Leave this as main unless the repository uses a different default branch.";
+  branchField.append(branchLabel, branchInput, branchHint);
   el.append(prefixField, urlField, branchField);
 
   const advancedToggle = document.createElement("button");
-  advancedToggle.className = "mc-button is-ghost is-sm";
-  advancedToggle.style.marginTop = "var(--space-3)";
-  advancedToggle.textContent = state.showAdvanced ? "Hide advanced" : "Advanced options";
-  advancedToggle.addEventListener("click", () => {
-    actions.onToggleAdvanced();
-  });
-
+  advancedToggle.type = "button";
+  advancedToggle.className = "mc-button is-ghost is-sm setup-repo-advanced-toggle";
+  advancedToggle.textContent = state.showAdvanced ? "Hide advanced options" : "Show advanced options";
+  advancedToggle.setAttribute("aria-controls", FIELD_IDS.advanced);
+  advancedToggle.setAttribute("aria-expanded", String(state.showAdvanced));
+  advancedToggle.addEventListener("click", actions.onToggleAdvanced);
   el.append(advancedToggle);
 
-  if (state.showAdvanced) {
-    const labelField = document.createElement("div");
-    labelField.className = "setup-field";
-    labelField.style.marginTop = "var(--space-2)";
-
-    const labelLabel = document.createElement("label");
-    labelLabel.className = "setup-label";
-    labelLabel.textContent = "Label-based routing (optional)";
-
-    const labelInput = document.createElement("input");
-    labelInput.className = "setup-input";
-    labelInput.placeholder = "e.g. backend";
-    labelInput.value = state.labelInput;
-    labelInput.addEventListener("input", () => {
-      actions.onLabelInput(labelInput.value);
-    });
-
-    const labelHint = document.createElement("div");
-    labelHint.className = "setup-hint";
-    labelHint.textContent =
-      "If set, issues with this label will also route to this repo (in addition to prefix matching).";
-
-    labelField.append(labelLabel, labelInput, labelHint);
-    el.append(labelField);
-  }
+  const advancedPanel = document.createElement("section");
+  advancedPanel.id = FIELD_IDS.advanced;
+  advancedPanel.className = "setup-repo-advanced";
+  advancedPanel.hidden = !state.showAdvanced;
+  const labelField = document.createElement("div");
+  labelField.className = "setup-field";
+  const labelLabel = document.createElement("label");
+  labelLabel.className = "setup-label";
+  labelLabel.htmlFor = FIELD_IDS.label;
+  labelLabel.textContent = "Label-based routing (optional)";
+  const labelInput = document.createElement("input");
+  labelInput.id = FIELD_IDS.label;
+  labelInput.className = "setup-input";
+  labelInput.autocomplete = "off";
+  labelInput.placeholder = "e.g. backend";
+  labelInput.value = state.labelInput;
+  labelInput.setAttribute("aria-describedby", FIELD_IDS.labelHint);
+  const labelHint = document.createElement("div");
+  labelHint.id = FIELD_IDS.labelHint;
+  labelHint.className = "setup-hint";
+  labelHint.textContent =
+    "If set, issues with this label will also route to this repo (in addition to prefix matching).";
+  labelField.append(labelLabel, labelInput, labelHint);
+  advancedPanel.append(labelField);
+  el.append(advancedPanel);
 
   if (state.error) {
-    const err = document.createElement("div");
-    err.className = "setup-error";
-    err.textContent = state.error;
-    el.append(err);
+    const error = document.createElement("div");
+    error.className = "setup-error";
+    error.textContent = state.error;
+    error.setAttribute("role", "alert");
+    error.setAttribute("aria-live", "assertive");
+    el.append(error);
   }
 
   const actionsRow = document.createElement("div");
   actionsRow.className = "setup-actions";
-
   const skipBtn = document.createElement("button");
+  skipBtn.type = "button";
   skipBtn.className = "mc-button is-ghost is-sm";
   skipBtn.textContent = "Skip";
-  skipBtn.addEventListener("click", () => {
-    actions.onSkip();
-  });
-
+  skipBtn.addEventListener("click", actions.onSkip);
   const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
   saveBtn.className = "mc-button is-primary";
   saveBtn.textContent = state.loading ? "Saving…" : "Save & Continue";
-  saveBtn.disabled = state.loading || !state.repoUrlInput.trim();
+
+  const updateSaveButton = (): void => {
+    saveBtn.disabled = state.loading || !urlInput.value.trim();
+  };
+
+  const syncRepoUrlState = (focusInvalidInput = false): boolean => {
+    const message = getRepoUrlValidationMessage(urlInput.value);
+    urlError.hidden = !message;
+    urlError.textContent = message ?? "";
+    urlInput.classList.toggle("is-invalid", !!message);
+    if (message) {
+      urlInput.setAttribute("aria-invalid", "true");
+      if (focusInvalidInput) {
+        urlInput.focus();
+      }
+    } else {
+      urlInput.removeAttribute("aria-invalid");
+    }
+    updateSaveButton();
+    return !message;
+  };
+
+  urlInput.addEventListener("input", () => {
+    actions.onRepoUrlInput(urlInput.value);
+    syncRepoUrlState();
+  });
+  urlInput.addEventListener("blur", () => {
+    syncRepoUrlState();
+  });
+  branchInput.addEventListener("input", () => {
+    actions.onDefaultBranchInput(branchInput.value);
+  });
+  labelInput.addEventListener("input", () => {
+    actions.onLabelInput(labelInput.value);
+  });
   saveBtn.addEventListener("click", () => {
-    actions.onSave();
+    if (syncRepoUrlState(true)) {
+      actions.onSave();
+    }
   });
 
+  updateSaveButton();
+  syncRepoUrlState();
   actionsRow.append(skipBtn, saveBtn);
   el.append(actionsRow);
-
   return el;
 }

@@ -81,11 +81,13 @@ export function buildOpenaiKeyStep(state: OpenaiSetupStepState, actions: OpenaiS
   actionsRow.className = "setup-actions";
 
   const skip = document.createElement("button");
+  skip.type = "button";
   skip.className = "mc-button is-ghost is-sm";
   skip.textContent = "Skip for now";
   skip.addEventListener("click", actions.onSkip);
 
   const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
   saveBtn.className = "mc-button is-primary";
   saveBtn.textContent = state.loading ? "Saving…" : "Validate & Save";
 
@@ -121,6 +123,7 @@ function buildApiKeyField(
   updateSaveButton: () => void,
 ): HTMLElement {
   const inputId = "setup-openai-api-key";
+  const hintId = "setup-openai-api-key-hint";
   const field = document.createElement("div");
   field.className = "setup-field";
 
@@ -134,6 +137,11 @@ function buildApiKeyField(
   input.id = inputId;
   input.className = "setup-input";
   input.type = "password";
+  input.required = true;
+  input.autocomplete = "off";
+  input.spellcheck = false;
+  input.setAttribute("autocapitalize", "off");
+  input.setAttribute("aria-describedby", hintId);
   input.placeholder = "sk-…";
   input.value = state.openaiKeyInput;
   input.addEventListener("input", () => {
@@ -142,7 +150,12 @@ function buildApiKeyField(
     updateSaveButton();
   });
 
-  field.append(label, input);
+  const hint = document.createElement("div");
+  hint.id = hintId;
+  hint.className = "setup-hint";
+  hint.textContent = "Paste a key that begins with sk-. Symphony stores it encrypted before saving.";
+
+  field.append(label, input, hint);
   return field;
 }
 
@@ -197,6 +210,7 @@ function buildDeviceAuthPanel(state: OpenaiSetupStepState, actions: OpenaiSetupS
   actionRow.className = "setup-device-auth-actions";
 
   const startBtn = document.createElement("button");
+  startBtn.type = "button";
   startBtn.className = "mc-button is-primary is-sm";
   startBtn.textContent = getDeviceAuthButtonLabel(state.deviceAuthStatus);
   startBtn.disabled = state.loading || state.deviceAuthStatus === "starting";
@@ -206,6 +220,7 @@ function buildDeviceAuthPanel(state: OpenaiSetupStepState, actions: OpenaiSetupS
   // Show cancel button when pending
   if (state.deviceAuthStatus === "pending") {
     const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
     cancelBtn.className = "mc-button is-ghost is-sm";
     cancelBtn.textContent = "Cancel";
     cancelBtn.addEventListener("click", actions.onCancelDeviceAuth);
@@ -246,6 +261,9 @@ function buildDeviceAuthStatus(state: OpenaiSetupStepState): HTMLElement {
 
   const message = document.createElement("div");
   message.className = "setup-device-auth-copy";
+  message.setAttribute("role", state.deviceAuthError ? "alert" : "status");
+  message.setAttribute("aria-live", state.deviceAuthError ? "assertive" : "polite");
+  message.setAttribute("aria-atomic", "true");
   message.textContent = getDeviceAuthStatusMessage(state);
   statusRow.append(message);
   statusWrap.append(statusRow);
@@ -260,6 +278,7 @@ function buildManualFallback(
 ): HTMLElement {
   const detailsId = "setup-manual-auth-details";
   const textareaId = "setup-openai-auth-json";
+  const stepsId = "setup-openai-auth-json-steps";
   const wrap = document.createElement("section");
   wrap.className = "setup-manual-auth";
 
@@ -298,6 +317,7 @@ function buildManualFallback(
   }
 
   const steps = document.createElement("div");
+  steps.id = stepsId;
   steps.className = "setup-device-auth-copy";
   steps.innerHTML =
     "1. Run <code>codex login --device-auth</code> in a terminal if needed.<br>" +
@@ -315,6 +335,11 @@ function buildManualFallback(
   const textarea = document.createElement("textarea");
   textarea.id = textareaId;
   textarea.className = "setup-input";
+  textarea.required = true;
+  textarea.autocomplete = "off";
+  textarea.spellcheck = false;
+  textarea.setAttribute("autocapitalize", "off");
+  textarea.setAttribute("aria-describedby", stepsId);
   textarea.style.cssText = "min-height:100px;font-family:var(--font-mono);font-size:var(--text-xs);resize:vertical";
   textarea.placeholder = '{"access_token":"...","refresh_token":"...","...":"..."}';
   textarea.value = state.authJsonInput;

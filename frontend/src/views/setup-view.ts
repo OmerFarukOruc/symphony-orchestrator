@@ -208,6 +208,7 @@ function buildMasterKeyStep(): HTMLElement {
 
     const reconfigure = document.createElement("button");
     reconfigure.className = "mc-button is-ghost is-sm";
+    reconfigure.type = "button";
     reconfigure.textContent = state.loading ? "Resetting…" : "Reconfigure";
     reconfigure.disabled = state.loading;
     reconfigure.addEventListener("click", async () => {
@@ -245,15 +246,13 @@ function buildMasterKeyStep(): HTMLElement {
 
     const next = document.createElement("button");
     next.className = "mc-button is-primary";
+    next.type = "button";
     next.textContent = "Next →";
     next.addEventListener("click", () => advanceMasterKey());
     actions.append(reconfigure, next);
 
     if (state.error) {
-      const err = document.createElement("div");
-      err.className = "setup-error";
-      err.textContent = state.error;
-      el.append(title, sub, badge, err, actions);
+      el.append(title, sub, badge, buildSetupError(state.error), actions);
     } else {
       el.append(title, sub, badge, actions);
     }
@@ -285,6 +284,7 @@ function buildMasterKeyStep(): HTMLElement {
 
   const copyBtn = document.createElement("button");
   copyBtn.className = "mc-button is-ghost is-sm";
+  copyBtn.type = "button";
   copyBtn.textContent = "Copy";
   copyBtn.addEventListener("click", () => {
     if (state.generatedKey) {
@@ -303,6 +303,7 @@ function buildMasterKeyStep(): HTMLElement {
 
   const regen = document.createElement("button");
   regen.className = "mc-button is-ghost is-sm";
+  regen.type = "button";
   regen.textContent = "Regenerate";
   regen.disabled = state.loading;
   regen.addEventListener("click", () => {
@@ -311,6 +312,7 @@ function buildMasterKeyStep(): HTMLElement {
 
   const next = document.createElement("button");
   next.className = "mc-button is-primary";
+  next.type = "button";
   next.textContent = state.loading ? "Saving…" : "Next →";
   next.disabled = state.loading || !state.generatedKey;
   next.addEventListener("click", () => advanceMasterKey());
@@ -318,10 +320,7 @@ function buildMasterKeyStep(): HTMLElement {
   actions.append(regen, next);
 
   if (state.error) {
-    const err = document.createElement("div");
-    err.className = "setup-error";
-    err.textContent = state.error;
-    el.append(title, sub, callout, keyDisplay, err, actions);
+    el.append(title, sub, callout, keyDisplay, buildSetupError(state.error), actions);
   } else {
     el.append(title, sub, callout, keyDisplay, actions);
   }
@@ -370,13 +369,19 @@ function applyStatusBadge(badge: HTMLElement): void {
   }
 }
 
-function buildProjectGrid(): HTMLElement {
+function buildProjectGrid(projectGridLabelId: string): HTMLElement {
   const grid = document.createElement("div");
   grid.className = "setup-project-grid";
+  grid.setAttribute("role", "radiogroup");
+  grid.setAttribute("aria-labelledby", projectGridLabelId);
 
   for (const p of state.projects) {
+    const isSelected = state.selectedProject === p.slugId;
     const card = document.createElement("div");
-    card.className = `setup-project-card${state.selectedProject === p.slugId ? " is-selected" : ""}`;
+    card.className = `setup-project-card${isSelected ? " is-selected" : ""}`;
+    card.setAttribute("role", "radio");
+    card.setAttribute("tabindex", isSelected ? "0" : "-1");
+    card.setAttribute("aria-checked", isSelected ? "true" : "false");
 
     const name = document.createElement("div");
     name.className = "setup-project-name";
@@ -387,9 +392,17 @@ function buildProjectGrid(): HTMLElement {
     slug.textContent = p.slugId;
 
     card.append(name, slug);
-    card.addEventListener("click", () => {
+    const selectProject = (): void => {
       state.selectedProject = p.slugId;
       rerender();
+    };
+    card.addEventListener("click", selectProject);
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      event.preventDefault();
+      selectProject();
     });
     grid.append(card);
   }
@@ -400,6 +413,7 @@ function buildLinearProjectStep(): HTMLElement {
   const el = document.createElement("div");
   const apiKeyInputId = "setup-linear-api-key";
   const createProjectNameInputId = "setup-linear-create-project-name";
+  const projectGridLabelId = "setup-linear-project-grid-label";
 
   const titleRow = buildTitleWithBadge("Connect to Linear", "is-required", "Required");
 
@@ -446,6 +460,7 @@ function buildLinearProjectStep(): HTMLElement {
 
   const verifyBtn = document.createElement("button");
   verifyBtn.className = "mc-button is-primary is-sm";
+  verifyBtn.type = "button";
   verifyBtn.style.marginTop = "var(--space-2)";
   verifyBtn.textContent = state.loading ? "Verifying…" : state.apiKeyVerified ? "Re-verify" : "Verify Key";
   verifyBtn.disabled = state.loading || !state.apiKeyInput;
@@ -507,10 +522,11 @@ function buildLinearProjectStep(): HTMLElement {
     }
 
     const gridLabel = document.createElement("div");
+    gridLabel.id = projectGridLabelId;
     gridLabel.className = "setup-label";
     gridLabel.style.marginTop = "var(--space-4)";
     gridLabel.textContent = "Select a project";
-    el.append(gridLabel, buildProjectGrid());
+    el.append(gridLabel, buildProjectGrid(projectGridLabelId));
   } else if (state.apiKeyVerified && state.projects.length === 0) {
     const emptyMsg = document.createElement("div");
     emptyMsg.className = "setup-callout";
@@ -543,6 +559,7 @@ function buildLinearProjectStep(): HTMLElement {
 
     const createBtn = document.createElement("button");
     createBtn.className = "mc-button is-primary is-sm";
+    createBtn.type = "button";
     createBtn.textContent = "Create Project";
     createBtn.disabled = true;
     nameInput.addEventListener("input", () => {
@@ -586,6 +603,7 @@ function buildLinearProjectStep(): HTMLElement {
 
   const skip = document.createElement("button");
   skip.className = "mc-button is-ghost is-sm";
+  skip.type = "button";
   skip.textContent = "Skip";
   skip.addEventListener("click", () => {
     state.step = "github-token";
@@ -595,6 +613,7 @@ function buildLinearProjectStep(): HTMLElement {
 
   const next = document.createElement("button");
   next.className = "mc-button is-primary";
+  next.type = "button";
   next.textContent = state.loading ? "Saving…" : "Next →";
   next.disabled = state.loading || !state.selectedProject;
   next.addEventListener("click", () => {
@@ -910,6 +929,7 @@ function buildGithubTokenStep(): HTMLElement {
 
   const validate = document.createElement("button");
   validate.className = "mc-button is-primary";
+  validate.type = "button";
   validate.textContent = state.loading ? "Validating…" : "Validate & Save";
   validate.disabled = state.loading || !state.tokenInput;
   validate.addEventListener("click", () => void advanceGithubToken());
@@ -937,6 +957,7 @@ function buildGithubTokenStep(): HTMLElement {
 
   const skip = document.createElement("button");
   skip.className = "mc-button is-ghost is-sm";
+  skip.type = "button";
   skip.textContent = "Skip for now";
   skip.addEventListener("click", () => {
     state.step = "done";
@@ -1062,6 +1083,7 @@ function buildQuickStartCard(opts: {
   } else {
     const btn = document.createElement("button");
     btn.className = "mc-button is-primary is-sm";
+    btn.type = "button";
     btn.textContent = opts.loading ? "Creating…" : opts.buttonText;
     btn.disabled = opts.loading;
     btn.addEventListener("click", () => opts.onClick());
@@ -1128,6 +1150,7 @@ function buildDoneStep(): HTMLElement {
 
   const goBtn = document.createElement("button");
   goBtn.className = "mc-button is-primary";
+  goBtn.type = "button";
   goBtn.style.marginTop = "var(--space-6)";
   goBtn.textContent = "Go to Dashboard →";
   goBtn.addEventListener("click", () => {
@@ -1140,6 +1163,7 @@ function buildDoneStep(): HTMLElement {
 
   const resetBtn = document.createElement("button");
   resetBtn.className = "mc-button is-ghost is-sm setup-reset-btn";
+  resetBtn.type = "button";
   resetBtn.textContent = "Reset & Re-run Setup";
   resetBtn.addEventListener("click", async () => {
     if (!confirm("This will clear all stored secrets (Linear, OpenAI, GitHub keys). Are you sure?")) return;
