@@ -4,6 +4,18 @@ import path from "node:path";
 import { normalizeStateList } from "../state/policy.js";
 import type { ServiceConfig, ValidationError } from "../core/types.js";
 
+function normalizeRepoTarget(value: string | null | undefined): string {
+  if (!value) {
+    return "";
+  }
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\.git$/, "")
+    .replace(/^git@github\.com:/, "https://github.com/")
+    .replace(/^ssh:\/\/git@github\.com\//, "https://github.com/");
+}
+
 function validateTrackerConfig(config: ServiceConfig): ValidationError | null {
   if (config.tracker.kind !== "linear") {
     return {
@@ -111,4 +123,25 @@ export function validateDispatch(
     validateCodexProviderConfig(config) ??
     validateApiKeyEnv(config, env)
   );
+}
+
+export function collectDispatchWarnings(config: ServiceConfig): ValidationError[] {
+  const warnings: ValidationError[] = [];
+
+  for (const repo of config.repos ?? []) {
+    const normalizedRepoUrl = normalizeRepoTarget(repo.repoUrl);
+    const githubRepo = normalizeRepoTarget(repo.githubRepo);
+    if (!normalizedRepoUrl.includes("symphony-orchestrator") && githubRepo !== "symphony-orchestrator") {
+      continue;
+    }
+    warnings.push({
+      code: "self_routing_repo",
+      message:
+        `repo route ${JSON.stringify(repo.identifierPrefix ?? repo.label ?? repo.repoUrl)} points to ` +
+        `symphony-orchestrator itself. This is fine for self-test traffic, but it will make dispatched agents modify ` +
+        "the orchestrator repo instead of the intended target repository.",
+    });
+  }
+
+  return warnings;
 }

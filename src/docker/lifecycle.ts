@@ -43,6 +43,23 @@ export async function inspectOomKilled(name: string): Promise<boolean | null> {
 }
 
 /**
+ * Inspect whether the container is currently running.
+ * Returns `true` if running, `false` if the container exists but is stopped,
+ * and `null` if the container does not exist.
+ */
+export async function inspectContainerRunning(name: string): Promise<boolean | null> {
+  try {
+    const { stdout } = await execFileAsync("docker", ["inspect", name, "--format", "{{.State.Running}}"]);
+    return stdout.trim() === "true";
+  } catch (error) {
+    if (isNotFound(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
  * Forcefully remove a container. Safe to call even if already removed.
  */
 export async function removeContainer(name: string): Promise<void> {

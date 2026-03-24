@@ -1,13 +1,7 @@
-import type {
-  Issue,
-  ModelSelection,
-  RecentEvent,
-  RuntimeIssueView,
-  ServiceConfig,
-  TokenUsageSnapshot,
-} from "../core/types.js";
+import type { Issue, ModelSelection, RuntimeIssueView, ServiceConfig, TokenUsageSnapshot } from "../core/types.js";
 import type { OrchestratorDeps, RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
 import type { StallEvent } from "./stall-detector.js";
+import type { RuntimeEventRecord } from "./lifecycle-events.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type { GitManager } from "../git/manager.js";
 
@@ -54,7 +48,7 @@ export interface OrchestratorContext {
   releaseIssueClaim: (issueId: string) => void;
   claimIssue: (issueId: string) => void;
   notify: (event: NotificationEvent) => void;
-  pushEvent: (event: RecentEvent & { usage?: unknown; rateLimits?: unknown }) => void;
+  pushEvent: (event: RuntimeEventRecord) => void;
   queueRetry: (issue: Issue, attempt: number, delayMs: number, error: string | null) => void;
   clearRetryEntry: (issueId: string) => void;
   launchWorker: (issue: Issue, attempt: number | null, options?: { claimHeld?: boolean }) => Promise<void>;

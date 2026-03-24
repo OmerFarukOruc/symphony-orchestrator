@@ -3,6 +3,7 @@ export interface SetupStatus {
   steps: {
     masterKey: { done: boolean };
     linearProject: { done: boolean };
+    repoRoute: { done: boolean };
     openaiKey: { done: boolean };
     githubToken: { done: boolean };
   };
@@ -13,6 +14,7 @@ const DEFAULTS: SetupStatus = {
   steps: {
     masterKey: { done: true },
     linearProject: { done: true },
+    repoRoute: { done: true },
     openaiKey: { done: true },
     githubToken: { done: true },
   },
@@ -28,6 +30,7 @@ export function buildSetupUnconfigured(): SetupStatus {
     steps: {
       masterKey: { done: false },
       linearProject: { done: false },
+      repoRoute: { done: false },
       openaiKey: { done: false },
       githubToken: { done: false },
     },

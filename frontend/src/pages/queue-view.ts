@@ -3,7 +3,7 @@ import { createIssueInspector } from "../components/issue-inspector";
 import { router } from "../router";
 import { store } from "../state/store";
 import type { AppState } from "../state/store";
-import type { WorkflowColumn } from "../types";
+import type { RecentEvent, WorkflowColumn } from "../types";
 import { registerPageCleanup } from "../utils/page";
 import { createQueueBoardRenderer } from "./queue-board";
 import { createDragStateManager } from "./drag-state";
@@ -40,6 +40,7 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
   let ui = createUiState(store.getState().snapshot?.workflow_columns ?? []);
   let routeId = params?.id ?? "";
   let columns: WorkflowColumn[] = store.getState().snapshot?.workflow_columns ?? [];
+  let recentEvents: RecentEvent[] = store.getState().snapshot?.recent_events ?? [];
   let searchInput: HTMLInputElement = document.createElement("input");
   let filterButton: HTMLButtonElement | null = null;
   let lastColumnFingerprint = "";
@@ -58,6 +59,7 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
     filters,
     getUi: () => ui,
     getRouteId: () => routeId,
+    getRecentEvents: () => recentEvents,
     clearFilters,
     requestRender: renderBoard,
     onOpenIssue: (issueId, fullPage) => router.navigate(fullPage ? `/issues/${issueId}` : `/queue/${issueId}`),
@@ -112,6 +114,7 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
 
   function sync(state: AppState): void {
     columns = state.snapshot?.workflow_columns ?? [];
+    recentEvents = state.snapshot?.recent_events ?? [];
     if (ui.collapsed.size === 0 && columns.length > 0) {
       ui = createUiState(columns);
     }

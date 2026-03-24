@@ -116,6 +116,7 @@ export interface RecentEvent {
   event: string;
   message: string;
   content: unknown | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface StallEventView {
@@ -150,6 +151,7 @@ export interface SetupStatus {
   steps: {
     masterKey: { done: boolean };
     linearProject: { done: boolean };
+    repoRoute: { done: boolean };
     openaiKey: { done: boolean };
     githubToken: { done: boolean };
   };

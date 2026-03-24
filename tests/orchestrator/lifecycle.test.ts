@@ -320,6 +320,63 @@ describe("refreshQueueViews", () => {
     expect(detailViews.has("MT-1")).toBe(false);
     expect(detailViews.has("MT-2")).toBe(true);
   });
+
+  it("emits issue_queued only for newly queued issues", async () => {
+    const pushed: Array<Record<string, unknown>> = [];
+    await refreshQueueViews({
+      queuedViews: [makeIssue({ id: "i1", identifier: "MT-1" })].map((issue) => ({
+        issueId: issue.id,
+        identifier: issue.identifier,
+      })) as never,
+      detailViews: new Map(),
+      claimedIssueIds: new Set<string>(),
+      deps: {
+        linearClient: {
+          fetchCandidateIssues: vi
+            .fn()
+            .mockResolvedValue([
+              makeIssue({ id: "i1", identifier: "MT-1" }),
+              makeIssue({ id: "i2", identifier: "MT-2" }),
+            ]),
+        },
+      },
+      canDispatchIssue: () => true,
+      resolveModelSelection: () => ({ model: "gpt-4o", reasoningEffort: "high" as const, source: "default" as const }),
+      setQueuedViews: () => undefined,
+      pushEvent: (event) => pushed.push(event as Record<string, unknown>),
+    });
+
+    expect(pushed).toHaveLength(1);
+    expect(pushed[0]).toMatchObject({
+      issueIdentifier: "MT-2",
+      event: "issue_queued",
+    });
+  });
+
+  it("does not emit issue_queued for hidden issues beyond the 50-item queue cap", async () => {
+    const issues = Array.from({ length: 51 }, (_, index) =>
+      makeIssue({ id: `i${index}`, identifier: `MT-${index}`, priority: index }),
+    );
+    const pushed: Array<Record<string, unknown>> = [];
+
+    await refreshQueueViews({
+      queuedViews: [],
+      detailViews: new Map(),
+      claimedIssueIds: new Set<string>(),
+      deps: {
+        linearClient: {
+          fetchCandidateIssues: vi.fn().mockResolvedValue(issues),
+        },
+      },
+      canDispatchIssue: () => true,
+      resolveModelSelection: () => ({ model: "gpt-4o", reasoningEffort: "high" as const, source: "default" as const }),
+      setQueuedViews: () => undefined,
+      pushEvent: (event) => pushed.push(event as Record<string, unknown>),
+    });
+
+    expect(pushed).toHaveLength(50);
+    expect(pushed.some((event) => event.issueIdentifier === "MT-50")).toBe(false);
+  });
 });
 
 describe("cleanupTerminalIssueWorkspaces", () => {

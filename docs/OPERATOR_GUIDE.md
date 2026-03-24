@@ -436,6 +436,8 @@ The workflow can now configure:
 - `notifications.slack.verbosity`
 - `repos[]` routing entries for identifier-prefix or label-based repository selection
 
+Routing precedence is now explicit: Symphony checks label routes first, then falls back to identifier-prefix routes. Use labels for per-issue overrides and prefixes for the default team-to-repo mapping.
+
 When a routed issue reports `SYMPHONY_STATUS: DONE`, Symphony can now:
 
 1. commit and push the workspace branch
@@ -495,6 +497,8 @@ The checked-in workflows also instruct the agent to finish with `SYMPHONY_STATUS
 
 Symphony polls Linear on the configured interval, filters candidates using `tracker.active_states`, sorts dispatches by priority then oldest creation time then identifier, suppresses blocked `Todo` issues, and enforces both the global concurrency limit and any per-state caps from `agent.max_concurrent_agents_by_state`.
 
+During startup, active issues now emit lifecycle events through the same recent-events stream used by the rest of the dashboard. The queue UI surfaces `issue_queued`, `workspace_preparing`, `workspace_ready`, `container_starting`, `container_running`, `codex_initializing`, and `thread_started` so operators can see where time is being spent before the first agent response.
+
 ### 📁 Workspace Lifecycle
 
 Each issue gets its own workspace directory under `workspace.root`. Hooks run at these stages:
@@ -532,6 +536,7 @@ When `workspace.strategy: worktree`, Symphony creates a single bare clone under 
 - Successful terminal runs clean up the worktree; hard failures can be preserved for debugging
 - The `.base` directory is excluded from startup transient cleanup
 - Fail-fast: worktree mode requires a matching repo route for every issue
+- Symphony warns when a configured repo route points back to `symphony-orchestrator` itself; keep that only for deliberate self-test traffic
 
 **Configuration:**
 

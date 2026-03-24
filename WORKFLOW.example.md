@@ -16,7 +16,7 @@ tracker:
 
 # The polling loop never overlaps; the next pass is scheduled only after the current pass completes.
 polling:
-  interval_ms: 30000
+  interval_ms: 15000
 
 # Workspaces live as sibling directories of the project repo.
 workspace:
@@ -24,7 +24,7 @@ workspace:
   # Strategy: "directory" (default) or "worktree"
   # - directory: traditional clone-per-issue workspace
   # - worktree: git worktree per issue from a shared bare clone (saves disk, shares object store)
-  # strategy: directory
+  strategy: worktree
   # Branch prefix used for symphony-created branches (applies to both strategies).
   # branch_prefix: "symphony/"
 
@@ -48,11 +48,11 @@ agent:
   #   in progress: 4
   max_turns: 20
   max_retry_backoff_ms: 120000
+  success_state: "Done"
   # Orchestrator-level stall timeout: kill and requeue agents that emit no events for this long.
   # Default is 1200000 ms (20 min). Set to 0 to disable.
   # stall_timeout_ms: 1200000
   # Linear state to transition the issue to on successful agent completion. Null = no transition.
-  # success_state: "Done"
 
 codex:
   command: "codex app-server"
@@ -119,6 +119,22 @@ codex:
       driver: json-file
       max_size: "50m"
       max_file: 3
+
+# Labels override identifier prefixes. Use the prefix as the default fallback route,
+# and add a label route when a specific issue should land in a different repository.
+repos:
+  - repo_url: "https://github.com/acme/backend.git"
+    default_branch: "main"
+    identifier_prefix: "NIN"
+    github_owner: "acme"
+    github_repo: "backend"
+    github_token_env: "GITHUB_TOKEN"
+  - repo_url: "https://github.com/acme/frontend.git"
+    default_branch: "main"
+    label: "repo:frontend"
+    github_owner: "acme"
+    github_repo: "frontend"
+    github_token_env: "GITHUB_TOKEN"
 
 # The HTTP dashboard and JSON API bind locally by default.
 server:

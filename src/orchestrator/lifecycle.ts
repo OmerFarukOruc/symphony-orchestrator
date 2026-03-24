@@ -1,4 +1,5 @@
 import { sortIssuesForDispatch } from "./dispatch.js";
+import { createLifecycleEvent, type RuntimeEventSink } from "./lifecycle-events.js";
 import { issueView, nowIso } from "./views.js";
 import { isActiveState, isTerminalState } from "../state/policy.js";
 import type { AttemptRecord, Issue, ServiceConfig } from "../core/types.js";
@@ -77,14 +78,7 @@ interface ReconcileContext {
   };
   getConfig: () => ServiceConfig;
   clearRetryEntry: (issueId: string) => void;
-  pushEvent: (event: {
-    at: string;
-    issueId: string;
-    issueIdentifier: string;
-    sessionId: string | null;
-    event: string;
-    message: string;
-  }) => void;
+  pushEvent: RuntimeEventSink;
 }
 export async function reconcileRunningAndRetrying(ctx: ReconcileContext): Promise<void> {
   const now = Date.now();
@@ -117,24 +111,44 @@ export async function refreshQueueViews(ctx: {
     source: "default" | "override";
   };
   setQueuedViews: (views: IssueView[]) => void;
+  pushEvent?: RuntimeEventSink;
 }): Promise<void> {
   const issues = sortIssuesForDispatch(await ctx.deps.linearClient.fetchCandidateIssues());
-  const queuedViews = issues
-    .filter((issue) => ctx.canDispatchIssue(issue))
-    .slice(0, 50)
-    .map((issue) => {
-      const selection = ctx.resolveModelSelection(issue.identifier);
-      return issueView(issue, {
-        status: "queued",
-        configuredModel: selection.model,
-        configuredReasoningEffort: selection.reasoningEffort,
-        configuredModelSource: selection.source,
-        modelChangePending: false,
-        model: selection.model,
-        reasoningEffort: selection.reasoningEffort,
-        modelSource: selection.source,
-      });
+  const dispatchableIssues = issues.filter((issue) => ctx.canDispatchIssue(issue));
+  const previousQueuedIssueIds = new Set(ctx.queuedViews.map((view) => view.issueId));
+  const visibleQueuedIssues = dispatchableIssues.slice(0, 50);
+  const queuedViews = visibleQueuedIssues.map((issue) => {
+    const selection = ctx.resolveModelSelection(issue.identifier);
+    return issueView(issue, {
+      status: "queued",
+      configuredModel: selection.model,
+      configuredReasoningEffort: selection.reasoningEffort,
+      configuredModelSource: selection.source,
+      modelChangePending: false,
+      model: selection.model,
+      reasoningEffort: selection.reasoningEffort,
+      modelSource: selection.source,
     });
+  });
+
+  if (ctx.pushEvent) {
+    for (const issue of visibleQueuedIssues) {
+      if (previousQueuedIssueIds.has(issue.id)) {
+        continue;
+      }
+      ctx.pushEvent(
+        createLifecycleEvent({
+          issue,
+          event: "issue_queued",
+          message: "Issue queued for dispatch",
+          metadata: {
+            state: issue.state,
+            priority: issue.priority,
+          },
+        }),
+      );
+    }
+  }
   ctx.setQueuedViews(queuedViews);
 
   const nextDetailViews = new Map<string, IssueView>();

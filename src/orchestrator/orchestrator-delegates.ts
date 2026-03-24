@@ -1,4 +1,5 @@
 import type { OrchestratorContext } from "./context.js";
+import type { RuntimeEventRecord } from "./lifecycle-events.js";
 import type {
   Issue,
   ModelSelection,
@@ -105,10 +106,7 @@ function notifyChannel(deps: OrchestratorDeps, event: NotificationEvent): void {
   void deps.notificationManager.notify(event);
 }
 
-function pushRecentEvent(
-  recentEvents: RecentEvent[],
-  event: RecentEvent & { usage?: unknown; rateLimits?: unknown },
-): void {
+function pushRecentEvent(recentEvents: RecentEvent[], event: RuntimeEventRecord): void {
   recentEvents.push({
     at: event.at,
     issueId: event.issueId,
@@ -117,6 +115,7 @@ function pushRecentEvent(
     event: event.event,
     message: event.message,
     content: event.content ?? null,
+    metadata: event.metadata ?? null,
   });
   if (recentEvents.length > 250) {
     recentEvents.shift();

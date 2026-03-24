@@ -8,6 +8,7 @@ import { initializeSession } from "./session-init.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import { LinearClient } from "../linear/client.js";
+import { createLifecycleEvent, toErrorMessage } from "../orchestrator/lifecycle-events.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
 import type { Issue, ModelSelection, RunOutcome, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
 import { WorkspaceManager } from "../workspace/manager.js";
@@ -65,13 +66,29 @@ export class AgentRunner {
     };
     const wrappedInput = { ...input, onEvent: wrappedOnEvent };
 
-    const session = await createDockerSession(
-      config,
-      buildDockerInput(wrappedInput),
-      buildDockerDeps(this.deps),
-      this.turnState,
-      input.precomputedRuntimeConfig,
-    );
+    let session: Awaited<ReturnType<typeof createDockerSession>>;
+    try {
+      session = await createDockerSession(
+        config,
+        buildDockerInput(wrappedInput),
+        buildDockerDeps(this.deps),
+        this.turnState,
+        input.precomputedRuntimeConfig,
+      );
+    } catch (error) {
+      wrappedInput.onEvent(
+        createLifecycleEvent({
+          issue: input.issue,
+          event: "container_failed",
+          message: "Sandbox container failed to start",
+          metadata: {
+            error: toErrorMessage(error),
+            workspacePath: input.workspace.path,
+          },
+        }),
+      );
+      throw error;
+    }
 
     try {
       return await this.executeSession(session, config, wrappedInput, () => lastAgentMessageContent);
@@ -108,7 +125,22 @@ export class AgentRunner {
       this.liquid,
     );
 
-    if ("kind" in initResult) return initResult;
+    if ("kind" in initResult) {
+      const failure = classifyLifecycleFailure(initResult);
+      input.onEvent(
+        createLifecycleEvent({
+          issue: input.issue,
+          event: failure.event,
+          message: failure.message,
+          metadata: {
+            errorCode: initResult.errorCode,
+            errorMessage: initResult.errorMessage,
+            threadId: initResult.threadId,
+          },
+        }),
+      );
+      return initResult;
+    }
 
     const { threadId, prompt } = initResult;
     return executeTurns(
@@ -134,6 +166,21 @@ export class AgentRunner {
       },
     );
   }
+}
+
+function classifyLifecycleFailure(outcome: RunOutcome): { event: string; message: string } {
+  const msg = outcome.errorMessage ?? "";
+  if (outcome.errorCode === "startup_failed" && msg.includes("auth is required")) {
+    return { event: "auth_failed", message: "Codex authentication is required before the agent can start" };
+  }
+  if (
+    outcome.errorCode === "startup_timeout" ||
+    outcome.errorCode === "port_exit" ||
+    outcome.errorCode === "container_start_failed"
+  ) {
+    return { event: "container_failed", message: "Sandbox container failed during startup" };
+  }
+  return { event: "codex_failed", message: "Codex initialization failed" };
 }
 
 function buildDockerInput(input: {

@@ -10,12 +10,13 @@ import { createSuccessResponse, type JsonRpcRequest } from "../codex/protocol.js
 import { JsonRpcConnection } from "../agent/json-rpc-connection.js";
 import { prepareCodexRuntimeConfig, getRequiredProviderEnvNames } from "../codex/runtime-config.js";
 import { buildDockerRunArgs } from "../docker/spawn.js";
-import { removeContainer, removeVolume, stopContainer } from "../docker/lifecycle.js";
+import { inspectContainerRunning, removeContainer, removeVolume, stopContainer } from "../docker/lifecycle.js";
 import { getContainerStats } from "../docker/stats.js";
 import { handleCodexRequest } from "../agent/codex-request-handler.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import type { LinearClient } from "../linear/client.js";
 import { globalMetrics } from "../observability/metrics.js";
+import { createLifecycleEvent } from "../orchestrator/lifecycle-events.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { Issue, ModelSelection, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
@@ -54,6 +55,7 @@ export interface DockerSession {
   turnId: string | null;
   exitPromise: Promise<{ code: number | null; signal: NodeJS.Signals | null }>;
   getFatalFailure: () => { code: string; message: string } | null;
+  inspectRunning: () => Promise<boolean | null>;
   cleanup: (config: ServiceConfig, signal: AbortSignal) => Promise<void>;
 }
 
@@ -68,6 +70,19 @@ export async function createDockerSession(
   const runtimeConfig = precomputedRuntimeConfig ?? (await prepareCodexRuntimeConfig(config.codex));
   const archiveDir = deps.archiveDir ?? path.join(process.cwd(), "archive");
   await mkdir(archiveDir, { recursive: true });
+
+  input.onEvent(
+    createLifecycleEvent({
+      issue: input.issue,
+      event: "container_starting",
+      message: "Starting sandbox container",
+      metadata: {
+        image: config.codex.sandbox.image,
+        workspacePath: input.workspace.path,
+        model: input.modelSelection.model,
+      },
+    }),
+  );
 
   const docker = buildDockerRunArgs({
     sandboxConfig: config.codex.sandbox,
@@ -88,7 +103,9 @@ export async function createDockerSession(
     stdio: ["pipe", "pipe", "pipe"],
   });
 
-  const session = buildDockerSessionObject(child, docker, input);
+  const session = buildDockerSessionObject(child, docker, input, {
+    inspectRunning: spawnProcess === spawn ? () => inspectContainerRunning(docker.containerName) : async () => true,
+  });
   setupConnection(session, child, config, input, deps, turnState);
   startStatsPolling(session, input);
 
@@ -99,6 +116,9 @@ function buildDockerSessionObject(
   child: ChildProcessWithoutNullStreams,
   docker: { containerName: string; cacheVolumeName: string },
   input: DockerSessionInput,
+  helpers: {
+    inspectRunning: () => Promise<boolean | null>;
+  },
 ): DockerSession & { abortHandler: () => void; statsInterval: ReturnType<typeof setInterval> | null } {
   const fatalFailure: { code: string; message: string } | null = null;
   const containerName = docker.containerName;
@@ -114,6 +134,7 @@ function buildDockerSessionObject(
       child.once("exit", (code, sig) => resolve({ code, signal: sig }));
     }),
     getFatalFailure: () => fatalFailure,
+    inspectRunning: helpers.inspectRunning,
     abortHandler: () => {
       session.connection.close();
       void stopContainer(containerName, 5);

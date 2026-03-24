@@ -7,6 +7,7 @@
  * dashboard display (stall timeline widget).
  */
 
+import type { RuntimeEventSink } from "./lifecycle-events.js";
 import { nowIso } from "./views.js";
 import type { ServiceConfig } from "../core/types.js";
 import type { RunningEntry } from "./runtime-types.js";
@@ -23,14 +24,7 @@ export interface StallDetectorContext {
   runningEntries: Map<string, RunningEntry>;
   stallEvents: StallEvent[];
   getConfig: () => ServiceConfig;
-  pushEvent: (event: {
-    at: string;
-    issueId: string;
-    issueIdentifier: string;
-    sessionId: string | null;
-    event: string;
-    message: string;
-  }) => void;
+  pushEvent: RuntimeEventSink;
   logger: {
     warn: (meta: Record<string, unknown>, message: string) => void;
   };

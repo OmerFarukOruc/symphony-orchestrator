@@ -12,6 +12,9 @@ export function classifyEvent(event: RecentEvent): string {
   if (type.includes("state") || type.includes("status") || type.includes("session") || type.includes("rate_limit")) {
     return "state-change";
   }
+  if (type.includes("workspace") || type.includes("container") || type.includes("thread")) {
+    return "state-change";
+  }
   if (
     type.includes("agent") ||
     type.includes("step") ||
@@ -47,6 +50,18 @@ const EVENT_LABEL_MAP: Record<string, string> = {
   tool_edit: "File edit",
   system: "System",
   session: "Session",
+  issue_queued: "Queued",
+  workspace_preparing: "Workspace prep",
+  workspace_ready: "Workspace ready",
+  workspace_failed: "Workspace failed",
+  container_starting: "Container start",
+  container_running: "Container ready",
+  container_failed: "Container failed",
+  codex_initializing: "Codex init",
+  codex_failed: "Codex failed",
+  thread_started: "Thread started",
+  thread_status: "Thread status",
+  auth_failed: "Auth failed",
   rate_limits: "Rate limits",
   other: "Other",
   container_stats: "Container stats",

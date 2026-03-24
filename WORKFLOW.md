@@ -8,9 +8,10 @@ tracker:
     - Todo
     - In Progress
 polling:
-  interval_ms: 30000
+  interval_ms: 15000
 workspace:
   root: ../symphony-workspaces
+  strategy: worktree
 hooks:
   timeout_ms: 60000
   after_create: |
@@ -25,6 +26,7 @@ agent:
   max_concurrent_agents: 10
   max_turns: 20
   max_retry_backoff_ms: 120000
+  success_state: "Done"
 codex:
   command: "codex app-server"
   model: "gpt-5.4"
@@ -58,6 +60,8 @@ codex:
       max_size: "50m"
       max_file: 3
 repos:
+  # This NIN route currently self-targets Symphony for smoke/self-test traffic.
+  # Replace it with the real NIN target repository before using NIN as a production route.
   - repo_url: "https://github.com/OmerFarukOruc/symphony-orchestrator.git"
     default_branch: "main"
     identifier_prefix: "NIN"

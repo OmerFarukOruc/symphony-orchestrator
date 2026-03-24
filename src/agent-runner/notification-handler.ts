@@ -19,6 +19,7 @@ interface AgentRunnerNotificationEvent {
   usage?: TokenUsageSnapshot;
   usageMode?: "absolute_total" | "delta";
   content?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 function handleTurnStarted(input: NotificationInput, params: Record<string, unknown>): void {
@@ -155,8 +156,8 @@ const CODEX_NOTIFICATION_LABELS: Record<string, { event: string; message: string
   "codex/event/patch_apply_begin": { event: "tool_edit", message: "Applying file changes" },
   "codex/event/patch_apply_end": { event: "tool_edit", message: "File changes applied" },
   "codex/event/mcp_startup_complete": { event: "system", message: "MCP tools initialized" },
-  "thread/started": { event: "session", message: "Thread session opened" },
-  "thread/status/changed": { event: "session", message: "Thread status changed" },
+  "thread/started": { event: "thread_started", message: "Thread session opened" },
+  "thread/status/changed": { event: "thread_status", message: "Thread status changed" },
   "account/rateLimits/updated": { event: "rate_limits", message: "API rate limits updated" },
   "item/agentMessage/delta": { event: "agent_streaming", message: "Agent streaming text" },
   "item/fileChange/outputDelta": { event: "tool_output", message: "File change output streaming" },

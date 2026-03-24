@@ -208,4 +208,43 @@ describe("ConfigStore", () => {
       await store.stop();
     }
   });
+
+  it("logs a warning when repo routing points back to symphony-orchestrator", async () => {
+    const dir = await makeTestDir();
+    const workflowPath = await writeTempWorkflow(
+      dir,
+      `---
+tracker:
+  kind: linear
+  api_key: lin_test
+  project_slug: TEST
+codex:
+  command: codex
+  auth:
+    mode: api_key
+    source_home: /tmp
+agent: {}
+server: {}
+workspace:
+  root: /tmp/symphony
+repos:
+  - repo_url: https://github.com/OmerFarukOruc/symphony-orchestrator.git
+    identifier_prefix: NIN
+---
+Work on the issue.
+`,
+    );
+    const logger = makeLogger();
+    const store = new ConfigStore(workflowPath, logger);
+
+    await store.start();
+    try {
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ code: "self_routing_repo" }),
+        expect.stringContaining("points to symphony-orchestrator itself"),
+      );
+    } finally {
+      await store.stop();
+    }
+  });
 });

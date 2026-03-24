@@ -109,9 +109,20 @@ export const api = {
   postOpenaiKey: (key: string) => post<{ valid: boolean }>("/api/v1/setup/openai-key", { key }),
   postCodexAuth: (authJson: string) => post<{ ok: boolean }>("/api/v1/setup/codex-auth", { authJson }),
   startPkceAuth: () => post<{ authUrl: string }>("/api/v1/setup/pkce-auth/start", {}),
-  pollPkceAuthStatus: () => get<{ status: "idle" | "pending" | "complete" | "expired" | "error"; error?: string }>("/api/v1/setup/pkce-auth/status"),
+  pollPkceAuthStatus: () =>
+    get<{ status: "idle" | "pending" | "complete" | "expired" | "error"; error?: string }>(
+      "/api/v1/setup/pkce-auth/status",
+    ),
   cancelPkceAuth: () => post<{ ok: boolean }>("/api/v1/setup/pkce-auth/cancel", {}),
   postGithubToken: (token: string) => post<{ valid: boolean }>("/api/v1/setup/github-token", { token }),
+  postRepoRoute: (route: { repoUrl: string; defaultBranch?: string; identifierPrefix: string; label?: string }) =>
+    post<{ ok: boolean; route: Record<string, unknown> }>("/api/v1/setup/repo-route", route),
+  getRepoRoutes: () => get<{ routes: Array<Record<string, unknown>> }>("/api/v1/setup/repo-routes"),
+  deleteRepoRoute: (index: number) =>
+    post<{ ok: boolean; routes: Array<Record<string, unknown>> }>("/api/v1/setup/repo-route", {
+      index,
+      _method: "DELETE",
+    }),
   resetSetup: () => post<{ ok: boolean }>("/api/v1/setup/reset", {}),
   createTestIssue: () =>
     post<{ ok: boolean; issueIdentifier: string; issueUrl: string }>("/api/v1/setup/create-test-issue", {}),
@@ -121,10 +132,10 @@ export const api = {
       {},
     ),
   createProject: (name: string) =>
-    post<{ ok: boolean; project: { id: string; name: string; slugId: string; url: string | null; teamKey: string | null } }>(
-      "/api/v1/setup/create-project",
-      { name },
-    ),
+    post<{
+      ok: boolean;
+      project: { id: string; name: string; slugId: string; url: string | null; teamKey: string | null };
+    }>("/api/v1/setup/create-project", { name }),
   getGitContext: () => get<GitContextResponse>("/api/v1/git/context"),
   getWorkspaces: () => get<WorkspaceInventoryResponse>("/api/v1/workspaces"),
   removeWorkspace: (workspaceKey: string) => del(`/api/v1/workspaces/${encodeURIComponent(workspaceKey)}`),

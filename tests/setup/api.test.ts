@@ -66,6 +66,7 @@ describe("registerSetupApi", () => {
       steps: {
         masterKey: { done: false },
         linearProject: { done: false },
+        repoRoute: { done: false },
         openaiKey: { done: false },
         githubToken: { done: false },
       },
@@ -94,6 +95,7 @@ describe("registerSetupApi", () => {
       steps: {
         masterKey: { done: true },
         linearProject: { done: true },
+        repoRoute: { done: false },
         openaiKey: { done: true },
         githubToken: { done: true },
       },

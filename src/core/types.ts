@@ -58,6 +58,7 @@ export interface RecentEvent {
   event: string;
   message: string;
   content?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface TokenUsageSnapshot {

@@ -1,7 +1,7 @@
 import chokidar, { type FSWatcher } from "chokidar";
 
 import type { ConfigOverlayStore } from "./overlay.js";
-import { validateDispatch } from "./validators.js";
+import { collectDispatchWarnings, validateDispatch } from "./validators.js";
 import type { SecretsStore } from "../secrets/store.js";
 import type { SymphonyLogger, ValidationError, WorkflowDefinition, ServiceConfig } from "../core/types.js";
 import { loadWorkflowDefinition } from "../workflow/loader.js";
@@ -71,6 +71,9 @@ export class ConfigStore {
       this.config = config;
       this.mergedConfigMap = mergedConfigMap;
       this.logger.info({ workflowPath: this.workflowPath, reason }, "workflow loaded");
+      for (const warning of collectDispatchWarnings(config)) {
+        this.logger.warn({ workflowPath: this.workflowPath, code: warning.code, reason }, warning.message);
+      }
       for (const listener of this.listeners) {
         listener();
       }

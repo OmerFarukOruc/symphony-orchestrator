@@ -1,4 +1,5 @@
 import type { Issue } from "../core/types.js";
+import type { RuntimeEventSink } from "./lifecycle-events.js";
 import { nowIso } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
 import { TokenRefreshError } from "../codex/token-refresh.js";
@@ -7,14 +8,7 @@ import { TokenRefreshError } from "../codex/token-refresh.js";
 export interface WorkerFailureContext {
   runningEntries: Map<string, RunningEntry>;
   releaseIssueClaim: (issueId: string) => void;
-  pushEvent: (event: {
-    at: string;
-    issueId: string;
-    issueIdentifier: string;
-    sessionId: string | null;
-    event: string;
-    message: string;
-  }) => void;
+  pushEvent: RuntimeEventSink;
   deps: {
     attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
     logger: { warn: (meta: Record<string, unknown>, message: string) => void };

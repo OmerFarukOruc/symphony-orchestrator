@@ -354,6 +354,76 @@
   color: var(--status-retrying);
 }
 
+.kanban-card-lifecycle {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border-stitch) 70%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 88%, transparent), var(--bg-muted));
+}
+
+.kanban-card-lifecycle.is-collapsed {
+  gap: 2px;
+}
+
+.kanban-card-lifecycle-summary {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.kanban-card-lifecycle-step {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: start;
+}
+
+.kanban-card-lifecycle-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 50%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border-stitch) 80%, transparent);
+}
+
+.kanban-card-lifecycle-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.kanban-card-lifecycle-meta {
+  grid-column: 2;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs, 10px);
+  color: var(--text-muted);
+}
+
+.kanban-card-lifecycle-step.is-complete .kanban-card-lifecycle-dot {
+  background: var(--status-completed);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-completed) 18%, transparent);
+}
+
+.kanban-card-lifecycle-step.is-current .kanban-card-lifecycle-dot {
+  background: var(--status-running);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--status-running) 18%, transparent);
+  animation: kanban-lifecycle-pulse 1.6s ease-in-out infinite;
+}
+
+.kanban-card-lifecycle-step.is-failed .kanban-card-lifecycle-dot {
+  background: var(--status-blocked);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-blocked) 22%, transparent);
+}
+
+.kanban-card-lifecycle-step.is-pending .kanban-card-lifecycle-label {
+  color: var(--text-muted);
+}
+
 /* ─── Drag and Drop ─── */
 
 .kanban-card.is-dragging {
@@ -399,6 +469,18 @@
   }
 }
 
+@keyframes kanban-lifecycle-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.72;
+  }
+}
+
 .kanban-column.stagger-item,
 .kanban-card.stagger-item {
   animation: kanban-enter var(--motion-medium) var(--ease-out-quart) calc(var(--stagger-index, 0) * 80ms) both;
@@ -419,6 +501,10 @@
 .kanban-board.is-compact .kanban-card-labels,
 .kanban-board.is-compact .kanban-card-retry {
   display: none;
+}
+
+.kanban-board.is-compact .kanban-card-lifecycle {
+  padding: 8px 10px;
 }
 
 .kanban-board.is-compact .kanban-card-title {

@@ -44,6 +44,7 @@ export function serializeSnapshot(snapshot: RuntimeSnapshot & Record<string, unk
       event: event.event,
       message: event.message,
       content: event.content ?? null,
+      metadata: event.metadata ?? null,
     })),
     stall_events: snapshot.stallEvents?.map((e) => ({
       at: e.at,

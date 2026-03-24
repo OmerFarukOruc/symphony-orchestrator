@@ -4,6 +4,7 @@ import { authIsRequired, extractRateLimits, extractThreadId, hasUsableAccount } 
 import { waitForStartup, buildDynamicTools } from "./session-helpers.js";
 import type { DockerSession } from "./docker-session.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
+import { createLifecycleEvent, toErrorMessage } from "../orchestrator/lifecycle-events.js";
 import type { Issue, ModelSelection, RunOutcome, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
 
 interface SessionInitDeps {
@@ -40,6 +41,22 @@ export async function initializeSession(
   const turnCount = 0;
 
   await waitForStartup(session.child, input.startupTimeoutMs, input.signal);
+
+  const containerFailure = await confirmContainerRunning(session, input);
+  if (containerFailure) {
+    return { ...containerFailure, threadId, turnId, turnCount };
+  }
+
+  input.onEvent(
+    createLifecycleEvent({
+      issue: input.issue,
+      event: "codex_initializing",
+      message: "Initializing Codex session",
+      metadata: {
+        containerName: session.containerName,
+      },
+    }),
+  );
 
   const earlyFailure = await initCodexProtocol(session, input, deps);
   if (earlyFailure) {
@@ -105,6 +122,40 @@ async function startThread(session: DockerSession, config: ServiceConfig, input:
     throw new Error("thread/start did not return a thread identifier");
   }
   return resolvedThreadId;
+}
+
+async function confirmContainerRunning(
+  session: DockerSession,
+  input: SessionInitInput,
+): Promise<{ kind: "failed"; errorCode: string; errorMessage: string } | null> {
+  try {
+    const isRunning = await session.inspectRunning();
+    if (isRunning) {
+      input.onEvent(
+        createLifecycleEvent({
+          issue: input.issue,
+          event: "container_running",
+          message: "Sandbox container running",
+          metadata: {
+            containerName: session.containerName,
+          },
+        }),
+      );
+      return null;
+    }
+
+    return {
+      kind: "failed",
+      errorCode: "container_start_failed",
+      errorMessage: "sandbox container failed to reach a running state",
+    };
+  } catch (error) {
+    return {
+      kind: "failed",
+      errorCode: "container_start_failed",
+      errorMessage: toErrorMessage(error),
+    };
+  }
 }
 
 async function renderPromptTemplate(

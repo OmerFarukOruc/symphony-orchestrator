@@ -200,7 +200,7 @@ function deriveCodexConfig(
  */
 function derivePollingConfig(polling: Record<string, unknown>): ServiceConfig["polling"] {
   return {
-    intervalMs: asNumber(polling.interval_ms, 30000),
+    intervalMs: asNumber(polling.interval_ms, 15000),
   };
 }
 

@@ -6,7 +6,13 @@ vi.mock("node:child_process", () => ({
 
 import { execFile } from "node:child_process";
 
-import { inspectOomKilled, removeContainer, removeVolume, stopContainer } from "../../src/docker/lifecycle.js";
+import {
+  inspectContainerRunning,
+  inspectOomKilled,
+  removeContainer,
+  removeVolume,
+  stopContainer,
+} from "../../src/docker/lifecycle.js";
 
 const mockExecFile = vi.mocked(execFile);
 
@@ -161,6 +167,34 @@ describe("docker lifecycle helpers", () => {
       simulateExecFileError(error);
 
       await expect(inspectOomKilled("symphony-test")).rejects.toBe(error);
+    });
+  });
+
+  describe("inspectContainerRunning", () => {
+    it("returns true when docker reports Running=true", async () => {
+      simulateExecFileSuccess("true\n");
+
+      await expect(inspectContainerRunning("symphony-test")).resolves.toBe(true);
+
+      expect(mockExecFile).toHaveBeenCalledWith(
+        "docker",
+        ["inspect", "symphony-test", "--format", "{{.State.Running}}"],
+        expect.any(Function),
+      );
+    });
+
+    it("returns false when docker reports Running=false", async () => {
+      simulateExecFileSuccess("false\n");
+
+      await expect(inspectContainerRunning("symphony-test")).resolves.toBe(false);
+    });
+
+    it("returns null when the container does not exist", async () => {
+      simulateExecFileError(
+        createExecError("container missing", "Error response from daemon: No such container: symphony-missing"),
+      );
+
+      await expect(inspectContainerRunning("symphony-missing")).resolves.toBeNull();
     });
   });
 });

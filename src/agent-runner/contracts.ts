@@ -6,5 +6,6 @@ export type AgentRunnerEventHandler = (
     usageMode?: "absolute_total" | "delta";
     rateLimits?: unknown;
     content?: string | null;
+    metadata?: Record<string, unknown> | null;
   },
 ) => void;

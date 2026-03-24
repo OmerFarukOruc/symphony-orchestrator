@@ -1,6 +1,7 @@
 import type { Express } from "express";
 
 import { methodNotAllowed } from "../http/route-helpers.js";
+import { handleDeleteRepoRoute, handleGetRepoRoutes, handlePostRepoRoute } from "./repo-route-handlers.js";
 import type { SetupApiDeps } from "./setup-handlers.js";
 import {
   handleGetLinearProjects,
@@ -90,5 +91,16 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
   app
     .route("/api/v1/setup/create-project")
     .post(handlePostCreateProject(deps))
+    .all((_req, res) => methodNotAllowed(res));
+
+  app
+    .route("/api/v1/setup/repo-route")
+    .post(handlePostRepoRoute({ configOverlayStore: deps.configOverlayStore }))
+    .delete(handleDeleteRepoRoute({ configOverlayStore: deps.configOverlayStore }))
+    .all((_req, res) => methodNotAllowed(res));
+
+  app
+    .route("/api/v1/setup/repo-routes")
+    .get(handleGetRepoRoutes({ configOverlayStore: deps.configOverlayStore }))
     .all((_req, res) => methodNotAllowed(res));
 }

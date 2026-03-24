@@ -48,17 +48,6 @@ export function matchIssue(issue: Issue, routes: RepoRoute[]): RepoMatch | null 
     return null;
   }
 
-  const prefix = issuePrefix(issue.identifier);
-  for (const route of routes) {
-    const routePrefix = route.identifierPrefix?.trim();
-    if (!route.repoUrl?.trim() || !routePrefix) {
-      continue;
-    }
-    if (normalize(routePrefix) === prefix) {
-      return toMatch(route, "identifier_prefix");
-    }
-  }
-
   const labels = new Set(issue.labels.map(normalize));
   for (const route of routes) {
     const label = route.label?.trim();
@@ -67,6 +56,17 @@ export function matchIssue(issue: Issue, routes: RepoRoute[]): RepoMatch | null 
     }
     if (labels.has(normalize(label))) {
       return toMatch(route, "label");
+    }
+  }
+
+  const prefix = issuePrefix(issue.identifier);
+  for (const route of routes) {
+    const routePrefix = route.identifierPrefix?.trim();
+    if (!route.repoUrl?.trim() || !routePrefix) {
+      continue;
+    }
+    if (normalize(routePrefix) === prefix) {
+      return toMatch(route, "identifier_prefix");
     }
   }
 

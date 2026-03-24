@@ -55,6 +55,7 @@ describe("serializeSnapshot", () => {
           event: "test",
           message: "hello",
           content: null,
+          metadata: { stage: "workspace" },
         },
       ],
     } as unknown as RuntimeSnapshot & Record<string, unknown>;
@@ -71,6 +72,7 @@ describe("serializeSnapshot", () => {
     const events = result.recent_events as Array<Record<string, unknown>>;
     expect(events[0].issue_id).toBe("i1");
     expect(events[0].issue_identifier).toBe("MT-1");
+    expect(events[0].metadata).toEqual({ stage: "workspace" });
   });
 });
 

@@ -22,7 +22,7 @@ function createIssue(overrides: Partial<Issue> = {}): Issue {
 }
 
 describe("repo-router", () => {
-  it("matches by identifier prefix first", () => {
+  it("matches by label before identifier prefix when both match", () => {
     const routes: RepoRoute[] = [
       { identifierPrefix: "NIN", repoUrl: "https://github.com/acme/backend.git", defaultBranch: "main" },
       { label: "repo:frontend", repoUrl: "https://github.com/acme/frontend.git", defaultBranch: "develop" },
@@ -30,22 +30,22 @@ describe("repo-router", () => {
 
     const match = matchIssue(createIssue({ labels: ["repo:frontend"] }), routes);
     expect(match).toMatchObject({
-      repoUrl: "https://github.com/acme/backend.git",
-      matchedBy: "identifier_prefix",
-      defaultBranch: "main",
+      repoUrl: "https://github.com/acme/frontend.git",
+      matchedBy: "label",
+      defaultBranch: "develop",
     });
   });
 
-  it("matches by label when identifier prefix does not match", () => {
+  it("matches by identifier prefix when no label route matches", () => {
     const routes: RepoRoute[] = [
-      { identifierPrefix: "API", repoUrl: "https://github.com/acme/api.git" },
-      { label: "repo:frontend", repoUrl: "https://github.com/acme/frontend.git", defaultBranch: "develop" },
+      { identifierPrefix: "WEB", repoUrl: "https://github.com/acme/frontend.git", defaultBranch: "develop" },
+      { label: "repo:api", repoUrl: "https://github.com/acme/api.git" },
     ];
 
     const match = matchIssue(createIssue({ identifier: "WEB-7", labels: ["repo:frontend"] }), routes);
     expect(match).toMatchObject({
       repoUrl: "https://github.com/acme/frontend.git",
-      matchedBy: "label",
+      matchedBy: "identifier_prefix",
       defaultBranch: "develop",
     });
   });

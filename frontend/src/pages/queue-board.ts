@@ -7,7 +7,7 @@ import {
   setDropAllowed,
   type KanbanColumnHandle,
 } from "../components/kanban-column";
-import type { WorkflowColumn } from "../types";
+import type { RecentEvent, WorkflowColumn } from "../types";
 import { skeletonColumn } from "../ui/skeleton";
 import { filterColumn, type QueueFilters, type QueueUiState } from "./queue-state";
 import type { DragStateManager } from "./drag-state";
@@ -17,6 +17,7 @@ interface QueueBoardRendererOptions {
   filters: QueueFilters;
   getUi: () => QueueUiState;
   getRouteId: () => string;
+  getRecentEvents: () => RecentEvent[];
   clearFilters: () => void;
   requestRender: () => void;
   onOpenIssue: (issueId: string, fullPage: boolean) => void;
@@ -35,7 +36,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
     options.board.addEventListener("kanban-drop", (event) => {
       const { identifier, targetColumnKey } = (event as CustomEvent<{ identifier: string; targetColumnKey: string }>)
         .detail;
-      void options.dragManager!.onDrop(identifier, targetColumnKey, currentColumns);
+      options.dragManager!.onDrop(identifier, targetColumnKey, currentColumns).catch(() => {});
     });
 
     options.board.addEventListener("dragstart", (event) => {
@@ -141,6 +142,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
           existing ??
           createKanbanCard({
             issue,
+            recentEvents: [],
             selected: false,
             focused: false,
             onOpen: () => undefined,
@@ -149,13 +151,16 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
           });
         card.update({
           issue,
+          recentEvents: options.getRecentEvents(),
           selected: options.getRouteId() === issue.identifier,
           focused: ui.focusedColumn === columnIndex && ui.focusedCard === cardIndex,
           onOpen: () => options.onOpenIssue(issue.identifier, false),
           onFullPage: () => options.onOpenIssue(issue.identifier, true),
           onMove: options.dragManager
             ? (direction) => {
-                void options.dragManager!.moveByOffset(issue.identifier, column.key, direction, currentColumns);
+                options
+                  .dragManager!.moveByOffset(issue.identifier, column.key, direction, currentColumns)
+                  .catch(() => {});
               }
             : undefined,
           onFocus: () => {

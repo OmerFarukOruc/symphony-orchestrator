@@ -46,6 +46,7 @@ export interface RecentEvent {
   event: string;
   message: string;
   content: unknown | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface RuntimeSnapshot {

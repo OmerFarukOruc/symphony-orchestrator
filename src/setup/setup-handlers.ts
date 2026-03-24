@@ -26,7 +26,7 @@ import {
   startCallbackServer,
   type PkceSession,
 } from "./device-auth.js";
-import { hasCodexAuthFile, hasLinearCredentials, readProjectSlug } from "./setup-status.js";
+import { hasCodexAuthFile, hasLinearCredentials, hasRepoRoutes, readProjectSlug } from "./setup-status.js";
 
 export interface SetupApiDeps {
   secretsStore: SecretsStore;
@@ -49,6 +49,7 @@ export function handleGetStatus(deps: SetupApiDeps) {
       steps: {
         masterKey: { done: masterKeyDone },
         linearProject: { done: linearProjectDone },
+        repoRoute: { done: hasRepoRoutes(deps.configOverlayStore.toMap()) },
         openaiKey: { done: openaiKeyDone },
         githubToken: { done: githubTokenDone },
       },

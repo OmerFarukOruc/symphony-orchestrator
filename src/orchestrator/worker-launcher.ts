@@ -256,6 +256,7 @@ function buildOnEventHandler(
         event: event.event,
         message: event.message,
         content: event.content ?? null,
+        metadata: event.metadata ?? null,
         usage: event.usage ?? null,
         rateLimits: event.rateLimits,
       });
