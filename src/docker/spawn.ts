@@ -5,12 +5,10 @@ import type { SandboxConfig } from "../core/types.js";
 
 const CONTAINER_HOME = "/home/agent";
 /**
- * Container-internal path — isolated from host filesystem.
- * The container's /tmp is a dedicated tmpfs mount with restricted
- * size and permissions (see buildResourceAndLogArgs). The container
- * also runs with --cap-drop=ALL and --security-opt=no-new-privileges.
+ * Container-internal path — isolated from host filesystem and kept under
+ * HOME so Codex can safely install helper binaries when needed.
  */
-const CONTAINER_CODEX_HOME = "/tmp/symphony-codex-home"; // NOSONAR — container-internal path, not host
+const CONTAINER_CODEX_HOME = "/home/agent/.codex-runtime"; // NOSONAR — container-internal path, not host
 
 export interface DockerRunInput {
   sandboxConfig: SandboxConfig;
@@ -21,8 +19,6 @@ export interface DockerRunInput {
   pathRegistry?: PathRegistry;
   runtimeConfigToml: string;
   runtimeAuthJsonBase64?: string | null;
-  /** Codex CLI credential filename (e.g. codex-user@example.com-plus.json). */
-  authFilename?: string | null;
   requiredEnv?: string[];
   issueIdentifier?: string;
   model?: string;
@@ -51,14 +47,22 @@ function buildMountArgs(args: string[], input: DockerRunInput, cacheVolumeName: 
 }
 
 function buildEnvArgs(args: string[], input: DockerRunInput): void {
-  const { sandboxConfig, runtimeConfigToml, runtimeAuthJsonBase64 = null, command, requiredEnv = [] } = input;
+  const {
+    sandboxConfig,
+    runtimeConfigToml,
+    runtimeAuthJsonBase64 = null,
+    command,
+    requiredEnv = [],
+    workspacePath,
+  } = input;
+  const trustedProjectConfig = `${runtimeConfigToml}\n[projects.${JSON.stringify(workspacePath)}]\ntrust_level = "trusted"\n`;
   args.push(
     "-e",
     `HOME=${CONTAINER_HOME}`,
     "-e",
     `CODEX_HOME=${CONTAINER_CODEX_HOME}`,
     "-e",
-    `SYMPHONY_CODEX_CONFIG_TOML=${runtimeConfigToml}`,
+    `SYMPHONY_CODEX_CONFIG_TOML=${trustedProjectConfig}`,
   );
   if (runtimeAuthJsonBase64) {
     args.push("-e", `SYMPHONY_CODEX_AUTH_JSON_B64=${runtimeAuthJsonBase64}`);
@@ -110,7 +114,7 @@ function buildResourceAndLogArgs(args: string[], sandboxConfig: SandboxConfig): 
   );
 }
 
-function buildEntrypointScript(egressAllowlist: string[], options?: { unsetApiKey?: boolean; authFilename?: string }): string {
+function buildEntrypointScript(egressAllowlist: string[], options?: { unsetApiKey?: boolean }): string {
   const steps = ["set -euo pipefail", "umask 077"];
 
   if (egressAllowlist.length > 0) {
@@ -121,7 +125,7 @@ function buildEntrypointScript(egressAllowlist: string[], options?: { unsetApiKe
       "  iptables -A OUTPUT -p udp --dport 53 -j ACCEPT",
       "  iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT",
       "  for domain in $SYMPHONY_EGRESS_ALLOWLIST; do",
-      '    for ip in $(getent hosts "$domain" 2>/dev/null | awk \'{print $1}\' | head -5); do',
+      "    for ip in $(getent hosts \"$domain\" 2>/dev/null | awk '{print $1}' | head -5); do",
       '      iptables -A OUTPUT -d "$ip" -j ACCEPT',
       "    done",
       "  done",
@@ -130,12 +134,11 @@ function buildEntrypointScript(egressAllowlist: string[], options?: { unsetApiKe
     );
   }
 
-  const authFilename = options?.authFilename ?? "auth.json";
   steps.push(
     'rm -rf "$CODEX_HOME"',
     'mkdir -p "$CODEX_HOME"',
     'printf "%s" "$SYMPHONY_CODEX_CONFIG_TOML" > "$CODEX_HOME/config.toml"',
-    `if [ -n "\${SYMPHONY_CODEX_AUTH_JSON_B64:-}" ]; then printf "%s" "$SYMPHONY_CODEX_AUTH_JSON_B64" | base64 -d > "$CODEX_HOME/${authFilename}"; fi`,
+    'if [ -n "${SYMPHONY_CODEX_AUTH_JSON_B64:-}" ]; then printf "%s" "$SYMPHONY_CODEX_AUTH_JSON_B64" | base64 -d > "$CODEX_HOME/auth.json"; fi',
   );
 
   // When using openai_login auth, prevent stale OPENAI_API_KEY from the host
@@ -188,10 +191,14 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
     args.push("--cap-add=NET_ADMIN", "-e", `SYMPHONY_EGRESS_ALLOWLIST=${egressAllowlist.join(" ")}`);
   }
 
-  args.push(sandboxConfig.image, "bash", "-lc", buildEntrypointScript(egressAllowlist, {
-    unsetApiKey: Boolean(input.runtimeAuthJsonBase64),
-    authFilename: input.authFilename ?? undefined,
-  }));
+  args.push(
+    sandboxConfig.image,
+    "bash",
+    "-lc",
+    buildEntrypointScript(egressAllowlist, {
+      unsetApiKey: Boolean(input.runtimeAuthJsonBase64),
+    }),
+  );
 
   return { program: "docker", args, containerName, cacheVolumeName };
 }

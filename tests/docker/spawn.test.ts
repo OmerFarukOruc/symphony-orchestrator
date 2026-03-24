@@ -85,8 +85,8 @@ describe("buildDockerRunArgs", () => {
     expect(envArgs).toEqual(
       expect.arrayContaining([
         "HOME=/home/agent",
-        "CODEX_HOME=/tmp/symphony-codex-home",
-        'SYMPHONY_CODEX_CONFIG_TOML=model = "gpt-5.4"\n',
+        "CODEX_HOME=/home/agent/.codex-runtime",
+        'SYMPHONY_CODEX_CONFIG_TOML=model = "gpt-5.4"\n\n[projects."/tmp/workspaces/MT-1"]\ntrust_level = "trusted"\n',
         "SYMPHONY_CODEX_COMMAND=codex app-server",
       ]),
     );

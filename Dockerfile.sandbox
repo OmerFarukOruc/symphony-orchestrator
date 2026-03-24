@@ -1,9 +1,9 @@
 FROM node:22-bookworm
 
 # Codex CLI + Dev tools for agent work
-RUN npm install -g @openai/codex && \
+RUN npm install -g @openai/codex@0.116.0 && \
     apt-get update && apt-get install -y --no-install-recommends \
-      git curl jq ripgrep && \
+      bubblewrap git curl jq ripgrep && \
     rm -rf /var/lib/apt/lists/*
 
 # Symphony will supply --user $(id -u):$(id -g) at run time
