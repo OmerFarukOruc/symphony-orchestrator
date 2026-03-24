@@ -42,14 +42,36 @@ function statusDot(status: string): HTMLSpanElement {
 /*  Section builders                                                   */
 /* ------------------------------------------------------------------ */
 
+function buildRepoCardCommits(commits: GitCommitView[]): HTMLElement {
+  const section = el("div", "git-repo-inline-commits");
+  section.append(el("span", "git-repo-inline-commits-title", "Recent commits"));
+  const list = el("div", "git-repo-inline-commit-list");
+  for (const commit of commits.slice(0, 3)) {
+    const row = el("div", "git-repo-inline-commit");
+    row.append(el("code", "git-commit-sha", commit.sha), el("span", "git-repo-inline-commit-msg", commit.message));
+    list.append(row);
+  }
+  section.append(list);
+  return section;
+}
+
 function buildRepoCard(repo: GitRepoView): HTMLElement {
   const card = el("div", "git-repo-card");
+  const repoUrl =
+    repo.githubOwner && repo.githubRepo ? `https://github.com/${repo.githubOwner}/${repo.githubRepo}` : repo.repoUrl;
+
+  // Make entire card clickable
+  card.addEventListener("click", (e) => {
+    // Don't intercept clicks on inner links
+    if ((e.target as HTMLElement).closest("a")) return;
+    window.open(repoUrl, "_blank", "noopener,noreferrer");
+  });
 
   const header = el("div", "git-repo-card-header");
   const name = repo.githubOwner && repo.githubRepo ? `${repo.githubOwner}/${repo.githubRepo}` : repo.repoUrl;
 
   if (repo.githubOwner && repo.githubRepo) {
-    header.append(externalLink(`https://github.com/${repo.githubOwner}/${repo.githubRepo}`, name, "git-repo-name"));
+    header.append(externalLink(repoUrl, name, "git-repo-name"));
   } else {
     header.append(el("span", "git-repo-name", name));
   }
@@ -76,6 +98,11 @@ function buildRepoCard(repo: GitRepoView): HTMLElement {
     meta.append(badge(`${repo.github.openPrCount} open PRs`, "accent"));
   }
   card.append(meta);
+
+  // Inline recent commits
+  if (repo.github?.recentCommits?.length) {
+    card.append(buildRepoCardCommits(repo.github.recentCommits));
+  }
 
   return card;
 }
@@ -217,18 +244,22 @@ function buildCommitRail(data: GitContextResponse): HTMLElement[] {
 function buildQuickLinksRail(githubAvailable: boolean): HTMLElement[] {
   const items: HTMLElement[] = [];
 
-  if (!githubAvailable) {
-    const notice = el("div", "git-rail-section");
-    notice.append(
-      el("h3", "git-rail-title", "GitHub API"),
+  const ghSection = el("div", "git-rail-section");
+  ghSection.append(el("h3", "git-rail-title", "GitHub API"));
+  if (githubAvailable) {
+    const connected = el("div", "git-gh-status git-gh-status--ok");
+    connected.append(el("span", undefined, "✓"), el("span", undefined, "Connected"));
+    ghSection.append(connected);
+  } else {
+    ghSection.append(
       el(
         "p",
         "git-empty-hint",
         "No GitHub token configured. Add a GITHUB_TOKEN in Settings → Credentials to see PRs, commits, and repo details.",
       ),
     );
-    items.push(notice);
   }
+  items.push(ghSection);
 
   const linksSection = el("div", "git-rail-section");
   linksSection.append(el("h3", "git-rail-title", "Quick links"));
@@ -241,16 +272,47 @@ function buildQuickLinksRail(githubAvailable: boolean): HTMLElement[] {
   configBtn.type = "button";
   configBtn.addEventListener("click", () => router.navigate("/settings#advanced"));
   links.append(configBtn);
+  const credentialsBtn = el("button", "git-quick-link-btn", "Manage credentials");
+  credentialsBtn.type = "button";
+  credentialsBtn.addEventListener("click", () => router.navigate("/settings#credentials"));
+  links.append(credentialsBtn);
   linksSection.append(links);
   items.push(linksSection);
 
   return items;
 }
 
+function countOpenPrs(data: GitContextResponse): number {
+  let total = 0;
+  for (const repo of data.repos) {
+    total += repo.github?.openPrCount ?? 0;
+  }
+  return total;
+}
+
+function buildSummaryStrip(data: GitContextResponse): HTMLElement {
+  const strip = el("div", "summary-strip git-summary-strip");
+  const items: Array<{ label: string; value: string }> = [
+    { label: "Repos", value: String(data.repos.length) },
+    { label: "Active branches", value: String(data.activeBranches.length) },
+    { label: "Open PRs", value: String(countOpenPrs(data)) },
+    { label: "GitHub", value: data.githubAvailable ? "Connected" : "No token" },
+  ];
+  for (const { label, value } of items) {
+    const item = el("div", "summary-strip-item");
+    item.append(el("span", "summary-strip-label", label), el("span", "summary-strip-value", value));
+    strip.append(item);
+  }
+  return strip;
+}
+
 function renderGitContext(page: HTMLElement, data: GitContextResponse): void {
   const body = page.querySelector(".git-page-body");
   if (!body) return;
   body.innerHTML = "";
+
+  // Always show the summary strip, even if there are repos
+  body.append(buildSummaryStrip(data));
 
   if (data.repos.length === 0) {
     body.append(

@@ -144,8 +144,26 @@ export function buildIssueDetail(
     relatedEvents = callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier);
   }
 
+  const enriched: typeof detail = { ...detail };
+  if (!enriched.tokenUsage && archivedAttempts.length > 0) {
+    enriched.tokenUsage = archivedAttempts.reduce(
+      (acc, attempt) => {
+        if (!attempt.tokenUsage) return acc;
+        return {
+          inputTokens: acc.inputTokens + attempt.tokenUsage.inputTokens,
+          outputTokens: acc.outputTokens + attempt.tokenUsage.outputTokens,
+          totalTokens: acc.totalTokens + attempt.tokenUsage.totalTokens,
+        };
+      },
+      { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    );
+  }
+  if (!enriched.startedAt && archivedAttempts.length > 0) {
+    enriched.startedAt = archivedAttempts.at(0)?.startedAt ?? null;
+  }
+
   return {
-    ...detail,
+    ...enriched,
     recentEvents: relatedEvents,
     attempts: archivedAttempts.map((attempt) => buildAttemptSummary(attempt)),
     currentAttemptId: runningEntry?.runId ?? null,

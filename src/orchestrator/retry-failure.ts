@@ -22,10 +22,13 @@ function buildRetryFailureView(
 
   return issueView(issue, {
     workspaceKey,
+    workspacePath: runningEntry?.workspace.path ?? null,
     status: "failed",
     attempt,
     error: errorText,
     message: `retry startup failed: ${errorText}`,
+    startedAt: runningEntry ? new Date(runningEntry.startedAtMs).toISOString() : null,
+    tokenUsage: runningEntry?.tokenUsage ?? null,
     configuredModel: configuredSelection.model,
     configuredReasoningEffort: configuredSelection.reasoningEffort,
     configuredModelSource: configuredSelection.source,

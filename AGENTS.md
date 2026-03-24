@@ -240,3 +240,6 @@ These rules prevent the recurring code quality issues identified and fixed durin
 When I say "watch mode", call agentation_watch_annotations in a loop.
 For each annotation: acknowledge it, make the fix, then resolve it with a summary.
 Continue watching until I say stop or timeout is reached.
+
+When writing complex features or significant refactors, use an ExecPlan (as described in .agents/PLANS.md) from design to implementation.
+

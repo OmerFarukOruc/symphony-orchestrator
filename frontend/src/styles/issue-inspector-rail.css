@@ -46,7 +46,7 @@
 
 .issue-inspector-body .issue-section:first-child {
   border-top: 0;
-  padding-top: 0;
+  padding-top: var(--space-4);
 }
 
 .issue-inspector-body .issue-meta-item,
