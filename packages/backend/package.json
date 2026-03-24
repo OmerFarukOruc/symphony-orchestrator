@@ -1,0 +1,10 @@
+{
+  "name": "@symphony/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p ../../tsconfig.json",
+    "dev": "tsx watch ../../src/cli/index.ts"
+  }
+}

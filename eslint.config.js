@@ -61,7 +61,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["frontend/**/*.ts"],
+    files: ["frontend/**/*.ts", "packages/frontend/**/*.ts"],
     rules: {
       complexity: ["warn", { max: 30 }],
       "max-lines-per-function": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
@@ -81,6 +81,7 @@ export default tseslint.config(
       "dist/",
       "node_modules/",
       "coverage/",
+      "packages/**/dist/",
       "*.js",
       "*.mjs",
       "tests/fixtures/",

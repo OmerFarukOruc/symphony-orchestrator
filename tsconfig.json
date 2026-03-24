@@ -3,6 +3,10 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@symphony/shared": ["packages/shared/src/index.ts"]
+    },
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,

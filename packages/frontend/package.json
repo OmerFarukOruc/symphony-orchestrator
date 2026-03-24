@@ -1,0 +1,15 @@
+{
+  "name": "@symphony/frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm run build:vanilla",
+    "build:vanilla": "vite build --config ../../frontend/vite.config.ts",
+    "build:react": "vite build --config ./vite.config.ts",
+    "dev": "pnpm run dev:vanilla",
+    "dev:vanilla": "vite --config ../../frontend/vite.config.ts",
+    "dev:react": "vite --config ./vite.config.ts",
+    "typecheck:vanilla": "tsc --noEmit -p ../../frontend/tsconfig.json"
+  }
+}

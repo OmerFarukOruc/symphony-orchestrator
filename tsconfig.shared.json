@@ -11,12 +11,5 @@
     "noEmit": true,
     "lib": ["ES2022"]
   },
-  "include": [
-    "src/**/*",
-    "tests/**/*",
-    "frontend/src/**/*",
-    "frontend/*.ts",
-    "packages/**/*.ts",
-    "playwright.config.ts"
-  ]
+  "include": ["packages/shared/src/**/*.ts"]
 }

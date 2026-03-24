@@ -22,11 +22,12 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      - run: npm run lint
-      - run: npm run format:check
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm lint
+      - run: pnpm format:check
 
   # ── Phase 2: Test & Coverage ───────────────────────────────────────
   test:
@@ -38,13 +39,14 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm test -- --reporter=verbose --coverage
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test -- --reporter=verbose --coverage
       - name: Dead code analysis
-        run: npx knip
+        run: pnpm exec knip
       - name: Duplicate code analysis
-        run: npx jscpd
+        run: pnpm exec jscpd
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -126,9 +128,10 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run test:integration
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:integration
 
   # ── Phase 5: E2E Tests ───────────────────────────────────────────────
   e2e-smoke:
@@ -144,12 +147,13 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
       - name: Install Playwright chromium
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
       - name: Run E2E smoke tests (shard ${{ matrix.shard }})
-        run: npx playwright test --project=smoke --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+        run: pnpm exec playwright test --project=smoke --shard=${{ matrix.shard }}/${{ strategy.job-total }}
       - name: Upload blob report
         if: always()
         uses: actions/upload-artifact@v7
@@ -168,8 +172,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
       - name: Download all blob reports
         uses: actions/download-artifact@v8
         with:
@@ -177,7 +182,7 @@ jobs:
           path: all-blob-reports
           merge-multiple: true
       - name: Merge reports
-        run: npx playwright merge-reports --reporter=html all-blob-reports
+        run: pnpm exec playwright merge-reports --reporter=html all-blob-reports
       - uses: actions/upload-artifact@v7
         with:
           name: e2e-smoke-html-report

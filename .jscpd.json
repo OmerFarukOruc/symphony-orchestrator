@@ -1,7 +1,7 @@
 {
   "threshold": 10,
   "reporters": ["console"],
-  "path": ["src", "tests"],
+  "path": ["src", "tests", "packages"],
   "ignore": ["node_modules", "dist", "coverage"],
   "absolute": true,
   "gitignore": true

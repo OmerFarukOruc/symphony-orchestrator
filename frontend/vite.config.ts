@@ -2,13 +2,16 @@ import { resolve } from "node:path";
 
 import { defineConfig } from "vite";
 
+const frontendRoot = import.meta.dirname;
+const repoRoot = resolve(frontendRoot, "..");
+
 export default defineConfig({
-  root: "frontend",
+  root: frontendRoot,
   build: {
-    outDir: "../dist/frontend",
+    outDir: resolve(repoRoot, "dist/frontend"),
     emptyOutDir: true,
     rollupOptions: {
-      input: resolve(process.cwd(), "frontend/index.html"),
+      input: resolve(frontendRoot, "index.html"),
     },
   },
   server: {

@@ -20,21 +20,21 @@ if [ "$all_deletes" = true ]; then
 fi
 
 echo "🔨 Building..."
-npm run build
+pnpm build
 
 echo "🔍 Linting..."
-npm run lint
+pnpm lint
 
 echo "🎨 Checking formatting..."
-npm run format:check
+pnpm format:check
 
 echo "🧪 Running tests..."
-npm test
+pnpm test
 
 echo "🧹 Checking for dead code..."
-npm run knip
+pnpm knip
 
 echo "🔍 Checking for duplicate code..."
-npm run jscpd
+pnpm jscpd
 
 echo "✅ All pre-push checks passed!"

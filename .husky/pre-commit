@@ -3,4 +3,4 @@
 # Mirrors CI Phase 1 checks on staged files only (fast).
 # lint-staged runs eslint --fix + prettier --write on staged *.ts files.
 
-npx lint-staged
+pnpm exec lint-staged

@@ -1,3 +1,3 @@
 export default {
-  project: ["src/**/*.ts"],
+  project: ["src/**/*.ts", "packages/**/*.ts"],
 };
