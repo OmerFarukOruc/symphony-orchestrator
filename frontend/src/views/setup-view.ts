@@ -697,6 +697,14 @@ function buildRepoConfigStepSetup(): HTMLElement {
     onDeleteRoute: (index) => {
       void handleDeleteRepoRoute(index);
     },
+    onDetectDefaultBranch: async (repoUrl) => {
+      try {
+        const result = await api.detectDefaultBranch(repoUrl);
+        return result.defaultBranch;
+      } catch {
+        return null;
+      }
+    },
   };
 
   return buildRepoConfigStep(repoStepState, repoStepActions);

@@ -93,10 +93,10 @@ describe("worktree-manager", () => {
       "/tmp/base/backend.git",
       "/tmp/worktrees/NIN-42",
       "symphony/nin-42",
-      "origin/main",
+      "main",
     );
 
-    expect(calls).toEqual([["worktree", "add", "-b", "symphony/nin-42", "/tmp/worktrees/NIN-42", "origin/main"]]);
+    expect(calls).toEqual([["worktree", "add", "-b", "symphony/nin-42", "/tmp/worktrees/NIN-42", "main"]]);
   });
 
   it("attaches an existing branch as a worktree", async () => {

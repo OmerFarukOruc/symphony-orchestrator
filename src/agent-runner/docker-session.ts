@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdir } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import { asRecord, asString } from "./helpers.js";
@@ -9,7 +10,7 @@ import type { TurnState } from "./turn-state.js";
 import { createSuccessResponse, type JsonRpcRequest } from "../codex/protocol.js";
 import { JsonRpcConnection } from "../agent/json-rpc-connection.js";
 import { prepareCodexRuntimeConfig, getRequiredProviderEnvNames } from "../codex/runtime-config.js";
-import { buildDockerRunArgs } from "../docker/spawn.js";
+import { buildDockerRunArgs, buildInitCacheVolumeArgs } from "../docker/spawn.js";
 import { inspectContainerRunning, removeContainer, removeVolume, stopContainer } from "../docker/lifecycle.js";
 import { getContainerStats } from "../docker/stats.js";
 import { handleCodexRequest } from "../agent/codex-request-handler.js";
@@ -96,6 +97,30 @@ export async function createDockerSession(
     requiredEnv: getRequiredProviderEnvNames(config.codex),
     issueIdentifier: input.issue.identifier,
     model: input.modelSelection.model,
+  });
+
+  // Initialize cache volume ownership before spawning the main container.
+  // Docker creates new named volumes with root ownership, but the container
+  // runs as a non-root user. This one-time init container chowns the volume.
+  // Uses spawn directly (not the injected spawnProcess) because this is a
+  // Docker utility command that should always run via Docker, not be mocked.
+  const uid = os.userInfo().uid;
+  const gid = os.userInfo().gid;
+  const initCmd = buildInitCacheVolumeArgs({
+    volumeName: docker.cacheVolumeName,
+    uid,
+    gid,
+  });
+  const initProcess = spawn(initCmd.program, initCmd.args, { stdio: "pipe" });
+  await new Promise<void>((resolve, reject) => {
+    initProcess.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Cache volume init failed with exit code ${code}`));
+      }
+    });
+    initProcess.on("error", reject);
   });
 
   const child: ChildProcessWithoutNullStreams = spawnProcess(docker.program, docker.args, {

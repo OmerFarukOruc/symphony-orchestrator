@@ -154,7 +154,7 @@ export class GitManager {
     await syncBaseClone(ctx, baseCloneDir);
 
     const branchName = deriveBranchName(issue, branchPrefix);
-    const startPoint = `origin/${route.defaultBranch}`;
+    const startPoint = route.defaultBranch;
 
     if (await branchExists(ctx, baseCloneDir, branchName)) {
       await attachWorktree(ctx, baseCloneDir, worktreePath, branchName);

@@ -78,7 +78,7 @@ describe("GitManager", () => {
       ["fetch", "origin", "--prune"],
       ["fetch", "origin", "--prune"],
       ["rev-parse", "--verify", "refs/heads/feature/nin-42"],
-      ["worktree", "add", "-b", "feature/nin-42", "/tmp/worktrees/NIN-42", "origin/main"],
+      ["worktree", "add", "-b", "feature/nin-42", "/tmp/worktrees/NIN-42", "main"],
     ]);
   });
 

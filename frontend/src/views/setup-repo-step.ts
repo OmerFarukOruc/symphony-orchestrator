@@ -32,6 +32,7 @@ export interface RepoConfigStepActions {
   onSave: () => void;
   onSkip: () => void;
   onDeleteRoute: (index: number) => void;
+  onDetectDefaultBranch: (repoUrl: string) => Promise<string | null>;
 }
 
 function getRepoUrlValidationMessage(value: string): string | null {
@@ -169,7 +170,7 @@ export function buildRepoConfigStep(state: RepoConfigStepState, actions: RepoCon
   const branchHint = document.createElement("div");
   branchHint.id = FIELD_IDS.branchHint;
   branchHint.className = "setup-hint";
-  branchHint.textContent = "Leave this as main unless the repository uses a different default branch.";
+  branchHint.textContent = "Auto-detected from GitHub. You can override it manually.";
   branchField.append(branchLabel, branchInput, branchHint);
   el.append(prefixField, urlField, branchField);
 
@@ -255,7 +256,24 @@ export function buildRepoConfigStep(state: RepoConfigStepState, actions: RepoCon
     syncRepoUrlState();
   });
   urlInput.addEventListener("blur", () => {
-    syncRepoUrlState();
+    const isValid = syncRepoUrlState();
+    if (isValid && urlInput.value.trim()) {
+      branchHint.textContent = "Detecting default branch…";
+      actions
+        .onDetectDefaultBranch(urlInput.value.trim())
+        .then((detected) => {
+          if (detected) {
+            branchInput.value = detected;
+            actions.onDefaultBranchInput(detected);
+            branchHint.textContent = `Detected: ${detected}`;
+          } else {
+            branchHint.textContent = "Auto-detected from GitHub. You can override it manually.";
+          }
+        })
+        .catch(() => {
+          branchHint.textContent = "Could not detect — defaults to main. You can override it manually.";
+        });
+    }
   });
   branchInput.addEventListener("input", () => {
     actions.onDefaultBranchInput(branchInput.value);

@@ -139,4 +139,6 @@ export const api = {
   getGitContext: () => get<GitContextResponse>("/api/v1/git/context"),
   getWorkspaces: () => get<WorkspaceInventoryResponse>("/api/v1/workspaces"),
   removeWorkspace: (workspaceKey: string) => del(`/api/v1/workspaces/${encodeURIComponent(workspaceKey)}`),
+  detectDefaultBranch: (repoUrl: string) =>
+    post<{ defaultBranch: string }>("/api/v1/setup/detect-default-branch", { repoUrl }),
 };

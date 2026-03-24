@@ -1,6 +1,7 @@
 import type { Express } from "express";
 
 import { methodNotAllowed } from "../http/route-helpers.js";
+import { handleDetectDefaultBranch } from "./detect-default-branch.js";
 import { handleDeleteRepoRoute, handleGetRepoRoutes, handlePostRepoRoute } from "./repo-route-handlers.js";
 import type { SetupApiDeps } from "./setup-handlers.js";
 import {
@@ -102,5 +103,10 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
   app
     .route("/api/v1/setup/repo-routes")
     .get(handleGetRepoRoutes({ configOverlayStore: deps.configOverlayStore }))
+    .all((_req, res) => methodNotAllowed(res));
+
+  app
+    .route("/api/v1/setup/detect-default-branch")
+    .post(handleDetectDefaultBranch({ secretsStore: deps.secretsStore }))
     .all((_req, res) => methodNotAllowed(res));
 }
