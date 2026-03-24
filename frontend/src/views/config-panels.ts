@@ -1,6 +1,5 @@
 import { createEmptyState } from "../components/empty-state";
 import { createButton, createField } from "../components/forms";
-import { escapeHtml } from "../utils/escape";
 import type { ConfigMode, ConfigState } from "./config-state";
 import { buildDiffText, flattenConfig, prettyJson, redactPath, redactValue } from "./config-helpers";
 
@@ -18,10 +17,13 @@ export function renderSchemaPanel(
   header.type = "button";
   header.className = "config-sidebar-header";
   const toggleIcon = state.showSchema ? "−" : "+";
-  header.innerHTML = `
-    <span class="config-sidebar-title">📋 Available Paths</span>
-    <span class="config-sidebar-toggle">${toggleIcon}</span>
-  `;
+  const titleSpan = document.createElement("span");
+  titleSpan.className = "config-sidebar-title";
+  titleSpan.textContent = "📋 Available Paths";
+  const toggleSpan = document.createElement("span");
+  toggleSpan.className = "config-sidebar-toggle";
+  toggleSpan.textContent = toggleIcon;
+  header.append(titleSpan, toggleSpan);
   header.title = state.showSchema ? "Click to collapse" : "Click to expand and view available configuration paths";
   header.addEventListener("click", actions.onToggle);
   container.append(header);
@@ -29,7 +31,10 @@ export function renderSchemaPanel(
   if (!state.showSchema) {
     const hint = document.createElement("div");
     hint.className = "config-sidebar-hint";
-    hint.innerHTML = `<p class="text-secondary">Expand to see common config paths you can override</p>`;
+    const hintText = document.createElement("p");
+    hintText.className = "text-secondary";
+    hintText.textContent = "Expand to see common config paths you can override";
+    hint.append(hintText);
     container.append(hint);
     return;
   }
@@ -84,10 +89,13 @@ export function renderOverlayPanel(
     const button = document.createElement("button");
     button.type = "button";
     button.className = `config-mode-btn ${state.mode === mode.id ? "is-active" : ""}`;
-    button.innerHTML = `
-      <span class="config-mode-label">${mode.label}</span>
-      <span class="config-mode-desc">${mode.description}</span>
-    `;
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "config-mode-label";
+    labelSpan.textContent = mode.label;
+    const descSpan = document.createElement("span");
+    descSpan.className = "config-mode-desc";
+    descSpan.textContent = mode.description;
+    button.append(labelSpan, descSpan);
     button.addEventListener("click", () => actions.onMode(mode.id));
     modeSelector.append(button);
   });
@@ -131,7 +139,10 @@ export function renderOverlayPanel(
     const filterRow = document.createElement("div");
     filterRow.className = "config-filter-row";
     const countLabel = `${entries.length} override${entries.length !== 1 ? "s" : ""}`;
-    filterRow.innerHTML = `<span class="config-count">${countLabel}</span>`;
+    const countSpan = document.createElement("span");
+    countSpan.className = "config-count";
+    countSpan.textContent = countLabel;
+    filterRow.append(countSpan);
 
     const filterInput = Object.assign(document.createElement("input"), {
       className: "config-filter-input",
@@ -151,11 +162,14 @@ export function renderOverlayPanel(
       row.className = `config-entry-row ${state.selectedPath === entry.path ? "is-selected" : ""}`;
       const valueDisplay = redactPath(entry.path, entry.value);
       const truncatedValue = valueDisplay.length > 40 ? valueDisplay.substring(0, 37) + "…" : valueDisplay;
-      const escapedValue = escapeHtml(valueDisplay);
-      row.innerHTML = `
-        <code class="config-entry-path">${escapeHtml(entry.path)}</code>
-        <span class="config-entry-value" title="${escapedValue}">${escapeHtml(truncatedValue)}</span>
-      `;
+      const pathCode = document.createElement("code");
+      pathCode.className = "config-entry-path";
+      pathCode.textContent = entry.path;
+      const valueSpan = document.createElement("span");
+      valueSpan.className = "config-entry-value";
+      valueSpan.title = valueDisplay;
+      valueSpan.textContent = truncatedValue;
+      row.append(pathCode, valueSpan);
       row.addEventListener("click", () => actions.onSelectPath(entry.path));
       list.append(row);
     });
@@ -202,7 +216,10 @@ function renderPathEditor(
   if (isEditingExisting) {
     const editingLabel = document.createElement("div");
     editingLabel.className = "config-editing-label";
-    editingLabel.innerHTML = `Editing: <code>${escapeHtml(state.selectedPath)}</code>`;
+    editingLabel.append("Editing: ");
+    const editingCode = document.createElement("code");
+    editingCode.textContent = state.selectedPath;
+    editingLabel.append(editingCode);
     editorSection.append(editingLabel);
   }
 
@@ -259,28 +276,41 @@ export function renderDiffPanel(container: HTMLElement, state: ConfigState): voi
 
   const header = document.createElement("div");
   header.className = "config-sidebar-header is-static";
-  const badgeHtml = overlayCount > 0 ? `<span class="config-badge">${overlayCount}</span>` : "";
-  header.innerHTML = `
-    <span class="config-sidebar-title">🔍 Changes Preview</span>
-    ${badgeHtml}
-  `;
+  const diffTitleSpan = document.createElement("span");
+  diffTitleSpan.className = "config-sidebar-title";
+  diffTitleSpan.textContent = "🔍 Changes Preview";
+  header.append(diffTitleSpan);
+  if (overlayCount > 0) {
+    const badge = document.createElement("span");
+    badge.className = "config-badge";
+    badge.textContent = String(overlayCount);
+    header.append(badge);
+  }
   container.append(header);
 
   const content = document.createElement("div");
   content.className = "config-sidebar-content";
 
   if (overlayCount === 0) {
-    content.innerHTML = `
-      <div class="config-empty-changes">
-        <span class="config-empty-icon">✓</span>
-        <p>No overrides configured</p>
-        <span class="text-secondary">Using default settings from workflow file</span>
-      </div>
-    `;
+    const emptyChanges = document.createElement("div");
+    emptyChanges.className = "config-empty-changes";
+    const emptyIcon = document.createElement("span");
+    emptyIcon.className = "config-empty-icon";
+    emptyIcon.textContent = "✓";
+    const emptyText = document.createElement("p");
+    emptyText.textContent = "No overrides configured";
+    const emptyHint = document.createElement("span");
+    emptyHint.className = "text-secondary";
+    emptyHint.textContent = "Using default settings from workflow file";
+    emptyChanges.append(emptyIcon, emptyText, emptyHint);
+    content.append(emptyChanges);
   } else {
     const diffSection = document.createElement("div");
     diffSection.className = "config-diff-section";
-    diffSection.innerHTML = `<h4 class="config-diff-title">Modified values</h4>`;
+    const diffTitle = document.createElement("h4");
+    diffTitle.className = "config-diff-title";
+    diffTitle.textContent = "Modified values";
+    diffSection.append(diffTitle);
 
     const diff = document.createElement("pre");
     diff.className = "config-diff-code";
@@ -290,7 +320,10 @@ export function renderDiffPanel(container: HTMLElement, state: ConfigState): voi
 
     const effectiveSection = document.createElement("div");
     effectiveSection.className = "config-diff-section";
-    effectiveSection.innerHTML = `<h4 class="config-diff-title">Full config (sensitive values hidden)</h4>`;
+    const effectiveTitle = document.createElement("h4");
+    effectiveTitle.className = "config-diff-title";
+    effectiveTitle.textContent = "Full config (sensitive values hidden)";
+    effectiveSection.append(effectiveTitle);
 
     const redacted = document.createElement("pre");
     redacted.className = "config-effective-code";
@@ -305,11 +338,17 @@ export function renderDiffPanel(container: HTMLElement, state: ConfigState): voi
 export function renderEmptyState(onCreate: () => void): HTMLElement {
   const container = document.createElement("div");
   container.className = "config-empty";
-  container.innerHTML = `
-    <div class="config-empty-icon-large">⚙️</div>
-    <h3>No configuration overrides yet</h3>
-    <p class="text-secondary">Configuration overrides let you customize Symphony behavior without changing your workflow file.</p>
-  `;
+
+  const iconDiv = document.createElement("div");
+  iconDiv.className = "config-empty-icon-large";
+  iconDiv.textContent = "⚙️";
+  const heading = document.createElement("h3");
+  heading.textContent = "No configuration overrides yet";
+  const description = document.createElement("p");
+  description.className = "text-secondary";
+  description.textContent =
+    "Configuration overrides let you customize Symphony behavior without changing your workflow file.";
+  container.append(iconDiv, heading, description);
 
   const cta = createButton("Create First Override", "primary");
   cta.addEventListener("click", onCreate);

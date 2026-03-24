@@ -10,7 +10,7 @@ import {
   type OpenaiAuthMode,
   type OpenaiSetupStepState,
 } from "./setup-openai-step";
-import { buildTitleWithBadge } from "./setup-shared";
+import { buildSetupError, buildTitleWithBadge } from "./setup-shared";
 
 type SetupStep = "master-key" | "linear-project" | "repo-config" | "openai-key" | "github-token" | "done";
 
@@ -398,6 +398,8 @@ function buildProjectGrid(): HTMLElement {
 
 function buildLinearProjectStep(): HTMLElement {
   const el = document.createElement("div");
+  const apiKeyInputId = "setup-linear-api-key";
+  const createProjectNameInputId = "setup-linear-create-project-name";
 
   const titleRow = buildTitleWithBadge("Connect to Linear", "is-required", "Required");
 
@@ -432,6 +434,7 @@ function buildLinearProjectStep(): HTMLElement {
 
   const label = document.createElement("label");
   label.className = "setup-label";
+  label.htmlFor = apiKeyInputId;
   label.textContent = "Linear API Key";
 
   const inputRow = document.createElement("div");
@@ -451,6 +454,7 @@ function buildLinearProjectStep(): HTMLElement {
   });
 
   const input = document.createElement("input");
+  input.id = apiKeyInputId;
   input.className = "setup-input";
   input.style.flex = "1";
   input.type = "password";
@@ -474,10 +478,7 @@ function buildLinearProjectStep(): HTMLElement {
   el.append(titleRow, sub, callout, field);
 
   if (state.error && !state.apiKeyVerified) {
-    const err = document.createElement("div");
-    err.className = "setup-error";
-    err.textContent = state.error;
-    el.append(err);
+    el.append(buildSetupError(state.error));
   }
 
   if (state.apiKeyVerified && state.projects.length > 0) {
@@ -525,7 +526,17 @@ function buildLinearProjectStep(): HTMLElement {
     createRow.style.marginTop = "var(--space-3)";
     createRow.style.alignItems = "center";
 
+    const nameField = document.createElement("div");
+    nameField.className = "setup-field";
+    nameField.style.flex = "1";
+
+    const nameLabel = document.createElement("label");
+    nameLabel.className = "setup-label";
+    nameLabel.htmlFor = createProjectNameInputId;
+    nameLabel.textContent = "New project name";
+
     const nameInput = document.createElement("input");
+    nameInput.id = createProjectNameInputId;
     nameInput.className = "setup-input";
     nameInput.style.flex = "1";
     nameInput.placeholder = "Project name (e.g. My App)";
@@ -565,7 +576,8 @@ function buildLinearProjectStep(): HTMLElement {
       }
     });
 
-    createRow.append(nameInput, createBtn);
+    nameField.append(nameLabel, nameInput);
+    createRow.append(nameField, createBtn);
     el.append(emptyMsg, createRow);
   }
 
@@ -792,6 +804,7 @@ async function advanceOpenaiAuth(): Promise<void> {
 
 function buildGithubTokenStep(): HTMLElement {
   const el = document.createElement("div");
+  const githubTokenInputId = "setup-github-token";
 
   const titleRow = buildTitleWithBadge("Add GitHub access", "is-optional", "Optional");
 
@@ -892,6 +905,7 @@ function buildGithubTokenStep(): HTMLElement {
 
   const label = document.createElement("label");
   label.className = "setup-label";
+  label.htmlFor = githubTokenInputId;
   label.textContent = "Personal Access Token";
 
   const validate = document.createElement("button");
@@ -901,6 +915,7 @@ function buildGithubTokenStep(): HTMLElement {
   validate.addEventListener("click", () => void advanceGithubToken());
 
   const input = document.createElement("input");
+  input.id = githubTokenInputId;
   input.className = "setup-input";
   input.type = "password";
   input.placeholder = "ghp_… or github_pat_…";
@@ -914,10 +929,7 @@ function buildGithubTokenStep(): HTMLElement {
   el.append(titleRow, sub, optionWrap, field);
 
   if (state.error) {
-    const err = document.createElement("div");
-    err.className = "setup-error";
-    err.textContent = state.error;
-    el.append(err);
+    el.append(buildSetupError(state.error));
   }
 
   const actions = document.createElement("div");
@@ -1030,10 +1042,7 @@ function buildQuickStartCard(opts: {
   body.append(titleEl, descEl);
 
   if (opts.error) {
-    const err = document.createElement("div");
-    err.className = "setup-error";
-    err.textContent = opts.error;
-    body.append(err);
+    body.append(buildSetupError(opts.error));
   }
 
   if (opts.created) {

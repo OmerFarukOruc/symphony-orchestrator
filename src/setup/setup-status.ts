@@ -17,7 +17,11 @@ function readOverlayString(overlay: Record<string, unknown>, flatKey: string, ne
     if (!isRecord(cursor) || DANGEROUS_KEYS.has(segment)) {
       return null;
     }
-    cursor = cursor[segment];
+    const desc = Object.getOwnPropertyDescriptor(cursor, segment);
+    if (!desc) {
+      return null;
+    }
+    cursor = desc.value;
   }
 
   return typeof cursor === "string" ? cursor : null;

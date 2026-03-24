@@ -1,4 +1,4 @@
-import { buildTitleWithBadge } from "./setup-shared";
+import { buildSetupError, buildTitleWithBadge } from "./setup-shared";
 
 export type OpenaiAuthMode = "api_key" | "codex_login";
 export type DeviceAuthStatus = "idle" | "starting" | "pending" | "complete" | "expired";
@@ -44,17 +44,35 @@ export function buildOpenaiKeyStep(state: OpenaiSetupStepState, actions: OpenaiS
 
   const apiKeyCard = document.createElement("div");
   apiKeyCard.className = `setup-auth-card${state.authMode === "api_key" ? " is-selected" : ""}`;
+  apiKeyCard.setAttribute("role", "button");
+  apiKeyCard.setAttribute("tabindex", "0");
+  apiKeyCard.setAttribute("aria-pressed", String(state.authMode === "api_key"));
   apiKeyCard.innerHTML =
     '<div class="setup-auth-card-title">API Key</div>' +
     '<div class="setup-auth-card-desc">Paste an OpenAI API key directly. Best for pay-as-you-go accounts.</div>';
   apiKeyCard.addEventListener("click", () => actions.onSelectAuthMode("api_key"));
+  apiKeyCard.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      actions.onSelectAuthMode("api_key");
+    }
+  });
 
   const loginCard = document.createElement("div");
   loginCard.className = `setup-auth-card${state.authMode === "codex_login" ? " is-selected" : ""}`;
+  loginCard.setAttribute("role", "button");
+  loginCard.setAttribute("tabindex", "0");
+  loginCard.setAttribute("aria-pressed", String(state.authMode === "codex_login"));
   loginCard.innerHTML =
     '<div class="setup-auth-card-title">Codex Login</div>' +
     '<div class="setup-auth-card-desc">Sign in with the browser-based OpenAI flow. Best for OpenAI-authenticated accounts.</div>';
   loginCard.addEventListener("click", () => actions.onSelectAuthMode("codex_login"));
+  loginCard.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      actions.onSelectAuthMode("codex_login");
+    }
+  });
 
   modeWrap.append(apiKeyCard, loginCard);
   el.append(titleRow, sub, modeWrap);
@@ -88,10 +106,7 @@ export function buildOpenaiKeyStep(state: OpenaiSetupStepState, actions: OpenaiS
   }
 
   if (state.error) {
-    const err = document.createElement("div");
-    err.className = "setup-error";
-    err.textContent = state.error;
-    el.append(err);
+    el.append(buildSetupError(state.error));
   }
 
   actionsRow.append(skip, saveBtn);
@@ -105,15 +120,18 @@ function buildApiKeyField(
   actions: OpenaiSetupStepActions,
   updateSaveButton: () => void,
 ): HTMLElement {
+  const inputId = "setup-openai-api-key";
   const field = document.createElement("div");
   field.className = "setup-field";
 
   const label = document.createElement("label");
   label.className = "setup-label";
+  label.htmlFor = inputId;
   label.innerHTML =
     'OpenAI API Key &middot; <a class="setup-link" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Get one →</a>';
 
   const input = document.createElement("input");
+  input.id = inputId;
   input.className = "setup-input";
   input.type = "password";
   input.placeholder = "sk-…";
@@ -157,10 +175,7 @@ function buildCodexLoginFields(
   return wrap;
 }
 
-function buildDeviceAuthPanel(
-  state: OpenaiSetupStepState,
-  actions: OpenaiSetupStepActions,
-): HTMLElement {
+function buildDeviceAuthPanel(state: OpenaiSetupStepState, actions: OpenaiSetupStepActions): HTMLElement {
   const panel = document.createElement("section");
   panel.className = "setup-device-auth-panel";
 
@@ -174,8 +189,7 @@ function buildDeviceAuthPanel(
 
   const desc = document.createElement("div");
   desc.className = "setup-device-auth-copy";
-  desc.textContent =
-    "Click to open OpenAI's sign-in page. After approving, you'll be redirected back automatically.";
+  desc.textContent = "Click to open OpenAI's sign-in page. After approving, you'll be redirected back automatically.";
 
   header.append(title, desc);
 
@@ -239,13 +253,13 @@ function buildDeviceAuthStatus(state: OpenaiSetupStepState): HTMLElement {
   return statusWrap;
 }
 
-
-
 function buildManualFallback(
   state: OpenaiSetupStepState,
   actions: OpenaiSetupStepActions,
   updateSaveButton: () => void,
 ): HTMLElement {
+  const detailsId = "setup-manual-auth-details";
+  const textareaId = "setup-openai-auth-json";
   const wrap = document.createElement("section");
   wrap.className = "setup-manual-auth";
 
@@ -259,7 +273,10 @@ function buildManualFallback(
 
   const toggle = document.createElement("button");
   toggle.className = "mc-button is-ghost is-sm";
+  toggle.type = "button";
   toggle.textContent = state.showManualAuthFallback ? "Hide fallback" : "Use auth.json instead";
+  toggle.setAttribute("aria-expanded", String(state.showManualAuthFallback));
+  toggle.setAttribute("aria-controls", detailsId);
   toggle.addEventListener("click", () => {
     actions.onToggleManualAuthFallback();
     updateSaveButton();
@@ -268,11 +285,15 @@ function buildManualFallback(
   header.append(title, toggle);
   wrap.append(header);
 
+  const details = document.createElement("div");
+  details.id = detailsId;
+  wrap.append(details);
+
   if (!state.showManualAuthFallback) {
     const hint = document.createElement("div");
     hint.className = "setup-device-auth-copy";
     hint.textContent = "Only needed if device auth fails or if you already have an auth.json file to reuse.";
-    wrap.append(hint);
+    details.append(hint);
     return wrap;
   }
 
@@ -288,9 +309,11 @@ function buildManualFallback(
 
   const label = document.createElement("label");
   label.className = "setup-label";
+  label.htmlFor = textareaId;
   label.textContent = "auth.json contents";
 
   const textarea = document.createElement("textarea");
+  textarea.id = textareaId;
   textarea.className = "setup-input";
   textarea.style.cssText = "min-height:100px;font-family:var(--font-mono);font-size:var(--text-xs);resize:vertical";
   textarea.placeholder = '{"access_token":"...","refresh_token":"...","...":"..."}';
@@ -306,6 +329,7 @@ function buildManualFallback(
 
   const uploadBtn = document.createElement("button");
   uploadBtn.className = "mc-button is-ghost is-sm";
+  uploadBtn.type = "button";
   uploadBtn.textContent = "Upload auth.json";
   uploadBtn.addEventListener("click", () => {
     const fileInput = document.createElement("input");
@@ -330,7 +354,7 @@ function buildManualFallback(
 
   uploadRow.append(uploadBtn);
   field.append(label, textarea);
-  wrap.append(steps, field, uploadRow);
+  details.append(steps, field, uploadRow);
   return wrap;
 }
 

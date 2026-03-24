@@ -17,3 +17,21 @@ export function buildTitleWithBadge(
   row.append(title, badge);
   return row;
 }
+
+export function buildSetupError(message: string): HTMLElement {
+  const err = document.createElement("div");
+  err.className = "setup-error";
+  err.textContent = message;
+  err.setAttribute("role", "alert");
+  err.setAttribute("aria-live", "assertive");
+  err.setAttribute("aria-atomic", "true");
+  err.tabIndex = -1;
+
+  queueMicrotask(() => {
+    if (err.isConnected) {
+      err.focus();
+    }
+  });
+
+  return err;
+}
