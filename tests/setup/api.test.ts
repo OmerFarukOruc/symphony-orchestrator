@@ -105,6 +105,7 @@ describe("registerSetupApi", () => {
     const secretsStore = createSecretsStoreMock();
     const configOverlayStore = createConfigOverlayStoreMock();
     vi.spyOn(secretsStore, "list").mockReturnValue(["GITHUB_TOKEN", "LINEAR_API_KEY"]);
+    process.env.GITHUB_TOKEN = "gh-from-env";
 
     const { baseUrl } = await startSetupApiServer({ secretsStore, configOverlayStore });
     const response = await postJson(baseUrl, "/api/v1/setup/reset");
@@ -116,6 +117,7 @@ describe("registerSetupApi", () => {
     expect(secretsStore.delete).toHaveBeenNthCalledWith(2, "LINEAR_API_KEY");
     expect(configOverlayStore.set).toHaveBeenNthCalledWith(1, "codex.auth.mode", "");
     expect(configOverlayStore.set).toHaveBeenNthCalledWith(2, "codex.auth.source_home", "");
+    expect(process.env.GITHUB_TOKEN).toBeUndefined();
   });
 
   it("returns reset_failed when reset throws", async () => {
@@ -329,7 +331,7 @@ describe("registerSetupApi", () => {
 
   it("stores valid Codex auth JSON and updates overlay config", async () => {
     const configOverlayStore = createConfigOverlayStoreMock();
-    const authJson = JSON.stringify({ access_token: "token" });
+    const authJson = JSON.stringify({ access_token: "token", email: "user@example.com" });
     const { baseUrl } = await startSetupApiServer({ configOverlayStore });
 
     const response = await postJson(baseUrl, "/api/v1/setup/codex-auth", { authJson });
@@ -337,9 +339,21 @@ describe("registerSetupApi", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
     expect(mocks.mkdirMock).toHaveBeenCalledWith("/archive-root/codex-auth", { recursive: true });
-    expect(mocks.writeFileMock).toHaveBeenCalledWith("/archive-root/codex-auth/auth.json", authJson, {
+    const writtenJson = JSON.parse(mocks.writeFileMock.mock.calls[0]?.[1] as string);
+    expect(mocks.writeFileMock).toHaveBeenCalledWith("/archive-root/codex-auth/auth.json", expect.any(String), {
       encoding: "utf8",
       mode: 0o600,
+    });
+    expect(writtenJson).toEqual({
+      email: "user@example.com",
+      auth_mode: "chatgpt",
+      last_refresh: expect.any(String),
+      tokens: {
+        access_token: "token",
+        refresh_token: null,
+        id_token: null,
+        account_id: null,
+      },
     });
     expect(configOverlayStore.set).toHaveBeenNthCalledWith(1, "codex.auth.mode", "openai_login");
     expect(configOverlayStore.set).toHaveBeenNthCalledWith(2, "codex.auth.source_home", "/archive-root/codex-auth");

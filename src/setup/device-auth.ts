@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { ConfigOverlayStore } from "../config/overlay.js";
+import { buildCodexAuthRecord } from "../codex/auth-file.js";
 
 const AUTH_ENDPOINT = "https://auth.openai.com/oauth/authorize";
 const TOKEN_ENDPOINT = "https://auth.openai.com/oauth/token";
@@ -235,13 +236,12 @@ export async function savePkceAuthTokens(
   configOverlayStore: ConfigOverlayStore,
 ): Promise<void> {
   const authJson = JSON.stringify(
-    {
+    buildCodexAuthRecord({
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token ?? null,
       id_token: tokenData.id_token ?? null,
-      token_type: tokenData.token_type,
-      expires_in: tokenData.expires_in,
-    },
+      account_id: null,
+    }),
     null,
     2,
   );

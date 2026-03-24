@@ -116,6 +116,43 @@ describe("prepareCodexRuntimeConfig", () => {
     expect(runtimeConfig.authJsonBase64).toBeTruthy();
   });
 
+  it("normalizes legacy flat auth.json into Codex CLI's nested token format", async () => {
+    const sourceHome = await createTempDir();
+    await writeFile(
+      path.join(sourceHome, "auth.json"),
+      JSON.stringify({
+        access_token: "access-token",
+        refresh_token: "refresh-token",
+        id_token: "id-token",
+        account_id: "account-id",
+        email: "user@example.com",
+      }),
+      "utf8",
+    );
+
+    const runtimeConfig = await prepareCodexRuntimeConfig(
+      baseConfig({
+        auth: {
+          mode: "openai_login",
+          sourceHome,
+        },
+      }),
+    );
+
+    const authJson = Buffer.from(runtimeConfig.authJsonBase64 ?? "", "base64").toString("utf8");
+    expect(JSON.parse(authJson)).toEqual({
+      email: "user@example.com",
+      auth_mode: "chatgpt",
+      last_refresh: expect.any(String),
+      tokens: {
+        access_token: "access-token",
+        refresh_token: "refresh-token",
+        id_token: "id-token",
+        account_id: "account-id",
+      },
+    });
+  });
+
   it("throws a controlled error when auth.json becomes unavailable", async () => {
     const sourceHome = await createTempDir();
 

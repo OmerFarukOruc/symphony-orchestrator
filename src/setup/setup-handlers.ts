@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 
 import type { Request, Response } from "express";
 
+import { normalizeCodexAuthJson } from "../codex/auth-file.js";
 import type { ConfigOverlayStore } from "../config/overlay.js";
 import {
   buildCreateIssueMutation,
@@ -60,6 +61,7 @@ export function handlePostReset(deps: SetupApiDeps) {
     try {
       await deps.orchestrator.stop();
       await Promise.all(deps.secretsStore.list().map((key) => deps.secretsStore.delete(key)));
+      delete process.env.GITHUB_TOKEN;
       await Promise.all([
         deps.configOverlayStore.set("codex.auth.mode", ""),
         deps.configOverlayStore.set("codex.auth.source_home", ""),
@@ -209,9 +211,10 @@ export function handlePostCodexAuth(deps: SetupApiDeps) {
     }
 
     try {
+      const normalizedAuthJson = normalizeCodexAuthJson(authJson);
       const authDir = path.join(deps.archiveDir, "codex-auth");
       await mkdir(authDir, { recursive: true });
-      await writeFile(path.join(authDir, "auth.json"), authJson, { encoding: "utf8", mode: 0o600 });
+      await writeFile(path.join(authDir, "auth.json"), normalizedAuthJson, { encoding: "utf8", mode: 0o600 });
 
       await Promise.all([
         deps.configOverlayStore.set("codex.auth.mode", "openai_login"),
@@ -330,6 +333,7 @@ export function handlePostGithubToken(deps: SetupApiDeps) {
 
     if (valid) {
       await deps.secretsStore.set("GITHUB_TOKEN", token);
+      process.env.GITHUB_TOKEN = token;
     }
 
     res.json({ valid });

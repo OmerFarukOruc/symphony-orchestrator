@@ -9,6 +9,8 @@
 
 import { readFile, writeFile } from "node:fs/promises";
 
+import { buildCodexAuthRecord, normalizeCodexAuthRecord, readCodexAuthTokens } from "./auth-file.js";
+
 const TOKEN_ENDPOINT = "https://auth.openai.com/oauth/token";
 const CODEX_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
 
@@ -23,16 +25,6 @@ export class TokenRefreshError extends Error {
     this.name = "TokenRefreshError";
     this.code = code;
   }
-}
-
-interface AuthJson {
-  access_token: string;
-  refresh_token?: string | null;
-  id_token?: string | null;
-  token_type?: string;
-  expires_in?: number;
-  expired?: string;
-  [key: string]: unknown;
 }
 
 interface TokenRefreshResponse {
@@ -57,9 +49,9 @@ interface TokenErrorResponse {
  * Returns `false` (assume valid) if expiry cannot be determined.
  */
 export function isTokenExpired(authJsonStr: string): boolean {
-  let auth: AuthJson;
+  let auth: Record<string, unknown>;
   try {
-    auth = JSON.parse(authJsonStr) as AuthJson;
+    auth = normalizeCodexAuthRecord(JSON.parse(authJsonStr) as unknown);
   } catch {
     return false;
   }
@@ -75,8 +67,9 @@ export function isTokenExpired(authJsonStr: string): boolean {
   }
 
   // Fallback: decode the JWT exp claim from access_token
-  if (auth.access_token) {
-    const exp = extractJwtExp(auth.access_token);
+  const accessToken = readCodexAuthTokens(auth)?.access_token;
+  if (accessToken) {
+    const exp = extractJwtExp(accessToken);
     if (exp !== null) {
       return now >= exp * 1000 - EXPIRY_MARGIN_MS;
     }
@@ -101,6 +94,48 @@ function extractJwtExp(token: string): number | null {
   }
 }
 
+function parseRefreshErrorMessage(responseText: string, status: number): string {
+  let errorMessage = `HTTP ${status}`;
+  try {
+    const errorData = JSON.parse(responseText) as TokenErrorResponse;
+    if (typeof errorData.error === "string") {
+      return errorData.error_description ?? errorData.error;
+    }
+    if (typeof errorData.error === "object" && errorData.error !== null) {
+      return errorData.error.message ?? errorData.error.code ?? errorMessage;
+    }
+  } catch {
+    errorMessage = responseText || errorMessage;
+  }
+  return errorMessage;
+}
+
+function buildRefreshedAuthRecord(
+  auth: Record<string, unknown>,
+  tokens: NonNullable<ReturnType<typeof readCodexAuthTokens>>,
+  tokenData: TokenRefreshResponse,
+): Record<string, unknown> {
+  const updatedAuth = buildCodexAuthRecord(
+    {
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token ?? tokens.refresh_token,
+      id_token: tokenData.id_token ?? tokens.id_token,
+      account_id: tokens.account_id,
+    },
+    {
+      authMode: typeof auth.auth_mode === "string" ? auth.auth_mode : "chatgpt",
+      extraTopLevel: auth,
+      lastRefresh: new Date().toISOString(),
+    },
+  );
+
+  if (typeof auth.expired === "string") {
+    updatedAuth.expired = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+  }
+
+  return updatedAuth;
+}
+
 /**
  * Refresh the access token using the stored refresh_token.
  *
@@ -112,9 +147,10 @@ function extractJwtExp(token: string): number | null {
  */
 export async function refreshAccessToken(authJsonPath: string): Promise<string> {
   const raw = await readFile(authJsonPath, "utf8");
-  const auth = JSON.parse(raw) as AuthJson;
+  const auth = normalizeCodexAuthRecord(JSON.parse(raw) as unknown);
+  const tokens = readCodexAuthTokens(auth);
 
-  if (!auth.refresh_token) {
+  if (!tokens?.refresh_token) {
     throw new TokenRefreshError(
       "auth_token_expired",
       "Cannot refresh token: no refresh_token in auth.json. Please re-authenticate via the setup wizard.",
@@ -127,40 +163,24 @@ export async function refreshAccessToken(authJsonPath: string): Promise<string> 
     body: new URLSearchParams({
       grant_type: "refresh_token",
       client_id: CODEX_CLIENT_ID,
-      refresh_token: auth.refresh_token,
+      refresh_token: tokens.refresh_token,
     }).toString(),
   });
 
   const responseText = await response.text();
 
   if (!response.ok) {
-    let errorMessage = `HTTP ${response.status}`;
-    try {
-      const errorData = JSON.parse(responseText) as TokenErrorResponse;
-      if (typeof errorData.error === "string") {
-        errorMessage = errorData.error_description ?? errorData.error;
-      } else if (typeof errorData.error === "object" && errorData.error !== null) {
-        errorMessage = errorData.error.message ?? errorData.error.code ?? errorMessage;
-      }
-    } catch {
-      errorMessage = responseText || errorMessage;
-    }
-    throw new TokenRefreshError("auth_token_expired", `Token refresh failed: ${errorMessage}. Please re-authenticate via the setup wizard.`);
+    const errorMessage = parseRefreshErrorMessage(responseText, response.status);
+    throw new TokenRefreshError(
+      "auth_token_expired",
+      `Token refresh failed: ${errorMessage}. Please re-authenticate via the setup wizard.`,
+    );
   }
 
   const tokenData = JSON.parse(responseText) as TokenRefreshResponse;
+  const updatedAuth = buildRefreshedAuthRecord({ ...auth }, tokens, tokenData);
 
-  const updatedAuth: AuthJson = {
-    ...auth,
-    access_token: tokenData.access_token,
-    refresh_token: tokenData.refresh_token ?? auth.refresh_token,
-    id_token: tokenData.id_token ?? auth.id_token,
-    token_type: tokenData.token_type,
-    expires_in: tokenData.expires_in,
-    expired: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
-  };
-
-  const updatedJson = JSON.stringify(updatedAuth);
+  const updatedJson = JSON.stringify(updatedAuth, null, 2);
   await writeFile(authJsonPath, updatedJson, { encoding: "utf8", mode: 0o600 });
 
   return updatedJson;

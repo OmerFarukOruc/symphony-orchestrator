@@ -16,8 +16,6 @@ import type {
 export interface PrecomputedRuntimeConfig {
   configToml: string;
   authJsonBase64: string | null;
-  /** Codex CLI credential filename derived from JWT claims (e.g. codex-user@example.com-plus.json). */
-  authFilename: string | null;
 }
 
 /**

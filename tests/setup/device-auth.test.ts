@@ -140,21 +140,21 @@ describe("PKCE auth helpers", () => {
       await savePkceAuthTokens(tokenData, archiveDir, store);
 
       expect(mockedMkdir).toHaveBeenCalledWith(authDir, { recursive: true });
-      expect(mockedWriteFile).toHaveBeenCalledWith(
-        path.join(authDir, "auth.json"),
-        JSON.stringify(
-          {
-            access_token: "access-token",
-            refresh_token: "refresh-token",
-            id_token: "id-token",
-            token_type: "Bearer",
-            expires_in: 7200,
-          },
-          null,
-          2,
-        ),
-        { encoding: "utf8", mode: 0o600 },
-      );
+      const writtenJson = JSON.parse(mockedWriteFile.mock.calls[0]?.[1] as string);
+      expect(mockedWriteFile).toHaveBeenCalledWith(path.join(authDir, "auth.json"), expect.any(String), {
+        encoding: "utf8",
+        mode: 0o600,
+      });
+      expect(writtenJson).toEqual({
+        auth_mode: "chatgpt",
+        last_refresh: expect.any(String),
+        tokens: {
+          access_token: "access-token",
+          refresh_token: "refresh-token",
+          id_token: "id-token",
+          account_id: null,
+        },
+      });
       expect(setMock).toHaveBeenNthCalledWith(1, "codex.auth.mode", "openai_login");
       expect(setMock).toHaveBeenNthCalledWith(2, "codex.auth.source_home", authDir);
     });
@@ -170,8 +170,8 @@ describe("PKCE auth helpers", () => {
       await savePkceAuthTokens(tokenData, "/tmp/archive", store);
 
       const writtenJson = JSON.parse(mockedWriteFile.mock.calls[0]?.[1] as string);
-      expect(writtenJson.refresh_token).toBeNull();
-      expect(writtenJson.id_token).toBeNull();
+      expect(writtenJson.tokens.refresh_token).toBeNull();
+      expect(writtenJson.tokens.id_token).toBeNull();
     });
   });
 });

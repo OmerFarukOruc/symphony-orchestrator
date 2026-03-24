@@ -64,7 +64,6 @@ async function initCodexProtocol(
   session.connection.notify("initialized", {});
 
   const accountInfo = await session.connection.request("account/read", {});
-  deps.logger.info({ accountInfo: JSON.stringify(accountInfo).slice(0, 500) }, "codex account/read response");
   if (authIsRequired(accountInfo) && !hasUsableAccount(accountInfo)) {
     return {
       kind: "failed",

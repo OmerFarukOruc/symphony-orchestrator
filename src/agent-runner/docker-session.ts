@@ -78,7 +78,6 @@ export async function createDockerSession(
     pathRegistry: deps.pathRegistry,
     runtimeConfigToml: runtimeConfig.configToml,
     runtimeAuthJsonBase64: runtimeConfig.authJsonBase64,
-    authFilename: runtimeConfig.authFilename,
     requiredEnv: getRequiredProviderEnvNames(config.codex),
     issueIdentifier: input.issue.identifier,
     model: input.modelSelection.model,

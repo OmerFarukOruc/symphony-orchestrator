@@ -72,6 +72,7 @@ describe("registerSetupApi — auth & tokens", () => {
   it("validates and stores a valid GitHub token", async () => {
     const secretsStore = createSecretsStoreMock();
     getExternalFetchMock().mockResolvedValueOnce(textResponse(200, "ok"));
+    delete process.env.GITHUB_TOKEN;
 
     const { baseUrl } = await startSetupApiServer({ secretsStore });
     const response = await postJson(baseUrl, "/api/v1/setup/github-token", { token: "ghp_valid" });
@@ -82,6 +83,7 @@ describe("registerSetupApi — auth & tokens", () => {
       headers: { authorization: "token ghp_valid", "user-agent": "Symphony-Orchestrator" },
     });
     expect(secretsStore.set).toHaveBeenCalledWith("GITHUB_TOKEN", "ghp_valid");
+    expect(process.env.GITHUB_TOKEN).toBe("ghp_valid");
   });
 
   it("rejects an invalid GitHub token", async () => {
