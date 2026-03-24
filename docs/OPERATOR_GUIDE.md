@@ -327,13 +327,20 @@ When Symphony starts without a master key configured, it enters **setup mode** a
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
 | **1. Protect secrets** | Calls `POST /api/v1/setup/master-key` to generate and persist the encryption key that protects stored credentials on disk.                                                                                 | Yes            |
 | **2. Connect Linear**  | Stores `LINEAR_API_KEY` via `POST /api/v1/secrets/:key`, lists projects with `GET /api/v1/setup/linear-projects`, then saves the selected `tracker.project_slug` with `POST /api/v1/setup/linear-project`. | Yes            |
-| **3. Add OpenAI**      | Uses `POST /api/v1/setup/openai-key` for API-key mode or `POST /api/v1/setup/codex-auth` for uploaded `auth.json` login mode.                                                                              | Yes            |
+| **3. Add OpenAI**      | Uses `POST /api/v1/setup/openai-key` for API-key mode, browser PKCE sign-in via `POST /api/v1/setup/pkce-auth/start`, or `POST /api/v1/setup/codex-auth` for manual `auth.json` upload. | Yes            |
 | **4. Add GitHub**      | Optionally validates and stores a GitHub PAT with `POST /api/v1/setup/github-token`.                                                                                                                       | No (skippable) |
 
 After completing all steps, click **"Go to Dashboard"** to unlock normal navigation.
 
+### Wizard Navigation
+
+- **Clickable stepper**: completed and active step indicators in the top bar are clickable — click any completed step to go back and review or change credentials.
+- **Keyboard accessible**: step indicators support `Tab`, `Enter`, and `Space` for full keyboard navigation.
+- **Master key reconfigure**: returning to Step 1 after it's been completed shows a confirmation that the key is configured. Click **Reconfigure** to reset all stored secrets and generate a new encryption key (requires re-entering all credentials).
+- **Empty project list**: if a valid Linear API key is connected but no projects exist in the workspace, the wizard displays a guidance message with a link to create a project in Linear.
+
 > [!NOTE]
-> The backend also exposes `POST /api/v1/setup/device-auth/start` and `POST /api/v1/setup/device-auth/poll` for OpenAI device-code login flows. The current built-in wizard still documents the CLI-first `codex login` flow and supports pasting or uploading `auth.json`.
+> The backend exposes `POST /api/v1/setup/pkce-auth/start` and `GET /api/v1/setup/pkce-auth/status` for the browser-based PKCE login flow. The wizard also supports pasting or uploading `auth.json` as a manual fallback.
 
 ### OpenAI Authentication Options
 
@@ -341,30 +348,37 @@ After completing all steps, click **"Go to Dashboard"** to unlock normal navigat
 
 Paste an `sk-...` API key directly. Symphony validates it and stores it in the encrypted secrets store.
 
-#### Codex Login Mode
+#### Codex Login Mode (Browser Sign-In)
 
-Use your ChatGPT/Codex subscription instead of an API key:
+Authenticate with your ChatGPT/Codex subscription directly in the browser:
 
-1. **Enable device code auth** in your ChatGPT account: [ChatGPT Settings → Security](https://chatgpt.com/#settings/Security) → toggle **"Enable device code authorization for Codex"** on
-2. Run `codex login --device-auth` in your terminal
-3. Open [auth.openai.com/codex/device](https://auth.openai.com/codex/device) and enter the one-time code
-4. Approve the sign-in on the ChatGPT authorization page
-5. Paste the contents of `~/.codex/auth.json` into the wizard (or use the upload button)
+1. In the setup wizard (Step 3), select **"Codex Login"**
+2. Click **"Sign in with OpenAI"** — a new browser tab opens to `auth.openai.com`
+3. Log in with your OpenAI account and approve the authorization
+4. The browser redirects to `localhost:1455/auth/callback` — Symphony exchanges the code for tokens automatically
+5. The wizard detects success and advances to the next step
 
 > [!TIP]
-> If you have a local browser available, `codex login` (without `--device-auth`) opens the OAuth flow directly — no device code needed.
+> This uses the official Codex CLI's registered OAuth client with PKCE (Proof Key for Code Exchange). No device code or CLI binary is needed — everything happens in the browser.
+
+#### Manual Fallback
+
+If the browser flow doesn't work (e.g., port 1455 is blocked, or you're on a headless server):
+
+1. Run `codex login` (or `codex login --device-auth`) in your terminal
+2. Paste the contents of `~/.codex/auth.json` into the manual auth field in the wizard
 
 > [!IMPORTANT]
-> OpenAI's device authorization endpoint is Cloudflare-protected and cannot be called directly from a web app or server. The `codex login` CLI binary must be run locally, then the resulting `auth.json` is uploaded to the wizard.
+> The PKCE flow requires port `1455` to be free on `localhost`. If another Codex CLI instance is running, close it first.
 
 ### Reset & Re-run Setup
 
 To re-configure credentials without a full factory reset:
 
 1. Navigate to **System → Setup** in the sidebar (or go to `/setup` directly)
-2. Click **"Reset & Re-run Setup"** on the done screen
+2. Click **"Reset & Re-run Setup"** on the done screen, or click **Reconfigure** on the Protect Secrets step
 3. Confirm the dialog — all API keys (Linear, OpenAI, GitHub) are cleared
-4. The wizard restarts from Step 2 (the master key is preserved)
+4. If initiated from the done screen, the wizard restarts from Step 2 (the master key is preserved). If initiated from Reconfigure, a new master key is generated and you restart from Step 1.
 
 ### Factory Reset (Full)
 
@@ -660,8 +674,8 @@ These paths exist only inside worker containers and are **not** on the host file
 | `POST`   | `/api/v1/setup/linear-project`         | Save the selected Linear project slug into `tracker.project_slug`                     |
 | `POST`   | `/api/v1/setup/openai-key`             | Validate and store an OpenAI API key                                                  |
 | `POST`   | `/api/v1/setup/codex-auth`             | Upload `auth.json` for Codex Login mode                                               |
-| `POST`   | `/api/v1/setup/device-auth/start`      | Start the OpenAI device authorization flow and return user/device codes               |
-| `POST`   | `/api/v1/setup/device-auth/poll`       | Poll device authorization status and persist tokens when the flow completes           |
+| `POST`   | `/api/v1/setup/pkce-auth/start`        | Start the browser-based PKCE login flow and return the auth URL                      |
+| `GET`    | `/api/v1/setup/pkce-auth/status`       | Poll PKCE authorization status; exchanges code for tokens when the callback arrives  |
 | `POST`   | `/api/v1/setup/github-token`           | Validate and store a GitHub PAT                                                       |
 | `POST`   | `/api/v1/setup/reset`                  | Clear stored secrets plus auth-mode overlay values and restart setup                  |
 

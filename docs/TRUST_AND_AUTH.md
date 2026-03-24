@@ -202,10 +202,10 @@ These routes are intentionally loopback-local like the rest of the dashboard/API
 The setup wizard at `/setup` stores all credentials in the encrypted secrets store. For OpenAI auth, the wizard offers two modes:
 
 - **API Key**: paste an `sk-...` key directly
-- **Codex Login**: paste `~/.codex/auth.json` obtained via `codex login --device-auth`
+- **Codex Login**: click **"Sign in with OpenAI"** to authenticate via your browser using the PKCE authorization code flow, or paste `~/.codex/auth.json` as a manual fallback
 
-> [!IMPORTANT]
-> The `codex login --device-auth` flow requires first enabling device code authorization in [ChatGPT Settings → Security](https://chatgpt.com/#settings/Security). OpenAI's device auth endpoint is Cloudflare-protected, preventing programmatic access from servers or web apps — the CLI binary must be run locally.
+> [!NOTE]
+> The browser sign-in flow uses `auth.openai.com` with PKCE and a local callback server on port `1455` (the same port registered with the official Codex CLI client ID). Make sure port `1455` is not in use by another process when signing in.
 
 ---
 

@@ -370,6 +370,7 @@ npx playwright test --project=visual --update-snapshots  # Regenerate baselines
 
 | Document | What you'll learn |
 | -------- | ----------------- |
+| **[Getting Started](docs/GETTING_STARTED.md)** | First 10 minutes: install, setup wizard, first issue |
 | **[Operator Guide](docs/OPERATOR_GUIDE.md)** | Full setup walkthrough, deployment options, Docker networking, wizard details |
 | **[Workflow Examples](WORKFLOW.example.md)** | Template workflow file with all config options explained |
 
