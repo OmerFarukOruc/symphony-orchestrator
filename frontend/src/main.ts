@@ -135,11 +135,9 @@ router.register("/containers", containers);
 router.register("/welcome", welcome);
 router.register("/setup", setup);
 
-router.init();
-startPolling();
-
-// Block all navigation to non-/setup paths until setup is complete
+// Check setup status BEFORE first render to avoid flash of overview
 let setupComplete = false;
+
 router.setGuard((path) => {
   if (setupComplete || path === "/setup") return null;
   return "/setup";
@@ -152,11 +150,15 @@ api
       setupComplete = true;
       router.setGuard(() => null);
     }
+    router.init();
+    startPolling();
   })
   .catch(() => {
     // Server may not have setup endpoint yet — allow navigation
     setupComplete = true;
     router.setGuard(() => null);
+    router.init();
+    startPolling();
   });
 
 // Listen for setup completion from the setup wizard

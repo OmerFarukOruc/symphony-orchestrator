@@ -1,3 +1,5 @@
+import { api } from "../api";
+
 export function createWelcomePage(): HTMLElement {
   const page = document.createElement("div");
   page.className = "welcome-page fade-in";
@@ -6,9 +8,21 @@ export function createWelcomePage(): HTMLElement {
   hero.className = "welcome-hero";
   hero.innerHTML = `
     <h1 class="welcome-hero-title">Symphony</h1>
-    <p class="welcome-hero-subtitle">Your AI coding assistant for Linear.</p>
-    <p class="welcome-hero-version">v0.2.0</p>
+    <p class="welcome-hero-subtitle">Your autonomous coding pipeline.</p>
+    <p class="welcome-hero-version">loading…</p>
   `;
+
+  const versionEl = hero.querySelector(".welcome-hero-version");
+  if (versionEl) {
+    api
+      .getRuntime()
+      .then((info) => {
+        versionEl.textContent = `v${info.version}`;
+      })
+      .catch(() => {
+        versionEl.textContent = "";
+      });
+  }
 
   const checklist = document.createElement("section");
   checklist.className = "welcome-checklist";
