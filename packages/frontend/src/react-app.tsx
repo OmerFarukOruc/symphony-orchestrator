@@ -69,9 +69,6 @@ function useSseInvalidation(queryClient: QueryClient): void {
       queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       window.dispatchEvent(new CustomEvent("state:invalidate"));
     };
-    source.onerror = () => {
-      source.close();
-    };
     return () => {
       source.close();
     };

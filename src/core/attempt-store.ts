@@ -257,17 +257,19 @@ export class AttemptStore {
       return;
     }
     this.database.db.transaction((tx) => {
-      tx.delete(attemptEventRows).where(eq(attemptEventRows.attemptId, attemptId));
+      tx.delete(attemptEventRows).where(eq(attemptEventRows.attemptId, attemptId)).run();
       if (events.length === 0) {
         return;
       }
-      tx.insert(attemptEventRows).values(
-        events.map((event, index) => ({
-          attemptId,
-          position: index,
-          payload: JSON.stringify(event),
-        })),
-      );
+      tx.insert(attemptEventRows)
+        .values(
+          events.map((event, index) => ({
+            attemptId,
+            position: index,
+            payload: JSON.stringify(event),
+          })),
+        )
+        .run();
     });
   }
 

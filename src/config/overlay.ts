@@ -147,8 +147,15 @@ export class ConfigOverlayStore {
         where: eq(configOverlayRows.id, 1),
       });
       if (sqliteRow) {
-        this.overlay = JSON.parse(sqliteRow.payload) as Record<string, unknown>;
-        await this.persist();
+        try {
+          this.overlay = JSON.parse(sqliteRow.payload) as Record<string, unknown>;
+          await this.persist();
+        } catch (error) {
+          this.logger.warn(
+            { error: String(error) },
+            "corrupted config overlay row in SQLite, starting with empty overlay",
+          );
+        }
       }
     }
 

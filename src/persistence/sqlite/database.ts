@@ -44,13 +44,30 @@ export interface SymphonyDatabase {
   db: BetterSQLite3Database<typeof schema>;
 }
 
+const connectionCache = new Map<string, SymphonyDatabase>();
+
 export function openSymphonyDatabase(baseDir: string): SymphonyDatabase {
   mkdirSync(baseDir, { recursive: true });
   const dbPath = path.join(baseDir, "symphony.db");
+  const existing = connectionCache.get(dbPath);
+  if (existing) {
+    return existing;
+  }
   const sqlite = new Database(dbPath);
   applySchema(sqlite);
-  return {
+  const instance: SymphonyDatabase = {
     sqlite,
     db: drizzle(sqlite, { schema }),
   };
+  connectionCache.set(dbPath, instance);
+  return instance;
+}
+
+export function closeSymphonyDatabase(baseDir: string): void {
+  const dbPath = path.join(baseDir, "symphony.db");
+  const instance = connectionCache.get(dbPath);
+  if (instance) {
+    instance.sqlite.close();
+    connectionCache.delete(dbPath);
+  }
 }
