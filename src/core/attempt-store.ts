@@ -142,9 +142,16 @@ export class AttemptStore {
 
     const sqliteAttempts = await this.database.db.select().from(attemptRows);
     for (const row of sqliteAttempts) {
-      const attempt = JSON.parse(row.payload) as AttemptRecord;
-      this.attempts.set(attempt.attemptId, attempt);
-      this.indexAttempt(attempt);
+      try {
+        const attempt = JSON.parse(row.payload) as AttemptRecord;
+        this.attempts.set(attempt.attemptId, attempt);
+        this.indexAttempt(attempt);
+      } catch (error) {
+        this.logger.warn(
+          { attemptId: row.attemptId, error: String(error) },
+          "corrupted attempt row in SQLite, skipping",
+        );
+      }
     }
 
     const sqliteEvents = await this.database.db
@@ -152,10 +159,14 @@ export class AttemptStore {
       .from(attemptEventRows)
       .orderBy(asc(attemptEventRows.attemptId), asc(attemptEventRows.position));
     for (const row of sqliteEvents) {
-      const event = JSON.parse(row.payload) as AttemptEvent;
-      const events = this.eventsByAttempt.get(row.attemptId) ?? [];
-      events.push(event);
-      this.eventsByAttempt.set(row.attemptId, events);
+      try {
+        const event = JSON.parse(row.payload) as AttemptEvent;
+        const events = this.eventsByAttempt.get(row.attemptId) ?? [];
+        events.push(event);
+        this.eventsByAttempt.set(row.attemptId, events);
+      } catch (error) {
+        this.logger.warn({ attemptId: row.attemptId, error: String(error) }, "corrupted event row in SQLite, skipping");
+      }
     }
   }
 
@@ -245,17 +256,19 @@ export class AttemptStore {
     if (!this.database) {
       return;
     }
-    await this.database.db.delete(attemptEventRows).where(eq(attemptEventRows.attemptId, attemptId));
-    if (events.length === 0) {
-      return;
-    }
-    await this.database.db.insert(attemptEventRows).values(
-      events.map((event, index) => ({
-        attemptId,
-        position: index,
-        payload: JSON.stringify(event),
-      })),
-    );
+    this.database.db.transaction((tx) => {
+      tx.delete(attemptEventRows).where(eq(attemptEventRows.attemptId, attemptId));
+      if (events.length === 0) {
+        return;
+      }
+      tx.insert(attemptEventRows).values(
+        events.map((event, index) => ({
+          attemptId,
+          position: index,
+          payload: JSON.stringify(event),
+        })),
+      );
+    });
   }
 
   private async persistEventToDb(event: AttemptEvent, position: number): Promise<void> {

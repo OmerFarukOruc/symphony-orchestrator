@@ -49,7 +49,6 @@
   },
   "dependencies": {
     "@fastify/express": "^4.0.2",
-    "@fastify/type-provider-typebox": "^5.2.0",
     "@sinclair/typebox": "^0.34.41",
     "agentation-mcp": "^1.2.0",
     "better-sqlite3": "^12.4.1",
@@ -63,7 +62,6 @@
     "prom-client": "^15.1.3",
     "react-router-dom": "^7.9.4",
     "@tanstack/react-query": "^5.90.5",
-    "winston": "^3.18.3",
     "yaml": "^2.8.3"
   },
   "devDependencies": {
