@@ -47,7 +47,7 @@ jobs:
         run: pnpm exec knip
       - name: Duplicate code analysis
         run: pnpm exec jscpd
-      - uses: actions/upload-artifact@v8
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-report
@@ -156,7 +156,7 @@ jobs:
         run: pnpm exec playwright test --project=smoke --shard=${{ matrix.shard }}/${{ strategy.job-total }}
       - name: Upload blob report
         if: always()
-        uses: actions/upload-artifact@v8
+        uses: actions/upload-artifact@v7
         with:
           name: blob-report-${{ matrix.shard }}
           path: blob-report/
@@ -183,7 +183,7 @@ jobs:
           merge-multiple: true
       - name: Merge reports
         run: pnpm exec playwright merge-reports --reporter=html all-blob-reports
-      - uses: actions/upload-artifact@v8
+      - uses: actions/upload-artifact@v7
         with:
           name: e2e-smoke-html-report
           path: playwright-report/
