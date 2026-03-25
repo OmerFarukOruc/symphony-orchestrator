@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 
@@ -253,36 +253,26 @@ export function App({ queryClient }: Readonly<QueryClientProp>): JSX.Element {
     }
   }, [location.pathname]);
 
-  const appClassName = useMemo(() => "shell-app", []);
-
   return (
     <>
-      <div className={appClassName}>
-        <a href="#main-content" className="skip-link">
-          Skip to main content
-        </a>
-        <aside ref={sidebarRef} className="shell-sidebar" role="navigation" aria-label="Primary navigation" />
-        <div className="shell-content">
-          <div id="stale-banner" hidden role="alert" aria-live="polite">
-            State feed is stale — retrying every 5 seconds.
-          </div>
-          <header ref={headerRef} className="shell-header" />
-          <div
-            ref={announcerRef}
-            className="sr-only"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          />
-          <main
-            ref={outletRef}
-            className="shell-outlet"
-            id="main-content"
-            role="main"
-            aria-label="Main content"
-            tabIndex={-1}
-          />
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+      <aside ref={sidebarRef} className="shell-sidebar" role="navigation" aria-label="Primary navigation" />
+      <div className="shell-content">
+        <div id="stale-banner" hidden role="alert" aria-live="polite">
+          State feed is stale — retrying every 5 seconds.
         </div>
+        <header ref={headerRef} className="shell-header" />
+        <div ref={announcerRef} className="sr-only" role="status" aria-live="polite" aria-atomic="true" />
+        <main
+          ref={outletRef}
+          className="shell-outlet"
+          id="main-content"
+          role="main"
+          aria-label="Main content"
+          tabIndex={-1}
+        />
       </div>
       <AppRoutes outlet={outlet} setupComplete={setupComplete} />
     </>

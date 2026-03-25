@@ -29,6 +29,8 @@ if (!root) {
   throw new Error("#app root not found");
 }
 
+root.classList.add("shell-app");
+
 const queryClient = new QueryClient();
 
 createRoot(root).render(
