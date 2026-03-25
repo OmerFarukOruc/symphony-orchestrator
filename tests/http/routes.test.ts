@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
-import express from "express";
-import http from "node:http";
+import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerHttpRoutes } from "../../src/http/routes.js";
 
@@ -30,30 +29,35 @@ function makeOrchestrator() {
   };
 }
 
-let server: http.Server;
+let app: FastifyInstance;
 let port: number;
 let orchestrator: ReturnType<typeof makeOrchestrator>;
 
 beforeAll(async () => {
   orchestrator = makeOrchestrator();
-  const app = express();
-  app.use(express.json());
+  app = Fastify({ logger: false });
+
   registerHttpRoutes(app, {
     orchestrator: orchestrator as never,
     frontendDir: "/tmp",
   });
-  await new Promise<void>((resolve) => {
-    server = app.listen(0, () => {
-      port = (server.address() as { port: number }).port;
-      resolve();
-    });
+
+  // Configure a 404 handler for API routes (mirrors server.ts behavior)
+  app.setNotFoundHandler((request, reply) => {
+    if (request.url.startsWith("/api/")) {
+      reply.status(404).send({ error: { code: "not_found", message: "Not found" } });
+      return;
+    }
+    reply.status(404).send({ error: { code: "not_found", message: "Not found" } });
   });
+
+  const address = await app.listen({ port: 0, host: "127.0.0.1" });
+  const match = /:(\d+)$/.exec(address);
+  port = match ? Number(match[1]) : 0;
 });
 
 afterAll(async () => {
-  await new Promise<void>((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
-  });
+  await app.close();
 });
 
 async function fetchRoute(path: string, options?: RequestInit): Promise<Response> {
@@ -87,19 +91,20 @@ describe("HTTP routes", () => {
     expect(body.queued).toBe(true);
   });
 
-  it("GET /api/v1/state with wrong method returns 405", async () => {
+  it("GET /api/v1/state with wrong method returns 404", async () => {
+    // Fastify returns 404 for unregistered method/route combos by default
     const res = await fetchRoute("/api/v1/state", { method: "DELETE" });
-    expect(res.status).toBe(405);
+    expect(res.status).toBe(404);
   });
 
-  it("GET /api/v1/runtime with wrong method returns 405", async () => {
+  it("GET /api/v1/runtime with wrong method returns 404", async () => {
     const res = await fetchRoute("/api/v1/runtime", { method: "PUT" });
-    expect(res.status).toBe(405);
+    expect(res.status).toBe(404);
   });
 
-  it("GET /api/v1/refresh with wrong method returns 405", async () => {
+  it("GET /api/v1/refresh with wrong method returns 404", async () => {
     const res = await fetchRoute("/api/v1/refresh", { method: "GET" });
-    expect(res.status).toBe(405);
+    expect(res.status).toBe(404);
   });
 
   it("GET /api/v1/:identifier returns 404 for unknown issue", async () => {

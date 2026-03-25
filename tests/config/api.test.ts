@@ -1,9 +1,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
-import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 
-import express, { type Express } from "express";
+import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { registerConfigApi } from "../../src/config/api.js";
@@ -18,23 +17,9 @@ async function createTempDir(): Promise<string> {
   return dir;
 }
 
-async function startServer(app: Express): Promise<{ server: http.Server; baseUrl: string }> {
-  const server = await new Promise<http.Server>((resolve, reject) => {
-    const started = app.listen(0, "127.0.0.1", () => {
-      resolve(started);
-    });
-    started.on("error", reject);
-  });
-
-  const address = server.address();
-  if (!address || typeof address === "string") {
-    throw new Error("test server failed to bind to an ephemeral port");
-  }
-
-  return {
-    server,
-    baseUrl: `http://127.0.0.1:${address.port}`,
-  };
+async function startFastifyServer(app: FastifyInstance): Promise<{ baseUrl: string }> {
+  const address = await app.listen({ port: 0, host: "127.0.0.1" });
+  return { baseUrl: address };
 }
 
 afterEach(async () => {
@@ -47,8 +32,7 @@ describe("registerConfigApi", () => {
     const overlayStore = new ConfigOverlayStore(path.join(dir, "config", "overlay.yaml"), createLogger());
     await overlayStore.start();
 
-    const app = express();
-    app.use(express.json());
+    const app = Fastify({ logger: false });
     registerConfigApi(app, {
       getEffectiveConfig: () => ({
         tracker: { kind: "linear" },
@@ -57,7 +41,7 @@ describe("registerConfigApi", () => {
       configOverlayStore: overlayStore,
     });
 
-    const { server, baseUrl } = await startServer(app);
+    const { baseUrl } = await startFastifyServer(app);
     try {
       const effectiveResponse = await fetch(`${baseUrl}/api/v1/config`);
       expect(effectiveResponse.status).toBe(200);
@@ -120,15 +104,7 @@ describe("registerConfigApi", () => {
       expect(schemaBody.routes.put_overlay).toBe("PUT /api/v1/config/overlay");
     } finally {
       await overlayStore.stop();
-      await new Promise<void>((resolve, reject) => {
-        server.close((error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve();
-        });
-      });
+      await app.close();
     }
   });
 
@@ -137,14 +113,13 @@ describe("registerConfigApi", () => {
     const overlayStore = new ConfigOverlayStore(path.join(dir, "config", "overlay.yaml"), createLogger());
     await overlayStore.start();
 
-    const app = express();
-    app.use(express.json());
+    const app = Fastify({ logger: false });
     registerConfigApi(app, {
       getEffectiveConfig: () => ({}),
       configOverlayStore: overlayStore,
     });
 
-    const { server, baseUrl } = await startServer(app);
+    const { baseUrl } = await startFastifyServer(app);
     try {
       const invalidPatchResponse = await fetch(`${baseUrl}/api/v1/config/overlay/test.path`, {
         method: "PATCH",
@@ -160,20 +135,12 @@ describe("registerConfigApi", () => {
       expect(unknownDeleteResponse.status).toBe(404);
       expect((await unknownDeleteResponse.json()).error.code).toBe("overlay_path_not_found");
 
+      // Fastify returns 404 for unregistered method/route combos (not 405 like Express)
       const methodNotAllowedResponse = await fetch(`${baseUrl}/api/v1/config`, { method: "POST" });
-      expect(methodNotAllowedResponse.status).toBe(405);
-      expect((await methodNotAllowedResponse.json()).error.code).toBe("method_not_allowed");
+      expect(methodNotAllowedResponse.status).toBe(404);
     } finally {
       await overlayStore.stop();
-      await new Promise<void>((resolve, reject) => {
-        server.close((error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve();
-        });
-      });
+      await app.close();
     }
   });
 });

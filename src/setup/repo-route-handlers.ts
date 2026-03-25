@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { ConfigOverlayStore } from "../config/overlay.js";
 import { isRecord } from "../utils/type-guards.js";
@@ -60,10 +60,10 @@ function parseLabel(body: unknown): string | undefined {
 }
 
 export function handlePostRepoRoute(deps: RepoRouteApiDeps) {
-  return async (req: Request, res: Response) => {
-    const repoUrl = parseRepoUrl(req.body);
+  return async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply: FastifyReply) => {
+    const repoUrl = parseRepoUrl(request.body);
     if (!repoUrl) {
-      res.status(400).json({
+      reply.status(400).send({
         error: {
           code: "invalid_repo_url",
           message: "repoUrl must be a valid GitHub URL (https://github.com/org/repo)",
@@ -72,16 +72,16 @@ export function handlePostRepoRoute(deps: RepoRouteApiDeps) {
       return;
     }
 
-    const identifierPrefix = parseIdentifierPrefix(req.body);
+    const identifierPrefix = parseIdentifierPrefix(request.body);
     if (!identifierPrefix) {
-      res.status(400).json({
+      reply.status(400).send({
         error: { code: "missing_prefix", message: "identifierPrefix is required" },
       });
       return;
     }
 
-    const defaultBranch = parseDefaultBranch(req.body);
-    const label = parseLabel(req.body);
+    const defaultBranch = parseDefaultBranch(request.body);
+    const label = parseLabel(request.body);
 
     const overlay = deps.configOverlayStore.toMap();
     const existing = readRepos(overlay);
@@ -98,28 +98,28 @@ export function handlePostRepoRoute(deps: RepoRouteApiDeps) {
 
     await deps.configOverlayStore.set("repos", filtered);
 
-    res.json({ ok: true, route: entry });
+    reply.send({ ok: true, route: entry });
   };
 }
 
 export function handleGetRepoRoutes(deps: RepoRouteApiDeps) {
-  return (_req: Request, res: Response) => {
+  return (_request: FastifyRequest, reply: FastifyReply) => {
     const overlay = deps.configOverlayStore.toMap();
     const routes = readRepos(overlay);
-    res.json({ routes });
+    reply.send({ routes });
   };
 }
 
 export function handleDeleteRepoRoute(deps: RepoRouteApiDeps) {
-  return async (req: Request, res: Response) => {
-    const body = req.body;
+  return async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply: FastifyReply) => {
+    const body = request.body;
     const index = isRecord(body) && typeof body.index === "number" && Number.isInteger(body.index) ? body.index : -1;
 
     const overlay = deps.configOverlayStore.toMap();
     const existing = readRepos(overlay);
 
     if (index < 0 || index >= existing.length) {
-      res.status(400).json({
+      reply.status(400).send({
         error: { code: "invalid_index", message: `index must be between 0 and ${existing.length - 1}` },
       });
       return;
@@ -128,6 +128,6 @@ export function handleDeleteRepoRoute(deps: RepoRouteApiDeps) {
     existing.splice(index, 1);
     await deps.configOverlayStore.set("repos", existing);
 
-    res.json({ ok: true, routes: existing });
+    reply.send({ ok: true, routes: existing });
   };
 }

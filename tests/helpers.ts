@@ -1,4 +1,4 @@
-import type { Response as ExpressResponse } from "express";
+import type { FastifyReply } from "fastify";
 import { vi } from "vitest";
 import type { SymphonyLogger } from "../src/core/types.js";
 
@@ -19,23 +19,28 @@ export function createMockLogger(): SymphonyLogger {
 }
 
 /**
- * Creates a mock Express Response object for testing HTTP handlers.
- * Tracks status code and JSON body for assertions.
+ * Creates a mock Fastify Reply object for testing HTTP handlers.
+ * Tracks status code and body for assertions.
  */
-export function makeMockResponse(): ExpressResponse & { _status: number; _body: unknown } {
-  const res = {
+export function makeMockReply(): FastifyReply & { _status: number; _body: unknown } {
+  const reply = {
     _status: 200,
     _body: null as unknown,
     status(code: number) {
-      res._status = code;
-      return res;
+      reply._status = code;
+      return reply;
     },
+    send(data: unknown) {
+      reply._body = data;
+      return reply;
+    },
+    // Some handlers still use .json() in tests — alias to .send()
     json(data: unknown) {
-      res._body = data;
-      return res;
+      reply._body = data;
+      return reply;
     },
   };
-  return res as unknown as ExpressResponse & { _status: number; _body: unknown };
+  return reply as unknown as FastifyReply & { _status: number; _body: unknown };
 }
 
 /**

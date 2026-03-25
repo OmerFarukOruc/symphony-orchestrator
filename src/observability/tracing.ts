@@ -1,25 +1,18 @@
 import { randomUUID } from "node:crypto";
-import type { Request, Response, NextFunction } from "express";
 
 const REQUEST_ID_HEADER = "X-Request-ID";
 
 /**
- * Express middleware that propagates or generates a request trace ID.
+ * Generate or propagate a request trace ID.
  *
- * If the incoming request carries an `X-Request-ID` header, it is preserved;
- * otherwise a new UUID v4 is generated.  The ID is set on the response
- * header and attached to the request object for downstream consumers.
+ * If the incoming headers carry an `X-Request-ID`, it is preserved;
+ * otherwise a new UUID v4 is generated.
  */
-export function tracingMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const requestId = (req.get(REQUEST_ID_HEADER) as string | undefined) || randomUUID();
-  res.setHeader(REQUEST_ID_HEADER, requestId);
-  (req as Request & { requestId: string }).requestId = requestId;
-  next();
-}
-
-/** Retrieve the request ID attached by `tracingMiddleware`. */
-export function getRequestId(req: Request): string {
-  return (req as Request & { requestId?: string }).requestId ?? "unknown";
+export function resolveRequestId(incomingHeader: string | string[] | undefined): string {
+  if (typeof incomingHeader === "string" && incomingHeader.length > 0) {
+    return incomingHeader;
+  }
+  return randomUUID();
 }
 
 export { REQUEST_ID_HEADER };

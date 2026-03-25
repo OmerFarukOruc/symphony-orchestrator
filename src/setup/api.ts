@@ -1,6 +1,5 @@
-import type { Express } from "express";
+import type { FastifyInstance } from "fastify";
 
-import { methodNotAllowed } from "../http/route-helpers.js";
 import { handleDetectDefaultBranch } from "./detect-default-branch.js";
 import { handleDeleteRepoRoute, handleGetRepoRoutes, handlePostRepoRoute } from "./repo-route-handlers.js";
 import type { SetupApiDeps } from "./setup-handlers.js";
@@ -23,90 +22,23 @@ import {
 
 export type { SetupApiDeps } from "./setup-handlers.js";
 
-export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
-  app
-    .route("/api/v1/setup/status")
-    .get(handleGetStatus(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/reset")
-    .post(handlePostReset(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/master-key")
-    .post(handlePostMasterKey(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/linear-projects")
-    .get(handleGetLinearProjects(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/linear-project")
-    .post(handlePostLinearProject(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/openai-key")
-    .post(handlePostOpenaiKey(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/codex-auth")
-    .post(handlePostCodexAuth(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/pkce-auth/start")
-    .post(handlePostPkceAuthStart(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/pkce-auth/status")
-    .get(handleGetPkceAuthStatus(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/pkce-auth/cancel")
-    .post(handlePostPkceAuthCancel(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/github-token")
-    .post(handlePostGithubToken(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/create-test-issue")
-    .post(handlePostCreateTestIssue(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/create-label")
-    .post(handlePostCreateLabel(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/create-project")
-    .post(handlePostCreateProject(deps))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/repo-route")
-    .post(handlePostRepoRoute({ configOverlayStore: deps.configOverlayStore }))
-    .delete(handleDeleteRepoRoute({ configOverlayStore: deps.configOverlayStore }))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/repo-routes")
-    .get(handleGetRepoRoutes({ configOverlayStore: deps.configOverlayStore }))
-    .all((_req, res) => methodNotAllowed(res));
-
-  app
-    .route("/api/v1/setup/detect-default-branch")
-    .post(handleDetectDefaultBranch({ secretsStore: deps.secretsStore }))
-    .all((_req, res) => methodNotAllowed(res));
+export function registerSetupApi(app: FastifyInstance, deps: SetupApiDeps): void {
+  app.get("/api/v1/setup/status", handleGetStatus(deps));
+  app.post("/api/v1/setup/reset", handlePostReset(deps));
+  app.post("/api/v1/setup/master-key", handlePostMasterKey(deps));
+  app.get("/api/v1/setup/linear-projects", handleGetLinearProjects(deps));
+  app.post("/api/v1/setup/linear-project", handlePostLinearProject(deps));
+  app.post("/api/v1/setup/openai-key", handlePostOpenaiKey(deps));
+  app.post("/api/v1/setup/codex-auth", handlePostCodexAuth(deps));
+  app.post("/api/v1/setup/pkce-auth/start", handlePostPkceAuthStart(deps));
+  app.get("/api/v1/setup/pkce-auth/status", handleGetPkceAuthStatus(deps));
+  app.post("/api/v1/setup/pkce-auth/cancel", handlePostPkceAuthCancel(deps));
+  app.post("/api/v1/setup/github-token", handlePostGithubToken(deps));
+  app.post("/api/v1/setup/create-test-issue", handlePostCreateTestIssue(deps));
+  app.post("/api/v1/setup/create-label", handlePostCreateLabel(deps));
+  app.post("/api/v1/setup/create-project", handlePostCreateProject(deps));
+  app.post("/api/v1/setup/repo-route", handlePostRepoRoute({ configOverlayStore: deps.configOverlayStore }));
+  app.delete("/api/v1/setup/repo-route", handleDeleteRepoRoute({ configOverlayStore: deps.configOverlayStore }));
+  app.get("/api/v1/setup/repo-routes", handleGetRepoRoutes({ configOverlayStore: deps.configOverlayStore }));
+  app.post("/api/v1/setup/detect-default-branch", handleDetectDefaultBranch({ secretsStore: deps.secretsStore }));
 }

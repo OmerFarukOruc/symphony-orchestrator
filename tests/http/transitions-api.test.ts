@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Request } from "express";
+import type { FastifyRequest } from "fastify";
 
-import { makeMockResponse } from "../helpers.js";
+import { makeMockReply } from "../helpers.js";
 import { handleGetTransitions } from "../../src/http/transitions-api.js";
 
 const machineMocks = vi.hoisted(() => ({
@@ -29,9 +29,8 @@ vi.mock("../../src/state/machine.js", () => ({
 type TransitionsDeps = Parameters<typeof handleGetTransitions>[0];
 type TestStage = { key: string; terminal: boolean };
 
-function makeRequest(): Request {
-  const req: Partial<Request> = { get: vi.fn() };
-  return req as Request;
+function makeRequest(): FastifyRequest {
+  return { headers: {} } as unknown as FastifyRequest;
 }
 
 function makeDeps(configStore?: { getConfig: () => unknown }): TransitionsDeps {
@@ -60,17 +59,17 @@ describe("handleGetTransitions", () => {
   });
 
   it("returns empty transitions when configStore is not configured", () => {
-    const res = makeMockResponse();
+    const reply = makeMockReply();
 
-    handleGetTransitions(makeDeps(), makeRequest(), res);
+    handleGetTransitions(makeDeps(), makeRequest(), reply);
 
-    expect(res._status).toBe(200);
-    expect(res._body).toEqual({ transitions: {} });
+    expect(reply._status).toBe(200);
+    expect(reply._body).toEqual({ transitions: {} });
     expect(machineMocks.constructedWith).not.toHaveBeenCalled();
   });
 
   it("builds transitions from tracker activeStates and terminalStates when stateMachine config is absent", () => {
-    const res = makeMockResponse();
+    const reply = makeMockReply();
     const config = {
       tracker: {
         activeStates: ["Todo", "In Progress"],
@@ -95,14 +94,14 @@ describe("handleGetTransitions", () => {
       },
     );
 
-    handleGetTransitions(makeDeps(configStore), makeRequest(), res);
+    handleGetTransitions(makeDeps(configStore), makeRequest(), reply);
 
     expect(configStore.getConfig).toHaveBeenCalledTimes(1);
     expect(machineMocks.constructedWith).toHaveBeenCalledWith({
       activeStates: ["Todo", "In Progress"],
       terminalStates: ["Done", "Canceled"],
     });
-    expect(res._body).toEqual({
+    expect(reply._body).toEqual({
       transitions: {
         todo: ["todo", "in progress"],
         "in progress": ["todo", "in progress", "done"],
@@ -112,7 +111,7 @@ describe("handleGetTransitions", () => {
   });
 
   it("builds transitions from stateMachine config when present", () => {
-    const res = makeMockResponse();
+    const reply = makeMockReply();
     const config = {
       tracker: {
         activeStates: ["Backlog", "Working"],
@@ -148,7 +147,7 @@ describe("handleGetTransitions", () => {
       },
     );
 
-    handleGetTransitions(makeDeps(configStore), makeRequest(), res);
+    handleGetTransitions(makeDeps(configStore), makeRequest(), reply);
 
     expect(machineMocks.constructedWith).toHaveBeenCalledWith({
       stages: [
@@ -164,7 +163,7 @@ describe("handleGetTransitions", () => {
       activeStates: ["Backlog", "Working"],
       terminalStates: ["Done"],
     });
-    expect(res._body).toEqual({
+    expect(reply._body).toEqual({
       transitions: {
         backlog: ["backlog", "working"],
         working: ["working", "done"],

@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { Orchestrator } from "../orchestrator/orchestrator.js";
 import type { ReasoningEffort } from "../core/types.js";
@@ -33,13 +33,14 @@ function parseReasoningEffort(
 
 export async function handleModelUpdate(
   orchestrator: Orchestrator,
-  request: Request,
-  response: Response,
+  request: FastifyRequest<{ Params: { issue_identifier: string }; Body: Record<string, unknown> }>,
+  reply: FastifyReply,
 ): Promise<void> {
-  const model = asModel(request.body?.model);
-  const effortResult = parseReasoningEffort(request.body?.reasoning_effort ?? request.body?.reasoningEffort);
+  const body = request.body ?? {};
+  const model = asModel(body.model);
+  const effortResult = parseReasoningEffort(body.reasoning_effort ?? body.reasoningEffort);
   if (!model) {
-    response.status(400).json({
+    reply.status(400).send({
       error: {
         code: "invalid_model",
         message: "model is required",
@@ -48,7 +49,7 @@ export async function handleModelUpdate(
     return;
   }
   if (!effortResult.ok) {
-    response.status(400).json({
+    reply.status(400).send({
       error: {
         code: effortResult.code,
         message: effortResult.message,
@@ -62,7 +63,7 @@ export async function handleModelUpdate(
     reasoningEffort: effortResult.value,
   });
   if (!updated) {
-    response.status(404).json({
+    reply.status(404).send({
       error: {
         code: "not_found",
         message: "Unknown issue identifier",
@@ -70,7 +71,7 @@ export async function handleModelUpdate(
     });
     return;
   }
-  response.status(202).json({
+  reply.status(202).send({
     updated: updated.updated,
     restarted: updated.restarted,
     applies_next_attempt: updated.appliesNextAttempt,

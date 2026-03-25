@@ -1,6 +1,4 @@
-import { join } from "node:path";
-
-import express, { type Express } from "express";
+import type { FastifyInstance } from "fastify";
 
 import { registerConfigApi } from "../config/api.js";
 import type { ConfigOverlayStore } from "../config/overlay.js";
@@ -19,15 +17,8 @@ import { handleModelUpdate } from "./model-handler.js";
 import { handleTransition } from "./transition-handler.js";
 import { handleGetTransitions } from "./transitions-api.js";
 import { handleWorkspaceInventory, handleWorkspaceRemove } from "./workspace-inventory.js";
-import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
+import { refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
 import type { LinearClient } from "../linear/client.js";
-
-import rateLimit from "express-rate-limit";
-
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX_REQUESTS = 300;
-
-const frontendDist = join(process.cwd(), "dist/frontend");
 
 interface HttpRouteDeps {
   orchestrator: Orchestrator;
@@ -40,224 +31,140 @@ interface HttpRouteDeps {
   archiveDir?: string;
 }
 
-export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
-  const staticRoot = deps.frontendDir ?? frontendDist;
-
-  app.use(express.static(staticRoot));
-  const apiLimiter = rateLimit({
-    windowMs: RATE_LIMIT_WINDOW_MS,
-    limit: RATE_LIMIT_MAX_REQUESTS,
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-  app.use("/api/", apiLimiter);
-  app.use("/metrics", apiLimiter);
+export function registerHttpRoutes(app: FastifyInstance, deps: HttpRouteDeps): void {
   registerStateAndMetricsRoutes(app, deps);
-
   registerExtensionApis(app, deps);
   registerGitRoutes(app, deps);
   registerWorkspaceRoutes(app, deps);
   registerIssueRoutes(app, deps);
+}
 
-  app.use((request, response) => {
-    if (request.path.startsWith("/api/") || request.path === "/metrics") {
-      response.status(404).json({ error: { code: "not_found", message: "Not found" } });
-      return;
-    }
-    response.sendFile(join(staticRoot, "index.html"));
+function registerStateAndMetricsRoutes(app: FastifyInstance, deps: HttpRouteDeps): void {
+  app.get("/api/v1/state", (_request, reply) => {
+    reply.send(serializeSnapshot(deps.orchestrator.getSnapshot() as RuntimeSnapshot & Record<string, unknown>));
+  });
+
+  app.get("/api/v1/runtime", (_request, reply) => {
+    reply.send({
+      version: process.env.npm_package_version ?? "unknown",
+      workflow_path: process.env.SYMPHONY_WORKFLOW_PATH ?? "",
+      data_dir: process.env.SYMPHONY_DATA_DIR ?? "",
+      feature_flags: {},
+      provider_summary: "Codex",
+    });
+  });
+
+  app.get("/metrics", async (_request, reply) => {
+    reply.header("content-type", "text/plain; version=0.0.4; charset=utf-8");
+    reply.send(await globalMetrics.serialize());
+  });
+
+  app.post("/api/v1/refresh", (request, reply) => {
+    const refresh = deps.orchestrator.requestRefresh(refreshReason(request));
+    reply.status(202).send({ queued: refresh.queued, coalesced: refresh.coalesced, requested_at: refresh.requestedAt });
+  });
+
+  app.get("/api/v1/transitions", (request, reply) => {
+    handleGetTransitions({ orchestrator: deps.orchestrator, configStore: deps.configStore }, request, reply);
   });
 }
 
-function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void {
-  app
-    .route("/api/v1/state")
-    .get((_req, res) => {
-      res.json(serializeSnapshot(deps.orchestrator.getSnapshot() as RuntimeSnapshot & Record<string, unknown>));
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
+function registerIssueRoutes(app: FastifyInstance, deps: HttpRouteDeps): void {
+  app.post<{ Params: { issue_identifier: string } }>("/api/v1/:issue_identifier/abort", (request, reply) => {
+    const result = deps.orchestrator.abortIssue(request.params.issue_identifier);
+    if (!result.ok) {
+      const status = result.code === "not_found" ? 404 : 409;
+      reply.status(status).send({ error: { code: result.code, message: result.message } });
+      return;
+    }
+    reply.status(result.alreadyStopping ? 200 : 202).send({
+      ok: true,
+      status: "stopping",
+      already_stopping: result.alreadyStopping,
+      requested_at: result.requestedAt,
     });
+  });
 
-  app
-    .route("/api/v1/runtime")
-    .get((_req, res) => {
-      res.json({
-        version: process.env.npm_package_version ?? "unknown",
-        workflow_path: process.env.SYMPHONY_WORKFLOW_PATH ?? "",
-        data_dir: process.env.SYMPHONY_DATA_DIR ?? "",
-        feature_flags: {},
-        provider_summary: "Codex",
-      });
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
+  app.post<{ Params: { issue_identifier: string }; Body: Record<string, unknown> }>(
+    "/api/v1/:issue_identifier/model",
+    async (request, reply) => {
+      await handleModelUpdate(deps.orchestrator, request, reply);
+    },
+  );
 
-  app
-    .route("/metrics")
-    .get(async (_req, res) => {
-      res.setHeader("content-type", "text/plain; version=0.0.4; charset=utf-8");
-      res.send(await globalMetrics.serialize());
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
+  app.get<{ Params: { issue_identifier: string } }>("/api/v1/:issue_identifier/attempts", (request, reply) => {
+    const detail = deps.orchestrator.getIssueDetail(request.params.issue_identifier);
+    if (!detail) {
+      reply.status(404).send({ error: { code: "not_found", message: "Unknown issue identifier" } });
+      return;
+    }
+    reply.send({ attempts: detail.attempts ?? [], current_attempt_id: detail.currentAttemptId ?? null });
+  });
 
-  app
-    .route("/api/v1/refresh")
-    .post((req, res) => {
-      const refresh = deps.orchestrator.requestRefresh(refreshReason(req));
-      res.status(202).json({ queued: refresh.queued, coalesced: refresh.coalesced, requested_at: refresh.requestedAt });
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
+  app.get<{ Params: { attempt_id: string } }>("/api/v1/attempts/:attempt_id", (request, reply) => {
+    handleAttemptDetail(deps.orchestrator, request, reply);
+  });
 
-  app
-    .route("/api/v1/transitions")
-    .get((req, res) => {
-      handleGetTransitions({ orchestrator: deps.orchestrator, configStore: deps.configStore }, req, res);
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
-}
-
-function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
-  app
-    .route("/api/v1/:issue_identifier/abort")
-    .post((req, res) => {
-      const result = deps.orchestrator.abortIssue(req.params.issue_identifier);
-      if (!result.ok) {
-        const status = result.code === "not_found" ? 404 : 409;
-        res.status(status).json({ error: { code: result.code, message: result.message } });
-        return;
-      }
-      res.status(result.alreadyStopping ? 200 : 202).json({
-        ok: true,
-        status: "stopping",
-        already_stopping: result.alreadyStopping,
-        requested_at: result.requestedAt,
-      });
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
-
-  app
-    .route("/api/v1/:issue_identifier/model")
-    .post(async (req, res) => {
-      await handleModelUpdate(deps.orchestrator, req, res);
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
-
-  app
-    .route("/api/v1/:issue_identifier/attempts")
-    .get((req, res) => {
-      const detail = deps.orchestrator.getIssueDetail(req.params.issue_identifier);
-      if (!detail) {
-        res.status(404).json({ error: { code: "not_found", message: "Unknown issue identifier" } });
-        return;
-      }
-      res.json({ attempts: detail.attempts ?? [], current_attempt_id: detail.currentAttemptId ?? null });
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
-
-  app
-    .route("/api/v1/attempts/:attempt_id")
-    .get((req, res) => {
-      handleAttemptDetail(deps.orchestrator, req, res);
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
-
-  app
-    .route("/api/v1/:issue_identifier/transition")
-    .post(async (req, res) => {
+  app.post<{ Params: { issue_identifier: string }; Body: Record<string, unknown> }>(
+    "/api/v1/:issue_identifier/transition",
+    async (request, reply) => {
       await handleTransition(
         { orchestrator: deps.orchestrator, linearClient: deps.linearClient, configStore: deps.configStore },
-        req,
-        res,
+        request,
+        reply,
       );
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
+    },
+  );
 
-  app
-    .route("/api/v1/:issue_identifier")
-    .get((req, res) => {
-      const detail = deps.orchestrator.getIssueDetail(req.params.issue_identifier);
-      if (!detail) {
-        res.status(404).json({ error: { code: "not_found", message: "Unknown issue identifier" } });
-        return;
-      }
-      res.json(detail);
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
+  app.get<{ Params: { issue_identifier: string } }>("/api/v1/:issue_identifier", (request, reply) => {
+    const detail = deps.orchestrator.getIssueDetail(request.params.issue_identifier);
+    if (!detail) {
+      reply.status(404).send({ error: { code: "not_found", message: "Unknown issue identifier" } });
+      return;
+    }
+    reply.send(detail);
+  });
 }
 
-function registerGitRoutes(app: Express, deps: HttpRouteDeps): void {
-  app
-    .route("/api/v1/git/context")
-    .get(async (req, res) => {
-      await handleGitContext(
-        {
-          orchestrator: deps.orchestrator,
-          configStore: deps.configStore,
-          secretsStore: deps.secretsStore,
-        },
-        req,
-        res,
-      );
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
+function registerGitRoutes(app: FastifyInstance, deps: HttpRouteDeps): void {
+  app.get("/api/v1/git/context", async (request, reply) => {
+    await handleGitContext(
+      {
+        orchestrator: deps.orchestrator,
+        configStore: deps.configStore,
+        secretsStore: deps.secretsStore,
+      },
+      request,
+      reply,
+    );
+  });
 }
 
-function registerWorkspaceRoutes(app: Express, deps: HttpRouteDeps): void {
-  app
-    .route("/api/v1/workspaces")
-    .get(async (req, res) => {
-      await handleWorkspaceInventory(
-        {
-          orchestrator: deps.orchestrator,
-          configStore: deps.configStore,
-        },
-        req,
-        res,
-      );
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
+function registerWorkspaceRoutes(app: FastifyInstance, deps: HttpRouteDeps): void {
+  app.get("/api/v1/workspaces", async (request, reply) => {
+    await handleWorkspaceInventory(
+      {
+        orchestrator: deps.orchestrator,
+        configStore: deps.configStore,
+      },
+      request,
+      reply,
+    );
+  });
 
-  app
-    .route("/api/v1/workspaces/:workspace_key")
-    .delete(async (req, res) => {
-      await handleWorkspaceRemove(
-        {
-          orchestrator: deps.orchestrator,
-          configStore: deps.configStore,
-        },
-        req,
-        res,
-      );
-    })
-    .all((_req, res) => {
-      methodNotAllowed(res);
-    });
+  app.delete<{ Params: { workspace_key: string } }>("/api/v1/workspaces/:workspace_key", async (request, reply) => {
+    await handleWorkspaceRemove(
+      {
+        orchestrator: deps.orchestrator,
+        configStore: deps.configStore,
+      },
+      request,
+      reply,
+    );
+  });
 }
 
-function registerExtensionApis(app: Express, deps: HttpRouteDeps): void {
+function registerExtensionApis(app: FastifyInstance, deps: HttpRouteDeps): void {
   if (deps.configStore && deps.configOverlayStore) {
     registerConfigApi(app, {
       getEffectiveConfig: () =>

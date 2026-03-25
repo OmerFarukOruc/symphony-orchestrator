@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 
-import type { Request, Response } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import { normalizeCodexAuthJson } from "../codex/auth-file.js";
 import type { ConfigOverlayStore } from "../config/overlay.js";
@@ -36,7 +36,7 @@ export interface SetupApiDeps {
 }
 
 export function handleGetStatus(deps: SetupApiDeps) {
-  return (_req: Request, res: Response) => {
+  return (_request: FastifyRequest, reply: FastifyReply) => {
     const masterKeyDone = deps.secretsStore.isInitialized();
     const linearProjectDone = hasLinearCredentials(deps.secretsStore);
     const hasApiKey = !!(deps.secretsStore.get("OPENAI_API_KEY") || process.env.OPENAI_API_KEY);
@@ -44,7 +44,7 @@ export function handleGetStatus(deps: SetupApiDeps) {
     const openaiKeyDone = hasApiKey || hasAuthJson;
     const githubTokenDone = !!(deps.secretsStore.get("GITHUB_TOKEN") || process.env.GITHUB_TOKEN);
 
-    res.json({
+    reply.send({
       configured: masterKeyDone && linearProjectDone,
       steps: {
         masterKey: { done: masterKeyDone },
@@ -58,7 +58,7 @@ export function handleGetStatus(deps: SetupApiDeps) {
 }
 
 export function handlePostReset(deps: SetupApiDeps) {
-  return async (_req: Request, res: Response) => {
+  return async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       await deps.orchestrator.stop();
       await Promise.all(deps.secretsStore.list().map((key) => deps.secretsStore.delete(key)));
@@ -70,22 +70,22 @@ export function handlePostReset(deps: SetupApiDeps) {
         writeFile(path.join(deps.archiveDir, "master.key"), "", { encoding: "utf8", mode: 0o600 }),
       ]);
       deps.secretsStore.reset();
-      res.json({ ok: true });
+      reply.send({ ok: true });
     } catch (error) {
       const message = getErrorMessage(error, "Failed to reset configuration");
-      res.status(500).json({ error: { code: "reset_failed", message } });
+      reply.status(500).send({ error: { code: "reset_failed", message } });
     }
   };
 }
 
 export function handlePostMasterKey(deps: SetupApiDeps) {
-  return async (req: Request, res: Response) => {
+  return async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply: FastifyReply) => {
     if (deps.secretsStore.isInitialized()) {
-      res.status(409).json({ error: { code: "already_initialized", message: "Master key is already set" } });
+      reply.status(409).send({ error: { code: "already_initialized", message: "Master key is already set" } });
       return;
     }
 
-    const body = req.body;
+    const body = request.body;
     const providedKey = isRecord(body) && typeof body.key === "string" && body.key ? body.key : null;
     const key = providedKey ?? randomBytes(32).toString("hex");
 
@@ -94,18 +94,18 @@ export function handlePostMasterKey(deps: SetupApiDeps) {
       await mkdir(deps.archiveDir, { recursive: true });
       await writeFile(keyFile, key, { encoding: "utf8", mode: 0o600 });
       await deps.secretsStore.initializeWithKey(key);
-      res.json({ key });
+      reply.send({ key });
     } catch (error) {
-      res.status(500).json({ error: { code: "setup_error", message: String(error) } });
+      reply.status(500).send({ error: { code: "setup_error", message: String(error) } });
     }
   };
 }
 
 export function handleGetLinearProjects(deps: SetupApiDeps) {
-  return async (_req: Request, res: Response) => {
+  return async (_request: FastifyRequest, reply: FastifyReply) => {
     const apiKey = deps.secretsStore.get("LINEAR_API_KEY") ?? process.env.LINEAR_API_KEY ?? "";
     if (!apiKey) {
-      res.status(400).json({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });
+      reply.status(400).send({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });
       return;
     }
 
@@ -118,12 +118,14 @@ export function handleGetLinearProjects(deps: SetupApiDeps) {
         body: JSON.stringify({ query }),
       });
     } catch (error) {
-      res.status(502).json({ error: { code: "linear_api_error", message: String(error) } });
+      reply.status(502).send({ error: { code: "linear_api_error", message: String(error) } });
       return;
     }
 
     if (!response.ok) {
-      res.status(502).json({ error: { code: "linear_api_error", message: `Linear API returned ${response.status}` } });
+      reply
+        .status(502)
+        .send({ error: { code: "linear_api_error", message: `Linear API returned ${response.status}` } });
       return;
     }
 
@@ -140,16 +142,16 @@ export function handleGetLinearProjects(deps: SetupApiDeps) {
       };
     });
 
-    res.json({ projects });
+    reply.send({ projects });
   };
 }
 
 export function handlePostLinearProject(deps: SetupApiDeps) {
-  return async (req: Request, res: Response) => {
-    const body = req.body;
+  return async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply: FastifyReply) => {
+    const body = request.body;
     const slugId = isRecord(body) && typeof body.slugId === "string" ? body.slugId : null;
     if (!slugId) {
-      res.status(400).json({ error: { code: "missing_slug_id", message: "slugId is required" } });
+      reply.status(400).send({ error: { code: "missing_slug_id", message: "slugId is required" } });
       return;
     }
 
@@ -157,16 +159,16 @@ export function handlePostLinearProject(deps: SetupApiDeps) {
     await deps.orchestrator.start();
     deps.orchestrator.requestRefresh("setup");
 
-    res.json({ ok: true });
+    reply.send({ ok: true });
   };
 }
 
 export function handlePostOpenaiKey(deps: SetupApiDeps) {
-  return async (req: Request, res: Response) => {
-    const body = req.body;
+  return async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply: FastifyReply) => {
+    const body = request.body;
     const key = isRecord(body) && typeof body.key === "string" ? body.key : null;
     if (!key) {
-      res.status(400).json({ error: { code: "missing_key", message: "key is required" } });
+      reply.status(400).send({ error: { code: "missing_key", message: "key is required" } });
       return;
     }
 
@@ -191,23 +193,23 @@ export function handlePostOpenaiKey(deps: SetupApiDeps) {
       ]);
     }
 
-    res.json({ valid });
+    reply.send({ valid });
   };
 }
 
 export function handlePostCodexAuth(deps: SetupApiDeps) {
-  return async (req: Request, res: Response) => {
-    const body = req.body;
+  return async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply: FastifyReply) => {
+    const body = request.body;
     const authJson = isRecord(body) && typeof body.authJson === "string" ? body.authJson : null;
     if (!authJson) {
-      res.status(400).json({ error: { code: "missing_auth_json", message: "authJson is required" } });
+      reply.status(400).send({ error: { code: "missing_auth_json", message: "authJson is required" } });
       return;
     }
 
     try {
       JSON.parse(authJson);
     } catch {
-      res.status(400).json({ error: { code: "invalid_json", message: "authJson must be valid JSON" } });
+      reply.status(400).send({ error: { code: "invalid_json", message: "authJson must be valid JSON" } });
       return;
     }
 
@@ -223,9 +225,9 @@ export function handlePostCodexAuth(deps: SetupApiDeps) {
         deps.configOverlayStore.delete("codex.provider"),
       ]);
 
-      res.json({ ok: true });
+      reply.send({ ok: true });
     } catch (error) {
-      res.status(500).json({ error: { code: "save_error", message: String(error) } });
+      reply.status(500).send({ error: { code: "save_error", message: String(error) } });
     }
   };
 }
@@ -233,12 +235,12 @@ export function handlePostCodexAuth(deps: SetupApiDeps) {
 let activePkceSession: PkceSession | null = null;
 
 export function handlePostPkceAuthStart(_deps: SetupApiDeps) {
-  return async (_req: Request, res: Response) => {
+  return async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       // Pre-flight: verify OpenAI auth endpoint is reachable
       const reachError = await checkAuthEndpointReachable();
       if (reachError) {
-        res.status(502).json({ error: { code: "auth_unreachable", message: reachError } });
+        reply.status(502).send({ error: { code: "auth_unreachable", message: reachError } });
         return;
       }
 
@@ -249,76 +251,80 @@ export function handlePostPkceAuthStart(_deps: SetupApiDeps) {
 
       activePkceSession = createPkceSession("");
       await startCallbackServer(activePkceSession);
-      res.json({ authUrl: activePkceSession.authUrl });
+      reply.send({ authUrl: activePkceSession.authUrl });
     } catch (error) {
       const message = activePkceSession?.error ?? String(error);
-      res.status(500).json({ error: { code: "pkce_start_error", message } });
+      reply.status(500).send({ error: { code: "pkce_start_error", message } });
     }
   };
 }
 
 export function handleGetPkceAuthStatus(deps: SetupApiDeps) {
-  return async (_req: Request, res: Response) => {
+  return async (_request: FastifyRequest, reply: FastifyReply) => {
     if (!activePkceSession) {
-      res.json({ status: "idle" });
+      reply.send({ status: "idle" });
       return;
     }
     if (activePkceSession.error) {
       shutdownCallbackServer(activePkceSession);
-      res.json({ status: "error", error: activePkceSession.error });
+      reply.send({ status: "error", error: activePkceSession.error });
       return;
     }
     if (activePkceSession.complete) {
-      res.json({ status: "complete" });
+      reply.send({ status: "complete" });
       return;
     }
     // Check if auth code was received — exchange it for tokens
     if (activePkceSession.authCode) {
-      await exchangeAndSaveFromSession(activePkceSession, deps, res);
+      await exchangeAndSaveFromSession(activePkceSession, deps, reply);
       return;
     }
     // Check if session expired (3 min timeout)
     if (Date.now() - activePkceSession.createdAt > 3 * 60 * 1000) {
       activePkceSession.error = "Authentication timed out. Please try again.";
       shutdownCallbackServer(activePkceSession);
-      res.json({ status: "expired", error: activePkceSession.error });
+      reply.send({ status: "expired", error: activePkceSession.error });
       return;
     }
-    res.json({ status: "pending" });
+    reply.send({ status: "pending" });
   };
 }
 
-async function exchangeAndSaveFromSession(session: PkceSession, deps: SetupApiDeps, res: Response): Promise<void> {
+async function exchangeAndSaveFromSession(
+  session: PkceSession,
+  deps: SetupApiDeps,
+  reply: FastifyReply,
+): Promise<void> {
   try {
     const tokenData = await exchangePkceCode(session.authCode!, session.codeVerifier, session.redirectUri);
     await savePkceAuthTokens(tokenData, deps.archiveDir, deps.configOverlayStore);
     session.complete = true;
     shutdownCallbackServer(session);
-    res.json({ status: "complete" });
+    reply.send({ status: "complete" });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     session.error = message;
     shutdownCallbackServer(session);
-    res.json({ status: "error", error: message });
+    reply.send({ status: "error", error: message });
   }
 }
 
 export function handlePostPkceAuthCancel(_deps: SetupApiDeps) {
-  return (_req: Request, res: Response) => {
+  return (_request: FastifyRequest, reply: FastifyReply) => {
     if (activePkceSession) {
       shutdownCallbackServer(activePkceSession);
       activePkceSession = null;
     }
-    res.json({ ok: true });
+    reply.send({ ok: true });
   };
 }
 
 export function handlePostGithubToken(deps: SetupApiDeps) {
-  return async (req: Request, res: Response) => {
-    const body = req.body;
+  return async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply: FastifyReply) => {
+    const body = request.body;
     const token = isRecord(body) && typeof body.token === "string" ? body.token : null;
     if (!token) {
-      res.status(400).json({ error: { code: "missing_token", message: "token is required" } });
+      reply.status(400).send({ error: { code: "missing_token", message: "token is required" } });
       return;
     }
 
@@ -337,7 +343,7 @@ export function handlePostGithubToken(deps: SetupApiDeps) {
       process.env.GITHUB_TOKEN = token;
     }
 
-    res.json({ valid });
+    reply.send({ valid });
   };
 }
 
@@ -473,51 +479,51 @@ async function createSymphonyLabel(
 }
 
 export function handlePostCreateTestIssue(deps: SetupApiDeps) {
-  return async (_req: Request, res: Response) => {
+  return async (_request: FastifyRequest, reply: FastifyReply) => {
     const apiKey = getLinearApiKey(deps);
     if (!apiKey) {
-      res.status(400).json({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });
+      reply.status(400).send({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });
       return;
     }
 
     const overlay = deps.configOverlayStore.toMap();
     const projectSlug = readProjectSlug(overlay);
     if (!projectSlug) {
-      res.status(400).json({ error: { code: "missing_project", message: "No Linear project selected" } });
+      reply.status(400).send({ error: { code: "missing_project", message: "No Linear project selected" } });
       return;
     }
 
     try {
       const { identifier, url } = await createTestIssue(apiKey, projectSlug);
-      res.json({ ok: true, issueIdentifier: identifier, issueUrl: url });
+      reply.send({ ok: true, issueIdentifier: identifier, issueUrl: url });
     } catch (error) {
       const message = getErrorMessage(error, "Failed to create test issue");
-      res.status(502).json({ error: { code: "linear_api_error", message } });
+      reply.status(502).send({ error: { code: "linear_api_error", message } });
     }
   };
 }
 
 export function handlePostCreateLabel(deps: SetupApiDeps) {
-  return async (_req: Request, res: Response) => {
+  return async (_request: FastifyRequest, reply: FastifyReply) => {
     const apiKey = getLinearApiKey(deps);
     if (!apiKey) {
-      res.status(400).json({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });
+      reply.status(400).send({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });
       return;
     }
 
     const overlay = deps.configOverlayStore.toMap();
     const projectSlug = readProjectSlug(overlay);
     if (!projectSlug) {
-      res.status(400).json({ error: { code: "missing_project", message: "No Linear project selected" } });
+      reply.status(400).send({ error: { code: "missing_project", message: "No Linear project selected" } });
       return;
     }
 
     try {
       const { id, name, alreadyExists } = await createSymphonyLabel(apiKey, projectSlug);
-      res.json({ ok: true, labelId: id, labelName: name, alreadyExists });
+      reply.send({ ok: true, labelId: id, labelName: name, alreadyExists });
     } catch (error) {
       const message = getErrorMessage(error, "Failed to create label");
-      res.status(502).json({ error: { code: "linear_api_error", message } });
+      reply.status(502).send({ error: { code: "linear_api_error", message } });
     }
   };
 }
@@ -560,23 +566,23 @@ function parseProjectName(body: unknown): string | null {
 }
 
 export function handlePostCreateProject(deps: SetupApiDeps) {
-  return async (req: Request, res: Response) => {
+  return async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply: FastifyReply) => {
     const apiKey = getLinearApiKey(deps);
     if (!apiKey) {
-      res.status(400).json({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });
+      reply.status(400).send({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });
       return;
     }
 
-    const name = parseProjectName(req.body);
+    const name = parseProjectName(request.body);
     if (!name) {
-      res.status(400).json({ error: { code: "missing_name", message: "Project name is required" } });
+      reply.status(400).send({ error: { code: "missing_name", message: "Project name is required" } });
       return;
     }
 
     try {
       const teams = await fetchLinearTeams(apiKey);
       if (!teams.length) {
-        res.status(400).json({ error: { code: "no_teams", message: "No teams found in your Linear workspace" } });
+        reply.status(400).send({ error: { code: "no_teams", message: "No teams found in your Linear workspace" } });
         return;
       }
 
@@ -585,7 +591,7 @@ export function handlePostCreateProject(deps: SetupApiDeps) {
         throw new Error("Linear did not confirm project creation");
       }
 
-      res.json({
+      reply.send({
         ok: true,
         project: {
           id: result.project.id,
@@ -597,7 +603,7 @@ export function handlePostCreateProject(deps: SetupApiDeps) {
       });
     } catch (error) {
       const message = getErrorMessage(error, "Failed to create project");
-      res.status(502).json({ error: { code: "linear_api_error", message } });
+      reply.status(502).send({ error: { code: "linear_api_error", message } });
     }
   };
 }

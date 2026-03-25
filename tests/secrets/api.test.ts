@@ -1,9 +1,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
-import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 
-import express, { type Express } from "express";
+import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createLogger } from "../../src/core/logger.js";
@@ -19,23 +18,9 @@ async function createTempDir(): Promise<string> {
   return dir;
 }
 
-async function startServer(app: Express): Promise<{ server: http.Server; baseUrl: string }> {
-  const server = await new Promise<http.Server>((resolve, reject) => {
-    const started = app.listen(0, "127.0.0.1", () => {
-      resolve(started);
-    });
-    started.on("error", reject);
-  });
-
-  const address = server.address();
-  if (!address || typeof address === "string") {
-    throw new Error("test server failed to bind to an ephemeral port");
-  }
-
-  return {
-    server,
-    baseUrl: `http://127.0.0.1:${address.port}`,
-  };
+async function startFastifyServer(app: FastifyInstance): Promise<{ baseUrl: string }> {
+  const address = await app.listen({ port: 0, host: "127.0.0.1" });
+  return { baseUrl: address };
 }
 
 afterEach(async () => {
@@ -50,11 +35,10 @@ describe("registerSecretsApi", () => {
     const secretsStore = new SecretsStore(dir, createLogger());
     await secretsStore.start();
 
-    const app = express();
-    app.use(express.json());
+    const app = Fastify({ logger: false });
     registerSecretsApi(app, { secretsStore });
 
-    const { server, baseUrl } = await startServer(app);
+    const { baseUrl } = await startFastifyServer(app);
     try {
       const initialResponse = await fetch(`${baseUrl}/api/v1/secrets`);
       expect(initialResponse.status).toBe(200);
@@ -78,15 +62,7 @@ describe("registerSecretsApi", () => {
       expect(deleteResponse.status).toBe(204);
       expect(secretsStore.get("OPENAI_API_KEY")).toBeNull();
     } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve();
-        });
-      });
+      await app.close();
     }
   });
 
@@ -96,11 +72,10 @@ describe("registerSecretsApi", () => {
     const secretsStore = new SecretsStore(dir, createLogger());
     await secretsStore.start();
 
-    const app = express();
-    app.use(express.json());
+    const app = Fastify({ logger: false });
     registerSecretsApi(app, { secretsStore });
 
-    const { server, baseUrl } = await startServer(app);
+    const { baseUrl } = await startFastifyServer(app);
     try {
       const invalidKeyResponse = await fetch(`${baseUrl}/api/v1/secrets/invalid key`, {
         method: "POST",
@@ -124,23 +99,15 @@ describe("registerSecretsApi", () => {
       expect(missingKeyDeleteResponse.status).toBe(404);
       expect((await missingKeyDeleteResponse.json()).error.code).toBe("secret_not_found");
 
-      const methodNotAllowedResponse = await fetch(`${baseUrl}/api/v1/secrets`, {
+      // Fastify returns 404 for unregistered method/route combos (not 405 like Express)
+      const methodMismatchResponse = await fetch(`${baseUrl}/api/v1/secrets`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({}),
       });
-      expect(methodNotAllowedResponse.status).toBe(405);
-      expect((await methodNotAllowedResponse.json()).error.code).toBe("method_not_allowed");
+      expect(methodMismatchResponse.status).toBe(404);
     } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve();
-        });
-      });
+      await app.close();
     }
   });
 });

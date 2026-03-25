@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { Orchestrator } from "../orchestrator/orchestrator.js";
 import { StateMachine } from "../state/machine.js";
@@ -9,9 +9,9 @@ interface TransitionsDeps {
   configStore?: ConfigStore;
 }
 
-export function handleGetTransitions(deps: TransitionsDeps, _req: Request, res: Response): void {
+export function handleGetTransitions(deps: TransitionsDeps, _request: FastifyRequest, reply: FastifyReply): void {
   if (!deps.configStore) {
-    res.json({ transitions: {} });
+    reply.send({ transitions: {} });
     return;
   }
 
@@ -34,5 +34,5 @@ export function handleGetTransitions(deps: TransitionsDeps, _req: Request, res: 
     transitions[from.key] = stages.filter((to) => machine.canTransition(from.key, to.key)).map((to) => to.key);
   }
 
-  res.json({ transitions });
+  reply.send({ transitions });
 }

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import type { Request, Response } from "express";
+import { describe, expect, it } from "vitest";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import {
   methodNotAllowed,
@@ -9,28 +9,28 @@ import {
 } from "../../src/http/route-helpers.js";
 import type { RuntimeSnapshot } from "../../src/core/types.js";
 
-function makeResponse(): Response & { _status: number; _body: unknown } {
-  const res = {
+function makeReply(): FastifyReply & { _status: number; _body: unknown } {
+  const reply = {
     _status: 200,
     _body: null as unknown,
     status(code: number) {
-      res._status = code;
-      return res;
+      reply._status = code;
+      return reply;
     },
-    json(data: unknown) {
-      res._body = data;
-      return res;
+    send(data: unknown) {
+      reply._body = data;
+      return reply;
     },
   };
-  return res as unknown as Response & { _status: number; _body: unknown };
+  return reply as unknown as FastifyReply & { _status: number; _body: unknown };
 }
 
 describe("methodNotAllowed", () => {
   it("returns 405 with error JSON", () => {
-    const res = makeResponse();
-    methodNotAllowed(res);
-    expect(res._status).toBe(405);
-    expect((res._body as Record<string, { code: string }>).error.code).toBe("method_not_allowed");
+    const reply = makeReply();
+    methodNotAllowed(reply);
+    expect(reply._status).toBe(405);
+    expect((reply._body as Record<string, { code: string }>).error.code).toBe("method_not_allowed");
   });
 });
 
@@ -43,7 +43,7 @@ describe("serializeSnapshot", () => {
       retrying: [],
       completed: [{ id: "c1" }],
       queued: [{ id: "q1" }],
-      workflowColumns: [{ key: "todo", label: "Todo", kind: "active", terminal: false, count: 1, issues: [] }],
+      workflowColumns: [{ key: "todo", label: "Triage", kind: "active", terminal: false, count: 1, issues: [] }],
       codexTotals: { inputTokens: 100, outputTokens: 50, totalTokens: 150, secondsRunning: 30 },
       rateLimits: null,
       recentEvents: [
@@ -138,12 +138,12 @@ describe("sanitizeConfigValue", () => {
 
 describe("refreshReason", () => {
   it("returns custom header when present", () => {
-    const req = { get: vi.fn().mockReturnValue("manual_trigger") } as unknown as Request;
+    const req = { headers: { "x-symphony-reason": "manual_trigger" } } as unknown as FastifyRequest;
     expect(refreshReason(req)).toBe("manual_trigger");
   });
 
   it("returns default when header is absent", () => {
-    const req = { get: vi.fn().mockReturnValue(undefined) } as unknown as Request;
+    const req = { headers: {} } as unknown as FastifyRequest;
     expect(refreshReason(req)).toBe("http_refresh");
   });
 });

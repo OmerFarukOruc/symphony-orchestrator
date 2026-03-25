@@ -1,7 +1,7 @@
 import { readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 
-import type { Request, Response } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { ConfigStore } from "../config/store.js";
 import type { Orchestrator } from "../orchestrator/orchestrator.js";
@@ -119,15 +119,15 @@ export interface WorkspaceInventoryDeps {
 
 export async function handleWorkspaceInventory(
   deps: WorkspaceInventoryDeps,
-  _req: Request,
-  res: Response,
+  _request: FastifyRequest,
+  reply: FastifyReply,
 ): Promise<void> {
   const config = deps.configStore?.getConfig() ?? null;
   const workspaceRoot = config?.workspace.root;
   const strategy = config?.workspace.strategy ?? "directory";
 
   if (!workspaceRoot) {
-    res.status(503).json({ error: { code: "config_unavailable", message: "Workspace config not available" } });
+    reply.status(503).send({ error: { code: "config_unavailable", message: "Workspace config not available" } });
     return;
   }
 
@@ -139,7 +139,7 @@ export async function handleWorkspaceInventory(
     fsEntries = entries.filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => e.name);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      res.json({
+      reply.send({
         workspaces: [],
         generated_at: new Date().toISOString(),
         total: 0,
@@ -186,13 +186,17 @@ export async function handleWorkspaceInventory(
     orphaned,
   };
 
-  res.json(response);
+  reply.send(response);
 }
 
-export async function handleWorkspaceRemove(deps: WorkspaceInventoryDeps, req: Request, res: Response): Promise<void> {
-  const workspaceKey = String(req.params.workspace_key);
+export async function handleWorkspaceRemove(
+  deps: WorkspaceInventoryDeps,
+  request: FastifyRequest<{ Params: { workspace_key: string } }>,
+  reply: FastifyReply,
+): Promise<void> {
+  const workspaceKey = String(request.params.workspace_key);
   if (!workspaceKey) {
-    res.status(400).json({ error: { code: "bad_request", message: "Missing workspace_key parameter" } });
+    reply.status(400).send({ error: { code: "bad_request", message: "Missing workspace_key parameter" } });
     return;
   }
 
@@ -200,7 +204,7 @@ export async function handleWorkspaceRemove(deps: WorkspaceInventoryDeps, req: R
   const workspaceRoot = config?.workspace.root;
 
   if (!workspaceRoot) {
-    res.status(503).json({ error: { code: "config_unavailable", message: "Workspace config not available" } });
+    reply.status(503).send({ error: { code: "config_unavailable", message: "Workspace config not available" } });
     return;
   }
 
@@ -209,7 +213,7 @@ export async function handleWorkspaceRemove(deps: WorkspaceInventoryDeps, req: R
   const resolvedPath = path.resolve(wsPath);
 
   if (!resolvedPath.startsWith(`${resolvedRoot}${path.sep}`) && resolvedPath !== resolvedRoot) {
-    res.status(400).json({ error: { code: "bad_request", message: "Invalid workspace key" } });
+    reply.status(400).send({ error: { code: "bad_request", message: "Invalid workspace key" } });
     return;
   }
 
@@ -219,24 +223,24 @@ export async function handleWorkspaceRemove(deps: WorkspaceInventoryDeps, req: R
     (snapshot.retrying ?? []).some((v) => v.workspaceKey === workspaceKey);
 
   if (isActive) {
-    res.status(409).json({ error: { code: "conflict", message: "Cannot remove an active workspace" } });
+    reply.status(409).send({ error: { code: "conflict", message: "Cannot remove an active workspace" } });
     return;
   }
 
   try {
     const info = await stat(wsPath);
     if (!info.isDirectory()) {
-      res.status(404).json({ error: { code: "not_found", message: "Workspace not found" } });
+      reply.status(404).send({ error: { code: "not_found", message: "Workspace not found" } });
       return;
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      res.status(404).json({ error: { code: "not_found", message: "Workspace not found" } });
+      reply.status(404).send({ error: { code: "not_found", message: "Workspace not found" } });
       return;
     }
     throw error;
   }
 
   await rm(wsPath, { recursive: true, force: true });
-  res.status(204).end();
+  reply.status(204).send();
 }

@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { ConfigStore } from "../config/store.js";
 import type { Orchestrator } from "../orchestrator/orchestrator.js";
@@ -216,7 +216,11 @@ async function enrichConfiguredRepo(
   return view;
 }
 
-export async function handleGitContext(deps: GitContextDeps, _req: Request, res: Response): Promise<void> {
+export async function handleGitContext(
+  deps: GitContextDeps,
+  _request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> {
   const config = deps.configStore?.getConfig() ?? null;
   const repoConfigs = config?.repos ?? [];
   const snapshot = deps.orchestrator.getSnapshot();
@@ -245,5 +249,5 @@ export async function handleGitContext(deps: GitContextDeps, _req: Request, res:
     githubAvailable: token !== null,
   };
 
-  res.json(response);
+  reply.send(response);
 }

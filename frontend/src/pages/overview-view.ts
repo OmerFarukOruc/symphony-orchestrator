@@ -100,6 +100,94 @@ function createSectionHeader(title: string, kicker?: string): HTMLElement {
   return header;
 }
 
+function formatIssueStatusLabel(status: string): string {
+  return status.replaceAll(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getAttentionSignal(issue: RuntimeIssueView): string {
+  if (issue.modelChangePending) {
+    return "Model override pending";
+  }
+
+  if (issue.status === "blocked") {
+    return issue.message ?? "Operator intervention required";
+  }
+
+  if (issue.status === "retrying") {
+    return issue.message ?? "Awaiting next retry window";
+  }
+
+  if (issue.status === "running") {
+    return issue.message ?? "Run active";
+  }
+
+  if (issue.status === "queued") {
+    return "Waiting for agent pickup";
+  }
+
+  return issue.message ?? issue.state;
+}
+
+function createAttentionHeader(): { root: HTMLElement; count: HTMLElement } {
+  const root = document.createElement("div");
+  root.className = "overview-attention-header";
+
+  const copy = document.createElement("div");
+  copy.className = "overview-attention-copy";
+
+  const kicker = document.createElement("span");
+  kicker.className = "overview-attention-kicker text-mono";
+  kicker.textContent = "Mission control";
+
+  const headingRow = document.createElement("div");
+  headingRow.className = "overview-attention-heading-row";
+
+  const title = document.createElement("h2");
+  title.className = "overview-section-title";
+  title.textContent = "Attention rail";
+
+  const count = document.createElement("span");
+  count.className = "overview-attention-count text-mono";
+
+  headingRow.append(title, count);
+
+  const detail = document.createElement("p");
+  detail.className = "overview-attention-detail";
+  detail.textContent = "Blocked, retrying, and pending issues ordered for the next operator decision.";
+
+  copy.append(kicker, headingRow, detail);
+  root.append(copy);
+
+  return { root, count };
+}
+
+function createAttentionEmptyState(): HTMLElement {
+  const box = document.createElement("div");
+  box.className = "overview-attention-empty";
+
+  const meta = document.createElement("span");
+  meta.className = "overview-attention-empty-kicker text-mono";
+  meta.textContent = "Rail clear";
+
+  const heading = document.createElement("h3");
+  heading.className = "overview-attention-empty-title";
+  heading.textContent = "All clear";
+
+  const detail = document.createElement("p");
+  detail.className = "overview-attention-empty-detail";
+  detail.textContent =
+    "No issues need intervention right now. New blocked, retrying, or pending work will surface here automatically.";
+
+  const action = document.createElement("button");
+  action.type = "button";
+  action.className = "overview-attention-empty-action";
+  action.textContent = "Open queue";
+  action.addEventListener("click", () => router.navigate("/queue"));
+
+  box.append(meta, heading, detail, action);
+  return box;
+}
+
 /**
  * Creates an issue row for the attention or terminal list.
  */
@@ -108,6 +196,57 @@ function issueRow(issue: RuntimeIssueView, target: "attention" | "terminal"): HT
   row.type = "button";
   row.className = target === "attention" ? "overview-attention-item" : "overview-terminal-item";
   row.dataset.status = issue.status;
+
+  if (target === "attention") {
+    if (issue.modelChangePending) {
+      row.dataset.signal = "pending";
+    }
+
+    const top = document.createElement("div");
+    top.className = "overview-attention-topline";
+
+    const status = document.createElement("span");
+    status.className = "overview-attention-status text-mono";
+    status.textContent = formatIssueStatusLabel(issue.status);
+
+    const updated = document.createElement("time");
+    updated.className = "overview-attention-updated overview-small text-mono";
+    updated.dateTime = issue.updatedAt;
+    updated.textContent = formatRelativeTime(issue.updatedAt);
+    updated.title = issue.updatedAt;
+
+    top.append(status, updated);
+
+    const body = document.createElement("div");
+    body.className = "overview-attention-bodyline";
+
+    const ident = document.createElement("strong");
+    ident.className = "overview-attention-ident text-mono";
+    ident.textContent = issue.identifier;
+
+    const title = document.createElement("div");
+    title.className = "overview-attention-title";
+    title.textContent = issue.title;
+
+    body.append(ident, title);
+
+    const footer = document.createElement("div");
+    footer.className = "overview-attention-footer";
+
+    const state = document.createElement("span");
+    state.className = "overview-attention-state";
+    state.textContent = issue.state;
+
+    const signal = document.createElement("span");
+    signal.className = "overview-attention-signal";
+    signal.textContent = getAttentionSignal(issue);
+
+    footer.append(state, signal);
+    row.append(top, body, footer);
+    row.addEventListener("click", () => router.navigate(`/queue/${issue.identifier}`));
+
+    return row;
+  }
 
   const meta = document.createElement("div");
   meta.className = "overview-row-meta";
@@ -257,11 +396,30 @@ export function createOverviewPage(): HTMLElement {
   // Primary attention zone - dominant area
   const attentionZone = document.createElement("article");
   attentionZone.className = "overview-attention-zone";
-  attentionZone.append(createSectionHeader("Attention", "Intervention queue"));
+
+  const { root: attentionHeader, count: attentionCount } = createAttentionHeader();
+  attentionZone.append(attentionHeader);
+
+  const attentionBody = document.createElement("div");
+  attentionBody.className = "overview-attention-body";
+
+  const attentionBodyHeader = document.createElement("div");
+  attentionBodyHeader.className = "overview-attention-body-header";
+
+  const attentionBodyLabel = document.createElement("span");
+  attentionBodyLabel.className = "overview-attention-body-label text-mono";
+  attentionBodyLabel.textContent = "Scan queue";
+
+  const attentionBodyHint = document.createElement("span");
+  attentionBodyHint.className = "overview-attention-body-hint";
+  attentionBodyHint.textContent = "Blocked first, then retrying and pending changes.";
+
+  attentionBodyHeader.append(attentionBodyLabel, attentionBodyHint);
 
   const attentionList = document.createElement("div");
   attentionList.className = "overview-attention-list";
-  attentionZone.append(attentionList);
+  attentionBody.append(attentionBodyHeader, attentionList);
+  attentionZone.append(attentionBody);
 
   const secondary = document.createElement("aside");
   secondary.className = "overview-secondary";
@@ -381,6 +539,7 @@ export function createOverviewPage(): HTMLElement {
     // Attention count for hero
     const attentionIssues = buildAttentionList(snapshot.workflow_columns);
     setTextWithDiff(heroMetrics.attention, String(attentionIssues.length));
+    setTextWithDiff(attentionCount, `${attentionIssues.length} live`);
 
     // Token burn metrics
     setTextWithDiff(inputTokens.value, formatCompactNumber(snapshot.codex_totals.input_tokens));
@@ -426,14 +585,7 @@ export function createOverviewPage(): HTMLElement {
     updateStallEvents(snapshot.stall_events);
 
     if (attentionList.childElementCount === 0) {
-      attentionList.replaceChildren(
-        createTeachingEmptyState(
-          "All clear",
-          "No issues need attention right now. Blocked, retrying, or pending issues will appear here.",
-          "Open queue",
-          () => router.navigate("/queue"),
-        ),
-      );
+      attentionList.replaceChildren(createAttentionEmptyState());
     }
 
     if (recentList.childElementCount === 0) {

@@ -257,7 +257,17 @@
   }
 }
 
-/* Animated pulse indicator - running state (strongest) */
+@keyframes blink-warn {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
 .mc-list-item.is-status-running::before,
 .mc-rail-item.is-status-running::before,
 .mc-strip.is-status-running::before {
@@ -271,6 +281,36 @@
   background: var(--status-running);
   border-radius: 0 2px 2px 0;
   animation: pulse-live 2s ease-in-out infinite;
+}
+
+.mc-list-item.is-status-blocked::before,
+.mc-rail-item.is-status-blocked::before,
+.mc-strip.is-status-blocked::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 40%;
+  background: var(--status-blocked);
+  border-radius: 0 2px 2px 0;
+  animation: blink-warn 1s steps(1) infinite;
+}
+
+.mc-list-item.is-status-retrying::before,
+.mc-rail-item.is-status-retrying::before,
+.mc-strip.is-status-retrying::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 35%;
+  background: var(--status-retrying);
+  border-radius: 0 2px 2px 0;
+  animation: pulse-live 3s ease-in-out infinite;
 }
 
 /* Animated pulse indicator - claimed state (active agent preparing) */
@@ -497,7 +537,7 @@
   min-height: 160px;
   align-content: center;
   padding: var(--space-6) var(--space-5);
-  border: 1px dashed var(--border-default);
+  border: var(--stroke-default) solid var(--border-stitch);
   background: color-mix(in srgb, var(--surface-quiet-bg) 72%, var(--bg-surface));
 }
 

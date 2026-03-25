@@ -1,11 +1,11 @@
-import type { Request, Response } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { RuntimeSnapshot } from "../core/types.js";
 import { redactSensitiveValue } from "../core/content-sanitizer.js";
 import { isRecord } from "../utils/type-guards.js";
 
-export function methodNotAllowed(response: Response): void {
-  response.status(405).json({
+export function methodNotAllowed(reply: FastifyReply): void {
+  reply.status(405).send({
     error: {
       code: "method_not_allowed",
       message: "Method Not Allowed",
@@ -88,6 +88,7 @@ export function sanitizeConfigValue(value: unknown, path: string[] = []): unknow
   return sanitized;
 }
 
-export function refreshReason(request: Request): string {
-  return request.get("x-symphony-reason") ?? "http_refresh";
+export function refreshReason(request: FastifyRequest): string {
+  const header = request.headers["x-symphony-reason"];
+  return typeof header === "string" ? header : "http_refresh";
 }

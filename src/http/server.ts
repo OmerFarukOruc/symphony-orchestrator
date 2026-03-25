@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 
 import Fastify, { type FastifyInstance } from "fastify";
-import fastifyExpress from "@fastify/express";
-import express from "express";
+import fastifyStatic from "@fastify/static";
+import fastifyRateLimit from "@fastify/rate-limit";
+
 import type { ConfigStore } from "../config/store.js";
 import { registerHttpRoutes } from "./routes.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
@@ -11,36 +13,83 @@ import type { ConfigOverlayStore } from "../config/overlay.js";
 import type { SecretsStore } from "../secrets/store.js";
 import type { SymphonyLogger } from "../core/types.js";
 import { globalMetrics } from "../observability/metrics.js";
-import { tracingMiddleware } from "../observability/tracing.js";
-import type { LinearClient } from "../linear/client.js";
 import { buildOpenApiDocument } from "./openapi.js";
+import type { LinearClient } from "../linear/client.js";
 
 const SSE_HEARTBEAT_INTERVAL_MS = 5_000;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 300;
+
+const defaultFrontendDist = join(process.cwd(), "dist/frontend");
+
+export interface HttpServerDeps {
+  orchestrator: Orchestrator;
+  logger: SymphonyLogger;
+  linearClient?: LinearClient;
+  configStore?: ConfigStore;
+  configOverlayStore?: ConfigOverlayStore;
+  secretsStore?: SecretsStore;
+  frontendDir?: string;
+  archiveDir?: string;
+}
 
 export class HttpServer {
   private readonly app: FastifyInstance;
-  private expressBridgeReady = false;
+  private readonly deps: HttpServerDeps;
 
-  constructor(
-    private readonly deps: {
-      orchestrator: Orchestrator;
-      logger: SymphonyLogger;
-      linearClient?: LinearClient;
-      configStore?: ConfigStore;
-      configOverlayStore?: ConfigOverlayStore;
-      secretsStore?: SecretsStore;
-
-      frontendDir?: string;
-      archiveDir?: string;
-    },
-  ) {
-    // eslint-disable-next-line sonarjs/no-async-constructor
+  constructor(deps: HttpServerDeps) {
+    this.deps = deps;
+    // eslint-disable-next-line sonarjs/no-async-constructor -- constructor is sync; Fastify() is not async
     this.app = Fastify({
       logger: false,
       disableRequestLogging: true,
     });
+  }
+
+  async start(port: number): Promise<{ port: number }> {
     this.registerCoreHooks();
-    this.registerFastifyRoutes();
+
+    // Register rate limiting
+    await this.app.register(fastifyRateLimit, {
+      max: RATE_LIMIT_MAX_REQUESTS,
+      timeWindow: RATE_LIMIT_WINDOW_MS,
+      allowList: (request) => {
+        const path = request.url;
+        return !path.startsWith("/api/") && path !== "/metrics";
+      },
+    });
+
+    // Register routes
+    this.registerRoutes();
+
+    // Serve static frontend files
+    const staticRoot = this.deps.frontendDir ?? defaultFrontendDist;
+    await this.app.register(fastifyStatic, {
+      root: staticRoot,
+      prefix: "/",
+      wildcard: false,
+    });
+
+    // SPA fallback — serve index.html for non-API routes
+    this.app.setNotFoundHandler((request, reply) => {
+      if (request.url.startsWith("/api/") || request.url === "/metrics") {
+        reply.status(404).send({ error: { code: "not_found", message: "Not found" } });
+        return;
+      }
+      reply.sendFile("index.html");
+    });
+
+    const host = process.env.SYMPHONY_BIND ?? "127.0.0.1";
+    const address = await this.app.listen({ port, host });
+    const matched = /:(\d+)$/.exec(address);
+    if (matched) {
+      return { port: Number(matched[1]) };
+    }
+    return { port };
+  }
+
+  async stop(): Promise<void> {
+    await this.app.close();
   }
 
   private registerCoreHooks(): void {
@@ -69,7 +118,7 @@ export class HttpServer {
     });
   }
 
-  private registerFastifyRoutes(): void {
+  private registerRoutes(): void {
     this.app.get("/openapi.json", async () => buildOpenApiDocument());
     this.app.get("/api/v1/events", async (_request, reply) => {
       reply.raw.writeHead(200, {
@@ -87,29 +136,8 @@ export class HttpServer {
         clearInterval(interval);
       });
     });
-  }
 
-  async start(port: number): Promise<{ port: number }> {
-    if (!this.expressBridgeReady) {
-      await this.app.register(fastifyExpress);
-      const expressApp = express();
-      expressApp.disable("x-powered-by");
-      expressApp.use(tracingMiddleware);
-      expressApp.use(express.json());
-      registerHttpRoutes(expressApp, this.deps);
-      this.app.use(expressApp);
-      this.expressBridgeReady = true;
-    }
-    const host = process.env.SYMPHONY_BIND ?? "127.0.0.1";
-    const address = await this.app.listen({ port, host });
-    const matched = /:(\d+)$/.exec(address);
-    if (matched) {
-      return { port: Number(matched[1]) };
-    }
-    return { port };
-  }
-
-  async stop(): Promise<void> {
-    await this.app.close();
+    // Register all API routes directly on Fastify
+    registerHttpRoutes(this.app, this.deps);
   }
 }

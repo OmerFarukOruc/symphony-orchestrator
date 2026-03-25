@@ -1,16 +1,7 @@
-import type { Express, Response } from "express";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { ConfigOverlayStore } from "./overlay.js";
 import { isRecord } from "../utils/type-guards.js";
-
-function methodNotAllowed(response: Response): void {
-  response.status(405).json({
-    error: {
-      code: "method_not_allowed",
-      message: "Method Not Allowed",
-    },
-  });
-}
 
 const DEFAULT_CONFIG_SCHEMA = {
   overlay_put_body_examples: [
@@ -46,74 +37,47 @@ interface ConfigApiDeps {
   getConfigSchema?: () => Record<string, unknown>;
 }
 
-export function registerConfigApi(app: Express, deps: ConfigApiDeps): void {
-  registerConfigRoute(app, deps);
-  registerSchemaRoute(app, deps);
-  registerOverlayRoute(app, deps);
-  registerOverlayDeleteRoute(app, deps);
-}
+export function registerConfigApi(app: FastifyInstance, deps: ConfigApiDeps): void {
+  app.get("/api/v1/config", (_request, reply) => {
+    reply.send(deps.getEffectiveConfig());
+  });
 
-function registerConfigRoute(app: Express, deps: ConfigApiDeps): void {
-  app
-    .route("/api/v1/config")
-    .get((_request, response) => {
-      response.json(deps.getEffectiveConfig());
-    })
-    .all((_request, response) => {
-      methodNotAllowed(response);
+  app.get("/api/v1/config/schema", (_request, reply) => {
+    reply.send(deps.getConfigSchema?.() ?? DEFAULT_CONFIG_SCHEMA);
+  });
+
+  app.get("/api/v1/config/overlay", (_request, reply) => {
+    reply.send({
+      overlay: deps.configOverlayStore.toMap(),
     });
-}
+  });
 
-function registerSchemaRoute(app: Express, deps: ConfigApiDeps): void {
-  app
-    .route("/api/v1/config/schema")
-    .get((_request, response) => {
-      response.json(deps.getConfigSchema?.() ?? DEFAULT_CONFIG_SCHEMA);
-    })
-    .all((_request, response) => {
-      methodNotAllowed(response);
-    });
-}
-
-function registerOverlayRoute(app: Express, deps: ConfigApiDeps): void {
-  app
-    .route("/api/v1/config/overlay")
-    .get((_request, response) => {
-      response.json({
-        overlay: deps.configOverlayStore.toMap(),
+  app.put("/api/v1/config/overlay", async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply) => {
+    const body = request.body;
+    if (!isRecord(body)) {
+      reply.status(400).send({
+        error: {
+          code: "invalid_overlay_payload",
+          message: "overlay payload must be a JSON object",
+        },
       });
-    })
-    .put(async (request, response) => {
-      const body = request.body;
-      if (!isRecord(body)) {
-        response.status(400).json({
-          error: {
-            code: "invalid_overlay_payload",
-            message: "overlay payload must be a JSON object",
-          },
-        });
-        return;
-      }
+      return;
+    }
 
-      const patch = isRecord(body.patch) ? body.patch : body;
-      const updated = await deps.configOverlayStore.applyPatch(patch);
-      response.json({
-        updated,
-        overlay: deps.configOverlayStore.toMap(),
-      });
-    })
-    .all((_request, response) => {
-      methodNotAllowed(response);
+    const patch = isRecord(body.patch) ? body.patch : body;
+    const updated = await deps.configOverlayStore.applyPatch(patch);
+    reply.send({
+      updated,
+      overlay: deps.configOverlayStore.toMap(),
     });
-}
+  });
 
-function registerOverlayDeleteRoute(app: Express, deps: ConfigApiDeps): void {
-  app
-    .route("/api/v1/config/overlay/:path")
-    .patch(async (request, response) => {
+  app.patch(
+    "/api/v1/config/overlay/:path",
+    async (request: FastifyRequest<{ Params: { path: string }; Body: Record<string, unknown> }>, reply) => {
       const pathExpression = request.params.path;
       if (!pathExpression?.trim()) {
-        response.status(400).json({
+        reply.status(400).send({
           error: {
             code: "invalid_overlay_path",
             message: "overlay path must not be empty",
@@ -124,7 +88,7 @@ function registerOverlayDeleteRoute(app: Express, deps: ConfigApiDeps): void {
 
       const body = request.body;
       if (!isRecord(body) || !("value" in body)) {
-        response.status(400).json({
+        reply.status(400).send({
           error: {
             code: "invalid_overlay_payload",
             message: "PATCH body must contain a value field",
@@ -134,15 +98,19 @@ function registerOverlayDeleteRoute(app: Express, deps: ConfigApiDeps): void {
       }
 
       const updated = await deps.configOverlayStore.set(pathExpression, body.value);
-      response.json({
+      reply.send({
         updated,
         overlay: deps.configOverlayStore.toMap(),
       });
-    })
-    .delete(async (request, response) => {
+    },
+  );
+
+  app.delete(
+    "/api/v1/config/overlay/:path",
+    async (request: FastifyRequest<{ Params: { path: string } }>, reply: FastifyReply) => {
       const pathExpression = request.params.path;
       if (!pathExpression?.trim()) {
-        response.status(400).json({
+        reply.status(400).send({
           error: {
             code: "invalid_overlay_path",
             message: "overlay path must not be empty",
@@ -153,7 +121,7 @@ function registerOverlayDeleteRoute(app: Express, deps: ConfigApiDeps): void {
 
       const deleted = await deps.configOverlayStore.delete(pathExpression);
       if (!deleted) {
-        response.status(404).json({
+        reply.status(404).send({
           error: {
             code: "overlay_path_not_found",
             message: "overlay path not found",
@@ -162,9 +130,7 @@ function registerOverlayDeleteRoute(app: Express, deps: ConfigApiDeps): void {
         return;
       }
 
-      response.status(204).send();
-    })
-    .all((_request, response) => {
-      methodNotAllowed(response);
-    });
+      reply.status(204).send();
+    },
+  );
 }

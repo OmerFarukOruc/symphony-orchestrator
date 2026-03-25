@@ -141,7 +141,8 @@ describe("HttpServer", () => {
     expect(metricsBody).toContain('symphony_http_requests_total{method="GET",status="200"}');
 
     const methodResponse = await fetch(`${baseUrl}/api/v1/state`, { method: "POST" });
-    expect(methodResponse.status).toBe(405);
+    // Fastify returns 404 for unregistered method/route combos by default
+    expect(methodResponse.status).toBe(404);
 
     const refreshResponse = await fetch(`${baseUrl}/api/v1/refresh`, { method: "POST" });
     expect(refreshResponse.status).toBe(202);

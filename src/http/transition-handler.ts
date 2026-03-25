@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { LinearClient } from "../linear/client.js";
 import { buildIssueTransitionMutation } from "../linear/transition-query.js";
@@ -13,17 +13,22 @@ interface TransitionDeps {
   configStore?: ConfigStore;
 }
 
-export async function handleTransition(deps: TransitionDeps, req: Request, res: Response): Promise<void> {
-  const targetState = typeof req.body?.target_state === "string" ? req.body.target_state.trim() : null;
+export async function handleTransition(
+  deps: TransitionDeps,
+  request: FastifyRequest<{ Params: { issue_identifier: string }; Body: Record<string, unknown> }>,
+  reply: FastifyReply,
+): Promise<void> {
+  const body = request.body ?? {};
+  const targetState = typeof body.target_state === "string" ? body.target_state.trim() : null;
   if (!targetState) {
-    res.status(400).json({ error: { code: "missing_target_state", message: "target_state is required" } });
+    reply.status(400).send({ error: { code: "missing_target_state", message: "target_state is required" } });
     return;
   }
 
-  const identifier = String(req.params.issue_identifier);
+  const identifier = String(request.params.issue_identifier);
   const detail = deps.orchestrator.getIssueDetail(identifier);
   if (!detail) {
-    res.status(404).json({ error: { code: "not_found", message: "Unknown issue identifier" } });
+    reply.status(404).send({ error: { code: "not_found", message: "Unknown issue identifier" } });
     return;
   }
 
@@ -46,20 +51,20 @@ export async function handleTransition(deps: TransitionDeps, req: Request, res: 
 
     const assertion = machine.assertTransition(currentState, targetState);
     if (!assertion.ok) {
-      res.status(422).json({ ok: false, reason: assertion.reason });
+      reply.status(422).send({ ok: false, reason: assertion.reason });
       return;
     }
   }
 
   if (!deps.linearClient) {
-    res.status(503).json({ error: { code: "unavailable", message: "Linear client not configured" } });
+    reply.status(503).send({ error: { code: "unavailable", message: "Linear client not configured" } });
     return;
   }
 
   // Resolve Linear workflow state UUID (team-filtered when project slug is configured)
   const stateId = await deps.linearClient.resolveStateId(targetState);
   if (!stateId) {
-    res.status(422).json({ ok: false, reason: `No Linear state found matching: ${targetState}` });
+    reply.status(422).send({ ok: false, reason: `No Linear state found matching: ${targetState}` });
     return;
   }
 
@@ -69,10 +74,10 @@ export async function handleTransition(deps: TransitionDeps, req: Request, res: 
   const success = asBooleanOrNull(issueUpdate.success);
 
   if (!success) {
-    res.status(422).json({ ok: false, reason: "Linear issue update failed" });
+    reply.status(422).send({ ok: false, reason: "Linear issue update failed" });
     return;
   }
 
   deps.orchestrator.requestRefresh("manual-transition");
-  res.json({ ok: true, from: currentState, to: targetState });
+  reply.send({ ok: true, from: currentState, to: targetState });
 }

@@ -1,26 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Request, Response } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import { handleTransition } from "../../src/http/transition-handler.js";
 
-function makeRequest(body: Record<string, unknown> = {}, params: Record<string, string> = {}): Request {
-  return { body, params, get: vi.fn() } as unknown as Request;
+function makeRequest(
+  body: Record<string, unknown> = {},
+  params: Record<string, string> = {},
+): FastifyRequest<{ Params: { issue_identifier: string }; Body: Record<string, unknown> }> {
+  return { body, params, headers: {} } as unknown as FastifyRequest<{
+    Params: { issue_identifier: string };
+    Body: Record<string, unknown>;
+  }>;
 }
 
-function makeResponse(): Response & { _status: number; _body: unknown } {
-  const res = {
+function makeReply(): FastifyReply & { _status: number; _body: unknown } {
+  const reply = {
     _status: 200,
     _body: null as unknown,
     status(code: number) {
-      res._status = code;
-      return res;
+      reply._status = code;
+      return reply;
     },
-    json(data: unknown) {
-      res._body = data;
-      return res;
+    send(data: unknown) {
+      reply._body = data;
+      return reply;
     },
   };
-  return res as unknown as Response & { _status: number; _body: unknown };
+  return reply as unknown as FastifyReply & { _status: number; _body: unknown };
 }
 
 function makeOrchestrator(detail: Record<string, unknown> | null = null) {
@@ -55,89 +61,89 @@ function makeConfigStore() {
 
 describe("handleTransition", () => {
   it("returns 400 when target_state is missing", async () => {
-    const res = makeResponse();
+    const reply = makeReply();
     await handleTransition(
       { orchestrator: makeOrchestrator() as never },
       makeRequest({}, { issue_identifier: "MT-1" }),
-      res,
+      reply,
     );
-    expect(res._status).toBe(400);
-    expect((res._body as Record<string, unknown>).error).toEqual(
+    expect(reply._status).toBe(400);
+    expect((reply._body as Record<string, unknown>).error).toEqual(
       expect.objectContaining({ code: "missing_target_state" }),
     );
   });
 
   it("returns 400 when target_state is empty string", async () => {
-    const res = makeResponse();
+    const reply = makeReply();
     await handleTransition(
       { orchestrator: makeOrchestrator() as never },
       makeRequest({ target_state: "   " }, { issue_identifier: "MT-1" }),
-      res,
+      reply,
     );
-    expect(res._status).toBe(400);
+    expect(reply._status).toBe(400);
   });
 
   it("returns 404 when issue is not found", async () => {
-    const res = makeResponse();
+    const reply = makeReply();
     await handleTransition(
       { orchestrator: makeOrchestrator(null) as never },
       makeRequest({ target_state: "In Progress" }, { issue_identifier: "MT-UNKNOWN" }),
-      res,
+      reply,
     );
-    expect(res._status).toBe(404);
+    expect(reply._status).toBe(404);
   });
 
   it("returns 422 when transition is invalid", async () => {
-    const res = makeResponse();
+    const reply = makeReply();
     const orchestrator = makeOrchestrator({ issueId: "issue-uuid", state: "Done" });
     const configStore = makeConfigStore();
     await handleTransition(
       { orchestrator: orchestrator as never, configStore: configStore as never },
       makeRequest({ target_state: "todo" }, { issue_identifier: "MT-1" }),
-      res,
+      reply,
     );
-    expect(res._status).toBe(422);
-    expect((res._body as Record<string, unknown>).ok).toBe(false);
+    expect(reply._status).toBe(422);
+    expect((reply._body as Record<string, unknown>).ok).toBe(false);
   });
 
   it("returns 200 on successful transition", async () => {
-    const res = makeResponse();
+    const reply = makeReply();
     const orchestrator = makeOrchestrator({ issueId: "issue-uuid", state: "Todo" });
     const linearClient = makeLinearClient();
     const configStore = makeConfigStore();
     await handleTransition(
       { orchestrator: orchestrator as never, linearClient: linearClient as never, configStore: configStore as never },
       makeRequest({ target_state: "in progress" }, { issue_identifier: "MT-1" }),
-      res,
+      reply,
     );
-    expect(res._status).toBe(200);
-    const body = res._body as Record<string, unknown>;
+    expect(reply._status).toBe(200);
+    const body = reply._body as Record<string, unknown>;
     expect(body.ok).toBe(true);
     expect(body.from).toBe("Todo");
     expect(body.to).toBe("in progress");
   });
 
   it("calls orchestrator.requestRefresh after successful transition", async () => {
-    const res = makeResponse();
+    const reply = makeReply();
     const orchestrator = makeOrchestrator({ issueId: "issue-uuid", state: "Todo" });
     const linearClient = makeLinearClient();
     const configStore = makeConfigStore();
     await handleTransition(
       { orchestrator: orchestrator as never, linearClient: linearClient as never, configStore: configStore as never },
       makeRequest({ target_state: "in progress" }, { issue_identifier: "MT-1" }),
-      res,
+      reply,
     );
     expect(orchestrator.requestRefresh).toHaveBeenCalledWith("manual-transition");
   });
 
   it("returns 503 when linearClient is not configured", async () => {
-    const res = makeResponse();
+    const reply = makeReply();
     const orchestrator = makeOrchestrator({ issueId: "issue-uuid", state: "Todo" });
     await handleTransition(
       { orchestrator: orchestrator as never },
       makeRequest({ target_state: "in progress" }, { issue_identifier: "MT-1" }),
-      res,
+      reply,
     );
-    expect(res._status).toBe(503);
+    expect(reply._status).toBe(503);
   });
 });

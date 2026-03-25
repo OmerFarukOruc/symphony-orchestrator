@@ -1,25 +1,16 @@
-import type { Express, Response } from "express";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { SecretsStore } from "./store.js";
 import { isRecord } from "../utils/type-guards.js";
-
-function methodNotAllowed(response: Response): void {
-  response.status(405).json({
-    error: {
-      code: "method_not_allowed",
-      message: "Method Not Allowed",
-    },
-  });
-}
 
 function isValidSecretKey(value: string): boolean {
   return /^[A-Za-z0-9._:-]+$/.test(value);
 }
 
 /** Returns false and sends a 400 response when the key param is invalid. */
-function validateSecretKeyOrReject(key: string | undefined, response: Response): key is string {
+function validateSecretKeyOrReject(key: string | undefined, reply: FastifyReply): key is string {
   if (!key || !isValidSecretKey(key)) {
-    response.status(400).json({
+    reply.status(400).send({
       error: {
         code: "invalid_secret_key",
         message: "secret key must match /^[A-Za-z0-9._:-]+$/",
@@ -34,27 +25,22 @@ interface SecretsApiDeps {
   secretsStore: SecretsStore;
 }
 
-export function registerSecretsApi(app: Express, deps: SecretsApiDeps): void {
-  app
-    .route("/api/v1/secrets")
-    .get((_request, response) => {
-      response.json({
-        keys: deps.secretsStore.list(),
-      });
-    })
-    .all((_request, response) => {
-      methodNotAllowed(response);
+export function registerSecretsApi(app: FastifyInstance, deps: SecretsApiDeps): void {
+  app.get("/api/v1/secrets", (_request, reply) => {
+    reply.send({
+      keys: deps.secretsStore.list(),
     });
+  });
 
-  app
-    .route("/api/v1/secrets/:key")
-    .post(async (request, response) => {
-      if (!validateSecretKeyOrReject(request.params.key, response)) return;
+  app.post(
+    "/api/v1/secrets/:key",
+    async (request: FastifyRequest<{ Params: { key: string }; Body: Record<string, unknown> }>, reply) => {
+      if (!validateSecretKeyOrReject(request.params.key, reply)) return;
 
       const body = request.body;
       const rawValue = isRecord(body) ? body.value : null;
       if (typeof rawValue !== "string" || rawValue.length === 0) {
-        response.status(400).json({
+        reply.status(400).send({
           error: {
             code: "invalid_secret_value",
             message: "secret value must be a non-empty string",
@@ -64,14 +50,18 @@ export function registerSecretsApi(app: Express, deps: SecretsApiDeps): void {
       }
 
       await deps.secretsStore.set(request.params.key, rawValue);
-      response.status(204).send();
-    })
-    .delete(async (request, response) => {
-      if (!validateSecretKeyOrReject(request.params.key, response)) return;
+      reply.status(204).send();
+    },
+  );
+
+  app.delete(
+    "/api/v1/secrets/:key",
+    async (request: FastifyRequest<{ Params: { key: string } }>, reply: FastifyReply) => {
+      if (!validateSecretKeyOrReject(request.params.key, reply)) return;
 
       const deleted = await deps.secretsStore.delete(request.params.key);
       if (!deleted) {
-        response.status(404).json({
+        reply.status(404).send({
           error: {
             code: "secret_not_found",
             message: "secret key not found",
@@ -80,9 +70,7 @@ export function registerSecretsApi(app: Express, deps: SecretsApiDeps): void {
         return;
       }
 
-      response.status(204).send();
-    })
-    .all((_request, response) => {
-      methodNotAllowed(response);
-    });
+      reply.status(204).send();
+    },
+  );
 }

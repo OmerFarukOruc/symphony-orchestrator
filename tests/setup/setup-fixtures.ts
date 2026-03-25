@@ -1,6 +1,4 @@
-import type { Server } from "node:http";
-
-import express from "express";
+import Fastify, { type FastifyInstance } from "fastify";
 import { vi } from "vitest";
 
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
@@ -98,7 +96,7 @@ export function createOrchestratorMock(): Orchestrator {
 
 /* ── Server lifecycle ──────────────────────────────────────────────── */
 
-const servers: Server[] = [];
+const apps: FastifyInstance[] = [];
 
 export async function startSetupApiServer(options?: {
   archiveDir?: string;
@@ -111,8 +109,7 @@ export async function startSetupApiServer(options?: {
   configOverlayStore: ConfigOverlayStore;
   orchestrator: Orchestrator;
 }> {
-  const app = express();
-  app.use(express.json());
+  const app = Fastify({ logger: false });
 
   const secretsStore = options?.secretsStore ?? createSecretsStoreMock();
   const configOverlayStore = options?.configOverlayStore ?? createConfigOverlayStoreMock();
@@ -125,29 +122,22 @@ export async function startSetupApiServer(options?: {
     archiveDir: options?.archiveDir ?? "/archive-root",
   });
 
-  const server = await new Promise<Server>((resolve) => {
-    const startedServer = app.listen(0, "127.0.0.1", () => resolve(startedServer));
-  });
-  servers.push(server);
-
-  const address = server.address();
-  if (!address || typeof address === "string") {
-    throw new TypeError("Expected HTTP server to bind to an address object");
-  }
+  const address = await app.listen({ port: 0, host: "127.0.0.1" });
+  apps.push(app);
 
   return {
-    baseUrl: `http://127.0.0.1:${address.port}`,
+    baseUrl: address,
     secretsStore,
     configOverlayStore,
     orchestrator,
   };
 }
 
-export async function postJson(baseUrl: string, route: string, body?: unknown): Promise<Response> {
+export async function postJson(baseUrl: string, route: string, body: unknown = {}): Promise<Response> {
   return fetch(`${baseUrl}${route}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: JSON.stringify(body),
   });
 }
 
@@ -190,20 +180,7 @@ export function setupBeforeEach(mocks: HoistedMocks): void {
 export async function setupAfterEach(): Promise<void> {
   process.env = { ...originalEnv };
   vi.restoreAllMocks();
-  await Promise.all(
-    servers.splice(0).map(
-      (server) =>
-        new Promise<void>((resolve, reject) => {
-          server.close((error) => {
-            if (error) {
-              reject(error);
-              return;
-            }
-            resolve();
-          });
-        }),
-    ),
-  );
+  await Promise.all(apps.splice(0).map((app) => app.close()));
 }
 
 export { type SecretsStore, type ConfigOverlayStore, type Orchestrator };

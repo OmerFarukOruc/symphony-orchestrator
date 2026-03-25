@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { SecretsStore } from "../secrets/store.js";
 import { isRecord } from "../utils/type-guards.js";
@@ -70,11 +70,11 @@ async function fetchDefaultBranch(
 }
 
 export function handleDetectDefaultBranch(deps: DetectDefaultBranchDeps) {
-  return async (req: Request, res: Response) => {
-    const body = req.body;
+  return async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply: FastifyReply) => {
+    const body = request.body;
     const repoUrl = isRecord(body) && typeof body.repoUrl === "string" ? body.repoUrl.trim() : null;
     if (!repoUrl) {
-      res.status(400).json({
+      reply.status(400).send({
         error: { code: "missing_repo_url", message: "repoUrl is required" },
       });
       return;
@@ -82,7 +82,7 @@ export function handleDetectDefaultBranch(deps: DetectDefaultBranchDeps) {
 
     const parsed = parseOwnerRepo(repoUrl);
     if (!parsed) {
-      res.status(400).json({
+      reply.status(400).send({
         error: { code: "invalid_repo_url", message: "repoUrl must be a valid GitHub URL" },
       });
       return;
@@ -93,10 +93,10 @@ export function handleDetectDefaultBranch(deps: DetectDefaultBranchDeps) {
 
     try {
       const defaultBranch = await fetchDefaultBranch(parsed.owner, parsed.repo, token, fetchImpl);
-      res.json({ defaultBranch });
+      reply.send({ defaultBranch });
     } catch {
       // Always return a usable fallback — the branch input is still editable
-      res.json({ defaultBranch: DEFAULT_FALLBACK });
+      reply.send({ defaultBranch: DEFAULT_FALLBACK });
     }
   };
 }

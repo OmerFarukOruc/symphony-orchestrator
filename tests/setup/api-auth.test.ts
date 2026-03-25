@@ -109,13 +109,11 @@ describe("registerSetupApi — auth & tokens", () => {
     "/api/v1/setup/pkce-auth/start",
     "/api/v1/setup/pkce-auth/status",
     "/api/v1/setup/github-token",
-  ])("returns 405 for unsupported methods on %s", async (route) => {
+  ])("returns 404 for unsupported methods on %s", async (route) => {
     const { baseUrl } = await startSetupApiServer();
     const response = await fetch(`${baseUrl}${route}`, { method: "PUT" });
 
-    expect(response.status).toBe(405);
-    expect(await response.json()).toEqual({
-      error: { code: "method_not_allowed", message: "Method Not Allowed" },
-    });
+    // Fastify returns 404 for unregistered method/route combos (not 405 like Express)
+    expect(response.status).toBe(404);
   });
 });
