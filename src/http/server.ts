@@ -15,6 +15,8 @@ import { tracingMiddleware } from "../observability/tracing.js";
 import type { LinearClient } from "../linear/client.js";
 import { buildOpenApiDocument } from "./openapi.js";
 
+const SSE_HEARTBEAT_INTERVAL_MS = 5_000;
+
 export class HttpServer {
   private readonly app: FastifyInstance;
   private expressBridgeReady = false;
@@ -80,7 +82,7 @@ export class HttpServer {
         reply.raw.write(`data: ${JSON.stringify({ type: "invalidate", at: new Date().toISOString() })}\n\n`);
       };
       writeMessage();
-      const interval = setInterval(writeMessage, 5_000);
+      const interval = setInterval(writeMessage, SSE_HEARTBEAT_INTERVAL_MS);
       reply.raw.on("close", () => {
         clearInterval(interval);
       });

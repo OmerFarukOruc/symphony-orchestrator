@@ -24,6 +24,9 @@ import type { LinearClient } from "../linear/client.js";
 
 import rateLimit from "express-rate-limit";
 
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 300;
+
 const frontendDist = join(process.cwd(), "dist/frontend");
 
 interface HttpRouteDeps {
@@ -41,7 +44,12 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   const staticRoot = deps.frontendDir ?? frontendDist;
 
   app.use(express.static(staticRoot));
-  const apiLimiter = rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false });
+  const apiLimiter = rateLimit({
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    limit: RATE_LIMIT_MAX_REQUESTS,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
   app.use("/api/", apiLimiter);
   app.use("/metrics", apiLimiter);
   registerStateAndMetricsRoutes(app, deps);
