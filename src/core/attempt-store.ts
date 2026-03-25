@@ -27,10 +27,7 @@ export class AttemptStore {
     await mkdir(this.eventsDir(), { recursive: true });
     this.database = openSymphonyDatabase(this.baseDir);
 
-    if (await this.loadFromSqlite()) {
-      return;
-    }
-
+    await this.loadFromSqlite();
     await this.loadFromFilesystem();
     await this.persistIssueIndex();
   }
@@ -138,16 +135,12 @@ export class AttemptStore {
     await writeFile(path.join(this.baseDir, "issue-index.json"), JSON.stringify(index, null, 2) + "\n", "utf8");
   }
 
-  private async loadFromSqlite(): Promise<boolean> {
+  private async loadFromSqlite(): Promise<void> {
     if (!this.database) {
-      return false;
+      return;
     }
 
     const sqliteAttempts = await this.database.db.select().from(attemptRows);
-    if (sqliteAttempts.length === 0) {
-      return false;
-    }
-
     for (const row of sqliteAttempts) {
       const attempt = JSON.parse(row.payload) as AttemptRecord;
       this.attempts.set(attempt.attemptId, attempt);
@@ -164,8 +157,6 @@ export class AttemptStore {
       events.push(event);
       this.eventsByAttempt.set(row.attemptId, events);
     }
-    await this.persistIssueIndex();
-    return true;
   }
 
   private async loadFromFilesystem(): Promise<void> {

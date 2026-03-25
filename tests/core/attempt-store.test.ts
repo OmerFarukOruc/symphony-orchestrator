@@ -288,4 +288,48 @@ describe("AttemptStore", () => {
       expect(migratedEvents).toEqual([olderEvent, newerEvent]);
     });
   });
+
+  it("backfills filesystem archives when sqlite migration is partial", async () => {
+    const baseDir = await createTempDir();
+    const attemptsDir = path.join(baseDir, "attempts");
+    const eventsDir = path.join(baseDir, "events");
+    await mkdir(attemptsDir, { recursive: true });
+    await mkdir(eventsDir, { recursive: true });
+
+    const migratedAttempt = createAttempt();
+    const missingAttempt = createAttempt({
+      attemptId: "attempt-2",
+      attemptNumber: 2,
+      issueIdentifier: "MT-99",
+      issueId: "issue-2",
+      workspaceKey: "MT-99",
+      workspacePath: "/tmp/symphony/MT-99",
+    });
+    const missingEvent = createEvent({
+      attemptId: missingAttempt.attemptId,
+      issueIdentifier: missingAttempt.issueIdentifier,
+      issueId: missingAttempt.issueId,
+      message: "filesystem restored",
+    });
+
+    const initialStore = await createStore(baseDir);
+    await initialStore.createAttempt(migratedAttempt);
+
+    await writeFile(
+      path.join(attemptsDir, `${missingAttempt.attemptId}.json`),
+      `${JSON.stringify(missingAttempt, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(eventsDir, `${missingAttempt.attemptId}.jsonl`),
+      `${JSON.stringify(missingEvent)}\n`,
+      "utf8",
+    );
+
+    const restartedStore = await createStore(baseDir);
+
+    expect(restartedStore.getAttemptsForIssue("MT-42").map((attempt) => attempt.attemptId)).toEqual(["attempt-1"]);
+    expect(restartedStore.getAttemptsForIssue("MT-99")).toEqual([missingAttempt]);
+    expect(restartedStore.getEvents(missingAttempt.attemptId)).toEqual([missingEvent]);
+  });
 });

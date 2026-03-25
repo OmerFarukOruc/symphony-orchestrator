@@ -12,18 +12,21 @@ import { bindShellElements } from "../../../frontend/src/ui/shell";
 import { initSidebar } from "../../../frontend/src/ui/sidebar";
 import { initTheme } from "../../../frontend/src/ui/theme";
 import { decoratePageRoot } from "../../../frontend/src/ui/page-motion";
+import {
+  buildRouteRenderKey,
+  resolveSetupRoutingState,
+  routeLoaders,
+  type RouteLoader,
+  type SetupRoutingState,
+} from "./routing";
 
 type QueryClientProp = {
   queryClient: QueryClient;
 };
 
-type PageModule = {
-  render: (params?: Record<string, string>) => HTMLElement;
-};
-
 type LegacyRouteProps = Readonly<{
   outlet: HTMLElement | null;
-  load: () => Promise<PageModule>;
+  load: RouteLoader;
 }>;
 
 let commandPaletteReady = false;
@@ -75,34 +78,40 @@ function useSseInvalidation(queryClient: QueryClient): void {
   }, [queryClient]);
 }
 
+function createLoadingPlaceholder(message = "Loading…"): HTMLDivElement {
+  const placeholder = document.createElement("div");
+  placeholder.className = "page lazy-page lazy-page-skeleton";
+  placeholder.textContent = message;
+  return placeholder;
+}
+
 function LegacyRoute({ outlet, load }: LegacyRouteProps): null {
   const location = useLocation();
   const params = useParams();
+  const routeRenderKey = buildRouteRenderKey(location.pathname, location.hash, params);
 
   useEffect(() => {
     if (!outlet) {
       return;
     }
 
-    const placeholder = document.createElement("div");
-    placeholder.className = "page lazy-page lazy-page-skeleton";
-    placeholder.textContent = "Loading…";
-    outlet.replaceChildren(placeholder);
+    outlet.replaceChildren(createLoadingPlaceholder());
 
     let cancelled = false;
+    const routeParams = params as Record<string, string>;
 
-    void load()
+    load()
       .then((module) => {
         if (cancelled) {
           return;
         }
-        const rendered = decoratePageRoot(module.render(params as Record<string, string>));
+        const rendered = decoratePageRoot(module.render(routeParams));
         outlet.replaceChildren(rendered);
         const title = routeTitle(rendered);
         setDocumentTitle(title);
         const announcer = document.querySelector<HTMLElement>(".sr-only[role='status']");
         announceRouteChange(announcer, title);
-        router.dispatchNavigation(location.pathname, params as Record<string, string>, title);
+        router.dispatchNavigation(location.pathname, routeParams, title);
       })
       .catch((error) => {
         if (cancelled) {
@@ -124,19 +133,43 @@ function LegacyRoute({ outlet, load }: LegacyRouteProps): null {
     return () => {
       cancelled = true;
     };
-  }, [load, location.pathname, location.hash, outlet, params]);
+  }, [load, location.pathname, outlet, routeRenderKey]);
+
+  return null;
+}
+
+function PendingRoute({ outlet }: Readonly<{ outlet: HTMLElement | null }>): null {
+  const location = useLocation();
+  const params = useParams();
+  const routeRenderKey = buildRouteRenderKey(location.pathname, location.hash, params);
+
+  useEffect(() => {
+    if (!outlet) {
+      return;
+    }
+
+    outlet.replaceChildren(createLoadingPlaceholder("Loading workspace…"));
+  }, [outlet, routeRenderKey]);
 
   return null;
 }
 
 function AppRoutes({
   outlet,
-  setupComplete,
-}: Readonly<{ outlet: HTMLElement | null; setupComplete: boolean }>): JSX.Element {
-  if (!setupComplete) {
+  setupState,
+}: Readonly<{ outlet: HTMLElement | null; setupState: SetupRoutingState }>): JSX.Element {
+  if (setupState === "pending") {
     return (
       <Routes>
-        <Route path="/setup" element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/setup")} />} />
+        <Route path="*" element={<PendingRoute outlet={outlet} />} />
+      </Routes>
+    );
+  }
+
+  if (setupState === "setup-required") {
+    return (
+      <Routes>
+        <Route path="/setup" element={<LegacyRoute outlet={outlet} load={routeLoaders.setup} />} />
         <Route path="*" element={<Navigate replace to="/setup" />} />
       </Routes>
     );
@@ -144,57 +177,24 @@ function AppRoutes({
 
   return (
     <Routes>
-      <Route path="/" element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/overview")} />} />
-      <Route path="/queue" element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/queue")} />} />
-      <Route path="/queue/:id" element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/queue")} />} />
-      <Route path="/issues/:id" element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/issue")} />} />
-      <Route
-        path="/issues/:id/runs"
-        element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/runs")} />}
-      />
-      <Route
-        path="/issues/:id/logs"
-        element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/logs")} />}
-      />
-      <Route path="/logs/:id" element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/logs")} />} />
-      <Route
-        path="/attempts/:id"
-        element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/attempt")} />}
-      />
-      <Route
-        path="/config"
-        element={<Navigate replace to="/settings#advanced" />}
-      />
-      <Route
-        path="/secrets"
-        element={<Navigate replace to="/settings#credentials" />}
-      />
-      <Route
-        path="/observability"
-        element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/observability")} />}
-      />
-      <Route
-        path="/settings"
-        element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/settings")} />}
-      />
-      <Route
-        path="/notifications"
-        element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/notifications")} />}
-      />
-      <Route path="/git" element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/git")} />} />
-      <Route
-        path="/workspaces"
-        element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/workspaces")} />}
-      />
-      <Route
-        path="/containers"
-        element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/containers")} />}
-      />
-      <Route
-        path="/welcome"
-        element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/welcome")} />}
-      />
-      <Route path="/setup" element={<LegacyRoute outlet={outlet} load={() => import("../../../frontend/src/pages/setup")} />} />
+      <Route path="/" element={<LegacyRoute outlet={outlet} load={routeLoaders.overview} />} />
+      <Route path="/queue" element={<LegacyRoute outlet={outlet} load={routeLoaders.queue} />} />
+      <Route path="/queue/:id" element={<LegacyRoute outlet={outlet} load={routeLoaders.queue} />} />
+      <Route path="/issues/:id" element={<LegacyRoute outlet={outlet} load={routeLoaders.issue} />} />
+      <Route path="/issues/:id/runs" element={<LegacyRoute outlet={outlet} load={routeLoaders.runs} />} />
+      <Route path="/issues/:id/logs" element={<LegacyRoute outlet={outlet} load={routeLoaders.logs} />} />
+      <Route path="/logs/:id" element={<LegacyRoute outlet={outlet} load={routeLoaders.logs} />} />
+      <Route path="/attempts/:id" element={<LegacyRoute outlet={outlet} load={routeLoaders.attempt} />} />
+      <Route path="/config" element={<Navigate replace to="/settings#advanced" />} />
+      <Route path="/secrets" element={<Navigate replace to="/settings#credentials" />} />
+      <Route path="/observability" element={<LegacyRoute outlet={outlet} load={routeLoaders.observability} />} />
+      <Route path="/settings" element={<LegacyRoute outlet={outlet} load={routeLoaders.settings} />} />
+      <Route path="/notifications" element={<LegacyRoute outlet={outlet} load={routeLoaders.notifications} />} />
+      <Route path="/git" element={<LegacyRoute outlet={outlet} load={routeLoaders.git} />} />
+      <Route path="/workspaces" element={<LegacyRoute outlet={outlet} load={routeLoaders.workspaces} />} />
+      <Route path="/containers" element={<LegacyRoute outlet={outlet} load={routeLoaders.containers} />} />
+      <Route path="/welcome" element={<LegacyRoute outlet={outlet} load={routeLoaders.welcome} />} />
+      <Route path="/setup" element={<LegacyRoute outlet={outlet} load={routeLoaders.setup} />} />
       <Route path="*" element={<Navigate replace to="/" />} />
     </Routes>
   );
@@ -215,7 +215,7 @@ export function App({ queryClient }: Readonly<QueryClientProp>): JSX.Element {
     retry: false,
   });
 
-  const setupComplete = isError ? true : (data?.configured ?? false);
+  const setupState = resolveSetupRoutingState(data, isError);
 
   useSseInvalidation(queryClient);
 
@@ -274,7 +274,7 @@ export function App({ queryClient }: Readonly<QueryClientProp>): JSX.Element {
           tabIndex={-1}
         />
       </div>
-      <AppRoutes outlet={outlet} setupComplete={setupComplete} />
+      <AppRoutes outlet={outlet} setupState={setupState} />
     </>
   );
 }
