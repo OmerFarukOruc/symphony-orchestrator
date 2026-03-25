@@ -197,6 +197,8 @@ export interface TrackerConfig {
   projectSlug: string | null;
   activeStates: string[];
   terminalStates: string[];
+  /** Label required on an issue for it to be dispatched. Null = no filter. */
+  requiredLabel: string | null;
 }
 
 export interface NotificationSlackConfig {

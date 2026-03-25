@@ -1,35 +1,21 @@
 import type { FastifyInstance } from "fastify";
 
 import { registerConfigApi } from "../config/api.js";
-import type { ConfigOverlayStore } from "../config/overlay.js";
-import type { ConfigStore } from "../config/store.js";
 import type { RuntimeSnapshot } from "../core/types.js";
 import { globalMetrics } from "../observability/metrics.js";
-import { Orchestrator } from "../orchestrator/orchestrator.js";
 
 import { registerSecretsApi } from "../secrets/api.js";
 import { registerSetupApi } from "../setup/api.js";
-import type { SecretsStore } from "../secrets/store.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
-
+import type { HttpServerDeps } from "./server.js";
 import { handleTransition } from "./transition-handler.js";
 import { handleGetTransitions } from "./transitions-api.js";
 import { handleWorkspaceInventory, handleWorkspaceRemove } from "./workspace-inventory.js";
 import { refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
-import type { LinearClient } from "../linear/client.js";
 
-interface HttpRouteDeps {
-  orchestrator: Orchestrator;
-  linearClient?: LinearClient;
-  configStore?: ConfigStore;
-  configOverlayStore?: ConfigOverlayStore;
-  secretsStore?: SecretsStore;
-
-  frontendDir?: string;
-  archiveDir?: string;
-}
+type HttpRouteDeps = Omit<HttpServerDeps, "logger">;
 
 export function registerHttpRoutes(app: FastifyInstance, deps: HttpRouteDeps): void {
   registerStateAndMetricsRoutes(app, deps);

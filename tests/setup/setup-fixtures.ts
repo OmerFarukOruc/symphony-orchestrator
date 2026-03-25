@@ -52,6 +52,7 @@ export function createConfigOverlayStoreMock(): ConfigOverlayStore {
   vi.spyOn(store, "replace").mockResolvedValue(true);
   vi.spyOn(store, "applyPatch").mockResolvedValue(true);
   vi.spyOn(store, "set").mockResolvedValue(true);
+  vi.spyOn(store, "setBatch").mockResolvedValue(true);
   vi.spyOn(store, "delete").mockResolvedValue(true);
   return store;
 }

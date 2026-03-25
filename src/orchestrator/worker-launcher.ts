@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { isBlockedByNonTerminal, sortIssuesForDispatch } from "./dispatch.js";
 import { issueView, nowIso } from "./views.js";
 import { prepareWorkspaceForLaunch as prepareWorkspace } from "./workspace-preparation.js";
-import { isActiveState, isTodoState, normalizeStateKey } from "../state/policy.js";
+import { hasRequiredLabel, isActiveState, isTodoState, normalizeStateKey } from "../state/policy.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type {
   Issue,
@@ -17,6 +17,9 @@ import type {
 import type { OrchestratorDeps, RunningEntry } from "./runtime-types.js";
 
 export function canDispatchIssue(issue: Issue, config: ServiceConfig, claimedIssueIds: Set<string>): boolean {
+  if (!hasRequiredLabel(issue, config)) {
+    return false;
+  }
   if (!isActiveState(issue.state, config)) {
     return false;
   }

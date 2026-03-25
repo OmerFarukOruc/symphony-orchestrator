@@ -15,18 +15,37 @@ class WorkflowLoaderError extends Error {
   }
 }
 
+/**
+ * Default prompt template used when no WORKFLOW.md file exists.
+ * This enables file-free startup via web dashboard configuration.
+ */
+export const DEFAULT_PROMPT_TEMPLATE = `You are working on Linear issue {{ issue.identifier }}: {{ issue.title }}
+
+{% if issue.description %}
+Issue description:
+{{ issue.description }}
+{% endif %}
+
+When you have truly finished the issue and should stop, end your final message with \`SYMPHONY_STATUS: DONE\`. If you are blocked and cannot make further progress, end your final message with \`SYMPHONY_STATUS: BLOCKED\`.
+
+Respect the repository state you find in the workspace, explain what you are doing in short operator-friendly updates, and stop once the issue is either complete or blocked.`;
+
+/**
+ * Default workflow definition used when WORKFLOW.md file is not present.
+ * This allows Symphony to start with zero config files via dashboard setup.
+ */
+export const DEFAULT_WORKFLOW_DEFINITION: WorkflowDefinition = {
+  config: {},
+  promptTemplate: DEFAULT_PROMPT_TEMPLATE,
+};
+
 export async function loadWorkflowDefinition(workflowPath: string): Promise<WorkflowDefinition> {
   let source: string;
   try {
     source = await readFile(workflowPath, "utf8");
-  } catch (error) {
-    throw new WorkflowLoaderError(
-      {
-        code: "missing_workflow_file",
-        message: `workflow file not found: ${workflowPath}`,
-      },
-      { cause: error },
-    );
+  } catch {
+    // Return default workflow when file is missing - enables file-free startup
+    return DEFAULT_WORKFLOW_DEFINITION;
   }
 
   if (!source.startsWith("---")) {

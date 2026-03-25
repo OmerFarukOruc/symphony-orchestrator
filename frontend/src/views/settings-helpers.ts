@@ -14,6 +14,7 @@ export const SECTION_IDS = {
   WORKFLOW_STAGES: "workflow-stages",
   FEATURE_FLAGS: "feature-flags",
   RUNTIME_PATHS: "runtime-paths",
+  PROMPT_TEMPLATE: "prompt-template",
 } as const;
 
 export interface SettingsFieldOption {
@@ -157,7 +158,8 @@ export function buildSectionDiffPreview(
   const previewOverlay = structuredClone(overlay) as Record<string, unknown>;
   const plan = buildSectionPatchPlan(section, drafts, effective);
   if (plan.errors.length > 0) {
-    return `Fix invalid fields before previewing a diff:\n${plan.errors.map((error) => `- ${error.message}`).join("\n")}`;
+    const errorMessages = plan.errors.map((error) => `- ${error.message}`).join("\n");
+    return `Fix invalid fields before previewing a diff:\n${errorMessages}`;
   }
   plan.entries.forEach((entry) => {
     setValueAtPath(previewOverlay, entry.path, entry.value);
@@ -633,10 +635,72 @@ function buildDefaultSections(effective: Record<string, unknown>): SettingsSecti
       saveLabel: "Save runtime settings",
       fields: [
         { path: "workspace.root", label: "Workspace root", kind: "text" },
+        {
+          path: "workspace.strategy",
+          label: "Workspace strategy",
+          kind: "select",
+          hint: "How Symphony manages workspace directories. 'directory' creates folders, 'worktree' uses git worktrees.",
+          options: [
+            { value: "directory", label: "Directory" },
+            { value: "worktree", label: "Worktree" },
+          ],
+        },
+        {
+          path: "workspace.branch_prefix",
+          label: "Branch prefix",
+          kind: "text",
+          hint: "Prefix for automatically created branches. Example: symphony/",
+          placeholder: "symphony/",
+        },
         { path: "hooks.timeout_ms", label: "Hook timeout (ms)", kind: "number" },
+        {
+          path: "hooks.after_create",
+          label: "After create hook",
+          kind: "textarea",
+          advanced: true,
+          hint: "Shell command to run after workspace is created. Available env: WORKSPACE_ROOT, ISSUE_IDENTIFIER.",
+        },
+        {
+          path: "hooks.before_run",
+          label: "Before run hook",
+          kind: "textarea",
+          advanced: true,
+          hint: "Shell command to run before agent execution. Available env: WORKSPACE_ROOT, ISSUE_IDENTIFIER.",
+        },
+        {
+          path: "hooks.after_run",
+          label: "After run hook",
+          kind: "textarea",
+          advanced: true,
+          hint: "Shell command to run after agent execution. Available env: WORKSPACE_ROOT, ISSUE_IDENTIFIER, ATTEMPT_NUMBER, OUTCOME.",
+        },
+        {
+          path: "hooks.before_remove",
+          label: "Before remove hook",
+          kind: "textarea",
+          advanced: true,
+          hint: "Shell command to run before workspace is removed. Available env: WORKSPACE_ROOT, ISSUE_IDENTIFIER.",
+        },
         { path: "polling.interval_ms", label: "Polling interval (ms)", kind: "number" },
         { path: "server.port", label: "Server port", kind: "number" },
         ...getRuntimeMetadataFields(effective),
+      ],
+    },
+    {
+      id: "prompt-template",
+      title: "Prompt template",
+      description: "The instructions given to agents when they start working on an issue. Uses Liquid template syntax.",
+      badge: "Advanced",
+      prefixes: ["prompt_template"],
+      saveLabel: "Save prompt template",
+      fields: [
+        {
+          path: "prompt_template",
+          label: "Prompt template",
+          kind: "textarea",
+          hint: "Available variables: {{ issue.identifier }}, {{ issue.title }}, {{ issue.description }}, {{ attempt.number }}, {{ workspace.root }}. The template should include instructions for the agent and end with guidance on when to signal completion.",
+          placeholder: "You are working on Linear issue {{ issue.identifier }}: {{ issue.title }}...",
+        },
       ],
     },
   ];

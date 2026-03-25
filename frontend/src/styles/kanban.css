@@ -380,6 +380,19 @@
   column-gap: 10px;
   row-gap: 2px;
   align-items: start;
+  position: relative;
+}
+
+/* Vertical connector line between steps */
+.kanban-card-lifecycle-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 14px;
+  width: 2px;
+  bottom: -10px;
+  background: color-mix(in srgb, var(--text-muted) 22%, transparent);
+  border-radius: 1px;
 }
 
 .kanban-card-lifecycle-dot {
@@ -406,7 +419,11 @@
 
 .kanban-card-lifecycle-step.is-complete .kanban-card-lifecycle-dot {
   background: var(--status-completed);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-completed) 18%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-completed) 18%, transparent);
+}
+
+.kanban-card-lifecycle-step.is-complete:not(:last-child)::after {
+  background: color-mix(in srgb, var(--status-completed) 45%, transparent);
 }
 
 .kanban-card-lifecycle-step.is-current .kanban-card-lifecycle-dot {

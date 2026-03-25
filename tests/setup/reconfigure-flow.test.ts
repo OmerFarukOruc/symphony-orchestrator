@@ -71,6 +71,15 @@ function createMutableConfigOverlay(initial: Record<string, unknown>): ConfigOve
       setOverlayValue(overlay, pathExpression, value);
       return true;
     }),
+    setBatch: vi.fn(async (entries: Array<{ path: string; value: unknown }>, deletions?: string[]) => {
+      for (const entry of entries) {
+        setOverlayValue(overlay, entry.path, entry.value);
+      }
+      for (const pathExpression of deletions ?? []) {
+        deleteOverlayValue(overlay, pathExpression);
+      }
+      return true;
+    }),
     delete: vi.fn(async (pathExpression: string) => deleteOverlayValue(overlay, pathExpression)),
   } as unknown as ConfigOverlayStore;
 }

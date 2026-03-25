@@ -56,10 +56,12 @@ export class AttemptStore {
     this.attempts.set(attempt.attemptId, attempt);
     this.indexAttempt(attempt);
     this.eventsByAttempt.set(attempt.attemptId, []);
-    await this.persistAttempt(attempt);
-    await this.persistAttemptToDb(attempt);
-    await writeFile(this.eventsPath(attempt.attemptId), "", "utf8");
-    await this.replaceEventsInDb(attempt.attemptId, []);
+    await Promise.all([
+      this.persistAttempt(attempt),
+      this.persistAttemptToDb(attempt),
+      writeFile(this.eventsPath(attempt.attemptId), "", "utf8"),
+    ]);
+    this.replaceEventsInDb(attempt.attemptId, []);
     await this.persistIssueIndex();
   }
 
@@ -207,7 +209,7 @@ export class AttemptStore {
       this.eventsByAttempt.set(attempt.attemptId, events);
       if (!alreadyInDb) {
         try {
-          await this.replaceEventsInDb(attempt.attemptId, events);
+          this.replaceEventsInDb(attempt.attemptId, events);
         } catch (error) {
           this.logger.warn(
             { attemptId: attempt.attemptId, error: String(error) },
@@ -219,7 +221,7 @@ export class AttemptStore {
       if (error instanceof Error && "code" in error && error.code === "ENOENT") {
         this.eventsByAttempt.set(attempt.attemptId, []);
         if (!alreadyInDb) {
-          await this.replaceEventsInDb(attempt.attemptId, []);
+          this.replaceEventsInDb(attempt.attemptId, []);
         }
         return;
       }
@@ -275,7 +277,7 @@ export class AttemptStore {
       });
   }
 
-  private async replaceEventsInDb(attemptId: string, events: AttemptEvent[]): Promise<void> {
+  private replaceEventsInDb(attemptId: string, events: AttemptEvent[]): void {
     if (!this.database) {
       return;
     }

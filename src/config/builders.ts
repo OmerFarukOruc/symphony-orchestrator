@@ -46,6 +46,7 @@ function deriveTrackerConfig(
       resolveConfigString(tracker.project_slug, secretResolver) || secretResolver?.("LINEAR_PROJECT_SLUG") || null,
     activeStates: asStringArray(tracker.active_states, DEFAULT_ACTIVE_STATES),
     terminalStates: asStringArray(tracker.terminal_states, DEFAULT_TERMINAL_STATES),
+    requiredLabel: asString(tracker.required_label, "symphony") || null,
   };
 }
 

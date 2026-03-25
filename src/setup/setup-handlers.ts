@@ -27,6 +27,7 @@ import {
   type PkceSession,
 } from "./device-auth.js";
 import { hasCodexAuthFile, hasLinearCredentials, hasRepoRoutes, readProjectSlug } from "./setup-status.js";
+import { DEFAULT_PROMPT_TEMPLATE } from "../workflow/loader.js";
 
 export interface SetupApiDeps {
   secretsStore: SecretsStore;
@@ -64,9 +65,13 @@ export function handlePostReset(deps: SetupApiDeps) {
       await Promise.all(deps.secretsStore.list().map((key) => deps.secretsStore.delete(key)));
       delete process.env.GITHUB_TOKEN;
       await Promise.all([
-        deps.configOverlayStore.set("codex.auth.mode", ""),
-        deps.configOverlayStore.set("codex.auth.source_home", ""),
-        deps.configOverlayStore.delete("codex.provider"),
+        deps.configOverlayStore.setBatch(
+          [
+            { path: "codex.auth.mode", value: "" },
+            { path: "codex.auth.source_home", value: "" },
+          ],
+          ["codex.provider"],
+        ),
         writeFile(path.join(deps.archiveDir, "master.key"), "", { encoding: "utf8", mode: 0o600 }),
       ]);
       deps.secretsStore.reset();
@@ -185,11 +190,13 @@ export function handlePostOpenaiKey(deps: SetupApiDeps) {
     if (valid) {
       await Promise.all([
         deps.secretsStore.set("OPENAI_API_KEY", key),
-        deps.configOverlayStore.set("codex.auth.mode", "api_key"),
-        deps.configOverlayStore.set("codex.provider.name", "CLIProxyAPI"),
-        deps.configOverlayStore.set("codex.provider.base_url", "http://localhost:8317/v1"),
-        deps.configOverlayStore.set("codex.provider.env_key", "OPENAI_API_KEY"),
-        deps.configOverlayStore.set("codex.provider.wire_api", "responses"),
+        deps.configOverlayStore.setBatch([
+          { path: "codex.auth.mode", value: "api_key" },
+          { path: "codex.provider.name", value: "CLIProxyAPI" },
+          { path: "codex.provider.base_url", value: "http://localhost:8317/v1" },
+          { path: "codex.provider.env_key", value: "OPENAI_API_KEY" },
+          { path: "codex.provider.wire_api", value: "responses" },
+        ]),
       ]);
     }
 
@@ -219,11 +226,13 @@ export function handlePostCodexAuth(deps: SetupApiDeps) {
       await mkdir(authDir, { recursive: true });
       await writeFile(path.join(authDir, "auth.json"), normalizedAuthJson, { encoding: "utf8", mode: 0o600 });
 
-      await Promise.all([
-        deps.configOverlayStore.set("codex.auth.mode", "openai_login"),
-        deps.configOverlayStore.set("codex.auth.source_home", authDir),
-        deps.configOverlayStore.delete("codex.provider"),
-      ]);
+      await deps.configOverlayStore.setBatch(
+        [
+          { path: "codex.auth.mode", value: "openai_login" },
+          { path: "codex.auth.source_home", value: authDir },
+        ],
+        ["codex.provider"],
+      );
 
       reply.send({ ok: true });
     } catch (error) {
@@ -413,6 +422,18 @@ async function lookupInProgressStateId(apiKey: string, teamId: string): Promise<
   return inProgress.id;
 }
 
+async function lookupSymphonyLabelId(apiKey: string, teamId: string): Promise<string | null> {
+  const query = `query SymphonyLabelLookup($teamId: ID!) {
+    team(id: $teamId) { labels(first: 100) { nodes { id name } } }
+  }`;
+  const data = await callLinearGraphQL(apiKey, query, { teamId });
+  const labels = ((data.data as Record<string, unknown>)?.team as Record<string, unknown>)?.labels as
+    | { nodes?: Array<{ id: string; name: string }> }
+    | undefined;
+  const match = labels?.nodes?.find((l) => l.name.trim().toLowerCase() === "symphony");
+  return match?.id ?? null;
+}
+
 async function createTestIssue(apiKey: string, projectSlug: string): Promise<{ identifier: string; url: string }> {
   const project = await lookupProject(apiKey, projectSlug);
   const teamId = project.teams?.nodes?.[0]?.id;
@@ -420,7 +441,11 @@ async function createTestIssue(apiKey: string, projectSlug: string): Promise<{ i
     throw new Error("No team found for the selected project");
   }
 
-  const stateId = await lookupInProgressStateId(apiKey, teamId);
+  const [stateId, symphonyLabelId] = await Promise.all([
+    lookupInProgressStateId(apiKey, teamId),
+    lookupSymphonyLabelId(apiKey, teamId),
+  ]);
+
   const data = await callLinearGraphQL(apiKey, buildCreateIssueMutation(), {
     teamId,
     projectId: project.id,
@@ -429,6 +454,7 @@ async function createTestIssue(apiKey: string, projectSlug: string): Promise<{ i
       "This issue was created automatically to verify your Symphony setup. " +
       "Symphony should pick it up within one poll cycle and run a sandboxed agent.",
     stateId,
+    ...(symphonyLabelId ? { labelIds: [symphonyLabelId] } : {}),
   });
 
   const result = (data.data as Record<string, unknown>)?.issueCreate as
@@ -605,5 +631,39 @@ export function handlePostCreateProject(deps: SetupApiDeps) {
       const message = getErrorMessage(error, "Failed to create project");
       reply.status(502).send({ error: { code: "linear_api_error", message } });
     }
+  };
+}
+
+export function handleGetPromptTemplate(deps: SetupApiDeps) {
+  return (_request: FastifyRequest, reply: FastifyReply) => {
+    const overlay = deps.configOverlayStore.toMap();
+    const customTemplate = overlay.prompt_template;
+    const isCustom = typeof customTemplate === "string" && customTemplate.length > 0;
+
+    reply.send({
+      template: isCustom ? customTemplate : DEFAULT_PROMPT_TEMPLATE,
+      isDefault: !isCustom,
+    });
+  };
+}
+
+export function handlePostPromptTemplate(deps: SetupApiDeps) {
+  return async (request: FastifyRequest<{ Body: Record<string, unknown> }>, reply: FastifyReply) => {
+    const body = request.body;
+    const template = isRecord(body) && typeof body.template === "string" ? body.template : null;
+
+    if (template === null) {
+      reply.status(400).send({ error: { code: "missing_template", message: "template is required" } });
+      return;
+    }
+
+    if (template.length === 0) {
+      await deps.configOverlayStore.delete("prompt_template");
+      reply.send({ ok: true, isDefault: true });
+      return;
+    }
+
+    await deps.configOverlayStore.set("prompt_template", template);
+    reply.send({ ok: true, isDefault: false });
   };
 }

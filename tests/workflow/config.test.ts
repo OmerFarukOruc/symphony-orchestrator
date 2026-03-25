@@ -46,10 +46,10 @@ describe("workflow loader", () => {
     });
   });
 
-  it("throws missing_workflow_file for absent workflow", async () => {
-    await expect(loadWorkflowDefinition("/nope/WORKFLOW.md")).rejects.toMatchObject({
-      validationError: { code: "missing_workflow_file" },
-    });
+  it("returns default workflow definition for absent workflow", async () => {
+    const workflow = await loadWorkflowDefinition("/nope/WORKFLOW.md");
+    expect(workflow.config).toEqual({});
+    expect(workflow.promptTemplate).toContain("Linear issue");
   });
 
   it("throws workflow_front_matter_not_a_map for scalar front matter", async () => {

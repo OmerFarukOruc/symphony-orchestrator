@@ -262,9 +262,13 @@ export async function savePkceAuthTokens(
   await mkdir(authDir, { recursive: true });
   await writeFile(path.join(authDir, "auth.json"), authJson, { encoding: "utf8", mode: 0o600 });
 
-  await configOverlayStore.set("codex.auth.mode", "openai_login");
-  await configOverlayStore.set("codex.auth.source_home", authDir);
-  await configOverlayStore.delete("codex.provider");
+  await configOverlayStore.setBatch(
+    [
+      { path: "codex.auth.mode", value: "openai_login" },
+      { path: "codex.auth.source_home", value: authDir },
+    ],
+    ["codex.provider"],
+  );
 }
 
 /**

@@ -117,8 +117,13 @@ describe("registerSetupApi", () => {
     expect(secretsStore.delete).toHaveBeenCalledTimes(2);
     expect(secretsStore.delete).toHaveBeenNthCalledWith(1, "GITHUB_TOKEN");
     expect(secretsStore.delete).toHaveBeenNthCalledWith(2, "LINEAR_API_KEY");
-    expect(configOverlayStore.set).toHaveBeenNthCalledWith(1, "codex.auth.mode", "");
-    expect(configOverlayStore.set).toHaveBeenNthCalledWith(2, "codex.auth.source_home", "");
+    expect(configOverlayStore.setBatch).toHaveBeenCalledWith(
+      [
+        { path: "codex.auth.mode", value: "" },
+        { path: "codex.auth.source_home", value: "" },
+      ],
+      ["codex.provider"],
+    );
     expect(process.env.GITHUB_TOKEN).toBeUndefined();
   });
 
@@ -357,8 +362,13 @@ describe("registerSetupApi", () => {
         account_id: null,
       },
     });
-    expect(configOverlayStore.set).toHaveBeenNthCalledWith(1, "codex.auth.mode", "openai_login");
-    expect(configOverlayStore.set).toHaveBeenNthCalledWith(2, "codex.auth.source_home", "/archive-root/codex-auth");
+    expect(configOverlayStore.setBatch).toHaveBeenCalledWith(
+      [
+        { path: "codex.auth.mode", value: "openai_login" },
+        { path: "codex.auth.source_home", value: "/archive-root/codex-auth" },
+      ],
+      ["codex.provider"],
+    );
   });
 
   it("returns save_error when Codex auth persistence fails", async () => {

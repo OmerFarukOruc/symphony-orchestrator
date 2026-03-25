@@ -62,6 +62,14 @@ export class ConfigStore {
     try {
       const workflow = await loadWorkflowDefinition(this.workflowPath);
       const overlay = cloneConfigMap(this.deps?.overlayStore?.toMap() ?? {});
+
+      // Overlay prompt_template takes precedence over workflow file promptTemplate
+      // This enables file-free startup via web dashboard configuration
+      const overlayPromptTemplate = overlay.prompt_template;
+      if (typeof overlayPromptTemplate === "string" && overlayPromptTemplate.length > 0) {
+        workflow.promptTemplate = overlayPromptTemplate;
+      }
+
       const mergedConfigMap = deepMerge(workflow.config, overlay) as Record<string, unknown>;
       const config = deriveServiceConfig(workflow, {
         overlay,

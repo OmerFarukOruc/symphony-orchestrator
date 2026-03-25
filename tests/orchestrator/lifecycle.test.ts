@@ -45,6 +45,7 @@ function makeConfig(overrides: Partial<ServiceConfig["tracker"]> = {}): ServiceC
       projectSlug: "MT",
       activeStates: ["In Progress"],
       terminalStates: ["Done", "Canceled"],
+      requiredLabel: null,
       ...overrides,
     },
     codex: { stallTimeoutMs: 60000 },

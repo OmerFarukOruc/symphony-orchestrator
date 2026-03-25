@@ -18,8 +18,8 @@ const mockedWriteFile = vi.mocked(writeFile);
 
 function createOverlayStore() {
   const store = new ConfigOverlayStore("/tmp/test-overlay.json", createMockLogger());
-  const setMock = vi.spyOn(store, "set").mockResolvedValue(true);
-  return { store, setMock };
+  const setBatchMock = vi.spyOn(store, "setBatch").mockResolvedValue(true);
+  return { store, setBatchMock };
 }
 
 function createFetchMock() {
@@ -126,7 +126,7 @@ describe("PKCE auth helpers", () => {
 
   describe("savePkceAuthTokens", () => {
     it("writes auth.json and updates the auth overlay on success", async () => {
-      const { store, setMock } = createOverlayStore();
+      const { store, setBatchMock } = createOverlayStore();
       const archiveDir = "/tmp/archive-root";
       const authDir = path.join(archiveDir, "codex-auth");
       const tokenData = {
@@ -155,8 +155,13 @@ describe("PKCE auth helpers", () => {
           account_id: null,
         },
       });
-      expect(setMock).toHaveBeenNthCalledWith(1, "codex.auth.mode", "openai_login");
-      expect(setMock).toHaveBeenNthCalledWith(2, "codex.auth.source_home", authDir);
+      expect(setBatchMock).toHaveBeenCalledWith(
+        [
+          { path: "codex.auth.mode", value: "openai_login" },
+          { path: "codex.auth.source_home", value: authDir },
+        ],
+        ["codex.provider"],
+      );
     });
 
     it("handles missing optional fields", async () => {

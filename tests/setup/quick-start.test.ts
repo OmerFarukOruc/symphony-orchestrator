@@ -124,6 +124,18 @@ function labelCreateResponse(): Response {
   });
 }
 
+function labelLookupResponse(): Response {
+  return jsonResponse(200, {
+    data: {
+      team: {
+        labels: {
+          nodes: [{ id: "label-sym-1", name: "symphony" }],
+        },
+      },
+    },
+  });
+}
+
 describe("registerSetupApi — quick start helpers", () => {
   it("creates a Linear smoke test issue successfully", async () => {
     const secretsStore = mockLinearApiKey();
@@ -131,6 +143,7 @@ describe("registerSetupApi — quick start helpers", () => {
     getExternalFetchMock()
       .mockResolvedValueOnce(projectLookupResponse())
       .mockResolvedValueOnce(inProgressStatesResponse())
+      .mockResolvedValueOnce(labelLookupResponse())
       .mockResolvedValueOnce(issueCreateResponse());
 
     const { baseUrl } = await startSetupApiServer({ secretsStore, configOverlayStore });
@@ -142,7 +155,7 @@ describe("registerSetupApi — quick start helpers", () => {
       issueIdentifier: "SYM-123",
       issueUrl: "https://linear.app/acme/issue/SYM-123",
     });
-    expect(getExternalFetchMock()).toHaveBeenCalledTimes(3);
+    expect(getExternalFetchMock()).toHaveBeenCalledTimes(4);
   });
 
   it("returns missing_api_key when creating a test issue without Linear credentials", async () => {

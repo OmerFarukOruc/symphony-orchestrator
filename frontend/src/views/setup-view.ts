@@ -12,7 +12,17 @@ import {
 } from "./setup-openai-step";
 import { buildSetupError, buildTitleWithBadge } from "./setup-shared";
 
-type SetupStep = "master-key" | "linear-project" | "repo-config" | "openai-key" | "github-token" | "done";
+type SetupStep =
+  | "master-key"
+  | "linear-project"
+  | "repo-config"
+  | "openai-key"
+  | "github-token"
+  | "agent-config"
+  | "sandbox-safety"
+  | "prompt-template"
+  | "workspace-hooks"
+  | "done";
 
 interface SetupState {
   step: SetupStep;
@@ -121,9 +131,24 @@ function buildStepIndicator(): HTMLElement {
     { key: "repo-config", label: "Link repo", n: "3" },
     { key: "openai-key", label: "Add OpenAI", n: "4" },
     { key: "github-token", label: "Add GitHub", n: "5" },
+    { key: "agent-config", label: "Agent config", n: "6" },
+    { key: "sandbox-safety", label: "Sandbox", n: "7" },
+    { key: "prompt-template", label: "Prompt", n: "8" },
+    { key: "workspace-hooks", label: "Hooks", n: "9" },
   ];
 
-  const order: SetupStep[] = ["master-key", "linear-project", "repo-config", "openai-key", "github-token", "done"];
+  const order: SetupStep[] = [
+    "master-key",
+    "linear-project",
+    "repo-config",
+    "openai-key",
+    "github-token",
+    "agent-config",
+    "sandbox-safety",
+    "prompt-template",
+    "workspace-hooks",
+    "done",
+  ];
   const currentIdx = order.indexOf(state.step);
 
   const row = document.createElement("div");
@@ -1273,6 +1298,132 @@ async function handleCreateLabel(): Promise<void> {
   }
 }
 
+// ── Step: Agent Config ───────────────────────────────────────────────────────
+
+function buildAgentConfigStep(): HTMLElement {
+  const el = document.createElement("div");
+
+  const title = document.createElement("div");
+  title.className = "setup-title";
+  title.textContent = "Agent configuration (optional)";
+
+  const sub = document.createElement("div");
+  sub.className = "setup-subtitle";
+  sub.textContent = "Configure agent behavior. These are optional — sensible defaults are provided.";
+
+  const hint = document.createElement("div");
+  hint.className = "setup-hint";
+  hint.innerHTML = "You can change these later in <strong>Settings</strong>.";
+
+  const skipBtn = document.createElement("button");
+  skipBtn.className = "mc-button is-primary";
+  skipBtn.type = "button";
+  skipBtn.textContent = "Continue →";
+  skipBtn.addEventListener("click", () => {
+    state.step = "sandbox-safety";
+    state.error = null;
+    rerender();
+  });
+
+  el.append(title, sub, hint, skipBtn);
+  return el;
+}
+
+// ── Step: Sandbox Safety ─────────────────────────────────────────────────────
+
+function buildSandboxSafetyStep(): HTMLElement {
+  const el = document.createElement("div");
+
+  const title = document.createElement("div");
+  title.className = "setup-title";
+  title.textContent = "Sandbox safety (optional)";
+
+  const sub = document.createElement("div");
+  sub.className = "setup-subtitle";
+  sub.textContent = "Configure sandbox security settings. These are optional — sensible defaults are provided.";
+
+  const hint = document.createElement("div");
+  hint.className = "setup-hint";
+  hint.innerHTML = "You can change these later in <strong>Settings</strong>.";
+
+  const skipBtn = document.createElement("button");
+  skipBtn.className = "mc-button is-primary";
+  skipBtn.type = "button";
+  skipBtn.textContent = "Continue →";
+  skipBtn.addEventListener("click", () => {
+    state.step = "prompt-template";
+    state.error = null;
+    rerender();
+  });
+
+  el.append(title, sub, hint, skipBtn);
+  return el;
+}
+
+// ── Step: Prompt Template ────────────────────────────────────────────────────
+
+function buildPromptTemplateStep(): HTMLElement {
+  const el = document.createElement("div");
+
+  const title = document.createElement("div");
+  title.className = "setup-title";
+  title.textContent = "Prompt template (optional)";
+
+  const sub = document.createElement("div");
+  sub.className = "setup-subtitle";
+  sub.textContent = "Customize the instructions given to agents. Uses Liquid template syntax.";
+
+  const hint = document.createElement("div");
+  hint.className = "setup-hint";
+  hint.innerHTML =
+    "Available variables: <code>{{ issue.identifier }}</code>, <code>{{ issue.title }}</code>, <code>{{ issue.description }}</code>. You can change this later in <strong>Settings</strong>.";
+
+  const skipBtn = document.createElement("button");
+  skipBtn.className = "mc-button is-primary";
+  skipBtn.type = "button";
+  skipBtn.textContent = "Continue →";
+  skipBtn.addEventListener("click", () => {
+    state.step = "workspace-hooks";
+    state.error = null;
+    rerender();
+  });
+
+  el.append(title, sub, hint, skipBtn);
+  return el;
+}
+
+// ── Step: Workspace Hooks ────────────────────────────────────────────────────
+
+function buildWorkspaceHooksStep(): HTMLElement {
+  const el = document.createElement("div");
+
+  const title = document.createElement("div");
+  title.className = "setup-title";
+  title.textContent = "Workspace hooks (optional)";
+
+  const sub = document.createElement("div");
+  sub.className = "setup-subtitle";
+  sub.textContent =
+    "Configure workspace strategy, branch prefix, and lifecycle hooks. These are optional — sensible defaults are provided.";
+
+  const hint = document.createElement("div");
+  hint.className = "setup-hint";
+  hint.innerHTML = "You can change these later in <strong>Settings</strong>.";
+
+  const skipBtn = document.createElement("button");
+  skipBtn.className = "mc-button is-primary";
+  skipBtn.type = "button";
+  skipBtn.textContent = "Continue →";
+  skipBtn.addEventListener("click", () => {
+    state.step = "done";
+    state.error = null;
+    rerender();
+  });
+
+  el.append(title, sub, hint, skipBtn);
+  return el;
+}
+
 // ── Main render ──────────────────────────────────────────────────────────────
 
 function buildStepContent(): HTMLElement {
@@ -1287,6 +1438,14 @@ function buildStepContent(): HTMLElement {
       return buildOpenaiKeyStep();
     case "github-token":
       return buildGithubTokenStep();
+    case "agent-config":
+      return buildAgentConfigStep();
+    case "sandbox-safety":
+      return buildSandboxSafetyStep();
+    case "prompt-template":
+      return buildPromptTemplateStep();
+    case "workspace-hooks":
+      return buildWorkspaceHooksStep();
     case "done":
       return buildDoneStep();
   }

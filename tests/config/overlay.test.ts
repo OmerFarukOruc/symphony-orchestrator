@@ -145,4 +145,54 @@ describe("ConfigOverlayStore", () => {
 
     await store.stop();
   });
+
+  it("setBatch applies multiple keys atomically in a single persist cycle", async () => {
+    const dir = await createTempDir();
+    const overlayPath = path.join(dir, "config", "overlay.yaml");
+    const store = new ConfigOverlayStore(overlayPath, createLogger());
+    await store.start();
+
+    await store.setBatch([
+      { path: "codex.auth.mode", value: "openai_login" },
+      { path: "codex.auth.source_home", value: "/tmp/auth-dir" },
+      { path: "server.port", value: 4010 },
+    ]);
+
+    expect(store.toMap()).toEqual({
+      codex: { auth: { mode: "openai_login", source_home: "/tmp/auth-dir" } },
+      server: { port: 4010 },
+    });
+
+    const persisted = await readFile(overlayPath, "utf8");
+    expect(persisted).toContain("openai_login");
+    expect(persisted).toContain("/tmp/auth-dir");
+    expect(persisted).toContain("4010");
+
+    await store.stop();
+  });
+
+  it("setBatch supports combined set and delete operations", async () => {
+    const dir = await createTempDir();
+    const overlayPath = path.join(dir, "config", "overlay.yaml");
+    const store = new ConfigOverlayStore(overlayPath, createLogger());
+    await store.start();
+
+    await store.set("codex.provider.name", "old-provider");
+    await store.set("codex.auth.mode", "api_key");
+
+    await store.setBatch(
+      [
+        { path: "codex.auth.mode", value: "openai_login" },
+        { path: "codex.auth.source_home", value: "/auth" },
+      ],
+      ["codex.provider"],
+    );
+
+    const map = store.toMap();
+    expect(map).toEqual({
+      codex: { auth: { mode: "openai_login", source_home: "/auth" } },
+    });
+
+    await store.stop();
+  });
 });

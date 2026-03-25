@@ -6,6 +6,7 @@ import type { SetupApiDeps } from "./setup-handlers.js";
 import {
   handleGetLinearProjects,
   handleGetPkceAuthStatus,
+  handleGetPromptTemplate,
   handleGetStatus,
   handlePostPkceAuthCancel,
   handlePostCodexAuth,
@@ -17,6 +18,7 @@ import {
   handlePostMasterKey,
   handlePostOpenaiKey,
   handlePostPkceAuthStart,
+  handlePostPromptTemplate,
   handlePostReset,
 } from "./setup-handlers.js";
 
@@ -41,4 +43,6 @@ export function registerSetupApi(app: FastifyInstance, deps: SetupApiDeps): void
   app.delete("/api/v1/setup/repo-route", handleDeleteRepoRoute({ configOverlayStore: deps.configOverlayStore }));
   app.get("/api/v1/setup/repo-routes", handleGetRepoRoutes({ configOverlayStore: deps.configOverlayStore }));
   app.post("/api/v1/setup/detect-default-branch", handleDetectDefaultBranch({ secretsStore: deps.secretsStore }));
+  app.get("/api/v1/setup/prompt-template", handleGetPromptTemplate(deps));
+  app.post("/api/v1/setup/prompt-template", handlePostPromptTemplate(deps));
 }

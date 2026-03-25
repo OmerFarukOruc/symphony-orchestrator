@@ -97,9 +97,12 @@ describe("ConfigStore", () => {
     expect(() => store.getWorkflow()).toThrow("config store has not been started");
   });
 
-  it("throws on start when workflow file does not exist", async () => {
+  it("starts successfully with default workflow when file does not exist", async () => {
     const store = new ConfigStore("/nonexistent/path.yaml", makeLogger());
-    await expect(store.start()).rejects.toThrow();
+    await store.start();
+    expect(store.getWorkflow().config).toEqual({});
+    expect(store.getWorkflow().promptTemplate).toContain("Linear issue");
+    await store.stop();
   });
 
   it("keeps last known good config on failed refresh", async () => {

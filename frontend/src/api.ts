@@ -141,4 +141,7 @@ export const api = {
   removeWorkspace: (workspaceKey: string) => del(`/api/v1/workspaces/${encodeURIComponent(workspaceKey)}`),
   detectDefaultBranch: (repoUrl: string) =>
     post<{ defaultBranch: string }>("/api/v1/setup/detect-default-branch", { repoUrl }),
+  getPromptTemplate: () => get<{ template: string; isDefault: boolean }>("/api/v1/setup/prompt-template"),
+  postPromptTemplate: (template: string) =>
+    post<{ ok: boolean; isDefault: boolean }>("/api/v1/setup/prompt-template", { template }),
 };

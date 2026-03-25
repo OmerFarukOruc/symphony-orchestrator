@@ -63,6 +63,16 @@ export function normalizeStateKey(state: string): string {
   return normalizeStateValue(state);
 }
 
+/** Returns true when the issue carries the configured required label (or no label gate is configured). */
+export function hasRequiredLabel(issue: { labels: string[] }, config: ServiceConfig): boolean {
+  const required = config.tracker.requiredLabel;
+  if (!required) {
+    return true;
+  }
+  const normalizedRequired = required.trim().toLowerCase();
+  return issue.labels.some((label) => label.trim().toLowerCase() === normalizedRequired);
+}
+
 interface WorkflowStageDefinition {
   key: string;
   label: string;

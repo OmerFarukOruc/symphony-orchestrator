@@ -150,6 +150,12 @@ export async function prepareCodexRuntimeConfig(config: CodexConfig): Promise<Pr
   let authJsonBase64: string | null = null;
 
   if (config.auth.mode === "openai_login") {
+    if (!config.auth.sourceHome) {
+      throw new Error(
+        "codex.auth.source_home is empty — the PKCE auth flow may not have completed. " +
+          "Please re-authenticate via the setup wizard.",
+      );
+    }
     let authJson = await readAuthJson(authJsonPath);
     if (isTokenExpired(authJson)) {
       authJson = await refreshAccessToken(authJsonPath);

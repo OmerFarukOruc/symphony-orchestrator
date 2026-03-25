@@ -223,6 +223,39 @@ export class ConfigOverlayStore {
     return true;
   }
 
+  /**
+   * Atomically apply multiple set/delete operations in a single persist cycle.
+   *
+   * This prevents the race condition where sequential `set()` calls each persist
+   * the overlay file independently, allowing chokidar to reload partial state
+   * between calls.
+   */
+  async setBatch(entries: Array<{ path: string; value: unknown }>, deletions?: string[]): Promise<boolean> {
+    const next = this.toMap();
+
+    for (const entry of entries) {
+      const segments = normalizePath(entry.path);
+      if (segments.length === 0) {
+        throw new Error("overlay path must contain at least one segment");
+      }
+      setAtPath(next, segments, entry.value);
+    }
+
+    for (const pathExpression of deletions ?? []) {
+      const segments = normalizePath(pathExpression);
+      if (segments.length === 0) {
+        throw new Error("overlay path must contain at least one segment");
+      }
+      removeAtPath(next, segments);
+    }
+
+    const paths = entries.map((e) => e.path);
+    if (deletions?.length) {
+      paths.push(...deletions.map((d) => `-${d}`));
+    }
+    return this.commit(next, `setBatch:${paths.join(",")}`);
+  }
+
   private async commit(nextMap: Record<string, unknown>, reason: string): Promise<boolean> {
     if (isDeepEqual(nextMap, this.overlay)) {
       return false;

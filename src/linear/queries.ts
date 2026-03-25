@@ -156,8 +156,8 @@ export function buildTeamStatesQuery(): string {
 
 export function buildCreateIssueMutation(): string {
   return `
-    mutation SymphonyCreateIssue($teamId: String!, $projectId: String, $title: String!, $description: String, $stateId: String) {
-      issueCreate(input: { teamId: $teamId, projectId: $projectId, title: $title, description: $description, stateId: $stateId }) {
+    mutation SymphonyCreateIssue($teamId: String!, $projectId: String, $title: String!, $description: String, $stateId: String, $labelIds: [String!]) {
+      issueCreate(input: { teamId: $teamId, projectId: $projectId, title: $title, description: $description, stateId: $stateId, labelIds: $labelIds }) {
         success
         issue {
           id

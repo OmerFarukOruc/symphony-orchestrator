@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { isBlockedByNonTerminal, sortIssuesForDispatch } from "../../src/orchestrator/dispatch.js";
+import { canDispatchIssue } from "../../src/orchestrator/worker-launcher.js";
 import type { Issue, ServiceConfig } from "../../src/core/types.js";
 
-function createConfig(): ServiceConfig {
+function createConfig(overrides?: Partial<ServiceConfig["tracker"]>): ServiceConfig {
   return {
     tracker: {
       kind: "linear",
@@ -12,6 +13,8 @@ function createConfig(): ServiceConfig {
       projectSlug: "EXAMPLE",
       activeStates: ["Todo", "In Progress"],
       terminalStates: ["Done", "Completed", "Canceled", "Cancelled", "Duplicate"],
+      requiredLabel: null,
+      ...overrides,
     },
     polling: { intervalMs: 30000 },
     workspace: {
@@ -23,12 +26,17 @@ function createConfig(): ServiceConfig {
         beforeRemove: null,
         timeoutMs: 1000,
       },
+      strategy: "directory",
+      branchPrefix: "symphony/",
     },
     agent: {
       maxConcurrentAgents: 2,
       maxConcurrentAgentsByState: {},
       maxTurns: 2,
       maxRetryBackoffMs: 300000,
+      maxContinuationAttempts: 5,
+      successState: null,
+      stallTimeoutMs: 10000,
     },
     codex: {
       command: "codex app-server",
@@ -157,5 +165,35 @@ describe("dispatch helpers", () => {
     });
 
     expect(isBlockedByNonTerminal(issue, config)).toBe(false);
+  });
+});
+
+describe("canDispatchIssue label gate", () => {
+  it("returns false when issue lacks the required label", () => {
+    const config = createConfig({ requiredLabel: "symphony" });
+    const issue = createIssue({ id: "1", identifier: "MT-1", state: "Todo", labels: [] });
+
+    expect(canDispatchIssue(issue, config, new Set())).toBe(false);
+  });
+
+  it("returns true when issue has the required label", () => {
+    const config = createConfig({ requiredLabel: "symphony" });
+    const issue = createIssue({ id: "1", identifier: "MT-1", state: "Todo", labels: ["symphony"] });
+
+    expect(canDispatchIssue(issue, config, new Set())).toBe(true);
+  });
+
+  it("matches labels case-insensitively", () => {
+    const config = createConfig({ requiredLabel: "symphony" });
+    const issue = createIssue({ id: "1", identifier: "MT-1", state: "Todo", labels: ["Symphony"] });
+
+    expect(canDispatchIssue(issue, config, new Set())).toBe(true);
+  });
+
+  it("dispatches any issue when requiredLabel is null", () => {
+    const config = createConfig({ requiredLabel: null });
+    const issue = createIssue({ id: "1", identifier: "MT-1", state: "Todo", labels: [] });
+
+    expect(canDispatchIssue(issue, config, new Set())).toBe(true);
   });
 });
