@@ -1,7 +1,6 @@
 import { Type, type Static } from "@sinclair/typebox";
 
 const NullableString = Type.Union([Type.String(), Type.Null()]);
-const NullableUnknown = Type.Union([Type.Unknown(), Type.Null()]);
 
 export const ErrorEnvelopeSchema = Type.Object({
   error: Type.Object({
@@ -47,7 +46,7 @@ export const RuntimeIssueViewSchema = Type.Object({
   labels: Type.Optional(Type.Array(Type.String())),
   startedAt: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   lastEventAt: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-  tokenUsage: Type.Optional(NullableUnknown),
+  tokenUsage: Type.Optional(Type.Unknown()),
   model: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   reasoningEffort: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   modelSource: Type.Optional(Type.Union([Type.String(), Type.Null()])),
@@ -72,7 +71,7 @@ export const RuntimeEventSchema = Type.Object({
   event: Type.String(),
   message: Type.String(),
   content: Type.Optional(NullableString),
-  metadata: Type.Optional(NullableUnknown),
+  metadata: Type.Optional(Type.Unknown()),
 });
 
 export const WorkflowColumnSchema = Type.Object({
