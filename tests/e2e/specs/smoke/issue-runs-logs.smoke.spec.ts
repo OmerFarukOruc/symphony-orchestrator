@@ -37,6 +37,25 @@ test.describe("Issue Runs & Logs Smoke", () => {
     await expect(page.getByText("Agent started attempt #2")).toBeVisible({ timeout: 5000 });
   });
 
+  test("issue detail shows attempt timeline and event stream", async ({ page }) => {
+    const issue = new IssuePage(page);
+    await issue.navigate("SYM-42");
+
+    await expect(issue.attemptsSection).toBeVisible({ timeout: 5000 });
+    await expect(issue.attemptRows).toHaveCount(2);
+    await expect(issue.eventStreamHeading).toBeVisible({ timeout: 5000 });
+    await expect(issue.eventRows.first()).toBeVisible({ timeout: 5000 });
+  });
+
+  test("issue detail shows model override controls", async ({ page }) => {
+    const issue = new IssuePage(page);
+    await issue.navigate("SYM-42");
+
+    await expect(issue.modelInput).toHaveValue("o3-mini");
+    await expect(issue.reasoningSelect).toHaveValue("medium");
+    await expect(issue.saveButton).toBeVisible({ timeout: 5000 });
+  });
+
   test("navigating to runs tab shows attempts", async ({ page }) => {
     // Navigate to the runs view for SYM-42
     await page.goto("/issues/SYM-42/runs");

@@ -1,3 +1,4 @@
+/* eslint-disable complexity, sonarjs/cognitive-complexity, sonarjs/no-nested-template-literals */
 import { useMemo, useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";

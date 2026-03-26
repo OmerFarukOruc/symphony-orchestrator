@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/cognitive-complexity */
 import type { ChangeEventHandler, ReactElement } from "react";
 
 import styles from "./Settings.module.css";

@@ -37,17 +37,17 @@ export class IssuePage extends BasePage {
   // ── Attempts Section ─────────────────────────────────────────────────
 
   get attemptsSection(): Locator {
-    return this.page.locator("[class*='attempt'], [class*='run']").first();
+    return this.page.locator("table.attempts-table, [class*='attemptsTable'], [class*='attempt']").first();
   }
 
   get attemptRows(): Locator {
-    return this.page.locator(".attempt-row, tr, [class*='attempt-row']");
+    return this.page.locator("tbody tr, .attempt-row, [class*='attemptRow']");
   }
 
   // ── Events / Logs ────────────────────────────────────────────────────
 
   get eventRows(): Locator {
-    return this.page.locator(".event-row, [class*='event-row']");
+    return this.page.locator(".event-row, [class*='eventRow']");
   }
 
   get logRows(): Locator {
@@ -62,6 +62,22 @@ export class IssuePage extends BasePage {
 
   get modelInfo(): Locator {
     return this.page.getByText(/o3-mini|model/i).first();
+  }
+
+  get modelInput(): Locator {
+    return this.page.locator("input").first();
+  }
+
+  get reasoningSelect(): Locator {
+    return this.page.locator("select").first();
+  }
+
+  get saveButton(): Locator {
+    return this.page.getByRole("button", { name: "Save" });
+  }
+
+  get eventStreamHeading(): Locator {
+    return this.page.getByText(/Event stream/i).first();
   }
 
   get tokenUsage(): Locator {

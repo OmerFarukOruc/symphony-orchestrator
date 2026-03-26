@@ -28,6 +28,10 @@ export class ConfigPage extends BasePage {
     return this.page.getByRole("tab", { name });
   }
 
+  fieldByLabel(name: string): Locator {
+    return this.page.getByLabel(name);
+  }
+
   get activeTab(): Locator {
     return this.page.locator('[role="tab"][aria-selected="true"]');
   }

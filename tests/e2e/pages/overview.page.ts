@@ -18,21 +18,21 @@ export class OverviewPage extends BasePage {
 
   /** The "NOW" status bar with running/queue/rate-limit/attention counts. */
   get statusBar(): Locator {
-    return this.page.locator(".overview-status, .status-bar, .metric-row").first();
+    return this.page.locator(".overview-hero-band").first();
   }
 
   get runningCount(): Locator {
-    return this.page.getByText("RUNNING");
+    return this.page.locator(".overview-live-label").filter({ hasText: "Running" }).first();
   }
 
   get queueCount(): Locator {
-    return this.page.locator(".overview-live-label").filter({ hasText: "Queue" });
+    return this.page.locator(".overview-live-label").filter({ hasText: "Queue" }).first();
   }
 
   // ── Attention Queue ──────────────────────────────────────────────────
 
   get attentionSection(): Locator {
-    return this.page.locator("text=Attention").first();
+    return this.page.getByText("Attention rail", { exact: true });
   }
 
   get issueCards(): Locator {
@@ -42,7 +42,7 @@ export class OverviewPage extends BasePage {
   // ── Token Burn ───────────────────────────────────────────────────────
 
   get tokenBurnSection(): Locator {
-    return this.page.getByText("TOKEN BURN");
+    return this.page.getByText("Token burn", { exact: true });
   }
 
   // ── Recent Events ────────────────────────────────────────────────────
@@ -64,6 +64,6 @@ export class OverviewPage extends BasePage {
   // ── Quick Actions ────────────────────────────────────────────────────
 
   get quickActionsSection(): Locator {
-    return this.page.getByText("QUICK ACTIONS");
+    return this.page.getByText("Quick actions", { exact: true });
   }
 }

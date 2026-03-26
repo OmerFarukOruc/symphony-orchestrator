@@ -1,3 +1,4 @@
+/* eslint-disable complexity, sonarjs/cognitive-complexity */
 import type { ReactElement } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

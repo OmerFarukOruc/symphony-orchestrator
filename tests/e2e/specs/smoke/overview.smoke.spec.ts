@@ -16,8 +16,19 @@ test.describe("Overview Smoke", () => {
 
   test("renders metric status bar with running and queue counts", async ({ page }) => {
     const overview = new OverviewPage(page);
+    await expect(overview.statusBar).toBeVisible({ timeout: 5000 });
     await expect(overview.runningCount).toBeVisible({ timeout: 5000 });
     await expect(overview.queueCount).toBeVisible({ timeout: 5000 });
+  });
+
+  test("renders overview route parity content", async ({ page }) => {
+    await expect(page.getByText("Attention rail", { exact: true })).toBeVisible();
+    await expect(page.getByText("SYM-42", { exact: true })).toBeVisible();
+    await expect(page.getByText("Fix authentication bug", { exact: true })).toBeVisible();
+    await expect(page.getByText("Recent events", { exact: true })).toBeVisible();
+    await expect(page.getByText("System health", { exact: true })).toBeVisible();
+    await expect(page.getByText("Runtime info", { exact: true })).toBeVisible();
+    await expect(page.getByText("Codex", { exact: true })).toBeVisible();
   });
 
   test("shows attention section with issue cards", async ({ page }) => {
@@ -29,9 +40,9 @@ test.describe("Overview Smoke", () => {
     const overview = new OverviewPage(page);
     await expect(overview.tokenBurnSection).toBeVisible({ timeout: 5000 });
     // Verify token counts from the mock (15K input, 8K output, 23K total)
-    await expect(page.getByText("15K")).toBeVisible();
-    await expect(page.getByText("8K")).toBeVisible();
-    await expect(page.getByText("23K")).toBeVisible();
+    await expect(page.getByText("15K", { exact: true })).toBeVisible();
+    await expect(page.getByText("8K", { exact: true })).toBeVisible();
+    await expect(page.getByText("23K", { exact: true })).toBeVisible();
   });
 
   test("shows recent events section", async ({ page }) => {

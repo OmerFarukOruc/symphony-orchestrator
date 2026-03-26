@@ -7,105 +7,75 @@ test.describe("Unified Settings Smoke", () => {
     await apiMock.install(scenario);
   });
 
-  test("settings page loads the General tab by default", async ({ page }) => {
+  test("settings route loads the React settings form", async ({ page }) => {
     const settings = new ConfigPage(page);
     await settings.navigateToSettings();
 
-    await expect(settings.tabButton("General")).toHaveAttribute("aria-selected", "true");
-    await expect(page.locator("h1, .page-title").first()).toContainText("Settings");
+    await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+    await expect(page.getByTestId("settings-form")).toBeVisible();
   });
 
-  test("configure nav is consolidated to a single Settings entry", async ({ page }) => {
+  test("configure nav shows both Settings and Credentials entries", async ({ page }) => {
     const settings = new ConfigPage(page);
     await settings.navigateToSettings();
 
     await expect(page.locator('.sidebar-item[data-path="/settings"]')).toBeVisible();
+    await expect(page.locator('.sidebar-item[data-path="/secrets"]')).toBeVisible();
     await expect(page.locator('.sidebar-item[data-path="/config"]')).toHaveCount(0);
-    await expect(page.locator('.sidebar-item[data-path="/secrets"]')).toHaveCount(0);
   });
 
-  // ── Advanced Tab / Legacy Config Alias ─────────────────────────────
-
-  test("legacy /config route redirects to Settings → Advanced", async ({ page }) => {
+  test("legacy /config route redirects to settings route", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToConfig();
 
     expect(new URL(page.url()).pathname).toBe("/settings");
     expect(new URL(page.url()).hash).toBe("#advanced");
-    await expect(config.tabButton("Advanced")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
   });
 
-  test("advanced tab shows overlay entries", async ({ page }) => {
+  test("settings route shows overlay-backed fields", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToConfig();
 
-    await expect(page.getByText("codex.model").first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("orchestrator.max_concurrent").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel("Linear project slug")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel("Default model")).toBeVisible({ timeout: 5000 });
   });
 
-  test("advanced tab shows config editor mode buttons", async ({ page }) => {
+  test("settings route exposes save action", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToConfig();
 
-    await expect(page.locator(".config-mode-label").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("settings-save")).toBeVisible({ timeout: 5000 });
   });
 
-  test("advanced tab preserves unsaved raw edits across tab switches", async ({ page }) => {
+  test("settings route accepts draft edits", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToConfig();
 
-    await page.getByRole("button", { name: "Raw JSON" }).click();
-    const editor = page.locator(".config-textarea-large");
-    await editor.fill('{"draft":"keep-me"}');
-
-    await config.tabButton("Credentials").click();
-    await config.tabButton("Advanced").click();
-
-    await expect(editor).toHaveValue('{"draft":"keep-me"}');
+    const modelField = page.getByLabel("Default model");
+    await modelField.fill("gpt-5.4-mini");
+    await expect(modelField).toHaveValue("gpt-5.4-mini");
   });
 
-  // ── Credentials Tab / Legacy Secrets Alias ────────────────────────
-
-  test("legacy /secrets route redirects to Settings → Credentials", async ({ page }) => {
+  test("credentials route renders directly", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToSecrets();
 
-    expect(new URL(page.url()).pathname).toBe("/settings");
-    expect(new URL(page.url()).hash).toBe("#credentials");
-    await expect(config.tabButton("Credentials")).toHaveAttribute("aria-selected", "true");
+    expect(new URL(page.url()).pathname).toBe("/secrets");
+    await expect(page.getByRole("heading", { name: "Credentials", exact: true })).toBeVisible();
   });
 
-  test("credentials tab shows secret information", async ({ page }) => {
+  test("credentials route shows secret information", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToSecrets();
 
     await expect(page.getByText(/LINEAR_API_KEY/).first()).toBeVisible({ timeout: 5000 });
   });
 
-  test("credentials tab has new secret button", async ({ page }) => {
+  test("credentials route has new secret button", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToSecrets();
 
     await expect(page.getByText("New secret")).toBeVisible({ timeout: 5000 });
-  });
-
-  test("global keyboard aliases open Advanced and Credentials tabs", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForSelector("#main-content", { state: "attached" });
-    await page.waitForFunction(() => {
-      const outlet = document.getElementById("main-content");
-      return outlet && outlet.children.length > 0;
-    });
-
-    await page.keyboard.press("g");
-    await page.keyboard.press("c");
-    await expect(page.getByRole("tab", { name: "Advanced" })).toHaveAttribute("aria-selected", "true");
-    expect(new URL(page.url()).pathname).toBe("/settings");
-    expect(new URL(page.url()).hash).toBe("#advanced");
-
-    await page.keyboard.press("g");
-    await page.keyboard.press("s");
-    await expect(page.getByRole("tab", { name: "Credentials" })).toHaveAttribute("aria-selected", "true");
-    expect(new URL(page.url()).hash).toBe("#credentials");
   });
 });
