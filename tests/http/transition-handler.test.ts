@@ -54,28 +54,9 @@ function makeConfigStore() {
 }
 
 describe("handleTransition", () => {
-  it("returns 400 when target_state is missing", async () => {
-    const res = makeResponse();
-    await handleTransition(
-      { orchestrator: makeOrchestrator() as never },
-      makeRequest({}, { issue_identifier: "MT-1" }),
-      res,
-    );
-    expect(res._status).toBe(400);
-    expect((res._body as Record<string, unknown>).error).toEqual(
-      expect.objectContaining({ code: "missing_target_state" }),
-    );
-  });
-
-  it("returns 400 when target_state is empty string", async () => {
-    const res = makeResponse();
-    await handleTransition(
-      { orchestrator: makeOrchestrator() as never },
-      makeRequest({ target_state: "   " }, { issue_identifier: "MT-1" }),
-      res,
-    );
-    expect(res._status).toBe(400);
-  });
+  // NOTE: Body validation (missing/empty target_state) is now handled by the
+  // validateBody() middleware. Those cases are covered in
+  // tests/http/validation.test.ts and tests/http/server.test.ts.
 
   it("returns 404 when issue is not found", async () => {
     const res = makeResponse();

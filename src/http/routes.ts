@@ -15,8 +15,10 @@ import type { SecretsStore } from "../secrets/store.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
+import { modelUpdateSchema, transitionSchema } from "./request-schemas.js";
 import { handleTransition } from "./transition-handler.js";
 import { handleGetTransitions } from "./transitions-api.js";
+import { validateBody } from "./validation.js";
 import { handleWorkspaceInventory, handleWorkspaceRemove } from "./workspace-inventory.js";
 import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
 import type { LinearClient } from "../linear/client.js";
@@ -136,7 +138,7 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
 
   app
     .route("/api/v1/:issue_identifier/model")
-    .post(async (req, res) => {
+    .post(validateBody(modelUpdateSchema), async (req, res) => {
       await handleModelUpdate(deps.orchestrator, req, res);
     })
     .all((_req, res) => {
@@ -168,7 +170,7 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
 
   app
     .route("/api/v1/:issue_identifier/transition")
-    .post(async (req, res) => {
+    .post(validateBody(transitionSchema), async (req, res) => {
       await handleTransition(
         { orchestrator: deps.orchestrator, linearClient: deps.linearClient, configStore: deps.configStore },
         req,

@@ -6,6 +6,7 @@ import type { Orchestrator } from "../orchestrator/orchestrator.js";
 import { StateMachine } from "../state/machine.js";
 import type { ConfigStore } from "../config/store.js";
 import { asBooleanOrNull, asRecord, asStringOrNull } from "../utils/type-guards.js";
+import type { TransitionBody } from "./request-schemas.js";
 
 interface TransitionDeps {
   orchestrator: Orchestrator;
@@ -13,12 +14,15 @@ interface TransitionDeps {
   configStore?: ConfigStore;
 }
 
+/**
+ * Handles POST /:issue_identifier/transition.
+ *
+ * Expects `validateBody(transitionSchema)` middleware to have already
+ * validated and attached the parsed body to `req.body`.
+ */
 export async function handleTransition(deps: TransitionDeps, req: Request, res: Response): Promise<void> {
-  const targetState = typeof req.body?.target_state === "string" ? req.body.target_state.trim() : null;
-  if (!targetState) {
-    res.status(400).json({ error: { code: "missing_target_state", message: "target_state is required" } });
-    return;
-  }
+  const body = req.body as TransitionBody;
+  const targetState = body.target_state;
 
   const identifier = String(req.params.issue_identifier);
   const detail = deps.orchestrator.getIssueDetail(identifier);

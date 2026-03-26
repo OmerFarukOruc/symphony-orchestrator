@@ -30,43 +30,9 @@ function makeOrchestrator(updateResult: unknown = null) {
 }
 
 describe("handleModelUpdate", () => {
-  it("returns 400 when model is missing", async () => {
-    const res = makeResponse();
-    await handleModelUpdate(makeOrchestrator() as never, makeRequest({}, { issue_identifier: "MT-1" }), res);
-    expect(res._status).toBe(400);
-    expect((res._body as Record<string, unknown>).error).toEqual(expect.objectContaining({ code: "invalid_model" }));
-  });
-
-  it("returns 400 when model is empty string", async () => {
-    const res = makeResponse();
-    await handleModelUpdate(
-      makeOrchestrator() as never,
-      makeRequest({ model: "   " }, { issue_identifier: "MT-1" }),
-      res,
-    );
-    expect(res._status).toBe(400);
-  });
-
-  it("returns 400 for invalid reasoning_effort", async () => {
-    const res = makeResponse();
-    await handleModelUpdate(
-      makeOrchestrator() as never,
-      makeRequest({ model: "gpt-4o", reasoning_effort: "invalid" }, { issue_identifier: "MT-1" }),
-      res,
-    );
-    expect(res._status).toBe(400);
-    expect((res._body as Record<string, { code: string }>).error.code).toBe("invalid_reasoning_effort");
-  });
-
-  it("returns 400 for non-string reasoning_effort", async () => {
-    const res = makeResponse();
-    await handleModelUpdate(
-      makeOrchestrator() as never,
-      makeRequest({ model: "gpt-4o", reasoning_effort: 42 }, { issue_identifier: "MT-1" }),
-      res,
-    );
-    expect(res._status).toBe(400);
-  });
+  // NOTE: Body validation (missing model, invalid reasoning_effort, etc.) is now
+  // handled by the validateBody() middleware. Those cases are covered in
+  // tests/http/validation.test.ts and tests/http/server.test.ts.
 
   it("returns 404 when orchestrator returns null", async () => {
     const res = makeResponse();
