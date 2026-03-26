@@ -81,6 +81,16 @@ export class AttemptStore {
     return [...this.attempts.values()];
   }
 
+  sumArchivedSeconds(): number {
+    return [...this.attempts.values()].reduce((total, attempt) => {
+      if (!attempt.endedAt) return total;
+      const startedAt = Date.parse(attempt.startedAt);
+      const endedAt = Date.parse(attempt.endedAt);
+      if (Number.isNaN(startedAt) || Number.isNaN(endedAt) || endedAt < startedAt) return total;
+      return total + (endedAt - startedAt) / 1000;
+    }, 0);
+  }
+
   getEvents(attemptId: string): AttemptEvent[] {
     return [...(this.eventsByAttempt.get(attemptId) ?? [])];
   }

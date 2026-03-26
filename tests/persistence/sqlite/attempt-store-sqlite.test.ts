@@ -217,6 +217,47 @@ describe("SqliteAttemptStore", () => {
     store.close();
   });
 
+  it("sumArchivedSeconds returns 0 for an empty store", async () => {
+    const dir = await createTempDir();
+    const store = await createStore(dir);
+
+    expect(store.sumArchivedSeconds()).toBe(0);
+    store.close();
+  });
+
+  it("sumArchivedSeconds sums completed attempts and ignores incomplete ones", async () => {
+    const dir = await createTempDir();
+    const store = await createStore(dir);
+
+    const first = createAttempt({
+      attemptId: "attempt-1",
+      startedAt: "2026-03-16T10:00:00.000Z",
+      endedAt: "2026-03-16T10:05:00.000Z",
+      status: "completed",
+    });
+    const second = createAttempt({
+      attemptId: "attempt-2",
+      startedAt: "2026-03-16T11:00:00.000Z",
+      endedAt: "2026-03-16T11:02:00.000Z",
+      status: "completed",
+    });
+    // still running — should be excluded
+    const running = createAttempt({
+      attemptId: "attempt-3",
+      startedAt: "2026-03-16T12:00:00.000Z",
+      endedAt: null,
+      status: "running",
+    });
+
+    await store.createAttempt(first);
+    await store.createAttempt(second);
+    await store.createAttempt(running);
+
+    // 5*60 + 2*60 = 420 seconds
+    expect(store.sumArchivedSeconds()).toBeCloseTo(420, 0);
+    store.close();
+  });
+
   it("preserves token usage through round-trip", async () => {
     const dir = await createTempDir();
     const store = await createStore(dir);

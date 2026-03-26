@@ -5,7 +5,7 @@
  * persists data in a SQLite database for queryable, durable storage.
  */
 
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, isNotNull, sql } from "drizzle-orm";
 import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "../../core/types.js";
 import { closeDatabase, openDatabase, type SymphonyDatabase } from "./database.js";
 import { attemptEvents, attempts } from "./schema.js";
@@ -74,6 +74,17 @@ export class SqliteAttemptStore {
   async appendEvent(event: AttemptEvent): Promise<void> {
     const row = attemptEventToRow(event);
     this.getDb().insert(attemptEvents).values(row).run();
+  }
+
+  sumArchivedSeconds(): number {
+    const result = this.getDb()
+      .select({
+        total: sql<number>`COALESCE(SUM((julianday(ended_at) - julianday(started_at)) * 86400.0), 0.0)`,
+      })
+      .from(attempts)
+      .where(isNotNull(attempts.endedAt))
+      .get();
+    return result?.total ?? 0;
   }
 
   /**

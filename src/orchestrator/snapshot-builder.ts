@@ -43,9 +43,9 @@ interface AttemptSummary {
 export interface SnapshotBuilderDeps {
   attemptStore: {
     getAttempt: (attemptId: string) => AttemptRecord | null;
-    getAllAttempts: () => AttemptRecord[];
     getEvents: (attemptId: string) => RecentEvent[];
     getAttemptsForIssue: (issueIdentifier: string) => AttemptRecord[];
+    sumArchivedSeconds: () => number;
   };
 }
 
@@ -191,23 +191,11 @@ export function computeSecondsRunning(
   attemptStore: SnapshotBuilderDeps["attemptStore"],
   getRunningEntries: () => Map<string, RunningEntry>,
 ): number {
-  const archivedSeconds = attemptStore.getAllAttempts().reduce((total, attempt) => {
-    if (!attempt.endedAt) {
-      return total;
-    }
-    const startedAt = Date.parse(attempt.startedAt);
-    const endedAt = Date.parse(attempt.endedAt);
-    if (Number.isNaN(startedAt) || Number.isNaN(endedAt) || endedAt < startedAt) {
-      return total;
-    }
-    return total + (endedAt - startedAt) / 1000;
-  }, 0);
-
+  const archivedSeconds = attemptStore.sumArchivedSeconds();
   const liveSeconds = [...getRunningEntries().values()].reduce(
     (total, entry) => total + Math.max(0, (Date.now() - entry.startedAtMs) / 1000),
     0,
   );
-
   return archivedSeconds + liveSeconds;
 }
 

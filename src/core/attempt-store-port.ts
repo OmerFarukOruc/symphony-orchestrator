@@ -17,6 +17,7 @@ export interface AttemptStorePort {
   createAttempt(attempt: AttemptRecord): Promise<void>;
   updateAttempt(attemptId: string, patch: Partial<AttemptRecord>): Promise<void>;
   appendEvent(event: AttemptEvent): Promise<void>;
+  sumArchivedSeconds(): number;
 }
 
 /** Sort attempts newest-first by `startedAt`. Shared by both store implementations. */

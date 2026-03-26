@@ -241,6 +241,61 @@ describe("AttemptStore", () => {
     ]);
   });
 
+  it("sumArchivedSeconds returns 0 for an empty store", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    expect(store.sumArchivedSeconds()).toBe(0);
+  });
+
+  it("sumArchivedSeconds sums completed attempts and ignores incomplete ones", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    const first = createAttempt({
+      attemptId: "attempt-1",
+      startedAt: "2026-03-16T10:00:00.000Z",
+      endedAt: "2026-03-16T10:03:00.000Z",
+      status: "completed",
+    });
+    const second = createAttempt({
+      attemptId: "attempt-2",
+      startedAt: "2026-03-16T11:00:00.000Z",
+      endedAt: "2026-03-16T11:01:00.000Z",
+      status: "completed",
+    });
+    // still running — should be excluded
+    const running = createAttempt({
+      attemptId: "attempt-3",
+      startedAt: "2026-03-16T12:00:00.000Z",
+      endedAt: null,
+      status: "running",
+    });
+
+    await store.createAttempt(first);
+    await store.createAttempt(second);
+    await store.createAttempt(running);
+
+    // 3*60 + 1*60 = 240 seconds
+    expect(store.sumArchivedSeconds()).toBe(240);
+  });
+
+  it("sumArchivedSeconds ignores attempts with invalid date ranges", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    const invalid = createAttempt({
+      attemptId: "attempt-1",
+      startedAt: "2026-03-16T10:05:00.000Z",
+      endedAt: "2026-03-16T10:00:00.000Z",
+      status: "completed",
+    });
+
+    await store.createAttempt(invalid);
+
+    expect(store.sumArchivedSeconds()).toBe(0);
+  });
+
   it("migrates legacy newest-first event archives to chronological storage on startup", async () => {
     const baseDir = await createTempDir();
     const attemptsDir = path.join(baseDir, "attempts");
