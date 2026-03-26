@@ -53,7 +53,10 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
     releaseIssueClaim: (issueId) => state.claimedIssueIds.delete(issueId),
     claimIssue: (issueId) => state.claimedIssueIds.add(issueId),
     notify: (event) => notifyChannel(deps, event),
-    pushEvent: (event) => pushRecentEvent(state.recentEvents, event),
+    pushEvent: (event) => {
+      pushRecentEvent(state.recentEvents, event);
+      forwardToEventBus(deps, event);
+    },
     queueRetry: (issue, attempt, delayMs, error) =>
       queueRetryState(buildCtx(state, deps), issue, attempt, delayMs, error),
     clearRetryEntry: (issueId) => clearRetryEntryState(buildCtx(state, deps), issueId),
@@ -79,7 +82,10 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
         runningEntries: state.runningEntries,
         stallEvents: state.stallEvents,
         getConfig: () => deps.configStore.getConfig(),
-        pushEvent: (event) => pushRecentEvent(state.recentEvents, event),
+        pushEvent: (event) => {
+          pushRecentEvent(state.recentEvents, event);
+          forwardToEventBus(deps, event);
+        },
         logger: { warn: (...args) => deps.logger.warn(...args) },
       }),
   };
@@ -120,6 +126,16 @@ function pushRecentEvent(recentEvents: RecentEvent[], event: RuntimeEventRecord)
   if (recentEvents.length > 250) {
     recentEvents.shift();
   }
+}
+
+function forwardToEventBus(deps: OrchestratorDeps, event: RuntimeEventRecord): void {
+  deps.eventBus?.emit("agent.event", {
+    issueId: event.issueId ?? "",
+    identifier: event.issueIdentifier ?? "",
+    type: event.event,
+    message: event.message,
+    sessionId: event.sessionId ?? null,
+  });
 }
 
 function applyUsageEvent(
