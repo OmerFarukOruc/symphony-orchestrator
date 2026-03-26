@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker/master/packages/core/schema/stryker-core.schema.json",
+  "testRunner": "vitest",
+  "checkers": ["typescript"],
+  "tsconfigFile": "tsconfig.json",
+  "mutate": [
+    "src/config/coercion.ts",
+    "src/config/validators.ts",
+    "src/state/policy.ts",
+    "src/workspace/path-registry.ts",
+    "src/core/content-sanitizer.ts"
+  ],
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 70
+  },
+  "reporters": ["html", "clear-text", "progress"],
+  "timeoutMS": 60000,
+  "ignorePatterns": [".agents", ".claude", "docs", "skills", "dist", "frontend"]
+}

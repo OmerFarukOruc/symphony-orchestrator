@@ -12,8 +12,10 @@ dist/
 .idea/
 .vscode/
 
-# Temp coverage or generated artifacts
+# Coverage and mutation testing artifacts
 coverage/
+reports/
+.stryker-tmp/
 
 # Playwright E2E test artifacts
 playwright-report/
