@@ -113,7 +113,7 @@ export class AttemptStore {
 
     const next = { ...current, ...patch };
     this.attempts.set(attemptId, next);
-    this.reindexAttempt(current, next);
+    await this.reindexAttempt(current, next);
     await this.persistAttempt(next);
   }
 
@@ -153,7 +153,7 @@ export class AttemptStore {
     }
   }
 
-  private reindexAttempt(previous: AttemptRecord, next: AttemptRecord): void {
+  private async reindexAttempt(previous: AttemptRecord, next: AttemptRecord): Promise<void> {
     if (previous.issueIdentifier === next.issueIdentifier) {
       return;
     }
@@ -164,7 +164,7 @@ export class AttemptStore {
       previousList.filter((attemptId) => attemptId !== previous.attemptId),
     );
     this.indexAttempt(next);
-    void this.persistIssueIndex();
+    await this.persistIssueIndex();
   }
 
   private async persistIssueIndex(): Promise<void> {

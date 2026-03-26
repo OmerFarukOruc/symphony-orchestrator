@@ -20,7 +20,7 @@ function compileRoute(path: string): { pattern: RegExp; keys: string[] } {
       return segment.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
     })
     .join("\\/");
-  return { pattern: RegExp(`^${source}$`), keys };
+  return { pattern: RegExp(`^${source}$`), keys }; // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
 }
 
 /** Extracted from frontend/src/router.ts — match() */
