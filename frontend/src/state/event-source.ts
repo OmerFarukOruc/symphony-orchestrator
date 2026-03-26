@@ -18,24 +18,15 @@ const LIFECYCLE_EVENTS = new Set(["issue.started", "issue.completed", "issue.sta
 let source: EventSource | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-export let sseConnected = false;
-
 export function connectEventSource(): void {
   if (source) return;
   openConnection();
-}
-
-export function disconnectEventSource(): void {
-  cleanup();
-  sseConnected = false;
-  setPollingInterval(DISCONNECTED_POLL_MS);
 }
 
 function openConnection(): void {
   const eventSource = new EventSource(SSE_URL);
 
   eventSource.onopen = () => {
-    sseConnected = true;
     setPollingInterval(CONNECTED_POLL_MS);
   };
 
@@ -47,7 +38,6 @@ function openConnection(): void {
   };
 
   eventSource.onerror = () => {
-    sseConnected = false;
     setPollingInterval(DISCONNECTED_POLL_MS);
     cleanup();
     reconnectTimer = setTimeout(() => {
