@@ -30,8 +30,8 @@ import {
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
-import type { HttpServerDeps } from "./server.js";
 import { refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
+import type { HttpServerDeps } from "./server-deps.js";
 import { handleTransition } from "./transition-handler.js";
 import { handleGetTransitions } from "./transitions-api.js";
 import { handleWorkspaceInventory, handleWorkspaceRemove } from "./workspace-inventory.js";

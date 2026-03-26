@@ -4,13 +4,15 @@ import { asc, notInArray, type InferSelectModel } from "drizzle-orm";
 
 import type { SecretBackend, SymphonyLogger } from "@symphony/shared";
 
-import { isEnabled } from "../core/feature-flags.js";
 import { decryptText, deriveKey, encryptText, type SecretsEnvelope } from "../secrets/crypto.js";
-import { SecretsStore, type SecretsStoreOptions } from "../secrets/store.js";
 import { openDatabaseConnection, type SqliteConnection } from "./connection.js";
-import { secrets } from "./schema.js";
+import { secretAuditRows, secrets } from "./schema.js";
 
-export const SQLITE_SECRET_READS_FLAG = "SQLITE_SECRET_READS";
+export interface SecretsStoreOptions {
+  masterKey?: string;
+  auditLog?: boolean;
+  notifySubscribers?: boolean;
+}
 
 type SecretSnapshot = Record<string, string>;
 type SecretRow = InferSelectModel<typeof secrets>;
@@ -127,6 +129,7 @@ export class SecretsStoreSqlite implements LifecycleSecretBackend {
     }
     this.cache.set(key, value);
     await this.replaceAll(this.snapshot());
+    await this.appendAuditEntry("set", key);
     this.notify();
   }
 
@@ -140,6 +143,7 @@ export class SecretsStoreSqlite implements LifecycleSecretBackend {
       return false;
     }
     await this.replaceAll(this.snapshot());
+    await this.appendAuditEntry("delete", key);
     this.notify();
     return true;
   }
@@ -199,6 +203,17 @@ export class SecretsStoreSqlite implements LifecycleSecretBackend {
     return this.readRows().length > 0;
   }
 
+  private async appendAuditEntry(operation: "set" | "delete", key: string): Promise<void> {
+    this.connectionOrOpen()
+      .db.insert(secretAuditRows)
+      .values({
+        at: new Date().toISOString(),
+        operation,
+        key,
+      })
+      .run();
+  }
+
   private notify(): void {
     if (this.options?.notifySubscribers === false) {
       return;
@@ -242,131 +257,5 @@ export class SecretsStoreSqlite implements LifecycleSecretBackend {
       }
     }
     applySnapshot(this.cache, snapshot);
-  }
-}
-
-export class DualWriteSecretStore implements LifecycleSecretBackend {
-  private readonly listeners = new Set<() => void>();
-  private readonly fileStore: SecretsStore;
-  private readonly sqliteStore: SecretsStoreSqlite;
-  private readonly options?: SecretsStoreOptions & { dbPath?: string | null };
-
-  constructor(baseDir: string, logger: SymphonyLogger, options?: SecretsStoreOptions & { dbPath?: string | null }) {
-    this.options = options;
-    this.fileStore = new SecretsStore(baseDir, logger, { ...options, notifySubscribers: false });
-    this.sqliteStore = new SecretsStoreSqlite(baseDir, logger, { ...options, notifySubscribers: false });
-  }
-
-  async start(): Promise<void> {
-    await this.startDeferred();
-    const masterKey = this.resolveMasterKey();
-    await this.initializeBackends(masterKey);
-  }
-
-  async startDeferred(): Promise<void> {
-    await this.fileStore.startDeferred();
-    await this.sqliteStore.startDeferred();
-  }
-
-  async initializeWithKey(masterKey: string): Promise<void> {
-    await this.startDeferred();
-    await this.initializeBackends(masterKey);
-    this.notify();
-  }
-
-  isInitialized(): boolean {
-    return this.fileStore.isInitialized();
-  }
-
-  reset(): void {
-    this.fileStore.reset();
-    this.sqliteStore.reset();
-    this.notify();
-  }
-
-  subscribe(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  }
-
-  list(): string[] {
-    return this.readBackend().list();
-  }
-
-  get(key: string): string | null {
-    return this.readBackend().get(key);
-  }
-
-  async store(key: string, value: string): Promise<void> {
-    await this.fileStore.store(key, value);
-    await this.syncSqliteFromFile();
-    this.notify();
-  }
-
-  async set(key: string, value: string): Promise<void> {
-    await this.store(key, value);
-  }
-
-  async delete(key: string): Promise<boolean> {
-    const deleted = await this.fileStore.delete(key);
-    if (!deleted) {
-      return false;
-    }
-    await this.syncSqliteFromFile();
-    this.notify();
-    return true;
-  }
-
-  snapshot(): SecretSnapshot {
-    return this.fileStore.snapshot();
-  }
-
-  async replaceAll(snapshot: SecretSnapshot): Promise<void> {
-    await this.fileStore.replaceAll(snapshot);
-    await this.sqliteStore.replaceAll(snapshot);
-  }
-
-  private readBackend(): SecretBackend {
-    return isEnabled(SQLITE_SECRET_READS_FLAG) ? this.sqliteStore : this.fileStore;
-  }
-
-  private async syncSqliteFromFile(): Promise<void> {
-    await this.sqliteStore.replaceAll(this.fileStore.snapshot());
-  }
-
-  private resolveMasterKey(): string {
-    const masterKey = this.options?.masterKey ?? process.env.MASTER_KEY ?? "";
-    if (!masterKey) {
-      throw new Error("MASTER_KEY is required to initialize SecretsStore");
-    }
-    return masterKey;
-  }
-
-  private async initializeBackends(masterKey: string): Promise<void> {
-    const fileHasSource = await this.fileStore.hasPersistedSource();
-    const sqliteHasSource = this.sqliteStore.hasPersistedSecrets();
-
-    if (fileHasSource) {
-      await this.fileStore.initializeWithKey(masterKey);
-      await this.sqliteStore.initializeWithKey(masterKey);
-      await this.syncSqliteFromFile();
-      return;
-    }
-
-    if (sqliteHasSource) {
-      await this.sqliteStore.initializeWithKey(masterKey);
-      await this.fileStore.initializeWithKey(masterKey);
-      await this.fileStore.replaceAll(this.sqliteStore.snapshot());
-      return;
-    }
-
-    await this.fileStore.initializeWithKey(masterKey);
-    await this.sqliteStore.initializeWithKey(masterKey);
-  }
-
-  private notify(): void {
-    for (const listener of this.listeners) {
-      listener();
-    }
   }
 }

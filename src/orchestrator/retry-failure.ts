@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { AttemptStore } from "../core/attempt-store.js";
+import type { AttemptStore } from "@symphony/shared";
 import { issueView, nowIso } from "./views.js";
 import type { Issue, ModelSelection, RecentEvent, AttemptRecord } from "../core/types.js";
 import type { RunningEntry } from "./runtime-types.js";

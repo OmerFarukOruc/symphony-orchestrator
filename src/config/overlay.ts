@@ -1,16 +1,8 @@
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
-import chokidar, { type FSWatcher } from "chokidar";
-
 import type { SymphonyLogger } from "../core/types.js";
-import { FEATURE_FLAG_SQLITE_CONFIG_READS, isEnabled } from "../core/feature-flags.js";
-import {
-  ConfigStoreSqlite,
-  DualWriteConfigStore,
-  type ConfigOverlayPersistenceStore,
-} from "../db/config-store-sqlite.js";
-import { FileConfigStore } from "./file-config-store.js";
+import { ConfigStoreSqlite } from "../db/config-store-sqlite.js";
 import {
   flattenOverlayMap,
   isDangerousKey,
@@ -46,48 +38,23 @@ function mergeDeep(base: Record<string, unknown>, patch: Record<string, unknown>
 export class ConfigOverlayStore {
   private overlay: Record<string, unknown> = {};
   private readonly listeners = new Set<() => void>();
-  private watcher: FSWatcher | null = null;
-  private readonly fileStore: FileConfigStore;
   private readonly sqliteStore: ConfigStoreSqlite;
-  private readonly writeStore: ConfigOverlayPersistenceStore;
 
   constructor(
     private readonly overlayPath: string,
     private readonly logger: SymphonyLogger,
   ) {
     const archiveDir = path.dirname(path.dirname(this.overlayPath));
-    this.fileStore = new FileConfigStore(this.overlayPath, this.logger);
     this.sqliteStore = new ConfigStoreSqlite(archiveDir, this.logger.child({ component: "config-overlay-sqlite" }));
-    this.writeStore = new DualWriteConfigStore(this.fileStore, this.sqliteStore, this.logger);
   }
 
   async start(): Promise<void> {
     await mkdir(path.dirname(this.overlayPath), { recursive: true });
-    const fileSource = await this.readOverlaySource({ allowMissingFile: true }, "startup:file");
-    if (fileSource !== null) {
-      await this.applySource("startup:file");
-    } else {
-      this.overlay = await this.loadReadMap("startup");
-    }
-
-    this.watcher = chokidar.watch(this.overlayPath, {
-      ignoreInitial: true,
-      awaitWriteFinish: {
-        stabilityThreshold: 200,
-        pollInterval: 50,
-      },
-    });
-    this.watcher.on("add", () => void this.reloadFromDisk("watch:add", { allowMissingFile: true }));
-    this.watcher.on("change", () => void this.reloadFromDisk("watch:change", { allowMissingFile: true }));
-    this.watcher.on("unlink", () => void this.reloadFromDisk("watch:unlink", { allowMissingFile: true }));
+    this.overlay = cloneOverlayMap(await this.sqliteStore.load());
   }
 
   async stop(): Promise<void> {
-    if (this.watcher) {
-      await this.watcher.close();
-      this.watcher = null;
-    }
-    this.writeStore.close?.();
+    this.sqliteStore.close();
   }
 
   subscribe(listener: () => void): () => void {
@@ -173,8 +140,8 @@ export class ConfigOverlayStore {
       return false;
     }
 
-    await this.writeStore.replaceAll?.(this.toEntries(nextMap));
-    this.overlay = await this.loadReadMap(reason, nextMap);
+    await this.sqliteStore.replaceAll(this.toEntries(nextMap));
+    this.overlay = cloneOverlayMap(nextMap);
     this.logger.info({ reason, overlayPath: this.overlayPath }, "config overlay updated");
     this.notify();
     return true;
@@ -186,68 +153,7 @@ export class ConfigOverlayStore {
     }
   }
 
-  private async reloadFromDisk(reason: string, options: { allowMissingFile: boolean }): Promise<void> {
-    const source = await this.readOverlaySource(options, reason);
-    if (source === null) {
-      return;
-    }
-    await this.applySource(reason);
-  }
-
-  private async readOverlaySource(options: { allowMissingFile: boolean }, reason: string): Promise<string | null> {
-    try {
-      return await readFile(this.overlayPath, "utf8");
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code === "ENOENT" && options.allowMissingFile) {
-        return null;
-      }
-      this.logger.warn({ error: String(error), reason }, "config overlay read failed");
-      return null;
-    }
-  }
-
-  private async applySource(reason: string): Promise<void> {
-    let fileMap: Record<string, unknown>;
-    try {
-      fileMap = await this.fileStore.load();
-    } catch (error) {
-      this.logger.warn({ reason, overlayPath: this.overlayPath, error: String(error) }, "config overlay parse failed");
-      return;
-    }
-
-    if (isOverlayEqual(this.overlay, fileMap)) {
-      return;
-    }
-
-    await this.syncSqlite(fileMap, reason);
-    this.overlay = await this.loadReadMap(reason, fileMap);
-    this.logger.info({ reason, overlayPath: this.overlayPath }, "config overlay reloaded");
-    this.notify();
-  }
-
   private toEntries(map: Record<string, unknown>): ConfigOverlayEntry[] {
     return flattenOverlayMap(map);
-  }
-
-  private async loadReadMap(reason: string, fallbackMap?: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const readStore = isEnabled(FEATURE_FLAG_SQLITE_CONFIG_READS) ? this.sqliteStore : this.fileStore;
-    try {
-      return cloneOverlayMap(await readStore.load());
-    } catch (error) {
-      if (fallbackMap === undefined) {
-        throw error;
-      }
-      this.logger.warn({ reason, error: String(error) }, "config overlay read backend failed; using file snapshot");
-      return cloneOverlayMap(fallbackMap);
-    }
-  }
-
-  private async syncSqlite(map: Record<string, unknown>, reason: string): Promise<void> {
-    try {
-      await this.sqliteStore.replaceAll?.(this.toEntries(map));
-    } catch (error) {
-      this.logger.warn({ reason, error: String(error) }, "config overlay SQLite sync failed");
-    }
   }
 }

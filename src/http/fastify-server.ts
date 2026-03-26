@@ -1,33 +1,29 @@
 import { randomUUID } from "node:crypto";
-import { join } from "node:path";
 import fastifyCors from "@fastify/cors";
 import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import fastifySwagger from "@fastify/swagger";
 import Fastify, { type FastifyInstance } from "fastify";
-import { schemas } from "@symphony/shared";
+import { schemas, type SecretBackend } from "@symphony/shared";
 
 import type { ConfigStore } from "../config/store.js";
 import { REQUEST_ID_HEADER, resolveRequestId, runWithRequestContext } from "../observability/tracing.js";
 import { globalMetrics } from "../observability/prom-client-metrics.js";
-import type { RuntimeSnapshot, SymphonyLogger } from "../core/types.js";
-import type { ConfigOverlayStore } from "../config/overlay.js";
-import type { SecretBackend } from "@symphony/shared";
-import type { LinearClient } from "../linear/client.js";
-import { Orchestrator } from "../orchestrator/orchestrator.js";
+import type { RuntimeSnapshot } from "../core/types.js";
 import {
   registerFastifyHttpRoutes,
   type ControlPlaneInvalidationEvent,
   type FastifyRouteDeps,
 } from "./fastify-routes.js";
+import { resolveFrontendPath } from "./frontend-path.js";
 import { createError, serializeSnapshot } from "./route-helpers.js";
+import type { HttpServerDeps } from "./server-deps.js";
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const POLL_INTERVAL_MS = 1_000;
 const RETRY_INTERVAL_MS = 5_000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 300;
-const defaultFrontendDist = join(process.cwd(), "dist/frontend");
 const LOCAL_FRONTEND_ORIGIN = "http://127.0.0.1:4001";
 const LOCALHOST_FRONTEND_ORIGIN = "http://localhost:4001";
 
@@ -39,16 +35,7 @@ interface CorsDecisionCallback {
   (error: Error | null, allow: boolean): void;
 }
 
-export interface FastifyServerDeps {
-  orchestrator: Orchestrator;
-  logger: SymphonyLogger;
-  linearClient?: LinearClient;
-  configStore?: ConfigStore;
-  configOverlayStore?: ConfigOverlayStore;
-  secretsStore?: SecretBackend;
-  frontendDir?: string;
-  archiveDir?: string;
-}
+export type FastifyServerDeps = HttpServerDeps;
 
 interface SseClient {
   id: string;
@@ -132,7 +119,7 @@ export class FastifyServer {
     this.registerEventStream();
     registerFastifyHttpRoutes(this.app, this.routeDeps());
 
-    const staticRoot = this.deps.frontendDir ?? defaultFrontendDist;
+    const staticRoot = resolveFrontendPath({ frontendDir: this.deps.frontendDir });
     await this.app.register(fastifyStatic, { root: staticRoot, prefix: "/", wildcard: true });
     this.app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith("/api/") || request.url === "/metrics") {

@@ -78,6 +78,14 @@ function bootstrapSchema(database: Database.Database): void {
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS secrets_updated_at_idx ON secrets(updated_at);
+
+    CREATE TABLE IF NOT EXISTS secret_audit_rows (
+      id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      at TEXT NOT NULL,
+      operation TEXT NOT NULL,
+      key TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS secret_audit_rows_at_idx ON secret_audit_rows(at);
   `);
 }
 

@@ -4,13 +4,11 @@ import { parseArgs } from "node:util";
 
 import { ConfigOverlayStore } from "../config/overlay.js";
 import { ConfigStore } from "../config/store.js";
-import { FEATURE_FLAG_DUAL_SERVER } from "../core/feature-flags.js";
-import { HttpServer } from "../http/server.js";
+import { closeDatabaseConnection } from "../db/connection.js";
+import { SecretsStoreSqlite } from "../db/secrets-store-sqlite.js";
 import { createLogger } from "../core/logger.js";
 import { getErrorTracker, initErrorTracking } from "../core/error-tracking.js";
-import { DualWriteSecretStore } from "../db/secrets-store-sqlite.js";
-import { closeSymphonyDatabase } from "../persistence/sqlite/database.js";
-import { isEnabled, loadFlags } from "../core/feature-flags.js";
+import { loadFlags } from "../core/feature-flags.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import type { ValidationError } from "../core/types.js";
 import { createServices } from "./services.js";
@@ -44,8 +42,8 @@ async function initializeSecretsStore(
   archiveDir: string,
   fileKey: string | null,
   logger: ReturnType<typeof createLogger>,
-): Promise<{ secretsStore: DualWriteSecretStore; needsSetup: boolean }> {
-  const secretsStore = new DualWriteSecretStore(
+): Promise<{ secretsStore: SecretsStoreSqlite; needsSetup: boolean }> {
+  const secretsStore = new SecretsStoreSqlite(
     archiveDir,
     logger.child({ component: "secrets" }),
     fileKey ? { masterKey: fileKey } : undefined,
@@ -115,30 +113,18 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger);
   wireNotifications(services.notificationManager, configStore, logger);
 
-  const { orchestrator, httpServer, fastifyServer } = services;
+  const { orchestrator, httpServer } = services;
   await cleanupTransientWorkspaceDirs(config.workspace.root);
   if (!needsSetup) {
     await orchestrator.start();
   }
   await httpServer.start(port);
-  if (fastifyServer) {
-    await fastifyServer.start(4002);
-  }
 
-  const shutdown = buildShutdown(
-    httpServer,
-    fastifyServer,
-    orchestrator,
-    configStore,
-    overlayStore,
-    logger,
-    archiveDir,
-  );
+  const shutdown = buildShutdown(httpServer, orchestrator, configStore, overlayStore, logger, archiveDir);
   logger.info(
     {
       workflowPath,
       port,
-      fastifyPort: isEnabled(FEATURE_FLAG_DUAL_SERVER) ? 4002 : null,
       logDir: archiveDir,
       dbPath: process.env.DB_PATH ?? null,
     },
@@ -206,8 +192,7 @@ async function safeStartConfigStore(configStore: ConfigStore): Promise<number | 
 }
 
 function buildShutdown(
-  httpServer: HttpServer,
-  fastifyServer: StoppableServer | null,
+  httpServer: StoppableServer,
   orchestrator: Orchestrator,
   configStore: ConfigStore,
   overlayStore: ConfigOverlayStore,
@@ -218,11 +203,6 @@ function buildShutdown(
   return async () => {
     if (shuttingDown) return;
     shuttingDown = true;
-    if (fastifyServer) {
-      await fastifyServer.stop().catch((error: unknown) => {
-        logger.warn({ error: String(error) }, "fastify server shutdown failed");
-      });
-    }
     await httpServer.stop().catch((error: unknown) => {
       logger.warn({ error: String(error) }, "http server shutdown failed");
     });
@@ -235,7 +215,7 @@ function buildShutdown(
     await overlayStore.stop().catch((error: unknown) => {
       logger.warn({ error: String(error) }, "overlay store shutdown failed");
     });
-    closeSymphonyDatabase(archiveDir);
+    closeDatabaseConnection({ baseDir: archiveDir });
     await getErrorTracker()
       .flush()
       .catch((error: unknown) => {

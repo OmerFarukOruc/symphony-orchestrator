@@ -43,42 +43,34 @@ export function methodNotAllowed(reply: FastifyReply): void {
   reply.status(405).send(createError("method_not_allowed", "Method Not Allowed"));
 }
 
-/** @public Used by Fastify routes during dual-server migration */
 export function notFound(reply: FastifyReply, message = "Unknown issue identifier"): void {
   reply.status(404).send(createError("not_found", message));
 }
 
-/** @public Used by Fastify routes during dual-server migration */
 export function invalidModel(reply: FastifyReply, message = "model is required"): void {
   reply.status(400).send(createError("invalid_model", message));
 }
 
-/** @public Used by Fastify routes during dual-server migration */
 export function invalidReasoningEffort(reply: FastifyReply, message: string): void {
   reply.status(400).send(createError("invalid_reasoning_effort", message));
 }
 
-/** @public Used by Fastify routes during dual-server migration */
 export function invalidSecretKey(reply: FastifyReply): void {
   reply.status(400).send(createError("invalid_secret_key", "secret key must match /^[A-Za-z0-9._:-]+$/"));
 }
 
-/** @public Used by Fastify routes during dual-server migration */
 export function invalidSecretValue(reply: FastifyReply): void {
   reply.status(400).send(createError("invalid_secret_value", "secret value must be a non-empty string"));
 }
 
-/** @public Used by Fastify routes during dual-server migration */
 export function secretNotFound(reply: FastifyReply): void {
   reply.status(404).send(createError("secret_not_found", "secret key not found"));
 }
 
-/** @public Used by Fastify routes during dual-server migration */
 export function missingTargetState(reply: FastifyReply): void {
   reply.status(400).send(createError("missing_target_state", "target_state is required"));
 }
 
-/** @public Used by Fastify routes during dual-server migration */
 export function unavailable(reply: FastifyReply, message: string): void {
   reply.status(503).send(createError("unavailable", message));
 }

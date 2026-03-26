@@ -88,11 +88,23 @@ export const secrets = sqliteTable(
   (table) => [index("secrets_updated_at_idx").on(table.updatedAt)],
 );
 
+export const secretAuditRows = sqliteTable(
+  "secret_audit_rows",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    at: text("at").notNull(),
+    operation: text("operation").$type<"set" | "delete">().notNull(),
+    key: text("key").notNull(),
+  },
+  (table) => [index("secret_audit_rows_at_idx").on(table.at)],
+);
+
 export type AttemptRow = typeof attempts.$inferSelect;
 export type AttemptInsert = typeof attempts.$inferInsert;
 export type EventRow = typeof events.$inferSelect;
 export type EventInsert = typeof events.$inferInsert;
 export type ConfigOverlayRow = typeof configOverlays.$inferSelect;
 export type SecretRow = typeof secrets.$inferSelect;
+export type SecretAuditRow = typeof secretAuditRows.$inferSelect;
 
 export type SqliteAttemptEventType = AttemptEvent["event"];

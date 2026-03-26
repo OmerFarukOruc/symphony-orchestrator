@@ -1,12 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 
 import type { SymphonyLogger } from "../core/types.js";
-import {
-  buildOverlayMap,
-  isOverlayEqual,
-  normalizeOverlayPath,
-  type ConfigOverlayEntry,
-} from "../config/overlay-map.js";
+import { buildOverlayMap, normalizeOverlayPath, type ConfigOverlayEntry } from "../config/overlay-map.js";
 import { closeDatabaseConnection, openDatabaseConnection, type SqliteConnection } from "./connection.js";
 import { configOverlays } from "./schema.js";
 
@@ -25,30 +20,6 @@ function toStoredPath(pathExpression: string): string {
     throw new Error("overlay path must contain at least one segment");
   }
   return segments.join(".");
-}
-
-async function replaceEntries(store: ConfigOverlayPersistenceStore, entries: ConfigOverlayEntry[]): Promise<void> {
-  if (store.replaceAll) {
-    await store.replaceAll(entries);
-    return;
-  }
-
-  const currentEntries = await store.list();
-  const currentByPath = new Map(currentEntries.map((entry) => [entry.path, entry.value]));
-  const nextByPath = new Map(entries.map((entry) => [entry.path, entry.value]));
-
-  for (const pathExpression of currentByPath.keys()) {
-    if (!nextByPath.has(pathExpression)) {
-      await store.delete(pathExpression);
-    }
-  }
-
-  for (const entry of entries) {
-    if (isOverlayEqual(currentByPath.get(entry.path), entry.value)) {
-      continue;
-    }
-    await store.save(entry.path, entry.value);
-  }
 }
 
 export class ConfigStoreSqlite implements ConfigOverlayPersistenceStore {
@@ -134,59 +105,5 @@ export class ConfigStoreSqlite implements ConfigOverlayPersistenceStore {
       this.connection = openDatabaseConnection({ baseDir: this.baseDir, dbPath: this.options?.dbPath });
     }
     return this.connection;
-  }
-}
-
-export class DualWriteConfigStore implements ConfigOverlayPersistenceStore {
-  constructor(
-    private readonly primary: ConfigOverlayPersistenceStore,
-    private readonly secondary: ConfigOverlayPersistenceStore,
-    private readonly logger: SymphonyLogger,
-  ) {}
-
-  async load(): Promise<Record<string, unknown>> {
-    return this.primary.load();
-  }
-
-  async save(path: string, value: unknown): Promise<void> {
-    await this.primary.save(path, value);
-    await this.mirror(async () => this.secondary.save(path, value), "save", path);
-  }
-
-  async delete(path: string): Promise<boolean> {
-    const deleted = await this.primary.delete(path);
-    await this.mirror(
-      async () => {
-        await this.secondary.delete(path);
-      },
-      "delete",
-      path,
-    );
-    return deleted;
-  }
-
-  async list(): Promise<ConfigOverlayEntry[]> {
-    return this.primary.list();
-  }
-
-  async replaceAll(entries: ConfigOverlayEntry[]): Promise<void> {
-    await replaceEntries(this.primary, entries);
-    await this.mirror(async () => replaceEntries(this.secondary, entries), "replaceAll");
-  }
-
-  close(): void {
-    this.primary.close?.();
-    this.secondary.close?.();
-  }
-
-  private async mirror(operation: () => Promise<void>, action: string, path?: string): Promise<void> {
-    try {
-      await operation();
-    } catch (error) {
-      this.logger.warn(
-        { action, path: path ?? null, error: String(error) },
-        "config overlay secondary mirror write failed",
-      );
-    }
   }
 }
