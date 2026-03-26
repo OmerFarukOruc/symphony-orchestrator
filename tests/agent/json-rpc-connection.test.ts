@@ -24,8 +24,7 @@ function makeMockChild() {
     pid: 12345,
   });
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    child: child as any,
+    child: child as unknown as import("node:child_process").ChildProcessWithoutNullStreams,
     stdout,
     stderr,
     stdin,

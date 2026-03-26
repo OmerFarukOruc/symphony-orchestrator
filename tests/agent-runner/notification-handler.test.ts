@@ -1,28 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 
 import { handleNotification } from "../../src/agent-runner/notification-handler.js";
 import { createTurnState, type TurnState } from "../../src/agent-runner/turn-state.js";
-import type { Issue } from "../../src/core/types.js";
+import { createIssue } from "../orchestrator/issue-test-factories.js";
 
 const FIXED_ISO = "2024-01-01T00:00:00.000Z";
-
-function makeIssue(overrides?: Partial<Issue>): Issue {
-  return {
-    id: "issue-1",
-    identifier: "ENG-42",
-    title: "Test issue",
-    description: null,
-    priority: null,
-    state: "In Progress",
-    branchName: null,
-    url: null,
-    labels: [],
-    blockedBy: [],
-    createdAt: null,
-    updatedAt: null,
-    ...overrides,
-  };
-}
 
 interface CapturedEvent {
   at: string;
@@ -41,7 +23,7 @@ describe("handleNotification", () => {
   let state: TurnState;
   let events: CapturedEvent[];
   let onEvent: (event: CapturedEvent) => void;
-  const issue = makeIssue();
+  const issue = createIssue({ identifier: "ENG-42", priority: null, createdAt: null, updatedAt: null });
 
   beforeEach(() => {
     state = createTurnState();
@@ -49,6 +31,10 @@ describe("handleNotification", () => {
     onEvent = (event) => events.push(event);
     vi.useFakeTimers();
     vi.setSystemTime(new Date(FIXED_ISO));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe("turn/started", () => {

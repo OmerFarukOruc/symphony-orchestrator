@@ -5,44 +5,9 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { initializeSession } from "../../src/agent-runner/session-init.js";
 import { StartupTimeoutError } from "../../src/agent-runner/session-helpers.js";
 import { createMockLogger } from "../helpers.js";
+import { createIssue, createWorkspace, createModelSelection } from "../orchestrator/issue-test-factories.js";
 import type { DockerSession } from "../../src/agent-runner/docker-session.js";
-import type { Issue, ModelSelection, ServiceConfig, Workspace } from "../../src/core/types.js";
-
-function makeIssue(overrides?: Partial<Issue>): Issue {
-  return {
-    id: "issue-1",
-    identifier: "ENG-42",
-    title: "Test issue",
-    description: null,
-    priority: null,
-    state: "In Progress",
-    branchName: null,
-    url: null,
-    labels: [],
-    blockedBy: [],
-    createdAt: null,
-    updatedAt: null,
-    ...overrides,
-  };
-}
-
-function makeWorkspace(overrides?: Partial<Workspace>): Workspace {
-  return {
-    path: "/workspace/test",
-    workspaceKey: "test-key",
-    createdNow: false,
-    ...overrides,
-  };
-}
-
-function makeModelSelection(overrides?: Partial<ModelSelection>): ModelSelection {
-  return {
-    model: "o3",
-    reasoningEffort: null,
-    source: "default",
-    ...overrides,
-  };
-}
+import type { ServiceConfig } from "../../src/core/types.js";
 
 function makeMinimalConfig(): ServiceConfig {
   return {
@@ -136,10 +101,10 @@ describe("initializeSession", () => {
 
   function makeInput(overrides?: Record<string, unknown>) {
     return {
-      issue: makeIssue(),
+      issue: createIssue(),
       attempt: 1,
-      modelSelection: makeModelSelection(),
-      workspace: makeWorkspace(),
+      modelSelection: createModelSelection(),
+      workspace: createWorkspace(),
       promptTemplate: "Fix {{ issue.identifier }}",
       signal: new AbortController().signal,
       onEvent,

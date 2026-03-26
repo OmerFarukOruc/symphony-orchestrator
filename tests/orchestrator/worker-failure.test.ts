@@ -2,50 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { handleWorkerFailure } from "../../src/orchestrator/worker-failure.js";
 import { TokenRefreshError } from "../../src/codex/token-refresh.js";
-import type { Issue } from "../../src/core/types.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
 import type { WorkerFailureContext } from "../../src/orchestrator/worker-failure.js";
-
-function makeIssue(overrides: Partial<Issue> = {}): Issue {
-  return {
-    id: "issue-1",
-    identifier: "MT-1",
-    title: "Test issue",
-    description: null,
-    priority: 1,
-    state: "In Progress",
-    branchName: null,
-    url: null,
-    labels: [],
-    blockedBy: [],
-    createdAt: null,
-    updatedAt: null,
-    ...overrides,
-  };
-}
-
-function makeEntry(overrides: Partial<RunningEntry> = {}): RunningEntry {
-  return {
-    runId: "run-abc",
-    issue: makeIssue(),
-    workspace: { path: "/tmp/ws/MT-1", workspaceKey: "ws-key", createdNow: true },
-    startedAtMs: Date.now() - 5000,
-    lastEventAtMs: Date.now(),
-    attempt: 1,
-    abortController: new AbortController(),
-    promise: Promise.resolve(),
-    cleanupOnExit: false,
-    status: "running",
-    sessionId: "sess-xyz",
-    tokenUsage: null,
-    modelSelection: { model: "gpt-4o", reasoningEffort: "high", source: "default" },
-    lastAgentMessageContent: null,
-    repoMatch: null,
-    queuePersistence: () => undefined,
-    flushPersistence: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-  } as RunningEntry;
-}
+import { createIssue, createRunningEntry } from "./issue-test-factories.js";
 
 function makeCtx(
   overrides: {
@@ -85,10 +44,14 @@ function makeCtx(
 describe("handleWorkerFailure - core behavior", () => {
   it("removes running entry, releases claim, and pushes worker_failed event", async () => {
     const { ctx, runningEntries, releaseIssueClaim, pushEvent, updateAttempt } = makeCtx();
-    const entry = makeEntry();
+    const entry = createRunningEntry({
+      runId: "run-abc",
+      sessionId: "sess-xyz",
+      flushPersistence: vi.fn().mockResolvedValue(undefined),
+    });
     runningEntries.set("issue-1", entry);
 
-    await handleWorkerFailure(ctx, makeIssue(), entry, new Error("boom"));
+    await handleWorkerFailure(ctx, createIssue(), entry, new Error("boom"));
 
     expect(runningEntries.has("issue-1")).toBe(false);
     expect(releaseIssueClaim).toHaveBeenCalledWith("issue-1");
@@ -101,10 +64,14 @@ describe("handleWorkerFailure - core behavior", () => {
 
   it("stringifies non-Error thrown values in the event message", async () => {
     const { ctx, runningEntries, pushEvent } = makeCtx();
-    const entry = makeEntry();
+    const entry = createRunningEntry({
+      runId: "run-abc",
+      sessionId: "sess-xyz",
+      flushPersistence: vi.fn().mockResolvedValue(undefined),
+    });
     runningEntries.set("issue-1", entry);
 
-    await handleWorkerFailure(ctx, makeIssue(), entry, "string error");
+    await handleWorkerFailure(ctx, createIssue(), entry, "string error");
 
     expect(pushEvent).toHaveBeenCalledWith(expect.objectContaining({ message: "string error" }));
   });
@@ -112,10 +79,10 @@ describe("handleWorkerFailure - core behavior", () => {
   it("includes session id, token usage, and null threadId in the attempt update", async () => {
     const { ctx, runningEntries, updateAttempt } = makeCtx();
     const tokenUsage = { input: 100, output: 50, total: 150 };
-    const entry = makeEntry({ sessionId: "sess-123", tokenUsage });
+    const entry = createRunningEntry({ runId: "run-abc", sessionId: "sess-123", tokenUsage });
     runningEntries.set("issue-1", entry);
 
-    await handleWorkerFailure(ctx, makeIssue(), entry, new Error("crash"));
+    await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     expect(updateAttempt).toHaveBeenCalledWith(
       "run-abc",
@@ -134,11 +101,15 @@ describe("handleWorkerFailure - core behavior", () => {
 describe("handleWorkerFailure - TokenRefreshError", () => {
   it("uses the TokenRefreshError code instead of generic worker_failed", async () => {
     const { ctx, runningEntries, updateAttempt } = makeCtx();
-    const entry = makeEntry();
+    const entry = createRunningEntry({
+      runId: "run-abc",
+      sessionId: "sess-xyz",
+      flushPersistence: vi.fn().mockResolvedValue(undefined),
+    });
     runningEntries.set("issue-1", entry);
 
     const tokenError = new TokenRefreshError("token_expired", "Token has expired");
-    await handleWorkerFailure(ctx, makeIssue(), entry, tokenError);
+    await handleWorkerFailure(ctx, createIssue(), entry, tokenError);
 
     expect(updateAttempt).toHaveBeenCalledWith("run-abc", expect.objectContaining({ errorCode: "token_expired" }));
   });
@@ -151,12 +122,13 @@ describe("handleWorkerFailure - TokenRefreshError", () => {
 describe("handleWorkerFailure - flush persistence fallback", () => {
   it("logs a warning and attempts fallback when flushPersistence rejects", async () => {
     const { ctx, runningEntries, warn, updateAttempt } = makeCtx();
-    const entry = makeEntry({
+    const entry = createRunningEntry({
+      runId: "run-abc",
       flushPersistence: vi.fn().mockRejectedValue(new Error("flush failed")),
     });
     runningEntries.set("issue-1", entry);
 
-    await handleWorkerFailure(ctx, makeIssue(), entry, new Error("crash"));
+    await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     expect(warn).toHaveBeenCalledWith(
       expect.objectContaining({ error: "Error: flush failed" }),
@@ -173,12 +145,12 @@ describe("handleWorkerFailure - flush persistence fallback", () => {
       .mockRejectedValueOnce(new Error("status update failed")) // status update
       .mockRejectedValueOnce(new Error("status fallback failed")); // status fallback
     const { ctx, runningEntries, warn } = makeCtx({ updateAttempt });
-    const entry = makeEntry({
+    const entry = createRunningEntry({
       flushPersistence: vi.fn().mockRejectedValue(new Error("flush error")),
     });
     runningEntries.set("issue-1", entry);
 
-    await handleWorkerFailure(ctx, makeIssue(), entry, new Error("crash"));
+    await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     // Should have logged the flush failure warning
     expect(warn).toHaveBeenCalledWith(
@@ -204,10 +176,14 @@ describe("handleWorkerFailure - status update fallback", () => {
       .mockRejectedValueOnce(new Error("update failed")) // main update
       .mockResolvedValueOnce(undefined); // fallback
     const { ctx, runningEntries, warn } = makeCtx({ updateAttempt });
-    const entry = makeEntry();
+    const entry = createRunningEntry({
+      runId: "run-abc",
+      sessionId: "sess-xyz",
+      flushPersistence: vi.fn().mockResolvedValue(undefined),
+    });
     runningEntries.set("issue-1", entry);
 
-    await handleWorkerFailure(ctx, makeIssue(), entry, new Error("crash"));
+    await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     expect(warn).toHaveBeenCalledWith(
       expect.objectContaining({ error: "Error: update failed" }),
@@ -223,10 +199,14 @@ describe("handleWorkerFailure - status update fallback", () => {
       .mockRejectedValueOnce(new Error("update failed"))
       .mockRejectedValueOnce(new Error("fallback failed"));
     const { ctx, runningEntries, warn } = makeCtx({ updateAttempt });
-    const entry = makeEntry();
+    const entry = createRunningEntry({
+      runId: "run-abc",
+      sessionId: "sess-xyz",
+      flushPersistence: vi.fn().mockResolvedValue(undefined),
+    });
     runningEntries.set("issue-1", entry);
 
-    await handleWorkerFailure(ctx, makeIssue(), entry, new Error("crash"));
+    await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     expect(warn).toHaveBeenCalledWith(
       expect.objectContaining({ error: "Error: fallback failed" }),
@@ -243,12 +223,12 @@ describe("handleWorkerFailure - entry state", () => {
   it("always removes running entry even when updates fail", async () => {
     const updateAttempt = vi.fn().mockRejectedValue(new Error("all updates fail"));
     const { ctx, runningEntries } = makeCtx({ updateAttempt });
-    const entry = makeEntry({
+    const entry = createRunningEntry({
       flushPersistence: vi.fn().mockRejectedValue(new Error("flush fails too")),
     });
     runningEntries.set("issue-1", entry);
 
-    await handleWorkerFailure(ctx, makeIssue(), entry, new Error("crash"));
+    await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     expect(runningEntries.has("issue-1")).toBe(false);
   });
@@ -256,12 +236,12 @@ describe("handleWorkerFailure - entry state", () => {
   it("always releases the issue claim even when updates fail", async () => {
     const updateAttempt = vi.fn().mockRejectedValue(new Error("all updates fail"));
     const { ctx, runningEntries, releaseIssueClaim } = makeCtx({ updateAttempt });
-    const entry = makeEntry({
+    const entry = createRunningEntry({
       flushPersistence: vi.fn().mockRejectedValue(new Error("flush fails")),
     });
     runningEntries.set("issue-1", entry);
 
-    await handleWorkerFailure(ctx, makeIssue(), entry, new Error("crash"));
+    await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     expect(releaseIssueClaim).toHaveBeenCalledWith("issue-1");
   });
@@ -269,12 +249,12 @@ describe("handleWorkerFailure - entry state", () => {
   it("always pushes the worker_failed event even when persistence fails", async () => {
     const updateAttempt = vi.fn().mockRejectedValue(new Error("fail"));
     const { ctx, runningEntries, pushEvent } = makeCtx({ updateAttempt });
-    const entry = makeEntry({
+    const entry = createRunningEntry({
       flushPersistence: vi.fn().mockRejectedValue(new Error("flush fail")),
     });
     runningEntries.set("issue-1", entry);
 
-    await handleWorkerFailure(ctx, makeIssue(), entry, new Error("crash"));
+    await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     expect(pushEvent).toHaveBeenCalledWith(expect.objectContaining({ event: "worker_failed" }));
   });
