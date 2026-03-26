@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { AttemptStore } from "../core/attempt-store.js";
+import type { AttemptStorePort } from "../core/attempt-store-port.js";
 import { issueView, nowIso } from "./views.js";
 import type { Issue, ModelSelection, RecentEvent, AttemptRecord } from "../core/types.js";
 import type { RunningEntry } from "./runtime-types.js";
@@ -72,7 +72,7 @@ function buildFailureAttemptData(
 }
 
 interface PersistRetryFailureInput {
-  attemptStore: Pick<AttemptStore, "updateAttempt" | "createAttempt">;
+  attemptStore: Pick<AttemptStorePort, "updateAttempt" | "createAttempt">;
   runningEntry: RunningEntry | null;
   issue: Issue;
   selection: ModelSelection;
@@ -125,7 +125,7 @@ export async function handleRetryLaunchFailure(
     runningEntries: Map<string, RunningEntry>;
     clearRetryEntry: (issueId: string) => void;
     deps: {
-      attemptStore: Pick<AttemptStore, "updateAttempt" | "createAttempt">;
+      attemptStore: Pick<AttemptStorePort, "updateAttempt" | "createAttempt">;
       logger: {
         error: (meta: Record<string, unknown>, message: string) => void;
         warn: (meta: Record<string, unknown>, message: string) => void;

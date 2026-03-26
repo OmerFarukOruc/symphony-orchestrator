@@ -1,5 +1,5 @@
 import type { RunAttemptDispatcher } from "../dispatch/types.js";
-import { AttemptStore } from "../core/attempt-store.js";
+import type { AttemptStorePort } from "../core/attempt-store-port.js";
 import { ConfigStore } from "../config/store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { SymphonyEventMap } from "../core/symphony-events.js";
@@ -40,7 +40,7 @@ export interface RunningEntry {
 export type RetryRuntimeEntry = RetryEntry & { issue: Issue; workspaceKey: string | null };
 
 export interface OrchestratorDeps {
-  attemptStore: AttemptStore;
+  attemptStore: AttemptStorePort;
   configStore: ConfigStore;
   tracker: TrackerPort;
   workspaceManager: WorkspaceManager;

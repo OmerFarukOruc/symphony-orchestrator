@@ -1,11 +1,8 @@
 import { appendFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { sortAttemptsDesc } from "./attempt-store-port.js";
 import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "./types.js";
-
-function sortAttemptsDesc(left: AttemptRecord, right: AttemptRecord): number {
-  return right.startedAt.localeCompare(left.startedAt);
-}
 
 export class AttemptStore {
   private readonly attempts = new Map<string, AttemptRecord>();

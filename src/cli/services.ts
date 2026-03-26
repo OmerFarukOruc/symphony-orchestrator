@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { AttemptStore } from "../core/attempt-store.js";
 import { TypedEventBus } from "../core/event-bus.js";
 import type { SymphonyEventMap } from "../core/symphony-events.js";
@@ -7,8 +9,11 @@ import type { ConfigStore } from "../config/store.js";
 import { createDispatcher } from "../dispatch/factory.js";
 import { HttpServer } from "../http/server.js";
 import type { createLogger } from "../core/logger.js";
+import type { AttemptStorePort } from "../core/attempt-store-port.js";
+import type { SymphonyLogger } from "../core/types.js";
 import { NotificationManager } from "../notification/manager.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
+import { SqliteAttemptStore } from "../persistence/sqlite/attempt-store-sqlite.js";
 import { PathRegistry } from "../workspace/path-registry.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { createTracker } from "../tracker/factory.js";
@@ -26,8 +31,9 @@ export async function createServices(
     process.env.GITHUB_TOKEN = persistedGithubToken;
   }
 
-  const attemptStore = new AttemptStore(archiveDir, logger.child({ component: "attempt-store" }));
-  await attemptStore.start();
+  const persistenceMode = process.env.SYMPHONY_PERSISTENCE ?? "sqlite";
+  const storeLogger = logger.child({ component: "attempt-store" });
+  const attemptStore = await createAttemptStore(persistenceMode, archiveDir, storeLogger);
 
   const { tracker, linearClient } = createTracker(() => configStore.getConfig(), logger);
 
@@ -92,4 +98,16 @@ export async function createServices(
   });
 
   return { orchestrator, httpServer, notificationManager, linearClient };
+}
+
+async function createAttemptStore(mode: string, archiveDir: string, logger: SymphonyLogger): Promise<AttemptStorePort> {
+  if (mode === "jsonl") {
+    const store = new AttemptStore(archiveDir, logger);
+    await store.start();
+    return store;
+  }
+  const store = new SqliteAttemptStore(path.join(archiveDir, "symphony.db"), logger);
+  await store.start();
+  await store.migrateFromArchive(archiveDir);
+  return store;
 }
