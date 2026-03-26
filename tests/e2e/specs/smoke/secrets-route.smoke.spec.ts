@@ -47,6 +47,7 @@ test.describe("Secrets React route", () => {
     const config = new ConfigPage(page);
     await config.navigateToSecrets();
 
+    await page.getByTestId("secrets-new").click();
     await page.getByTestId("secret-key-input").fill("GITHUB_TOKEN");
     await page.getByTestId("secret-value-input").fill("github_pat_test");
     await page.getByTestId("secret-save").click();

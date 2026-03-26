@@ -1,0 +1,25 @@
+{
+  "attemptId": "00000000-0000-4000-8000-000000000031",
+  "issueId": "issue-nin-3",
+  "issueIdentifier": "NIN-3",
+  "title": "Controlled sandbox retry chain ending in failure",
+  "workspaceKey": "NIN_3",
+  "workspacePath": "/tmp/symphony-sandbox/NIN_3",
+  "status": "stalled",
+  "attemptNumber": 1,
+  "startedAt": "2026-03-16T08:10:00.000Z",
+  "endedAt": "2026-03-16T08:14:40.000Z",
+  "model": "gpt-5.4",
+  "reasoningEffort": "medium",
+  "modelSource": "default",
+  "threadId": "thread-nin-3-a1",
+  "turnId": "turn-nin-3-a1",
+  "turnCount": 1,
+  "errorCode": "worker_stalled",
+  "errorMessage": "Worker stalled after no progress was observed for the configured timeout.",
+  "tokenUsage": {
+    "inputTokens": 610,
+    "outputTokens": 141,
+    "totalTokens": 751
+  }
+}

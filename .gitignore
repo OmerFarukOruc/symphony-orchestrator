@@ -3,6 +3,8 @@ dist/
 .desloppify/
 .symphony/
 .sisyphus/
+!tests/fixtures/symphony-archive-sandbox/.symphony/
+!tests/fixtures/symphony-archive-sandbox/.symphony/**
 
 # Logs and local runtime output
 *.log

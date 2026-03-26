@@ -37,6 +37,10 @@ import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 
+import { router as legacyRouter } from "../../../frontend/src/router.js";
+import { initCommandPalette } from "../../../frontend/src/ui/command-palette.js";
+import { initKeyboard } from "../../../frontend/src/ui/keyboard.js";
+
 import { App } from "./App.js";
 import { createQueryClient } from "./hooks/query-client.js";
 
@@ -46,6 +50,9 @@ if (!root) {
 }
 
 const queryClient = createQueryClient();
+
+initCommandPalette();
+initKeyboard(legacyRouter);
 
 createRoot(root).render(
   <StrictMode>

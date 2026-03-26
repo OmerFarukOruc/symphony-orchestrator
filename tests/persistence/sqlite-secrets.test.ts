@@ -37,8 +37,10 @@ describe("SecretsStore SQLite dual-write", () => {
   it("writes encrypted secrets to filesystem and SQLite secrets rows on set", async () => {
     const baseDir = await createTempDir();
     const store = await createStore(baseDir);
+    const secretKey = "TEST_SERVICE_KEY";
+    const secretValue = "value-for-test-service";
 
-    await store.store("LINEAR_API_KEY", "lin_test_12345");
+    await store.store(secretKey, secretValue);
 
     // Verify filesystem
     const fileContent = await readFile(path.join(baseDir, "secrets.enc"), "utf8");
@@ -51,7 +53,7 @@ describe("SecretsStore SQLite dual-write", () => {
     const db = openDb(baseDir);
     const row = db
       .prepare("SELECT key, algorithm, iv, auth_tag, ciphertext, version FROM secrets WHERE key = ?")
-      .get("LINEAR_API_KEY") as
+      .get(secretKey) as
       | {
           key: string;
           algorithm: string;
@@ -65,11 +67,11 @@ describe("SecretsStore SQLite dual-write", () => {
 
     expect(row).toBeDefined();
     expect(row).toMatchObject({
-      key: "LINEAR_API_KEY",
+      key: secretKey,
       algorithm: "aes-256-gcm",
       version: 1,
     });
-    expect(row!.ciphertext).not.toContain("lin_test_12345");
+    expect(row!.ciphertext).not.toContain(secretValue);
   });
 
   it("preserves append-only audit entries on the filesystem", async () => {
@@ -113,11 +115,13 @@ describe("SecretsStore SQLite dual-write", () => {
   it("keeps file-backed reads authoritative by default", async () => {
     const baseDir = await createTempDir();
     const store = await createStore(baseDir);
+    const secretKey = "TEST_SERVICE_KEY";
+    const secretValue = "persisted-test-value";
 
-    await store.store("LINEAR_API_KEY", "lin_test_secret");
+    await store.store(secretKey, secretValue);
     const restoredStore = await createStore(baseDir);
-    expect(restoredStore.get("LINEAR_API_KEY")).toBe("lin_test_secret");
-    expect(restoredStore.list()).toEqual(["LINEAR_API_KEY"]);
+    expect(restoredStore.get(secretKey)).toBe(secretValue);
+    expect(restoredStore.list()).toEqual([secretKey]);
   });
 
   it("round-trips secrets through restart and can read from SQLite only when flagged", async () => {

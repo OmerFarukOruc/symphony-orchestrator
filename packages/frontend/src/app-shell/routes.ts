@@ -131,12 +131,12 @@ export const shellRoutes: readonly ShellRoute[] = [
     aliasTo: "/settings#advanced",
   },
   {
-    key: "secrets-alias",
+    key: "secrets",
     href: "/secrets",
     routePath: "secrets",
-    title: "Secrets alias",
-    description: "Compatibility alias that forwards the legacy secrets route to settings credentials.",
-    aliasTo: "/settings#credentials",
+    title: "Credentials",
+    description: "Securely store provider keys and tokens used by Symphony operators.",
+    nav: { group: "Configure", label: "Credentials", hotkey: "g s" },
   },
   {
     key: "settings",

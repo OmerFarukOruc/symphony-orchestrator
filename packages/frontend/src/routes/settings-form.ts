@@ -7,6 +7,7 @@ export type SettingsDrafts = Record<string, string>;
 export type SettingsFieldErrors = Record<string, string>;
 
 type SettingsFieldKind = "list" | "number" | "select" | "text";
+const dangerousPathSegments = new Set(["__proto__", "constructor", "prototype"]);
 
 export type SettingsFieldDefinition = Readonly<{
   description: string;
@@ -108,7 +109,7 @@ export function countSectionOverrides(section: SettingsSectionDefinition, overla
 
 export function getValueAtPath(root: Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((value, segment) => {
-    if (!isRecord(value)) {
+    if (!isRecord(value) || isDangerousPathSegment(segment) || !Object.hasOwn(value, segment)) {
       return undefined;
     }
     return value[segment];
@@ -145,6 +146,14 @@ function isJsonEqual(left: unknown, right: unknown): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isDangerousPathSegment(segment: string): boolean {
+  return dangerousPathSegments.has(segment);
+}
+
+function createPathRecord(): Record<string, unknown> {
+  return Object.create(null) as Record<string, unknown>;
 }
 
 function normalizeErrorPath(path: string): string {
@@ -184,12 +193,22 @@ function setValueAtPath(target: Record<string, unknown>, path: string, value: un
   let cursor = target;
 
   for (const segment of segments.slice(0, -1)) {
+    if (isDangerousPathSegment(segment)) {
+      throw new TypeError(`Refusing to traverse dangerous key: ${segment}`);
+    }
     const nested = cursor[segment];
     if (!isRecord(nested)) {
-      cursor[segment] = {};
+      cursor[segment] = createPathRecord();
     }
     cursor = cursor[segment] as Record<string, unknown>;
   }
 
-  cursor[segments.at(-1)!] = value;
+  const leaf = segments.at(-1);
+  if (leaf === undefined) {
+    throw new TypeError("settings path must contain at least one segment");
+  }
+  if (isDangerousPathSegment(leaf)) {
+    throw new TypeError(`Refusing to set dangerous key: ${leaf}`);
+  }
+  cursor[leaf] = value;
 }

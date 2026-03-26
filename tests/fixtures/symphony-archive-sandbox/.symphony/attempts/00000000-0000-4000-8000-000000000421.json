@@ -1,0 +1,25 @@
+{
+  "attemptId": "00000000-0000-4000-8000-000000000421",
+  "issueId": "issue-mt-42",
+  "issueIdentifier": "MT-42",
+  "title": "Controlled sandbox retry chain ending in success",
+  "workspaceKey": "MT_42",
+  "workspacePath": "/tmp/symphony-sandbox/MT_42",
+  "status": "failed",
+  "attemptNumber": 1,
+  "startedAt": "2026-03-16T07:30:00.000Z",
+  "endedAt": "2026-03-16T07:33:05.000Z",
+  "model": "gpt-5.4",
+  "reasoningEffort": "medium",
+  "modelSource": "default",
+  "threadId": "thread-mt-42-a1",
+  "turnId": "turn-mt-42-a1",
+  "turnCount": 1,
+  "errorCode": "turn_failed",
+  "errorMessage": "Initial attempt failed before the fix was applied.",
+  "tokenUsage": {
+    "inputTokens": 550,
+    "outputTokens": 122,
+    "totalTokens": 672
+  }
+}

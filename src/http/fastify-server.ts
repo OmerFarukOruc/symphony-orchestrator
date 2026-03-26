@@ -1,6 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { join } from "node:path";
-
 import fastifyCors from "@fastify/cors";
 import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
@@ -21,6 +19,7 @@ import {
   type ControlPlaneInvalidationEvent,
   type FastifyRouteDeps,
 } from "./fastify-routes.js";
+import { resolveFrontendDir } from "./frontend-path.js";
 import { createError, serializeSnapshot } from "./route-helpers.js";
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
@@ -28,7 +27,8 @@ const POLL_INTERVAL_MS = 1_000;
 const RETRY_INTERVAL_MS = 5_000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 300;
-const defaultFrontendDist = join(process.cwd(), "dist/frontend");
+const LOCAL_FRONTEND_ORIGIN = "http://127.0.0.1:4001";
+const LOCALHOST_FRONTEND_ORIGIN = "http://localhost:4001";
 
 interface Subscribable {
   subscribe(listener: () => void): () => void;
@@ -55,6 +55,31 @@ interface SseClient {
     raw: NodeJS.WritableStream & { writeHead(statusCode: number, headers: Record<string, string | number>): void };
   };
   heartbeat: NodeJS.Timeout;
+}
+
+type SseResponseHeaders = Record<string, string>;
+
+function resolveSseOrigin(origin: string | undefined): string | null {
+  if (origin === LOCAL_FRONTEND_ORIGIN) {
+    return LOCAL_FRONTEND_ORIGIN;
+  }
+  if (origin === LOCALHOST_FRONTEND_ORIGIN) {
+    return LOCALHOST_FRONTEND_ORIGIN;
+  }
+  return null;
+}
+
+function buildSseHeaders(origin: string | undefined): SseResponseHeaders {
+  const headers: SseResponseHeaders = {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+  };
+  const allowedOrigin = resolveSseOrigin(origin);
+  if (allowedOrigin !== null) {
+    headers["Access-Control-Allow-Origin"] = allowedOrigin;
+  }
+  return headers;
 }
 
 export class FastifyServer {
@@ -106,7 +131,7 @@ export class FastifyServer {
     this.registerEventStream();
     registerFastifyHttpRoutes(this.app, this.routeDeps());
 
-    const staticRoot = this.deps.frontendDir ?? defaultFrontendDist;
+    const staticRoot = resolveFrontendDir({ frontendDir: this.deps.frontendDir });
     await this.app.register(fastifyStatic, { root: staticRoot, prefix: "/", wildcard: true });
     this.app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith("/api/") || request.url === "/metrics") {
@@ -202,12 +227,7 @@ export class FastifyServer {
 
   private registerEventStream(): void {
     this.app.get("/api/v1/events", (request, reply) => {
-      reply.raw.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-        "Access-Control-Allow-Origin": request.headers.origin ?? "*",
-      });
+      reply.raw.writeHead(200, buildSseHeaders(request.headers.origin));
       reply.hijack();
       reply.raw.write(`retry: ${RETRY_INTERVAL_MS}\n`);
       reply.raw.write("\n");

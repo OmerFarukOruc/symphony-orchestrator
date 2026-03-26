@@ -1,0 +1,25 @@
+{
+  "attemptId": "00000000-0000-4000-8000-000000000032",
+  "issueId": "issue-nin-3",
+  "issueIdentifier": "NIN-3",
+  "title": "Controlled sandbox retry chain ending in failure",
+  "workspaceKey": "NIN_3",
+  "workspacePath": "/tmp/symphony-sandbox/NIN_3",
+  "status": "failed",
+  "attemptNumber": 2,
+  "startedAt": "2026-03-16T08:20:00.000Z",
+  "endedAt": "2026-03-16T08:23:20.000Z",
+  "model": "gpt-5.4",
+  "reasoningEffort": "high",
+  "modelSource": "override",
+  "threadId": "thread-nin-3-a2",
+  "turnId": "turn-nin-3-a2",
+  "turnCount": 1,
+  "errorCode": "turn_failed",
+  "errorMessage": "Retry attempt failed after the worker hit the same missing dependency.",
+  "tokenUsage": {
+    "inputTokens": 730,
+    "outputTokens": 190,
+    "totalTokens": 920
+  }
+}

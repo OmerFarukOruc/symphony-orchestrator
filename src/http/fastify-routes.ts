@@ -232,7 +232,7 @@ function registerIssueRoutes(app: FastifyInstance, deps: FastifyRouteDeps): void
         reply.status(404).send({ error: { code: "not_found", message: "Unknown issue identifier" } });
         return;
       }
-      reply.send(detail);
+      reply.send({ ...detail });
     },
   );
 }

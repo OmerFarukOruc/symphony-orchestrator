@@ -1,0 +1,25 @@
+{
+  "attemptId": "00000000-0000-4000-8000-000000000006",
+  "issueId": "issue-nin-6",
+  "issueIdentifier": "NIN-6",
+  "title": "Controlled sandbox deliberate failure",
+  "workspaceKey": "NIN_6",
+  "workspacePath": "/tmp/symphony-sandbox/NIN_6",
+  "status": "failed",
+  "attemptNumber": null,
+  "startedAt": "2026-03-16T09:00:00.000Z",
+  "endedAt": "2026-03-16T09:02:10.000Z",
+  "model": "gpt-5.4",
+  "reasoningEffort": "medium",
+  "modelSource": "default",
+  "threadId": "thread-nin-6",
+  "turnId": "turn-nin-6-1",
+  "turnCount": 1,
+  "errorCode": "fixture_deliberate_failure",
+  "errorMessage": "Controlled sandbox failure: dependency token intentionally missing.",
+  "tokenUsage": {
+    "inputTokens": 420,
+    "outputTokens": 118,
+    "totalTokens": 538
+  }
+}

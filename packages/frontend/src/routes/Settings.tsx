@@ -1,6 +1,7 @@
 import type { ChangeEvent, ReactElement } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Navigate, useLocation } from "react-router-dom";
 
 import { queryKeys } from "../hooks/query-client.js";
 import { useSSE } from "../hooks/useSSE.js";
@@ -22,11 +23,16 @@ type NoticeState = Readonly<{
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export function Settings(): ReactElement {
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<SettingsFieldErrors>({});
   const [notice, setNotice] = useState<NoticeState>(null);
   useSSE();
+
+  if (location.hash === "#credentials") {
+    return <Navigate replace to="/secrets" />;
+  }
 
   const settingsQuery = useQuery({
     queryKey: queryKeys.config,

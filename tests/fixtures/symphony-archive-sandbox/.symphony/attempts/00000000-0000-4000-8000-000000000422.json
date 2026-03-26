@@ -1,0 +1,25 @@
+{
+  "attemptId": "00000000-0000-4000-8000-000000000422",
+  "issueId": "issue-mt-42",
+  "issueIdentifier": "MT-42",
+  "title": "Controlled sandbox retry chain ending in success",
+  "workspaceKey": "MT_42",
+  "workspacePath": "/tmp/symphony-sandbox/MT_42",
+  "status": "completed",
+  "attemptNumber": 2,
+  "startedAt": "2026-03-16T07:40:00.000Z",
+  "endedAt": "2026-03-16T07:44:12.000Z",
+  "model": "gpt-5.4",
+  "reasoningEffort": "medium",
+  "modelSource": "override",
+  "threadId": "thread-mt-42-a2",
+  "turnId": "turn-mt-42-a2",
+  "turnCount": 2,
+  "errorCode": null,
+  "errorMessage": null,
+  "tokenUsage": {
+    "inputTokens": 980,
+    "outputTokens": 364,
+    "totalTokens": 1344
+  }
+}
