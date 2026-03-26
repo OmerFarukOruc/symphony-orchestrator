@@ -28,7 +28,7 @@ export function handlePostPkceAuthStart(_deps: SetupApiDeps) {
         shutdownCallbackServer(activePkceSession);
       }
 
-      activePkceSession = createPkceSession("");
+      activePkceSession = createPkceSession();
       await startCallbackServer(activePkceSession);
       res.json({ authUrl: activePkceSession.authUrl });
     } catch (error) {

@@ -193,6 +193,7 @@ function createAttemptStore(overrides?: {
   const attemptsByIssue = overrides?.attemptsByIssue ?? new Map();
 
   return {
+    getAttempt: (attemptId: string) => attempts.find((a) => a.attemptId === attemptId) ?? null,
     getAllAttempts: () => attempts,
     getEvents: (attemptId: string) =>
       events.filter((e) => {

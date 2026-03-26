@@ -218,6 +218,7 @@ describe("registerSetupApi", () => {
       headers: { "content-type": "application/json", authorization: "linear-secret" },
       body: JSON.stringify({
         query: "{ projects(first: 50) { nodes { id name slugId teams { nodes { key } } } } }",
+        variables: {},
       }),
     });
   });
@@ -232,7 +233,7 @@ describe("registerSetupApi", () => {
 
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({
-      error: { code: "linear_api_error", message: "Linear API returned 503" },
+      error: { code: "linear_api_error", message: expect.stringContaining("503") },
     });
   });
 

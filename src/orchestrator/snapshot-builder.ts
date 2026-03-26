@@ -42,6 +42,7 @@ interface AttemptSummary {
 
 export interface SnapshotBuilderDeps {
   attemptStore: {
+    getAttempt: (attemptId: string) => AttemptRecord | null;
     getAllAttempts: () => AttemptRecord[];
     getEvents: (attemptId: string) => RecentEvent[];
     getAttemptsForIssue: (issueIdentifier: string) => AttemptRecord[];
@@ -175,7 +176,7 @@ export function buildAttemptDetail(
   attemptId: string,
   deps: SnapshotBuilderDeps,
 ): (AttemptSummary & { events: RecentEvent[] }) | null {
-  const attempt = deps.attemptStore.getAllAttempts().find((a) => a.attemptId === attemptId) ?? null;
+  const attempt = deps.attemptStore.getAttempt(attemptId);
   if (!attempt) {
     return null;
   }

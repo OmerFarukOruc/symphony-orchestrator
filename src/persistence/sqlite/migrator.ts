@@ -30,54 +30,69 @@ export async function migrateFromJsonl(
   archiveDir: string,
   logger: SymphonyLogger,
 ): Promise<MigrationResult> {
-  let attemptCount = 0;
-  let eventCount = 0;
-
   const attemptsDir = path.join(archiveDir, "attempts");
   const eventsDir = path.join(archiveDir, "events");
 
   const attemptFiles = await safeReaddir(attemptsDir);
-  for (const file of attemptFiles) {
-    if (!file.endsWith(".json")) continue;
-
-    try {
-      const content = await readFile(path.join(attemptsDir, file), "utf8");
-      const record = JSON.parse(content) as AttemptRecord;
-      const row = attemptRecordToRow(record);
-      db.insert(attempts).values(row).onConflictDoNothing().run();
-      attemptCount += 1;
-    } catch (error) {
-      logger.warn({ file, error: String(error) }, "skipped corrupt attempt file during migration");
-    }
-  }
-
   const eventFiles = await safeReaddir(eventsDir);
-  for (const file of eventFiles) {
-    if (!file.endsWith(".jsonl")) continue;
 
-    try {
-      const content = await readFile(path.join(eventsDir, file), "utf8");
-      const lines = content
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean);
-
-      for (const line of lines) {
-        const event = JSON.parse(line) as AttemptEvent;
-        const row = attemptEventToRow(event);
-        db.insert(attemptEvents).values(row).run();
-        eventCount += 1;
-      }
-    } catch (error) {
-      logger.warn({ file, error: String(error) }, "skipped corrupt event file during migration");
-    }
-  }
+  const { ac: attemptCount, ec: eventCount } = await loadArchiveFiles(
+    db,
+    attemptsDir,
+    attemptFiles,
+    eventsDir,
+    eventFiles,
+    logger,
+  );
 
   if (attemptCount > 0 || eventCount > 0) {
     logger.info({ attemptCount, eventCount }, "JSONL migration completed");
   }
 
   return { attemptCount, eventCount };
+}
+
+async function loadArchiveFiles(
+  db: SymphonyDatabase,
+  attemptsDir: string,
+  attemptFiles: string[],
+  eventsDir: string,
+  eventFiles: string[],
+  logger: SymphonyLogger,
+): Promise<{ ac: number; ec: number }> {
+  let ac = 0;
+  let ec = 0;
+
+  for (const file of attemptFiles) {
+    if (!file.endsWith(".json")) continue;
+    try {
+      const content = await readFile(path.join(attemptsDir, file), "utf8");
+      const record = JSON.parse(content) as AttemptRecord;
+      db.insert(attempts).values(attemptRecordToRow(record)).onConflictDoNothing().run();
+      ac += 1;
+    } catch (error) {
+      logger.warn({ file, error: String(error) }, "skipped corrupt attempt file during migration");
+    }
+  }
+
+  for (const file of eventFiles) {
+    if (!file.endsWith(".jsonl")) continue;
+    try {
+      const content = await readFile(path.join(eventsDir, file), "utf8");
+      for (const line of content
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)) {
+        const event = JSON.parse(line) as AttemptEvent;
+        db.insert(attemptEvents).values(attemptEventToRow(event)).run();
+        ec += 1;
+      }
+    } catch (error) {
+      logger.warn({ file, error: String(error) }, "skipped corrupt event file during migration");
+    }
+  }
+
+  return { ac, ec };
 }
 
 async function safeReaddir(dir: string): Promise<string[]> {

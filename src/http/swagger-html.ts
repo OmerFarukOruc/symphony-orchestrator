@@ -7,9 +7,12 @@
 
 const SWAGGER_CDN = "https://unpkg.com/swagger-ui-dist@5";
 
+let cached: string | null = null;
+
 /** Returns a self-contained HTML string for the Swagger UI docs page. */
 export function getSwaggerHtml(): string {
-  return `<!DOCTYPE html>
+  if (cached) return cached;
+  cached = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -25,4 +28,5 @@ export function getSwaggerHtml(): string {
   </script>
 </body>
 </html>`;
+  return cached;
 }

@@ -22,7 +22,7 @@ type AnyHandler = (channel: keyof SymphonyEventMap, payload: SymphonyEventMap[ke
  * carry `{"type":"<channel>","payload":{...}}` for every bus emission.
  */
 export function createSSEHandler(eventBus: TypedEventBus<SymphonyEventMap>): (req: Request, res: Response) => void {
-  return (_req: Request, res: Response) => {
+  return (req: Request, res: Response) => {
     configureSSEHeaders(res);
 
     res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
@@ -37,7 +37,7 @@ export function createSSEHandler(eventBus: TypedEventBus<SymphonyEventMap>): (re
       res.write(":\n\n");
     }, KEEP_ALIVE_MS);
 
-    _req.on("close", () => {
+    req.on("close", () => {
       clearInterval(keepAliveTimer);
       eventBus.offAny(handler);
     });

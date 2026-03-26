@@ -55,7 +55,7 @@ function generateState(): string {
  * Create a new PKCE auth session and return the authorization URL.
  * Uses the hardcoded redirect URI registered with the Codex client ID.
  */
-export function createPkceSession(_callbackBaseUrl?: string): PkceSession {
+export function createPkceSession(): PkceSession {
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
   const state = generateState();
