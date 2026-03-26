@@ -1,7 +1,7 @@
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { WorkflowSchema } from "@symphony/shared";
 
-import { settingsSections } from "./settings-definitions.js";
+import { settingsSections } from "./settings-definitions";
 
 export type SettingsDrafts = Record<string, string>;
 export type SettingsFieldErrors = Record<string, string>;

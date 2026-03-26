@@ -35,7 +35,6 @@ export function jsonContent(schema: TSchema): Record<string, { schema: TSchema }
   };
 }
 
-export type ErrorResponse = Static<typeof ErrorEnvelopeSchema>;
 export type ErrorEnvelope = Static<typeof ErrorEnvelopeSchema>;
 export type StringErrorResponse = Static<typeof StringErrorSchema>;
 export type OpenApiInfo = Static<typeof OpenApiInfoSchema>;

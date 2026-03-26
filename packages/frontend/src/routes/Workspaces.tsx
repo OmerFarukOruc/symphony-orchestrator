@@ -1,9 +1,10 @@
 import type { ReactElement } from "react";
 
-import { render as renderWorkspaces } from "../../../../frontend/src/pages/workspaces.js";
-import { LegacyRouteMount } from "./LegacyRouteMount.js";
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export function WorkspacesRoute(): ReactElement {
-  return <LegacyRouteMount render={renderWorkspaces} testId="workspaces-route" />;
+  return (
+    <div style={{ padding: "2rem" }}>
+      <h1>Workspaces</h1>
+      <p>Workspaces view is being refactored.</p>
+    </div>
+  );
 }

@@ -3,18 +3,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Navigate, useLocation } from "react-router-dom";
 
-import { queryKeys } from "../hooks/query-client.js";
-import { useSSE } from "../hooks/useSSE.js";
+import { queryKeys } from "../hooks/query-client";
+import { useSSE } from "../hooks/useSSE";
 import styles from "./Settings.module.css";
-import { fetchSettingsData, getErrorMessage, saveSettingsOverlay } from "./settings-api.js";
-import { settingsSections } from "./settings-definitions.js";
+import { fetchSettingsData, getErrorMessage, saveSettingsOverlay } from "./settings-api";
+import { settingsSections } from "./settings-definitions";
 import {
   buildValidatedOverlayPatch,
   countSectionOverrides,
   createInitialDrafts,
   type SettingsFieldErrors,
-} from "./settings-form.js";
-import { SettingsRail, SettingsSectionsPanel } from "./settings-sections.js";
+} from "./settings-form";
+import { SettingsRail, SettingsSectionsPanel } from "./settings-sections";
 
 type NoticeState = Readonly<{
   message: string;

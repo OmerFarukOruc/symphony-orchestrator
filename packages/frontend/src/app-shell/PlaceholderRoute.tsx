@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { useLocation, useParams } from "react-router-dom";
 
 import styles from "../App.module.css";
-import type { ShellRoute } from "./routes.js";
+import type { ShellRoute } from "./routes";
 
 type PlaceholderRouteProps = Readonly<{
   route: ShellRoute;

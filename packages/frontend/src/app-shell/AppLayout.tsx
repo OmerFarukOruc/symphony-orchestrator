@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
 import styles from "../App.module.css";
-import { navGroups, routesForGroup, type NavGroup } from "./routes.js";
+import { navGroups, routesForGroup, type NavGroup } from "./routes";
 
 type SetupState = "checking" | "ready" | "setup-required";
 

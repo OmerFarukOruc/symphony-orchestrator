@@ -7,8 +7,8 @@ import {
   type SettingsFieldDefinition,
   type SettingsFieldErrors,
   type SettingsSectionDefinition,
-} from "./settings-form.js";
-import { settingsSections } from "./settings-definitions.js";
+} from "./settings-form";
+import { settingsSections } from "./settings-definitions";
 
 type SettingsSectionSummary = SettingsSectionDefinition & Readonly<{ overrideCount: number }>;
 

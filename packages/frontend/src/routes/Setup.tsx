@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { queryKeys } from "../hooks/query-client.js";
-import { useSSE } from "../hooks/useSSE.js";
-import { saveSecret } from "./secrets-api.js";
+import { queryKeys } from "../hooks/query-client";
+import { useSSE } from "../hooks/useSSE";
+import { saveSecret } from "./secrets-api";
 import styles from "./Setup.module.css";
 import {
   cancelPkceAuth,
@@ -27,7 +27,7 @@ import {
   saveOpenaiKey,
   saveRepoRoute,
   startPkceAuth,
-} from "./setup-api.js";
+} from "./setup-api";
 
 type SetupStep =
   | "master-key"

@@ -2,5 +2,4 @@
 // This barrel exposes the current coordinator modules for future workspace imports.
 export { createServices } from "../../../src/cli/services.js";
 export { FastifyServer } from "../../../src/http/fastify-server.js";
-export { HttpServer } from "../../../src/http/server.js";
 export { Orchestrator } from "../../../src/orchestrator/orchestrator.js";

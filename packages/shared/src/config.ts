@@ -1,10 +1,3 @@
-/**
- * Configuration overlay storage interface.
- *
- * The concrete `ConfigOverlayStore` in `src/config/overlay.ts` uses
- * file (YAML) + SQLite dual-write with chokidar watching.  This
- * interface describes the consumer-facing surface only.
- */
 export interface ConfigOverlayInterface {
   /** Retrieve the full overlay as a deep-cloned map. */
   toMap(): Record<string, unknown>;

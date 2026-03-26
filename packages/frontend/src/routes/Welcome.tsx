@@ -1,9 +1,10 @@
 import type { ReactElement } from "react";
 
-import { render as renderWelcome } from "../../../../frontend/src/pages/welcome.js";
-import { LegacyRouteMount } from "./LegacyRouteMount.js";
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export function WelcomeRoute(): ReactElement {
-  return <LegacyRouteMount render={renderWelcome} testId="welcome-route" />;
+  return (
+    <div style={{ padding: "2rem" }}>
+      <h1>Welcome</h1>
+      <p>Welcome view is being refactored.</p>
+    </div>
+  );
 }

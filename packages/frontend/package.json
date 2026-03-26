@@ -10,15 +10,10 @@
     "react-router-dom": "^7.9.4"
   },
   "scripts": {
-    "build": "pnpm run build:react",
-    "build:vanilla": "vite build --config ../../frontend/vite.config.ts",
-    "build:react": "vite build --config ./vite.config.ts",
-    "dev": "pnpm run dev:react",
-    "dev:vanilla": "vite --config ../../frontend/vite.config.ts",
-    "dev:react": "vite --config ./vite.config.ts",
+    "build": "vite build --config ./vite.config.ts",
+    "dev": "vite --config ./vite.config.ts",
     "generate:openapi-types": "tsx ./scripts/generate-openapi-types.ts",
-    "typecheck:react": "tsc --noEmit -p ./tsconfig.json",
-    "typecheck:vanilla": "tsc --noEmit -p ../../frontend/tsconfig.json"
+    "typecheck": "tsc --noEmit -p ./tsconfig.json"
   },
   "devDependencies": {
     "openapi-typescript": "^7.10.1"

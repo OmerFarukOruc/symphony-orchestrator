@@ -2,7 +2,6 @@ export {
   ErrorEnvelopeSchema,
   OpenApiDocumentSchema,
   type ErrorEnvelope,
-  type ErrorResponse,
   type OpenApiDocument,
 } from "./schemas/common.js";
 export {

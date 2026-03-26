@@ -1,4 +1,4 @@
-import type { SettingsSectionDefinition } from "./settings-form.js";
+import type { SettingsSectionDefinition } from "./settings-form";
 
 export const settingsSections: readonly SettingsSectionDefinition[] = [
   {

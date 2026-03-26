@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
-import { queryKeys } from "../hooks/query-client.js";
-import { useSSE } from "../hooks/useSSE.js";
+import { queryKeys } from "../hooks/query-client";
+import { useSSE } from "../hooks/useSSE";
 import styles from "./Secrets.module.css";
-import { fetchSecrets, removeSecret, saveSecret } from "./secrets-api.js";
+import { fetchSecrets, removeSecret, saveSecret } from "./secrets-api";
 
 type NoticeState = Readonly<{
   message: string;

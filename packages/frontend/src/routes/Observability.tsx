@@ -1,9 +1,10 @@
 import type { ReactElement } from "react";
 
-import { render as renderObservability } from "../../../../frontend/src/pages/observability.js";
-import { LegacyRouteMount } from "./LegacyRouteMount.js";
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export function ObservabilityRoute(): ReactElement {
-  return <LegacyRouteMount render={renderObservability} testId="observability-route" />;
+  return (
+    <div style={{ padding: "2rem" }}>
+      <h1>Observability</h1>
+      <p>Observability view is being refactored.</p>
+    </div>
+  );
 }
