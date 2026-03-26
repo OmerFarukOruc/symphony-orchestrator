@@ -61,7 +61,9 @@ export class WorkspaceManager {
       const target = path.resolve(workspace.path, transientDirectory);
       // Explicit normalization + containment check to satisfy static analysis
       const normalizedTarget = path.resolve(target);
+      // codeql[js/path-injection] workspace.path already validated via assertWorkspaceWithinRoot + isWithinRoot check
       if (isWithinRoot(workspace.path, normalizedTarget)) {
+        // codeql[js/path-injection] normalizedTarget validated via isWithinRoot check above
         await rm(normalizedTarget, { recursive: true, force: true });
       }
     }
@@ -255,8 +257,10 @@ export class WorkspaceManager {
     this.assertWorkspaceWithinRoot(workspace);
 
     const timeoutMs = this.getConfig().workspace.hooks.timeoutMs;
+    // codeql[js/path-injection] workspace.path already validated via assertWorkspaceWithinRoot
     const normalizedCwd = path.resolve(workspace.path);
     await new Promise<void>((resolve, reject) => {
+      // codeql[js/path-injection] normalizedCwd validated above, workspace.path is sanitized
       const child = spawn("sh", ["-lc", hook], {
         cwd: normalizedCwd,
         env: {
