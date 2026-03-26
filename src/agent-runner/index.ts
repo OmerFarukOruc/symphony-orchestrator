@@ -26,7 +26,7 @@ export class AgentRunner {
     private readonly deps: {
       getConfig: () => ServiceConfig;
       tracker: TrackerPort;
-      linearClient: LinearClient;
+      linearClient: LinearClient | null;
       workspaceManager: WorkspaceManager;
       archiveDir?: string;
       pathRegistry?: PathRegistry;

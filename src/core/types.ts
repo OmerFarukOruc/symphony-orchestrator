@@ -195,6 +195,8 @@ export interface TrackerConfig {
   apiKey: string;
   endpoint: string;
   projectSlug: string | null;
+  owner?: string;
+  repo?: string;
   activeStates: string[];
   terminalStates: string[];
 }

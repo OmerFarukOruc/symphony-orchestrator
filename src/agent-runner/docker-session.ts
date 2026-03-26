@@ -35,7 +35,7 @@ export interface DockerSessionDeps {
   archiveDir?: string;
   pathRegistry?: PathRegistry;
   githubToolClient?: GithubApiToolClient;
-  linearClient: LinearClient;
+  linearClient: LinearClient | null;
   logger: SymphonyLogger;
   spawnProcess?: typeof spawn;
 }

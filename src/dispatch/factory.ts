@@ -14,7 +14,7 @@ import type { RunAttemptDispatcher } from "./types.js";
  */
 export interface DispatcherFactoryDeps {
   tracker: TrackerPort;
-  linearClient: LinearClient;
+  linearClient: LinearClient | null;
   workspaceManager: WorkspaceManager;
   archiveDir: string;
   pathRegistry: PathRegistry;
