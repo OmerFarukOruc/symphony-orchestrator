@@ -3,8 +3,8 @@
   "workspaces": {
     ".": {
       "entry": ["src/cli/index.ts", "src/dispatch/entrypoint.ts"],
-      "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts"],
-      "ignoreFiles": ["frontend/src/components/issue-card.ts", "frontend/src/pages/page-factory.ts", "tests/e2e/**"]
+      "project": ["src/**/*.ts", "tests/**/*.ts"],
+      "ignoreFiles": ["tests/e2e/**"]
     },
     "packages/shared": {
       "project": ["src/**/*.ts"]
@@ -20,6 +20,9 @@
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": [
     "agentation-mcp",
+    "agentation",
+    "react",
+    "react-dom",
     "@tanstack/react-query",
     "react-router-dom",
     "@fastify/cors",

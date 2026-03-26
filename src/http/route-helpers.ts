@@ -43,38 +43,6 @@ export function methodNotAllowed(reply: FastifyReply): void {
   reply.status(405).send(createError("method_not_allowed", "Method Not Allowed"));
 }
 
-export function notFound(reply: FastifyReply, message = "Unknown issue identifier"): void {
-  reply.status(404).send(createError("not_found", message));
-}
-
-export function invalidModel(reply: FastifyReply, message = "model is required"): void {
-  reply.status(400).send(createError("invalid_model", message));
-}
-
-export function invalidReasoningEffort(reply: FastifyReply, message: string): void {
-  reply.status(400).send(createError("invalid_reasoning_effort", message));
-}
-
-export function invalidSecretKey(reply: FastifyReply): void {
-  reply.status(400).send(createError("invalid_secret_key", "secret key must match /^[A-Za-z0-9._:-]+$/"));
-}
-
-export function invalidSecretValue(reply: FastifyReply): void {
-  reply.status(400).send(createError("invalid_secret_value", "secret value must be a non-empty string"));
-}
-
-export function secretNotFound(reply: FastifyReply): void {
-  reply.status(404).send(createError("secret_not_found", "secret key not found"));
-}
-
-export function missingTargetState(reply: FastifyReply): void {
-  reply.status(400).send(createError("missing_target_state", "target_state is required"));
-}
-
-export function unavailable(reply: FastifyReply, message: string): void {
-  reply.status(503).send(createError("unavailable", message));
-}
-
 export function serializeSnapshot(snapshot: RuntimeSnapshot & Record<string, unknown>): Record<string, unknown> {
   return {
     generated_at: snapshot.generatedAt,
