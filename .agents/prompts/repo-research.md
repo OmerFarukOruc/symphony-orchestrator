@@ -149,10 +149,46 @@ Rules:
 - Use format: `(inspired by [{repo-name}]({repo-url}))` for attributions.
 - **Do NOT add skipped/rejected items to the Epic body.**
 
-## 5. Update ROADMAP_AND_STATUS.md
+## 5. Enrich Individual GitHub Issues
 
-Sync `/home/oruc/Desktop/codex/docs/ROADMAP_AND_STATUS.md` to reflect
-any new items or enriched descriptions added to the Epic.
+For every **existing** issue that gained new implementation details from the
+researched repo, **append** a reference section to that issue's body:
+
+```bash
+# Read current body, append enrichment, update:
+body=$(gh issue view {number} --repo OmerFarukOruc/symphony-orchestrator --json body --jq '.body')
+
+# Append a reference section (do NOT overwrite existing content):
+new_body="${body}
+
+---
+
+## {repo-name} Reference Implementation
+*(added from [{repo-name}]({repo-url}) research — {date})*
+
+{detailed implementation notes}"
+
+echo "$new_body" | gh issue edit {number} --repo OmerFarukOruc/symphony-orchestrator --body-file -
+```
+
+Rules:
+- **Append only** — never remove or rewrite the existing issue body.
+- **Check for duplicates** — skip if the issue already contains a reference
+  section for this repo (grep for `{repo-name} Reference`).
+- Each enrichment section MUST include:
+  - **Architecture notes**: How the researched repo implements this feature
+  - **Code patterns**: Key functions, classes, or design patterns worth emulating
+    (include short code snippets where they clarify the pattern)
+  - **File references**: Links to specific source files in the researched repo
+  - **Symphony adaptation notes**: How this would map to Symphony's modules
+- Be detailed and actionable — someone reading the issue should be able to
+  start implementing without re-doing the research.
+- Do this for ALL enriched issues, not just the Epic body.
+
+## 6. Update ROADMAP_AND_STATUS.md
+
+Sync `/home/oruc/Desktop/workspace/symphony-orchestrator/docs/ROADMAP_AND_STATUS.md`
+to reflect any new items or enriched descriptions added to the Epic.
 
 Rules:
 - Maintain existing document structure and tier organization.
@@ -161,7 +197,7 @@ Rules:
 - Update Summary table counts to reflect new items.
 - **Do NOT add skipped/rejected items to the roadmap.**
 
-## 6. Produce a Research Summary
+## 7. Produce a Research Summary
 
 Create a research artifact summarizing:
 
