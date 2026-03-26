@@ -26,7 +26,87 @@ export function createSectionAction(label: string, primary = false): HTMLButtonE
   return createButton(label, primary ? "primary" : "ghost");
 }
 
+function buildCredentialControl(): HTMLElement {
+  const container = document.createElement("div");
+  container.className = "settings-credential-list";
+
+  const loading = document.createElement("p");
+  loading.className = "text-secondary";
+  loading.textContent = "Loading credentials\u2026";
+  container.append(loading);
+
+  void (async () => {
+    const { api } = await import("../api.js");
+
+    async function refresh(): Promise<void> {
+      try {
+        const { keys } = await api.getSecrets();
+        container.replaceChildren();
+
+        if (keys.length === 0) {
+          const empty = document.createElement("p");
+          empty.className = "text-secondary";
+          empty.textContent = "No credentials stored yet.";
+          container.append(empty);
+        } else {
+          const pills = document.createElement("div");
+          pills.className = "settings-credential-pills";
+          for (const key of keys) {
+            const pill = document.createElement("span");
+            pill.className = "settings-credential-pill";
+            const name = document.createElement("span");
+            name.textContent = key;
+            const del = document.createElement("button");
+            del.type = "button";
+            del.className = "settings-credential-delete";
+            del.textContent = "\u00d7";
+            del.setAttribute("aria-label", `Delete ${key}`);
+            del.addEventListener("click", async () => {
+              if (confirm(`Delete credential "${key}"? This cannot be undone.`)) {
+                await api.deleteSecret(key);
+                await refresh();
+              }
+            });
+            pill.append(name, del);
+            pills.append(pill);
+          }
+          container.append(pills);
+        }
+
+        const addBtn = createButton("+ Add credential", "ghost");
+        addBtn.addEventListener("click", async () => {
+          const key = prompt("Credential key name (e.g. LINEAR_API_KEY):");
+          if (!key?.trim()) return;
+          const value = prompt(`Value for ${key}:`);
+          if (!value?.trim()) return;
+          await api.postSecret(key.trim(), value.trim());
+          await refresh();
+        });
+        container.append(addBtn);
+
+        const trust = document.createElement("p");
+        trust.className = "settings-credential-trust text-secondary";
+        trust.textContent = "Encrypted at rest. Values are write-only after save.";
+        container.append(trust);
+      } catch {
+        container.replaceChildren();
+        const err = document.createElement("p");
+        err.className = "form-error";
+        err.textContent = "Failed to load credentials.";
+        container.append(err);
+      }
+    }
+
+    await refresh();
+  })();
+
+  return container;
+}
+
 function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRenderOptions): HTMLElement {
+  if (field.kind === "credential") {
+    return buildCredentialControl();
+  }
   if (field.kind === "select") {
     const select = createSelectControl({
       options: field.options ?? [],
