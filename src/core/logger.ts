@@ -10,6 +10,55 @@ function normalizeArgs(meta: unknown, message?: string): { message?: string; met
   return { message, meta };
 }
 
+/** Build the logfmt-style format used by default. */
+function buildLogfmtFormat(): winston.Logform.Format {
+  return winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.printf((info) => {
+      const parts = [`level=${info.level}`];
+      if (info.message) {
+        parts.push(`msg=${JSON.stringify(info.message)}`);
+      }
+      if (info.timestamp) {
+        parts.push(`time=${info.timestamp}`);
+      }
+
+      const rest = { ...info } as Record<string, unknown>;
+      delete rest.level;
+      delete rest.message;
+      delete rest.timestamp;
+
+      for (const [key, value] of Object.entries(rest)) {
+        if (value === undefined) {
+          continue;
+        }
+        parts.push(`${key}=${JSON.stringify(value)}`);
+      }
+
+      return parts.join(" ");
+    }),
+  );
+}
+
+/** Build the structured JSON format for log aggregation. */
+function buildJsonFormat(): winston.Logform.Format {
+  return winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json(),
+  );
+}
+
+/** Resolve the log format from `SYMPHONY_LOG_FORMAT` env var. */
+export function resolveLogFormat(): winston.Logform.Format {
+  const format = process.env.SYMPHONY_LOG_FORMAT;
+  if (format === "json") {
+    return buildJsonFormat();
+  }
+  return buildLogfmtFormat();
+}
+
 class WinstonSymphonyLogger implements SymphonyLogger {
   constructor(private readonly logger: winston.Logger) {}
 
@@ -41,33 +90,7 @@ class WinstonSymphonyLogger implements SymphonyLogger {
 export function createLogger(): SymphonyLogger {
   const logger = winston.createLogger({
     level: process.env.LOG_LEVEL ?? "info",
-    format: winston.format.combine(
-      winston.format.timestamp(),
-      winston.format.errors({ stack: true }),
-      winston.format.printf((info) => {
-        const parts = [`level=${info.level}`];
-        if (info.message) {
-          parts.push(`msg=${JSON.stringify(info.message)}`);
-        }
-        if (info.timestamp) {
-          parts.push(`time=${info.timestamp}`);
-        }
-
-        const rest = { ...info } as Record<string, unknown>;
-        delete rest.level;
-        delete rest.message;
-        delete rest.timestamp;
-
-        for (const [key, value] of Object.entries(rest)) {
-          if (value === undefined) {
-            continue;
-          }
-          parts.push(`${key}=${JSON.stringify(value)}`);
-        }
-
-        return parts.join(" ");
-      }),
-    ),
+    format: resolveLogFormat(),
     transports: [new winston.transports.Console()],
   });
 
