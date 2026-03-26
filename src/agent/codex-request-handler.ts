@@ -26,13 +26,16 @@ function toolErrorResponse(errorMessage: string): CodexRequestResult {
 
 async function handleToolCall(
   params: Record<string, unknown>,
-  linearClient: LinearClient,
+  linearClient: LinearClient | null,
   githubToolClient?: GithubApiToolClient,
 ): Promise<CodexRequestResult> {
   const toolName = asString(params.name) ?? asString(params.toolName);
   const toolArgs = params.arguments ?? params.args ?? params.input ?? null;
 
   if (toolName === "linear_graphql") {
+    if (!linearClient) {
+      return toolErrorResponse("linear_graphql is not available: tracker is not configured for Linear");
+    }
     const response = await handleLinearGraphqlToolCall(linearClient, toolArgs);
     return { response, fatalFailure: null };
   }
@@ -48,7 +51,7 @@ async function handleToolCall(
 
 export async function handleCodexRequest(
   request: JsonRpcRequest,
-  linearClient: LinearClient,
+  linearClient: LinearClient | null,
   githubToolClient?: GithubApiToolClient,
 ): Promise<CodexRequestResult> {
   switch (request.method) {

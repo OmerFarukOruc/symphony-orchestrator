@@ -44,6 +44,8 @@ function deriveTrackerConfig(
     endpoint: resolveConfigString(tracker.endpoint, secretResolver) || "https://api.linear.app/graphql",
     projectSlug:
       resolveConfigString(tracker.project_slug, secretResolver) || secretResolver?.("LINEAR_PROJECT_SLUG") || null,
+    owner: asString(tracker.owner, "") || (secretResolver?.("GITHUB_OWNER") ?? ""),
+    repo: asString(tracker.repo, "") || (secretResolver?.("GITHUB_REPO") ?? ""),
     activeStates: asStringArray(tracker.active_states, DEFAULT_ACTIVE_STATES),
     terminalStates: asStringArray(tracker.terminal_states, DEFAULT_TERMINAL_STATES),
   };

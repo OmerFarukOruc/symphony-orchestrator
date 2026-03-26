@@ -10,6 +10,8 @@ export const trackerConfigSchema = z.object({
   apiKey: z.string().default(""),
   endpoint: z.string().default("https://api.linear.app/graphql"),
   projectSlug: z.string().nullable().default(null),
+  owner: z.string().default(""),
+  repo: z.string().default(""),
   activeStates: z.array(z.string()).default(DEFAULT_ACTIVE_STATES),
   terminalStates: z.array(z.string()).default(DEFAULT_TERMINAL_STATES),
 });
