@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildIssueCommentMutation > matches snapshot 1`] = `
+"
+    mutation SymphonyIssueCommentCreate($issueId: String!, $body: String!) {
+      commentCreate(input: { issueId: $issueId, body: $body }) {
+        success
+        comment {
+          id
+        }
+      }
+    }
+  "
+`;
+
+exports[`buildIssueTransitionMutation > matches snapshot 1`] = `
+"
+    mutation SymphonyIssueTransition($issueId: String!, $stateId: String) {
+      issueUpdate(id: $issueId, input: { stateId: $stateId }) {
+        success
+        issue {
+          id
+          identifier
+          state {
+            name
+          }
+        }
+      }
+    }
+  "
+`;
