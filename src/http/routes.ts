@@ -2,30 +2,33 @@ import { join } from "node:path";
 
 import express, { type Express } from "express";
 
+import rateLimit from "express-rate-limit";
+
 import { registerConfigApi } from "../config/api.js";
 import type { ConfigOverlayStore } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
+import type { TypedEventBus } from "../core/event-bus.js";
+import type { SymphonyEventMap } from "../core/symphony-events.js";
 import type { RuntimeSnapshot } from "../core/types.js";
 import { globalMetrics } from "../observability/metrics.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
-
 import { registerSecretsApi } from "../secrets/api.js";
-import { registerSetupApi } from "../setup/api.js";
 import type { SecretsStore } from "../secrets/store.js";
+import { registerSetupApi } from "../setup/api.js";
+import type { TrackerPort } from "../tracker/port.js";
+
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
 import { getOpenApiSpec } from "./openapi.js";
 import { modelUpdateSchema, transitionSchema } from "./request-schemas.js";
 import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
+import { createSSEHandler } from "./sse.js";
 import { getSwaggerHtml } from "./swagger-html.js";
 import { handleTransition } from "./transition-handler.js";
 import { handleGetTransitions } from "./transitions-api.js";
 import { validateBody } from "./validation.js";
 import { handleWorkspaceInventory, handleWorkspaceRemove } from "./workspace-inventory.js";
-import type { TrackerPort } from "../tracker/port.js";
-
-import rateLimit from "express-rate-limit";
 
 const frontendDist = join(process.cwd(), "dist/frontend");
 
@@ -35,6 +38,7 @@ interface HttpRouteDeps {
   configStore?: ConfigStore;
   configOverlayStore?: ConfigOverlayStore;
   secretsStore?: SecretsStore;
+  eventBus?: TypedEventBus<SymphonyEventMap>;
 
   frontendDir?: string;
   archiveDir?: string;
@@ -107,6 +111,15 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
     .all((_req, res) => {
       methodNotAllowed(res);
     });
+
+  if (deps.eventBus) {
+    app
+      .route("/api/v1/events")
+      .get(createSSEHandler(deps.eventBus))
+      .all((_req, res) => {
+        methodNotAllowed(res);
+      });
+  }
 
   app
     .route("/api/v1/transitions")
