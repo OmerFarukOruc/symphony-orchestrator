@@ -1,6 +1,6 @@
 import { asRecord, asStringOrNull as asString } from "../utils/type-guards.js";
 import { redactSensitiveValue, sanitizeContent } from "../core/content-sanitizer.js";
-import type { ServiceConfig, TokenUsageSnapshot } from "../core/types.js";
+import type { ServiceConfig, TokenUsageSnapshot, TurnSandboxPolicy } from "../core/types.js";
 
 function extractThreadId(result: unknown): string | null {
   const record = asRecord(result);
@@ -28,25 +28,24 @@ function extractTokenUsageSnapshot(value: unknown): TokenUsageSnapshot | null {
   };
 }
 
-function getTurnSandboxPolicy(config: ServiceConfig, workspacePath: string): Record<string, unknown> {
-  const policy = { ...config.codex.turnSandboxPolicy };
+function getTurnSandboxPolicy(config: ServiceConfig, workspacePath: string): TurnSandboxPolicy {
+  const policy = config.codex.turnSandboxPolicy;
   if (policy.type === "workspaceWrite") {
-    const writableRoots = Array.isArray(policy.writableRoots) ? [...policy.writableRoots] : [];
+    const wsPolicy = policy as import("../core/types.js").WorkspaceWriteSandboxPolicy;
+    const writableRoots = [...wsPolicy.writableRoots];
     if (!writableRoots.includes(workspacePath)) {
       writableRoots.push(workspacePath);
     }
 
     return {
-      readOnlyAccess: {
-        type: "fullAccess",
-      },
-      networkAccess: false,
-      ...policy,
+      type: "workspaceWrite",
+      readOnlyAccess: wsPolicy.readOnlyAccess,
+      networkAccess: wsPolicy.networkAccess,
       writableRoots,
     };
   }
 
-  return policy;
+  return { ...policy };
 }
 
 function extractRateLimits(result: unknown): unknown {

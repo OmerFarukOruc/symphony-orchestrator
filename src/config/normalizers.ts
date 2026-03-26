@@ -14,6 +14,7 @@ import type {
   ReasoningEffort,
   StateMachineConfig,
   StateStageConfig,
+  TurnSandboxPolicy,
 } from "../core/types.js";
 import { asBoolean, asRecord, asString, asStringArray, asStringMap, asRecordArray } from "./coercion.js";
 import { resolveConfigString } from "./resolvers.js";
@@ -159,7 +160,7 @@ function defaultApprovalPolicy(): Record<string, unknown> {
  * Normalize turn sandbox policy configuration.
  * Returns a default policy if the input is empty.
  */
-export function normalizeTurnSandboxPolicy(value: Record<string, unknown>): { type: string; [key: string]: unknown } {
+export function normalizeTurnSandboxPolicy(value: Record<string, unknown>): TurnSandboxPolicy {
   if (Object.keys(value).length === 0) {
     return {
       type: "workspaceWrite",
@@ -171,8 +172,21 @@ export function normalizeTurnSandboxPolicy(value: Record<string, unknown>): { ty
     };
   }
 
+  const policyType = asString(value.type, "workspaceWrite");
+  if (policyType === "workspaceWrite") {
+    return {
+      type: "workspaceWrite",
+      writableRoots: Array.isArray(value.writableRoots) ? (value.writableRoots as string[]) : [],
+      networkAccess: typeof value.networkAccess === "boolean" ? value.networkAccess : false,
+      readOnlyAccess:
+        typeof value.readOnlyAccess === "object" && value.readOnlyAccess !== null
+          ? (value.readOnlyAccess as { type: string })
+          : { type: "fullAccess" },
+    };
+  }
+
   return {
-    type: asString(value.type, "workspaceWrite"),
+    type: policyType,
     ...value,
   };
 }

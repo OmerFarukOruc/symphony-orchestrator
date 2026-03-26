@@ -397,7 +397,25 @@ export async function handleWorkerOutcome(
 ): Promise<void> {
   await entry.flushPersistence();
   ctx.runningEntries.delete(issue.id);
-  const latestIssue = (await ctx.deps.linearClient.fetchIssueStatesByIds([issue.id]).catch(() => [issue]))[0] ?? issue;
+  let latestIssue = issue;
+  try {
+    const refreshed = await ctx.deps.linearClient.fetchIssueStatesByIds([issue.id]);
+    latestIssue = refreshed[0] ?? issue;
+  } catch (error) {
+    ctx.deps.logger.warn(
+      { issue_identifier: issue.identifier, error: error instanceof Error ? error.message : String(error) },
+      "linear issue refresh failed — proceeding with stale issue state",
+    );
+    ctx.notify({
+      type: "worker_failed",
+      severity: "info",
+      timestamp: nowIso(),
+      message: "linear issue refresh failed — using stale state for reconciliation",
+      issue: issueRef(issue),
+      attempt,
+      metadata: { degraded: true, error: error instanceof Error ? error.message : String(error) },
+    });
+  }
 
   await ctx.deps.attemptStore.updateAttempt(entry.runId, {
     issueId: latestIssue.id,

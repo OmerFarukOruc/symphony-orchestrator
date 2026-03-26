@@ -116,7 +116,13 @@ function parseCliArgs(argv: string[]) {
   const workflowPath = parsed.positionals[0] ?? "./WORKFLOW.md";
   const resolvedWorkflowPath = path.resolve(workflowPath);
   const logger = createLogger();
-  loadFlags(path.dirname(resolvedWorkflowPath));
+  const flagsResult = loadFlags(path.dirname(resolvedWorkflowPath));
+  if (flagsResult.fileStatus === "malformed") {
+    logger.warn(
+      { parseError: flagsResult.parseError },
+      "flags.json is malformed — feature flags from file were ignored",
+    );
+  }
   initErrorTracking(logger.child({ component: "error-tracking" }));
   const archiveDir = path.resolve(
     parsed.values["log-dir"] ??

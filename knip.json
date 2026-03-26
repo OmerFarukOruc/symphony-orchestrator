@@ -3,6 +3,9 @@
   "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts"],
   "entry": ["src/dispatch/entrypoint.ts"],
   "ignoreFiles": ["frontend/src/components/issue-card.ts", "frontend/src/pages/page-factory.ts", "tests/e2e/**"],
+  "ignoreExports": {
+    "src/observability/metrics.ts": ["createMetricsCollector"]
+  },
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": [
     "agentation-mcp",

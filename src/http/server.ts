@@ -3,6 +3,9 @@ import http from "node:http";
 import express, { type Express } from "express";
 import type { ConfigStore } from "../config/store.js";
 import { registerHttpRoutes } from "./routes.js";
+import { createWriteGuard } from "./write-guard.js";
+import { WriteAuditLog } from "./write-audit.js";
+import { serviceErrorHandler } from "./service-errors.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 
 import type { ConfigOverlayStore } from "../config/overlay.js";
@@ -48,7 +51,10 @@ export class HttpServer {
       next();
     });
     this.app.use(express.json());
+    const auditLog = this.deps.archiveDir ? new WriteAuditLog(this.deps.archiveDir) : undefined;
+    this.app.use("/api/", createWriteGuard({ auditLog }));
     registerHttpRoutes(this.app, this.deps);
+    this.app.use(serviceErrorHandler);
   }
 
   async start(port: number): Promise<{ port: number }> {

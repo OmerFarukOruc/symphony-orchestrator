@@ -1,16 +1,8 @@
 import type { Express, Response } from "express";
 
 import { SecretsStore } from "./store.js";
+import { methodNotAllowed } from "../http/route-helpers.js";
 import { isRecord } from "../utils/type-guards.js";
-
-function methodNotAllowed(response: Response): void {
-  response.status(405).json({
-    error: {
-      code: "method_not_allowed",
-      message: "Method Not Allowed",
-    },
-  });
-}
 
 function isValidSecretKey(value: string): boolean {
   return /^[A-Za-z0-9._:-]+$/.test(value);

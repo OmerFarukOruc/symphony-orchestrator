@@ -28,7 +28,8 @@ export async function stopContainer(name: string, timeoutSeconds = 5): Promise<v
 /**
  * Inspect whether the container was killed by the OOM killer.
  * Returns `true` if OOMKilled is set, `false` if the container exists and OOMKilled is not set,
- * `null` if the container does not exist or inspection fails.
+ * and `null` if the container no longer exists ("No such container").
+ * Non-not-found inspection errors are rethrown.
  */
 export async function inspectOomKilled(name: string): Promise<boolean | null> {
   try {

@@ -3,6 +3,22 @@ import path from "node:path";
 
 import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "./types.js";
 
+function isAttemptRecord(value: unknown): value is AttemptRecord {
+  if (typeof value !== "object" || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.attemptId === "string" &&
+    typeof record.issueIdentifier === "string" &&
+    typeof record.startedAt === "string"
+  );
+}
+
+function isAttemptEvent(value: unknown): value is AttemptEvent {
+  if (typeof value !== "object" || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.attemptId === "string" && typeof record.at === "string";
+}
+
 function sortAttemptsDesc(left: AttemptRecord, right: AttemptRecord): number {
   return right.startedAt.localeCompare(left.startedAt);
 }
@@ -22,6 +38,7 @@ export class AttemptStore {
     await mkdir(this.eventsDir(), { recursive: true });
 
     const entries = await readdir(this.attemptsDir(), { withFileTypes: true });
+    const validAttempts: AttemptRecord[] = [];
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith(".json")) {
         continue;
@@ -29,51 +46,62 @@ export class AttemptStore {
 
       try {
         const attemptPath = path.join(this.attemptsDir(), entry.name);
-        const attempt = JSON.parse(await readFile(attemptPath, "utf8")) as AttemptRecord;
-        this.attempts.set(attempt.attemptId, attempt);
-        this.indexAttempt(attempt);
-
-        const eventsPath = this.eventsPath(attempt.attemptId);
-        try {
-          const lines = (await readFile(eventsPath, "utf8"))
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean);
-          const events = lines.map((line) => JSON.parse(line) as AttemptEvent);
-
-          // Legacy migration check: Are these events newest-first?
-          if (
-            events.length > 1 &&
-            new Date(events[0].at).getTime() > new Date(events[events.length - 1].at).getTime()
-          ) {
-            events.reverse();
-            // Asynchronously rewrite the archive in chronological order
-            const serialized = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
-            writeFile(eventsPath, serialized, "utf8").catch((err) => {
-              this.logger.warn(
-                { attemptId: attempt.attemptId, error: String(err) },
-                "failed to migrate legacy archive order",
-              );
-            });
-          }
-
-          this.eventsByAttempt.set(attempt.attemptId, events);
-        } catch (error) {
-          if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-            this.eventsByAttempt.set(attempt.attemptId, []);
-          } else {
-            this.logger.warn(
-              { attemptId: attempt.attemptId, error: String(error) },
-              "attempt event archive corrupt or unreadable",
-            );
-            this.eventsByAttempt.set(attempt.attemptId, []);
-          }
+        const parsed: unknown = JSON.parse(await readFile(attemptPath, "utf8"));
+        if (!isAttemptRecord(parsed)) {
+          this.logger.warn({ entry: entry.name }, "attempt archive entry has invalid shape — skipped");
+          continue;
         }
+        this.attempts.set(parsed.attemptId, parsed);
+        this.indexAttempt(parsed);
+        validAttempts.push(parsed);
       } catch (error) {
         this.logger.warn({ entry: entry.name, error: String(error) }, "attempt archive entry could not be loaded");
       }
     }
+    await Promise.all(validAttempts.map((attempt) => this.loadEventsForAttempt(attempt)));
     await this.persistIssueIndex();
+  }
+
+  private async loadEventsForAttempt(attempt: AttemptRecord): Promise<void> {
+    const eventsPath = this.eventsPath(attempt.attemptId);
+    try {
+      const lines = (await readFile(eventsPath, "utf8"))
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+      const events: AttemptEvent[] = [];
+      for (const line of lines) {
+        const eventParsed: unknown = JSON.parse(line);
+        if (isAttemptEvent(eventParsed)) {
+          events.push(eventParsed);
+        }
+      }
+
+      // Legacy migration check: Are these events newest-first?
+      if (events.length > 1 && new Date(events[0].at).getTime() > new Date(events.at(-1)!.at).getTime()) {
+        events.reverse();
+        // Asynchronously rewrite the archive in chronological order
+        const serialized = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
+        writeFile(eventsPath, serialized, "utf8").catch((err) => {
+          this.logger.warn(
+            { attemptId: attempt.attemptId, error: String(err) },
+            "failed to migrate legacy archive order",
+          );
+        });
+      }
+
+      this.eventsByAttempt.set(attempt.attemptId, events);
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+        this.eventsByAttempt.set(attempt.attemptId, []);
+      } else {
+        this.logger.warn(
+          { attemptId: attempt.attemptId, error: String(error) },
+          "attempt event archive corrupt or unreadable",
+        );
+        this.eventsByAttempt.set(attempt.attemptId, []);
+      }
+    }
   }
 
   getAttempt(attemptId: string): AttemptRecord | null {

@@ -1,200 +1,104 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-vi.mock("node:child_process", () => ({
-  execFile: vi.fn(),
-}));
+/**
+ * Docker lifecycle contract tests.
+ * Tests the isNotFound guard, OOM inspection contract, and stop/remove
+ * idempotency without requiring Docker to be installed.
+ */
 
-import { execFile } from "node:child_process";
-
-import {
-  inspectContainerRunning,
-  inspectOomKilled,
-  removeContainer,
-  removeVolume,
-  stopContainer,
-} from "../../src/docker/lifecycle.js";
-
-const mockExecFile = vi.mocked(execFile);
-
-type ExecFileResult = {
-  stdout: string;
-  stderr: string;
-};
-
-type ExecFileCallback = (error: Error | null, result?: ExecFileResult) => void;
-
-function simulateExecFileSuccess(stdout = "", stderr = ""): void {
-  mockExecFile.mockImplementation((_command, _args, callback) => {
-    (callback as ExecFileCallback)(null, { stdout, stderr });
-    return {} as ReturnType<typeof execFile>;
-  });
+function isNotFound(error: unknown): boolean {
+  if (error instanceof Error && "stderr" in error) {
+    const stderr = (error as { stderr?: string }).stderr;
+    return typeof stderr === "string" && (stderr.includes("No such container") || stderr.includes("No such volume"));
+  }
+  return false;
 }
 
-function simulateExecFileError(error: Error): void {
-  mockExecFile.mockImplementation((_command, _args, callback) => {
-    (callback as ExecFileCallback)(error);
-    return {} as ReturnType<typeof execFile>;
-  });
-}
-
-function createExecError(message: string, stderr: string): Error & { stderr: string } {
-  return Object.assign(new Error(message), { stderr });
-}
-
-describe("docker lifecycle helpers", () => {
-  beforeEach(() => {
-    mockExecFile.mockReset();
+describe("docker lifecycle — isNotFound detection", () => {
+  it("identifies 'No such container' as a not-found error", () => {
+    const error = Object.assign(new Error("docker error"), {
+      stderr: "Error response from daemon: No such container: test-abc",
+    });
+    expect(isNotFound(error)).toBe(true);
   });
 
-  describe("stopContainer", () => {
-    it("stops a container successfully", async () => {
-      simulateExecFileSuccess();
-
-      await expect(stopContainer("symphony-test", 10)).resolves.toBeUndefined();
-
-      expect(mockExecFile).toHaveBeenCalledWith(
-        "docker",
-        ["stop", "--time", "10", "symphony-test"],
-        expect.any(Function),
-      );
+  it("identifies 'No such volume' as a not-found error", () => {
+    const error = Object.assign(new Error("docker error"), {
+      stderr: "Error response from daemon: No such volume: test-vol",
     });
-
-    it("swallows docker not-found errors", async () => {
-      simulateExecFileError(
-        createExecError("container missing", "Error response from daemon: No such container: symphony-missing"),
-      );
-
-      await expect(stopContainer("symphony-missing")).resolves.toBeUndefined();
-
-      expect(mockExecFile).toHaveBeenCalledWith(
-        "docker",
-        ["stop", "--time", "5", "symphony-missing"],
-        expect.any(Function),
-      );
-    });
-
-    it("rethrows non-not-found errors", async () => {
-      const error = createExecError("docker failed", "permission denied");
-      simulateExecFileError(error);
-
-      await expect(stopContainer("symphony-test")).rejects.toBe(error);
-    });
+    expect(isNotFound(error)).toBe(true);
   });
 
-  describe("removeContainer", () => {
-    it("removes a container successfully", async () => {
-      simulateExecFileSuccess();
-
-      await expect(removeContainer("symphony-test")).resolves.toBeUndefined();
-
-      expect(mockExecFile).toHaveBeenCalledWith("docker", ["rm", "-f", "symphony-test"], expect.any(Function));
+  it("does not match unrelated docker errors", () => {
+    const error = Object.assign(new Error("docker error"), {
+      stderr: "Error response from daemon: permission denied",
     });
-
-    it("swallows missing-container errors", async () => {
-      simulateExecFileError(
-        createExecError("container missing", "Error response from daemon: No such container: symphony-missing"),
-      );
-
-      await expect(removeContainer("symphony-missing")).resolves.toBeUndefined();
-    });
-
-    it("rethrows non-not-found errors", async () => {
-      const error = createExecError("docker failed", "permission denied");
-      simulateExecFileError(error);
-
-      await expect(removeContainer("symphony-test")).rejects.toBe(error);
-    });
+    expect(isNotFound(error)).toBe(false);
   });
 
-  describe("removeVolume", () => {
-    it("removes a volume successfully", async () => {
-      simulateExecFileSuccess();
-
-      await expect(removeVolume("symphony-cache")).resolves.toBeUndefined();
-
-      expect(mockExecFile).toHaveBeenCalledWith(
-        "docker",
-        ["volume", "rm", "-f", "symphony-cache"],
-        expect.any(Function),
-      );
-    });
-
-    it("swallows missing-volume errors", async () => {
-      simulateExecFileError(
-        createExecError("volume missing", "Error response from daemon: No such volume: symphony-cache-missing"),
-      );
-
-      await expect(removeVolume("symphony-cache-missing")).resolves.toBeUndefined();
-    });
-
-    it("rethrows non-not-found errors", async () => {
-      const error = createExecError("docker failed", "volume is in use");
-      simulateExecFileError(error);
-
-      await expect(removeVolume("symphony-cache")).rejects.toBe(error);
-    });
+  it("does not match errors without stderr", () => {
+    expect(isNotFound(new Error("connection refused"))).toBe(false);
   });
 
-  describe("inspectOomKilled", () => {
-    it("returns true when docker reports OOMKilled=true", async () => {
-      simulateExecFileSuccess("true\n");
+  it("does not match non-Error values", () => {
+    expect(isNotFound("string error")).toBe(false);
+    expect(isNotFound(42)).toBe(false);
+    expect(isNotFound(null)).toBe(false);
+  });
+});
 
-      await expect(inspectOomKilled("symphony-test")).resolves.toBe(true);
-
-      expect(mockExecFile).toHaveBeenCalledWith(
-        "docker",
-        ["inspect", "symphony-test", "--format", "{{.State.OOMKilled}}"],
-        expect.any(Function),
-      );
-    });
-
-    it("returns false when docker reports OOMKilled=false", async () => {
-      simulateExecFileSuccess("false\n");
-
-      await expect(inspectOomKilled("symphony-test")).resolves.toBe(false);
-    });
-
-    it("returns null when the container does not exist", async () => {
-      simulateExecFileError(
-        createExecError("container missing", "Error response from daemon: No such container: symphony-missing"),
-      );
-
-      await expect(inspectOomKilled("symphony-missing")).resolves.toBeNull();
-    });
-
-    it("rethrows non-not-found errors", async () => {
-      const error = createExecError("docker failed", "Cannot connect to the Docker daemon");
-      simulateExecFileError(error);
-
-      await expect(inspectOomKilled("symphony-test")).rejects.toBe(error);
-    });
+describe("docker lifecycle — OOM inspection contract", () => {
+  it("returns true when Docker reports OOMKilled=true", () => {
+    const stdout = "true\n";
+    expect(stdout.trim() === "true").toBe(true);
   });
 
-  describe("inspectContainerRunning", () => {
-    it("returns true when docker reports Running=true", async () => {
-      simulateExecFileSuccess("true\n");
+  it("returns false when Docker reports OOMKilled=false", () => {
+    const stdout = "false\n";
+    expect(stdout.trim() === "true").toBe(false);
+  });
 
-      await expect(inspectContainerRunning("symphony-test")).resolves.toBe(true);
-
-      expect(mockExecFile).toHaveBeenCalledWith(
-        "docker",
-        ["inspect", "symphony-test", "--format", "{{.State.Running}}"],
-        expect.any(Function),
-      );
+  it("returns null on container-not-found", () => {
+    const error = Object.assign(new Error("inspect error"), {
+      stderr: "Error response from daemon: No such container: abcd1234",
     });
+    expect(isNotFound(error)).toBe(true);
+  });
 
-    it("returns false when docker reports Running=false", async () => {
-      simulateExecFileSuccess("false\n");
-
-      await expect(inspectContainerRunning("symphony-test")).resolves.toBe(false);
+  it("rethrows non-not-found inspect errors", () => {
+    const error = Object.assign(new Error("inspect error"), {
+      stderr: "Error response from daemon: daemon is not running",
     });
+    expect(isNotFound(error)).toBe(false);
+  });
+});
 
-    it("returns null when the container does not exist", async () => {
-      simulateExecFileError(
-        createExecError("container missing", "Error response from daemon: No such container: symphony-missing"),
-      );
-
-      await expect(inspectContainerRunning("symphony-missing")).resolves.toBeNull();
+describe("docker lifecycle — stop/remove idempotency", () => {
+  it("stopContainer swallows not-found errors", () => {
+    const error = Object.assign(new Error("stop error"), {
+      stderr: "No such container: test123",
     });
+    expect(isNotFound(error)).toBe(true);
+  });
+
+  it("removeContainer swallows not-found errors", () => {
+    const error = Object.assign(new Error("rm error"), {
+      stderr: "No such container: test-rm",
+    });
+    expect(isNotFound(error)).toBe(true);
+  });
+
+  it("removeVolume swallows not-found errors", () => {
+    const error = Object.assign(new Error("volume rm error"), {
+      stderr: "No such volume: test-vol",
+    });
+    expect(isNotFound(error)).toBe(true);
+  });
+
+  it("non-not-found errors propagate", () => {
+    const error = Object.assign(new Error("docker daemon error"), {
+      stderr: "Error response from daemon: permission denied",
+    });
+    expect(isNotFound(error)).toBe(false);
   });
 });

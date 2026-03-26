@@ -65,6 +65,12 @@ function makeConfig(maxTurns = 5): ServiceConfig {
       sandbox: { resources: {} },
       model: "gpt-4o",
       reasoningEffort: "high",
+      turnSandboxPolicy: {
+        type: "workspaceWrite",
+        writableRoots: [],
+        networkAccess: false,
+        readOnlyAccess: { type: "fullAccess" },
+      },
     },
   } as unknown as ServiceConfig;
 }

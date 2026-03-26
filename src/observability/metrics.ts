@@ -113,4 +113,15 @@ export class MetricsCollector {
   }
 }
 
+/** Create a new MetricsCollector instance for owned lifecycle management. */
+export function createMetricsCollector(): MetricsCollector {
+  return new MetricsCollector();
+}
+
+/**
+ * Process-global MetricsCollector singleton.
+ *
+ * Prefer `createMetricsCollector()` for explicit lifecycle ownership in new code.
+ * This singleton is retained for backward compatibility with existing consumers.
+ */
 export const globalMetrics = new MetricsCollector();

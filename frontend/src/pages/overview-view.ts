@@ -2,13 +2,19 @@ import { router } from "../router";
 import { store } from "../state/store";
 import type { AppState } from "../state/store";
 import type { RuntimeIssueView } from "../types";
-import { createEventRow } from "../components/event-row";
 import { createSystemHealthBadge } from "../components/system-health-badge";
 import { createStallEventsTable } from "../components/stall-events-table";
-import { buildAttentionList, latestTerminalIssues } from "../utils/issues";
-import { formatCompactNumber, formatDuration, formatRateLimitHeadroom, formatRelativeTime } from "../utils/format";
-import { flashDiff, setTextWithDiff } from "../utils/diff";
+import { buildAttentionList } from "../utils/issues";
+import { formatRelativeTime } from "../utils/format";
 import { registerPageCleanup } from "../utils/page";
+import {
+  renderLoadingState,
+  renderKpis,
+  renderLists,
+  renderGettingStarted,
+  renderEmptyStates,
+  type OverviewDomRefs,
+} from "./overview-renderers";
 
 const EMPTY_STATE_DISMISSED_KEY = "symphony-empty-state-dismissed";
 
@@ -20,10 +26,6 @@ function dismissGettingStarted(): void {
   localStorage.setItem(EMPTY_STATE_DISMISSED_KEY, "true");
 }
 
-/**
- * Creates a live metric pill for the hero band.
- * Small, inline stat with value and label.
- */
 function createLiveMetric(label: string): { root: HTMLElement; value: HTMLElement } {
   const root = document.createElement("div");
   root.className = "overview-live-metric";
@@ -36,10 +38,6 @@ function createLiveMetric(label: string): { root: HTMLElement; value: HTMLElemen
   return { root, value };
 }
 
-/**
- * Creates the hero metrics band - a strong top strip showing "Now" metrics.
- * Running, Queue Depth, Rate-limit, Attention count inline.
- */
 function createHeroMetricsBand(): {
   band: HTMLElement;
   metrics: {
@@ -78,9 +76,6 @@ function createHeroMetricsBand(): {
   };
 }
 
-/**
- * Creates a section header with title and optional kicker.
- */
 function createSectionHeader(title: string, kicker?: string): HTMLElement {
   const header = document.createElement("div");
   header.className = "overview-section-header";
@@ -100,9 +95,6 @@ function createSectionHeader(title: string, kicker?: string): HTMLElement {
   return header;
 }
 
-/**
- * Creates an issue row for the attention or terminal list.
- */
 function issueRow(issue: RuntimeIssueView, target: "attention" | "terminal"): HTMLButtonElement {
   const row = document.createElement("button");
   row.type = "button";
@@ -129,47 +121,6 @@ function issueRow(issue: RuntimeIssueView, target: "attention" | "terminal"): HT
   row.addEventListener("click", () => router.navigate(`/queue/${issue.identifier}`));
 
   return row;
-}
-
-/**
- * Fills a container with new items, applying flash diff animation.
- */
-function fillList(container: HTMLElement, items: HTMLElement[]): void {
-  container.replaceChildren(...items);
-  for (const item of items) {
-    flashDiff(item);
-  }
-}
-
-function createTeachingEmptyState(
-  title: string,
-  detail: string,
-  actionLabel?: string,
-  onAction?: () => void,
-): HTMLElement {
-  const box = document.createElement("div");
-  box.className = "overview-teaching-empty";
-
-  const heading = document.createElement("h3");
-  heading.className = "overview-teaching-empty-title";
-  heading.textContent = title;
-
-  const text = document.createElement("p");
-  text.className = "overview-teaching-empty-detail";
-  text.textContent = detail;
-
-  box.append(heading, text);
-
-  if (actionLabel && onAction) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "mc-button";
-    button.textContent = actionLabel;
-    button.addEventListener("click", onAction);
-    box.append(button);
-  }
-
-  return box;
 }
 
 function createGettingStartedCard(onDismiss: () => void): HTMLElement {
@@ -210,9 +161,9 @@ function createGettingStartedCard(onDismiss: () => void): HTMLElement {
     const dot = document.createElement("span");
     dot.className = "overview-getting-started-step-n";
     dot.textContent = s.n;
-    const label = document.createElement("span");
-    label.textContent = s.text;
-    step.append(dot, label);
+    const labelEl = document.createElement("span");
+    labelEl.textContent = s.text;
+    step.append(dot, labelEl);
     steps.append(step);
   }
 
@@ -224,11 +175,9 @@ export function createOverviewPage(): HTMLElement {
   const page = document.createElement("div");
   page.className = "page overview-page fade-in";
 
-  // Hero metrics band - the strong top "Now" strip
   const { band: heroBand, metrics: heroMetrics } = createHeroMetricsBand();
   page.append(heroBand);
 
-  // Getting started card (shown when dashboard is empty)
   const gettingStartedContainer = document.createElement("div");
   let gettingStartedEl: HTMLElement | null = null;
 
@@ -250,11 +199,9 @@ export function createOverviewPage(): HTMLElement {
 
   page.append(gettingStartedContainer);
 
-  // Main content grid: Primary attention zone + secondary sidebar
   const mainGrid = document.createElement("section");
   mainGrid.className = "overview-main-grid";
 
-  // Primary attention zone - dominant area
   const attentionZone = document.createElement("article");
   attentionZone.className = "overview-attention-zone";
   attentionZone.append(createSectionHeader("Attention", "Intervention queue"));
@@ -266,7 +213,6 @@ export function createOverviewPage(): HTMLElement {
   const secondary = document.createElement("aside");
   secondary.className = "overview-secondary";
 
-  // Token burn section
   const tokenSection = document.createElement("div");
   tokenSection.className = "overview-token-section";
   tokenSection.append(createSectionHeader("Token burn", "Session totals"));
@@ -307,7 +253,6 @@ export function createOverviewPage(): HTMLElement {
   }
   secondary.append(quickActions);
 
-  // Recent events section
   const recentSection = document.createElement("div");
   recentSection.className = "overview-recent-section";
   recentSection.append(createSectionHeader("Recent events"));
@@ -316,7 +261,6 @@ export function createOverviewPage(): HTMLElement {
   recentList.className = "overview-events";
   recentSection.append(recentList);
 
-  // Terminal issues section (lower priority)
   const terminalSection = document.createElement("div");
   terminalSection.className = "overview-terminal-section";
   terminalSection.append(createSectionHeader("Latest completed / failed"));
@@ -325,21 +269,18 @@ export function createOverviewPage(): HTMLElement {
   terminalList.className = "overview-list";
   terminalSection.append(terminalList);
 
-  // System health section
   const healthSection = document.createElement("div");
   healthSection.className = "overview-health-section";
   healthSection.append(createSectionHeader("System health", "Watchdog"));
   const { root: healthBadge, update: updateHealthBadge } = createSystemHealthBadge();
   healthSection.append(healthBadge);
 
-  // Stall events section
   const stallSection = document.createElement("div");
   stallSection.className = "overview-stall-section";
   stallSection.append(createSectionHeader("Stall events"));
   const { root: stallList, update: updateStallEvents } = createStallEventsTable();
   stallSection.append(stallList);
 
-  // Assemble main grid
   mainGrid.append(attentionZone, secondary);
   page.append(mainGrid);
 
@@ -348,108 +289,47 @@ export function createOverviewPage(): HTMLElement {
   lowerGrid.append(recentSection, healthSection, terminalSection, stallSection);
   page.append(lowerGrid);
 
-  // Loading state
   const loadingSections = [attentionZone, tokenSection, recentSection, terminalSection, healthSection, stallSection];
   for (const section of loadingSections) {
     section.setAttribute("aria-busy", "true");
   }
 
+  const refs: OverviewDomRefs = {
+    heroMetrics,
+    tokenMetrics: {
+      input: inputTokens.value,
+      output: outputTokens.value,
+      total: totalTokens.value,
+      runtime: runtime.value,
+    },
+    attentionList,
+    recentList,
+    terminalList,
+    loadingSections,
+    updateHealthBadge,
+    updateStallEvents,
+    showGettingStarted,
+    hideGettingStarted,
+  };
+
   function renderSnapshot(state: AppState): void {
     const snapshot = state.snapshot;
     if (!snapshot) {
-      // Show skeletons while loading
-      for (const section of loadingSections) {
-        if (section.childElementCount <= 1) {
-          const skeleton = document.createElement("div");
-          skeleton.className = "overview-skeleton";
-          section.append(skeleton);
-        }
-      }
+      renderLoadingState(refs);
       return;
     }
 
-    // Clear loading state
     for (const section of loadingSections) {
       section.setAttribute("aria-busy", "false");
     }
 
-    // Hero metrics - the "Now" band
-    setTextWithDiff(heroMetrics.running, String(snapshot.counts.running));
-    setTextWithDiff(heroMetrics.queued, String(snapshot.queued.length));
-    setTextWithDiff(heroMetrics.headroom, formatRateLimitHeadroom(snapshot.rate_limits));
-
-    // Attention count for hero
     const attentionIssues = buildAttentionList(snapshot.workflow_columns);
-    setTextWithDiff(heroMetrics.attention, String(attentionIssues.length));
-
-    // Token burn metrics
-    setTextWithDiff(inputTokens.value, formatCompactNumber(snapshot.codex_totals.input_tokens));
-    setTextWithDiff(outputTokens.value, formatCompactNumber(snapshot.codex_totals.output_tokens));
-    setTextWithDiff(totalTokens.value, formatCompactNumber(snapshot.codex_totals.total_tokens));
-    setTextWithDiff(runtime.value, formatDuration(snapshot.codex_totals.seconds_running));
-
-    // Attention list - primary zone
-    fillList(
-      attentionList,
-      attentionIssues.map((issue) => issueRow(issue, "attention")),
-    );
-
-    // Getting started card — show when dashboard is completely empty
-    const isEmpty =
-      snapshot.counts.running === 0 &&
-      snapshot.counts.retrying === 0 &&
-      snapshot.queued.length === 0 &&
-      snapshot.completed.length === 0 &&
-      attentionIssues.length === 0;
-    if (isEmpty) {
-      showGettingStarted();
-    } else {
-      hideGettingStarted();
-    }
-
-    // Recent events
-    fillList(
-      recentList,
-      snapshot.recent_events.slice(-5).map((event) => createEventRow(event, true)),
-    );
-
-    // Terminal issues
-    fillList(
-      terminalList,
-      latestTerminalIssues(snapshot.completed).map((issue) => issueRow(issue, "terminal")),
-    );
-
-    // System health badge
+    renderKpis(refs, snapshot, attentionIssues.length);
+    renderLists(refs, snapshot, attentionIssues, issueRow);
+    renderGettingStarted(refs, snapshot, attentionIssues.length);
     updateHealthBadge(snapshot.system_health);
-
-    // Stall events table
     updateStallEvents(snapshot.stall_events);
-
-    if (attentionList.childElementCount === 0) {
-      attentionList.replaceChildren(
-        createTeachingEmptyState(
-          "All clear",
-          "No issues need attention right now. Blocked, retrying, or pending issues will appear here.",
-          "Open queue",
-          () => router.navigate("/queue"),
-        ),
-      );
-    }
-
-    if (recentList.childElementCount === 0) {
-      recentList.replaceChildren(
-        createTeachingEmptyState(
-          "Awaiting activity",
-          "Workflow events will appear here as the orchestrator processes issues.",
-        ),
-      );
-    }
-
-    if (terminalList.childElementCount === 0) {
-      terminalList.replaceChildren(
-        createTeachingEmptyState("No completed work yet", "Finished and failed issues will collect here for review."),
-      );
-    }
+    renderEmptyStates(refs);
   }
 
   const handler = (event: Event): void => renderSnapshot((event as CustomEvent<AppState>).detail);
