@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 
 import { ConfigOverlayStore } from "../config/overlay.js";
 import { ConfigStore } from "../config/store.js";
-import { TypedEventBus } from "../core/event-bus.js";
+import type { TypedEventBus } from "../core/event-bus.js";
 import { HttpServer } from "../http/server.js";
 import { createLogger } from "../core/logger.js";
 import { getErrorTracker, initErrorTracking } from "../core/error-tracking.js";
@@ -97,7 +97,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   }
   await httpServer.start(port);
 
-  const shutdown = buildShutdown(httpServer, orchestrator, configStore, overlayStore, eventBus, logger);
+  const shutdown = buildShutdown({ httpServer, orchestrator, configStore, overlayStore, eventBus, logger });
   logger.info({ workflowPath, port, logDir: archiveDir }, "service started");
   watchConfigChanges(configStore, services.notificationManager, config.server.port, logger);
 
@@ -158,14 +158,21 @@ async function safeStartConfigStore(configStore: ConfigStore): Promise<number | 
   }
 }
 
-function buildShutdown(
-  httpServer: HttpServer,
-  orchestrator: Orchestrator,
-  configStore: ConfigStore,
-  overlayStore: ConfigOverlayStore,
-  eventBus: TypedEventBus<SymphonyEventMap>,
-  logger: ReturnType<typeof createLogger>,
-): () => Promise<void> {
+function buildShutdown({
+  httpServer,
+  orchestrator,
+  configStore,
+  overlayStore,
+  eventBus,
+  logger,
+}: {
+  httpServer: HttpServer;
+  orchestrator: Orchestrator;
+  configStore: ConfigStore;
+  overlayStore: ConfigOverlayStore;
+  eventBus: TypedEventBus<SymphonyEventMap>;
+  logger: ReturnType<typeof createLogger>;
+}): () => Promise<void> {
   let shuttingDown = false;
   return async () => {
     if (shuttingDown) return;

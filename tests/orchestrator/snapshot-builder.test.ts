@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { AttemptRecord, RecentEvent, RuntimeIssueView, ServiceConfig } from "../../src/core/types.js";
+import { sumAttemptDurationSeconds } from "../../src/core/attempt-store-port.js";
 import type { RunningEntry, RetryRuntimeEntry } from "../../src/orchestrator/runtime-types.js";
 import {
   buildSnapshot,
@@ -194,14 +195,7 @@ function createAttemptStore(overrides?: {
 
   return {
     getAttempt: (attemptId: string) => attempts.find((a) => a.attemptId === attemptId) ?? null,
-    sumArchivedSeconds: () =>
-      attempts.reduce((total, attempt) => {
-        if (!attempt.endedAt) return total;
-        const startedAt = Date.parse(attempt.startedAt);
-        const endedAt = Date.parse(attempt.endedAt);
-        if (Number.isNaN(startedAt) || Number.isNaN(endedAt) || endedAt < startedAt) return total;
-        return total + (endedAt - startedAt) / 1000;
-      }, 0),
+    sumArchivedSeconds: () => sumAttemptDurationSeconds(attempts),
     getEvents: (attemptId: string) =>
       events.filter((e) => {
         const attemptIdFromEvent = (e as { attemptId?: string }).attemptId;

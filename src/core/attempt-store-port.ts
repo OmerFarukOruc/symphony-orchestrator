@@ -24,3 +24,16 @@ export interface AttemptStorePort {
 export function sortAttemptsDesc(left: AttemptRecord, right: AttemptRecord): number {
   return right.startedAt.localeCompare(left.startedAt);
 }
+
+/** Sum elapsed seconds for all completed attempts. Shared by JSONL and SQLite store test helpers. */
+export function sumAttemptDurationSeconds(attempts: Iterable<AttemptRecord>): number {
+  let total = 0;
+  for (const attempt of attempts) {
+    if (!attempt.endedAt) continue;
+    const startedAt = Date.parse(attempt.startedAt);
+    const endedAt = Date.parse(attempt.endedAt);
+    if (Number.isNaN(startedAt) || Number.isNaN(endedAt) || endedAt < startedAt) continue;
+    total += (endedAt - startedAt) / 1000;
+  }
+  return total;
+}

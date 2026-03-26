@@ -1,7 +1,7 @@
 import { appendFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { sortAttemptsDesc } from "./attempt-store-port.js";
+import { sortAttemptsDesc, sumAttemptDurationSeconds } from "./attempt-store-port.js";
 import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "./types.js";
 
 export class AttemptStore {
@@ -82,13 +82,7 @@ export class AttemptStore {
   }
 
   sumArchivedSeconds(): number {
-    return [...this.attempts.values()].reduce((total, attempt) => {
-      if (!attempt.endedAt) return total;
-      const startedAt = Date.parse(attempt.startedAt);
-      const endedAt = Date.parse(attempt.endedAt);
-      if (Number.isNaN(startedAt) || Number.isNaN(endedAt) || endedAt < startedAt) return total;
-      return total + (endedAt - startedAt) / 1000;
-    }, 0);
+    return sumAttemptDurationSeconds(this.attempts.values());
   }
 
   getEvents(attemptId: string): AttemptEvent[] {
