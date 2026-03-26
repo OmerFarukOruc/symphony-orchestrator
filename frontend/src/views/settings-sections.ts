@@ -5,6 +5,7 @@ import {
   buildSectionDiffPreview,
   buildUnderlyingPaths,
   ensureSectionDrafts,
+  formatFieldDraft,
   SECTION_GROUPS,
   sectionGroups,
   sectionMatchesFilter,
@@ -12,6 +13,7 @@ import {
   type SettingsSectionDefinition,
 } from "./settings-helpers";
 import { createSectionAction, createSettingsField } from "./settings-forms";
+import { getValueAtPath } from "./settings-paths";
 import type { SettingsState } from "./settings-state";
 
 interface SettingsRenderOptions {
@@ -110,6 +112,32 @@ function createNavItem(
     badge.className = "settings-start-here";
     badge.textContent = "Start here";
     topRow.append(badge);
+  }
+
+  const hasOverrides = section.prefixes.some((prefix) => getValueAtPath(state.overlay, prefix) !== undefined);
+  if (hasOverrides) {
+    const modifiedBadge = document.createElement("span");
+    modifiedBadge.className = "settings-nav-badge-modified";
+    modifiedBadge.setAttribute("aria-label", "Has saved overrides");
+    topRow.append(modifiedBadge);
+  }
+
+  const sectionDrafts = state.drafts[section.id];
+  if (sectionDrafts) {
+    const hasUnsaved = Object.entries(sectionDrafts).some(([path, draftValue]) => {
+      const effectiveValue = getValueAtPath(state.effective, path);
+      const formatted = formatFieldDraft(
+        section.fields.find((field) => field.path === path) ?? { path, label: "", kind: "text" },
+        effectiveValue,
+      );
+      return draftValue !== formatted;
+    });
+    if (hasUnsaved) {
+      const unsavedBadge = document.createElement("span");
+      unsavedBadge.className = "settings-nav-badge-unsaved";
+      unsavedBadge.setAttribute("aria-label", "Has unsaved changes");
+      topRow.append(unsavedBadge);
+    }
   }
 
   const desc = document.createElement("span");
@@ -360,11 +388,13 @@ function createGroupGrid(
   const grid = document.createElement("div");
   grid.className = "form-grid settings-grid";
 
-  group.fields.forEach((field) => {
+  group.fields.forEach((field, fieldIndex) => {
     const actionKind = field.actionKind;
+    const hintId = `settings-hint-${section.id}-${fieldIndex}`;
     grid.append(
       createSettingsField(field, {
         value: drafts[field.path] ?? "",
+        hintId,
         onInput: (value) => {
           drafts[field.path] = value;
           state.error = null;
