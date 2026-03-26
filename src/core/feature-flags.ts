@@ -1,6 +1,19 @@
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
+export const FEATURE_FLAGS = {
+  DUAL_SERVER: "DUAL_SERVER",
+  SQLITE_READS: "SQLITE_READS",
+  SQLITE_CONFIG_READS: "SQLITE_CONFIG_READS",
+  SQLITE_SECRET_READS: "SQLITE_SECRET_READS",
+} as const;
+
+export const FEATURE_FLAG_DUAL_WRITE = "DUAL_WRITE";
+export const FEATURE_FLAG_DUAL_SERVER = FEATURE_FLAGS.DUAL_SERVER;
+export const FEATURE_FLAG_SQLITE_READS = FEATURE_FLAGS.SQLITE_READS;
+export const FEATURE_FLAG_SQLITE_CONFIG_READS = FEATURE_FLAGS.SQLITE_CONFIG_READS;
+export const FEATURE_FLAG_SQLITE_SECRET_READS = FEATURE_FLAGS.SQLITE_SECRET_READS;
+
 interface FlagStore {
   flags: Record<string, boolean>;
   source: "env" | "file" | "default";

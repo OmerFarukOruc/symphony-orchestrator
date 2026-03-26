@@ -3,7 +3,17 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { loadFlags, isEnabled, setFlag, getAllFlags, getFlagsMeta, resetFlags } from "../../src/core/feature-flags.js";
+import {
+  FEATURE_FLAG_DUAL_WRITE,
+  FEATURE_FLAG_SQLITE_CONFIG_READS,
+  FEATURE_FLAG_SQLITE_READS,
+  loadFlags,
+  isEnabled,
+  setFlag,
+  getAllFlags,
+  getFlagsMeta,
+  resetFlags,
+} from "../../src/core/feature-flags.js";
 
 describe("feature-flags", () => {
   const tempDirs: string[] = [];
@@ -16,6 +26,22 @@ describe("feature-flags", () => {
 
   it("returns false by default for unknown flags", () => {
     expect(isEnabled("nonexistent")).toBe(false);
+  });
+
+  it("exports the DUAL_WRITE feature flag constant", () => {
+    expect(FEATURE_FLAG_DUAL_WRITE).toBe("DUAL_WRITE");
+  });
+
+  it("exports the SQLITE_CONFIG_READS feature flag constant", () => {
+    expect(FEATURE_FLAG_SQLITE_CONFIG_READS).toBe("SQLITE_CONFIG_READS");
+  });
+
+  it("exports the SQLITE_READS feature flag constant", () => {
+    expect(FEATURE_FLAG_SQLITE_READS).toBe("SQLITE_READS");
+  });
+
+  it("exports the SQLITE_SECRET_READS feature flag constant", () => {
+    expect("SQLITE_SECRET_READS").toBe("SQLITE_SECRET_READS");
   });
 
   it("loads flags from SYMPHONY_FLAGS env var", () => {
