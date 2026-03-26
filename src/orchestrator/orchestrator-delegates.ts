@@ -29,7 +29,7 @@ import {
 import { handleWorkerFailure } from "./worker-failure.js";
 import { handleWorkerOutcome } from "./worker-outcome.js";
 import { detectAndKillStalledWorkers, type StallEvent } from "./stall-detector.js";
-import { globalMetrics } from "../observability/metrics.js";
+import { globalMetrics } from "../observability/prom-client-metrics.js";
 
 /**
  * Pure delegation helpers that forward from Orchestrator methods to extracted state modules.

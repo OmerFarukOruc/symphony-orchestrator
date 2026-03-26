@@ -4,16 +4,21 @@ import { parseArgs } from "node:util";
 
 import { ConfigOverlayStore } from "../config/overlay.js";
 import { ConfigStore } from "../config/store.js";
+import { FEATURE_FLAG_DUAL_SERVER } from "../core/feature-flags.js";
 import { HttpServer } from "../http/server.js";
 import { createLogger } from "../core/logger.js";
 import { getErrorTracker, initErrorTracking } from "../core/error-tracking.js";
+import { DualWriteSecretStore } from "../db/secrets-store-sqlite.js";
 import { closeSymphonyDatabase } from "../persistence/sqlite/database.js";
-import { loadFlags } from "../core/feature-flags.js";
+import { isEnabled, loadFlags } from "../core/feature-flags.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
-import { SecretsStore } from "../secrets/store.js";
 import type { ValidationError } from "../core/types.js";
 import { createServices } from "./services.js";
 import { wireNotifications, watchConfigChanges } from "./notifications.js";
+
+interface StoppableServer {
+  stop(): Promise<void>;
+}
 
 function printValidationError(error: ValidationError): void {
   console.error(`error code=${error.code} msg=${JSON.stringify(error.message)}`);
@@ -35,32 +40,61 @@ async function cleanupTransientWorkspaceDirs(workspaceRoot: string): Promise<voi
   }
 }
 
+async function initializeSecretsStore(
+  archiveDir: string,
+  fileKey: string | null,
+  logger: ReturnType<typeof createLogger>,
+): Promise<{ secretsStore: DualWriteSecretStore; needsSetup: boolean }> {
+  const secretsStore = new DualWriteSecretStore(
+    archiveDir,
+    logger.child({ component: "secrets" }),
+    fileKey ? { masterKey: fileKey } : undefined,
+  );
+  try {
+    await secretsStore.start();
+    return { secretsStore, needsSetup: false };
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("MASTER_KEY is required")) {
+      logger.warn("MASTER_KEY not configured — starting in setup mode");
+      await secretsStore.startDeferred();
+      return { secretsStore, needsSetup: true };
+    }
+    throw error;
+  }
+}
+
+const SETUP_MODE_ERRORS = new Set(["missing_tracker_api_key", "missing_tracker_project_slug"]);
+
+function checkSetupMode(
+  configStore: ConfigStore,
+  needsSetup: boolean,
+  logger: ReturnType<typeof createLogger>,
+): { needsSetup: boolean; exitCode: number | null } {
+  if (needsSetup) return { needsSetup: true, exitCode: null };
+  const validationError = configStore.validateDispatch();
+  if (!validationError) return { needsSetup: false, exitCode: null };
+  if (SETUP_MODE_ERRORS.has(validationError.code)) {
+    logger.warn({ code: validationError.code }, "missing credentials — starting in setup mode");
+    return { needsSetup: true, exitCode: null };
+  }
+  printValidationError(validationError);
+  return { needsSetup: false, exitCode: 1 };
+}
+
 export async function main(argv = process.argv.slice(2)): Promise<number> {
-  const { workflowPath, archiveDir, selectedPort, logger } = parseCliArgs(argv);
+  const { workflowPath, archiveDir, selectedDbPath, selectedPort, logger } = parseCliArgs(argv);
+
+  if (selectedDbPath) {
+    process.env.DB_PATH = selectedDbPath;
+  }
 
   const overlayStore = new ConfigOverlayStore(
     path.join(archiveDir, "config", "overlay.yaml"),
     logger.child({ component: "config-overlay" }),
   );
   const fileKey = await readMasterKeyFile(archiveDir);
-  const secretsStore = new SecretsStore(
-    archiveDir,
-    logger.child({ component: "secrets" }),
-    fileKey ? { masterKey: fileKey } : undefined,
-  );
+  const { secretsStore, needsSetup: secretsNeedSetup } = await initializeSecretsStore(archiveDir, fileKey, logger);
   await overlayStore.start();
-  let needsSetup = false;
-  try {
-    await secretsStore.start();
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("MASTER_KEY is required")) {
-      logger.warn("MASTER_KEY not configured — starting in setup mode");
-      await secretsStore.startDeferred();
-      needsSetup = true;
-    } else {
-      throw error;
-    }
-  }
   const configStore = new ConfigStore(workflowPath, logger.child({ component: "config" }), {
     overlayStore,
     secretsStore,
@@ -69,35 +103,47 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const startError = await safeStartConfigStore(configStore);
   if (startError !== null) return startError;
 
-  const SETUP_MODE_ERRORS = new Set(["missing_tracker_api_key", "missing_tracker_project_slug"]);
-  if (!needsSetup) {
-    const validationError = configStore.validateDispatch();
-    if (validationError) {
-      if (SETUP_MODE_ERRORS.has(validationError.code)) {
-        logger.warn({ code: validationError.code }, "missing credentials — starting in setup mode");
-        needsSetup = true;
-      } else {
-        printValidationError(validationError);
-        await configStore.stop();
-        return 1;
-      }
-    }
+  const setupCheck = checkSetupMode(configStore, secretsNeedSetup, logger);
+  if (setupCheck.exitCode !== null) {
+    await configStore.stop();
+    return setupCheck.exitCode;
   }
+  const needsSetup = setupCheck.needsSetup;
 
   const config = configStore.getConfig();
   const port = selectedPort ?? config.server.port;
   const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger);
   wireNotifications(services.notificationManager, configStore, logger);
 
-  const { orchestrator, httpServer } = services;
+  const { orchestrator, httpServer, fastifyServer } = services;
   await cleanupTransientWorkspaceDirs(config.workspace.root);
   if (!needsSetup) {
     await orchestrator.start();
   }
   await httpServer.start(port);
+  if (fastifyServer) {
+    await fastifyServer.start(4002);
+  }
 
-  const shutdown = buildShutdown(httpServer, orchestrator, configStore, overlayStore, logger, archiveDir);
-  logger.info({ workflowPath, port, logDir: archiveDir }, "service started");
+  const shutdown = buildShutdown(
+    httpServer,
+    fastifyServer,
+    orchestrator,
+    configStore,
+    overlayStore,
+    logger,
+    archiveDir,
+  );
+  logger.info(
+    {
+      workflowPath,
+      port,
+      fastifyPort: isEnabled(FEATURE_FLAG_DUAL_SERVER) ? 4002 : null,
+      logDir: archiveDir,
+      dbPath: process.env.DB_PATH ?? null,
+    },
+    "service started",
+  );
   watchConfigChanges(configStore, services.notificationManager, config.server.port, logger);
 
   await awaitShutdown(logger, shutdown);
@@ -109,6 +155,7 @@ function parseCliArgs(argv: string[]) {
     args: argv,
     allowPositionals: true,
     options: {
+      "db-path": { type: "string" },
       port: { type: "string" },
       "log-dir": { type: "string" },
     },
@@ -125,8 +172,9 @@ function parseCliArgs(argv: string[]) {
         ? path.join(process.env.DATA_DIR, "archives")
         : path.join(path.dirname(resolvedWorkflowPath), ".symphony")),
   );
+  const selectedDbPath = parsed.values["db-path"] ? path.resolve(parsed.values["db-path"]) : process.env.DB_PATH;
   const selectedPort = parsed.values.port ? Number(parsed.values.port) : undefined;
-  return { workflowPath, resolvedWorkflowPath, archiveDir, selectedPort, logger };
+  return { workflowPath, resolvedWorkflowPath, archiveDir, selectedDbPath, selectedPort, logger };
 }
 
 async function readMasterKeyFile(archiveDir: string): Promise<string | null> {
@@ -159,6 +207,7 @@ async function safeStartConfigStore(configStore: ConfigStore): Promise<number | 
 
 function buildShutdown(
   httpServer: HttpServer,
+  fastifyServer: StoppableServer | null,
   orchestrator: Orchestrator,
   configStore: ConfigStore,
   overlayStore: ConfigOverlayStore,
@@ -169,6 +218,11 @@ function buildShutdown(
   return async () => {
     if (shuttingDown) return;
     shuttingDown = true;
+    if (fastifyServer) {
+      await fastifyServer.stop().catch((error: unknown) => {
+        logger.warn({ error: String(error) }, "fastify server shutdown failed");
+      });
+    }
     await httpServer.stop().catch((error: unknown) => {
       logger.warn({ error: String(error) }, "http server shutdown failed");
     });

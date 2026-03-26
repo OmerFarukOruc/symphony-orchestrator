@@ -14,7 +14,7 @@ import { buildCtx, cleanupTerminalWorkspaces, type OrchestratorState } from "./o
 import type { OrchestratorDeps } from "./runtime-types.js";
 import { nowIso } from "./views.js";
 import type { ModelSelection, ReasoningEffort, RuntimeSnapshot } from "../core/types.js";
-import { globalMetrics } from "../observability/metrics.js";
+import { globalMetrics } from "../observability/prom-client-metrics.js";
 
 export class Orchestrator {
   private readonly _state: OrchestratorState;

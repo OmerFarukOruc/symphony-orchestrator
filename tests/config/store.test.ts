@@ -178,6 +178,71 @@ describe("ConfigStore", () => {
     expect(overlayUnsubscribeFn).toHaveBeenCalled();
   });
 
+  it("refreshes config when secrets change notifications fire", async () => {
+    const dir = await makeTestDir();
+    const workflowPath = await writeTempWorkflow(
+      dir,
+      `---
+tracker:
+  kind: linear
+  api_key: $LINEAR_API_KEY
+  endpoint: https://api.linear.app/graphql
+  project_slug: TEST
+  active_states:
+    - In Progress
+  terminal_states:
+    - Done
+codex:
+  command: codex
+  turn_timeout_ms: 30000
+  auth:
+    mode: api_key
+    source_home: /tmp
+agent: {}
+server: {}
+workspace:
+  root: /tmp/symphony
+---
+Work on the issue.
+`,
+    );
+
+    let secretValue = "lin-before";
+    const secretListeners: Array<() => void> = [];
+    const secretsStore = {
+      get: vi.fn((key: string) => (key === "LINEAR_API_KEY" ? secretValue : null)),
+      subscribe: vi.fn((listener: () => void) => {
+        secretListeners.push(listener);
+        return () => {
+          const index = secretListeners.indexOf(listener);
+          if (index >= 0) {
+            secretListeners.splice(index, 1);
+          }
+        };
+      }),
+    };
+    const store = new ConfigStore(workflowPath, makeLogger(), { secretsStore });
+    await store.start();
+
+    try {
+      expect(store.getConfig().tracker.apiKey).toBe("lin-before");
+      secretValue = "lin-after";
+      const listener = secretListeners[0];
+      if (listener) {
+        listener();
+      }
+      for (let attempt = 0; attempt < 10; attempt++) {
+        if (store.getConfig().tracker.apiKey === "lin-after") {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      expect(store.getConfig().tracker.apiKey).toBe("lin-after");
+    } finally {
+      await store.stop();
+    }
+  });
+
   it("merges overlay store values into config map", async () => {
     const dir = await makeTestDir();
     const workflowPath = await writeTempWorkflow(dir);

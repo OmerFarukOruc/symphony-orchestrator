@@ -16,7 +16,7 @@ import { getContainerStats } from "../docker/stats.js";
 import { handleCodexRequest } from "../agent/codex-request-handler.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import type { LinearClient } from "../linear/client.js";
-import { globalMetrics } from "../observability/metrics.js";
+import { globalMetrics } from "../observability/prom-client-metrics.js";
 import { createLifecycleEvent } from "../orchestrator/lifecycle-events.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";

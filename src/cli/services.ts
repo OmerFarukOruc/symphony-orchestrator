@@ -1,10 +1,14 @@
 import { AgentRunner } from "../agent-runner/index.js";
+import type { SecretBackend } from "@symphony/shared";
 import { AttemptStore } from "../core/attempt-store.js";
+import { DualWriteAttemptStore } from "../core/dual-write-store.js";
+import { FEATURE_FLAG_DUAL_SERVER, FEATURE_FLAG_DUAL_WRITE, isEnabled } from "../core/feature-flags.js";
 import { createGitHubToolProvider, createRepoRouterProvider } from "./runtime-providers.js";
 import type { ConfigOverlayStore } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
 import { DispatchClient } from "../dispatch/client.js";
 import type { RunAttemptDispatcher } from "../dispatch/types.js";
+import { FastifyServer } from "../http/fastify-server.js";
 import { HttpServer } from "../http/server.js";
 import { LinearClient } from "../linear/client.js";
 import type { createLogger } from "../core/logger.js";
@@ -12,13 +16,12 @@ import { NotificationManager } from "../notification/manager.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { PathRegistry } from "../workspace/path-registry.js";
 
-import type { SecretsStore } from "../secrets/store.js";
 import { WorkspaceManager } from "../workspace/manager.js";
 
 export async function createServices(
   configStore: ConfigStore,
   overlayStore: ConfigOverlayStore,
-  secretsStore: SecretsStore,
+  secretsStore: SecretBackend,
   archiveDir: string,
   logger: ReturnType<typeof createLogger>,
 ) {
@@ -26,7 +29,9 @@ export async function createServices(
   if (persistedGithubToken) {
     process.env.GITHUB_TOKEN = persistedGithubToken;
   }
-  const attemptStore = new AttemptStore(archiveDir, logger.child({ component: "attempt-store" }));
+  const attemptStore = isEnabled(FEATURE_FLAG_DUAL_WRITE)
+    ? new DualWriteAttemptStore(archiveDir, logger.child({ component: "attempt-store", mode: "dual-write" }))
+    : new AttemptStore(archiveDir, logger.child({ component: "attempt-store", mode: "file" }));
   await attemptStore.start();
   const linearClient = new LinearClient(() => configStore.getConfig(), logger.child({ component: "linear" }));
   const workspaceManager = new WorkspaceManager(
@@ -94,5 +99,16 @@ export async function createServices(
 
     archiveDir,
   });
-  return { orchestrator, httpServer, notificationManager, linearClient };
+  const fastifyServer = isEnabled(FEATURE_FLAG_DUAL_SERVER)
+    ? new FastifyServer({
+        orchestrator,
+        logger: logger.child({ component: "fastify-http" }),
+        linearClient,
+        configStore,
+        configOverlayStore: overlayStore,
+        secretsStore,
+        archiveDir,
+      })
+    : null;
+  return { orchestrator, httpServer, fastifyServer, notificationManager, linearClient };
 }
