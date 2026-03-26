@@ -30,6 +30,7 @@
     "test:e2e:visual": "playwright test --project=visual",
     "test:e2e:update": "playwright test --project=visual --update-snapshots",
     "test:e2e:legacy": "vitest run tests/integration/e2e-smoke.test.ts",
+    "test:mutation": "stryker run",
     "dev": "tsx watch src/cli/index.ts",
     "dev:frontend": "vite --config frontend/vite.config.ts",
     "lint": "eslint src/ tests/ playwright.config.ts",
@@ -54,6 +55,9 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
+    "@stryker-mutator/core": "^9.6.0",
+    "@stryker-mutator/typescript-checker": "^9.6.0",
+    "@stryker-mutator/vitest-runner": "^9.6.0",
     "@types/express": "^5.0.3",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",

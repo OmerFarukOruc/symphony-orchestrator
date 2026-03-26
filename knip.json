@@ -4,5 +4,10 @@
   "entry": ["src/dispatch/entrypoint.ts"],
   "ignoreFiles": ["frontend/src/components/issue-card.ts", "frontend/src/pages/page-factory.ts", "tests/e2e/**"],
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["agentation-mcp"]
+  "ignoreDependencies": [
+    "agentation-mcp",
+    "@stryker-mutator/core",
+    "@stryker-mutator/typescript-checker",
+    "@stryker-mutator/vitest-runner"
+  ]
 }
