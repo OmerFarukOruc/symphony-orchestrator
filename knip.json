@@ -2,7 +2,40 @@
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts"],
   "entry": ["src/dispatch/entrypoint.ts"],
-  "ignore": ["frontend/src/components/issue-card.ts", "frontend/src/pages/page-factory.ts", "tests/e2e/**"],
+  "ignore": [
+    "frontend/src/components/issue-card.ts",
+    "frontend/src/pages/page-factory.ts",
+    "tests/e2e/**",
+    "src/persistence/sqlite/index.ts"
+  ],
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["agentation-mcp"]
+  "ignoreDependencies": [
+    "agentation-mcp",
+    "better-sqlite3",
+    "drizzle-orm",
+    "@stryker-mutator/core",
+    "@stryker-mutator/typescript-checker",
+    "@stryker-mutator/vitest-runner",
+    "eslint",
+    "husky",
+    "jscpd",
+    "lint-staged",
+    "prettier",
+    "tsx",
+    "typedoc"
+  ],
+  "ignoreBinaries": [
+    "knip",
+    "jscpd",
+    "playwright",
+    "lint-staged",
+    "eslint",
+    "prettier",
+    "tsc",
+    "vite",
+    "vitest",
+    "tsx",
+    "typedoc",
+    "husky"
+  ]
 }
