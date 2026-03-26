@@ -284,11 +284,12 @@ describe("registerSetupApi", () => {
     });
   });
 
-  it("validates and stores a valid OpenAI key", async () => {
+  it("validates and stores a valid OpenAI key with CLIProxyAPI provider when no provider exists", async () => {
     const secretsStore = createSecretsStoreMock();
+    const configOverlayStore = createConfigOverlayStoreMock();
     getExternalFetchMock().mockResolvedValueOnce(textResponse(200, "ok"));
 
-    const { baseUrl } = await startSetupApiServer({ secretsStore });
+    const { baseUrl } = await startSetupApiServer({ secretsStore, configOverlayStore });
     const response = await postJson(baseUrl, "/api/v1/setup/openai-key", { key: "sk-valid" });
 
     expect(response.status).toBe(200);
@@ -297,6 +298,39 @@ describe("registerSetupApi", () => {
       headers: { authorization: "Bearer sk-valid" },
     });
     expect(secretsStore.set).toHaveBeenCalledWith("OPENAI_API_KEY", "sk-valid");
+    expect(configOverlayStore.set).toHaveBeenCalledWith("codex.auth.mode", "api_key");
+    expect(configOverlayStore.set).toHaveBeenCalledWith("codex.provider.name", "CLIProxyAPI");
+    expect(configOverlayStore.set).toHaveBeenCalledWith("codex.provider.base_url", "http://localhost:8317/v1");
+    expect(configOverlayStore.set).toHaveBeenCalledWith("codex.provider.env_key", "OPENAI_API_KEY");
+    expect(configOverlayStore.set).toHaveBeenCalledWith("codex.provider.wire_api", "responses");
+  });
+
+  it("preserves custom provider config when saving a valid OpenAI key", async () => {
+    const secretsStore = createSecretsStoreMock();
+    const configOverlayStore = createConfigOverlayStoreMock();
+    vi.spyOn(configOverlayStore, "toMap").mockReturnValue({
+      codex: {
+        provider: {
+          name: "MyCustomProvider",
+          base_url: "https://custom-llm.example.com/v1",
+          env_key: "CUSTOM_API_KEY",
+          wire_api: "chat",
+        },
+      },
+    });
+    getExternalFetchMock().mockResolvedValueOnce(textResponse(200, "ok"));
+
+    const { baseUrl } = await startSetupApiServer({ secretsStore, configOverlayStore });
+    const response = await postJson(baseUrl, "/api/v1/setup/openai-key", { key: "sk-valid" });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ valid: true });
+    expect(secretsStore.set).toHaveBeenCalledWith("OPENAI_API_KEY", "sk-valid");
+    expect(configOverlayStore.set).toHaveBeenCalledWith("codex.auth.mode", "api_key");
+    expect(configOverlayStore.set).not.toHaveBeenCalledWith("codex.provider.name", expect.anything());
+    expect(configOverlayStore.set).not.toHaveBeenCalledWith("codex.provider.base_url", expect.anything());
+    expect(configOverlayStore.set).not.toHaveBeenCalledWith("codex.provider.env_key", expect.anything());
+    expect(configOverlayStore.set).not.toHaveBeenCalledWith("codex.provider.wire_api", expect.anything());
   });
 
   it("rejects an invalid OpenAI key", async () => {

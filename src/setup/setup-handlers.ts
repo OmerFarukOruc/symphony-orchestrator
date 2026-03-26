@@ -181,14 +181,26 @@ export function handlePostOpenaiKey(deps: SetupApiDeps) {
     }
 
     if (valid) {
-      await Promise.all([
+      const overlay = deps.configOverlayStore.toMap();
+      const codex = isRecord(overlay.codex) ? overlay.codex : undefined;
+      const provider = isRecord(codex?.provider) ? codex.provider : undefined;
+      const hasCustomProvider = !!provider?.name;
+
+      const operations: Promise<unknown>[] = [
         deps.secretsStore.set("OPENAI_API_KEY", key),
         deps.configOverlayStore.set("codex.auth.mode", "api_key"),
-        deps.configOverlayStore.set("codex.provider.name", "CLIProxyAPI"),
-        deps.configOverlayStore.set("codex.provider.base_url", "http://localhost:8317/v1"),
-        deps.configOverlayStore.set("codex.provider.env_key", "OPENAI_API_KEY"),
-        deps.configOverlayStore.set("codex.provider.wire_api", "responses"),
-      ]);
+      ];
+
+      if (!hasCustomProvider) {
+        operations.push(
+          deps.configOverlayStore.set("codex.provider.name", "CLIProxyAPI"),
+          deps.configOverlayStore.set("codex.provider.base_url", "http://localhost:8317/v1"),
+          deps.configOverlayStore.set("codex.provider.env_key", "OPENAI_API_KEY"),
+          deps.configOverlayStore.set("codex.provider.wire_api", "responses"),
+        );
+      }
+
+      await Promise.all(operations);
     }
 
     res.json({ valid });
