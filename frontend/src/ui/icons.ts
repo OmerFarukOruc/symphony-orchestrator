@@ -134,6 +134,25 @@ const ICONS = {
     { tag: "line", attrs: { x1: "3", y1: "12", x2: "21", y2: "12" } },
     { tag: "line", attrs: { x1: "3", y1: "18", x2: "21", y2: "18" } },
   ]),
+  settingsSetup: strokeIcon([
+    { tag: "path", attrs: { d: "M12 2v6m0 8v6" } },
+    { tag: "path", attrs: { d: "M6 8h12" } },
+    { tag: "circle", attrs: { cx: "12", cy: "12", r: "3" } },
+    { tag: "path", attrs: { d: "M6 16h12" } },
+  ]),
+  settingsAgent: filledIcon(
+    "M9 2h6v2h3a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1v2l-3-2H9l-3 2v-2H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3V2zm3 14a4 4 0 0 0-4 4h8a4 4 0 0 0-4-4z",
+  ),
+  settingsNotify: strokeIcon([
+    { tag: "path", attrs: { d: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" } },
+    { tag: "path", attrs: { d: "M13.73 21a2 2 0 0 1-3.46 0" } },
+    { tag: "line", attrs: { x1: "12", y1: "2", x2: "12", y2: "4" } },
+  ]),
+  settingsSystem: strokeIcon([
+    { tag: "rect", attrs: { x: "3", y: "4", width: "18", height: "14", rx: "2" } },
+    { tag: "polyline", attrs: { points: "7 12 10 15 7 18" } },
+    { tag: "line", attrs: { x1: "13", y1: "18", x2: "17", y2: "18" } },
+  ]),
 } as const satisfies Record<string, IconDefinition>;
 
 export type IconName = keyof typeof ICONS;
