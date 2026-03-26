@@ -119,9 +119,8 @@ export const api = {
     post<{ ok: boolean; route: Record<string, unknown> }>("/api/v1/setup/repo-route", route),
   getRepoRoutes: () => get<{ routes: Array<Record<string, unknown>> }>("/api/v1/setup/repo-routes"),
   deleteRepoRoute: (index: number) =>
-    post<{ ok: boolean; routes: Array<Record<string, unknown>> }>("/api/v1/setup/repo-route", {
+    send<{ ok: boolean; routes: Array<Record<string, unknown>> }>("DELETE", "/api/v1/setup/repo-route", {
       index,
-      _method: "DELETE",
     }),
   resetSetup: () => post<{ ok: boolean }>("/api/v1/setup/reset", {}),
   createTestIssue: () =>
