@@ -10,6 +10,7 @@ import type { SettingsFieldDefinition } from "./settings-helpers";
 
 interface SettingsFieldRenderOptions {
   value: string;
+  hintId?: string;
   onInput: (value: string) => void;
   onFocus: () => void;
   onAction?: () => void;
@@ -19,6 +20,22 @@ export function createSettingsField(field: SettingsFieldDefinition, options: Set
   const control = buildControl(field, options);
   const wrapper = createField({ label: field.label, hint: field.hint }, control);
   wrapper.dataset.fieldKind = field.kind;
+
+  if (options.hintId) {
+    const hintEl = wrapper.querySelector(".form-hint");
+    const oldHintId = hintEl?.id;
+    if (hintEl) {
+      hintEl.id = options.hintId;
+    }
+    const fieldControl = wrapper.querySelector("input, textarea, select");
+    if (fieldControl) {
+      const existing = fieldControl.getAttribute("aria-describedby") ?? "";
+      const ids = existing ? existing.split(" ").filter((id) => id !== oldHintId) : [];
+      ids.unshift(options.hintId);
+      fieldControl.setAttribute("aria-describedby", ids.join(" "));
+    }
+  }
+
   return wrapper;
 }
 
@@ -139,6 +156,35 @@ function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRend
     });
     textarea.addEventListener("input", () => options.onInput(textarea.value));
     textarea.addEventListener("focus", options.onFocus);
+
+    if (field.kind === "json") {
+      const errorEl = createInlineError();
+      textarea.addEventListener("blur", () => {
+        const val = textarea.value.trim();
+        if (val === "") {
+          textarea.classList.remove("settings-field-error");
+          errorEl.hidden = true;
+          return;
+        }
+        try {
+          JSON.parse(val);
+          textarea.classList.remove("settings-field-error");
+          errorEl.hidden = true;
+        } catch (error_) {
+          textarea.classList.add("settings-field-error");
+          errorEl.textContent = `Invalid JSON: ${error_ instanceof SyntaxError ? error_.message : "parse error"}`;
+          errorEl.hidden = false;
+        }
+      });
+      textarea.addEventListener("input", () => {
+        textarea.classList.remove("settings-field-error");
+        errorEl.hidden = true;
+      });
+      const group = document.createElement("div");
+      group.append(textarea, errorEl);
+      return group;
+    }
+
     return textarea;
   }
   const input = createTextInput({
@@ -151,6 +197,38 @@ function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRend
   input.addEventListener("input", () => options.onInput(input.value));
   input.addEventListener("focus", options.onFocus);
 
+  if (field.kind === "number") {
+    const errorEl = createInlineError();
+    input.addEventListener("blur", () => {
+      const val = input.value.trim();
+      if (val !== "" && !Number.isFinite(Number(val))) {
+        input.classList.add("settings-field-error");
+        errorEl.textContent = "Must be a valid number.";
+        errorEl.hidden = false;
+      } else {
+        input.classList.remove("settings-field-error");
+        errorEl.hidden = true;
+      }
+    });
+    input.addEventListener("input", () => {
+      input.classList.remove("settings-field-error");
+      errorEl.hidden = true;
+    });
+
+    if (field.actionLabel && options.onAction) {
+      const row = document.createElement("div");
+      row.className = "settings-field-action-row";
+      const btn = createButton(field.actionLabel, "ghost");
+      btn.addEventListener("click", options.onAction);
+      row.append(input, btn, errorEl);
+      return row;
+    }
+
+    const group = document.createElement("div");
+    group.append(input, errorEl);
+    return group;
+  }
+
   if (field.actionLabel && options.onAction) {
     const row = document.createElement("div");
     row.className = "settings-field-action-row";
@@ -161,4 +239,11 @@ function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRend
   }
 
   return input;
+}
+
+function createInlineError(): HTMLParagraphElement {
+  const errorEl = document.createElement("p");
+  errorEl.className = "settings-field-error-text";
+  errorEl.hidden = true;
+  return errorEl;
 }
