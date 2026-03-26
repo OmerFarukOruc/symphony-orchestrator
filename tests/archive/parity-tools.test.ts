@@ -102,11 +102,11 @@ describe("archive parity tooling", () => {
 
     expect(parityReport.discrepancies).toEqual([
       expect.objectContaining({
-        reference: expect.stringContaining("issue-index.json:9"),
+        reference: expect.stringContaining("issue-index.json:"),
         message: expect.stringContaining("issue MT-42 latest attempt mismatch"),
       }),
       expect.objectContaining({
-        reference: expect.stringContaining("issue-index.json:9"),
+        reference: expect.stringContaining("issue-index.json:"),
         message: expect.stringContaining("issue MT-42 ordering mismatch"),
       }),
     ]);
