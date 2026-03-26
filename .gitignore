@@ -33,8 +33,8 @@ docs/archive/dogfood-output/
 /.cocoindex_code/
 .gstack/
 
-# Shared package build artifacts
-packages/shared/src/*.d.ts
-packages/shared/src/*.d.ts.map
-packages/shared/src/*.js
-packages/shared/src/*.js.map
+# Shared package build artifacts (emitted alongside source by tsc)
+packages/shared/src/**/*.d.ts
+packages/shared/src/**/*.d.ts.map
+packages/shared/src/**/*.js
+packages/shared/src/**/*.js.map

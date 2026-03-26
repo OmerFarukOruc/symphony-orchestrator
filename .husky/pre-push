@@ -19,6 +19,9 @@ if [ "$all_deletes" = true ]; then
   exit 0
 fi
 
+echo "🧹 Cleaning stale shared-package artifacts..."
+find packages/shared/src -type f \( -name '*.d.ts' -o -name '*.d.ts.map' -o -name '*.js' -o -name '*.js.map' \) -delete 2>/dev/null || true
+
 echo "🔨 Building..."
 pnpm build
 
