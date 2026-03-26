@@ -15,12 +15,14 @@ import type { SecretsStore } from "../secrets/store.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
+import { getOpenApiSpec } from "./openapi.js";
 import { modelUpdateSchema, transitionSchema } from "./request-schemas.js";
+import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
+import { getSwaggerHtml } from "./swagger-html.js";
 import { handleTransition } from "./transition-handler.js";
 import { handleGetTransitions } from "./transitions-api.js";
 import { validateBody } from "./validation.js";
 import { handleWorkspaceInventory, handleWorkspaceRemove } from "./workspace-inventory.js";
-import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
 import type { TrackerPort } from "../tracker/port.js";
 
 import rateLimit from "express-rate-limit";
@@ -46,6 +48,7 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   app.use("/api/", apiLimiter);
   app.use("/metrics", apiLimiter);
   registerStateAndMetricsRoutes(app, deps);
+  registerDocsRoutes(app);
   registerExtensionApis(app, deps);
   registerGitRoutes(app, deps);
   registerWorkspaceRoutes(app, deps);
@@ -109,6 +112,26 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
     .route("/api/v1/transitions")
     .get((req, res) => {
       handleGetTransitions({ orchestrator: deps.orchestrator, configStore: deps.configStore }, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+}
+
+function registerDocsRoutes(app: Express): void {
+  app
+    .route("/api/v1/openapi.json")
+    .get((_req, res) => {
+      res.json(getOpenApiSpec());
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/docs")
+    .get((_req, res) => {
+      res.type("html").send(getSwaggerHtml());
     })
     .all((_req, res) => {
       methodNotAllowed(res);
