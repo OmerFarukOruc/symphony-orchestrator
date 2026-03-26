@@ -29,6 +29,7 @@
     "test:e2e:smoke": "playwright test --project=smoke",
     "test:e2e:visual": "playwright test --project=visual",
     "test:e2e:update": "playwright test --project=visual --update-snapshots",
+    "test:frontend": "vitest run --config vitest.frontend.config.ts",
     "test:e2e:legacy": "vitest run tests/integration/e2e-smoke.test.ts",
     "dev": "tsx watch src/cli/index.ts",
     "dev:frontend": "vite --config frontend/vite.config.ts",
