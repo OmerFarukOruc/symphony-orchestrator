@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/OmerFarukOruc/symphony-orchestrator/releases"><img alt="Version" src="https://img.shields.io/github/v/tag/OmerFarukOruc/symphony-orchestrator?label=version&color=blue&style=flat-square" /></a>
   <a href="https://github.com/OmerFarukOruc/symphony-orchestrator/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/OmerFarukOruc/symphony-orchestrator?color=green&style=flat-square" /></a>
-  <img alt="Node.js" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square&logo=node.js" />
+  <img alt="Node.js" src="https://img.shields.io/badge/node-%3E%3D24-brightgreen?style=flat-square&logo=node.js" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-blue?style=flat-square&logo=typescript" />
   <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker" />
   <img alt="Status" src="https://img.shields.io/badge/status-v0.3.1-orange?style=flat-square" />
@@ -95,12 +95,12 @@ Navigate to **http://localhost:4000** — the setup wizard starts automatically.
 
 **3. Complete the wizard** (3–5 min)
 
-| Step | What you'll do |
-| ---- | -------------- |
+| Step                   | What you'll do                                     |
+| ---------------------- | -------------------------------------------------- |
 | 🔐 **Protect secrets** | Generates an encryption master key for credentials |
-| 🗂️ **Connect Linear** | Paste your API key and select a project |
-| 🤖 **Add OpenAI** | Paste an API key or use Codex Login |
-| 🐙 **Add GitHub** | Paste a GitHub PAT *(optional)* |
+| 🗂️ **Connect Linear**  | Paste your API key and select a project            |
+| 🤖 **Add OpenAI**      | Paste an API key or use Codex Login                |
+| 🐙 **Add GitHub**      | Paste a GitHub PAT _(optional)_                    |
 
 **4. Create an issue and watch it run**
 
@@ -140,8 +140,9 @@ codex login                       # ChatGPT/Codex subscription path
 <td width="50%" valign="top">
 
 ### 🏗️ Core Engine
+
 - **📋 Linear polling** — Automatic issue discovery with priority sorting
-- **🐳 Docker sandbox** — `node:22` containers with resource limits, OOM detection, security hardening
+- **🐳 Docker sandbox** — `node:24` containers with resource limits, OOM detection, security hardening
 - **📁 Workspace isolation** — One directory per issue with lifecycle hooks
 - **🔄 Retry & stall handling** — Configurable backoff, turn/stall timeouts
 - **🎯 Model overrides** — Per-issue model selection from the dashboard
@@ -153,6 +154,7 @@ codex login                       # ChatGPT/Codex subscription path
 <td width="50%" valign="top">
 
 ### 🖥️ Dashboard & API
+
 - **⚡ Fastify control plane** — Fastify serves the control-plane transport while preserving the existing API surface
 - **⚛️ React 19 dashboard** — React Router owns the shell and routes while existing page renderers are mounted inside the new app
 - **📡 Full JSON API** — 30+ endpoints under `/api/v1/*`
@@ -168,6 +170,7 @@ codex login                       # ChatGPT/Codex subscription path
 <td width="50%" valign="top">
 
 ### 🔗 Integrations
+
 - **🐙 Git automation** — Clone, commit, push, and PR creation on completion
 - **📬 Slack notifications** — Lifecycle alerts with verbosity controls
 - **🤖 Codex integration** — `codex app-server` via JSON-RPC with dynamic tool handling
@@ -176,6 +179,7 @@ codex login                       # ChatGPT/Codex subscription path
 <td width="50%" valign="top">
 
 ### 🛡️ Operations
+
 - **💾 SQLite-backed archives** — Durable attempt/event history stored in `symphony.db` with mirrored archive files under `.symphony/`
 - **🔎 `symphony-logs` CLI** — Archive-first issue and attempt inspection
 - **🔐 Encrypted secrets** — AES-encrypted credential storage mirrored into SQLite-backed state
@@ -193,14 +197,14 @@ Symphony's roadmap ([#9 — Feature Roadmap](https://github.com/OmerFarukOruc/sy
 
 ### 🎯 Tier 1 — Shipping Next
 
-| Feature | What it unlocks |
-| ------- | --------------- |
-| [**⚡ Reactions System**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/10) | CI/review/approval events trigger automatic agent actions |
-| [**🐙 GitHub Issues Adapter**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/11) | Use GitHub Issues instead of (or alongside) Linear |
-| [**📱 Mobile Dashboard**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/12) | Fully responsive UI for monitoring on any device |
-| [**💰 Cost Tracking**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/14) | Per-issue and per-model dollar cost with budget enforcement |
-| [**📡 Live Agent Feed**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/15) | Real-time SSE streaming with subagent drill-down |
-| [**🧹 Auto-squash Commits**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/59) | Conventional commit formatting with execution metrics in PRs |
+| Feature                                                                                          | What it unlocks                                              |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| [**⚡ Reactions System**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/10)      | CI/review/approval events trigger automatic agent actions    |
+| [**🐙 GitHub Issues Adapter**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/11) | Use GitHub Issues instead of (or alongside) Linear           |
+| [**📱 Mobile Dashboard**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/12)      | Fully responsive UI for monitoring on any device             |
+| [**💰 Cost Tracking**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/14)         | Per-issue and per-model dollar cost with budget enforcement  |
+| [**📡 Live Agent Feed**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/15)       | Real-time SSE streaming with subagent drill-down             |
+| [**🧹 Auto-squash Commits**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/59)   | Conventional commit formatting with execution metrics in PRs |
 
 ### 🏗️ Tier 2 — High Impact
 
@@ -227,11 +231,11 @@ docker compose up --build
 
 All data persists in named Docker volumes:
 
-| Volume | Purpose |
-| ------ | ------- |
-| `symphony-archives` | Encrypted secrets, config overlay, run archives |
-| `symphony-workspaces` | Cloned repositories for each issue |
-| `codex-auth` | OpenAI Codex login tokens |
+| Volume                | Purpose                                         |
+| --------------------- | ----------------------------------------------- |
+| `symphony-archives`   | Encrypted secrets, config overlay, run archives |
+| `symphony-workspaces` | Cloned repositories for each issue              |
+| `codex-auth`          | OpenAI Codex login tokens                       |
 
 ### Advanced — Control / Data Plane Split
 
@@ -262,60 +266,60 @@ Enable with `DISPATCH_MODE=remote` in your `.env`. See the [Operator Guide](docs
 
 Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are the key endpoints:
 
-| Endpoint | What it does |
-| -------- | ------------ |
-| `GET /api/v1/state` | Runtime snapshot — queued, running, retrying, completed issues |
-| `GET /api/v1/runtime` | Version, workflow path, feature flags |
-| `POST /api/v1/refresh` | Trigger immediate orchestration pass |
-| `GET /api/v1/:issue/attempts` | Archived attempts + current live attempt |
-| `POST /api/v1/:issue/model` | Save per-issue model override |
-| `GET /metrics` | Prometheus-format service metrics |
+| Endpoint                      | What it does                                                   |
+| ----------------------------- | -------------------------------------------------------------- |
+| `GET /api/v1/state`           | Runtime snapshot — queued, running, retrying, completed issues |
+| `GET /api/v1/runtime`         | Version, workflow path, feature flags                          |
+| `POST /api/v1/refresh`        | Trigger immediate orchestration pass                           |
+| `GET /api/v1/:issue/attempts` | Archived attempts + current live attempt                       |
+| `POST /api/v1/:issue/model`   | Save per-issue model override                                  |
+| `GET /metrics`                | Prometheus-format service metrics                              |
 
 <details>
 <summary>📋 <strong>Full API reference</strong> — 30+ endpoints</summary>
 
 ### Core Endpoints
 
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| `GET` | `/` | Local operator dashboard |
-| `GET` | `/metrics` | Prometheus metrics |
-| `GET` | `/api/v1/runtime` | Runtime info — version, workflow path, feature flags |
-| `GET` | `/api/v1/state` | Runtime snapshot — queued, running, retrying, completed, workflow columns, and token totals |
-| `POST` | `/api/v1/refresh` | Trigger immediate orchestration refresh |
-| `GET` | `/api/v1/transitions` | List available Linear workflow transitions |
-| `GET` | `/api/v1/:issue_identifier` | Issue detail, recent events, archived attempts |
-| `GET` | `/api/v1/:issue_identifier/attempts` | Archived attempts + current live attempt id |
-| `GET` | `/api/v1/attempts/:attempt_id` | Archived event stream for a specific attempt |
-| `POST` | `/api/v1/:issue_identifier/model` | Save per-issue model override |
-| `POST` | `/api/v1/:issue_identifier/transition` | Transition a Linear issue to a new state |
+| Method | Endpoint                               | Description                                                                                 |
+| ------ | -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `GET`  | `/`                                    | Local operator dashboard                                                                    |
+| `GET`  | `/metrics`                             | Prometheus metrics                                                                          |
+| `GET`  | `/api/v1/runtime`                      | Runtime info — version, workflow path, feature flags                                        |
+| `GET`  | `/api/v1/state`                        | Runtime snapshot — queued, running, retrying, completed, workflow columns, and token totals |
+| `POST` | `/api/v1/refresh`                      | Trigger immediate orchestration refresh                                                     |
+| `GET`  | `/api/v1/transitions`                  | List available Linear workflow transitions                                                  |
+| `GET`  | `/api/v1/:issue_identifier`            | Issue detail, recent events, archived attempts                                              |
+| `GET`  | `/api/v1/:issue_identifier/attempts`   | Archived attempts + current live attempt id                                                 |
+| `GET`  | `/api/v1/attempts/:attempt_id`         | Archived event stream for a specific attempt                                                |
+| `POST` | `/api/v1/:issue_identifier/model`      | Save per-issue model override                                                               |
+| `POST` | `/api/v1/:issue_identifier/transition` | Transition a Linear issue to a new state                                                    |
 
 ### Config & Secrets Endpoints
 
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| `GET` | `/api/v1/config` | Effective merged operator config |
-| `GET` | `/api/v1/config/overlay` | Persistent overlay values only |
-| `PUT` | `/api/v1/config/overlay` | Update overlay values |
-| `DELETE` | `/api/v1/config/overlay/:path` | Remove one overlay path |
-| `GET` | `/api/v1/secrets` | List configured secret keys |
-| `POST` | `/api/v1/secrets/:key` | Store one secret |
-| `DELETE` | `/api/v1/secrets/:key` | Delete one secret |
+| Method   | Endpoint                       | Description                      |
+| -------- | ------------------------------ | -------------------------------- |
+| `GET`    | `/api/v1/config`               | Effective merged operator config |
+| `GET`    | `/api/v1/config/overlay`       | Persistent overlay values only   |
+| `PUT`    | `/api/v1/config/overlay`       | Update overlay values            |
+| `DELETE` | `/api/v1/config/overlay/:path` | Remove one overlay path          |
+| `GET`    | `/api/v1/secrets`              | List configured secret keys      |
+| `POST`   | `/api/v1/secrets/:key`         | Store one secret                 |
+| `DELETE` | `/api/v1/secrets/:key`         | Delete one secret                |
 
 ### Setup Wizard Endpoints
 
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| `GET` | `/api/v1/setup/status` | Setup wizard progress and step completion |
-| `POST` | `/api/v1/setup/reset` | Reset all configuration |
-| `POST` | `/api/v1/setup/master-key` | Initialize encryption master key |
-| `GET` | `/api/v1/setup/linear-projects` | List available Linear projects |
-| `POST` | `/api/v1/setup/linear-project` | Select a Linear project |
-| `POST` | `/api/v1/setup/openai-key` | Validate and store OpenAI API key |
-| `POST` | `/api/v1/setup/codex-auth` | Store Codex auth.json |
-| `POST` | `/api/v1/setup/device-auth/start` | Start OAuth device flow |
-| `POST` | `/api/v1/setup/device-auth/poll` | Poll for OAuth tokens |
-| `POST` | `/api/v1/setup/github-token` | Validate and store GitHub token |
+| Method | Endpoint                          | Description                               |
+| ------ | --------------------------------- | ----------------------------------------- |
+| `GET`  | `/api/v1/setup/status`            | Setup wizard progress and step completion |
+| `POST` | `/api/v1/setup/reset`             | Reset all configuration                   |
+| `POST` | `/api/v1/setup/master-key`        | Initialize encryption master key          |
+| `GET`  | `/api/v1/setup/linear-projects`   | List available Linear projects            |
+| `POST` | `/api/v1/setup/linear-project`    | Select a Linear project                   |
+| `POST` | `/api/v1/setup/openai-key`        | Validate and store OpenAI API key         |
+| `POST` | `/api/v1/setup/codex-auth`        | Store Codex auth.json                     |
+| `POST` | `/api/v1/setup/device-auth/start` | Start OAuth device flow                   |
+| `POST` | `/api/v1/setup/device-auth/poll`  | Poll for OAuth tokens                     |
+| `POST` | `/api/v1/setup/github-token`      | Validate and store GitHub token           |
 
 </details>
 
@@ -323,21 +327,21 @@ Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are th
 
 ## 📄 Workflow Files
 
-| File | Purpose |
-| ---- | ------- |
-| `WORKFLOW.example.md` | Portable example for normal local setup |
-| `WORKFLOW.md` | Checked-in live smoke workflow for this repo |
+| File                  | Purpose                                      |
+| --------------------- | -------------------------------------------- |
+| `WORKFLOW.example.md` | Portable example for normal local setup      |
+| `WORKFLOW.md`         | Checked-in live smoke workflow for this repo |
 
 > [!TIP]
 > Both workflows resolve `tracker.project_slug` from `LINEAR_PROJECT_SLUG` env var, so the same repo checkout works across different Linear projects without editing tracked files.
 
 ### Auth Modes
 
-| Mode | Config | How it works |
-| ---- | ------ | ------------ |
-| **API Key** | `codex.auth.mode: "api_key"` | Forwards `OPENAI_API_KEY` into the container |
-| **Codex Login** | `codex.auth.mode: "openai_login"` | Injects `auth.json` from `codex.auth.source_home` |
-| **Custom Provider** | `codex.provider` block | OpenAI-compatible endpoints with `base_url`, headers, query params |
+| Mode                | Config                            | How it works                                                       |
+| ------------------- | --------------------------------- | ------------------------------------------------------------------ |
+| **API Key**         | `codex.auth.mode: "api_key"`      | Forwards `OPENAI_API_KEY` into the container                       |
+| **Codex Login**     | `codex.auth.mode: "openai_login"` | Injects `auth.json` from `codex.auth.source_home`                  |
+| **Custom Provider** | `codex.provider` block            | OpenAI-compatible endpoints with `base_url`, headers, query params |
 
 > [!NOTE]
 > Host-bound provider URLs like `http://127.0.0.1:8317/v1` are automatically rewritten to `host.docker.internal` inside Docker containers.
@@ -371,33 +375,33 @@ npx playwright test --project=visual --update-snapshots  # Regenerate baselines
 
 ### 🏁 Getting Started
 
-| Document | What you'll learn |
-| -------- | ----------------- |
-| **[Getting Started](docs/GETTING_STARTED.md)** | First 10 minutes: install, setup wizard, first issue |
-| **[Operator Guide](docs/OPERATOR_GUIDE.md)** | Full setup walkthrough, deployment options, Docker networking, wizard details |
-| **[Workflow Examples](WORKFLOW.example.md)** | Template workflow file with all config options explained |
+| Document                                       | What you'll learn                                                             |
+| ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| **[Getting Started](docs/GETTING_STARTED.md)** | First 10 minutes: install, setup wizard, first issue                          |
+| **[Operator Guide](docs/OPERATOR_GUIDE.md)**   | Full setup walkthrough, deployment options, Docker networking, wizard details |
+| **[Workflow Examples](WORKFLOW.example.md)**   | Template workflow file with all config options explained                      |
 
 ### 🔧 Operating & Monitoring
 
-| Document | What it covers |
-| -------- | -------------- |
-| **[Runbooks](docs/RUNBOOKS.md)** | Troubleshooting playbooks for common failures |
+| Document                                   | What it covers                                                   |
+| ------------------------------------------ | ---------------------------------------------------------------- |
+| **[Runbooks](docs/RUNBOOKS.md)**           | Troubleshooting playbooks for common failures                    |
 | **[Observability](docs/OBSERVABILITY.md)** | Prometheus metrics, request tracing, error tracking, alert rules |
-| **[Releasing](docs/RELEASING.md)** | Release preparation checklist |
+| **[Releasing](docs/RELEASING.md)**         | Release preparation checklist                                    |
 
 ### 🏛️ Architecture & Security
 
-| Document | What it covers |
-| -------- | -------------- |
-| **[Trust & Auth](docs/TRUST_AND_AUTH.md)** | Trust boundaries, sandbox security, credential chain |
-| **[Conformance Audit](docs/CONFORMANCE_AUDIT.md)** | Per-requirement spec conformance tracking |
-| **[Roadmap](docs/ROADMAP_AND_STATUS.md)** | 89-issue feature roadmap across 4 tiers |
+| Document                                           | What it covers                                       |
+| -------------------------------------------------- | ---------------------------------------------------- |
+| **[Trust & Auth](docs/TRUST_AND_AUTH.md)**         | Trust boundaries, sandbox security, credential chain |
+| **[Conformance Audit](docs/CONFORMANCE_AUDIT.md)** | Per-requirement spec conformance tracking            |
+| **[Roadmap](docs/ROADMAP_AND_STATUS.md)**          | 89-issue feature roadmap across 4 tiers              |
 
 ### 📖 Reference
 
-| Document | What it covers |
-| -------- | -------------- |
-| **[EXECPLAN.md](EXECPLAN.md)** | Internal implementation log |
+| Document                                                 | What it covers                               |
+| -------------------------------------------------------- | -------------------------------------------- |
+| **[EXECPLAN.md](EXECPLAN.md)**                           | Internal implementation log                  |
 | **[Visual Verify Skill](skills/visual-verify/SKILL.md)** | Dashboard screenshot diffing and QA workflow |
 
 ---

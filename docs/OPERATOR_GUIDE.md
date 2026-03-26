@@ -51,7 +51,7 @@ Make sure the following are in place before running Symphony:
 
 | Requirement             | Details                                                            |
 | ----------------------- | ------------------------------------------------------------------ |
-| **Node.js**             | v22 or newer                                                       |
+| **Node.js**             | v24 or newer                                                       |
 | **Docker**              | Docker Engine installed and running (`docker info` should succeed) |
 | **Linear API key**      | `LINEAR_API_KEY` in your environment                               |
 | **Linear project slug** | `LINEAR_PROJECT_SLUG` for the project Symphony should poll         |
@@ -115,7 +115,7 @@ This is transparent — Symphony rewrites host-bound provider URLs in the genera
 ### 🖥️ VDS / Server Deployment
 
 ```bash
-# 1. Install Node.js 22+ and Docker
+# 1. Install Node.js 24+ and Docker
 # 2. Clone the repo and install
 git clone <repo-url> && cd symphony-orchestrator
 pnpm install && pnpm build
@@ -403,12 +403,14 @@ What you keep: source code, Docker images, external services (Linear issues, Git
 
 ## ⚙️ Persistent Overlay and Secrets
 
-`WORKFLOW.md` is still the primary config source and still live-reloads on file change. Symphony now adds two operator-only persistent layers on top:
+`WORKFLOW.md` is still the primary config source and still live-reloads on file change. Symphony adds two operator-only persistent layers on top:
 
-- Config overlay: stored as YAML under the archive data root and exposed through `/api/v1/config*` (including `/api/v1/config/schema`)
-- Secrets store: stored encrypted at rest under the archive data root and exposed through `/api/v1/secrets*`
+- **Config overlay**: stored in SQLite (`symphony.db`) and exposed through `/api/v1/config*` (including `/api/v1/config/schema`)
+- **Secrets store**: stored encrypted in SQLite and exposed through `/api/v1/secrets*`
 
-If Symphony finds an existing `secrets.enc` that cannot be decrypted with the current `MASTER_KEY`, startup now fails fast and leaves the encrypted file untouched. Fix the key mismatch before retrying.
+The SQLite database lives at `{DATA_DIR}/symphony.db` (default: `.symphony/symphony.db` next to the workflow file). All attempt history, events, config overlay, and encrypted secrets are stored here.
+
+If Symphony finds an existing encrypted secrets table that cannot be decrypted with the current `MASTER_KEY`, startup fails fast. Fix the key mismatch before retrying.
 
 Merge order:
 
@@ -624,11 +626,11 @@ Symphony creates and reads several directories at runtime. This section document
 
 ### Host-Side Paths
 
-| Path                                        | Source                                                     | Purpose                                                                                    | Safe to delete?                                     |
-| ------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| `.symphony/` (next to workflow file)        | `src/cli/index.ts` — default `archiveDir`                  | Archived attempts, event streams, issue index, config overlay, and encrypted secrets store | ⚠️ You lose all historical attempt data             |
-| `../symphony-workspaces/` (sibling of repo) | `src/config/builders.ts` — default `workspace.root`        | Per-issue workspace directories (one subdirectory per issue identifier)                    | ✅ Yes — workspaces are re-created on next dispatch |
-| `~/.codex/`                                 | `src/config/builders.ts` — default `codex.auth.sourceHome` | Codex CLI auth credentials (`auth.json`) read for `openai_login` mode                      | ⚠️ You'll need to re-run `codex login`              |
+| Path                                        | Source                                                     | Purpose                                                                                                   | Safe to delete?                                     |
+| ------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `.symphony/` (next to workflow file)        | `src/cli/index.ts` — default `archiveDir`                  | SQLite database (`symphony.db`) containing attempt history, events, config overlay, and encrypted secrets | ⚠️ You lose all historical attempt data             |
+| `../symphony-workspaces/` (sibling of repo) | `src/config/builders.ts` — default `workspace.root`        | Per-issue workspace directories (one subdirectory per issue identifier)                                   | ✅ Yes — workspaces are re-created on next dispatch |
+| `~/.codex/`                                 | `src/config/builders.ts` — default `codex.auth.sourceHome` | Codex CLI auth credentials (`auth.json`) read for `openai_login` mode                                     | ⚠️ You'll need to re-run `codex login`              |
 
 > [!NOTE]
 > The archive directory can be overridden with `--log-dir` or the `DATA_DIR` environment variable. The workspace root can be overridden via `workspace.root` in the workflow file. The auth source home can be overridden via `codex.auth.source_home`.
@@ -691,16 +693,17 @@ These paths exist only inside worker containers and are **not** on the host file
 
 ## 🗂️ Archived Attempts and Logs
 
-By default, archives are stored in `.symphony/` next to the workflow file (override with `--log-dir`).
+By default, archives are stored in SQLite at `.symphony/symphony.db` next to the workflow file (override the directory with `--log-dir` or `DATA_DIR`).
 
-```
-.symphony/
-├── issue-index.json
-├── attempts/<attempt-id>.json
-└── events/<attempt-id>.jsonl
-```
+**SQLite Schema**
 
-This archive keeps historical attempt information visible in the dashboard and API after a restart.
+| Table            | Purpose                                               |
+| ---------------- | ----------------------------------------------------- |
+| `attempts`       | Attempt records with status, timestamps, and metadata |
+| `attempt_events` | Event stream for each attempt (JSONL-equivalent)      |
+| `issues`         | Issue tracking state and last attempt reference       |
+| `config_overlay` | Persistent operator configuration                     |
+| `secrets`        | AES-encrypted credentials                             |
 
 For archive-first CLI inspection, use the repo-root helper:
 
@@ -710,7 +713,7 @@ For archive-first CLI inspection, use the repo-root helper:
 ./symphony-logs --attempt 00000000-0000-4000-8000-000000000422 --dir tests/fixtures/symphony-archive-sandbox/.symphony
 ```
 
-The helper emits JSON and prefers `issue-index.json` when present, while still falling back to scanning archived attempt files if the index is missing.
+The helper queries SQLite directly and emits JSON for issues, attempts, and events.
 
 ---
 
@@ -752,9 +755,9 @@ Symphony includes a `visual-verify` skill and project-level `agent-browser` conf
 
 ### Prerequisites
 
-| Requirement       | Details                                           |
-| ----------------- | ------------------------------------------------- |
-| **agent-browser** | `npm i -g agent-browser && agent-browser install` |
+| Requirement       | Details                                              |
+| ----------------- | ---------------------------------------------------- |
+| **agent-browser** | `pnpm add -g agent-browser && agent-browser install` |
 
 ### Project Configuration
 

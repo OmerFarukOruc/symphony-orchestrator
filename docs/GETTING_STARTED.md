@@ -10,13 +10,13 @@ Symphony watches your Linear project for issues, launches sandboxed AI agents to
 
 Before you begin, make sure you have:
 
-| What | Why |
-|------|-----|
-| **Node.js 22+** | Runtime for Symphony |
-| **Docker** (optional) | For sandboxed agent execution — required for production use |
-| **Linear account** | Issue tracker that Symphony polls for work |
-| **OpenAI API key** _or_ **Codex subscription** | Powers the AI agents |
-| **GitHub PAT** _(optional)_ | Enables automatic branch creation and PRs |
+| What                                           | Why                                                         |
+| ---------------------------------------------- | ----------------------------------------------------------- |
+| **Node.js 24+**                                | Runtime for Symphony                                        |
+| **Docker** (optional)                          | For sandboxed agent execution — required for production use |
+| **Linear account**                             | Issue tracker that Symphony polls for work                  |
+| **OpenAI API key** _or_ **Codex subscription** | Powers the AI agents                                        |
+| **GitHub PAT** _(optional)_                    | Enables automatic branch creation and PRs                   |
 
 ---
 
@@ -91,12 +91,12 @@ docker compose up --build
 
 Open **http://localhost:4000** in your browser. The setup wizard walks you through:
 
-| Step | What to do | Required? |
-|------|-----------|-----------|
-| 🔐 **Protect secrets** | Auto-generates an encryption key — **copy it and save it somewhere safe** | Yes |
-| 🗂️ **Connect Linear** | Paste your `LINEAR_API_KEY`, select a project | Yes |
-| 🤖 **Add OpenAI** | Paste an API key, _or_ click **"Sign in with OpenAI"** to use your Codex subscription | Yes |
-| 🐙 **Add GitHub** | Paste a GitHub Personal Access Token | No (skip for now) |
+| Step                   | What to do                                                                            | Required?         |
+| ---------------------- | ------------------------------------------------------------------------------------- | ----------------- |
+| 🔐 **Protect secrets** | Auto-generates an encryption key — **copy it and save it somewhere safe**             | Yes               |
+| 🗂️ **Connect Linear**  | Paste your `LINEAR_API_KEY`, select a project                                         | Yes               |
+| 🤖 **Add OpenAI**      | Paste an API key, _or_ click **"Sign in with OpenAI"** to use your Codex subscription | Yes               |
+| 🐙 **Add GitHub**      | Paste a GitHub Personal Access Token                                                  | No (skip for now) |
 
 > **Tip:** If you already set `LINEAR_API_KEY` and `LINEAR_PROJECT_SLUG` as environment variables, the wizard auto-detects them.
 
@@ -124,16 +124,16 @@ Alternatively, use the **"Create Test Issue"** button on the setup completion pa
 
 ## 6. Dashboard Tour
 
-| Tab | What it shows |
-|-----|---------------|
-| **Overview** | Live metrics, attention queue, recent events, system health |
-| **Board** | Kanban view of all issues across workflow states |
-| **Settings** | Tracker connection, model provider, sandbox config, credentials |
-| **Observability** | System health, Prometheus metrics, anomaly detection |
-| **Git** | Configured repos, active branches, recent PRs |
-| **Workspaces** | Disk usage and lifecycle of per-issue workspaces |
-| **Welcome** | Quick-start guide and version info |
-| **Setup** | Re-run the credential wizard at any time |
+| Tab               | What it shows                                                   |
+| ----------------- | --------------------------------------------------------------- |
+| **Overview**      | Live metrics, attention queue, recent events, system health     |
+| **Board**         | Kanban view of all issues across workflow states                |
+| **Settings**      | Tracker connection, model provider, sandbox config, credentials |
+| **Observability** | System health, Prometheus metrics, anomaly detection            |
+| **Git**           | Configured repos, active branches, recent PRs                   |
+| **Workspaces**    | Disk usage and lifecycle of per-issue workspaces                |
+| **Welcome**       | Quick-start guide and version info                              |
+| **Setup**         | Re-run the credential wizard at any time                        |
 
 ---
 
@@ -169,12 +169,12 @@ curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY"
 
 ## Next Steps
 
-| Want to... | Go to... |
-|-----------|----------|
-| Configure sandbox, retries, timeouts | [Operator Guide](OPERATOR_GUIDE.md) |
-| Set up Slack notifications | [Operator Guide → Notifications](OPERATOR_GUIDE.md#-notifications-and-git-automation) |
-| Understand the trust model | [Trust & Auth](TRUST_AND_AUTH.md) |
-| See the full feature roadmap | [Roadmap](ROADMAP_AND_STATUS.md) |
-| Troubleshoot failures | [Runbooks](RUNBOOKS.md) |
-| Monitor with Prometheus | [Observability](OBSERVABILITY.md) |
-| Use the JSON API | [Operator Guide → API Reference](OPERATOR_GUIDE.md#-json-api-reference) |
+| Want to...                           | Go to...                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------- |
+| Configure sandbox, retries, timeouts | [Operator Guide](OPERATOR_GUIDE.md)                                                   |
+| Set up Slack notifications           | [Operator Guide → Notifications](OPERATOR_GUIDE.md#-notifications-and-git-automation) |
+| Understand the trust model           | [Trust & Auth](TRUST_AND_AUTH.md)                                                     |
+| See the full feature roadmap         | [Roadmap](ROADMAP_AND_STATUS.md)                                                      |
+| Troubleshoot failures                | [Runbooks](RUNBOOKS.md)                                                               |
+| Monitor with Prometheus              | [Observability](OBSERVABILITY.md)                                                     |
+| Use the JSON API                     | [Operator Guide → API Reference](OPERATOR_GUIDE.md#-json-api-reference)               |

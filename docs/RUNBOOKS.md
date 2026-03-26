@@ -12,7 +12,7 @@
    ```bash
    lsof -i :4000
    ```
-2. **Verify Node.js version** — requires Node ≥22 (`package.json` engines field).
+2. **Verify Node.js version** — requires Node ≥24 (`package.json` engines field).
    ```bash
    node --version
    ```
@@ -68,6 +68,30 @@
    ```
 2. **Check polling interval** — verify `polling.interval_ms` in your workflow YAML isn't set too high.
 3. **Browser cache** — hard-refresh the browser (`Ctrl+Shift+R`).
+
+---
+
+## Roll Back to the Vanilla Dashboard
+
+**Symptoms**: You want to stop serving the React dashboard at `/` and return to the legacy static bundle.
+
+1. **Disable the feature flag** — remove `REACT_FRONTEND` from `SYMPHONY_FLAGS`, or set it to `false` in `flags.json`.
+   ```bash
+   export SYMPHONY_FLAGS=""
+   # or
+   printf '{"REACT_FRONTEND":false}\n' > flags.json
+   ```
+2. **Make sure the vanilla bundle exists** — local rollback needs the legacy build output.
+   ```bash
+   pnpm build:frontend:legacy
+   ```
+   Docker images already include `dist/frontend-vanilla/` because the image build runs both frontend builds.
+3. **Restart Symphony** — static asset root selection happens during server startup, so the process must restart.
+   ```bash
+   node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+   ```
+
+When `REACT_FRONTEND` is disabled, the control plane prefers `dist/frontend-vanilla/` and falls back to `dist/frontend/` only if the legacy bundle is missing.
 
 ---
 

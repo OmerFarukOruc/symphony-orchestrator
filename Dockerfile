@@ -7,7 +7,9 @@ COPY packages/frontend/package.json packages/frontend/package.json
 COPY packages/shared/package.json packages/shared/package.json
 RUN pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm build
+RUN pnpm --filter @symphony/shared build && \
+    pnpm --filter @symphony/backend build && \
+    pnpm --filter @symphony/frontend build
 
 FROM node:24-slim AS production
 RUN apt-get update && apt-get install -y --no-install-recommends docker.io && rm -rf /var/lib/apt/lists/*

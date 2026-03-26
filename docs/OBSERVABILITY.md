@@ -74,13 +74,17 @@ Control runtime behavior via `SYMPHONY_FLAGS` env var or a `flags.json` file:
 
 ```bash
 # Environment
-export SYMPHONY_FLAGS="new_dashboard,parallel_agents"
+export SYMPHONY_FLAGS="REACT_FRONTEND,parallel_agents"
 
 # File (placed in working directory)
-echo '{"experimental_retry": true}' > flags.json
+echo '{"REACT_FRONTEND": false}' > flags.json
 ```
 
 Check flag state via `isEnabled("flag_name")` from `src/core/feature-flags.ts`.
+
+`REACT_FRONTEND` switches the control-plane static root to `dist/frontend/`. To roll back,
+set the flag to `false` (or remove it), restart Symphony, and make sure
+`dist/frontend-vanilla/` is present.
 
 ---
 
