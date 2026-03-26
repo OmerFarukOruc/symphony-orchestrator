@@ -54,7 +54,8 @@
     "express-rate-limit": "^8.3.1",
     "liquidjs": "^10.25.1",
     "winston": "^3.18.3",
-    "yaml": "^2.8.3"
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
