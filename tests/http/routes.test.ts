@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerHttpRoutes } from "../../src/http/routes.js";
+import { resetFlags, setFlag } from "../../src/core/feature-flags.js";
 
 function makeOrchestrator() {
   return {
@@ -34,6 +35,8 @@ let port: number;
 let orchestrator: ReturnType<typeof makeOrchestrator>;
 
 beforeAll(async () => {
+  resetFlags();
+  setFlag("DUAL_WRITE", true);
   orchestrator = makeOrchestrator();
   app = Fastify({ logger: false });
 
@@ -57,6 +60,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  resetFlags();
   await app.close();
 });
 
@@ -81,7 +85,7 @@ describe("HTTP routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveProperty("provider_summary", "Codex");
-    expect(body).toHaveProperty("feature_flags");
+    expect(body).toHaveProperty("feature_flags", { DUAL_WRITE: true });
   });
 
   it("POST /api/v1/refresh returns 202", async () => {

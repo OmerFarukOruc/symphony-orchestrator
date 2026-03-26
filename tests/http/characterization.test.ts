@@ -19,6 +19,7 @@ import {
   buildTeamsQuery,
 } from "../../src/linear/queries.js";
 import { createMockLogger, createJsonResponse, createTextResponse } from "../helpers.js";
+import { resetFlags, setFlag } from "../../src/core/feature-flags.js";
 
 const deviceAuthMocks = vi.hoisted(() => {
   const state = {
@@ -555,15 +556,18 @@ describe("HTTP characterization", () => {
           },
         });
 
+        resetFlags();
+        setFlag("DUAL_WRITE", true);
         const runtimeResponse = await harness.app.inject({ method: "GET", url: "/api/v1/runtime" });
         expect(runtimeResponse.statusCode).toBe(200);
         expect(runtimeResponse.json()).toEqual({
           version: "9.9.9-characterization",
           workflow_path: "/tmp/WORKFLOW.fixture.md",
           data_dir: "/tmp/symphony-data",
-          feature_flags: {},
+          feature_flags: { DUAL_WRITE: true },
           provider_summary: "Codex",
         });
+        resetFlags();
 
         const metricsResponse = await harness.app.inject({ method: "GET", url: "/metrics" });
         expect(metricsResponse.statusCode).toBe(200);

@@ -1,9 +1,9 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import type { SecretBackend } from "@symphony/shared";
 
 import type { ConfigStore } from "../config/store.js";
 import type { Orchestrator } from "../orchestrator/orchestrator.js";
 import type { RuntimeIssueView, RuntimeSnapshot } from "../core/types.js";
-import type { SecretsStore } from "../secrets/store.js";
 
 /* ------------------------------------------------------------------ */
 /*  Response types                                                     */
@@ -157,7 +157,7 @@ function extractActiveBranches(snapshot: RuntimeSnapshot): ActiveBranchView[] {
 export interface GitContextDeps {
   orchestrator: Orchestrator;
   configStore?: ConfigStore;
-  secretsStore?: SecretsStore;
+  secretsStore?: SecretBackend;
   fetchImpl?: typeof fetch;
 }
 

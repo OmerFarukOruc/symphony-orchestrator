@@ -1,18 +1,18 @@
-import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 
 import Fastify, { type FastifyInstance } from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyRateLimit from "@fastify/rate-limit";
+import type { SecretBackend } from "@symphony/shared";
 
 import type { ConfigStore } from "../config/store.js";
 import { registerHttpRoutes } from "./routes.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 
 import type { ConfigOverlayStore } from "../config/overlay.js";
-import type { SecretsStore } from "../secrets/store.js";
 import type { SymphonyLogger } from "../core/types.js";
-import { globalMetrics } from "../observability/metrics.js";
+import { globalMetrics } from "../observability/prom-client-metrics.js";
+import { REQUEST_ID_HEADER, resolveRequestId, runWithRequestContext } from "../observability/tracing.js";
 import { buildOpenApiDocument } from "./openapi.js";
 import type { LinearClient } from "../linear/client.js";
 
@@ -28,7 +28,7 @@ export interface HttpServerDeps {
   linearClient?: LinearClient;
   configStore?: ConfigStore;
   configOverlayStore?: ConfigOverlayStore;
-  secretsStore?: SecretsStore;
+  secretsStore?: SecretBackend;
   frontendDir?: string;
   archiveDir?: string;
 }
@@ -94,13 +94,12 @@ export class HttpServer {
 
   private registerCoreHooks(): void {
     this.app.addHook("onRequest", (request, reply, done) => {
-      const incoming = request.headers["x-request-id"];
-      const requestId = typeof incoming === "string" && incoming.length > 0 ? incoming : randomUUID();
-      reply.header("X-Request-ID", requestId);
+      const requestId = resolveRequestId(request.headers["x-request-id"]);
+      reply.header(REQUEST_ID_HEADER, requestId);
       const raw = request.raw as { requestId?: string; startedAt?: bigint };
       raw.requestId = requestId;
       raw.startedAt = process.hrtime.bigint();
-      done();
+      runWithRequestContext(requestId, done);
     });
     this.app.addHook("onResponse", (request, reply, done) => {
       const raw = request.raw as { startedAt?: bigint };

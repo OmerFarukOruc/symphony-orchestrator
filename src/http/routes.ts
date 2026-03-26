@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
 
 import { registerConfigApi } from "../config/api.js";
+import { getAllFlags } from "../core/feature-flags.js";
 import type { RuntimeSnapshot } from "../core/types.js";
-import { globalMetrics } from "../observability/metrics.js";
+import { globalMetrics } from "../observability/prom-client-metrics.js";
 
 import { registerSecretsApi } from "../secrets/api.js";
 import { registerSetupApi } from "../setup/api.js";
@@ -35,7 +36,7 @@ function registerStateAndMetricsRoutes(app: FastifyInstance, deps: HttpRouteDeps
       version: process.env.npm_package_version ?? "unknown",
       workflow_path: process.env.SYMPHONY_WORKFLOW_PATH ?? "",
       data_dir: process.env.SYMPHONY_DATA_DIR ?? "",
-      feature_flags: {},
+      feature_flags: getAllFlags(),
       provider_summary: "Codex",
     });
   });

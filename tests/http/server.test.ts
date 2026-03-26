@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
 import { HttpServer } from "../../src/http/server.js";
 import { createLogger } from "../../src/core/logger.js";
+import { resetFlags, setFlag } from "../../src/core/feature-flags.js";
 import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
 
 const SPA_HTML = `<!doctype html><html><head><title>Symphony</title></head><body><div id="app"></div></body></html>`;
@@ -195,6 +196,8 @@ describe("HttpServer", () => {
   });
 
   it("serves /api/v1/runtime with version and config info", async () => {
+    resetFlags();
+    setFlag("DUAL_WRITE", true);
     const frontendDir = await createFrontendDir();
     server = new HttpServer({
       orchestrator: {} as unknown as Orchestrator,
@@ -209,9 +212,10 @@ describe("HttpServer", () => {
       version: expect.any(String),
       workflow_path: expect.any(String),
       data_dir: expect.any(String),
-      feature_flags: expect.any(Object),
+      feature_flags: { DUAL_WRITE: true },
       provider_summary: expect.any(String),
     });
+    resetFlags();
   });
 
   it("returns JSON 404 for unknown /api/ paths", async () => {

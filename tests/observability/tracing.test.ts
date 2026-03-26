@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveRequestId, REQUEST_ID_HEADER } from "../../src/observability/tracing.js";
+import {
+  getRequestId,
+  resolveRequestId,
+  REQUEST_ID_HEADER,
+  runWithRequestContext,
+} from "../../src/observability/tracing.js";
 
 describe("resolveRequestId", () => {
   it("generates a UUID when no X-Request-ID is present", () => {
@@ -21,5 +26,14 @@ describe("resolveRequestId", () => {
 
   it("exports the expected header name", () => {
     expect(REQUEST_ID_HEADER).toBe("X-Request-ID");
+  });
+
+  it("stores the request id in async context", async () => {
+    await runWithRequestContext("req-xyz", async () => {
+      await Promise.resolve();
+      expect(getRequestId()).toBe("req-xyz");
+    });
+
+    expect(getRequestId()).toBeNull();
   });
 });
