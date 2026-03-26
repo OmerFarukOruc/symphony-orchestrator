@@ -15,11 +15,21 @@ import {
   buildWorkspaceSection,
 } from "./issue-inspector-sections";
 import { createIssueAbortAction } from "./issue-inspector-abort";
+import { createLiveLog } from "./live-log.js";
+import { subscribeIssueEvents } from "../state/event-source.js";
 
 interface IssueInspectorOptions {
   mode: "page" | "drawer";
   initialId?: string;
   onClose?: () => void;
+}
+
+function buildLiveLogSection(logEl: HTMLElement): HTMLElement {
+  const section = document.createElement("section");
+  section.className = "issue-section mc-panel expand-in";
+  section.append(Object.assign(document.createElement("h2"), { textContent: "Live log" }));
+  section.appendChild(logEl);
+  return section;
 }
 
 export function createIssueInspector(options: IssueInspectorOptions): {
@@ -116,6 +126,8 @@ export function createIssueInspector(options: IssueInspectorOptions): {
 
   let poll = 0;
   let hydrated = false;
+  const liveLog = createLiveLog();
+  let unsubscribeEvents: (() => void) | null = null;
 
   function renderLoading(): void {
     content.replaceChildren(skeletonCard(), skeletonCard(), skeletonCard());
@@ -143,9 +155,13 @@ export function createIssueInspector(options: IssueInspectorOptions): {
       formatDuration(computeDurationSeconds(detail.startedAt, detail.updated_at ?? detail.updatedAt)),
     );
 
+    const isActive = detail.status === "running" || detail.status === "retrying";
+    const liveLogSection = isActive ? buildLiveLogSection(liveLog.el) : null;
+
     const sections = [
       buildDescriptionSection(detail),
       buildRetrySection(detail),
+      liveLogSection,
       buildActivitySection(detail),
       buildWorkspaceSection(detail),
       buildModelSection(detail),
@@ -189,6 +205,9 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     abortAction.sync(null);
     content.replaceChildren();
     content.scrollTop = 0;
+    liveLog.clear();
+    unsubscribeEvents?.();
+    unsubscribeEvents = subscribeIssueEvents(id, (entry) => liveLog.append(entry));
     await refresh();
     window.clearInterval(poll);
     poll = window.setInterval(() => {
@@ -198,6 +217,8 @@ export function createIssueInspector(options: IssueInspectorOptions): {
 
   function destroy(): void {
     window.clearInterval(poll);
+    unsubscribeEvents?.();
+    unsubscribeEvents = null;
   }
 
   if (currentId) {

@@ -31,9 +31,12 @@ function openConnection(): void {
   };
 
   eventSource.onmessage = (event: MessageEvent) => {
-    const data = JSON.parse(String(event.data)) as { type: string };
+    const data = JSON.parse(String(event.data)) as { type: string; payload?: unknown };
     if (LIFECYCLE_EVENTS.has(data.type)) {
       pollOnce().catch(() => {});
+    }
+    if (data.type === "agent.event") {
+      window.dispatchEvent(new CustomEvent("symphony:agent-event", { detail: data.payload }));
     }
   };
 
@@ -58,4 +61,23 @@ function cleanup(): void {
     source.close();
     source = null;
   }
+}
+
+export interface AgentEventPayload {
+  issueId: string;
+  identifier: string;
+  type: string;
+  message: string;
+  sessionId: string | null;
+}
+
+export function subscribeIssueEvents(identifier: string, handler: (event: AgentEventPayload) => void): () => void {
+  const listener = (e: Event) => {
+    const payload = (e as CustomEvent<AgentEventPayload>).detail;
+    if (payload.identifier === identifier) {
+      handler(payload);
+    }
+  };
+  window.addEventListener("symphony:agent-event", listener);
+  return () => window.removeEventListener("symphony:agent-event", listener);
 }
