@@ -1,25 +1,25 @@
-export type SettingsTabId = "general" | "credentials" | "advanced";
+export type SettingsSectionHash = "credentials" | "devtools";
 
-export const DEFAULT_SETTINGS_TAB: SettingsTabId = "general";
+const DEFAULT_SETTINGS_PATH = "/settings";
 
-const settingsTabs = new Set<SettingsTabId>(["general", "credentials", "advanced"]);
+const sectionHashes = new Set<SettingsSectionHash>(["credentials", "devtools"]);
 
-export function isSettingsTabId(value: string | null | undefined): value is SettingsTabId {
-  return value !== undefined && value !== null && settingsTabs.has(value as SettingsTabId);
+function isSettingsSectionHash(value: string | null | undefined): value is SettingsSectionHash {
+  return value !== undefined && value !== null && sectionHashes.has(value as SettingsSectionHash);
 }
 
-export function parseSettingsTabHash(hash: string): SettingsTabId {
+export function parseSettingsSectionHash(hash: string): SettingsSectionHash | null {
   const normalized = hash.replace(/^#/, "").trim().toLowerCase();
-  return isSettingsTabId(normalized) ? normalized : DEFAULT_SETTINGS_TAB;
+  return isSettingsSectionHash(normalized) ? normalized : null;
 }
 
-export function settingsPathForTab(tab: SettingsTabId): string {
-  return tab === DEFAULT_SETTINGS_TAB ? "/settings#general" : `/settings#${tab}`;
+export function settingsPathForSection(section: SettingsSectionHash | null): string {
+  return section ? `/settings#${section}` : DEFAULT_SETTINGS_PATH;
 }
 
-export function normalizeLegacySettingsPath(pathname: string): SettingsTabId | null {
+export function normalizeLegacySettingsPath(pathname: string): SettingsSectionHash | null {
   if (pathname === "/config") {
-    return "advanced";
+    return "devtools";
   }
   if (pathname === "/secrets") {
     return "credentials";

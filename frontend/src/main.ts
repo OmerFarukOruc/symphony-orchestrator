@@ -125,7 +125,7 @@ router.register("/issues/:id/logs", logs);
 router.register("/logs/:id", logs);
 router.register("/attempts/:id", attempt);
 
-router.register("/config", aliasSettingsRoute("/settings#advanced", settings));
+router.register("/config", aliasSettingsRoute("/settings#devtools", settings));
 router.register("/secrets", aliasSettingsRoute("/settings#credentials", settings));
 router.register("/observability", observability);
 router.register("/settings", settings);
