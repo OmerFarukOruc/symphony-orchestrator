@@ -27,7 +27,7 @@ import {
   launchWorker as launchWorkerState,
 } from "./worker-launcher.js";
 import { handleWorkerFailure } from "./worker-failure.js";
-import { handleWorkerOutcome } from "./worker-outcome.js";
+import { handleWorkerOutcome } from "./worker-outcome/index.js";
 import { detectAndKillStalledWorkers, type StallEvent } from "./stall-detector.js";
 import { globalMetrics } from "../observability/metrics.js";
 
