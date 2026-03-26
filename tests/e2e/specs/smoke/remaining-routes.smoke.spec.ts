@@ -173,7 +173,7 @@ test.describe("Remaining route parity smoke", () => {
     await expect(page.getByRole("heading", { name: "Protect your secrets", exact: true })).toBeVisible();
   });
 
-  test("legacy config and secrets aliases still redirect into settings tabs", async ({ page }) => {
+  test("legacy config alias redirects while secrets route remains directly addressable", async ({ page }) => {
     const config = new ConfigPage(page);
 
     await config.navigateToConfig();
@@ -181,7 +181,7 @@ test.describe("Remaining route parity smoke", () => {
     await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
 
     await config.navigateToSecrets();
-    await expect(page).toHaveURL(/\/settings#credentials$/);
-    await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/secrets$/);
+    await expect(page.getByRole("heading", { name: "Credentials", exact: true })).toBeVisible();
   });
 });

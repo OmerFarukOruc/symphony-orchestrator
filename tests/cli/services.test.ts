@@ -1,10 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 import { createServices } from "../../src/cli/services.js";
-import { FileAttemptStore } from "../../src/core/attempt-store.js";
-import { DualWriteAttemptStore } from "../../src/core/dual-write-store.js";
-import { FEATURE_FLAG_DUAL_WRITE, resetFlags, setFlag } from "../../src/core/feature-flags.js";
+import { resetFlags } from "../../src/core/feature-flags.js";
 import type { ServiceConfig } from "../../src/core/types.js";
+import { AttemptStoreSqlite } from "../../src/db/attempt-store-sqlite.js";
 import { createMockLogger } from "../helpers.js";
 
 function createConfig(): ServiceConfig {
@@ -113,9 +112,8 @@ describe("createServices", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses the file attempt store when DUAL_WRITE is disabled", async () => {
-    const startSpy = vi.spyOn(FileAttemptStore.prototype, "start").mockResolvedValue(undefined);
-    const dualStartSpy = vi.spyOn(DualWriteAttemptStore.prototype, "start").mockResolvedValue(undefined);
+  it("uses the sqlite attempt store", async () => {
+    const startSpy = vi.spyOn(AttemptStoreSqlite.prototype, "start").mockResolvedValue(undefined);
 
     await createServices(
       createConfigStore() as never,
@@ -126,21 +124,5 @@ describe("createServices", () => {
     );
 
     expect(startSpy).toHaveBeenCalledOnce();
-    expect(dualStartSpy).not.toHaveBeenCalled();
-  });
-
-  it("uses the dual-write attempt store when DUAL_WRITE is enabled", async () => {
-    setFlag(FEATURE_FLAG_DUAL_WRITE, true);
-    const dualStartSpy = vi.spyOn(DualWriteAttemptStore.prototype, "start").mockResolvedValue(undefined);
-
-    await createServices(
-      createConfigStore() as never,
-      createOverlayStore() as never,
-      createSecretsStore() as never,
-      "/archive",
-      createMockLogger() as never,
-    );
-
-    expect(dualStartSpy).toHaveBeenCalledOnce();
   });
 });

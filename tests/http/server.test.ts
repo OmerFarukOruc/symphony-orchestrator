@@ -5,15 +5,15 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
-import { HttpServer } from "../../src/http/server.js";
 import { createLogger } from "../../src/core/logger.js";
+import { FastifyServer } from "../../src/http/fastify-server.js";
 import { resetFlags, setFlag } from "../../src/core/feature-flags.js";
 import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
 
 const SPA_HTML = `<!doctype html><html><head><title>Symphony</title></head><body><div id="app"></div></body></html>`;
 
-describe("HttpServer", () => {
-  let server: HttpServer | null = null;
+describe("FastifyServer", () => {
+  let server: FastifyServer | null = null;
   const tempDirs: string[] = [];
 
   afterEach(async () => {
@@ -80,8 +80,10 @@ describe("HttpServer", () => {
       getIssueDetail: (identifier: string) =>
         identifier === "MT-42"
           ? {
+              issueId: "issue-42",
               identifier,
               title: "Issue detail",
+              state: "In Progress",
               attempts: [
                 {
                   attemptId: "attempt-1",
@@ -102,7 +104,7 @@ describe("HttpServer", () => {
     } as unknown as Orchestrator;
 
     const frontendDir = await createFrontendDir();
-    server = new HttpServer({
+    server = new FastifyServer({
       orchestrator,
       logger: createLogger(),
       frontendDir,
@@ -199,7 +201,7 @@ describe("HttpServer", () => {
     resetFlags();
     setFlag("DUAL_WRITE", true);
     const frontendDir = await createFrontendDir();
-    server = new HttpServer({
+    server = new FastifyServer({
       orchestrator: {} as unknown as Orchestrator,
       logger: createLogger(),
       frontendDir,
@@ -219,7 +221,7 @@ describe("HttpServer", () => {
   });
 
   it("returns JSON 404 for unknown /api/ paths", async () => {
-    server = new HttpServer({
+    server = new FastifyServer({
       orchestrator: {} as unknown as Orchestrator,
       logger: createLogger(),
     });
@@ -232,7 +234,7 @@ describe("HttpServer", () => {
 
   it("serves SPA index.html for unknown non-API paths", async () => {
     const frontendDir = await createFrontendDir();
-    server = new HttpServer({
+    server = new FastifyServer({
       orchestrator: {} as unknown as Orchestrator,
       logger: createLogger(),
       frontendDir,
@@ -255,7 +257,7 @@ describe("HttpServer", () => {
       getIssueDetail: () => ({ identifier: "MT-42", title: "test" }),
     } as unknown as Orchestrator;
 
-    server = new HttpServer({ orchestrator, logger: createLogger() });
+    server = new FastifyServer({ orchestrator, logger: createLogger() });
     const started = await server.start(0);
     const baseUrl = `http://127.0.0.1:${started.port}`;
 
@@ -280,7 +282,7 @@ describe("HttpServer", () => {
       getIssueDetail: () => ({ identifier: "MT-42", title: "test" }),
     } as unknown as Orchestrator;
 
-    server = new HttpServer({ orchestrator, logger: createLogger() });
+    server = new FastifyServer({ orchestrator, logger: createLogger() });
     const started = await server.start(0);
     const baseUrl = `http://127.0.0.1:${started.port}`;
 
@@ -305,7 +307,7 @@ describe("HttpServer", () => {
       getIssueDetail: () => ({ identifier: "MT-42", title: "test" }),
     } as unknown as Orchestrator;
 
-    server = new HttpServer({ orchestrator, logger: createLogger() });
+    server = new FastifyServer({ orchestrator, logger: createLogger() });
     const started = await server.start(0);
     const baseUrl = `http://127.0.0.1:${started.port}`;
 
@@ -328,7 +330,7 @@ describe("HttpServer", () => {
       getIssueDetail: () => ({ identifier: "MT-42", title: "test" }),
     } as unknown as Orchestrator;
 
-    server = new HttpServer({ orchestrator, logger: createLogger() });
+    server = new FastifyServer({ orchestrator, logger: createLogger() });
     const started = await server.start(0);
     const baseUrl = `http://127.0.0.1:${started.port}`;
 
@@ -351,7 +353,7 @@ describe("HttpServer", () => {
       getIssueDetail: () => ({ identifier: "MT-42", title: "test" }),
     } as unknown as Orchestrator;
 
-    server = new HttpServer({ orchestrator, logger: createLogger() });
+    server = new FastifyServer({ orchestrator, logger: createLogger() });
     const started = await server.start(0);
     const baseUrl = `http://127.0.0.1:${started.port}`;
 
@@ -396,7 +398,7 @@ describe("HttpServer", () => {
       updateIssueModelSelection: async () => null,
     } as unknown as Orchestrator;
 
-    server = new HttpServer({
+    server = new FastifyServer({
       orchestrator,
       logger: createLogger(),
       configStore: {

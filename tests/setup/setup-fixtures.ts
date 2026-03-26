@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { vi } from "vitest";
 
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
-import { FileAttemptStore } from "../../src/core/attempt-store.js";
+import { AttemptStore } from "../../src/core/attempt-store.js";
 import type { RunAttemptDispatcher } from "../../src/dispatch/types.js";
 import { ConfigStore } from "../../src/config/store.js";
 import { LinearClient } from "../../src/linear/client.js";
@@ -69,7 +69,7 @@ export function createAgentRunnerMock(): RunAttemptDispatcher {
 export function createOrchestratorMock(): Orchestrator {
   const logger = createMockLogger();
   const orchestrator = new Orchestrator({
-    attemptStore: new FileAttemptStore("/attempt-store", logger),
+    attemptStore: new AttemptStore("/attempt-store", logger),
     configStore: new ConfigStore("/workflow.md", logger),
     linearClient: new LinearClient(() => {
       throw new Error("not used in setup api tests");

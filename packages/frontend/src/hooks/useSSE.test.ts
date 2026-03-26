@@ -1,8 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { queryKeys } from "./query-client.js";
-import { createSseConnection, invalidateFromSseEvent, reconnectDelayMs, type EventSourceLike } from "./useSSE.js";
+import { queryKeys } from "./query-client";
+import { createSseConnection, invalidateFromSseEvent, reconnectDelayMs, type EventSourceLike } from "./useSSE";
 
 type InvalidateFilters = Readonly<{
   queryKey?: readonly unknown[];

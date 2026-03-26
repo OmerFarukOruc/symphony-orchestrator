@@ -4,9 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
-  FEATURE_FLAG_DUAL_WRITE,
-  FEATURE_FLAG_SQLITE_CONFIG_READS,
-  FEATURE_FLAG_SQLITE_READS,
+  FEATURE_FLAG_REACT_FRONTEND,
   loadFlags,
   isEnabled,
   setFlag,
@@ -28,20 +26,8 @@ describe("feature-flags", () => {
     expect(isEnabled("nonexistent")).toBe(false);
   });
 
-  it("exports the DUAL_WRITE feature flag constant", () => {
-    expect(FEATURE_FLAG_DUAL_WRITE).toBe("DUAL_WRITE");
-  });
-
-  it("exports the SQLITE_CONFIG_READS feature flag constant", () => {
-    expect(FEATURE_FLAG_SQLITE_CONFIG_READS).toBe("SQLITE_CONFIG_READS");
-  });
-
-  it("exports the SQLITE_READS feature flag constant", () => {
-    expect(FEATURE_FLAG_SQLITE_READS).toBe("SQLITE_READS");
-  });
-
-  it("exports the SQLITE_SECRET_READS feature flag constant", () => {
-    expect("SQLITE_SECRET_READS").toBe("SQLITE_SECRET_READS");
+  it("exports the REACT_FRONTEND feature flag constant", () => {
+    expect(FEATURE_FLAG_REACT_FRONTEND).toBe("REACT_FRONTEND");
   });
 
   it("loads flags from SYMPHONY_FLAGS env var", () => {

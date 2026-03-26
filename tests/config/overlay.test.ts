@@ -1,11 +1,13 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
 import { createLogger } from "../../src/core/logger.js";
+import { closeDatabaseConnection } from "../../src/db/connection.js";
 
 const tempDirs: string[] = [];
 
@@ -13,6 +15,16 @@ async function createTempDir(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-config-overlay-test-"));
   tempDirs.push(dir);
   return dir;
+}
+
+function readRows(baseDir: string): Array<{ path: string; valueJson: string }> {
+  const db = new Database(path.join(baseDir, "symphony.db"), { readonly: true });
+  const rows = db.prepare("SELECT path, value_json AS valueJson FROM config_overlays ORDER BY path").all() as Array<{
+    path: string;
+    valueJson: string;
+  }>;
+  db.close();
+  return rows;
 }
 
 async function waitFor(assertion: () => Promise<void> | void): Promise<void> {
@@ -30,11 +42,14 @@ async function waitFor(assertion: () => Promise<void> | void): Promise<void> {
 }
 
 afterEach(async () => {
+  for (const dir of tempDirs) {
+    closeDatabaseConnection({ baseDir: dir });
+  }
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
 describe("ConfigOverlayStore", () => {
-  it("persists set/delete updates and reloads from disk on restart", async () => {
+  it("persists set/delete updates in SQLite and reloads them on restart", async () => {
     const dir = await createTempDir();
     const overlayPath = path.join(dir, "config", "overlay.yaml");
     const store = new ConfigOverlayStore(overlayPath, createLogger());
@@ -48,14 +63,16 @@ describe("ConfigOverlayStore", () => {
       server: { port: 4010 },
     });
 
-    const persisted = await readFile(overlayPath, "utf8");
-    expect(persisted).toContain("codex:");
-    expect(persisted).toContain("server:");
+    expect(readRows(dir)).toEqual([
+      { path: "codex.model", valueJson: '"gpt-5.4"' },
+      { path: "server.port", valueJson: "4010" },
+    ]);
 
     await store.delete("codex.model");
     expect(store.toMap()).toEqual({
       server: { port: 4010 },
     });
+    expect(readRows(dir)).toEqual([{ path: "server.port", valueJson: "4010" }]);
 
     await store.stop();
 
@@ -94,7 +111,7 @@ describe("ConfigOverlayStore", () => {
     await store.stop();
   });
 
-  it("reloads after external file edits and keeps last known good map on invalid edits", async () => {
+  it("ignores external overlay file edits and keeps SQLite-backed state authoritative", async () => {
     const dir = await createTempDir();
     const overlayPath = path.join(dir, "config", "overlay.yaml");
     const store = new ConfigOverlayStore(overlayPath, createLogger());
@@ -106,25 +123,26 @@ describe("ConfigOverlayStore", () => {
       notifications += 1;
     });
 
-    await writeFile(overlayPath, "agent:\n  max_turns: 20\n", "utf8");
     await waitFor(() => {
       expect(store.toMap()).toEqual({
         agent: {
-          max_turns: 20,
+          max_turns: 10,
         },
       });
     });
 
-    const notificationsBeforeInvalidWrite = notifications;
-    await writeFile(overlayPath, "agent: [\n", "utf8");
+    const notificationsBeforeWrite = notifications;
+    const db = new Database(path.join(dir, "symphony.db"));
+    db.prepare("UPDATE config_overlays SET value_json = ? WHERE path = ?").run("20", "agent.max_turns");
+    db.close();
     await new Promise((resolve) => setTimeout(resolve, 350));
 
     expect(store.toMap()).toEqual({
       agent: {
-        max_turns: 20,
+        max_turns: 10,
       },
     });
-    expect(notifications).toBe(notificationsBeforeInvalidWrite);
+    expect(notifications).toBe(notificationsBeforeWrite);
 
     unsubscribe();
     await store.stop();
@@ -146,7 +164,7 @@ describe("ConfigOverlayStore", () => {
     await store.stop();
   });
 
-  it("setBatch applies multiple keys atomically in a single persist cycle", async () => {
+  it("setBatch applies multiple keys atomically in a single SQLite persist cycle", async () => {
     const dir = await createTempDir();
     const overlayPath = path.join(dir, "config", "overlay.yaml");
     const store = new ConfigOverlayStore(overlayPath, createLogger());
@@ -163,10 +181,11 @@ describe("ConfigOverlayStore", () => {
       server: { port: 4010 },
     });
 
-    const persisted = await readFile(overlayPath, "utf8");
-    expect(persisted).toContain("openai_login");
-    expect(persisted).toContain("/tmp/auth-dir");
-    expect(persisted).toContain("4010");
+    expect(readRows(dir)).toEqual([
+      { path: "codex.auth.mode", valueJson: '"openai_login"' },
+      { path: "codex.auth.source_home", valueJson: '"/tmp/auth-dir"' },
+      { path: "server.port", valueJson: "4010" },
+    ]);
 
     await store.stop();
   });

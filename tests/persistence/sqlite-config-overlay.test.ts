@@ -7,8 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
 import { ConfigStore } from "../../src/config/store.js";
-import { FEATURE_FLAG_SQLITE_CONFIG_READS, resetFlags, setFlag } from "../../src/core/feature-flags.js";
 import { createLogger } from "../../src/core/logger.js";
+import { closeDatabaseConnection } from "../../src/db/connection.js";
 
 const tempDirs: string[] = [];
 
@@ -54,11 +54,13 @@ function readRows(baseDir: string): Array<{ path: string; valueJson: string }> {
 }
 
 afterEach(async () => {
-  resetFlags();
+  for (const dir of tempDirs) {
+    closeDatabaseConnection({ baseDir: dir });
+  }
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
-describe("ConfigOverlayStore SQLite dual-write", () => {
+describe("ConfigOverlayStore SQLite persistence", () => {
   it("writes overlay leaf entries to SQLite on set", async () => {
     const baseDir = await createTempDir();
     const store = await createStore(baseDir);
@@ -69,7 +71,7 @@ describe("ConfigOverlayStore SQLite dual-write", () => {
     await store.stop();
   });
 
-  it("keeps file-backed overlay authoritative on restart", async () => {
+  it("keeps SQLite-backed overlay authoritative on restart", async () => {
     const baseDir = await createTempDir();
     const store = await createStore(baseDir);
 
@@ -82,12 +84,12 @@ describe("ConfigOverlayStore SQLite dual-write", () => {
 
     const restoredStore = await createStore(baseDir);
     expect(restoredStore.toMap()).toEqual({
-      agent: { model: "gpt-5.4" },
+      agent: { model: "sqlite-value" },
     });
     await restoredStore.stop();
   });
 
-  it("mirrors external file edits into SQLite while reloading in-memory state", async () => {
+  it("ignores external overlay file edits and keeps SQLite state authoritative", async () => {
     const baseDir = await createTempDir();
     const store = await createStore(baseDir);
 
@@ -98,13 +100,9 @@ describe("ConfigOverlayStore SQLite dual-write", () => {
 
     await waitFor(() => {
       expect(store.toMap()).toEqual({
-        agent: { model: "gpt-5.5" },
-        polling: { interval: 30000 },
+        agent: { model: "gpt-5.4" },
       });
-      expect(readRows(baseDir)).toEqual([
-        { path: "agent.model", valueJson: '"gpt-5.5"' },
-        { path: "polling.interval", valueJson: "30000" },
-      ]);
+      expect(readRows(baseDir)).toEqual([{ path: "agent.model", valueJson: '"gpt-5.4"' }]);
     });
     await store.stop();
   });
@@ -144,7 +142,7 @@ describe("ConfigOverlayStore SQLite dual-write", () => {
     await restoredStore.stop();
   });
 
-  it("reads from SQLite when SQLITE_CONFIG_READS is enabled", async () => {
+  it("reads from SQLite on restart without any feature flag", async () => {
     const baseDir = await createTempDir();
     const store = await createStore(baseDir);
 
@@ -153,7 +151,6 @@ describe("ConfigOverlayStore SQLite dual-write", () => {
 
     const overlayPath = path.join(baseDir, "config", "overlay.yaml");
     await rm(overlayPath, { force: true });
-    setFlag(FEATURE_FLAG_SQLITE_CONFIG_READS, true);
 
     const sqliteReadStore = await createStore(baseDir);
     expect(sqliteReadStore.toMap()).toEqual({
@@ -162,55 +159,45 @@ describe("ConfigOverlayStore SQLite dual-write", () => {
     await sqliteReadStore.stop();
   });
 
-  it("falls back to file-backed snapshot when SQLite reads fail during watcher reloads", async () => {
+  it("keeps in-memory state stable when external overlay file edits happen", async () => {
     const baseDir = await createTempDir();
     const store = await createStore(baseDir);
     const overlayPath = path.join(baseDir, "config", "overlay.yaml");
 
     await store.set("agent.model", "gpt-5.4");
-    setFlag(FEATURE_FLAG_SQLITE_CONFIG_READS, true);
-    const sqliteStore = (store as unknown as { sqliteStore: { load(): Promise<Record<string, unknown>> } }).sqliteStore;
-    vi.spyOn(sqliteStore, "load").mockRejectedValue(new Error("sqlite offline"));
 
     await writeOverlay(overlayPath, "agent:\n  model: gpt-5.5\n");
 
     await waitFor(() => {
-      expect(store.toMap()).toEqual({ agent: { model: "gpt-5.5" } });
+      expect(store.toMap()).toEqual({ agent: { model: "gpt-5.4" } });
     });
     await store.stop();
   });
 
-  it("can roll back to file-backed reads after external edits while preserving mirrored state", async () => {
+  it("persists SQLite-backed state across restart even after external overlay file edits", async () => {
     const baseDir = await createTempDir();
     const overlayPath = path.join(baseDir, "config", "overlay.yaml");
     const store = await createStore(baseDir);
 
     await store.set("agent.model", "gpt-5.4");
-    setFlag(FEATURE_FLAG_SQLITE_CONFIG_READS, true);
     await writeOverlay(overlayPath, "agent:\n  model: gpt-5.5\npolling:\n  interval: 30000\n");
 
     await waitFor(() => {
       expect(store.toMap()).toEqual({
-        agent: { model: "gpt-5.5" },
-        polling: { interval: 30000 },
+        agent: { model: "gpt-5.4" },
       });
-      expect(readRows(baseDir)).toEqual([
-        { path: "agent.model", valueJson: '"gpt-5.5"' },
-        { path: "polling.interval", valueJson: "30000" },
-      ]);
+      expect(readRows(baseDir)).toEqual([{ path: "agent.model", valueJson: '"gpt-5.4"' }]);
     });
     await store.stop();
 
-    resetFlags();
     const rollbackStore = await createStore(baseDir);
     expect(rollbackStore.toMap()).toEqual({
-      agent: { model: "gpt-5.5" },
-      polling: { interval: 30000 },
+      agent: { model: "gpt-5.4" },
     });
     await rollbackStore.stop();
   });
 
-  it("keeps ConfigStore refresh semantics when SQLite-backed overlay reads are enabled", async () => {
+  it("keeps ConfigStore refresh semantics with SQLite-backed overlay reads", async () => {
     const baseDir = await createTempDir();
     const overlayStore = await createStore(baseDir);
     const workflowPath = path.join(baseDir, "workflow.yaml");
@@ -242,7 +229,6 @@ Work on the issue.
       "utf8",
     );
 
-    setFlag(FEATURE_FLAG_SQLITE_CONFIG_READS, true);
     const configStore = new ConfigStore(workflowPath, createLogger(), { overlayStore });
     await configStore.start();
 

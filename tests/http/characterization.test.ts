@@ -7,7 +7,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
-import { registerHttpRoutes } from "../../src/http/routes.js";
+import { registerFastifyHttpRoutes } from "../../src/http/fastify-routes.js";
 import { createDataPlaneServer } from "../../src/dispatch/server.js";
 import { registerSetupApi } from "../../src/setup/api.js";
 import { SecretsStore } from "../../src/secrets/store.js";
@@ -356,7 +356,7 @@ async function createControlPlaneHarness(): Promise<ControlPlaneHarness> {
   };
 
   const app = Fastify({ logger: false });
-  registerHttpRoutes(app, {
+  registerFastifyHttpRoutes(app, {
     orchestrator: orchestrator as never,
     configStore: configStore as never,
     configOverlayStore,

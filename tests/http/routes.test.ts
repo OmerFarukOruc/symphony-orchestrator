@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
 import Fastify, { type FastifyInstance } from "fastify";
 
-import { registerHttpRoutes } from "../../src/http/routes.js";
+import { registerFastifyHttpRoutes } from "../../src/http/fastify-routes.js";
 import { resetFlags, setFlag } from "../../src/core/feature-flags.js";
 
 function makeOrchestrator() {
@@ -40,7 +40,7 @@ beforeAll(async () => {
   orchestrator = makeOrchestrator();
   app = Fastify({ logger: false });
 
-  registerHttpRoutes(app, {
+  registerFastifyHttpRoutes(app, {
     orchestrator: orchestrator as never,
     frontendDir: "/tmp",
   });
@@ -175,6 +175,7 @@ describe("HTTP routes", () => {
     orchestrator.getIssueDetail.mockReturnValueOnce({
       issueId: "i1",
       identifier: "MT-1",
+      title: "Issue detail",
       state: "In Progress",
     });
     const res = await fetchRoute("/api/v1/MT-1");
@@ -186,7 +187,10 @@ describe("HTTP routes", () => {
   it("GET /api/v1/:identifier/attempts returns attempts when found", async () => {
     orchestrator.getIssueDetail.mockReturnValueOnce({
       issueId: "i1",
-      attempts: [{ id: "a1" }],
+      identifier: "MT-1",
+      title: "Issue detail",
+      state: "In Progress",
+      attempts: [{ attemptId: "a1", status: "completed" }],
       currentAttemptId: "a1",
     });
     const res = await fetchRoute("/api/v1/MT-1/attempts");
