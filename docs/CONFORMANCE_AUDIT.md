@@ -3,7 +3,7 @@
 > Per-requirement spec conformance audit for Symphony Orchestrator.
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.3.1-blue?style=flat-square" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.4.0-blue?style=flat-square" />
   <img alt="Status" src="https://img.shields.io/badge/status-shipped-brightgreen?style=flat-square" />
 </p>
 
@@ -11,7 +11,7 @@
 
 ## 📌 Current Release Baseline
 
-The repository is at **`v0.3.1`** and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, notifications, and a Docker deployment target. This document tracks every atomic requirement from the Symphony Service Specification against the current codebase.
+The repository is at **`v0.4.0`** and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, notifications, and a Docker deployment target. This document tracks every atomic requirement from the Symphony Service Specification against the current codebase.
 
 **Legend:** ✅ Implemented · 🟡 Partial / Minor Deviation · ❌ Not Implemented · 🔵 Extension (beyond spec)
 
@@ -681,7 +681,7 @@ Capabilities shipped that go beyond the spec requirements:
 | Error tracking           | Sentry-ready error tracker with breadcrumbs and context                                           |
 | Developer tooling        | ESLint, Prettier, husky, knip, jscpd, TypeDoc                                                     |
 
-### Resilience Extensions (v0.3.1)
+### Resilience Extensions (v0.4.0)
 
 | Extension                     | Description                                                                                                                                         |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
