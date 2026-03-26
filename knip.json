@@ -1,13 +1,39 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts"],
-  "entry": ["src/dispatch/entrypoint.ts"],
-  "ignoreFiles": [
-    "frontend/src/components/issue-card.ts",
-    "frontend/src/pages/page-factory.ts",
-    "tests/e2e/**",
-    "packages/shared/src/**/*.ts"
-  ],
+  "workspaces": {
+    ".": {
+      "entry": ["src/cli/index.ts", "src/dispatch/entrypoint.ts"],
+      "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts"],
+      "ignoreFiles": ["frontend/src/components/issue-card.ts", "frontend/src/pages/page-factory.ts", "tests/e2e/**"]
+    },
+    "packages/shared": {
+      "project": ["src/**/*.ts"]
+    },
+    "packages/frontend": {
+      "project": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
+      "ignoreFiles": ["src/generated/**", "src/app-shell/PlaceholderRoute.tsx", "src/hooks/use-polling-invalidation.ts"]
+    },
+    "packages/backend": {
+      "project": ["src/**/*.ts"]
+    }
+  },
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["agentation-mcp"]
+  "ignoreDependencies": [
+    "agentation-mcp",
+    "@tanstack/react-query",
+    "react-router-dom",
+    "@fastify/cors",
+    "@fastify/rate-limit",
+    "@fastify/static",
+    "@fastify/swagger",
+    "@symphony/shared",
+    "better-sqlite3",
+    "drizzle-orm",
+    "fastify",
+    "fast-json-stringify",
+    "pino",
+    "pino-pretty",
+    "prom-client"
+  ],
+  "ignoreFiles": ["packages/shared/src/**/*.ts", "packages/frontend/src/generated/**"]
 }

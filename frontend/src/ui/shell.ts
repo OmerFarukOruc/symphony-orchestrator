@@ -1,6 +1,7 @@
 let outletEl: HTMLElement | null = null;
 let routeAnnouncerEl: HTMLElement | null = null;
 
+/** @public Used by legacy shell initialization */
 export function bindShellElements(outlet: HTMLElement | null, routeAnnouncer: HTMLElement | null): void {
   outletEl = outlet;
   routeAnnouncerEl = routeAnnouncer;

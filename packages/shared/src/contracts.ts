@@ -1,6 +1,5 @@
 export {
   ErrorEnvelopeSchema,
-  ErrorSchema,
   OpenApiDocumentSchema,
   type ErrorEnvelope,
   type ErrorResponse,

@@ -10,11 +10,9 @@ export const ErrorDetailSchema = Type.Object({
   message: Type.String(),
 });
 
-export const ErrorSchema = Type.Object({
+export const ErrorEnvelopeSchema = Type.Object({
   error: ErrorDetailSchema,
 });
-
-export const ErrorEnvelopeSchema = ErrorSchema;
 
 export const StringErrorSchema = Type.Object({
   error: Type.String(),
@@ -37,7 +35,7 @@ export function jsonContent(schema: TSchema): Record<string, { schema: TSchema }
   };
 }
 
-export type ErrorResponse = Static<typeof ErrorSchema>;
+export type ErrorResponse = Static<typeof ErrorEnvelopeSchema>;
 export type ErrorEnvelope = Static<typeof ErrorEnvelopeSchema>;
 export type StringErrorResponse = Static<typeof StringErrorSchema>;
 export type OpenApiInfo = Static<typeof OpenApiInfoSchema>;
