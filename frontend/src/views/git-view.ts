@@ -270,7 +270,7 @@ function buildQuickLinksRail(githubAvailable: boolean): HTMLElement[] {
   links.append(queueBtn);
   const configBtn = el("button", "git-quick-link-btn", "Advanced settings");
   configBtn.type = "button";
-  configBtn.addEventListener("click", () => router.navigate("/settings#advanced"));
+  configBtn.addEventListener("click", () => router.navigate("/settings#devtools"));
   links.append(configBtn);
   const credentialsBtn = el("button", "git-quick-link-btn", "Manage credentials");
   credentialsBtn.type = "button";
@@ -320,7 +320,7 @@ function renderGitContext(page: HTMLElement, data: GitContextResponse): void {
         "No repositories configured",
         "Add repos to your workflow YAML to see git context here. Each repo entry maps a Linear identifier prefix to a GitHub repository.",
         "Open advanced settings",
-        () => router.navigate("/settings#advanced"),
+        () => router.navigate("/settings#devtools"),
       ),
     );
     return;

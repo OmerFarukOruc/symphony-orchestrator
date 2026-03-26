@@ -91,7 +91,7 @@ export function createWelcomePage(): HTMLElement {
       linkEl.addEventListener("click", (e) => {
         e.preventDefault();
         const paths: Record<string, string> = {
-          "View example": "/settings#advanced",
+          "View example": "/settings#devtools",
           "Open Credentials": "/settings#credentials",
           "Open Settings": "/settings",
         };

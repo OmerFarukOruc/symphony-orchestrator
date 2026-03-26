@@ -47,14 +47,14 @@ function buildNavigationEntries(): PaletteEntry[] {
       run: () => router.navigate("/settings#credentials"),
     },
     {
-      id: "nav:/settings#advanced",
-      name: "Advanced settings",
-      description: "Open Settings · Advanced",
+      id: "nav:/settings#devtools",
+      name: "Developer tools",
+      description: "Open Settings · Developer tools",
       meta: "g c",
       group: "Navigation",
       icon: "config",
-      keywords: ["configure", "config", "advanced", "override", "/config", "/settings#advanced"],
-      run: () => router.navigate("/settings#advanced"),
+      keywords: ["configure", "config", "devtools", "developer", "override", "/config", "/settings#devtools"],
+      run: () => router.navigate("/settings#devtools"),
     },
   );
 

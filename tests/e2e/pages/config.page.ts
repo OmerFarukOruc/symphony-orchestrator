@@ -15,21 +15,28 @@ export class ConfigPage extends BasePage {
   }
 
   async navigateToConfig(): Promise<void> {
-    await this.goto("/config");
+    await this.goto("/settings#devtools");
     await this.waitForPageContent();
+    await this.devToolsSection.waitFor({ state: "attached" });
+    // Wait for the details element to open (triggered by hash navigation)
+    await this.page.waitForFunction(() => {
+      const details = document.querySelector<HTMLDetailsElement>(".settings-devtools-section");
+      return details?.open === true;
+    });
   }
 
   async navigateToSecrets(): Promise<void> {
-    await this.goto("/secrets");
+    await this.goto("/settings#credentials");
     await this.waitForPageContent();
+    await this.credentialsSection.waitFor({ state: "attached" });
   }
 
-  tabButton(name: "General" | "Credentials" | "Advanced"): Locator {
-    return this.page.getByRole("tab", { name });
+  get credentialsSection(): Locator {
+    return this.page.locator(".settings-credentials-section");
   }
 
-  get activeTab(): Locator {
-    return this.page.locator('[role="tab"][aria-selected="true"]');
+  get devToolsSection(): Locator {
+    return this.page.locator(".settings-devtools-section");
   }
 
   // ── Config View ──────────────────────────────────────────────────────

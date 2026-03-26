@@ -1,48 +1,41 @@
-.settings-shell-page {
+.settings-unified-page {
   gap: var(--space-5);
 }
 
-.settings-shell-tabs {
-  padding: var(--space-2);
+.settings-unified-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
 }
 
-.settings-shell-tablist {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: 100%;
+.settings-credentials-section {
+  padding: var(--space-5);
 }
 
-.settings-shell-tab {
-  min-width: 0;
-  width: 100%;
-  justify-content: center;
+.settings-section-header {
+  margin-bottom: var(--space-4);
 }
 
-.settings-shell-tab.is-active {
-  background: var(--bg-elevated);
-  border-color: var(--border-strong);
-  color: var(--text-primary);
-}
-
-.settings-shell-context {
+.settings-section-header-row {
+  display: flex;
   align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
-.settings-shell-context-copy {
+.settings-section-header-row > div:first-child {
   display: grid;
   gap: var(--space-1);
 }
 
-.settings-shell-context-eyebrow {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: var(--tracking-wider);
-  text-transform: uppercase;
-  color: var(--text-muted);
+.settings-section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
 }
 
-.settings-shell-context-title {
+.settings-section-header h2 {
   margin: 0;
   font-family: var(--font-heading);
   font-size: var(--text-xl);
@@ -50,62 +43,80 @@
   color: var(--text-primary);
 }
 
-.settings-shell-context-subtitle {
+.settings-section-header p {
   margin: 0;
   max-width: 72ch;
   color: var(--text-secondary);
 }
 
-.settings-shell-context-actions {
+.settings-devtools-section {
+  padding: var(--space-5);
+}
+
+.settings-devtools-section summary {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-secondary);
+  list-style: none;
+  user-select: none;
 }
 
-.settings-shell-panels,
-.settings-shell-panel {
-  min-width: 0;
+.settings-devtools-section summary::-webkit-details-marker {
+  display: none;
 }
 
-.settings-shell-mounted-view {
+.settings-devtools-section summary::before {
+  content: "\25B6";
+  font-size: var(--text-xs);
+  transition: transform 0.15s ease;
+  color: var(--text-muted);
+}
+
+.settings-devtools-section[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.settings-devtools-section[open] summary {
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+}
+
+.settings-devtools-section summary:focus-visible {
+  outline: 2px solid var(--interactive-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.settings-devtools-content {
   gap: var(--space-5);
 }
 
-.settings-shell-mounted-view .config-help-banner {
+.settings-devtools-content .config-help-banner {
   margin: 0;
 }
 
-.settings-shell-mounted-view .config-content {
+.settings-devtools-content .config-content {
   padding: 0;
 }
 
 @media (max-width: 980px) {
-  .settings-shell-tab {
-    min-width: 0;
-  }
-
-  .settings-shell-context {
-    flex-direction: column;
-  }
-
-  .settings-shell-context-actions {
-    width: 100%;
-    justify-content: flex-start;
+  .settings-credentials-section,
+  .settings-devtools-section {
+    padding: var(--space-4);
   }
 }
 
 @media (max-width: 760px) {
-  .settings-shell-page {
+  .settings-unified-page {
     gap: var(--space-4);
   }
 
-  .settings-shell-tablist {
-    grid-template-columns: 1fr;
-  }
-
-  .settings-shell-tab {
-    min-width: 0;
-    width: 100%;
+  .settings-unified-body {
+    gap: var(--space-4);
   }
 }
