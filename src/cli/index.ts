@@ -4,12 +4,14 @@ import { parseArgs } from "node:util";
 
 import { ConfigOverlayStore } from "../config/overlay.js";
 import { ConfigStore } from "../config/store.js";
+import { TypedEventBus } from "../core/event-bus.js";
 import { HttpServer } from "../http/server.js";
 import { createLogger } from "../core/logger.js";
 import { getErrorTracker, initErrorTracking } from "../core/error-tracking.js";
 import { loadFlags } from "../core/feature-flags.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { SecretsStore } from "../secrets/store.js";
+import type { SymphonyEventMap } from "../core/symphony-events.js";
 import type { ValidationError } from "../core/types.js";
 import { createServices } from "./services.js";
 import { wireNotifications, watchConfigChanges } from "./notifications.js";
@@ -88,14 +90,14 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger);
   wireNotifications(services.notificationManager, configStore, logger);
 
-  const { orchestrator, httpServer } = services;
+  const { orchestrator, httpServer, eventBus } = services;
   await cleanupTransientWorkspaceDirs(config.workspace.root);
   if (!needsSetup) {
     await orchestrator.start();
   }
   await httpServer.start(port);
 
-  const shutdown = buildShutdown(httpServer, orchestrator, configStore, overlayStore, logger);
+  const shutdown = buildShutdown(httpServer, orchestrator, configStore, overlayStore, eventBus, logger);
   logger.info({ workflowPath, port, logDir: archiveDir }, "service started");
   watchConfigChanges(configStore, services.notificationManager, config.server.port, logger);
 
@@ -161,6 +163,7 @@ function buildShutdown(
   orchestrator: Orchestrator,
   configStore: ConfigStore,
   overlayStore: ConfigOverlayStore,
+  eventBus: TypedEventBus<SymphonyEventMap>,
   logger: ReturnType<typeof createLogger>,
 ): () => Promise<void> {
   let shuttingDown = false;
@@ -184,6 +187,7 @@ function buildShutdown(
       .catch((error: unknown) => {
         logger.warn({ error: String(error) }, "error tracker flush failed");
       });
+    eventBus.destroy();
   };
 }
 

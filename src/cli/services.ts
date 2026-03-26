@@ -98,7 +98,7 @@ export async function createServices(
     archiveDir,
   });
 
-  return { orchestrator, httpServer, notificationManager, linearClient };
+  return { orchestrator, httpServer, notificationManager, linearClient, eventBus };
 }
 
 async function createAttemptStore(mode: string, archiveDir: string, logger: SymphonyLogger): Promise<AttemptStorePort> {
