@@ -1,6 +1,8 @@
 import type { RunAttemptDispatcher } from "../dispatch/types.js";
 import { AttemptStore } from "../core/attempt-store.js";
 import { ConfigStore } from "../config/store.js";
+import type { TypedEventBus } from "../core/event-bus.js";
+import type { SymphonyEventMap } from "../core/symphony-events.js";
 import type { GitManager } from "../git/manager.js";
 import { LinearClient } from "../linear/client.js";
 import type { NotificationManager } from "../notification/manager.js";
@@ -43,6 +45,7 @@ export interface OrchestratorDeps {
   linearClient: LinearClient;
   workspaceManager: WorkspaceManager;
   agentRunner: RunAttemptDispatcher;
+  eventBus?: TypedEventBus<SymphonyEventMap>;
   notificationManager?: NotificationManager;
   repoRouter?: Pick<RepoRouter, "matchIssue">;
   gitManager?: Pick<

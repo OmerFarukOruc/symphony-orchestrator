@@ -1,5 +1,7 @@
 import { AgentRunner } from "../agent-runner/index.js";
 import { AttemptStore } from "../core/attempt-store.js";
+import { TypedEventBus } from "../core/event-bus.js";
+import type { SymphonyEventMap } from "../core/symphony-events.js";
 import { createGitHubToolProvider, createRepoRouterProvider } from "./runtime-providers.js";
 import type { ConfigOverlayStore } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
@@ -73,12 +75,15 @@ export async function createServices(
           logger: logger.child({ component: "agent-runner" }),
         });
 
+  const eventBus = new TypedEventBus<SymphonyEventMap>();
+
   const orchestrator = new Orchestrator({
     attemptStore,
     configStore,
     linearClient,
     workspaceManager,
     agentRunner,
+    eventBus,
     notificationManager,
     repoRouter,
     gitManager,
