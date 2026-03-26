@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 
-import { queryKeys } from "./query-client.js";
+import { queryKeys } from "./query-client";
 
-const SSE_ENDPOINT = "http://localhost:4002/api/v1/events";
+const SSE_ENDPOINT = "/api/v1/events";
 const EVENT_NAMES = ["attempt", "event", "snapshot", "config", "secret"] as const;
 const INITIAL_RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;

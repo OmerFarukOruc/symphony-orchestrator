@@ -3,27 +3,82 @@ import { useMemo, useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import type {
-  RateLimits,
-  RecentEvent,
-  RuntimeInfo,
-  RuntimeIssueView,
-  RuntimeSnapshot,
-  StallEventView,
-  SystemHealth,
-} from "../../../../frontend/src/types";
-import { classifyEvent, eventTypeLabel } from "../../../../frontend/src/utils/events";
-import {
-  formatCompactNumber,
-  formatCompactTimestamp,
-  formatDuration,
-  formatRateLimitHeadroom,
-  formatRelativeTime,
-} from "../../../../frontend/src/utils/format";
-import { buildAttentionList, latestTerminalIssues } from "../../../../frontend/src/utils/issues";
-import { queryKeys } from "../hooks/query-client.js";
-import { useSSE } from "../hooks/useSSE.js";
+import { queryKeys } from "../hooks/query-client";
+import { useSSE } from "../hooks/useSSE";
 import styles from "./Overview.module.css";
+
+// Types (inlined from legacy)
+interface RateLimits {
+  limit: number;
+  used: number;
+  remaining: number;
+  reset_at: string;
+}
+
+interface RecentEvent {
+  at: string;
+  event: string;
+  message: string;
+  issue_identifier?: string;
+}
+
+interface RuntimeInfo {
+  version: string;
+  provider_summary?: string;
+  workflow_path?: string;
+}
+
+interface RuntimeIssueView {
+  identifier: string;
+  title: string;
+  status: string;
+  state: string;
+  updatedAt: string;
+  message?: string;
+  modelChangePending?: boolean;
+}
+
+interface StallEventView {
+  issue_identifier: string;
+  at: string;
+  silent_ms: number;
+  timeout_ms: number;
+}
+
+interface SystemHealth {
+  status: "healthy" | "degraded" | "critical";
+  message?: string;
+  checked_at: string;
+}
+
+interface WorkflowColumn {
+  key: string;
+  label: string;
+  kind: string;
+  terminal: boolean;
+  count: number;
+  issues: RuntimeIssueView[];
+}
+
+interface RuntimeSnapshot {
+  counts: {
+    running: number;
+    retrying: number;
+  };
+  queued: RuntimeIssueView[];
+  completed: RuntimeIssueView[];
+  workflow_columns: WorkflowColumn[];
+  recent_events: RecentEvent[];
+  rate_limits?: RateLimits;
+  system_health?: SystemHealth;
+  stall_events?: StallEventView[];
+  codex_totals: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+    seconds_running: number;
+  };
+}
 
 const EMPTY_STATE_DISMISSED_KEY = "symphony-empty-state-dismissed";
 
@@ -52,6 +107,93 @@ function isGettingStartedDismissed(): boolean {
 
 function dismissGettingStarted(): void {
   window.localStorage.setItem(EMPTY_STATE_DISMISSED_KEY, "true");
+}
+
+// Format utilities (inlined from legacy)
+function formatCompactNumber(value: number | undefined): string {
+  if (value === undefined) return "—";
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+  return value.toString();
+}
+
+function formatDuration(seconds: number | undefined): string {
+  if (seconds === undefined) return "—";
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
+function formatRelativeTime(timestamp: string): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.round(diffMs / 1000);
+  const diffMins = Math.round(diffSecs / 60);
+  const diffHours = Math.round(diffMins / 60);
+  const diffDays = Math.round(diffHours / 24);
+
+  if (diffSecs < 60) return `${diffSecs}s ago`;
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+}
+
+function formatCompactTimestamp(timestamp: string): string {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatRateLimitHeadroom(rateLimit: RateLimits | undefined | null): string {
+  if (!rateLimit) return "—";
+  return `${rateLimit.remaining}/${rateLimit.limit}`;
+}
+
+// Event utilities (inlined from legacy)
+function classifyEvent(event: RecentEvent): string {
+  if (event.event.includes("error") || event.event.includes("failed")) return "error";
+  if (event.event.includes("agent")) return "agent";
+  if (event.event.includes("tool")) return "tool";
+  if (event.event.includes("usage")) return "usage";
+  if (event.event.includes("state")) return "state-change";
+  return "system";
+}
+
+function eventTypeLabel(eventType: string): string {
+  const labels: Record<string, string> = {
+    agent: "Agent",
+    system: "System",
+    error: "Error",
+    "state-change": "State",
+    tool: "Tool",
+    usage: "Usage",
+  };
+  return labels[eventType] ?? eventType;
+}
+
+// Issue utilities (inlined from legacy)
+function buildAttentionList(columns: WorkflowColumn[]): RuntimeIssueView[] {
+  const attention: RuntimeIssueView[] = [];
+  for (const column of columns) {
+    for (const issue of column.issues) {
+      if (issue.status === "blocked" || issue.status === "retrying") {
+        attention.push(issue);
+      }
+    }
+  }
+  return attention.sort((a, b) => {
+    if (a.status === "blocked" && b.status !== "blocked") return -1;
+    if (b.status === "blocked" && a.status !== "blocked") return 1;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+}
+
+function latestTerminalIssues(completed: RuntimeIssueView[]): RuntimeIssueView[] {
+  const sorted = [...completed].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  return sorted.slice(0, 10);
 }
 
 function formatIssueStatusLabel(status: string): string {
