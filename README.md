@@ -12,7 +12,7 @@
   <img alt="Node.js" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square&logo=node.js" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-blue?style=flat-square&logo=typescript" />
   <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker" />
-  <img alt="Status" src="https://img.shields.io/badge/status-v0.3.1-orange?style=flat-square" />
+  <img alt="Status" src="https://img.shields.io/badge/status-v0.4.0-orange?style=flat-square" />
 </p>
 
 <br/>
@@ -46,7 +46,7 @@ Symphony is a **local orchestration engine** that watches your project tracker f
 You create an issue  →  Symphony picks it up  →  AI agent writes code  →  PR lands on GitHub
 ```
 
-**No cloud service. No SaaS. No data leaves your machine.** Symphony runs entirely on your local machine or a VDS you control, connecting your existing Linear project to AI-powered Codex agents running inside isolated Docker containers.
+**No cloud service. No SaaS. Your code stays on your machine.** Symphony runs on your local machine or a VDS you control, connecting your existing Linear project to AI-powered Codex agents running inside isolated Docker containers. It communicates with configured external services (Linear, model providers) via their APIs, but your source code and workspace data never leave your infrastructure.
 
 ---
 
@@ -133,7 +133,7 @@ codex login                       # ChatGPT/Codex subscription path
 
 ---
 
-## ✨ What Ships Today (v0.3.1)
+## ✨ What Ships Today (v0.4.0)
 
 <table>
 <tr>
