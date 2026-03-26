@@ -1,0 +1,355 @@
+/* ============================================
+   SYMPHONY DESIGN SYSTEM
+   Copper accent · dark slate · zero-radius stitch
+   Ported from frontend/src/styles/design-system.css + tokens.css
+   ============================================ */
+
+/* ============================================
+   COLOR PALETTE — Copper Brand
+   ============================================ */
+
+:root {
+  /* Copper brand scale — reserved for primary brand identity */
+  --color-copper-50: #f9eee9;
+  --color-copper-100: #f3ddd4;
+  --color-copper-200: #e8bba9;
+  --color-copper-300: #da9478;
+  --color-copper-400: #c96e4a;
+  --color-copper-500: #b45837;
+  --color-copper-600: #9a472b;
+  --color-copper-700: #7a3520;
+  --color-copper-800: #5d2a1c;
+
+  /* Semantic scales */
+  --color-success-50: #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+
+  --color-info-50: #eff6ff;
+  --color-info-100: #dbeafe;
+  --color-info-500: #3b82f6;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
+
+  --color-gray-50: #f8fafc;
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #cbd5e1;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #64748b;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1e293b;
+  --color-gray-900: #0f172a;
+
+  /* Status colors — semantic */
+  --status-backlog: #94a3b8;
+  --status-triage: #8b8fa0;
+  --status-queued: #4f7cff;
+  --status-claimed: #7c62d6;
+  --status-running: #2f9e44;
+  --status-retrying: #d98a1c;
+  --status-blocked: #d94841;
+  --status-completed: #7b8797;
+  --status-closed: #6b8072;
+  --status-cancelled: #6b737e;
+  --status-duplicate: #8a7f94;
+  --status-pending-change: #b45837;
+
+  /* ============================================
+     LIGHT THEME TOKENS
+     ============================================ */
+
+  --bg-base: #f7f5f1;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f0ede7;
+  --bg-muted: #e8e4dc;
+  --bg-subtle: #e0dbd2;
+
+  --text-primary: #1a1f28;
+  --text-secondary: #5a6370;
+  --text-muted: #8b96a3;
+  --text-subtle: #adb5bf;
+  --text-accent: #9a472b;
+
+  --border-default: #d4cfc7;
+  --border-subtle: #e0dbd2;
+  --border-muted: #ece8e2;
+  --border-strong: #b8b2aa;
+
+  --interactive-primary: #9a472b;
+  --interactive-primary-hover: #7a3520;
+  --interactive-primary-active: #5d2a1c;
+  --interactive-primary-text: #f9eee9;
+}
+
+/* ============================================
+   DARK THEME TOKENS
+   ============================================ */
+
+[data-theme="dark"] {
+  --bg-base: #0c1016;
+  --bg-surface: #121824;
+  --bg-elevated: #182131;
+  --bg-muted: #1e293b;
+  --bg-subtle: #243040;
+
+  --text-primary: #e8edf3;
+  --text-secondary: #a3b0be;
+  --text-muted: #7a8796;
+  --text-subtle: #617181;
+  --text-accent: #c96e4a;
+
+  --border-default: #314052;
+  --border-subtle: #233143;
+  --border-muted: #1b2535;
+  --border-strong: #4a5d73;
+
+  --interactive-primary: #c96e4a;
+  --interactive-primary-hover: #da9478;
+  --interactive-primary-active: #e8bba9;
+  --interactive-primary-text: #0c1016;
+
+  /* Status colors — slightly brighter in dark mode for legibility */
+  --status-backlog: #b3bfcc;
+  --status-triage: #aeb3c2;
+  --status-queued: #6b8fff;
+  --status-claimed: #9d84e8;
+  --status-running: #4db86a;
+  --status-retrying: #e8a33c;
+  --status-blocked: #e86060;
+  --status-completed: #9daab8;
+  --status-closed: #93af9f;
+  --status-cancelled: #959faa;
+  --status-duplicate: #b0a5bc;
+  --status-pending-change: #c96e4a;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+
+:root {
+  --font-heading: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-body: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-sans: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  /* Type scale — app specific (overrides base scale below) */
+  --text-2xs: 0.625rem; /* 10px — group headers, type badges */
+  --text-xxs: 0.6875rem; /* 11px — toolbar labels, table headers */
+  --text-xs: 0.75rem; /* 12px — secondary labels */
+  --text-ui: 0.8125rem; /* 13px — secondary UI text, descriptions */
+  --text-sm: 0.875rem; /* 14px — base UI text */
+  --text-sm-plus: 0.9375rem; /* 15px — subsection headings */
+  --text-md: 1rem; /* 16px — section titles */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.25rem; /* 20px — KPI numbers */
+  --text-2xl: clamp(1.375rem, 2.5vw, 1.75rem);
+  --text-hero: clamp(1.75rem, 4vw, 2.625rem);
+
+  /* Font weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Letter-spacing (tracking) tokens */
+  --tracking-tightest: -0.03em;
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.02em;
+  --tracking-wider: 0.04em;
+  --tracking-widest: 0.08em;
+  --tracking-caps: 0.1em;
+
+  /* Line-height (leading) tokens */
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+  --leading-loose: 1.65;
+
+  /* Font feature tokens */
+  --font-features-default: "kern" 1, "liga" 1, "calt" 1;
+  --font-features-tabular: "kern" 1, "tnum" 1, "lnum" 1;
+  --font-features-mono-num: "tnum" 1, "lnum" 1, "zero" 1;
+  --font-features-heading: "kern" 1, "liga" 1, "calt" 1, "ss01" 1;
+}
+
+/* ============================================
+   SPACING
+   ============================================ */
+
+:root {
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+}
+
+/* ============================================
+   RADIUS — zero-radius stitch aesthetic
+   ============================================ */
+
+:root {
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-full: 9999px;
+}
+
+/* ============================================
+   SHADOWS
+   ============================================ */
+
+:root {
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+[data-theme="dark"] {
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+}
+
+/* ============================================
+   MOTION
+   ============================================ */
+
+:root {
+  --motion-instant: 120ms;
+  --motion-fast: 180ms;
+  --motion-medium: 260ms;
+  --motion-slow: 420ms;
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================
+   SURFACE HIERARCHY TOKENS
+   ============================================ */
+
+:root {
+  /* Primary Surface — commanding presence, copper accent */
+  --surface-primary-border: var(--border-strong);
+  --surface-primary-border-accent: var(--text-accent);
+  --surface-primary-bg: var(--bg-surface);
+  --surface-primary-border-width: 1px;
+  --surface-primary-accent-width: 3px;
+  --surface-primary-shadow: var(--shadow-sm);
+  --surface-primary-text: var(--text-primary);
+
+  /* Standard Surface — default bordered containers */
+  --surface-standard-border: var(--border-default);
+  --surface-standard-bg: var(--bg-surface);
+  --surface-standard-border-width: 1px;
+  --surface-standard-shadow: none;
+  --surface-standard-text: var(--text-primary);
+
+  /* Quiet Surface — subtle, minimal frame */
+  --surface-quiet-border: transparent;
+  --surface-quiet-bg: var(--bg-muted);
+  --surface-quiet-shadow: none;
+  --surface-quiet-text: var(--text-secondary);
+}
+
+[data-theme="dark"] {
+  --surface-primary-bg: color-mix(in srgb, var(--bg-elevated) 50%, var(--bg-surface));
+  --surface-primary-border: var(--border-strong);
+  --surface-primary-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.35);
+  --surface-standard-bg: var(--bg-surface);
+  --surface-standard-border: var(--border-default);
+  --surface-quiet-bg: var(--bg-muted);
+  --surface-quiet-text: var(--text-muted);
+}
+
+/* ============================================
+   CONTROL & SHELL DIMENSIONS
+   ============================================ */
+
+:root {
+  /* Control heights */
+  --control-height-xs: 28px;
+  --control-height-sm: 32px;
+  --control-height-md: 36px;
+  --control-height-lg: 40px;
+  --control-height-xl: 44px;
+
+  /* Icon sizes */
+  --icon-size-xs: 12px;
+  --icon-size-sm: 14px;
+  --icon-size-md: 16px;
+  --icon-size-lg: 20px;
+  --icon-size-xl: 24px;
+
+  /* Stroke widths */
+  --stroke-default: 1px;
+  --stroke-accent: 2px;
+  --stroke-emphasis: 3px;
+
+  /* Shell dimensions */
+  --sidebar-width-collapsed: 56px;
+  --sidebar-width-expanded: 220px;
+  --header-height: 48px;
+  --dashboard-h2-size: 1.125rem;
+  --dashboard-h3-size: 1rem;
+  --dashboard-number-lg: clamp(1.875rem, 3vw, 2.75rem);
+  --dashboard-panel-min-height: 15rem;
+
+  /* Legacy surface aliases */
+  --bg-canvas: var(--bg-base);
+  --border-stitch: var(--border-default);
+
+  /* Gate stage */
+  --status-gate: #f59e0b;
+
+  /* Tone backgrounds */
+  --tone-live-bg: color-mix(in srgb, var(--status-running) 6%, var(--bg-surface));
+  --tone-warning-bg: color-mix(in srgb, var(--status-retrying) 8%, var(--bg-surface));
+  --tone-danger-bg: color-mix(in srgb, var(--status-blocked) 8%, var(--bg-surface));
+  --tone-warning-border: var(--status-retrying);
+  --tone-danger-border: var(--status-blocked);
+
+  --brand-signal-seam: repeating-linear-gradient(
+    90deg,
+    transparent 0 10px,
+    color-mix(in srgb, var(--text-accent) 70%, transparent) 10px 16px,
+    transparent 16px 24px
+  );
+}
+
+[data-theme="dark"] {
+  --tone-live-bg: color-mix(in srgb, var(--status-running) 10%, var(--bg-surface));
+  --tone-warning-bg: color-mix(in srgb, var(--status-retrying) 12%, var(--bg-surface));
+  --tone-danger-bg: color-mix(in srgb, var(--status-blocked) 12%, var(--bg-surface));
+}
