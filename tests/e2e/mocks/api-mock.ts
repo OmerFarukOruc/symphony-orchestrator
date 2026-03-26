@@ -49,11 +49,39 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
 
   // Setup
   await page.route("**/api/v1/setup/status", (route) => json(route, setupStatus));
+  await page.route("**/api/v1/setup/master-key", (route) => json(route, { key: "sym_test_master_key_abc123" }, 201));
+  await page.route("**/api/v1/setup/linear-projects", (route) =>
+    json(route, {
+      projects: [
+        { id: "proj-1", name: "My Project", slugId: "my-project", teamKey: "MYP" },
+        { id: "proj-2", name: "Other Project", slugId: "other-project", teamKey: "OTH" },
+      ],
+    }),
+  );
+  await page.route("**/api/v1/setup/linear-project", (route) => json(route, { ok: true }));
+  await page.route("**/api/v1/setup/repo-routes", (route) => json(route, { routes: [] }));
+  await page.route("**/api/v1/setup/repo-route", (route) => json(route, { ok: true }));
+  await page.route("**/api/v1/setup/openai-key", (route) => json(route, { valid: true }));
+  await page.route("**/api/v1/setup/codex-auth", (route) => json(route, { ok: true }));
+  await page.route("**/api/v1/setup/github-token", (route) => json(route, { valid: true }));
+  await page.route("**/api/v1/setup/detect-default-branch", (route) => json(route, { defaultBranch: "main" }));
+  await page.route("**/api/v1/setup/reset", (route) => json(route, { ok: true }));
   await page.route("**/api/v1/setup/create-test-issue", (route) =>
     json(route, { ok: true, issueIdentifier: "TST-1", issueUrl: "https://linear.app/test/issue/TST-1" }),
   );
   await page.route("**/api/v1/setup/create-label", (route) =>
     json(route, { ok: true, labelId: "label-1", labelName: "symphony" }),
+  );
+  await page.route("**/api/v1/setup/create-project", (route) =>
+    json(route, {
+      project: {
+        id: "proj-new",
+        name: "New Project",
+        slugId: "new-project",
+        teamKey: "NEW",
+        url: "https://linear.app/test/project/new",
+      },
+    }),
   );
 
   // State & Runtime
