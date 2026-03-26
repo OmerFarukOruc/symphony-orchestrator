@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 import fastifyCors from "@fastify/cors";
 import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
@@ -19,7 +20,6 @@ import {
   type ControlPlaneInvalidationEvent,
   type FastifyRouteDeps,
 } from "./fastify-routes.js";
-import { resolveFrontendDir } from "./frontend-path.js";
 import { createError, serializeSnapshot } from "./route-helpers.js";
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
@@ -27,6 +27,7 @@ const POLL_INTERVAL_MS = 1_000;
 const RETRY_INTERVAL_MS = 5_000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 300;
+const defaultFrontendDist = join(process.cwd(), "dist/frontend");
 const LOCAL_FRONTEND_ORIGIN = "http://127.0.0.1:4001";
 const LOCALHOST_FRONTEND_ORIGIN = "http://localhost:4001";
 
@@ -131,7 +132,7 @@ export class FastifyServer {
     this.registerEventStream();
     registerFastifyHttpRoutes(this.app, this.routeDeps());
 
-    const staticRoot = resolveFrontendDir({ frontendDir: this.deps.frontendDir });
+    const staticRoot = this.deps.frontendDir ?? defaultFrontendDist;
     await this.app.register(fastifyStatic, { root: staticRoot, prefix: "/", wildcard: true });
     this.app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith("/api/") || request.url === "/metrics") {
