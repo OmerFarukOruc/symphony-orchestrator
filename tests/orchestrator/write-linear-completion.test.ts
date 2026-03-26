@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { handleWorkerOutcome } from "../../src/orchestrator/worker-outcome.js";
+import { handleWorkerOutcome } from "../../src/orchestrator/worker-outcome/index.js";
 import type { Issue, ModelSelection, RunOutcome, ServiceConfig, Workspace } from "../../src/core/types.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
 

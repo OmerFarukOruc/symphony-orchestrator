@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { handleWorkerOutcome } from "../../src/orchestrator/worker-outcome.js";
+import { handleWorkerOutcome } from "../../src/orchestrator/worker-outcome/index.js";
 import { handleWorkerFailure } from "../../src/orchestrator/worker-failure.js";
 import type {
   Issue,

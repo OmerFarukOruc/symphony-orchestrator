@@ -1,0 +1,101 @@
+import type { Issue, ModelSelection, RunOutcome, Workspace } from "../../core/types.js";
+import type { RunningEntry } from "../runtime-types.js";
+import type { OutcomeContext } from "../context.js";
+import { isActiveState, isTerminalState } from "../../state/policy.js";
+import { isHardFailure } from "../views.js";
+import { detectStopSignal } from "../../core/signal-detection.js";
+import { prepareWorkerOutcome } from "./prepare.js";
+import {
+  handleServiceStopped,
+  handleTerminalCleanup,
+  handleInactiveIssue,
+  handleOperatorAbort,
+  handleCancelledOrHardFailure,
+} from "./terminal-paths.js";
+import {
+  handleContinuationRetry,
+  handleContinuationExhausted,
+  handleErrorRetry,
+  handleModelOverrideRetry,
+} from "./retry-paths.js";
+import { handleStopSignal } from "./stop-signal.js";
+
+export async function handleWorkerOutcome(
+  ctx: OutcomeContext,
+  outcome: RunOutcome,
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  attempt: number | null,
+): Promise<void> {
+  const prepared = await prepareWorkerOutcome(ctx, { outcome, entry, issue, workspace, attempt });
+
+  if (!ctx.isRunning()) {
+    handleServiceStopped(ctx, outcome, entry, prepared.latestIssue, workspace, prepared.modelSelection, attempt);
+    return;
+  }
+
+  const { latestIssue, modelSelection } = prepared;
+
+  if (entry.cleanupOnExit || isTerminalState(latestIssue.state, ctx.getConfig())) {
+    await handleTerminalCleanup(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
+    return;
+  }
+  if (!isActiveState(latestIssue.state, ctx.getConfig())) {
+    handleInactiveIssue(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
+    return;
+  }
+  if (outcome.errorCode === "model_override_updated") {
+    handleModelOverrideRetry(ctx, latestIssue, attempt);
+    return;
+  }
+  if (outcome.errorCode === "operator_abort") {
+    handleOperatorAbort(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
+    return;
+  }
+  if (outcome.kind === "cancelled" || isHardFailure(outcome.errorCode)) {
+    handleCancelledOrHardFailure(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
+    return;
+  }
+
+  await dispatchPostReconciliation(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
+}
+
+async function dispatchPostReconciliation(
+  ctx: OutcomeContext,
+  outcome: RunOutcome,
+  entry: RunningEntry,
+  latestIssue: Issue,
+  workspace: Workspace,
+  modelSelection: ModelSelection,
+  attempt: number | null,
+): Promise<void> {
+  const stopSignal = outcome.kind === "normal" ? detectStopSignal(entry.lastAgentMessageContent) : null;
+  ctx.deps.logger.info(
+    {
+      issue_identifier: latestIssue.identifier,
+      outcome_kind: outcome.kind,
+      has_lastAgentMsg: entry.lastAgentMessageContent !== null,
+      lastAgentMsgTail: entry.lastAgentMessageContent?.slice(-80) ?? null,
+      stopSignal,
+    },
+    "post-reconciliation stop-signal check",
+  );
+  if (stopSignal) {
+    await handleStopSignal(ctx, stopSignal, entry, latestIssue, workspace, modelSelection, attempt);
+    return;
+  }
+
+  if (outcome.kind === "normal") {
+    const maxContinuations = ctx.getConfig().agent.maxContinuationAttempts;
+    const nextAttempt = (attempt ?? 0) + 1;
+    if (nextAttempt > maxContinuations) {
+      await handleContinuationExhausted(ctx, entry, latestIssue, workspace, modelSelection, attempt);
+      return;
+    }
+    handleContinuationRetry(ctx, entry, latestIssue, workspace, modelSelection, attempt);
+    return;
+  }
+
+  handleErrorRetry(ctx, outcome, latestIssue, attempt);
+}
