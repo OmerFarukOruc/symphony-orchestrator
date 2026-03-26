@@ -25,7 +25,7 @@ function makeOrchestrator(running: unknown[] = [], retrying: unknown[] = [], com
       completed,
       queued: [],
       workflowColumns: [],
-      codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0 },
+      codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0, costUsd: 0 },
       rateLimits: null,
       recentEvents: [],
     }),

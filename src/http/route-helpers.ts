@@ -34,6 +34,7 @@ export function serializeSnapshot(snapshot: RuntimeSnapshot & Record<string, unk
       output_tokens: snapshot.codexTotals.outputTokens,
       total_tokens: snapshot.codexTotals.totalTokens,
       seconds_running: snapshot.codexTotals.secondsRunning,
+      cost_usd: snapshot.codexTotals.costUsd,
     },
     rate_limits: snapshot.rateLimits,
     recent_events: snapshot.recentEvents.map((event) => ({

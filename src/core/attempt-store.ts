@@ -2,6 +2,7 @@ import { appendFile, mkdir, readdir, readFile, writeFile } from "node:fs/promise
 import path from "node:path";
 
 import { sortAttemptsDesc, sumAttemptDurationSeconds } from "./attempt-store-port.js";
+import { lookupModelPrice } from "./model-pricing.js";
 import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "./types.js";
 
 export class AttemptStore {
@@ -83,6 +84,19 @@ export class AttemptStore {
 
   sumArchivedSeconds(): number {
     return sumAttemptDurationSeconds(this.attempts.values());
+  }
+
+  sumCostUsd(): number {
+    let total = 0;
+    for (const attempt of this.attempts.values()) {
+      if (!attempt.tokenUsage) continue;
+      const price = lookupModelPrice(attempt.model);
+      if (!price) continue;
+      total +=
+        (attempt.tokenUsage.inputTokens * price.inputUsd + attempt.tokenUsage.outputTokens * price.outputUsd) /
+        1_000_000;
+    }
+    return total;
   }
 
   getEvents(attemptId: string): AttemptEvent[] {

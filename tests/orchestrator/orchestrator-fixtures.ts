@@ -108,6 +108,7 @@ export function createAttemptStore(): AttemptStore {
     getAttempt: vi.fn(() => null),
     getEvents: vi.fn(() => []),
     sumArchivedSeconds: vi.fn(() => 0),
+    sumCostUsd: vi.fn(() => 0),
   } as unknown as AttemptStore;
 }
 

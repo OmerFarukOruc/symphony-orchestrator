@@ -44,7 +44,7 @@ describe("serializeSnapshot", () => {
       completed: [{ id: "c1" }],
       queued: [{ id: "q1" }],
       workflowColumns: [{ key: "todo", label: "Todo", kind: "active", terminal: false, count: 1, issues: [] }],
-      codexTotals: { inputTokens: 100, outputTokens: 50, totalTokens: 150, secondsRunning: 30 },
+      codexTotals: { inputTokens: 100, outputTokens: 50, totalTokens: 150, secondsRunning: 30, costUsd: 0.000625 },
       rateLimits: null,
       recentEvents: [
         {
@@ -67,6 +67,7 @@ describe("serializeSnapshot", () => {
       output_tokens: 50,
       total_tokens: 150,
       seconds_running: 30,
+      cost_usd: 0.000625,
     });
     expect((result.workflow_columns as Array<Record<string, unknown>>)[0].terminal).toBe(false);
     const events = result.recent_events as Array<Record<string, unknown>>;

@@ -1,4 +1,5 @@
 import { buildWorkflowColumns } from "../workflow/columns.js";
+import { lookupModelPrice } from "../core/model-pricing.js";
 import { nowIso } from "./views.js";
 import { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
 export { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
@@ -28,6 +29,7 @@ interface AttemptSummary {
     outputTokens: number;
     totalTokens: number;
   } | null;
+  costUsd: number | null;
   errorCode: string | null;
   errorMessage: string | null;
   issueIdentifier?: string;
@@ -46,6 +48,7 @@ export interface SnapshotBuilderDeps {
     getEvents: (attemptId: string) => RecentEvent[];
     getAttemptsForIssue: (issueIdentifier: string) => AttemptRecord[];
     sumArchivedSeconds: () => number;
+    sumCostUsd: () => number;
   };
 }
 
@@ -64,6 +67,7 @@ export interface SnapshotBuilderCallbacks {
     outputTokens: number;
     totalTokens: number;
     secondsRunning: number;
+    costUsd?: number;
   };
   getStallEvents?: () => StallEventView[];
   getSystemHealth?: () => SystemHealth | null;
@@ -101,6 +105,7 @@ export function buildSnapshot(deps: SnapshotBuilderDeps, callbacks: SnapshotBuil
     codexTotals: {
       ...codexTotals,
       secondsRunning: computeSecondsRunning(deps.attemptStore, () => callbacks.getRunningEntries()),
+      costUsd: computeCostUsd(deps.attemptStore),
     },
     rateLimits: callbacks.getRateLimits(),
     recentEvents: [...callbacks.getRecentEvents()],
@@ -199,8 +204,14 @@ export function computeSecondsRunning(
   return archivedSeconds + liveSeconds;
 }
 
+// Computes total cost in USD from archived attempts.
+export function computeCostUsd(attemptStore: SnapshotBuilderDeps["attemptStore"]): number {
+  return attemptStore.sumCostUsd();
+}
+
 // Builds a minimal attempt summary from an AttemptRecord.
 function buildAttemptSummary(attempt: AttemptRecord): AttemptSummary {
+  const costUsd = computeAttemptCostUsd(attempt);
   return {
     attemptId: attempt.attemptId,
     attemptNumber: attempt.attemptNumber,
@@ -210,6 +221,7 @@ function buildAttemptSummary(attempt: AttemptRecord): AttemptSummary {
     model: attempt.model,
     reasoningEffort: attempt.reasoningEffort,
     tokenUsage: attempt.tokenUsage,
+    costUsd,
     errorCode: attempt.errorCode,
     errorMessage: attempt.errorMessage,
     issueIdentifier: attempt.issueIdentifier,
@@ -221,4 +233,14 @@ function buildAttemptSummary(attempt: AttemptRecord): AttemptSummary {
     threadId: attempt.threadId,
     turnId: attempt.turnId,
   };
+}
+
+// Computes cost in USD for a single attempt. Returns null when token usage or pricing is unavailable.
+function computeAttemptCostUsd(attempt: AttemptRecord): number | null {
+  if (!attempt.tokenUsage) return null;
+  const price = lookupModelPrice(attempt.model);
+  if (!price) return null;
+  return (
+    (attempt.tokenUsage.inputTokens * price.inputUsd + attempt.tokenUsage.outputTokens * price.outputUsd) / 1_000_000
+  );
 }

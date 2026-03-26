@@ -258,6 +258,81 @@ describe("SqliteAttemptStore", () => {
     store.close();
   });
 
+  it("sumCostUsd returns 0 for an empty store", async () => {
+    const dir = await createTempDir();
+    const store = await createStore(dir);
+
+    expect(store.sumCostUsd()).toBe(0);
+    store.close();
+  });
+
+  it("sumCostUsd sums cost for two completed attempts with known models", async () => {
+    const dir = await createTempDir();
+    const store = await createStore(dir);
+
+    // gpt-5.4: inputUsd=3.0, outputUsd=12.0 per 1M tokens
+    // 1000 input + 500 output => (1000*3 + 500*12) / 1_000_000 = 0.009
+    const first = createAttempt({
+      attemptId: "attempt-1",
+      model: "gpt-5.4",
+      status: "completed",
+      endedAt: "2026-03-16T10:05:00.000Z",
+      tokenUsage: { inputTokens: 1000, outputTokens: 500, totalTokens: 1500 },
+    });
+    // gpt-4o: inputUsd=2.5, outputUsd=10.0 per 1M tokens
+    // 2000 input + 1000 output => (2000*2.5 + 1000*10) / 1_000_000 = 0.015
+    const second = createAttempt({
+      attemptId: "attempt-2",
+      model: "gpt-4o",
+      status: "completed",
+      endedAt: "2026-03-16T11:01:00.000Z",
+      tokenUsage: { inputTokens: 2000, outputTokens: 1000, totalTokens: 3000 },
+    });
+
+    await store.createAttempt(first);
+    await store.createAttempt(second);
+
+    // 0.009 + 0.015 = 0.024
+    expect(store.sumCostUsd()).toBeCloseTo(0.024, 10);
+    store.close();
+  });
+
+  it("sumCostUsd ignores attempts with unknown models (contributes 0)", async () => {
+    const dir = await createTempDir();
+    const store = await createStore(dir);
+
+    const attempt = createAttempt({
+      attemptId: "attempt-1",
+      model: "unknown-model-xyz",
+      status: "completed",
+      endedAt: "2026-03-16T10:05:00.000Z",
+      tokenUsage: { inputTokens: 10000, outputTokens: 5000, totalTokens: 15000 },
+    });
+
+    await store.createAttempt(attempt);
+
+    expect(store.sumCostUsd()).toBe(0);
+    store.close();
+  });
+
+  it("sumCostUsd ignores attempts with null tokenUsage (contributes 0)", async () => {
+    const dir = await createTempDir();
+    const store = await createStore(dir);
+
+    const attempt = createAttempt({
+      attemptId: "attempt-1",
+      model: "gpt-5.4",
+      status: "completed",
+      endedAt: "2026-03-16T10:05:00.000Z",
+      tokenUsage: null,
+    });
+
+    await store.createAttempt(attempt);
+
+    expect(store.sumCostUsd()).toBe(0);
+    store.close();
+  });
+
   it("preserves token usage through round-trip", async () => {
     const dir = await createTempDir();
     const store = await createStore(dir);

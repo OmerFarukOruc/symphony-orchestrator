@@ -62,6 +62,7 @@ export interface RuntimeSnapshot {
     output_tokens: number;
     total_tokens: number;
     seconds_running: number;
+    cost_usd: number;
   };
   rate_limits: Record<string, unknown> | null;
   recent_events: RecentEvent[];
@@ -154,6 +155,7 @@ export function buildRuntimeSnapshot(overrides?: Partial<RuntimeSnapshot>): Runt
       output_tokens: 8_000,
       total_tokens: 23_000,
       seconds_running: 3600,
+      cost_usd: 0,
     },
     rate_limits: null,
     recent_events: [
