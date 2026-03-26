@@ -30,17 +30,10 @@ function makeOrchestrator(detail: Record<string, unknown> | null = null) {
   };
 }
 
-function makeLinearClient(stateId: string | null = "state-uuid-123") {
+function makeTracker(stateId: string | null = "state-uuid-123") {
   return {
     resolveStateId: vi.fn().mockResolvedValue(stateId),
-    runGraphQL: vi.fn().mockResolvedValue({
-      data: {
-        issueUpdate: {
-          success: true,
-          issue: { id: "issue-uuid", identifier: "MT-1", state: { name: "In Progress" } },
-        },
-      },
-    }),
+    transitionIssue: vi.fn().mockResolvedValue({ success: true }),
   };
 }
 
@@ -84,10 +77,10 @@ describe("handleTransition", () => {
   it("returns 200 on successful transition", async () => {
     const res = makeResponse();
     const orchestrator = makeOrchestrator({ issueId: "issue-uuid", state: "Todo" });
-    const linearClient = makeLinearClient();
+    const tracker = makeTracker();
     const configStore = makeConfigStore();
     await handleTransition(
-      { orchestrator: orchestrator as never, linearClient: linearClient as never, configStore: configStore as never },
+      { orchestrator: orchestrator as never, tracker: tracker as never, configStore: configStore as never },
       makeRequest({ target_state: "in progress" }, { issue_identifier: "MT-1" }),
       res,
     );
@@ -101,17 +94,17 @@ describe("handleTransition", () => {
   it("calls orchestrator.requestRefresh after successful transition", async () => {
     const res = makeResponse();
     const orchestrator = makeOrchestrator({ issueId: "issue-uuid", state: "Todo" });
-    const linearClient = makeLinearClient();
+    const tracker = makeTracker();
     const configStore = makeConfigStore();
     await handleTransition(
-      { orchestrator: orchestrator as never, linearClient: linearClient as never, configStore: configStore as never },
+      { orchestrator: orchestrator as never, tracker: tracker as never, configStore: configStore as never },
       makeRequest({ target_state: "in progress" }, { issue_identifier: "MT-1" }),
       res,
     );
     expect(orchestrator.requestRefresh).toHaveBeenCalledWith("manual-transition");
   });
 
-  it("returns 503 when linearClient is not configured", async () => {
+  it("returns 503 when tracker is not provided", async () => {
     const res = makeResponse();
     const orchestrator = makeOrchestrator({ issueId: "issue-uuid", state: "Todo" });
     await handleTransition(

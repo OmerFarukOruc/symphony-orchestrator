@@ -111,7 +111,7 @@ function makeCtx(
     completedViews,
     detailViews,
     deps: {
-      linearClient: {
+      tracker: {
         fetchIssueStatesByIds: vi.fn().mockResolvedValue(latestIssue ? [latestIssue] : [makeIssue()]),
         resolveStateId: vi.fn().mockResolvedValue(null),
         updateIssueState: vi.fn().mockResolvedValue(undefined),

@@ -96,7 +96,7 @@ describe("reconcileRunningAndRetrying", () => {
       runningEntries: new Map(),
       retryEntries: new Map(),
       deps: {
-        linearClient: { fetchIssueStatesByIds: fetchSpy, fetchIssuesByStates: vi.fn() },
+        tracker: { fetchIssueStatesByIds: fetchSpy, fetchIssuesByStates: vi.fn() },
         workspaceManager: { removeWorkspace: vi.fn() },
         logger: makeMockLogger(),
       },
@@ -114,7 +114,7 @@ describe("reconcileRunningAndRetrying", () => {
       runningEntries: new Map([["issue-1", entry]]),
       retryEntries: new Map(),
       deps: {
-        linearClient: {
+        tracker: {
           fetchIssueStatesByIds: vi.fn().mockResolvedValue([makeIssue()]),
           fetchIssuesByStates: vi.fn(),
         },
@@ -139,7 +139,7 @@ describe("reconcileRunningAndRetrying", () => {
       runningEntries: new Map([["issue-1", entry]]),
       retryEntries: new Map(),
       deps: {
-        linearClient: {
+        tracker: {
           fetchIssueStatesByIds: vi.fn().mockResolvedValue([makeIssue()]),
           fetchIssuesByStates: vi.fn(),
         },
@@ -159,7 +159,7 @@ describe("reconcileRunningAndRetrying", () => {
       runningEntries: new Map([["issue-1", entry]]),
       retryEntries: new Map(),
       deps: {
-        linearClient: {
+        tracker: {
           fetchIssueStatesByIds: vi.fn().mockResolvedValue([makeIssue({ state: "Done" })]),
           fetchIssuesByStates: vi.fn(),
         },
@@ -181,7 +181,7 @@ describe("reconcileRunningAndRetrying", () => {
       runningEntries: new Map([["issue-1", entry]]),
       retryEntries: new Map(),
       deps: {
-        linearClient: {
+        tracker: {
           fetchIssueStatesByIds: vi.fn().mockResolvedValue([makeIssue({ state: "Backlog" })]),
           fetchIssuesByStates: vi.fn(),
         },
@@ -204,7 +204,7 @@ describe("reconcileRunningAndRetrying", () => {
       runningEntries: new Map(),
       retryEntries: new Map([["issue-1", makeRetryEntry()]]),
       deps: {
-        linearClient: {
+        tracker: {
           fetchIssueStatesByIds: vi.fn().mockResolvedValue([makeIssue({ state: "Done" })]),
           fetchIssuesByStates: vi.fn(),
         },
@@ -229,7 +229,7 @@ describe("reconcileRunningAndRetrying", () => {
       runningEntries: new Map(),
       retryEntries: new Map([["issue-1", makeRetryEntry()]]),
       deps: {
-        linearClient: {
+        tracker: {
           fetchIssueStatesByIds: vi.fn().mockResolvedValue([makeIssue({ state: "Backlog" })]),
           fetchIssuesByStates: vi.fn(),
         },
@@ -250,7 +250,7 @@ describe("reconcileRunningAndRetrying", () => {
       runningEntries: new Map(),
       retryEntries: new Map([["issue-1", makeRetryEntry()]]),
       deps: {
-        linearClient: {
+        tracker: {
           fetchIssueStatesByIds: vi.fn().mockResolvedValue([]),
           fetchIssuesByStates: vi.fn(),
         },
@@ -276,7 +276,7 @@ describe("refreshQueueViews", () => {
       queuedViews: [],
       detailViews: new Map(),
       claimedIssueIds: new Set(["i1"]),
-      deps: { linearClient: { fetchCandidateIssues: vi.fn().mockResolvedValue(issues) } },
+      deps: { tracker: { fetchCandidateIssues: vi.fn().mockResolvedValue(issues) } },
       canDispatchIssue: () => true,
       resolveModelSelection: () => ({ model: "gpt-4o", reasoningEffort: "high" as const, source: "default" as const }),
       setQueuedViews: (views) => {
@@ -293,7 +293,7 @@ describe("refreshQueueViews", () => {
       queuedViews: [],
       detailViews: detailViews as never,
       claimedIssueIds: new Set(["i1"]),
-      deps: { linearClient: { fetchCandidateIssues: vi.fn().mockResolvedValue(issues) } },
+      deps: { tracker: { fetchCandidateIssues: vi.fn().mockResolvedValue(issues) } },
       canDispatchIssue: () => true,
       resolveModelSelection: () => ({ model: "gpt-4o", reasoningEffort: "high" as const, source: "default" as const }),
       setQueuedViews: () => undefined,
@@ -312,7 +312,7 @@ describe("refreshQueueViews", () => {
       queuedViews: [],
       detailViews: detailViews as never,
       claimedIssueIds: new Set<string>(),
-      deps: { linearClient: { fetchCandidateIssues: vi.fn().mockResolvedValue(issues) } },
+      deps: { tracker: { fetchCandidateIssues: vi.fn().mockResolvedValue(issues) } },
       canDispatchIssue: () => true,
       resolveModelSelection: () => ({ model: "gpt-4o", reasoningEffort: "high" as const, source: "default" as const }),
       setQueuedViews: () => undefined,
@@ -331,7 +331,7 @@ describe("refreshQueueViews", () => {
       detailViews: new Map(),
       claimedIssueIds: new Set<string>(),
       deps: {
-        linearClient: {
+        tracker: {
           fetchCandidateIssues: vi
             .fn()
             .mockResolvedValue([
@@ -364,7 +364,7 @@ describe("refreshQueueViews", () => {
       detailViews: new Map(),
       claimedIssueIds: new Set<string>(),
       deps: {
-        linearClient: {
+        tracker: {
           fetchCandidateIssues: vi.fn().mockResolvedValue(issues),
         },
       },
@@ -384,7 +384,7 @@ describe("cleanupTerminalIssueWorkspaces", () => {
     const removeWorkspace = vi.fn().mockResolvedValue(undefined);
     await cleanupTerminalIssueWorkspaces({
       deps: {
-        linearClient: {
+        tracker: {
           fetchIssuesByStates: vi
             .fn()
             .mockResolvedValue([makeIssue({ identifier: "MT-1" }), makeIssue({ identifier: "MT-2" })]),
@@ -402,7 +402,7 @@ describe("cleanupTerminalIssueWorkspaces", () => {
     const warn = vi.fn();
     await cleanupTerminalIssueWorkspaces({
       deps: {
-        linearClient: { fetchIssuesByStates: vi.fn().mockRejectedValue(new Error("network error")) },
+        tracker: { fetchIssuesByStates: vi.fn().mockRejectedValue(new Error("network error")) },
         workspaceManager: { removeWorkspace: vi.fn() },
         logger: { warn },
       },
@@ -416,7 +416,7 @@ describe("cleanupTerminalIssueWorkspaces", () => {
     await expect(
       cleanupTerminalIssueWorkspaces({
         deps: {
-          linearClient: {
+          tracker: {
             fetchIssuesByStates: vi.fn().mockResolvedValue([makeIssue()]),
           },
           workspaceManager: { removeWorkspace },

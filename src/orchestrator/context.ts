@@ -11,7 +11,7 @@ export interface OutcomeContext {
   completedViews: Map<string, RuntimeIssueView>;
   detailViews: Map<string, RuntimeIssueView>;
   deps: {
-    linearClient: {
+    tracker: {
       fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[]>;
       resolveStateId: (stateName: string) => Promise<string | null>;
       updateIssueState: (issueId: string, stateId: string) => Promise<void>;

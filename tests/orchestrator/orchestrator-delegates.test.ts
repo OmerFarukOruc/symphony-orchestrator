@@ -42,7 +42,7 @@ function makeDeps(overrides: Partial<OrchestratorDeps> = {}): OrchestratorDeps {
         }) as never,
       getWorkflow: () => ({ promptTemplate: "Work on it" }),
     } as never,
-    linearClient: {} as never,
+    tracker: {} as never,
     workspaceManager: {} as never,
     agentRunner: {} as never,
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn() } as never,

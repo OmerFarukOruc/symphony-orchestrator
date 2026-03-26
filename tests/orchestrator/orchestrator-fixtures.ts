@@ -3,7 +3,7 @@ import { vi } from "vitest";
 import type { Issue, RunOutcome, ServiceConfig, WorkflowDefinition } from "../../src/core/types.js";
 import { createLogger } from "../../src/core/logger.js";
 import { ConfigStore } from "../../src/config/store.js";
-import { LinearClient } from "../../src/linear/client.js";
+import type { TrackerPort } from "../../src/tracker/port.js";
 import { WorkspaceManager } from "../../src/workspace/manager.js";
 import { AgentRunner } from "../../src/agent-runner/index.js";
 import { AttemptStore } from "../../src/core/attempt-store.js";
@@ -111,4 +111,4 @@ export function createAttemptStore(): AttemptStore {
 }
 
 export { createLogger };
-export type { AgentRunner, LinearClient, WorkspaceManager, Issue, RunOutcome, ServiceConfig };
+export type { AgentRunner, TrackerPort, WorkspaceManager, Issue, RunOutcome, ServiceConfig };

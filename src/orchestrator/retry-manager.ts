@@ -88,7 +88,7 @@ export async function revalidateAndLaunchRetry(
     retryEntries: Map<string, RetryRuntimeEntry>;
     runningEntries: Map<string, RunningEntry>;
     deps: {
-      linearClient: { fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[]> };
+      tracker: { fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[]> };
       workspaceManager: { removeWorkspace: (identifier: string, issue?: Issue) => Promise<void> };
       logger: { warn: (meta: Record<string, unknown>, message: string) => void };
     };
@@ -107,7 +107,7 @@ export async function revalidateAndLaunchRetry(
     return;
   }
 
-  const [latestIssue] = await ctx.deps.linearClient.fetchIssueStatesByIds([issueId]);
+  const [latestIssue] = await ctx.deps.tracker.fetchIssueStatesByIds([issueId]);
   const config = ctx.getConfig();
   if (!latestIssue) {
     ctx.clearRetryEntry(issueId);

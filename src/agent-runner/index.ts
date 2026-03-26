@@ -7,7 +7,8 @@ import { createDockerSession, type DockerSessionDeps, type PrecomputedRuntimeCon
 import { initializeSession } from "./session-init.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
-import { LinearClient } from "../linear/client.js";
+import type { LinearClient } from "../linear/client.js";
+import type { TrackerPort } from "../tracker/port.js";
 import { createLifecycleEvent, toErrorMessage } from "../orchestrator/lifecycle-events.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
 import type { Issue, ModelSelection, RunOutcome, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
@@ -24,6 +25,7 @@ export class AgentRunner {
   constructor(
     private readonly deps: {
       getConfig: () => ServiceConfig;
+      tracker: TrackerPort;
       linearClient: LinearClient;
       workspaceManager: WorkspaceManager;
       archiveDir?: string;
@@ -150,7 +152,7 @@ export class AgentRunner {
         prompt,
         runInput: input,
         turnState: this.turnState,
-        linearClient: this.deps.linearClient,
+        tracker: this.deps.tracker,
         setActiveTurnId: (turnId) => {
           session.turnId = turnId;
         },

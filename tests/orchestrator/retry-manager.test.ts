@@ -217,7 +217,7 @@ describe("revalidateAndLaunchRetry", () => {
       retryEntries,
       runningEntries,
       deps: {
-        linearClient: {
+        tracker: {
           fetchIssueStatesByIds: vi.fn().mockResolvedValue(latestIssue ? [latestIssue] : []),
         },
         workspaceManager: { removeWorkspace: vi.fn().mockResolvedValue(undefined) },
@@ -238,13 +238,13 @@ describe("revalidateAndLaunchRetry", () => {
   it("returns early when no retry entry exists", async () => {
     const ctx = makeCtx({ hasRetryEntry: false });
     await revalidateAndLaunchRetry(ctx, "issue-1", 1);
-    expect(ctx.deps.linearClient.fetchIssueStatesByIds).not.toHaveBeenCalled();
+    expect(ctx.deps.tracker.fetchIssueStatesByIds).not.toHaveBeenCalled();
   });
 
   it("returns early when orchestrator is not running", async () => {
     const ctx = makeCtx({ isRunning: false });
     await revalidateAndLaunchRetry(ctx, "issue-1", 1);
-    expect(ctx.deps.linearClient.fetchIssueStatesByIds).not.toHaveBeenCalled();
+    expect(ctx.deps.tracker.fetchIssueStatesByIds).not.toHaveBeenCalled();
   });
 
   it("clears entry and does not launch when issue not found", async () => {
