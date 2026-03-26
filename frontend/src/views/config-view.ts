@@ -19,13 +19,11 @@ export function createConfigPage(options: ConfigPageOptions = {}): HTMLElement {
   const page = document.createElement("div");
   page.className = "page config-page fade-in";
 
-  // Header with clear title and actions
   const header = createPageHeader(
     "Configuration",
     "Override settings without modifying your workflow file. Changes persist across restarts.",
   );
 
-  // Help banner that can be dismissed
   const helpBanner = document.createElement("section");
   helpBanner.className = "config-help-banner";
 
@@ -73,28 +71,22 @@ export function createConfigPage(options: ConfigPageOptions = {}): HTMLElement {
     render();
   });
 
-  // Check if help was previously dismissed
   if (localStorage.getItem("symphony.configHelpDismissed") === "true") {
     helpBanner.classList.add("is-hidden");
   }
 
-  // Main content area with two-column layout
   const content = document.createElement("section");
   content.className = "config-content";
 
-  // Left: Editor panel (primary focus)
   const editorPanel = document.createElement("div");
   editorPanel.className = "config-editor-panel";
 
-  // Right: Sidebar with schema and diff
   const sidebarPanel = document.createElement("div");
   sidebarPanel.className = "config-sidebar";
 
-  // Schema section (collapsible)
   const schemaSection = document.createElement("div");
   schemaSection.className = "config-sidebar-section";
 
-  // Diff section
   const diffSection = document.createElement("div");
   diffSection.className = "config-sidebar-section";
 

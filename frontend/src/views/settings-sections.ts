@@ -125,12 +125,10 @@ function createNavItem(
   const sectionDrafts = state.drafts[section.id];
   if (sectionDrafts) {
     const hasUnsaved = Object.entries(sectionDrafts).some(([path, draftValue]) => {
+      const field = section.fields.find((f) => f.path === path);
+      if (!field) return false;
       const effectiveValue = getValueAtPath(state.effective, path);
-      const formatted = formatFieldDraft(
-        section.fields.find((field) => field.path === path) ?? { path, label: "", kind: "text" },
-        effectiveValue,
-      );
-      return draftValue !== formatted;
+      return draftValue !== formatFieldDraft(field, effectiveValue);
     });
     if (hasUnsaved) {
       const unsavedBadge = document.createElement("span");
@@ -150,7 +148,12 @@ function createNavItem(
     "click",
     () => {
       options.onSelectSection(section.id);
-      document.getElementById(`settings-${section.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const target = document.getElementById(`settings-${section.id}`);
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
+        if (!inView) target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
     },
     { signal },
   );
