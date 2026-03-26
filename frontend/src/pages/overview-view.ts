@@ -6,7 +6,13 @@ import { createEventRow } from "../components/event-row";
 import { createSystemHealthBadge } from "../components/system-health-badge";
 import { createStallEventsTable } from "../components/stall-events-table";
 import { buildAttentionList, latestTerminalIssues } from "../utils/issues";
-import { formatCompactNumber, formatDuration, formatRateLimitHeadroom, formatRelativeTime } from "../utils/format";
+import {
+  formatCompactNumber,
+  formatCostUsd,
+  formatDuration,
+  formatRateLimitHeadroom,
+  formatRelativeTime,
+} from "../utils/format";
 import { flashDiff, setTextWithDiff } from "../utils/diff";
 import { registerPageCleanup } from "../utils/page";
 
@@ -278,8 +284,9 @@ export function createOverviewPage(): HTMLElement {
   const outputTokens = createLiveMetric("Output");
   const totalTokens = createLiveMetric("Total");
   const runtime = createLiveMetric("Runtime");
+  const cost = createLiveMetric("Cost");
 
-  tokenGrid.append(inputTokens.root, outputTokens.root, totalTokens.root, runtime.root);
+  tokenGrid.append(inputTokens.root, outputTokens.root, totalTokens.root, runtime.root, cost.root);
   tokenSection.append(tokenGrid);
   secondary.append(tokenSection);
 
@@ -387,6 +394,7 @@ export function createOverviewPage(): HTMLElement {
     setTextWithDiff(outputTokens.value, formatCompactNumber(snapshot.codex_totals.output_tokens));
     setTextWithDiff(totalTokens.value, formatCompactNumber(snapshot.codex_totals.total_tokens));
     setTextWithDiff(runtime.value, formatDuration(snapshot.codex_totals.seconds_running));
+    setTextWithDiff(cost.value, formatCostUsd(snapshot.codex_totals.cost_usd));
 
     // Attention list - primary zone
     fillList(

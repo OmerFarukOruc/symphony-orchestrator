@@ -4,6 +4,7 @@ import {
   computeDurationSeconds,
   formatBytes,
   formatCompactNumber,
+  formatCostUsd,
   formatCountdown,
   formatDuration,
   formatRateLimitHeadroom,
@@ -241,6 +242,33 @@ describe("computeDurationSeconds", () => {
   it("clamps negative duration to zero", () => {
     const result = computeDurationSeconds("2026-03-26T12:05:00Z", "2026-03-26T12:00:00Z");
     expect(result).toBe(0);
+  });
+});
+
+describe("formatCostUsd", () => {
+  it("returns dash for null and undefined", () => {
+    expect(formatCostUsd(null)).toBe("—");
+    expect(formatCostUsd(undefined)).toBe("—");
+  });
+
+  it("formats zero cost as currency", () => {
+    const result = formatCostUsd(0);
+    expect(result).toMatch(/\$0/);
+  });
+
+  it("formats a small fractional cost with up to 4 significant digits", () => {
+    const result = formatCostUsd(0.0023);
+    expect(result).toMatch(/\$0\.0023/);
+  });
+
+  it("formats a dollar-range cost", () => {
+    const result = formatCostUsd(1.25);
+    expect(result).toMatch(/\$1\.25/);
+  });
+
+  it("formats a sub-cent cost with significant digits", () => {
+    const result = formatCostUsd(0.000023);
+    expect(result).toMatch(/\$0\.000023/);
   });
 });
 

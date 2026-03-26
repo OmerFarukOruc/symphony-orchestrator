@@ -11,6 +11,7 @@ export interface RuntimeSnapshot {
     output_tokens: number;
     total_tokens: number;
     seconds_running: number;
+    cost_usd: number | null;
   };
   rate_limits: RateLimits | null;
   recent_events: RecentEvent[];
@@ -92,6 +93,7 @@ export interface AttemptSummary {
   model: string | null;
   reasoningEffort: string | null;
   tokenUsage: { inputTokens: number; outputTokens: number; totalTokens: number } | null;
+  costUsd: number | null;
   errorCode: string | null;
   errorMessage: string | null;
 }

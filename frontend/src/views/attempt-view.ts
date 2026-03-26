@@ -4,7 +4,13 @@ import { createPageHeader } from "../components/page-header";
 import { router } from "../router";
 import { skeletonBlock, skeletonCard } from "../ui/skeleton";
 import { statusChip } from "../ui/status-chip";
-import { computeDurationSeconds, formatCompactNumber, formatDuration, formatTimestamp } from "../utils/format";
+import {
+  computeDurationSeconds,
+  formatCompactNumber,
+  formatCostUsd,
+  formatDuration,
+  formatTimestamp,
+} from "../utils/format";
 import { registerPageCleanup } from "../utils/page";
 import type { AttemptRecord, IssueDetail } from "../types";
 import { resolveIssueIdentifier } from "./attempt-utils";
@@ -98,6 +104,7 @@ function renderAttemptPage(attempt: AttemptRecord, issue: IssueDetail | null): H
         : "—",
       true,
     ),
+    createMetaItem("Cost", formatCostUsd(attempt.costUsd ?? null), true),
   );
 
   const workspace = createSection("Workspace / git");

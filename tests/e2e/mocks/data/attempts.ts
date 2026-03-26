@@ -7,6 +7,7 @@ export interface AttemptSummary {
   model: string | null;
   reasoningEffort: string | null;
   tokenUsage: { inputTokens: number; outputTokens: number; totalTokens: number } | null;
+  costUsd: number | null;
   errorCode: string | null;
   errorMessage: string | null;
 }
@@ -33,6 +34,7 @@ export function buildAttemptSummary(overrides?: Partial<AttemptSummary>): Attemp
     model: "o3-mini",
     reasoningEffort: "medium",
     tokenUsage: { inputTokens: 5000, outputTokens: 3000, totalTokens: 8000 },
+    costUsd: null,
     errorCode: null,
     errorMessage: null,
     ...overrides,

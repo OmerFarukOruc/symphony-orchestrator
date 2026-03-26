@@ -8,7 +8,13 @@ import { createAttemptsTable } from "./attempts-table";
 import { createButton, createField, createSelectControl, createTextInput } from "./forms.js";
 import { createEventRow } from "./event-row";
 import { createEmptyState } from "./empty-state";
-import { computeDurationSeconds, formatCompactNumber, formatDuration, formatTimestamp } from "../utils/format";
+import {
+  computeDurationSeconds,
+  formatCompactNumber,
+  formatCostUsd,
+  formatDuration,
+  formatTimestamp,
+} from "../utils/format";
 import { applyStagger, button, kv } from "./issue-inspector-common.js";
 
 export function buildDescriptionSection(detail: IssueDetail): HTMLElement {
@@ -37,6 +43,14 @@ export function buildDescriptionSection(detail: IssueDetail): HTMLElement {
   return section;
 }
 
+function computeIssueCostUsd(detail: IssueDetail): number | null {
+  const total = detail.attempts.reduce<number | null>((acc, attempt) => {
+    if (attempt.costUsd === null || attempt.costUsd === undefined) return acc;
+    return (acc ?? 0) + attempt.costUsd;
+  }, null);
+  return total;
+}
+
 export function buildWorkspaceSection(detail: IssueDetail): HTMLElement {
   const section = document.createElement("section");
   section.className = "issue-section mc-panel expand-in";
@@ -48,6 +62,7 @@ export function buildWorkspaceSection(detail: IssueDetail): HTMLElement {
     kv("Branch", detail.branchName ?? "—"),
     kv("Pull request", detail.pull_request_url ?? "—"),
     kv("Tokens", formatCompactNumber(detail.tokenUsage?.totalTokens ?? null)),
+    kv("Cost", formatCostUsd(computeIssueCostUsd(detail))),
     kv("Duration", formatDuration(computeDurationSeconds(detail.startedAt, detail.updated_at ?? detail.updatedAt))),
     kv("Last event", formatTimestamp(detail.lastEventAt ?? detail.updated_at ?? detail.updatedAt)),
   );

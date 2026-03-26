@@ -164,6 +164,17 @@ export function computeDurationSeconds(
   return Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 1000));
 }
 
+export function formatCostUsd(usd: number | null | undefined): string {
+  if (usd === null || usd === undefined) {
+    return "—";
+  }
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: "USD",
+    maximumSignificantDigits: 4,
+  }).format(usd);
+}
+
 export function formatBytes(bytes: number | null | undefined): string {
   if (bytes === null || bytes === undefined || bytes < 0) {
     return "—";

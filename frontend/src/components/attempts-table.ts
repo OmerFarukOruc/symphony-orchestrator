@@ -7,7 +7,7 @@ import {
   createTableHead,
   setTableCellLabel,
 } from "../ui/table";
-import { formatDuration, formatShortTime, formatTokenUsage } from "../utils/format";
+import { formatCostUsd, formatDuration, formatShortTime, formatTokenUsage } from "../utils/format";
 
 function durationForAttempt(attempt: AttemptSummary): string {
   if (!attempt.startedAt || !attempt.endedAt) {
@@ -29,11 +29,11 @@ export function createAttemptsTable(attempts: AttemptSummary[], onOpen: (attempt
   wrap.className = "attempts-table-wrap";
   const table = document.createElement("table");
   table.className = "attempts-table";
-  const head = createTableHead(["Run#", "Status", "Start", "End", "Duration", "Model", "Tokens", "Error"]);
+  const head = createTableHead(["Run#", "Status", "Start", "End", "Duration", "Model", "Tokens", "Cost", "Error"]);
   const body = document.createElement("tbody");
 
   if (attempts.length === 0) {
-    body.append(createTableEmptyRow("No attempts yet.", 8));
+    body.append(createTableEmptyRow("No attempts yet.", 9));
   }
 
   attempts.forEach((attempt) => {
@@ -51,8 +51,9 @@ export function createAttemptsTable(attempts: AttemptSummary[], onOpen: (attempt
       createMonoTableCell(formatTokenUsage(attempt.tokenUsage?.totalTokens ?? null)),
       "Tokens",
     );
+    const costCell = setTableCellLabel(createMonoTableCell(formatCostUsd(attempt.costUsd ?? null)), "Cost");
     const errorCell = setTableCellLabel(createErrorCell(attempt), "Error");
-    row.append(runCell, statusCell, startCell, endCell, durationCell, modelCell, tokensCell, errorCell);
+    row.append(runCell, statusCell, startCell, endCell, durationCell, modelCell, tokensCell, costCell, errorCell);
     applyTableRowInteraction(row, () => onOpen(attempt.attemptId), { keyboard: "enter" });
     body.append(row);
   });
