@@ -8,6 +8,27 @@
     "agentation-mcp",
     "@stryker-mutator/core",
     "@stryker-mutator/typescript-checker",
-    "@stryker-mutator/vitest-runner"
+    "@stryker-mutator/vitest-runner",
+    "eslint",
+    "husky",
+    "jscpd",
+    "lint-staged",
+    "prettier",
+    "tsx",
+    "typedoc"
+  ],
+  "ignoreBinaries": [
+    "knip",
+    "jscpd",
+    "playwright",
+    "lint-staged",
+    "eslint",
+    "prettier",
+    "tsc",
+    "vite",
+    "vitest",
+    "tsx",
+    "typedoc",
+    "husky"
   ]
 }
