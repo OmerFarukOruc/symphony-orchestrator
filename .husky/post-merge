@@ -1,0 +1,12 @@
+#!/bin/sh
+# ── Post-merge: auto-fix formatting drift from GitHub PR merges ─────
+# When PRs are merged via GitHub (bypassing local hooks), formatting
+# issues can enter main. This hook auto-fixes after pull/merge.
+
+echo "🎨 Auto-formatting after merge..."
+npx prettier --write 'src/**/*.ts' 'tests/**/*.ts' 'playwright.config.ts' --log-level warn
+
+# Stage any formatting fixes so they don't show as dirty working tree
+git diff --quiet || {
+  echo "⚠️  Formatting drift detected and fixed. Review with 'git diff'."
+}

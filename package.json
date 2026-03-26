@@ -41,6 +41,7 @@
     "knip": "knip",
     "jscpd": "jscpd --config .jscpd.json",
     "docs:generate": "typedoc",
+    "typecheck": "tsc --noEmit -p tsconfig.eslint.json",
     "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",
     "prepare": "husky"
   },
