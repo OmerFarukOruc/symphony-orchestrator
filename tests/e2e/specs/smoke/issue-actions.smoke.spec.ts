@@ -3,10 +3,7 @@ import { IssuePage } from "../../pages/issue.page";
 import { buildIssueDrilldownScenario } from "../../mocks/scenarios/issue-drilldown";
 import { buildIssueDetail } from "../../mocks/data/issue-detail";
 import { buildAttemptSummary } from "../../mocks/data/attempts";
-import {
-  buildRuntimeSnapshot,
-  buildIssueView,
-} from "../../mocks/data/runtime-snapshot";
+import { buildRuntimeSnapshot, buildIssueView } from "../../mocks/data/runtime-snapshot";
 import { buildSetupStatus } from "../../mocks/data/setup-status";
 import type { ApiMockFixture } from "../../fixtures/test";
 
@@ -70,8 +67,7 @@ async function installRetryingScenario(
 }
 
 /** Locator for the model text input inside the model settings form. */
-const MODEL_INPUT_SELECTOR =
-  '.issue-form-grid input[type="text"], .issue-form-grid .mc-input';
+const MODEL_INPUT_SELECTOR = '.issue-form-grid input[type="text"], .issue-form-grid .mc-input';
 
 test.describe("Issue Actions: Abort", () => {
   test.beforeEach(async ({ apiMock }) => {
@@ -103,8 +99,7 @@ test.describe("Issue Actions: Abort", () => {
     await issue.navigate("SYM-42");
 
     const abortRequest = page.waitForRequest(
-      (req) =>
-        req.method() === "POST" && /\/api\/v1\/SYM-42\/abort$/.test(req.url()),
+      (req) => req.method() === "POST" && /\/api\/v1\/SYM-42\/abort$/.test(req.url()),
     );
 
     await issue.abortButton.click();
@@ -142,9 +137,7 @@ test.describe("Issue Actions: Model Override", () => {
     await apiMock.install(buildIssueDrilldownScenario());
   });
 
-  test("model settings section is visible on issue detail", async ({
-    page,
-  }) => {
+  test("model settings section is visible on issue detail", async ({ page }) => {
     const issue = new IssuePage(page);
     await issue.navigate("SYM-42");
 
@@ -162,9 +155,7 @@ test.describe("Issue Actions: Model Override", () => {
     await expect(modelInput).toHaveValue("o3-mini");
   });
 
-  test("submitting model override sends POST with correct payload", async ({
-    page,
-  }) => {
+  test("submitting model override sends POST with correct payload", async ({ page }) => {
     const issue = new IssuePage(page);
     await issue.navigate("SYM-42");
 
@@ -172,8 +163,7 @@ test.describe("Issue Actions: Model Override", () => {
     await expect(modelInput).toBeVisible({ timeout: 5000 });
 
     const modelRequest = page.waitForRequest(
-      (req) =>
-        req.method() === "POST" && /\/api\/v1\/SYM-42\/model$/.test(req.url()),
+      (req) => req.method() === "POST" && /\/api\/v1\/SYM-42\/model$/.test(req.url()),
     );
 
     await modelInput.fill("gpt-5.4");
@@ -195,17 +185,12 @@ test.describe("Issue Actions: Model Override", () => {
     await modelInput.fill("gpt-5.4");
     await page.locator('.issue-form-grid button[type="submit"]').click();
 
-    await expect(
-      page.getByText("Model override saved for next run."),
-    ).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Model override saved for next run.")).toBeVisible({ timeout: 5000 });
   });
 });
 
 test.describe("Issue Actions: Retry", () => {
-  test("retrying issue shows retry schedule section", async ({
-    apiMock,
-    page,
-  }) => {
+  test("retrying issue shows retry schedule section", async ({ apiMock, page }) => {
     await installRetryingScenario(apiMock, {
       identifier: "SYM-50",
       title: "Flaky test fix",
@@ -233,15 +218,10 @@ test.describe("Issue Actions: Retry", () => {
     const issue = new IssuePage(page);
     await issue.navigate("SYM-51");
 
-    await expect(
-      page.getByText("Container crashed unexpectedly").first(),
-    ).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Container crashed unexpectedly").first()).toBeVisible({ timeout: 5000 });
   });
 
-  test("abort button is not visible for a retrying issue", async ({
-    apiMock,
-    page,
-  }) => {
+  test("abort button is not visible for a retrying issue", async ({ apiMock, page }) => {
     await installRetryingScenario(apiMock, {
       identifier: "SYM-52",
       title: "Retry visibility test",

@@ -11,8 +11,7 @@ test.describe("Error Scenarios Smoke", () => {
     await apiMock.install({
       ...scenario,
       routeOverrides: {
-        "**/api/v1/state": (route) =>
-          route.fulfill({ status: 500, contentType: "application/json", body: ERROR_BODY }),
+        "**/api/v1/state": (route) => route.fulfill({ status: 500, contentType: "application/json", body: ERROR_BODY }),
       },
     });
 
