@@ -192,7 +192,7 @@ describe("launchAvailableWorkers", () => {
     const fetchCandidateIssues = vi.fn().mockResolvedValue(issues);
 
     const ctx = {
-      deps: { linearClient: { fetchCandidateIssues } },
+      deps: { tracker: { fetchCandidateIssues } },
       getConfig: () => makeConfig({ maxConcurrentAgents }),
       runningEntries,
       claimIssue,

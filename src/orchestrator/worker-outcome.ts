@@ -163,9 +163,9 @@ async function writeLinearCompletion(
 
     if (outcome.stopSignal === "done" && successState) {
       try {
-        const stateId = await ctx.deps.linearClient.resolveStateId(successState);
+        const stateId = await ctx.deps.tracker.resolveStateId(successState);
         if (stateId) {
-          await ctx.deps.linearClient.updateIssueState(issue.id, stateId);
+          await ctx.deps.tracker.updateIssueState(issue.id, stateId);
           ctx.deps.logger.info(
             { issue_identifier: issue.identifier, successState },
             "linear issue transitioned to success state",
@@ -185,7 +185,7 @@ async function writeLinearCompletion(
     }
 
     try {
-      await ctx.deps.linearClient.createComment(issue.id, commentBody);
+      await ctx.deps.tracker.createComment(issue.id, commentBody);
     } catch (error) {
       ctx.deps.logger.warn(
         { issue_identifier: issue.identifier, error: String(error) },
@@ -397,7 +397,7 @@ export async function handleWorkerOutcome(
 ): Promise<void> {
   await entry.flushPersistence();
   ctx.runningEntries.delete(issue.id);
-  const latestIssue = (await ctx.deps.linearClient.fetchIssueStatesByIds([issue.id]).catch(() => [issue]))[0] ?? issue;
+  const latestIssue = (await ctx.deps.tracker.fetchIssueStatesByIds([issue.id]).catch(() => [issue]))[0] ?? issue;
 
   await ctx.deps.attemptStore.updateAttempt(entry.runId, {
     issueId: latestIssue.id,

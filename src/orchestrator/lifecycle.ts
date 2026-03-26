@@ -69,7 +69,7 @@ interface ReconcileContext {
   runningEntries: Map<string, RunningEntry>;
   retryEntries: Map<string, RetryRuntimeEntry>;
   deps: {
-    linearClient: {
+    tracker: {
       fetchIssueStatesByIds: (ids: string[]) => Promise<Issue[]>;
       fetchIssuesByStates: (states: string[]) => Promise<Issue[]>;
     };
@@ -91,7 +91,7 @@ export async function reconcileRunningAndRetrying(ctx: ReconcileContext): Promis
     return;
   }
 
-  const issues = await ctx.deps.linearClient.fetchIssueStatesByIds([...trackedIds]);
+  const issues = await ctx.deps.tracker.fetchIssueStatesByIds([...trackedIds]);
   const byId = new Map(issues.map((issue) => [issue.id, issue]));
 
   reconcileRunning(ctx.runningEntries, byId, config);
@@ -102,7 +102,7 @@ export async function refreshQueueViews(ctx: {
   detailViews: Map<string, IssueView>;
   claimedIssueIds: Set<string>;
   deps: {
-    linearClient: { fetchCandidateIssues: () => Promise<Issue[]> };
+    tracker: { fetchCandidateIssues: () => Promise<Issue[]> };
   };
   canDispatchIssue: (issue: Issue) => boolean;
   resolveModelSelection: (identifier: string) => {
@@ -113,7 +113,7 @@ export async function refreshQueueViews(ctx: {
   setQueuedViews: (views: IssueView[]) => void;
   pushEvent?: RuntimeEventSink;
 }): Promise<void> {
-  const issues = sortIssuesForDispatch(await ctx.deps.linearClient.fetchCandidateIssues());
+  const issues = sortIssuesForDispatch(await ctx.deps.tracker.fetchCandidateIssues());
   const dispatchableIssues = issues.filter((issue) => ctx.canDispatchIssue(issue));
   const previousQueuedIssueIds = new Set(ctx.queuedViews.map((view) => view.issueId));
   const visibleQueuedIssues = dispatchableIssues.slice(0, 50);
@@ -172,14 +172,14 @@ export async function refreshQueueViews(ctx: {
 }
 export async function cleanupTerminalIssueWorkspaces(ctx: {
   deps: {
-    linearClient: { fetchIssuesByStates: (states: string[]) => Promise<Issue[]> };
+    tracker: { fetchIssuesByStates: (states: string[]) => Promise<Issue[]> };
     workspaceManager: { removeWorkspace: (identifier: string, issue?: Issue) => Promise<void> };
     logger: { warn: (meta: Record<string, unknown>, message: string) => void };
   };
   getConfig: () => ServiceConfig;
 }): Promise<void> {
   try {
-    const terminalIssues = await ctx.deps.linearClient.fetchIssuesByStates(ctx.getConfig().tracker.terminalStates);
+    const terminalIssues = await ctx.deps.tracker.fetchIssuesByStates(ctx.getConfig().tracker.terminalStates);
     await Promise.all(
       terminalIssues.map((issue) =>
         ctx.deps.workspaceManager.removeWorkspace(issue.identifier, issue).catch((error: unknown) => {

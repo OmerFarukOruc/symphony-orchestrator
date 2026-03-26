@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 
 import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
-import type { Issue, RunOutcome, AgentRunner, LinearClient, WorkspaceManager } from "./orchestrator-fixtures.js";
+import type { Issue, RunOutcome, AgentRunner, TrackerPort, WorkspaceManager } from "./orchestrator-fixtures.js";
 import {
   createIssue,
   createConfig,
@@ -47,13 +47,13 @@ describe("Orchestrator", () => {
         };
       }),
     } as unknown as AgentRunner;
-    const linearClient = {
+    const tracker = {
       fetchCandidateIssues: vi.fn(async () => [blockedTodo, highPriority, oldestPriorityPeer]),
       fetchIssueStatesByIds: vi.fn(async (ids: string[]) =>
         [blockedTodo, highPriority, oldestPriorityPeer].filter((issue) => ids.includes(issue.id)),
       ),
       fetchIssuesByStates: vi.fn(async () => []),
-    } as unknown as LinearClient;
+    } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async (identifier: string) => ({
         path: `/tmp/symphony/${identifier}`,
@@ -66,7 +66,7 @@ describe("Orchestrator", () => {
     const orchestrator = new Orchestrator({
       attemptStore: createAttemptStore(),
       configStore: createConfigStore(createConfig()),
-      linearClient,
+      tracker,
       workspaceManager,
       agentRunner,
       logger: createLogger(),
@@ -97,10 +97,10 @@ describe("Orchestrator", () => {
         }),
       ),
     } as unknown as AgentRunner;
-    const linearClient = {
+    const tracker = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
       fetchIssueStatesByIds: vi.fn(async () => [issue]),
-    } as unknown as LinearClient;
+    } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
         path: "/tmp/symphony/MT-42",
@@ -113,7 +113,7 @@ describe("Orchestrator", () => {
     const orchestrator = new Orchestrator({
       attemptStore: createAttemptStore(),
       configStore: createConfigStore(createConfig()),
-      linearClient,
+      tracker,
       workspaceManager,
       agentRunner,
       logger: createLogger(),
@@ -159,13 +159,13 @@ describe("Orchestrator", () => {
         };
       }),
     } as unknown as AgentRunner;
-    const linearClient = {
+    const tracker = {
       fetchCandidateIssues: vi.fn(async () => [inProgressA, inProgressB, reviewIssue]),
       fetchIssueStatesByIds: vi.fn(async (ids: string[]) =>
         [inProgressA, inProgressB, reviewIssue].filter((issue) => ids.includes(issue.id)),
       ),
       fetchIssuesByStates: vi.fn(async () => []),
-    } as unknown as LinearClient;
+    } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async (identifier: string) => ({
         path: `/tmp/symphony/${identifier}`,
@@ -182,7 +182,7 @@ describe("Orchestrator", () => {
     const orchestrator = new Orchestrator({
       attemptStore: createAttemptStore(),
       configStore: createConfigStore(config),
-      linearClient,
+      tracker,
       workspaceManager,
       agentRunner,
       logger: createLogger(),
@@ -214,13 +214,13 @@ describe("Orchestrator", () => {
         };
       }),
     } as unknown as AgentRunner;
-    const linearClient = {
+    const tracker = {
       fetchCandidateIssues: vi.fn(async () => [queuedIssue, runningIssue]),
       fetchIssueStatesByIds: vi.fn(async (ids: string[]) =>
         [queuedIssue, runningIssue].filter((issue) => ids.includes(issue.id)),
       ),
       fetchIssuesByStates: vi.fn(async () => []),
-    } as unknown as LinearClient;
+    } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async (identifier: string) => ({
         path: `/tmp/symphony/${identifier}`,
@@ -245,7 +245,7 @@ describe("Orchestrator", () => {
     const orchestrator = new Orchestrator({
       attemptStore: createAttemptStore(),
       configStore: createConfigStore(config),
-      linearClient,
+      tracker,
       workspaceManager,
       agentRunner,
       logger: createLogger(),
@@ -301,10 +301,10 @@ describe("Orchestrator", () => {
         }),
       ),
     } as unknown as AgentRunner;
-    const linearClient = {
+    const tracker = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
       fetchIssueStatesByIds: vi.fn(async () => [issue]),
-    } as unknown as LinearClient;
+    } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
         path: "/tmp/symphony/MT-42",
@@ -317,7 +317,7 @@ describe("Orchestrator", () => {
     const orchestrator = new Orchestrator({
       attemptStore: createAttemptStore(),
       configStore: createConfigStore(createConfig()),
-      linearClient,
+      tracker,
       workspaceManager,
       agentRunner,
       logger: createLogger(),
@@ -360,10 +360,10 @@ describe("Orchestrator", () => {
         };
       }),
     } as unknown as AgentRunner;
-    const linearClient = {
+    const tracker = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
       fetchIssueStatesByIds: vi.fn(async () => [issue]),
-    } as unknown as LinearClient;
+    } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
         path: "/tmp/symphony/MT-42",
@@ -376,7 +376,7 @@ describe("Orchestrator", () => {
     const orchestrator = new Orchestrator({
       attemptStore: createAttemptStore(),
       configStore: createConfigStore(createConfig()),
-      linearClient,
+      tracker,
       workspaceManager,
       agentRunner,
       logger: createLogger(),
@@ -416,11 +416,11 @@ describe("Orchestrator", () => {
         };
       }),
     } as unknown as AgentRunner;
-    const linearClient = {
+    const tracker = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
       fetchIssueStatesByIds: vi.fn(async () => [issue]),
       fetchIssuesByStates: vi.fn(async () => []),
-    } as unknown as LinearClient;
+    } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
         path: "/tmp/symphony/MT-42",
@@ -433,7 +433,7 @@ describe("Orchestrator", () => {
     const orchestrator = new Orchestrator({
       attemptStore: createAttemptStore(),
       configStore: createConfigStore(createConfig()),
-      linearClient,
+      tracker,
       workspaceManager,
       agentRunner,
       logger: createLogger(),
@@ -484,10 +484,10 @@ describe("Orchestrator", () => {
         }),
       ),
     } as unknown as AgentRunner;
-    const linearClient = {
+    const tracker = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
       fetchIssueStatesByIds: vi.fn(async () => [issue]),
-    } as unknown as LinearClient;
+    } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
         path: "/tmp/symphony/MT-42",
@@ -500,7 +500,7 @@ describe("Orchestrator", () => {
     const orchestrator = new Orchestrator({
       attemptStore: createAttemptStore(),
       configStore: createConfigStore(createConfig()),
-      linearClient,
+      tracker,
       workspaceManager,
       agentRunner,
       logger: createLogger(),
@@ -547,10 +547,10 @@ describe("Orchestrator", () => {
         };
       }),
     } as unknown as AgentRunner;
-    const linearClient = {
+    const tracker = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
       fetchIssueStatesByIds: vi.fn(async () => [issue]),
-    } as unknown as LinearClient;
+    } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
         path: "/tmp/symphony/MT-42",
@@ -563,7 +563,7 @@ describe("Orchestrator", () => {
     const orchestrator = new Orchestrator({
       attemptStore: createAttemptStore(),
       configStore: createConfigStore(createConfig()),
-      linearClient,
+      tracker,
       workspaceManager,
       agentRunner,
       logger: createLogger(),

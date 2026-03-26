@@ -125,7 +125,7 @@ async function runSingleTurn(
   const turnOutcome = classifyTurnResult(completedStatus, completedError, state);
   if (turnOutcome) return { kind: "outcome", outcome: turnOutcome };
 
-  const latestIssue = (await input.linearClient.fetchIssueStatesByIds([input.runInput.issue.id]))[0];
+  const latestIssue = (await input.tracker.fetchIssueStatesByIds([input.runInput.issue.id]))[0];
   if (!latestIssue || !isActiveState(latestIssue.state, input.config)) return { kind: "stop" };
   return { kind: "continue" };
 }

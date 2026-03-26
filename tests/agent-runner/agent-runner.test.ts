@@ -10,6 +10,7 @@ import { createLogger } from "../../src/core/logger.js";
 import type { Issue, ServiceConfig } from "../../src/core/types.js";
 import { WorkspaceManager } from "../../src/workspace/manager.js";
 import { LinearClient } from "../../src/linear/client.js";
+import type { TrackerPort } from "../../src/tracker/port.js";
 
 const tempDirs: string[] = [];
 const fixturePath = path.resolve("tests/fixtures/mock-codex-server.mjs");
@@ -45,7 +46,7 @@ function baseIssue(): Issue {
 async function createRunner(
   tempDir: string,
   scenario: string,
-  linearClientOverrides?: Partial<LinearClient>,
+  trackerOverrides?: Partial<TrackerPort>,
 ): Promise<{
   runner: AgentRunner;
   workspaceManager: WorkspaceManager;
@@ -111,15 +112,19 @@ async function createRunner(
   };
 
   const workspaceManager = new WorkspaceManager(() => config, createLogger());
-  const linearClient = {
+  const tracker = {
     fetchIssueStatesByIds: vi.fn(async () => [{ ...baseIssue(), state: "Done" }]),
+  } as unknown as TrackerPort;
+  Object.assign(tracker, trackerOverrides ?? {});
+
+  const linearClient = {
     runGraphQL: vi.fn(async () => ({ data: { viewer: { id: "user-1" } } })),
   } as unknown as LinearClient;
-  Object.assign(linearClient, linearClientOverrides ?? {});
 
   return {
     runner: new AgentRunner({
       getConfig: () => config,
+      tracker,
       linearClient,
       workspaceManager,
       logger: createLogger(),

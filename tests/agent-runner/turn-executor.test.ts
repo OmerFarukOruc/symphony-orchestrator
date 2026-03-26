@@ -124,7 +124,7 @@ function makeInput(
     prompt: "Please fix the login bug.",
     setActiveTurnId: vi.fn(),
     turnState: {} as AgentRunnerTurnExecutionInput["turnState"],
-    linearClient: {
+    tracker: {
       fetchIssueStatesByIds: vi.fn().mockResolvedValue([{ id: "issue-1", identifier: "MT-1", state: "In Progress" }]),
     },
   } as unknown as AgentRunnerTurnExecutionInput;

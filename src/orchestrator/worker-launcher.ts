@@ -49,7 +49,7 @@ export function hasAvailableStateSlot(
 }
 
 export async function launchAvailableWorkers(ctx: {
-  deps: Pick<OrchestratorDeps, "linearClient">;
+  deps: Pick<OrchestratorDeps, "tracker">;
   getConfig: () => ServiceConfig;
   runningEntries: Map<string, RunningEntry>;
   claimIssue: (issueId: string) => void;
@@ -63,7 +63,7 @@ export async function launchAvailableWorkers(ctx: {
     return;
   }
 
-  const issues = sortIssuesForDispatch(await ctx.deps.linearClient.fetchCandidateIssues());
+  const issues = sortIssuesForDispatch(await ctx.deps.tracker.fetchCandidateIssues());
   let launched = 0;
   const pendingStateCounts = new Map<string, number>();
   for (const issue of issues) {

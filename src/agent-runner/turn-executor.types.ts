@@ -1,5 +1,5 @@
 import type { JsonRpcConnection } from "../agent/json-rpc-connection.js";
-import type { LinearClient } from "../linear/client.js";
+import type { TrackerPort } from "../tracker/port.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { ModelSelection, RunOutcome, ServiceConfig, Workspace, Issue } from "../core/types.js";
 import type { TurnState } from "./turn-state.js";
@@ -25,7 +25,7 @@ export interface AgentRunnerTurnExecutionInput {
   prompt: string;
   runInput: AgentRunnerTurnExecutionRunInput;
   turnState: TurnState;
-  linearClient: LinearClient;
+  tracker: TrackerPort;
   setActiveTurnId: (turnId: string | null) => void;
   /** Returns the latest agent message content for early stop-signal detection between turns. */
   getLastAgentMessageContent?: () => string | null;

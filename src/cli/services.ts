@@ -9,6 +9,7 @@ import { DispatchClient } from "../dispatch/client.js";
 import type { RunAttemptDispatcher } from "../dispatch/types.js";
 import { HttpServer } from "../http/server.js";
 import { LinearClient } from "../linear/client.js";
+import { LinearTrackerAdapter } from "../tracker/linear-adapter.js";
 import type { createLogger } from "../core/logger.js";
 import { NotificationManager } from "../notification/manager.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
@@ -31,6 +32,7 @@ export async function createServices(
   const attemptStore = new AttemptStore(archiveDir, logger.child({ component: "attempt-store" }));
   await attemptStore.start();
   const linearClient = new LinearClient(() => configStore.getConfig(), logger.child({ component: "linear" }));
+  const tracker = new LinearTrackerAdapter(linearClient);
   const workspaceManager = new WorkspaceManager(
     () => configStore.getConfig(),
     logger.child({ component: "workspace" }),
@@ -67,6 +69,7 @@ export async function createServices(
         })
       : new AgentRunner({
           getConfig: () => configStore.getConfig(),
+          tracker,
           linearClient,
           workspaceManager,
           archiveDir,
@@ -80,7 +83,7 @@ export async function createServices(
   const orchestrator = new Orchestrator({
     attemptStore,
     configStore,
-    linearClient,
+    tracker,
     workspaceManager,
     agentRunner,
     eventBus,
@@ -92,7 +95,7 @@ export async function createServices(
   const httpServer = new HttpServer({
     orchestrator,
     logger: logger.child({ component: "http" }),
-    linearClient,
+    tracker,
     configStore,
     configOverlayStore: overlayStore,
     secretsStore,

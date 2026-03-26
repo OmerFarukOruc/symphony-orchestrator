@@ -21,7 +21,7 @@ import { handleGetTransitions } from "./transitions-api.js";
 import { validateBody } from "./validation.js";
 import { handleWorkspaceInventory, handleWorkspaceRemove } from "./workspace-inventory.js";
 import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
-import type { LinearClient } from "../linear/client.js";
+import type { TrackerPort } from "../tracker/port.js";
 
 import rateLimit from "express-rate-limit";
 
@@ -29,7 +29,7 @@ const frontendDist = join(process.cwd(), "dist/frontend");
 
 interface HttpRouteDeps {
   orchestrator: Orchestrator;
-  linearClient?: LinearClient;
+  tracker?: TrackerPort;
   configStore?: ConfigStore;
   configOverlayStore?: ConfigOverlayStore;
   secretsStore?: SecretsStore;
@@ -172,7 +172,7 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/:issue_identifier/transition")
     .post(validateBody(transitionSchema), async (req, res) => {
       await handleTransition(
-        { orchestrator: deps.orchestrator, linearClient: deps.linearClient, configStore: deps.configStore },
+        { orchestrator: deps.orchestrator, tracker: deps.tracker, configStore: deps.configStore },
         req,
         res,
       );

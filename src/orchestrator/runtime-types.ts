@@ -4,7 +4,7 @@ import { ConfigStore } from "../config/store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { SymphonyEventMap } from "../core/symphony-events.js";
 import type { GitManager } from "../git/manager.js";
-import { LinearClient } from "../linear/client.js";
+import type { TrackerPort } from "../tracker/port.js";
 import type { NotificationManager } from "../notification/manager.js";
 import type { RepoMatch, RepoRouter } from "../git/repo-router.js";
 import type {
@@ -42,7 +42,7 @@ export type RetryRuntimeEntry = RetryEntry & { issue: Issue; workspaceKey: strin
 export interface OrchestratorDeps {
   attemptStore: AttemptStore;
   configStore: ConfigStore;
-  linearClient: LinearClient;
+  tracker: TrackerPort;
   workspaceManager: WorkspaceManager;
   agentRunner: RunAttemptDispatcher;
   eventBus?: TypedEventBus<SymphonyEventMap>;

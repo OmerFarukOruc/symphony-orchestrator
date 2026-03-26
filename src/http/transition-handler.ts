@@ -1,16 +1,15 @@
 import type { Request, Response } from "express";
 
-import type { LinearClient } from "../linear/client.js";
-import { buildIssueTransitionMutation } from "../linear/transition-query.js";
 import type { Orchestrator } from "../orchestrator/orchestrator.js";
 import { StateMachine } from "../state/machine.js";
 import type { ConfigStore } from "../config/store.js";
-import { asBooleanOrNull, asRecord, asStringOrNull } from "../utils/type-guards.js";
+import type { TrackerPort } from "../tracker/port.js";
+import { asStringOrNull } from "../utils/type-guards.js";
 import type { TransitionBody } from "./request-schemas.js";
 
 interface TransitionDeps {
   orchestrator: Orchestrator;
-  linearClient?: LinearClient;
+  tracker?: TrackerPort;
   configStore?: ConfigStore;
 }
 
@@ -55,25 +54,23 @@ export async function handleTransition(deps: TransitionDeps, req: Request, res: 
     }
   }
 
-  if (!deps.linearClient) {
-    res.status(503).json({ error: { code: "unavailable", message: "Linear client not configured" } });
+  if (!deps.tracker) {
+    res.status(503).json({ error: { code: "unavailable", message: "Tracker not configured" } });
     return;
   }
 
-  // Resolve Linear workflow state UUID (team-filtered when project slug is configured)
-  const stateId = await deps.linearClient.resolveStateId(targetState);
+  // Resolve workflow state UUID (team-filtered when project slug is configured)
+  const stateId = await deps.tracker.resolveStateId(targetState);
   if (!stateId) {
-    res.status(422).json({ ok: false, reason: `No Linear state found matching: ${targetState}` });
+    res.status(422).json({ ok: false, reason: `No tracker state found matching: ${targetState}` });
     return;
   }
 
-  // Execute transition via Linear API
-  const mutationPayload = await deps.linearClient.runGraphQL(buildIssueTransitionMutation(), { issueId, stateId });
-  const issueUpdate = asRecord(asRecord(mutationPayload.data).issueUpdate);
-  const success = asBooleanOrNull(issueUpdate.success);
+  // Execute transition via tracker API
+  const { success } = await deps.tracker.transitionIssue(issueId, stateId);
 
   if (!success) {
-    res.status(422).json({ ok: false, reason: "Linear issue update failed" });
+    res.status(422).json({ ok: false, reason: "Issue state transition failed" });
     return;
   }
 

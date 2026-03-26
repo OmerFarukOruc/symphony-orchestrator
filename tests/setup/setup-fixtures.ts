@@ -8,6 +8,7 @@ import { AttemptStore } from "../../src/core/attempt-store.js";
 import type { RunAttemptDispatcher } from "../../src/dispatch/types.js";
 import { ConfigStore } from "../../src/config/store.js";
 import { LinearClient } from "../../src/linear/client.js";
+import { LinearTrackerAdapter } from "../../src/tracker/linear-adapter.js";
 import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
 import { SecretsStore } from "../../src/secrets/store.js";
 import { registerSetupApi } from "../../src/setup/api.js";
@@ -71,9 +72,11 @@ export function createOrchestratorMock(): Orchestrator {
   const orchestrator = new Orchestrator({
     attemptStore: new AttemptStore("/attempt-store", logger),
     configStore: new ConfigStore("/workflow.md", logger),
-    linearClient: new LinearClient(() => {
-      throw new Error("not used in setup api tests");
-    }, logger),
+    tracker: new LinearTrackerAdapter(
+      new LinearClient(() => {
+        throw new Error("not used in setup api tests");
+      }, logger),
+    ),
     workspaceManager: new WorkspaceManager(() => {
       throw new Error("not used in setup api tests");
     }, logger),

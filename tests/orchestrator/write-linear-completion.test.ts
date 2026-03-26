@@ -117,7 +117,7 @@ function makeCtx(
     completedViews: new Map<string, unknown>(),
     detailViews: new Map<string, unknown>(),
     deps: {
-      linearClient: {
+      tracker: {
         fetchIssueStatesByIds: vi.fn().mockResolvedValue([makeIssue()]),
         resolveStateId,
         updateIssueState,
@@ -147,9 +147,9 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: D
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
     await flush();
 
-    expect(ctx.deps.linearClient.resolveStateId).toHaveBeenCalledWith("Done");
-    expect(ctx.deps.linearClient.updateIssueState).toHaveBeenCalledWith("issue-1", "state-done-id");
-    expect(ctx.deps.linearClient.createComment).toHaveBeenCalledWith(
+    expect(ctx.deps.tracker.resolveStateId).toHaveBeenCalledWith("Done");
+    expect(ctx.deps.tracker.updateIssueState).toHaveBeenCalledWith("issue-1", "state-done-id");
+    expect(ctx.deps.tracker.createComment).toHaveBeenCalledWith(
       "issue-1",
       expect.stringContaining("Symphony agent completed"),
     );
@@ -163,9 +163,9 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: D
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
     await flush();
 
-    expect(ctx.deps.linearClient.updateIssueState).not.toHaveBeenCalled();
-    expect(ctx.deps.linearClient.createComment).toHaveBeenCalledOnce();
-    expect(ctx.deps.linearClient.logger?.warn ?? ctx.deps.logger.warn).toBeDefined();
+    expect(ctx.deps.tracker.updateIssueState).not.toHaveBeenCalled();
+    expect(ctx.deps.tracker.createComment).toHaveBeenCalledOnce();
+    expect(ctx.deps.tracker.logger?.warn ?? ctx.deps.logger.warn).toBeDefined();
   });
 
   it("skips state transition when successState is null", async () => {
@@ -176,9 +176,9 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: D
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
     await flush();
 
-    expect(ctx.deps.linearClient.resolveStateId).not.toHaveBeenCalled();
-    expect(ctx.deps.linearClient.updateIssueState).not.toHaveBeenCalled();
-    expect(ctx.deps.linearClient.createComment).toHaveBeenCalledOnce();
+    expect(ctx.deps.tracker.resolveStateId).not.toHaveBeenCalled();
+    expect(ctx.deps.tracker.updateIssueState).not.toHaveBeenCalled();
+    expect(ctx.deps.tracker.createComment).toHaveBeenCalledOnce();
   });
 
   it("swallows resolveStateId error and still posts comment", async () => {
@@ -189,8 +189,8 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: D
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
     await flush();
 
-    expect(ctx.deps.linearClient.updateIssueState).not.toHaveBeenCalled();
-    expect(ctx.deps.linearClient.createComment).toHaveBeenCalledOnce();
+    expect(ctx.deps.tracker.updateIssueState).not.toHaveBeenCalled();
+    expect(ctx.deps.tracker.createComment).toHaveBeenCalledOnce();
     expect(ctx.deps.logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({ issue_identifier: "MT-1" }),
       expect.stringContaining("linear state transition failed"),
@@ -208,7 +208,7 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: D
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
     await flush();
 
-    const commentBody = (ctx.deps.linearClient.createComment as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    const commentBody = (ctx.deps.tracker.createComment as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
     expect(commentBody).toContain("1,500");
     expect(commentBody).toContain("1,000");
     expect(commentBody).toContain("500");
@@ -224,8 +224,8 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: B
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
     await flush();
 
-    expect(ctx.deps.linearClient.resolveStateId).not.toHaveBeenCalled();
-    expect(ctx.deps.linearClient.updateIssueState).not.toHaveBeenCalled();
-    expect(ctx.deps.linearClient.createComment).toHaveBeenCalledOnce();
+    expect(ctx.deps.tracker.resolveStateId).not.toHaveBeenCalled();
+    expect(ctx.deps.tracker.updateIssueState).not.toHaveBeenCalled();
+    expect(ctx.deps.tracker.createComment).toHaveBeenCalledOnce();
   });
 });
