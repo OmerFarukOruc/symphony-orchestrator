@@ -34,37 +34,55 @@ class Counter {
   }
 }
 
+/** Streaming state for a single histogram label set -- constant memory. */
+interface BucketState {
+  /** Cumulative count per bucket boundary (same order as `buckets`). */
+  readonly bucketCounts: number[];
+  sum: number;
+  count: number;
+}
+
+const DEFAULT_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
+
 class Histogram {
-  private readonly observations = new Map<string, number[]>();
-  private readonly buckets = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
+  private readonly states = new Map<string, BucketState>();
+  private readonly buckets: readonly number[];
+
+  constructor(buckets: readonly number[] = DEFAULT_BUCKETS) {
+    this.buckets = buckets;
+  }
 
   observe(value: number, labels: Labels = {}): void {
     const key = labelKey(labels);
-    const existing = this.observations.get(key) ?? [];
-    existing.push(value);
-    this.observations.set(key, existing);
+    let state = this.states.get(key);
+    if (!state) {
+      state = { bucketCounts: new Array<number>(this.buckets.length).fill(0), sum: 0, count: 0 };
+      this.states.set(key, state);
+    }
+    for (let idx = 0; idx < this.buckets.length; idx++) {
+      if (value <= this.buckets[idx]) {
+        state.bucketCounts[idx]++;
+      }
+    }
+    state.sum += value;
+    state.count++;
   }
 
   serialize(name: string, help: string): string {
     const lines = [`# HELP ${name} ${help}`, `# TYPE ${name} histogram`];
-    for (const [key, values] of this.observations) {
+    for (const [key, state] of this.states) {
       const suffix = key ? `{${key},` : "{";
-      const sorted = [...values].sort((a, b) => a - b);
-      const sum = values.reduce((a, b) => a + b, 0);
-      const count = values.length;
-
-      for (const bucket of this.buckets) {
-        const le = sorted.filter((v) => v <= bucket).length;
-        lines.push(`${name}_bucket${suffix}le="${bucket}"} ${le}`);
+      for (let idx = 0; idx < this.buckets.length; idx++) {
+        lines.push(`${name}_bucket${suffix}le="${this.buckets[idx]}"} ${state.bucketCounts[idx]}`);
       }
       const keySuffix = key ? `{${key}}` : "";
       lines.push(
-        `${name}_bucket${suffix}le="+Inf"} ${count}`,
-        `${name}_sum${keySuffix} ${sum}`,
-        `${name}_count${keySuffix} ${count}`,
+        `${name}_bucket${suffix}le="+Inf"} ${state.count}`,
+        `${name}_sum${keySuffix} ${state.sum}`,
+        `${name}_count${keySuffix} ${state.count}`,
       );
     }
-    if (this.observations.size === 0) {
+    if (this.states.size === 0) {
       lines.push(`${name}_bucket{le="+Inf"} 0`, `${name}_sum 0`, `${name}_count 0`);
     }
     return lines.join("\n");
