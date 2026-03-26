@@ -59,10 +59,10 @@ describe("createBasePaletteEntries", () => {
     expect(entries.some((entry) => entry.id === "action:shortcuts")).toBe(true);
   });
 
-  it("includes direct entries for advanced settings and credentials", () => {
+  it("includes direct entries for devtools and credentials", () => {
     const entries = createBasePaletteEntries();
 
-    expect(entries.some((entry) => entry.id === "nav:/settings#advanced")).toBe(true);
+    expect(entries.some((entry) => entry.id === "nav:/settings#devtools")).toBe(true);
     expect(entries.some((entry) => entry.id === "nav:/settings#credentials")).toBe(true);
   });
 });

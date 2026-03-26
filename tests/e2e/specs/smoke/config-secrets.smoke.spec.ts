@@ -7,12 +7,13 @@ test.describe("Unified Settings Smoke", () => {
     await apiMock.install(scenario);
   });
 
-  test("settings page loads the General tab by default", async ({ page }) => {
+  test("settings page loads with general settings visible by default", async ({ page }) => {
     const settings = new ConfigPage(page);
     await settings.navigateToSettings();
 
-    await expect(settings.tabButton("General")).toHaveAttribute("aria-selected", "true");
     await expect(page.locator("h1, .page-title").first()).toContainText("Settings");
+    // General settings rail should be visible
+    await expect(page.locator(".settings-rail")).toBeVisible({ timeout: 5000 });
   });
 
   test("configure nav is consolidated to a single Settings entry", async ({ page }) => {
@@ -24,72 +25,61 @@ test.describe("Unified Settings Smoke", () => {
     await expect(page.locator('.sidebar-item[data-path="/secrets"]')).toHaveCount(0);
   });
 
-  // ── Advanced Tab / Legacy Config Alias ─────────────────────────────
+  // ── Dev Tools / Legacy Config Alias ──────────────────────────────
 
-  test("legacy /config route redirects to Settings → Advanced", async ({ page }) => {
+  test("legacy /config route redirects to Settings with devtools hash", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToConfig();
 
     expect(new URL(page.url()).pathname).toBe("/settings");
-    expect(new URL(page.url()).hash).toBe("#advanced");
-    await expect(config.tabButton("Advanced")).toHaveAttribute("aria-selected", "true");
+    expect(new URL(page.url()).hash).toBe("#devtools");
+    await expect(config.devToolsSection).toBeAttached();
   });
 
-  test("advanced tab shows overlay entries", async ({ page }) => {
+  test("devtools section shows overlay entries when opened", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToConfig();
 
+    // Details is opened automatically by hash navigation
+    await expect(config.devToolsSection).toHaveAttribute("open", "");
     await expect(page.getByText("codex.model").first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("orchestrator.max_concurrent").first()).toBeVisible({ timeout: 5000 });
   });
 
-  test("advanced tab shows config editor mode buttons", async ({ page }) => {
+  test("devtools section shows config editor mode buttons when opened", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToConfig();
 
+    await expect(config.devToolsSection).toHaveAttribute("open", "");
     await expect(page.locator(".config-mode-label").first()).toBeVisible({ timeout: 5000 });
   });
 
-  test("advanced tab preserves unsaved raw edits across tab switches", async ({ page }) => {
-    const config = new ConfigPage(page);
-    await config.navigateToConfig();
+  // ── Credentials / Legacy Secrets Alias ───────────────────────────
 
-    await page.getByRole("button", { name: "Raw JSON" }).click();
-    const editor = page.locator(".config-textarea-large");
-    await editor.fill('{"draft":"keep-me"}');
-
-    await config.tabButton("Credentials").click();
-    await config.tabButton("Advanced").click();
-
-    await expect(editor).toHaveValue('{"draft":"keep-me"}');
-  });
-
-  // ── Credentials Tab / Legacy Secrets Alias ────────────────────────
-
-  test("legacy /secrets route redirects to Settings → Credentials", async ({ page }) => {
+  test("legacy /secrets route redirects to Settings with credentials hash", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToSecrets();
 
     expect(new URL(page.url()).pathname).toBe("/settings");
     expect(new URL(page.url()).hash).toBe("#credentials");
-    await expect(config.tabButton("Credentials")).toHaveAttribute("aria-selected", "true");
+    await expect(config.credentialsSection).toBeAttached();
   });
 
-  test("credentials tab shows secret information", async ({ page }) => {
+  test("credentials section shows secret information", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToSecrets();
 
     await expect(page.getByText(/LINEAR_API_KEY/).first()).toBeVisible({ timeout: 5000 });
   });
 
-  test("credentials tab has new secret button", async ({ page }) => {
+  test("credentials section has new secret button", async ({ page }) => {
     const config = new ConfigPage(page);
     await config.navigateToSecrets();
 
     await expect(page.getByText("New secret")).toBeVisible({ timeout: 5000 });
   });
 
-  test("global keyboard aliases open Advanced and Credentials tabs", async ({ page }) => {
+  test("global keyboard aliases open devtools and credentials sections", async ({ page }) => {
     await page.goto("/");
     await page.waitForSelector("#main-content", { state: "attached" });
     await page.waitForFunction(() => {
@@ -99,13 +89,11 @@ test.describe("Unified Settings Smoke", () => {
 
     await page.keyboard.press("g");
     await page.keyboard.press("c");
-    await expect(page.getByRole("tab", { name: "Advanced" })).toHaveAttribute("aria-selected", "true");
     expect(new URL(page.url()).pathname).toBe("/settings");
-    expect(new URL(page.url()).hash).toBe("#advanced");
+    expect(new URL(page.url()).hash).toBe("#devtools");
 
     await page.keyboard.press("g");
     await page.keyboard.press("s");
-    await expect(page.getByRole("tab", { name: "Credentials" })).toHaveAttribute("aria-selected", "true");
     expect(new URL(page.url()).hash).toBe("#credentials");
   });
 });

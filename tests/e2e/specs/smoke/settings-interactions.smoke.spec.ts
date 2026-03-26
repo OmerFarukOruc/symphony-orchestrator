@@ -7,7 +7,7 @@ test.describe("Settings Interaction Smoke", () => {
     await apiMock.install(scenario);
   });
 
-  // ── Advanced Tab: Raw JSON Config Editing ────────────────────────────
+  // ── Dev Tools: Raw JSON Config Editing ──────────────────────────────
 
   test("raw JSON mode: editing and saving sends PUT with correct payload", async ({ page }) => {
     const settings = new ConfigPage(page);
@@ -72,7 +72,7 @@ test.describe("Settings Interaction Smoke", () => {
     expect(putSent).toBe(false);
   });
 
-  // ── Credentials Tab: Create Secret ───────────────────────────────────
+  // ── Credentials: Create Secret ─────────────────────────────────────
 
   test("new secret: filling form and submitting sends POST with value", async ({ page }) => {
     const settings = new ConfigPage(page);
@@ -95,7 +95,7 @@ test.describe("Settings Interaction Smoke", () => {
     expect(body).toHaveProperty("value", "super-secret-value-123");
   });
 
-  // ── Credentials Tab: Delete Secret ───────────────────────────────────
+  // ── Credentials: Delete Secret ─────────────────────────────────────
 
   test("delete secret: confirming deletion sends DELETE request", async ({ page }) => {
     const settings = new ConfigPage(page);
@@ -122,7 +122,7 @@ test.describe("Settings Interaction Smoke", () => {
     expect(deleteRequest.url()).toContain("/api/v1/secrets/LINEAR_API_KEY");
   });
 
-  // ── Credentials Tab: Empty Key/Value Validation ──────────────────────
+  // ── Credentials: Empty Key/Value Validation ────────────────────────
 
   test("new secret: empty key or value shows validation feedback", async ({ page }) => {
     const settings = new ConfigPage(page);
@@ -143,38 +143,5 @@ test.describe("Settings Interaction Smoke", () => {
     await modal.getByRole("button", { name: "Save secret" }).click();
     await page.waitForTimeout(300);
     expect(postSent).toBe(false);
-  });
-
-  // ── Tab Switching Preserves Content ──────────────────────────────────
-
-  test("credentials tab content persists after switching to Advanced and back", async ({ page }) => {
-    const settings = new ConfigPage(page);
-    await settings.navigateToSecrets();
-
-    await expect(page.getByText("LINEAR_API_KEY").first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("OPENAI_API_KEY").first()).toBeVisible({ timeout: 5000 });
-
-    await settings.tabButton("Advanced").click();
-    await expect(settings.tabButton("Advanced")).toHaveAttribute("aria-selected", "true");
-
-    await settings.tabButton("Credentials").click();
-    await expect(settings.tabButton("Credentials")).toHaveAttribute("aria-selected", "true");
-
-    await expect(page.getByText("LINEAR_API_KEY").first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("OPENAI_API_KEY").first()).toBeVisible({ timeout: 5000 });
-  });
-
-  test("advanced tab raw edits survive round-trip through General tab", async ({ page }) => {
-    const settings = new ConfigPage(page);
-    await settings.navigateToConfig();
-
-    await page.getByRole("button", { name: "Raw JSON" }).click();
-    const editor = page.locator(".config-textarea-large");
-    await editor.fill('{"my.draft":"persist-me"}');
-
-    await settings.tabButton("General").click();
-    await settings.tabButton("Advanced").click();
-
-    await expect(editor).toHaveValue('{"my.draft":"persist-me"}');
   });
 });

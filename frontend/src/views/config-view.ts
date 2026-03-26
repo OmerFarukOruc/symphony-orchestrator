@@ -28,26 +28,46 @@ export function createConfigPage(options: ConfigPageOptions = {}): HTMLElement {
   // Help banner that can be dismissed
   const helpBanner = document.createElement("section");
   helpBanner.className = "config-help-banner";
-  helpBanner.innerHTML = `
-    <div class="config-help-content">
-      <div class="config-help-icon">💡</div>
-      <div class="config-help-text">
-        <strong>New to config overrides?</strong>
-        Use dotted paths like <code>tracker.project_slug</code> to override specific settings.
-        <a href="#" class="config-help-link" data-action="show-schema">Browse available paths →</a>
-      </div>
-    </div>
-    <button class="config-help-dismiss" aria-label="Dismiss help">×</button>
-  `;
+
+  const helpContent = document.createElement("div");
+  helpContent.className = "config-help-content";
+
+  const helpIcon = document.createElement("div");
+  helpIcon.className = "config-help-icon";
+  helpIcon.textContent = "\uD83D\uDCA1";
+
+  const helpText = document.createElement("div");
+  helpText.className = "config-help-text";
+  const helpStrong = document.createElement("strong");
+  helpStrong.textContent = "New to config overrides?";
+  const helpDescription = document.createTextNode(" Use dotted paths like ");
+  const helpCode = document.createElement("code");
+  helpCode.textContent = "tracker.project_slug";
+  const helpSuffix = document.createTextNode(" to override specific settings. ");
+  const helpLink = document.createElement("a");
+  helpLink.href = "#";
+  helpLink.className = "config-help-link";
+  helpLink.dataset.action = "show-schema";
+  helpLink.textContent = "Browse available paths \u2192";
+  helpText.append(helpStrong, helpDescription, helpCode, helpSuffix, helpLink);
+
+  helpContent.append(helpIcon, helpText);
+
+  const helpDismiss = document.createElement("button");
+  helpDismiss.className = "config-help-dismiss";
+  helpDismiss.setAttribute("aria-label", "Dismiss help");
+  helpDismiss.textContent = "\u00D7";
+
+  helpBanner.append(helpContent, helpDismiss);
 
   // Dismiss help banner
-  helpBanner.querySelector(".config-help-dismiss")?.addEventListener("click", () => {
+  helpDismiss.addEventListener("click", () => {
     helpBanner.classList.add("is-hidden");
     localStorage.setItem("symphony.configHelpDismissed", "true");
   });
 
   // Show schema link
-  helpBanner.querySelector("[data-action='show-schema']")?.addEventListener("click", (e) => {
+  helpLink.addEventListener("click", (e) => {
     e.preventDefault();
     state.showSchema = true;
     render();
