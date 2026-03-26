@@ -20,7 +20,7 @@ function isDocumentHidden(): boolean {
   return typeof document.hidden === "boolean" && document.hidden;
 }
 
-async function pollOnce(): Promise<void> {
+export async function pollOnce(): Promise<void> {
   if (inFlight || isDocumentHidden()) {
     updateBanner();
     return;
@@ -61,4 +61,17 @@ export function stopPolling(): void {
   window.clearInterval(intervalId);
   intervalId = null;
   document.removeEventListener("visibilitychange", handleVisibilityChange);
+}
+
+/**
+ * Adjust the polling cadence at runtime. Used by the SSE event source
+ * to slow polling while the live feed is connected (30 s) and restore
+ * the default (5 s) when disconnected.
+ */
+export function setPollingInterval(ms: number): void {
+  if (intervalId === null) return;
+  window.clearInterval(intervalId);
+  intervalId = window.setInterval(() => {
+    void pollOnce();
+  }, ms);
 }

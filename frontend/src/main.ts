@@ -20,6 +20,7 @@ import "./styles/git.css";
 import { api } from "./api";
 import { lazyPage } from "./utils/lazy-page";
 import { router } from "./router";
+import { connectEventSource } from "./state/event-source";
 import { startPolling } from "./state/polling";
 import { initCommandPalette } from "./ui/command-palette";
 import { initHeader } from "./ui/header";
@@ -152,6 +153,7 @@ api
     }
     router.init();
     startPolling();
+    connectEventSource();
   })
   .catch(() => {
     // Server may not have setup endpoint yet — allow navigation
@@ -159,6 +161,7 @@ api
     router.setGuard(() => null);
     router.init();
     startPolling();
+    connectEventSource();
   });
 
 // Listen for setup completion from the setup wizard

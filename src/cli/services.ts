@@ -94,6 +94,7 @@ export async function createServices(
     configStore,
     configOverlayStore: overlayStore,
     secretsStore,
+    eventBus,
     archiveDir,
   });
 

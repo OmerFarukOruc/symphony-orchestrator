@@ -1,16 +1,19 @@
 import http from "node:http";
 
 import express, { type Express } from "express";
-import type { ConfigStore } from "../config/store.js";
-import { registerHttpRoutes } from "./routes.js";
-import { Orchestrator } from "../orchestrator/orchestrator.js";
 
 import type { ConfigOverlayStore } from "../config/overlay.js";
-import type { SecretsStore } from "../secrets/store.js";
+import type { ConfigStore } from "../config/store.js";
+import type { TypedEventBus } from "../core/event-bus.js";
+import type { SymphonyEventMap } from "../core/symphony-events.js";
 import type { SymphonyLogger } from "../core/types.js";
 import { globalMetrics } from "../observability/metrics.js";
+import { Orchestrator } from "../orchestrator/orchestrator.js";
+import type { SecretsStore } from "../secrets/store.js";
 import { tracingMiddleware } from "../observability/tracing.js";
 import type { TrackerPort } from "../tracker/port.js";
+
+import { registerHttpRoutes } from "./routes.js";
 
 export class HttpServer {
   private readonly app: Express;
@@ -24,6 +27,7 @@ export class HttpServer {
       configStore?: ConfigStore;
       configOverlayStore?: ConfigOverlayStore;
       secretsStore?: SecretsStore;
+      eventBus?: TypedEventBus<SymphonyEventMap>;
 
       frontendDir?: string;
       archiveDir?: string;
