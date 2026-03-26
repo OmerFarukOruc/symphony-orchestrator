@@ -16,6 +16,11 @@ concurrency:
 
 permissions: {}
 
+# Force all JavaScript-based actions to run on Node 24 instead of their
+# default Node 20, which GitHub will deprecate on 2026-06-02.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ── Phase 1: Install, Build & Cache ──────────────────────────────────
   # Single npm ci + build. All downstream jobs restore from cache.
