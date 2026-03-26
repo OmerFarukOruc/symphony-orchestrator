@@ -178,6 +178,7 @@ export interface RuntimeSnapshot {
     outputTokens: number;
     totalTokens: number;
     secondsRunning: number;
+    costUsd: number;
   };
   rateLimits: unknown;
   recentEvents: RecentEvent[];

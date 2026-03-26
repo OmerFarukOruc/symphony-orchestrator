@@ -6,6 +6,7 @@
  */
 
 import { desc, eq, isNotNull, sql } from "drizzle-orm";
+import { lookupModelPrice } from "../../core/model-pricing.js";
 import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "../../core/types.js";
 import { closeDatabase, openDatabase, type SymphonyDatabase } from "./database.js";
 import { attemptEvents, attempts } from "./schema.js";
@@ -85,6 +86,24 @@ export class SqliteAttemptStore {
       .where(isNotNull(attempts.endedAt))
       .get();
     return result?.total ?? 0;
+  }
+
+  sumCostUsd(): number {
+    const rows = this.getDb()
+      .select({
+        model: attempts.model,
+        inputTokens: sql<number>`COALESCE(SUM(input_tokens), 0)`,
+        outputTokens: sql<number>`COALESCE(SUM(output_tokens), 0)`,
+      })
+      .from(attempts)
+      .where(isNotNull(attempts.endedAt))
+      .groupBy(attempts.model)
+      .all();
+    return rows.reduce((total, row) => {
+      const price = lookupModelPrice(row.model);
+      if (!price) return total;
+      return total + (row.inputTokens * price.inputUsd + row.outputTokens * price.outputUsd) / 1_000_000;
+    }, 0);
   }
 
   /**

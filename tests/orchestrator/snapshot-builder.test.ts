@@ -10,6 +10,7 @@ import {
   buildRunningIssueView,
   buildRetryIssueView,
   computeSecondsRunning,
+  computeCostUsd,
   type SnapshotBuilderDeps,
   type SnapshotBuilderCallbacks,
 } from "../../src/orchestrator/snapshot-builder.js";
@@ -196,6 +197,7 @@ function createAttemptStore(overrides?: {
   return {
     getAttempt: (attemptId: string) => attempts.find((a) => a.attemptId === attemptId) ?? null,
     sumArchivedSeconds: () => sumAttemptDurationSeconds(attempts),
+    sumCostUsd: vi.fn().mockReturnValue(0),
     getEvents: (attemptId: string) =>
       events.filter((e) => {
         const attemptIdFromEvent = (e as { attemptId?: string }).attemptId;
@@ -344,6 +346,16 @@ describe("snapshot-builder", () => {
 
       expect(snapshot.codexTotals.secondsRunning).toBeGreaterThanOrEqual(120);
       expect(snapshot.codexTotals.secondsRunning).toBeLessThan(160);
+    });
+
+    it("includes costUsd in codexTotals", () => {
+      const deps = { attemptStore: createAttemptStore() };
+      (deps.attemptStore.sumCostUsd as ReturnType<typeof vi.fn>).mockReturnValue(0.042);
+      const callbacks = createCallbacks();
+
+      const snapshot = buildSnapshot(deps, callbacks);
+
+      expect(snapshot.codexTotals.costUsd).toBe(0.042);
     });
 
     it("includes recent events and rate limits", () => {
@@ -597,6 +609,25 @@ describe("snapshot-builder", () => {
       });
       expect(view.modelChangePending).toBe(false);
       expect(view.message).toMatch(/retry due at/);
+    });
+  });
+
+  describe("computeCostUsd", () => {
+    it("delegates to attemptStore.sumCostUsd()", () => {
+      const attemptStore = createAttemptStore();
+      (attemptStore.sumCostUsd as ReturnType<typeof vi.fn>).mockReturnValue(1.23);
+
+      const cost = computeCostUsd(attemptStore);
+
+      expect(cost).toBe(1.23);
+    });
+
+    it("returns 0 when store has no costed attempts", () => {
+      const attemptStore = createAttemptStore();
+
+      const cost = computeCostUsd(attemptStore);
+
+      expect(cost).toBe(0);
     });
   });
 
