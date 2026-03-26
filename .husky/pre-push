@@ -25,7 +25,8 @@ npm run build
 echo "🔍 Linting..."
 npm run lint
 
-echo "🎨 Checking formatting..."
+echo "🎨 Fixing & checking formatting..."
+npm run format
 npm run format:check
 
 echo "🧪 Running tests..."
