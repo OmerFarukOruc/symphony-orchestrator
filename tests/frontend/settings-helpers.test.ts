@@ -34,6 +34,23 @@ describe("buildSettingsSections", () => {
     expect(provider?.fields.find((field) => field.path === "codex.provider.base_url")?.advanced).toBe(true);
     expect(sandbox?.fields.find((field) => field.path === "codex.sandbox.resources.memory")?.advanced).toBe(true);
   });
+
+  it("includes a credentials section", () => {
+    const sections = buildSettingsSections(null, {});
+    const cred = sections.find((s) => s.id === "credentials");
+    expect(cred).toBeDefined();
+    expect(cred!.fields[0].kind).toBe("credential");
+  });
+
+  it("section descriptions avoid jargon", () => {
+    const JARGON = ["surfaced", "shaped views", "safety posture"];
+    const sections = buildSettingsSections(null, {});
+    for (const section of sections) {
+      for (const word of JARGON) {
+        expect(section.description.toLowerCase()).not.toContain(word);
+      }
+    }
+  });
 });
 
 describe("sectionGroups", () => {
