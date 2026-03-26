@@ -1,39 +1,28 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { z } from "zod";
 
 import { normalizeStateList } from "../state/policy.js";
 import type { ServiceConfig, ValidationError } from "../core/types.js";
+import { codexAuthModeValues } from "./schemas/index.js";
 
-function normalizeRepoTarget(value: string | null | undefined): string {
-  if (!value) {
-    return "";
-  }
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\.git$/, "")
-    .replace(/^git@github\.com:/, "https://github.com/")
-    .replace(/^ssh:\/\/git@github\.com\//, "https://github.com/");
-}
+/**
+ * Zod schema for validating tracker fields that must pass
+ * before dispatch can proceed. Stricter than the config-shape
+ * schema: kind must be "linear" and required fields non-empty.
+ */
+const dispatchTrackerSchema = z.object({
+  kind: z.literal("linear"),
+  apiKey: z.string().min(1),
+  endpoint: z.string().min(1),
+  projectSlug: z.string().min(1),
+});
 
 function validateTrackerConfig(config: ServiceConfig): ValidationError | null {
-  if (config.tracker.kind !== "linear") {
-    return {
-      code: "invalid_tracker_kind",
-      message: `tracker.kind must be "linear"; received ${JSON.stringify(config.tracker.kind)}`,
-    };
-  }
-  if (!config.tracker.apiKey) {
-    return { code: "missing_tracker_api_key", message: "tracker.api_key is required after env resolution" };
-  }
-  if (!config.tracker.endpoint) {
-    return { code: "missing_tracker_endpoint", message: "tracker.endpoint is required" };
-  }
-  if (config.tracker.kind === "linear" && !config.tracker.projectSlug) {
-    return {
-      code: "missing_tracker_project_slug",
-      message: "tracker.project_slug is required when tracker.kind is linear",
-    };
+  const result = dispatchTrackerSchema.safeParse(config.tracker);
+  if (!result.success) {
+    const field = String(result.error.issues[0].path[0]);
+    return trackerIssueToError(field, config.tracker.kind);
   }
   if (normalizeStateList(config.tracker.activeStates).length === 0) {
     return { code: "invalid_tracker_active_states", message: "tracker.active_states must contain at least one state" };
@@ -47,6 +36,23 @@ function validateTrackerConfig(config: ServiceConfig): ValidationError | null {
   return null;
 }
 
+/** Map a Zod tracker field issue to the corresponding error code/message. */
+function trackerIssueToError(field: string, trackerKind: string): ValidationError {
+  const errors: Record<string, ValidationError> = {
+    kind: {
+      code: "invalid_tracker_kind",
+      message: `tracker.kind must be "linear"; received ${JSON.stringify(trackerKind)}`,
+    },
+    apiKey: { code: "missing_tracker_api_key", message: "tracker.api_key is required after env resolution" },
+    endpoint: { code: "missing_tracker_endpoint", message: "tracker.endpoint is required" },
+    projectSlug: {
+      code: "missing_tracker_project_slug",
+      message: "tracker.project_slug is required when tracker.kind is linear",
+    },
+  };
+  return errors[field] ?? { code: "invalid_tracker_config", message: `tracker.${field} is invalid` };
+}
+
 function validateCodexAuthConfig(
   config: ServiceConfig,
   fileExists: (filePath: string) => boolean,
@@ -54,7 +60,7 @@ function validateCodexAuthConfig(
   if (!config.codex.command) {
     return { code: "missing_codex_command", message: "codex.command is required" };
   }
-  if (!["api_key", "openai_login"].includes(config.codex.auth.mode)) {
+  if (!codexAuthModeValues.safeParse(config.codex.auth.mode).success) {
     return { code: "invalid_codex_auth_mode", message: "codex.auth.mode must be either api_key or openai_login" };
   }
   if (config.codex.auth.mode === "openai_login" && !fileExists(path.join(config.codex.auth.sourceHome, "auth.json"))) {
@@ -123,6 +129,18 @@ export function validateDispatch(
     validateCodexProviderConfig(config) ??
     validateApiKeyEnv(config, env)
   );
+}
+
+function normalizeRepoTarget(value: string | null | undefined): string {
+  if (!value) {
+    return "";
+  }
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\.git$/, "")
+    .replace(/^git@github\.com:/, "https://github.com/")
+    .replace(/^ssh:\/\/git@github\.com\//, "https://github.com/");
 }
 
 export function collectDispatchWarnings(config: ServiceConfig): ValidationError[] {
