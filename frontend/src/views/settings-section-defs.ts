@@ -1,7 +1,7 @@
 import { REASONING_EFFORT_OPTIONS } from "../types.js";
 
-import type { SettingsFieldDefinition, SettingsSectionDefinition } from "./settings-helpers.js";
-import { SECTION_GROUPS } from "./settings-helpers.js";
+import type { SettingsFieldDefinition, SettingsSectionDefinition } from "./settings-types.js";
+import { SECTION_GROUPS } from "./settings-types.js";
 import { getValueAtPath } from "./settings-paths.js";
 
 /** Static section definitions that do not depend on runtime effective config. */

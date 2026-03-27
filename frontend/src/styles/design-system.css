@@ -487,23 +487,23 @@ body {
 }
 
 [data-theme="dark"] .badge-success {
-  background: color-mix(in srgb, var(--status-running) 20%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, var(--status-running) 34%, transparent);
+  background: color-mix(in srgb, var(--status-running) var(--status-tint-badge-bg), var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--status-running) var(--status-tint-badge-border), transparent);
   color: var(--status-running);
 }
 [data-theme="dark"] .badge-warning {
-  background: color-mix(in srgb, var(--status-retrying) 20%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, var(--status-retrying) 34%, transparent);
+  background: color-mix(in srgb, var(--status-retrying) var(--status-tint-badge-bg), var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--status-retrying) var(--status-tint-badge-border), transparent);
   color: var(--status-retrying);
 }
 [data-theme="dark"] .badge-danger {
-  background: color-mix(in srgb, var(--status-blocked) 20%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, var(--status-blocked) 34%, transparent);
+  background: color-mix(in srgb, var(--status-blocked) var(--status-tint-badge-bg), var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--status-blocked) var(--status-tint-badge-border), transparent);
   color: var(--status-blocked);
 }
 [data-theme="dark"] .badge-info {
-  background: color-mix(in srgb, var(--status-queued) 20%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, var(--status-queued) 34%, transparent);
+  background: color-mix(in srgb, var(--status-queued) var(--status-tint-badge-bg), var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--status-queued) var(--status-tint-badge-border), transparent);
   color: var(--status-queued);
 }
 

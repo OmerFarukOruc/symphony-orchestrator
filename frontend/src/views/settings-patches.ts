@@ -1,5 +1,5 @@
 import { parsePathValue } from "./config-helpers";
-import type { SettingsFieldDefinition, SettingsSectionDefinition } from "./settings-helpers";
+import type { SettingsFieldDefinition, SettingsSectionDefinition } from "./settings-types";
 import { getValueAtPath, setValueAtPath } from "./settings-paths";
 
 export interface SettingsDraftIssue {
@@ -40,7 +40,7 @@ function parseFieldDraft(
     return {
       ok: true,
       value: value
-        .split(/\n|,/)
+        .split(/[\n,]/)
         .map((item) => item.trim())
         .filter(Boolean),
     };
