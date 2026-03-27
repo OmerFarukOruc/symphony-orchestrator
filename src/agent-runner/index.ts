@@ -172,6 +172,7 @@ export class AgentRunner implements RunAttemptDispatcher {
           session.turnId = turnId;
         },
         getLastAgentMessageContent,
+        logger: this.deps.logger,
       },
       {
         threadId,
