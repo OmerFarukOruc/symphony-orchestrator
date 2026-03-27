@@ -2,7 +2,7 @@ import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises
 import path from "node:path";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
-import { asStringRecord, isRecord } from "../utils/type-guards.js";
+import { asStringRecord, isRecord, toErrorString } from "../utils/type-guards.js";
 import type { SymphonyLogger } from "../core/types.js";
 
 const ENCRYPTION_ALGORITHM = "aes-256-gcm";
@@ -115,7 +115,7 @@ export class SecretsStore {
       decrypted = decrypt(envelope, this.requiredKey());
     } catch (error) {
       this.logger.error(
-        { error: String(error), secretsPath: this.secretsPath() },
+        { error: toErrorString(error), secretsPath: this.secretsPath() },
         "failed to decrypt secrets.enc — refusing to overwrite existing secret store",
       );
       throw new Error("failed to decrypt secrets.enc; MASTER_KEY may not match the existing archive", { cause: error });
@@ -142,7 +142,7 @@ export class SecretsStore {
       decrypted = decrypt(envelope, this.requiredKey());
     } catch (error) {
       this.logger.warn(
-        { error: String(error) },
+        { error: toErrorString(error) },
         "failed to decrypt secrets.enc — MASTER_KEY may have changed; starting with empty store",
       );
       await this.persist();
@@ -249,7 +249,7 @@ export class SecretsStore {
       } catch (error) {
         const code = (error as NodeJS.ErrnoException).code;
         if (code === "ENOENT" && attempt === 0) {
-          this.logger.warn({ error: String(error) }, "secrets persist retrying after ENOENT");
+          this.logger.warn({ error: toErrorString(error) }, "secrets persist retrying after ENOENT");
           continue;
         }
         throw error;

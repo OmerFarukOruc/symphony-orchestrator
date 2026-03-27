@@ -1,5 +1,6 @@
 import { sortIssuesForDispatch } from "./dispatch.js";
 import { createLifecycleEvent, type RuntimeEventSink } from "../core/lifecycle-events.js";
+import { toErrorString } from "../utils/type-guards.js";
 import { issueView, nowIso } from "./views.js";
 import { isActiveState, isTerminalState } from "../state/policy.js";
 import type { AttemptRecord, Issue, ServiceConfig } from "../core/types.js";
@@ -56,7 +57,7 @@ async function reconcileRetries(ctx: ReconcileContext, byId: Map<string, Issue>,
       ctx.clearRetryEntry(retryEntry.issueId);
       await ctx.deps.workspaceManager.removeWorkspace(latest.identifier, latest).catch((error: unknown) => {
         ctx.deps.logger.warn(
-          { issueId: retryEntry.issueId, identifier: latest.identifier, error: String(error) },
+          { issueId: retryEntry.issueId, identifier: latest.identifier, error: toErrorString(error) },
           "workspace cleanup failed during retry reconciliation",
         );
       });
@@ -196,14 +197,14 @@ export async function cleanupTerminalIssueWorkspaces(ctx: {
       terminalIssues.map((issue) =>
         ctx.deps.workspaceManager.removeWorkspace(issue.identifier, issue).catch((error: unknown) => {
           ctx.deps.logger.warn(
-            { identifier: issue.identifier, error: String(error) },
+            { identifier: issue.identifier, error: toErrorString(error) },
             "workspace cleanup failed for terminal issue",
           );
         }),
       ),
     );
   } catch (error) {
-    ctx.deps.logger.warn({ error: String(error) }, "startup terminal workspace cleanup failed");
+    ctx.deps.logger.warn({ error: toErrorString(error) }, "startup terminal workspace cleanup failed");
   }
 }
 

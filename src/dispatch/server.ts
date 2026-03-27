@@ -11,6 +11,7 @@ import { WorkspaceManager } from "../workspace/manager.js";
 import { createGitHubToolProvider } from "../cli/runtime-providers.js";
 import { PathRegistry } from "../workspace/path-registry.js";
 import { createLogger } from "../core/logger.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 const logger = createLogger().child({ component: "data-plane" });
 
@@ -124,14 +125,14 @@ export function createDataPlaneServer(secret: string): express.Application {
         sendSSE({ type: "outcome", payload: outcome });
         logger.info({ issueIdentifier: issue.identifier, outcome: outcome.kind }, "Dispatch completed");
       } catch (error) {
-        logger.error({ error: String(error), issueIdentifier: issue.identifier }, "Dispatch failed");
+        logger.error({ error: toErrorString(error), issueIdentifier: issue.identifier }, "Dispatch failed");
         // Send error as outcome
         sendSSE({
           type: "outcome",
           payload: {
             kind: "failed",
             errorCode: "dispatch_error",
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorMessage: toErrorString(error),
             threadId: null,
             turnId: null,
             turnCount: 0,
@@ -142,7 +143,7 @@ export function createDataPlaneServer(secret: string): express.Application {
         res.end();
       }
     } catch (error) {
-      logger.error({ error: String(error) }, "Dispatch handler error");
+      logger.error({ error: toErrorString(error) }, "Dispatch handler error");
       if (!res.headersSent) {
         res.status(500).json({ error: "internal server error" });
       }

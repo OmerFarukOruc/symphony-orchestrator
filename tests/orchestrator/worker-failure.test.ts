@@ -55,7 +55,7 @@ describe("handleWorkerFailure - core behavior", () => {
 
     expect(runningEntries.has("issue-1")).toBe(false);
     expect(releaseIssueClaim).toHaveBeenCalledWith("issue-1");
-    expect(pushEvent).toHaveBeenCalledWith(expect.objectContaining({ event: "worker_failed", message: "Error: boom" }));
+    expect(pushEvent).toHaveBeenCalledWith(expect.objectContaining({ event: "worker_failed", message: "boom" }));
     expect(updateAttempt).toHaveBeenCalledWith(
       "run-abc",
       expect.objectContaining({ status: "failed", errorCode: "worker_failed" }),
@@ -131,7 +131,7 @@ describe("handleWorkerFailure - flush persistence fallback", () => {
     await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({ error: "Error: flush failed" }),
+      expect.objectContaining({ error: "flush failed" }),
       expect.stringContaining("failed to flush persistence"),
     );
     // Should still attempt the regular status update afterward
@@ -154,12 +154,12 @@ describe("handleWorkerFailure - flush persistence fallback", () => {
 
     // Should have logged the flush failure warning
     expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({ error: "Error: flush error" }),
+      expect.objectContaining({ error: "flush error" }),
       expect.stringContaining("failed to flush persistence"),
     );
     // And the fallback flush failure warning
     expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({ error: "Error: fallback flush failed" }),
+      expect.objectContaining({ error: "fallback flush failed" }),
       expect.stringContaining("fallback attempt update also failed"),
     );
   });
@@ -186,7 +186,7 @@ describe("handleWorkerFailure - status update fallback", () => {
     await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({ error: "Error: update failed" }),
+      expect.objectContaining({ error: "update failed" }),
       expect.stringContaining("failed to update attempt status"),
     );
     // Fallback should write errorCode: "update_failed"
@@ -209,7 +209,7 @@ describe("handleWorkerFailure - status update fallback", () => {
     await handleWorkerFailure(ctx, createIssue(), entry, new Error("crash"));
 
     expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({ error: "Error: fallback failed" }),
+      expect.objectContaining({ error: "fallback failed" }),
       expect.stringContaining("fallback error code update also failed"),
     );
   });

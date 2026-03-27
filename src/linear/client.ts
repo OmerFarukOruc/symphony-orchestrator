@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { asArray, asRecord, asStringOrNull } from "../utils/type-guards.js";
+import { asArray, asRecord, asStringOrNull, toErrorString } from "../utils/type-guards.js";
 import { normalizeIssue } from "./issue-parser.js";
 import type { Issue, ServiceConfig, SymphonyLogger } from "../core/types.js";
 import {
@@ -219,13 +219,13 @@ export class LinearClient {
       } catch (error) {
         if (attempt === maxAttempts) {
           this.logger.warn(
-            { operation, attempt, error: String(error) },
+            { operation, attempt, error: toErrorString(error) },
             "linear write-back failed after max retries (non-fatal)",
           );
           return;
         }
         const delayMs = 1000 * 2 ** (attempt - 1) * (randomInt(500, 1000) / 1000);
-        this.logger.warn({ operation, attempt, delayMs, error: String(error) }, "linear write-back retry");
+        this.logger.warn({ operation, attempt, delayMs, error: toErrorString(error) }, "linear write-back retry");
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
@@ -247,7 +247,7 @@ export class LinearClient {
         body: JSON.stringify({ query, variables }),
       });
     } catch (error) {
-      this.logger.error({ error: String(error) }, "linear graphql transport failed");
+      this.logger.error({ error: toErrorString(error) }, "linear graphql transport failed");
       throw new LinearClientError("linear_transport_error", "linear graphql request failed during transport", {
         cause: error,
       });

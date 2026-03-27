@@ -3,6 +3,7 @@ import { outcomeForAbort } from "../agent-runner/abort-outcomes.js";
 import type { ServiceConfig, SymphonyLogger, Issue, ModelSelection, Workspace, RunOutcome } from "../core/types.js";
 import type { AgentRunnerEventHandler } from "../agent-runner/contracts.js";
 import type { DispatchRequest, DispatchStreamMessage, RunAttemptDispatcher } from "./types.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 interface DispatchClientDeps {
   dispatchUrl: string;
@@ -37,7 +38,7 @@ export class DispatchClient implements RunAttemptDispatcher {
     let abortForwarding: Promise<void> | null = null;
     const forwardAbort = () => {
       abortForwarding = this.abortRun(input.issue.id, logger).catch((error: unknown) => {
-        logger.warn({ runId: input.issue.id, error: String(error) }, "Dispatch abort request failed");
+        logger.warn({ runId: input.issue.id, error: toErrorString(error) }, "Dispatch abort request failed");
       });
     };
 
