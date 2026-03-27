@@ -45,16 +45,22 @@ vi.mock("../../src/core/content-sanitizer.js", () => ({
   sanitizeContent: vi.fn().mockImplementation((s: string) => s),
 }));
 
+vi.mock("../../src/agent-runner/thread-compact.js", () => ({
+  compactThread: vi.fn().mockResolvedValue(true),
+}));
+
 import { executeTurns } from "../../src/agent-runner/turn-executor.js";
 import { waitForTurnCompletion } from "../../src/agent-runner/turn-state.js";
 import { isActiveState } from "../../src/state/policy.js";
 import { failureOutcome, outcomeForAbort } from "../../src/agent-runner/abort-outcomes.js";
 import { classifyExitState } from "../../src/agent-runner/exit-classifier.js";
+import { compactThread } from "../../src/agent-runner/thread-compact.js";
 import type {
   AgentRunnerTurnExecutionInput,
   AgentRunnerTurnExecutionState,
 } from "../../src/agent-runner/turn-executor-types.js";
 import type { ServiceConfig } from "../../src/core/types.js";
+import { createMockLogger } from "../helpers.js";
 
 function makeConfig(maxTurns = 5): ServiceConfig {
   return {
@@ -127,6 +133,7 @@ function makeInput(
     tracker: {
       fetchIssueStatesByIds: vi.fn().mockResolvedValue([{ id: "issue-1", identifier: "MT-1", state: "In Progress" }]),
     },
+    logger: createMockLogger(),
   } as unknown as AgentRunnerTurnExecutionInput;
 }
 
@@ -298,6 +305,114 @@ describe("executeTurns", () => {
 
     expect(result.kind).toBe("cancelled");
     expect(result.errorCode).toBe("shutdown");
+  });
+
+  it("compacts thread and retries when context window is exceeded (error type)", async () => {
+    vi.mocked(isActiveState).mockReturnValue(true);
+    vi.mocked(compactThread).mockResolvedValue(true);
+
+    const input = makeInput();
+    const state = makeState();
+
+    // Override AFTER makeInput (which resets waitForTurnCompletion)
+    vi.mocked(waitForTurnCompletion)
+      .mockResolvedValueOnce(
+        makeCompletedTurnResponse("failed", { message: "too long", type: "ContextWindowExceeded" }),
+      )
+      .mockResolvedValueOnce(makeCompletedTurnResponse());
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const result = await executeTurns(input, state);
+
+    expect(compactThread).toHaveBeenCalledWith(input.connection, "thread-1", input.logger);
+    // Failed turn should not be counted — turnCount stays at 1 (the retry)
+    expect(state.turnCount).toBe(1);
+    expect(result.kind).toBe("normal");
+  });
+
+  it("compacts thread and retries when error message contains 'context window'", async () => {
+    vi.mocked(isActiveState).mockReturnValue(true);
+    vi.mocked(compactThread).mockResolvedValue(true);
+
+    const input = makeInput();
+    const state = makeState();
+
+    // Override AFTER makeInput (which resets waitForTurnCompletion)
+    vi.mocked(waitForTurnCompletion)
+      .mockResolvedValueOnce(makeCompletedTurnResponse("failed", { message: "context window overflow detected" }))
+      .mockResolvedValueOnce(makeCompletedTurnResponse());
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const result = await executeTurns(input, state);
+
+    expect(compactThread).toHaveBeenCalled();
+    expect(state.turnCount).toBe(1);
+    expect(result.kind).toBe("normal");
+  });
+
+  it("compacts thread and retries when error message contains 'context length exceeded'", async () => {
+    vi.mocked(isActiveState).mockReturnValue(true);
+    vi.mocked(compactThread).mockResolvedValue(true);
+
+    const input = makeInput();
+    const state = makeState();
+
+    // Override AFTER makeInput (which resets waitForTurnCompletion)
+    vi.mocked(waitForTurnCompletion)
+      .mockResolvedValueOnce(makeCompletedTurnResponse("failed", { message: "context length exceeded" }))
+      .mockResolvedValueOnce(makeCompletedTurnResponse());
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const result = await executeTurns(input, state);
+
+    expect(compactThread).toHaveBeenCalled();
+    expect(state.turnCount).toBe(1);
+    expect(result.kind).toBe("normal");
+  });
+
+  it("returns failure when context window exceeded and compaction fails", async () => {
+    vi.mocked(isActiveState).mockReturnValue(true);
+    vi.mocked(compactThread).mockReset().mockResolvedValue(false);
+
+    const input = makeInput();
+    const state = makeState();
+
+    // Override AFTER makeInput (which resets waitForTurnCompletion)
+    vi.mocked(waitForTurnCompletion).mockResolvedValue(
+      makeCompletedTurnResponse("failed", { message: "context window exceeded" }),
+    );
+
+    const result = await executeTurns(input, state);
+
+    expect(compactThread).toHaveBeenCalled();
+    expect(result.kind).toBe("failed");
+    expect(result.errorCode).toBe("context_window_exceeded");
+    expect(result.errorMessage).toBe("context window exceeded and compaction failed");
+  });
+
+  it("detects context window error via codexErrorInfo.type", async () => {
+    vi.mocked(isActiveState).mockReturnValue(true);
+    vi.mocked(compactThread).mockResolvedValue(true);
+
+    const input = makeInput();
+    const state = makeState();
+
+    // Override AFTER makeInput (which resets waitForTurnCompletion)
+    vi.mocked(waitForTurnCompletion)
+      .mockResolvedValueOnce(
+        makeCompletedTurnResponse("failed", {
+          message: "request failed",
+          codexErrorInfo: { type: "ContextWindowExceeded" },
+        }),
+      )
+      .mockResolvedValueOnce(makeCompletedTurnResponse());
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const result = await executeTurns(input, state);
+
+    expect(compactThread).toHaveBeenCalled();
+    expect(state.turnCount).toBe(1);
+    expect(result.kind).toBe("normal");
   });
 
   it("includes summary: 'concise' in turn/start request", async () => {

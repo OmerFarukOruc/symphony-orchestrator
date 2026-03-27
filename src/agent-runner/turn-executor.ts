@@ -19,6 +19,7 @@ import type {
   TurnResult,
 } from "./turn-executor-types.js";
 import type { RunOutcome } from "../core/types.js";
+import { compactThread } from "./thread-compact.js";
 
 const CONTINUATION_PROMPT =
   "Continue the current issue, make concrete progress, and stop only when done or blocked. When the issue is complete, end your final message with `SYMPHONY_STATUS: DONE`. If you are blocked and cannot proceed, end your final message with `SYMPHONY_STATUS: BLOCKED`.";
@@ -36,31 +37,48 @@ function checkFatalFailure(state: AgentRunnerTurnExecutionState): RunOutcome | n
   return failureOutcome(state.getFatalFailure(), state.threadId, state.turnId, state.turnCount);
 }
 
+function isContextWindowError(errorMessage: string, completedError: Record<string, unknown>): boolean {
+  const errorType = asString(completedError.type) ?? asString(asRecord(completedError.codexErrorInfo).type);
+  if (errorType === "ContextWindowExceeded") return true;
+  const lower = errorMessage.toLowerCase();
+  return lower.includes("context window") || lower.includes("context length exceeded");
+}
+
 function classifyTurnResult(
   completedStatus: string,
   completedError: Record<string, unknown>,
   state: AgentRunnerTurnExecutionState,
-): RunOutcome | null {
+): TurnResult | null {
   if (completedStatus === "failed") {
+    const errorMessage = asString(completedError.message) ?? "turn failed";
     const codexErrorInfo = extractCodexErrorInfo(completedError);
+    if (isContextWindowError(errorMessage, completedError)) {
+      return { kind: "compact_needed" };
+    }
     return {
-      kind: "failed",
-      errorCode: "turn_failed",
-      errorMessage: asString(completedError.message) ?? "turn failed",
-      codexErrorInfo,
-      threadId: state.threadId,
-      turnId: state.turnId,
-      turnCount: state.turnCount,
+      kind: "outcome",
+      outcome: {
+        kind: "failed",
+        errorCode: "turn_failed",
+        errorMessage,
+        codexErrorInfo,
+        threadId: state.threadId,
+        turnId: state.turnId,
+        turnCount: state.turnCount,
+      },
     };
   }
   if (completedStatus === "interrupted") {
     return {
-      kind: "cancelled",
-      errorCode: "interrupted",
-      errorMessage: asString(completedError.message) ?? "turn interrupted",
-      threadId: state.threadId,
-      turnId: state.turnId,
-      turnCount: state.turnCount,
+      kind: "outcome",
+      outcome: {
+        kind: "cancelled",
+        errorCode: "interrupted",
+        errorMessage: asString(completedError.message) ?? "turn interrupted",
+        threadId: state.threadId,
+        turnId: state.turnId,
+        turnCount: state.turnCount,
+      },
     };
   }
   return null;
@@ -136,8 +154,8 @@ async function runSingleTurn(
   const fatalOutcome = checkFatalFailure(state);
   if (fatalOutcome) return { kind: "outcome", outcome: fatalOutcome };
 
-  const turnOutcome = classifyTurnResult(completedStatus, completedError, state);
-  if (turnOutcome) return { kind: "outcome", outcome: turnOutcome };
+  const classifiedResult = classifyTurnResult(completedStatus, completedError, state);
+  if (classifiedResult) return classifiedResult;
 
   const latestIssue = (await input.tracker.fetchIssueStatesByIds([input.runInput.issue.id]))[0];
   if (!latestIssue || !isActiveState(latestIssue.state, input.config)) return { kind: "stop" };
@@ -166,6 +184,42 @@ function checkAbort(input: AgentRunnerTurnExecutionInput, state: AgentRunnerTurn
   return null;
 }
 
+/** Attempts thread compaction. Returns undefined to continue looping, or a RunOutcome to exit. */
+async function tryCompactAndRetry(
+  input: AgentRunnerTurnExecutionInput,
+  state: AgentRunnerTurnExecutionState,
+): Promise<RunOutcome | undefined> {
+  const compacted =
+    state.threadId && input.logger ? await compactThread(input.connection, state.threadId, input.logger) : false;
+  if (compacted) {
+    state.turnCount -= 1; // Retriable failure — should not consume the turn budget
+    return undefined;
+  }
+  return {
+    kind: "failed",
+    errorCode: "context_window_exceeded",
+    errorMessage: "context window exceeded and compaction failed",
+    threadId: state.threadId,
+    turnId: state.turnId,
+    turnCount: state.turnCount,
+  };
+}
+
+/** Maps a TurnResult to a loop action: RunOutcome or null to exit, undefined to continue looping. */
+async function resolveTurnResult(
+  result: TurnResult,
+  input: AgentRunnerTurnExecutionInput,
+  state: AgentRunnerTurnExecutionState,
+): Promise<RunOutcome | null | undefined> {
+  if (result.kind === "stop") return null;
+  if (result.kind === "outcome") return result.outcome;
+  if (result.kind === "compact_needed") return tryCompactAndRetry(input, state);
+  // kind === "continue" — check for early stop signal
+  const lastContent = input.getLastAgentMessageContent?.() ?? null;
+  if (detectStopSignal(lastContent) !== null) return null;
+  return undefined;
+}
+
 async function handleTurnLoop(
   input: AgentRunnerTurnExecutionInput,
   state: AgentRunnerTurnExecutionState,
@@ -176,11 +230,8 @@ async function handleTurnLoop(
 
     const prompt = state.turnCount === 0 ? input.prompt : CONTINUATION_PROMPT;
     const result = await runSingleTurn(input, state, prompt);
-    if (result.kind === "stop") return null;
-    if (result.kind === "outcome") return result.outcome;
-
-    const lastContent = input.getLastAgentMessageContent?.() ?? null;
-    if (detectStopSignal(lastContent)) return null;
+    const resolved = await resolveTurnResult(result, input, state);
+    if (resolved !== undefined) return resolved;
   }
   return null;
 }
