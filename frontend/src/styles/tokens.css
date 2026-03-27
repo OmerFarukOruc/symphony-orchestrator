@@ -17,18 +17,26 @@
   /* Gate stage — amber, distinct from retrying */
   --status-gate: #f59e0b;
 
-  /* Typography scale - app specific */
+  /* Typography scale — app-specific overrides
+     Extends the base Major Third scale with intermediate steps
+     for dense operational UI.  Sizes below --text-xs are unique
+     to the app layer; sizes at --text-xs and above shadow the
+     design-system defaults with tighter values suited to
+     dashboard density.
+
+     10 · 11 · 12 · 13 · 14 · 15 · 16 · 18 · 20 · fluid · fluid */
   --text-2xs: 0.625rem; /* 10px — group headers, type badges */
   --text-xxs: 0.6875rem; /* 11px — toolbar labels, table headers */
   --text-xs: 0.75rem; /* 12px — secondary labels */
   --text-ui: 0.8125rem; /* 13px — secondary UI text, descriptions */
   --text-sm: 0.875rem; /* 14px — base UI text */
   --text-sm-plus: 0.9375rem; /* 15px — subsection headings */
-  --text-md: 1rem; /* 16px — section titles */
-  --text-lg: 1.125rem; /* 18px */
-  --text-xl: 1.25rem; /* 20px — KPI numbers */
-  --text-2xl: clamp(1.375rem, 2.5vw, 1.75rem);
-  --text-hero: clamp(1.75rem, 4vw, 2.625rem);
+  --text-base: 1rem; /* 16px — default body / fallback */
+  --text-md: 1.125rem; /* 18px — section titles */
+  --text-lg: 1.25rem; /* 20px — lane titles */
+  --text-xl: 1.5rem; /* 24px — KPI numbers */
+  --text-2xl: clamp(1.5rem, 2.5vw, 1.875rem); /* 24–30px fluid */
+  --text-hero: clamp(1.875rem, 4vw, 2.75rem); /* 30–44px fluid */
 
   /* Letter-spacing (tracking) tokens */
   --tracking-tightest: -0.03em; /* hero/KPI numbers, 22px+ headings */
@@ -92,9 +100,9 @@
   --sidebar-width-collapsed: 56px;
   --sidebar-width-expanded: 220px;
   --header-height: 48px;
-  --dashboard-h2-size: 1.125rem;
-  --dashboard-h3-size: 1rem;
-  --dashboard-number-lg: clamp(1.875rem, 3vw, 2.75rem);
+  --dashboard-h2-size: var(--text-md); /* 18px — panel headings */
+  --dashboard-h3-size: var(--text-sm-plus); /* 15px — sub-panel headings */
+  --dashboard-number-lg: clamp(2rem, 3vw, 2.75rem); /* large KPI readout */
   --dashboard-panel-min-height: 15rem;
 
   --tone-live-bg: color-mix(in srgb, var(--status-running) 6%, var(--bg-surface));

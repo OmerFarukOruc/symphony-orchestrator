@@ -42,9 +42,10 @@
 .page-title {
   font-family: var(--font-heading);
   color: var(--text-primary);
-  font-size: clamp(24px, 3vw, 32px);
-  font-weight: 700;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: var(--font-bold);
   letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
 }
 
 .page-subtitle {
@@ -127,15 +128,16 @@
 .mc-status-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-nudge, 6px);
   padding: 4px 10px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  font-weight: 500;
+  font-weight: var(--font-medium);
+  letter-spacing: var(--tracking-wide);
 }
 
 .mc-status-chip-dot {
-  font-size: 10px;
+  font-size: var(--text-2xs);
 }
 
 /* Status classes consolidated to components.css — single source of truth */
@@ -155,6 +157,8 @@
   border: 1px solid var(--border-stitch);
   background: var(--bg-elevated);
   color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
   position: relative;
   overflow: hidden;
   animation: toastIn var(--motion-fast) var(--ease-out-quart);
@@ -286,8 +290,9 @@
 .summary-strip-label {
   font-family: var(--font-mono);
   font-size: var(--text-xxs);
+  font-weight: var(--font-medium);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
+  letter-spacing: var(--tracking-caps);
   color: var(--text-muted);
 }
 
@@ -301,9 +306,10 @@
 .section-title {
   font-family: var(--font-heading);
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--text-primary);
   letter-spacing: var(--tracking-snug);
+  line-height: var(--leading-snug);
 }
 
 .filter-bar {
@@ -325,6 +331,8 @@
   padding: 4px 10px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  letter-spacing: var(--tracking-wide);
   background: var(--bg-elevated);
   border: 1px solid var(--border-stitch);
   color: var(--text-secondary);
@@ -552,9 +560,9 @@
 .data-table th {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
+  letter-spacing: var(--tracking-caps);
   color: var(--text-muted);
   padding: 10px 16px;
   border-bottom: 2px solid var(--border-stitch);
@@ -646,8 +654,9 @@
 .mc-lane-title {
   font-family: var(--font-heading);
   font-size: var(--text-lg);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--text-primary);
+  letter-spacing: var(--tracking-snug);
 }
 
 .mc-lane-subtitle {
