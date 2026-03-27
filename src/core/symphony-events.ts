@@ -35,6 +35,8 @@ export interface SymphonyEventMap {
     type: string;
     message: string;
     sessionId: string | null;
+    timestamp: string;
+    content: string | null;
   };
 
   /** A polling cycle completed. */

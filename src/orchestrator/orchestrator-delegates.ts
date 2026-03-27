@@ -159,6 +159,8 @@ function forwardToEventBus(deps: OrchestratorDeps, event: RuntimeEventRecord): v
     type: event.event,
     message: event.message,
     sessionId: event.sessionId ?? null,
+    timestamp: event.at,
+    content: event.content ?? null,
   });
 }
 
