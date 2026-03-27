@@ -184,3 +184,70 @@ describe("buildCtx — setRateLimits", () => {
     expect(state.rateLimits).toEqual({ remaining: 100 });
   });
 });
+
+describe("buildCtx — pushEvent → eventBus routing", () => {
+  function makeEventBus() {
+    return { emit: vi.fn() };
+  }
+
+  function pushLifecycleEvent(eventName: string, issueId = "i1", issueIdentifier = "MT-1") {
+    const bus = makeEventBus();
+    const ctx = buildCtx(makeState(), makeDeps({ eventBus: bus as never }));
+    ctx.pushEvent({
+      at: "2024-01-01T00:00:00Z",
+      issueId,
+      issueIdentifier,
+      sessionId: null,
+      event: eventName,
+      message: `${eventName} message`,
+    });
+    return bus.emit.mock.calls;
+  }
+
+  it("routes agent_stalled to issue.stalled SSE channel", () => {
+    const calls = pushLifecycleEvent("agent_stalled");
+    const stalledCall = calls.find((c) => c[0] === "issue.stalled");
+    expect(stalledCall).toBeDefined();
+    expect(stalledCall![1]).toMatchObject({ issueId: "i1", identifier: "MT-1" });
+  });
+
+  it("routes worker_stalled to issue.stalled SSE channel", () => {
+    const calls = pushLifecycleEvent("worker_stalled");
+    expect(calls.find((c) => c[0] === "issue.stalled")).toBeDefined();
+  });
+
+  it("routes worker_failed to worker.failed SSE channel", () => {
+    const calls = pushLifecycleEvent("worker_failed");
+    const failedCall = calls.find((c) => c[0] === "worker.failed");
+    expect(failedCall).toBeDefined();
+    expect(failedCall![1]).toMatchObject({ issueId: "i1", identifier: "MT-1" });
+  });
+
+  it("routes issue_queued to issue.queued SSE channel", () => {
+    const calls = pushLifecycleEvent("issue_queued");
+    const queuedCall = calls.find((c) => c[0] === "issue.queued");
+    expect(queuedCall).toBeDefined();
+    expect(queuedCall![1]).toMatchObject({ issueId: "i1", identifier: "MT-1" });
+  });
+
+  it("always also emits agent.event for all events", () => {
+    for (const evName of ["agent_stalled", "worker_failed", "issue_queued", "some_other_event"]) {
+      const calls = pushLifecycleEvent(evName);
+      expect(calls.find((c) => c[0] === "agent.event")).toBeDefined();
+    }
+  });
+
+  it("does not throw when eventBus is absent", () => {
+    const ctx = buildCtx(makeState(), makeDeps({ eventBus: undefined }));
+    expect(() =>
+      ctx.pushEvent({
+        at: "2024-01-01T00:00:00Z",
+        issueId: "i1",
+        issueIdentifier: "MT-1",
+        sessionId: null,
+        event: "worker_failed",
+        message: "boom",
+      }),
+    ).not.toThrow();
+  });
+});

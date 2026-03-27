@@ -153,7 +153,7 @@ export class Orchestrator implements OrchestratorPort {
     model: string;
     reasoningEffort: ReasoningEffort | null;
   }): Promise<{ updated: boolean; restarted: boolean; appliesNextAttempt: boolean; selection: ModelSelection } | null> {
-    return updateIssueModelSelection(
+    const result = await updateIssueModelSelection(
       {
         getConfig: () => this.deps.configStore.getConfig(),
         getIssueDetail: (id) => this.getIssueDetail(id),
@@ -165,6 +165,14 @@ export class Orchestrator implements OrchestratorPort {
       },
       input,
     );
+    if (result) {
+      this.deps.eventBus?.emit("model.updated", {
+        identifier: input.identifier,
+        model: result.selection.model,
+        source: result.selection.source,
+      });
+    }
+    return result;
   }
 
   private scheduleTick(delayMs: number): void {
@@ -185,6 +193,10 @@ export class Orchestrator implements OrchestratorPort {
       await refreshQueueViewsState(this.ctx());
       await launchAvailableWorkersState(this.ctx());
       globalMetrics.orchestratorPollsTotal.increment({ status: "ok" });
+      this.deps.eventBus?.emit("poll.complete", {
+        timestamp: nowIso(),
+        issueCount: this._state.queuedViews.length + this._state.runningEntries.size,
+      });
     } catch (error) {
       globalMetrics.orchestratorPollsTotal.increment({ status: "error" });
       this.deps.logger.error({ error: toErrorString(error) }, "orchestrator tick failed");

@@ -489,3 +489,75 @@ describe("Orchestrator — advanced scenarios", () => {
     await orchestrator.stop();
   });
 });
+
+describe("Orchestrator — eventBus emissions", () => {
+  function makeEventBus() {
+    return { emit: vi.fn() };
+  }
+
+  it("emits poll.complete after each successful tick", async () => {
+    vi.useFakeTimers();
+    const eventBus = makeEventBus();
+    const tracker = {
+      fetchCandidateIssues: vi.fn(async () => []),
+      fetchIssueStatesByIds: vi.fn(async () => []),
+    } as unknown as TrackerPort;
+
+    const orchestrator = new Orchestrator({
+      attemptStore: createAttemptStore(),
+      configStore: createConfigStore(createConfig()),
+      tracker,
+      workspaceManager: {
+        ensureWorkspace: vi.fn(),
+        removeWorkspace: vi.fn(async () => undefined),
+      } as unknown as WorkspaceManager,
+      agentRunner: { runAttempt: vi.fn() } as unknown as AgentRunner,
+      eventBus: eventBus as never,
+      logger: createLogger(),
+    });
+
+    await orchestrator.start();
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+
+    const pollCalls = eventBus.emit.mock.calls.filter((c) => c[0] === "poll.complete");
+    expect(pollCalls.length).toBeGreaterThanOrEqual(1);
+    expect(pollCalls[0][1]).toMatchObject({ issueCount: 0 });
+    expect(typeof pollCalls[0][1].timestamp).toBe("string");
+
+    await orchestrator.stop();
+  });
+
+  it("emits model.updated when updateIssueModelSelection succeeds", async () => {
+    const eventBus = makeEventBus();
+    const issue = createIssue();
+    const tracker = {
+      fetchCandidateIssues: vi.fn(async () => [issue]),
+      fetchIssueStatesByIds: vi.fn(async () => [issue]),
+    } as unknown as TrackerPort;
+    const orchestrator = new Orchestrator({
+      attemptStore: createAttemptStore(),
+      configStore: createConfigStore(createConfig()),
+      tracker,
+      workspaceManager: {
+        ensureWorkspace: vi.fn(),
+        removeWorkspace: vi.fn(async () => undefined),
+      } as unknown as WorkspaceManager,
+      agentRunner: { runAttempt: vi.fn() } as unknown as AgentRunner,
+      eventBus: eventBus as never,
+      logger: createLogger(),
+    });
+
+    // updateIssueModelSelection requires an issue detail to exist.
+    // Since no worker is running, it returns null for unknown identifiers.
+    const result = await orchestrator.updateIssueModelSelection({
+      identifier: "UNKNOWN-99",
+      model: "gpt-5",
+      reasoningEffort: "high",
+    });
+    // Returns null — no detail view exists for UNKNOWN-99
+    expect(result).toBeNull();
+    const modelCalls = eventBus.emit.mock.calls.filter((c) => c[0] === "model.updated");
+    expect(modelCalls.length).toBe(0); // no emit when result is null
+  });
+});

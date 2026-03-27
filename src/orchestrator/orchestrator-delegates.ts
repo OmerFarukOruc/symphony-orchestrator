@@ -128,7 +128,20 @@ function pushRecentEvent(recentEvents: RecentEvent[], event: RuntimeEventRecord)
   }
 }
 
+function emitLifecycleEvent(deps: OrchestratorDeps, event: RuntimeEventRecord): void {
+  const issueId = event.issueId ?? "";
+  const identifier = event.issueIdentifier ?? "";
+  if (event.event === "agent_stalled" || event.event === "worker_stalled") {
+    deps.eventBus?.emit("issue.stalled", { issueId, identifier, reason: event.message });
+  } else if (event.event === "worker_failed") {
+    deps.eventBus?.emit("worker.failed", { issueId, identifier, error: event.message });
+  } else if (event.event === "issue_queued") {
+    deps.eventBus?.emit("issue.queued", { issueId, identifier });
+  }
+}
+
 function forwardToEventBus(deps: OrchestratorDeps, event: RuntimeEventRecord): void {
+  emitLifecycleEvent(deps, event);
   deps.eventBus?.emit("agent.event", {
     issueId: event.issueId ?? "",
     identifier: event.issueIdentifier ?? "",
@@ -185,6 +198,11 @@ async function launchWorkerDelegate(
     attempt,
     options,
   );
+  deps.eventBus?.emit("issue.started", {
+    issueId: issue.id,
+    identifier: issue.identifier,
+    attempt,
+  });
 }
 
 async function handleWorkerPromise(
@@ -200,6 +218,11 @@ async function handleWorkerPromise(
     .then(async (outcome) => {
       await handleWorkerOutcome(buildCtx(state, deps), outcome, entry, workerIssue, workspace, workerAttempt);
       globalMetrics.agentRunsTotal.increment({ outcome: outcome.kind });
+      deps.eventBus?.emit("issue.completed", {
+        issueId: workerIssue.id,
+        identifier: workerIssue.identifier,
+        outcome: outcome.kind,
+      });
     })
     .catch(async (error) => {
       await handleWorkerFailure(buildCtx(state, deps), workerIssue, entry, error);
