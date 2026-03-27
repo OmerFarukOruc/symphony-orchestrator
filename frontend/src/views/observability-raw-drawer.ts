@@ -22,7 +22,7 @@ export function createRawMetricsDrawer(onClose: () => void): RawMetricsDrawerCon
     root,
     render: (rawMetrics, open) => {
       root.hidden = !open;
-      body.textContent = rawMetrics.trim() || "Instrumentation not yet present.";
+      body.textContent = rawMetrics.trim() || "No metrics endpoint response yet.";
     },
   };
 }
