@@ -322,6 +322,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-init" }); // thread/start
 
       const input = makeInput();
@@ -354,6 +355,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-svc" }); // thread/start
 
       const input = makeInput();
@@ -361,7 +363,7 @@ describe("initializeSession", () => {
 
       await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
 
-      const threadCall = session.connection.request.mock.calls[3];
+      const threadCall = session.connection.request.mock.calls[4];
       expect(threadCall[0]).toBe("thread/start");
       expect(threadCall[1]).toMatchObject({ serviceName: "symphony" });
     });
@@ -372,6 +374,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-p" }); // thread/start
 
       const config = {
@@ -387,7 +390,7 @@ describe("initializeSession", () => {
 
       await initializeSession(session, config, input, deps, liquid);
 
-      const threadCall = session.connection.request.mock.calls[3];
+      const threadCall = session.connection.request.mock.calls[4];
       expect(threadCall[0]).toBe("thread/start");
       expect(threadCall[1]).toMatchObject({ personality: "concise" });
     });
