@@ -4,6 +4,7 @@ import { createPageHeader } from "../components/page-header";
 import { APP_STATE_HEARTBEAT_EVENT, APP_STATE_UPDATE_EVENT, store } from "../state/store";
 import type { AppState } from "../state/store";
 import { toast } from "../ui/toast";
+import { flashDiff } from "../utils/diff";
 import { registerPageCleanup } from "../utils/page";
 
 import { handleObservabilityKeyboard } from "./observability-keyboard";
@@ -121,14 +122,20 @@ export function createObservabilityPage(): HTMLElement {
     });
   };
 
+  const onPollComplete = (): void => {
+    void loadMetrics().then(() => flashDiff(body));
+  };
+
   window.addEventListener(APP_STATE_UPDATE_EVENT, onState);
   window.addEventListener(APP_STATE_HEARTBEAT_EVENT, onState);
+  window.addEventListener("symphony:poll-complete", onPollComplete);
   window.addEventListener("keydown", onKey);
   sync(store.getState());
   void loadMetrics();
   registerPageCleanup(page, () => {
     window.removeEventListener(APP_STATE_UPDATE_EVENT, onState);
     window.removeEventListener(APP_STATE_HEARTBEAT_EVENT, onState);
+    window.removeEventListener("symphony:poll-complete", onPollComplete);
     window.removeEventListener("keydown", onKey);
   });
   return page;

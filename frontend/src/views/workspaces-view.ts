@@ -5,6 +5,7 @@ import { router } from "../router.js";
 import { statusChip } from "../ui/status-chip.js";
 import { skeletonLine } from "../ui/skeleton.js";
 import type { WorkspaceInventoryEntry, WorkspaceInventoryResponse } from "../types.js";
+import { flashDiff } from "../utils/diff.js";
 import { el } from "../utils/dom.js";
 import { registerPageCleanup } from "../utils/page.js";
 import { formatBytes, formatRelativeTime } from "../utils/format.js";
@@ -224,8 +225,15 @@ export function createWorkspacesPage(): HTMLElement {
   const handler = (): void => {
     if (currentData) void fetchAndRender();
   };
+  const onWorkspaceEvent = (): void => {
+    void fetchAndRender().then(() => flashDiff(body));
+  };
   window.addEventListener("state:update", handler);
-  registerPageCleanup(page, () => window.removeEventListener("state:update", handler));
+  window.addEventListener("symphony:workspace-event", onWorkspaceEvent);
+  registerPageCleanup(page, () => {
+    window.removeEventListener("state:update", handler);
+    window.removeEventListener("symphony:workspace-event", onWorkspaceEvent);
+  });
 
   return page;
 }
