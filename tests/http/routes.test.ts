@@ -2,6 +2,11 @@ import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
 import express from "express";
 import http from "node:http";
 
+vi.mock("../../src/codex/model-list.js", () => ({
+  fetchCodexModels: vi.fn().mockResolvedValue(null),
+}));
+
+import { fetchCodexModels } from "../../src/codex/model-list.js";
 import { registerHttpRoutes } from "../../src/http/routes.js";
 
 function makeOrchestrator() {
@@ -236,6 +241,7 @@ describe("HTTP routes", () => {
   });
 
   it("GET /api/v1/models returns null when no models available", async () => {
+    vi.mocked(fetchCodexModels).mockResolvedValueOnce(null);
     const res = await fetchRoute("/api/v1/models");
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -243,19 +249,7 @@ describe("HTTP routes", () => {
   });
 
   it("GET /api/v1/models returns model list when available", async () => {
-    orchestrator.getSnapshot.mockReturnValueOnce({
-      generatedAt: "2024-01-01T00:00:00Z",
-      counts: { running: 0, retrying: 0, queued: 0, completed: 0 },
-      running: [],
-      retrying: [],
-      completed: [],
-      queued: [],
-      workflowColumns: [],
-      codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0, costUsd: 0 },
-      rateLimits: null,
-      recentEvents: [],
-      availableModels: ["gpt-5.4", "o3"],
-    });
+    vi.mocked(fetchCodexModels).mockResolvedValueOnce(["gpt-5.4", "o3"]);
     const res = await fetchRoute("/api/v1/models");
     expect(res.status).toBe(200);
     const body = await res.json();
