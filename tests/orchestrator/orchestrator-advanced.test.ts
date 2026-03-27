@@ -186,16 +186,16 @@ describe("Orchestrator — advanced scenarios", () => {
         identifier: "MT-42",
         status: "failed",
         attempt: 1,
-        error: "Error: workspace setup exploded",
-        message: "retry startup failed: Error: workspace setup exploded",
+        error: "workspace setup exploded",
+        message: "retry startup failed: workspace setup exploded",
       }),
     ]);
     expect(orchestrator.getIssueDetail("MT-42")).toMatchObject({
       identifier: "MT-42",
       status: "failed",
       attempt: 1,
-      error: "Error: workspace setup exploded",
-      message: "retry startup failed: Error: workspace setup exploded",
+      error: "workspace setup exploded",
+      message: "retry startup failed: workspace setup exploded",
     });
     expect(attemptStore.createAttempt).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -203,7 +203,7 @@ describe("Orchestrator — advanced scenarios", () => {
         status: "failed",
         attemptNumber: 1,
         errorCode: "worker_failed",
-        errorMessage: "Error: workspace setup exploded",
+        errorMessage: "workspace setup exploded",
       }),
     );
 

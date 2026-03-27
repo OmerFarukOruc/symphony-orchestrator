@@ -1,6 +1,7 @@
 import type { ModelSelection, ReasoningEffort, RecentEvent, ServiceConfig } from "../core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
 import { type IssueLocatorCallbacks, resolveIssue } from "./issue-locator.js";
+import type { IssueDetailView } from "./snapshot-builder.js";
 
 export function resolveModelSelection(
   overrides: Map<string, Omit<ModelSelection, "source">>,
@@ -26,7 +27,7 @@ export function resolveModelSelection(
 export async function updateIssueModelSelection(
   ctx: {
     getConfig: () => ServiceConfig;
-    getIssueDetail: (identifier: string) => Record<string, unknown> | null;
+    getIssueDetail: (identifier: string) => IssueDetailView | null;
     issueModelOverrides: Map<string, Omit<ModelSelection, "source">>;
     runningEntries: Map<string, RunningEntry>;
     retryEntries: Map<string, RetryRuntimeEntry>;

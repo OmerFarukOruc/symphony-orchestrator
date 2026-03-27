@@ -71,8 +71,8 @@ export class AttemptStore {
     if (events.length > 1 && new Date(events[0].at).getTime() > new Date(events.at(-1)!.at).getTime()) {
       events.reverse();
       const serialized = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
-      writeFile(eventsPath, serialized, "utf8").catch((err) => {
-        this.logger.warn({ attemptId, error: String(err) }, "failed to migrate legacy archive order");
+      writeFile(eventsPath, serialized, "utf8").catch((error: unknown) => {
+        this.logger.warn({ attemptId, error: toErrorString(error) }, "failed to migrate legacy archive order");
       });
     }
   }

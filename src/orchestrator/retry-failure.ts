@@ -4,6 +4,7 @@ import type { AttemptStorePort } from "../core/attempt-store-port.js";
 import { issueView, nowIso } from "./views.js";
 import type { Issue, ModelSelection, RecentEvent, AttemptRecord } from "../core/types.js";
 import type { RunningEntry } from "./runtime-types.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 function buildRetryFailureView(
   ctx: {
@@ -101,7 +102,12 @@ async function persistRetryFailure(input: PersistRetryFailureInput): Promise<voi
       persisted = true;
     } catch (updateError) {
       logger.warn(
-        { issue_id: issue.id, issue_identifier: issue.identifier, attempt_id: attemptId, error: String(updateError) },
+        {
+          issue_id: issue.id,
+          issue_identifier: issue.identifier,
+          attempt_id: attemptId,
+          error: toErrorString(updateError),
+        },
         "retry failure: failed to update attempt record, falling back to create",
       );
     }
@@ -113,7 +119,7 @@ async function persistRetryFailure(input: PersistRetryFailureInput): Promise<voi
       await attemptStore.createAttempt(data);
     } catch (createError) {
       logger.warn(
-        { issue_id: issue.id, issue_identifier: issue.identifier, error: String(createError) },
+        { issue_id: issue.id, issue_identifier: issue.identifier, error: toErrorString(createError) },
         "retry failure: failed to create fallback attempt record",
       );
     }
@@ -144,7 +150,7 @@ export async function handleRetryLaunchFailure(
   ctx.runningEntries.delete(issue.id);
   ctx.clearRetryEntry(issue.id);
 
-  const errorText = String(error);
+  const errorText = toErrorString(error);
   const message = `retry startup failed: ${errorText}`;
 
   ctx.deps.logger.error(

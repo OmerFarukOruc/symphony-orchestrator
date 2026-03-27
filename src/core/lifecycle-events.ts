@@ -1,5 +1,5 @@
 import type { Issue, RecentEvent } from "./types.js";
-import { getErrorMessage } from "../utils/type-guards.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 export type RuntimeEventRecord = RecentEvent & {
   usage?: unknown;
@@ -30,5 +30,5 @@ export function createLifecycleEvent(input: LifecycleEventInput): RecentEvent {
 }
 
 export function toErrorMessage(error: unknown): string {
-  return getErrorMessage(error, String(error));
+  return toErrorString(error);
 }

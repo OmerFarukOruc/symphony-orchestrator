@@ -9,7 +9,13 @@ import {
   seedCompletedClaims,
 } from "./lifecycle.js";
 import { launchAvailableWorkers as launchAvailableWorkersState } from "./worker-launcher.js";
-import { buildAttemptDetail, buildIssueDetail, buildSnapshot } from "./snapshot-builder.js";
+import {
+  buildAttemptDetail,
+  type AttemptDetailView,
+  buildIssueDetail,
+  type IssueDetailView,
+  buildSnapshot,
+} from "./snapshot-builder.js";
 import { buildCtx, cleanupTerminalWorkspaces, type OrchestratorState } from "./orchestrator-delegates.js";
 import type { OrchestratorDeps } from "./runtime-types.js";
 import { nowIso } from "./views.js";
@@ -96,12 +102,12 @@ export class Orchestrator {
     return buildSnapshot({ attemptStore: this.deps.attemptStore }, cb);
   }
 
-  getIssueDetail(identifier: string): Record<string, unknown> | null {
+  getIssueDetail(identifier: string): IssueDetailView | null {
     const detail = buildIssueDetail(identifier, { attemptStore: this.deps.attemptStore }, this.snapshotCallbacks());
     return detail ? { ...detail } : null;
   }
 
-  getAttemptDetail(attemptId: string): Record<string, unknown> | null {
+  getAttemptDetail(attemptId: string): AttemptDetailView | null {
     const detail = buildAttemptDetail(attemptId, { attemptStore: this.deps.attemptStore });
     return detail ? { ...detail } : null;
   }

@@ -16,7 +16,7 @@ import type {
 } from "../core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
 
-interface AttemptSummary {
+export interface AttemptSummary {
   attemptId: string;
   attemptNumber: number | null;
   startedAt: string;
@@ -117,14 +117,19 @@ export function buildSnapshot(deps: SnapshotBuilderDeps, callbacks: SnapshotBuil
   };
 }
 
+/** Typed detail view for a single issue, including its attempt history and live events. */
+export interface IssueDetailView extends RuntimeIssueView {
+  recentEvents: RecentEvent[];
+  attempts: AttemptSummary[];
+  currentAttemptId: string | null;
+}
+
 // Builds issue detail view including archived attempts.
 export function buildIssueDetail(
   identifier: string,
   deps: SnapshotBuilderDeps,
   callbacks: SnapshotBuilderCallbacks,
-):
-  | (RuntimeIssueView & { recentEvents: RecentEvent[]; attempts: AttemptSummary[]; currentAttemptId: string | null })
-  | null {
+): IssueDetailView | null {
   const locatorCallbacks: IssueLocatorCallbacks = {
     getRunningEntries: callbacks.getRunningEntries,
     getRetryEntries: callbacks.getRetryEntries,
@@ -179,11 +184,13 @@ export function buildIssueDetail(
   };
 }
 
+/** Typed detail view for a single attempt, including its event stream. */
+export interface AttemptDetailView extends AttemptSummary {
+  events: RecentEvent[];
+}
+
 // Builds attempt detail view with events.
-export function buildAttemptDetail(
-  attemptId: string,
-  deps: SnapshotBuilderDeps,
-): (AttemptSummary & { events: RecentEvent[] }) | null {
+export function buildAttemptDetail(attemptId: string, deps: SnapshotBuilderDeps): AttemptDetailView | null {
   const attempt = deps.attemptStore.getAttempt(attemptId);
   if (!attempt) {
     return null;

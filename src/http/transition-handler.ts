@@ -4,7 +4,6 @@ import type { Orchestrator } from "../orchestrator/orchestrator.js";
 import { StateMachine } from "../state/machine.js";
 import type { ConfigStore } from "../config/store.js";
 import type { TrackerPort } from "../tracker/port.js";
-import { asStringOrNull } from "../utils/type-guards.js";
 import type { TransitionBody } from "./request-schemas.js";
 
 interface TransitionDeps {
@@ -30,8 +29,8 @@ export async function handleTransition(deps: TransitionDeps, req: Request, res: 
     return;
   }
 
-  const currentState = asStringOrNull(detail.state) ?? "";
-  const issueId = asStringOrNull(detail.issueId) ?? "";
+  const currentState = detail.state;
+  const issueId = detail.issueId;
 
   if (deps.configStore) {
     const config = deps.configStore.getConfig();
