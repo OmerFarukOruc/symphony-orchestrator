@@ -27,6 +27,7 @@ function makeOrchestrator() {
     getAttemptDetail: vi.fn().mockReturnValue(null),
     abortIssue: vi.fn().mockReturnValue({ ok: false, code: "not_found", message: "Unknown issue identifier" }),
     updateIssueModelSelection: vi.fn().mockResolvedValue(null),
+    steerIssue: vi.fn().mockResolvedValue(null),
   };
 }
 
@@ -185,6 +186,39 @@ describe("HTTP routes", () => {
     const body = await res.json();
     expect(body.attempts.length).toBe(1);
     expect(body.current_attempt_id).toBe("a1");
+  });
+
+  it("POST /api/v1/:identifier/steer returns 200 when steer succeeds", async () => {
+    orchestrator.steerIssue.mockResolvedValueOnce({ ok: true });
+    const res = await fetchRoute("/api/v1/MT-42/steer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "focus on tests" }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.message).toBe("steer sent");
+  });
+
+  it("POST /api/v1/:identifier/steer returns 400 with empty body", async () => {
+    const res = await fetchRoute("/api/v1/MT-42/steer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /api/v1/:identifier/steer returns 404 for unknown issue", async () => {
+    const res = await fetchRoute("/api/v1/UNKNOWN/steer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "focus on tests" }),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error.code).toBe("not_found");
   });
 
   it("API 404 path returns JSON error", async () => {
