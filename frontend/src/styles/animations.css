@@ -1,3 +1,46 @@
+/* ============================================
+   ANIMATIONS
+   Entrance animations, loading states, and
+   reduced-motion overrides.
+
+   Performance notes:
+   - All entrance keyframes animate only `opacity`
+     and `transform` (GPU-composited properties).
+   - Infinite animations (skeleton, status pulse)
+     use `opacity` only — no layout or paint.
+   - `will-change` is scoped to active animation
+     states, not applied globally.
+   ============================================ */
+
+/* ── Shared entrance keyframe ────────────────────────── */
+/* Parameterized via --enter-y for distance variants.
+   Uses only opacity + transform (composited).           */
+
+@keyframes enterUp {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-y, 8px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Scale variant — for panels/cards that expand in */
+@keyframes enterUpScale {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-y, 8px)) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Transition utility ──────────────────────────────── */
+
 .transition-base {
   transition:
     color var(--motion-fast) var(--ease-out-quart),
@@ -7,84 +50,39 @@
     transform var(--motion-medium) var(--ease-out-quint);
 }
 
+/* ── Entrance animation classes ──────────────────────── */
+
 .fade-in {
-  animation: fadeIn var(--motion-medium) var(--ease-out-quart);
+  --enter-y: 4px;
+  animation: enterUp var(--motion-medium) var(--ease-out-quart);
 }
 
 .page-enter {
-  animation: pageEnter var(--motion-slow) var(--ease-out-expo);
+  --enter-y: 8px;
+  animation: enterUp var(--motion-slow) var(--ease-out-expo);
 }
 
 .stagger-item {
   --stagger-index: 0;
-  animation: riseIn var(--motion-medium) var(--ease-out-quart) both;
+  --enter-y: 10px;
+  animation: enterUp var(--motion-medium) var(--ease-out-quart) both;
   animation-delay: calc(var(--stagger-index) * 55ms);
 }
 
 .timeline-enter {
   --stagger-index: 0;
-  animation: timelineIn var(--motion-fast) var(--ease-out-quart) both;
+  --enter-y: 6px;
+  animation: enterUp var(--motion-fast) var(--ease-out-quart) both;
   animation-delay: calc(var(--stagger-index) * 24ms);
 }
 
 .expand-in {
-  animation: expandIn var(--motion-medium) var(--ease-out-quart);
+  --enter-y: 8px;
+  animation: enterUpScale var(--motion-medium) var(--ease-out-quart);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes pageEnter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes riseIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes timelineIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes expandIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.995);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
+/* ── Loading states ──────────────────────────────────── */
+/* Skeleton and status pulse animate opacity only (composited). */
 
 .skeleton {
   background: var(--bg-muted);
@@ -115,11 +113,17 @@
   }
 }
 
+/* ── Reduced motion ──────────────────────────────────── */
+/* Respects prefers-reduced-motion: animations resolve
+   instantly, transitions collapse to near-zero duration,
+   and transforms are neutralized.                        */
+
 @media (prefers-reduced-motion: reduce) {
   .transition-base {
     transition-duration: 0.01ms;
   }
 
+  /* Entrance animations — instant resolve */
   .fade-in,
   .page-enter,
   .stagger-item,
@@ -136,16 +140,19 @@
     transform: none !important;
   }
 
+  /* Shell sidebar collapse */
   .sidebar-group-items {
     transition-duration: 0.01ms;
   }
 
+  /* Focus ring animations */
   .mc-list-item:focus-visible,
   .mc-rail-item:focus-visible,
   .mc-button:focus-visible {
     animation-duration: 0.01ms !important;
   }
 
+  /* Kanban board */
   .kanban-column.stagger-item,
   .kanban-card.stagger-item {
     animation-duration: 0.01ms;
@@ -159,14 +166,12 @@
     animation-duration: 0.01ms;
   }
 
+  /* Queue page kanban — preserve dragging feedback */
   .queue-page .kanban-card {
     transition: none;
   }
 
-  .queue-page .kanban-card:hover {
-    transform: none;
-  }
-
+  .queue-page .kanban-card:hover,
   .queue-page .kanban-card:active {
     transform: none;
   }
@@ -181,6 +186,7 @@
     transform: scale(0.96);
   }
 
+  /* Interactive components — near-instant transitions */
   .mc-button,
   .mc-input,
   .mc-select,
@@ -204,19 +210,29 @@
     transition-duration: 0.01ms;
   }
 
+  /* Overlays */
   .toast,
   .drawer {
     animation-duration: 0.01ms !important;
   }
 
+  /* Skeleton variants */
   .skeleton-line,
   .skeleton-block {
     animation: none !important;
     opacity: 0.6;
   }
 
+  /* Status pseudo-element pulses */
   .is-status-running::before,
   .is-status-claimed::before {
     animation: none !important;
+  }
+
+  /* Mobile backdrop */
+  .shell-sidebar-backdrop {
+    animation: none !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
