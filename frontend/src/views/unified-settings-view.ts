@@ -88,6 +88,12 @@ export function createUnifiedSettingsPage(): HTMLElement {
   const state = getCachedState();
   const requested = readRequestedSection();
 
+  // The credentials section is only rendered in advanced (Power User) mode.
+  // Auto-switch when navigating directly to #credentials so the section is visible.
+  if (requested.section === "credentials" && state.generalState.mode !== "advanced") {
+    state.generalState.mode = "advanced";
+  }
+
   if (requested.shouldReplace && requested.section) {
     window.history.replaceState({}, "", settingsPathForSection(requested.section));
   }
