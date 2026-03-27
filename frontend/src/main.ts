@@ -28,6 +28,7 @@ import { initKeyboard } from "./ui/keyboard";
 import { getRouteAnnouncer, initShell } from "./ui/shell";
 import { initSidebar } from "./ui/sidebar";
 import { initTheme } from "./ui/theme";
+import { deduplicatedToast } from "./utils/toast-events.js";
 
 let lastIssueContextId: string | null = null;
 
@@ -171,4 +172,24 @@ api
 window.addEventListener("setup:complete", () => {
   setupComplete = true;
   router.setGuard(() => null);
+});
+
+// ── SSE system event toast notifications ──────────────────────────────
+
+window.addEventListener("symphony:worker-failed", (event) => {
+  const detail = (event as CustomEvent<{ error?: string; identifier?: string }>).detail;
+  const message = detail?.error ?? "A worker process failed";
+  deduplicatedToast(`Worker failed: ${message}`, "error");
+});
+
+window.addEventListener("symphony:system-error", (event) => {
+  const detail = (event as CustomEvent<{ message?: string }>).detail;
+  const message = detail?.message ?? "An unexpected system error occurred";
+  deduplicatedToast(`System error: ${message}`, "error");
+});
+
+window.addEventListener("symphony:model-updated", (event) => {
+  const detail = (event as CustomEvent<{ identifier?: string; model?: string }>).detail;
+  const identifier = detail?.identifier ?? "unknown";
+  deduplicatedToast(`Model updated for ${identifier}`, "info");
 });
