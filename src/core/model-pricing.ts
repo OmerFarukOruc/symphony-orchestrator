@@ -27,10 +27,12 @@ const PRICES: Record<string, ModelPrice> = {
   "claude-haiku-4-5": { inputUsd: 0.8, outputUsd: 4.0 },
 };
 
-/**
- * Returns the USD-per-1M-token price for a given model name.
- * Returns `null` if the model is not in the pricing table.
- */
+/** Returns the USD-per-1M-token price for a given model name, or `null` if unknown. */
 export function lookupModelPrice(model: string): ModelPrice | null {
   return PRICES[model] ?? null;
+}
+
+/** Returns all model IDs present in the pricing table. */
+export function getAvailableModelIds(): string[] {
+  return Object.keys(PRICES);
 }

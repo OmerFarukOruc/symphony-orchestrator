@@ -8,6 +8,7 @@ import { registerConfigApi } from "../config/api.js";
 import type { ConfigOverlayStore } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
+import { fetchCodexModels } from "../codex/model-list.js";
 import type { SymphonyEventMap } from "../core/symphony-events.js";
 import type { RuntimeSnapshot } from "../core/types.js";
 import { globalMetrics } from "../observability/metrics.js";
@@ -120,6 +121,17 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
         methodNotAllowed(res);
       });
   }
+
+  app
+    .route("/api/v1/models")
+    .get(async (_req, res) => {
+      const apiKey = deps.secretsStore?.get("OPENAI_API_KEY") ?? undefined;
+      const models = await fetchCodexModels(apiKey);
+      res.json({ models });
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
 
   app
     .route("/api/v1/transitions")
