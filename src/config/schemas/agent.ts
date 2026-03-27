@@ -12,4 +12,5 @@ export const agentConfigSchema = z.object({
   maxContinuationAttempts: z.number().default(5),
   successState: z.string().nullable().default(null),
   stallTimeoutMs: z.number().default(1200000),
+  preflightCommands: z.array(z.string()).default([]),
 });

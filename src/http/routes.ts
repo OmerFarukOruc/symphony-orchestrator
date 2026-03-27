@@ -21,7 +21,7 @@ import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
 import { getOpenApiSpec } from "./openapi.js";
-import { modelUpdateSchema, transitionSchema } from "./request-schemas.js";
+import { modelUpdateSchema, steerSchema, transitionSchema } from "./request-schemas.js";
 import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
 import { createSSEHandler } from "./sse.js";
 import { getSwaggerHtml } from "./swagger-html.js";
@@ -122,6 +122,16 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
   }
 
   app
+    .route("/api/v1/models")
+    .get((_req, res) => {
+      const snapshot = deps.orchestrator.getSnapshot();
+      res.json({ models: snapshot.availableModels ?? null });
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
     .route("/api/v1/transitions")
     .get((req, res) => {
       handleGetTransitions({ orchestrator: deps.orchestrator, configStore: deps.configStore }, req, res);
@@ -212,6 +222,20 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
         req,
         res,
       );
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/:issue_identifier/steer")
+    .post(validateBody(steerSchema), async (req, res) => {
+      const result = await deps.orchestrator.steerIssue(req.params.issue_identifier, req.body.message);
+      if (!result) {
+        res.status(404).json({ error: { code: "not_found", message: "issue not running" } });
+        return;
+      }
+      res.json({ ok: result.ok, message: result.ok ? "steer sent" : "steer failed" });
     })
     .all((_req, res) => {
       methodNotAllowed(res);

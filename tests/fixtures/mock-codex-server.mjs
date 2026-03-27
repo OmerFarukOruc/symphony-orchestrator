@@ -164,6 +164,7 @@ async function onClientRequest(message) {
     case "turn/start":
       if (scenario === "user_input") {
         sendRequest("item/tool/requestUserInput", { prompt: "Need input" }).catch(() => undefined);
+        startSuccessTurnSequence(message.id);
         return;
       }
       if (scenario === "hang_turn") {

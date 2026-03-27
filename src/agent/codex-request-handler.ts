@@ -68,17 +68,21 @@ export async function handleCodexRequest(
     case "item/tool/call":
       return handleToolCall(asRecord(request.params), linearClient, githubToolClient);
     case "item/tool/requestUserInput":
-      return fatalResult(
-        "turn_input_required",
-        "codex requested interactive user input, which Symphony does not support",
-      );
+      return {
+        response: { result: null },
+        fatalFailure: null,
+      };
     case "mcpServer/elicitation/request":
       return fatalResult("startup_failed", "thread/start failed because a required MCP server did not initialize");
     case "account/chatgptAuthTokens/refresh":
+      return fatalResult("auth_token_expired", "ChatGPT auth token expired and Symphony cannot refresh it");
     case "applyPatchApproval":
     case "execCommandApproval":
       return fatalResult("startup_failed", `unsupported interactive request from codex: ${request.method}`);
     default:
-      return fatalResult("startup_failed", `unsupported codex request method: ${request.method}`);
+      return {
+        response: { error: { code: -32601, message: `unknown request method: ${request.method}` } },
+        fatalFailure: null,
+      };
   }
 }

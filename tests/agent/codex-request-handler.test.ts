@@ -150,13 +150,10 @@ describe("handleCodexRequest", () => {
   });
 
   describe("fatal failure classification", () => {
-    it("marks user input request as turn_input_required", async () => {
+    it("gracefully skips user input request without fatal failure", async () => {
       const result = await handleCodexRequest(makeRequest("item/tool/requestUserInput"), mockLinearClient());
-      expect(result.fatalFailure).toEqual({
-        code: "turn_input_required",
-        message: expect.stringContaining("interactive user input"),
-      });
-      expect(result.response).toBeUndefined();
+      expect(result.fatalFailure).toBeNull();
+      expect(result.response).toEqual({ result: null });
     });
 
     it("marks MCP elicitation as startup_failed", async () => {
@@ -167,11 +164,11 @@ describe("handleCodexRequest", () => {
       });
     });
 
-    it("marks chatgpt token refresh as startup_failed", async () => {
+    it("marks chatgpt token refresh as auth_token_expired", async () => {
       const result = await handleCodexRequest(makeRequest("account/chatgptAuthTokens/refresh"), mockLinearClient());
       expect(result.fatalFailure).toEqual({
-        code: "startup_failed",
-        message: expect.stringContaining("unsupported interactive request"),
+        code: "auth_token_expired",
+        message: expect.stringContaining("auth token expired"),
       });
     });
 
@@ -187,17 +184,19 @@ describe("handleCodexRequest", () => {
   });
 
   describe("unsupported method fallback", () => {
-    it("returns startup_failed for completely unknown methods", async () => {
+    it("returns non-fatal JSON-RPC method-not-found error for unknown methods", async () => {
       const result = await handleCodexRequest(makeRequest("some/totally/unknown/method"), mockLinearClient());
-      expect(result.fatalFailure).toEqual({
-        code: "startup_failed",
-        message: expect.stringContaining("unsupported codex request method"),
-      });
+      expect(result.fatalFailure).toBeNull();
+      const response = result.response as { error: { code: number; message: string } };
+      expect(response.error.code).toBe(-32601);
+      expect(response.error.message).toContain("unknown request method");
     });
 
-    it("includes the unknown method name in the error message", async () => {
+    it("includes the unknown method name in the error response", async () => {
       const result = await handleCodexRequest(makeRequest("custom/method"), mockLinearClient());
-      expect(result.fatalFailure?.message).toContain("custom/method");
+      expect(result.fatalFailure).toBeNull();
+      const response = result.response as { error: { code: number; message: string } };
+      expect(response.error.message).toContain("custom/method");
     });
   });
 });

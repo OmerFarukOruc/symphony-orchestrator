@@ -58,6 +58,7 @@ export interface DockerSession {
   getFatalFailure: () => { code: string; message: string } | null;
   inspectRunning: () => Promise<boolean | null>;
   cleanup: (config: ServiceConfig, signal: AbortSignal) => Promise<void>;
+  steerTurn: (message: string) => Promise<boolean>;
 }
 
 export async function createDockerSession(
@@ -161,10 +162,32 @@ function buildDockerSessionObject(
     getFatalFailure: () => fatalFailure,
     inspectRunning: helpers.inspectRunning,
     abortHandler: () => {
-      session.connection.close();
-      void stopContainer(containerName, 5);
+      void (async () => {
+        if (session.threadId && session.turnId) {
+          const interrupted = await session.connection.interruptTurn(session.threadId, session.turnId, 3000);
+          if (interrupted) {
+            // Allow time for turn/completed notification before hard kill
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }
+        session.connection.close();
+        void stopContainer(containerName, 5);
+      })();
     },
     statsInterval: null,
+    steerTurn: async (message: string): Promise<boolean> => {
+      if (!session.threadId || !session.turnId) return false;
+      try {
+        await session.connection.request("turn/steer", {
+          threadId: session.threadId,
+          turnId: session.turnId,
+          message,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
     cleanup: async (cfg: ServiceConfig, signal: AbortSignal) => {
       if (session.statsInterval) clearInterval(session.statsInterval);
       signal.removeEventListener("abort", session.abortHandler);
