@@ -22,6 +22,10 @@ interface SessionInitInput {
   signal: AbortSignal;
   onEvent: AgentRunnerEventHandler;
   startupTimeoutMs: number;
+  /** Thread ID from a previous attempt — enables thread/resume instead of thread/start. */
+  previousThreadId?: string | null;
+  /** When true and thread/resume succeeds, issue thread/rollback to undo the last bad turn. */
+  rollbackLastTurn?: boolean;
 }
 
 interface SessionInitSuccess {
@@ -92,7 +96,7 @@ export async function initializeSession(
     );
   }
 
-  const resolvedThreadId = await startThread(session, config, input);
+  const resolvedThreadId = await startThread(session, config, input, deps);
   session.threadId = resolvedThreadId;
 
   return renderPromptTemplate(liquid, input, resolvedThreadId, turnId, turnCount);
@@ -143,10 +147,41 @@ async function initCodexProtocol(
     deps.logger.warn({ error: toErrorString(error) }, "rate limit preflight unavailable");
   }
 
+  try {
+    await session.connection.request("configRequirements/read", {});
+  } catch {
+    // Older Codex versions may not support configRequirements — skip
+  }
+
   return null;
 }
 
-async function startThread(session: DockerSession, config: ServiceConfig, input: SessionInitInput): Promise<string> {
+async function startThread(
+  session: DockerSession,
+  config: ServiceConfig,
+  input: SessionInitInput,
+  deps: SessionInitDeps,
+): Promise<string> {
+  if (input.previousThreadId) {
+    try {
+      const resumeResult = await session.connection.request("thread/resume", {
+        threadId: input.previousThreadId,
+      });
+      const resumedId = extractThreadId(resumeResult);
+      if (resumedId) {
+        deps.logger.info({ threadId: resumedId }, "resumed previous thread");
+        if (input.rollbackLastTurn) {
+          await session.connection.request("thread/rollback", { threadId: resumedId }).catch(() => {
+            deps.logger.info({ threadId: resumedId }, "thread/rollback failed — continuing with resumed thread");
+          });
+        }
+        return resumedId;
+      }
+    } catch {
+      deps.logger.info({ previousThreadId: input.previousThreadId }, "thread/resume failed — starting fresh thread");
+    }
+  }
+
   const threadResult = await session.connection.request("thread/start", {
     cwd: input.workspace.path,
     model: input.modelSelection.model,

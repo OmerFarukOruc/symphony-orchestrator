@@ -109,7 +109,7 @@ async function dispatchPostReconciliation(
       return;
     case "compact_and_retry":
     case "default":
-      handleErrorRetry(ctx, outcome, latestIssue, attempt);
+      handleErrorRetry(ctx, outcome, latestIssue, attempt, entry);
       return;
   }
 }

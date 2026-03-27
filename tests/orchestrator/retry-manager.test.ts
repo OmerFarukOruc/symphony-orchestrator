@@ -133,6 +133,44 @@ describe("queueRetry", () => {
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_retry" }));
   });
 
+  it("stores threadId in retry entry when metadata is provided", () => {
+    vi.useFakeTimers();
+    const retryEntries = new Map<string, RetryRuntimeEntry>();
+    const ctx = {
+      isRunning: () => true,
+      claimIssue: vi.fn(),
+      retryEntries,
+      detailViews: new Map(),
+      notify: vi.fn(),
+      revalidateAndLaunchRetry: vi.fn().mockResolvedValue(undefined),
+      handleRetryLaunchFailure: vi.fn().mockResolvedValue(undefined),
+    };
+
+    queueRetry(ctx, makeIssue(), 2, 5000, "turn_failed", { threadId: "prev-thread-1" });
+
+    const entry = retryEntries.get("issue-1")!;
+    expect(entry.threadId).toBe("prev-thread-1");
+  });
+
+  it("stores null threadId when no metadata is provided", () => {
+    vi.useFakeTimers();
+    const retryEntries = new Map<string, RetryRuntimeEntry>();
+    const ctx = {
+      isRunning: () => true,
+      claimIssue: vi.fn(),
+      retryEntries,
+      detailViews: new Map(),
+      notify: vi.fn(),
+      revalidateAndLaunchRetry: vi.fn().mockResolvedValue(undefined),
+      handleRetryLaunchFailure: vi.fn().mockResolvedValue(undefined),
+    };
+
+    queueRetry(ctx, makeIssue(), 2, 5000, "turn_failed");
+
+    const entry = retryEntries.get("issue-1")!;
+    expect(entry.threadId).toBeNull();
+  });
+
   it("replaces an existing timer when re-queuing for the same issue", () => {
     vi.useFakeTimers();
     const fired: number[] = [];

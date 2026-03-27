@@ -120,6 +120,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
         .mockResolvedValueOnce({ models: [{ id: "gpt-5.4" }] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-abc" }); // thread/start
 
@@ -239,6 +240,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({}) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
         .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-1" }); // thread/start
 
@@ -269,6 +271,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({}) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
         .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-2" }); // thread/start
 
@@ -299,6 +302,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockRejectedValueOnce(new Error("rate limit unavailable")) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
         .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-3" }); // thread/start
 
@@ -322,6 +326,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-init" }); // thread/start
 
@@ -355,6 +360,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-svc" }); // thread/start
 
@@ -363,7 +369,7 @@ describe("initializeSession", () => {
 
       await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
 
-      const threadCall = session.connection.request.mock.calls[4];
+      const threadCall = session.connection.request.mock.calls[5];
       expect(threadCall[0]).toBe("thread/start");
       expect(threadCall[1]).toMatchObject({ serviceName: "symphony" });
     });
@@ -374,6 +380,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-p" }); // thread/start
 
@@ -390,7 +397,7 @@ describe("initializeSession", () => {
 
       await initializeSession(session, config, input, deps, liquid);
 
-      const threadCall = session.connection.request.mock.calls[4];
+      const threadCall = session.connection.request.mock.calls[5];
       expect(threadCall[0]).toBe("thread/start");
       expect(threadCall[1]).toMatchObject({ personality: "concise" });
     });
@@ -403,6 +410,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({}) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
         .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({}); // thread/start -- no threadId
 
@@ -412,6 +420,158 @@ describe("initializeSession", () => {
       await expect(initializeSession(session, makeMinimalConfig(), input, deps, liquid)).rejects.toThrow(
         "thread/start did not return a thread identifier",
       );
+    });
+  });
+
+  describe("thread/resume", () => {
+    it("resumes previous thread when previousThreadId is provided", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce(null) // model/list
+        .mockResolvedValueOnce({ threadId: "resumed-thread-1" }); // thread/resume
+
+      const liquid = makeLiquid({ render: async () => "prompt" });
+      const input = makeInput({ previousThreadId: "old-thread-1" });
+
+      const result = await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
+
+      expect(result).toEqual({ threadId: "resumed-thread-1", prompt: "prompt" });
+      expect(session.threadId).toBe("resumed-thread-1");
+      expect(session.connection.request).toHaveBeenCalledWith("thread/resume", { threadId: "old-thread-1" });
+    });
+
+    it("falls back to thread/start when thread/resume fails", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce(null) // model/list
+        .mockRejectedValueOnce(new Error("resume not supported")) // thread/resume
+        .mockResolvedValueOnce({ threadId: "fresh-thread-1" }); // thread/start fallback
+
+      const liquid = makeLiquid({ render: async () => "prompt" });
+      const input = makeInput({ previousThreadId: "old-thread-1" });
+
+      const result = await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
+
+      expect(result).toEqual({ threadId: "fresh-thread-1", prompt: "prompt" });
+      expect(session.threadId).toBe("fresh-thread-1");
+      expect(logger.info).toHaveBeenCalledWith(
+        { previousThreadId: "old-thread-1" },
+        "thread/resume failed — starting fresh thread",
+      );
+    });
+
+    it("skips thread/resume and goes to thread/start when no previousThreadId", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce(null) // model/list
+        .mockResolvedValueOnce({ threadId: "thread-fresh" }); // thread/start
+
+      const liquid = makeLiquid({ render: async () => "prompt" });
+      const input = makeInput(); // no previousThreadId
+
+      const result = await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
+
+      expect(result).toEqual({ threadId: "thread-fresh", prompt: "prompt" });
+      // Verify thread/resume was never called
+      const requestCalls = session.connection.request.mock.calls;
+      const resumeCall = requestCalls.find(([method]: [string]) => method === "thread/resume");
+      expect(resumeCall).toBeUndefined();
+    });
+
+    it("calls thread/rollback after successful resume when rollbackLastTurn is true", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce(null) // model/list
+        .mockResolvedValueOnce({ threadId: "resumed-thread-2" }) // thread/resume
+        .mockResolvedValueOnce({}); // thread/rollback
+
+      const liquid = makeLiquid({ render: async () => "prompt" });
+      const input = makeInput({ previousThreadId: "old-thread-2", rollbackLastTurn: true });
+
+      const result = await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
+
+      expect(result).toEqual({ threadId: "resumed-thread-2", prompt: "prompt" });
+      expect(session.connection.request).toHaveBeenCalledWith("thread/rollback", {
+        threadId: "resumed-thread-2",
+      });
+    });
+
+    it("continues when thread/rollback fails after resume", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce(null) // model/list
+        .mockResolvedValueOnce({ threadId: "resumed-thread-3" }) // thread/resume
+        .mockRejectedValueOnce(new Error("rollback unsupported")); // thread/rollback fails
+
+      const liquid = makeLiquid({ render: async () => "prompt" });
+      const input = makeInput({ previousThreadId: "old-thread-3", rollbackLastTurn: true });
+
+      const result = await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
+
+      expect(result).toEqual({ threadId: "resumed-thread-3", prompt: "prompt" });
+      expect(logger.info).toHaveBeenCalledWith(
+        { threadId: "resumed-thread-3" },
+        "thread/rollback failed — continuing with resumed thread",
+      );
+    });
+  });
+
+  describe("configRequirements/read", () => {
+    it("calls configRequirements/read after rate limits and continues on success", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({ requirements: [] }) // configRequirements/read
+        .mockResolvedValueOnce(null) // model/list
+        .mockResolvedValueOnce({ threadId: "thread-cr-1" }); // thread/start
+
+      const liquid = makeLiquid({ render: async () => "prompt" });
+      const input = makeInput();
+
+      const result = await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
+
+      expect(result).toEqual({ threadId: "thread-cr-1", prompt: "prompt" });
+      expect(session.connection.request).toHaveBeenCalledWith("configRequirements/read", {});
+    });
+
+    it("continues silently when configRequirements/read fails", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockRejectedValueOnce(new Error("not supported")) // configRequirements/read
+        .mockResolvedValueOnce(null) // model/list
+        .mockResolvedValueOnce({ threadId: "thread-cr-2" }); // thread/start
+
+      const liquid = makeLiquid({ render: async () => "prompt" });
+      const input = makeInput();
+
+      const result = await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
+
+      expect(result).toEqual({ threadId: "thread-cr-2", prompt: "prompt" });
     });
   });
 });

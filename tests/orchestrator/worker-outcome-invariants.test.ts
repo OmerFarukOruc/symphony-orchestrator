@@ -176,6 +176,7 @@ describe("worker-outcome branch invariants", () => {
       2,
       1000,
       "continuation",
+      { threadId: "sess-xyz" },
     );
   });
 

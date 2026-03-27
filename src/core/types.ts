@@ -50,6 +50,8 @@ export interface RetryEntry {
   dueAtMs: number;
   error: string | null;
   timer: NodeJS.Timeout | null;
+  /** Thread ID from the previous attempt — enables thread/resume on retry. */
+  threadId?: string | null;
 }
 
 export interface RecentEvent {

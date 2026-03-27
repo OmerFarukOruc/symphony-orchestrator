@@ -11,9 +11,10 @@ function queueRetryWithLog(
   attempt: number | null,
   delayMs: number,
   reason: string,
+  metadata?: { threadId?: string | null },
 ): void {
   const nextAttempt = (attempt ?? 0) + 1;
-  ctx.queueRetry(issue, nextAttempt, delayMs, reason);
+  ctx.queueRetry(issue, nextAttempt, delayMs, reason, metadata);
   ctx.deps.logger.info(
     { issue_id: issue.id, issue_identifier: issue.identifier, attempt: nextAttempt, delay_ms: delayMs, reason },
     "worker retry queued",
@@ -22,13 +23,13 @@ function queueRetryWithLog(
 
 export function handleContinuationRetry(
   ctx: OutcomeContext,
-  _entry: RunningEntry,
+  entry: RunningEntry,
   latestIssue: Issue,
   _workspace: Workspace,
   _modelSelection: ModelSelection,
   attempt: number | null,
 ): void {
-  queueRetryWithLog(ctx, latestIssue, attempt, 1000, "continuation");
+  queueRetryWithLog(ctx, latestIssue, attempt, 1000, "continuation", { threadId: entry.sessionId });
 }
 
 export async function handleContinuationExhausted(
@@ -71,10 +72,13 @@ export function handleErrorRetry(
   outcome: RunOutcome,
   latestIssue: Issue,
   attempt: number | null,
+  entry?: RunningEntry,
 ): void {
   const nextAttempt = (attempt ?? 0) + 1;
   const delayMs = Math.min(10_000 * 2 ** Math.max(0, nextAttempt - 1), ctx.getConfig().agent.maxRetryBackoffMs);
-  queueRetryWithLog(ctx, latestIssue, attempt, delayMs, outcome.errorCode ?? "turn_failed");
+  queueRetryWithLog(ctx, latestIssue, attempt, delayMs, outcome.errorCode ?? "turn_failed", {
+    threadId: entry?.sessionId ?? outcome.threadId,
+  });
 }
 
 export function handleModelOverrideRetry(ctx: OutcomeContext, latestIssue: Issue, attempt: number | null): void {

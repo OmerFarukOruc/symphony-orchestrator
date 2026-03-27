@@ -58,7 +58,11 @@ export async function launchAvailableWorkers(ctx: {
   claimIssue: (issueId: string) => void;
   canDispatchIssue: (issue: Issue) => boolean;
   hasAvailableStateSlot: (issue: Issue, pendingStateCounts?: Map<string, number>) => boolean;
-  launchWorker: (issue: Issue, attempt: number | null, options?: { claimHeld?: boolean }) => Promise<void>;
+  launchWorker: (
+    issue: Issue,
+    attempt: number | null,
+    options?: { claimHeld?: boolean; previousThreadId?: string | null },
+  ) => Promise<void>;
 }): Promise<void> {
   const config = ctx.getConfig();
   const availableSlots = config.agent.maxConcurrentAgents - ctx.runningEntries.size;
@@ -274,7 +278,7 @@ export async function launchWorker(
   ctx: LaunchContext,
   issue: Issue,
   attempt: number | null,
-  options?: { claimHeld?: boolean },
+  options?: { claimHeld?: boolean; previousThreadId?: string | null },
 ): Promise<void> {
   if (!options?.claimHeld) {
     ctx.claimIssue(issue.id);
@@ -320,6 +324,7 @@ export async function launchWorker(
     workspace,
     signal: entry.abortController.signal,
     onEvent: buildOnEventHandler(ctx, entry),
+    previousThreadId: options?.previousThreadId ?? null,
     onSteerReady: (steerFn) => {
       entry.steerTurn = steerFn;
     },
