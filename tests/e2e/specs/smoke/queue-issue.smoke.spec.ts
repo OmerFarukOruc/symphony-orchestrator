@@ -1,6 +1,7 @@
 import { test, expect } from "../../fixtures/test";
 import { QueuePage } from "../../pages/queue.page";
 import { AppShellPage } from "../../pages/app-shell.page";
+import { freezeClock } from "../../support/clock";
 
 test.describe("Queue / Issue Smoke", () => {
   test.beforeEach(async ({ apiMock }) => {
@@ -32,6 +33,15 @@ test.describe("Queue / Issue Smoke", () => {
     // Mock provides SYM-42 (running), SYM-43 (queued), SYM-41 (completed)
     await expect(page.getByText("SYM-42")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("SYM-43")).toBeVisible({ timeout: 5000 });
+  });
+
+  test("issue card footer separates token usage from relative time", async ({ page }) => {
+    await freezeClock(page);
+
+    const queue = new QueuePage(page);
+    await queue.navigate();
+
+    await expect(queue.issueCardByIdentifier("SYM-42")).toContainText(/8k tokens\s+just now/);
   });
 
   test("clicking issue card navigates to issue detail", async ({ page }) => {

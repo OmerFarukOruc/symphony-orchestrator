@@ -14,6 +14,7 @@ export function buildOutcomeView(
     message?: string | null;
   },
 ): ReturnType<typeof issueView> {
+  const lastEventIso = new Date(entry.lastEventAtMs).toISOString();
   return issueView(issue, {
     workspaceKey: workspace.workspaceKey,
     workspacePath: workspace.path,
@@ -22,6 +23,8 @@ export function buildOutcomeView(
     error: overrides.error,
     message: overrides.message,
     startedAt: new Date(entry.startedAtMs).toISOString(),
+    updatedAt: lastEventIso,
+    lastEventAt: lastEventIso,
     tokenUsage: entry.tokenUsage,
     configuredModel: configuredSelection.model,
     configuredReasoningEffort: configuredSelection.reasoningEffort,

@@ -63,14 +63,26 @@ export class HttpServer {
     if (this.server) {
       throw new Error("http server already started");
     }
+    const host = process.env.SYMPHONY_BIND ?? "127.0.0.1";
     let startedServer: http.Server | null = null;
     await new Promise<void>((resolve, reject) => {
-      const host = process.env.SYMPHONY_BIND ?? "127.0.0.1";
       const server = this.app.listen(port, host, () => {
         startedServer = server;
         resolve();
       });
-      server.on("error", reject);
+      server.on("error", (error: NodeJS.ErrnoException) => {
+        if (error.code === "EADDRINUSE") {
+          reject(
+            new Error(
+              `Port ${port} is already in use on ${host}. ` +
+                `Another Symphony instance (or another process) is likely still running. ` +
+                `Kill it first or use a different port with --port.`,
+            ),
+          );
+          return;
+        }
+        reject(error);
+      });
     });
     this.server = startedServer;
     if (startedServer) {

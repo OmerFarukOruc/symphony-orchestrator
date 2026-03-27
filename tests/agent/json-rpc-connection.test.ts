@@ -128,14 +128,14 @@ describe("JsonRpcConnection", () => {
       expect(await promise).toBe("ok");
     });
 
-    it("logs error for invalid JSON and does not crash", () => {
+    it("logs warning for invalid JSON and does not crash", () => {
       const mock = makeMockChild();
       createConnection(mock);
 
       mock.sendRaw("this-is-not-json\n");
-      expect(logger.error).toHaveBeenCalledWith(
+      expect(logger.warn).toHaveBeenCalledWith(
         expect.objectContaining({ line: "this-is-not-json" }),
-        expect.stringContaining("invalid json"),
+        expect.stringContaining("non-JSON line"),
       );
     });
   });

@@ -32,6 +32,9 @@ docs/archive/dogfood-output/
 .env
 .env.*
 
+# Superset local overrides
+.superset/config.local.json
+
 # Personal Claude preferences
 CLAUDE.local.md
 # CocoIndex Code (ccc)

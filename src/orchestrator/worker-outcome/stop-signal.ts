@@ -62,6 +62,11 @@ export async function handleStopSignal(
     attempt,
     metadata: { workspace: workspace.path, pullRequestUrl },
   });
+  ctx.deps.eventBus?.emit("issue.completed", {
+    issueId: issue.id,
+    identifier: issue.identifier,
+    outcome: isBlocked ? "paused" : "completed",
+  });
   // DONE keeps the claim sticky until terminal; BLOCKED releases it for a later retry.
   if (isBlocked) {
     ctx.releaseIssueClaim(issue.id);

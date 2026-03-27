@@ -141,11 +141,16 @@ export class JsonRpcConnection {
   }
 
   private onLine(line: string): void {
+    if (line.startsWith("symphony:")) {
+      this.logger.debug({ line }, "container sentinel");
+      return;
+    }
+
     let parsed: unknown;
     try {
       parsed = JSON.parse(line);
     } catch (error) {
-      this.logger.error({ line, error: toErrorString(error) }, "invalid json from codex");
+      this.logger.warn({ line, error: toErrorString(error) }, "non-JSON line from codex");
       return;
     }
 

@@ -88,6 +88,7 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
         },
         logger: { warn: (...args) => deps.logger.warn(...args) },
       }),
+    eventBus: deps.eventBus,
   };
 }
 
@@ -137,6 +138,16 @@ function emitLifecycleEvent(deps: OrchestratorDeps, event: RuntimeEventRecord): 
     deps.eventBus?.emit("worker.failed", { issueId, identifier, error: event.message });
   } else if (event.event === "issue_queued") {
     deps.eventBus?.emit("issue.queued", { issueId, identifier });
+  } else if (
+    event.event === "workspace_preparing" ||
+    event.event === "workspace_ready" ||
+    event.event === "workspace_failed"
+  ) {
+    deps.eventBus?.emit("workspace.event", {
+      issueId,
+      identifier,
+      status: event.event.replaceAll("workspace_", ""),
+    });
   }
 }
 
@@ -218,11 +229,6 @@ async function handleWorkerPromise(
     .then(async (outcome) => {
       await handleWorkerOutcome(buildCtx(state, deps), outcome, entry, workerIssue, workspace, workerAttempt);
       globalMetrics.agentRunsTotal.increment({ outcome: outcome.kind });
-      deps.eventBus?.emit("issue.completed", {
-        issueId: workerIssue.id,
-        identifier: workerIssue.identifier,
-        outcome: outcome.kind,
-      });
     })
     .catch(async (error) => {
       await handleWorkerFailure(buildCtx(state, deps), workerIssue, entry, error);

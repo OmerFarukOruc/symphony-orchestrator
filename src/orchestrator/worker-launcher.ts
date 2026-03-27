@@ -15,8 +15,6 @@ import type {
   Workspace,
 } from "../core/types.js";
 import type { OrchestratorDeps, RunningEntry } from "./runtime-types.js";
-import type { TypedEventBus } from "../core/event-bus.js";
-import type { SymphonyEventMap } from "../core/symphony-events.js";
 import { toErrorString } from "../utils/type-guards.js";
 
 export function canDispatchIssue(issue: Issue, config: ServiceConfig, claimedIssueIds: Set<string>): boolean {
@@ -95,7 +93,7 @@ type LaunchContext = {
   deps: Pick<
     OrchestratorDeps,
     "agentRunner" | "attemptStore" | "configStore" | "workspaceManager" | "repoRouter" | "gitManager" | "logger"
-  > & { eventBus?: TypedEventBus<SymphonyEventMap> };
+  >;
   runningEntries: Map<string, RunningEntry>;
   completedViews: Map<string, ReturnType<typeof issueView>>;
   detailViews: Map<string, ReturnType<typeof issueView>>;
@@ -309,11 +307,6 @@ export async function launchWorker(
     }),
   );
   emitLaunchNotifications(ctx, issue, workspace, attempt, modelSelection);
-  ctx.deps.eventBus?.emit("issue.started", {
-    issueId: issue.id,
-    identifier: issue.identifier,
-    attempt,
-  });
 
   const workflow = ctx.deps.configStore.getWorkflow();
   const promise = ctx.deps.agentRunner.runAttempt({

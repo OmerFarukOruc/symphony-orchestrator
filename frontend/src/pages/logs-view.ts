@@ -6,6 +6,7 @@ import type { RecentEvent } from "../types";
 import { loadArchiveLogs, loadLiveLogs } from "./logs-data";
 import { stringifyPayload } from "../utils/events";
 import { createIconButton } from "../ui/buttons.js";
+import { createIcon } from "../ui/icons.js";
 import { subscribeIssueLifecycle } from "../state/event-source.js";
 
 type Mode = "live" | "archive";
@@ -59,9 +60,11 @@ export function createLogsPage(id: string): HTMLElement {
   const expandToggle = makeIconBtn("unfold", "Expand payloads");
   const densityToggle = makeIconBtn("dense", "Compact");
 
+  const copyAllBtn = makeIconBtn("copy", "Copy all logs");
+
   const viewActions = document.createElement("div");
   viewActions.className = "logs-view-actions";
-  viewActions.append(densityToggle, autoToggle, expandToggle);
+  viewActions.append(densityToggle, autoToggle, expandToggle, copyAllBtn);
   controls.append(typeBar, search, viewActions);
 
   // ── Log scroll area ───────────────────────────────────────────────────────
@@ -255,6 +258,26 @@ export function createLogsPage(id: string): HTMLElement {
       }
     }
     render();
+  });
+  copyAllBtn.addEventListener("click", () => {
+    const events = filtered();
+    if (events.length === 0) return;
+    const lines = events.map((event) => {
+      const payload = stringifyPayload(event.content);
+      const header = `[${event.at}] [${event.event}] ${event.message}`;
+      return payload ? `${header}\n${payload}` : header;
+    });
+    const text = lines.join("\n\n");
+    navigator.clipboard.writeText(text).then(
+      () => {
+        copyAllBtn.textContent = "✓";
+        setTimeout(() => {
+          copyAllBtn.textContent = "";
+          copyAllBtn.append(createIcon("copy", { size: 15 }));
+        }, 1200);
+      },
+      () => undefined,
+    );
   });
   search.addEventListener("input", () => {
     searchText = search.value;

@@ -119,4 +119,32 @@ describe("buildOutcomeView", () => {
     expect(view.error).toBeUndefined();
     expect(view.message).toBeUndefined();
   });
+
+  it("sets updatedAt and lastEventAt from entry.lastEventAtMs", () => {
+    const lastEventAtMs = new Date("2026-03-15T12:30:00Z").getTime();
+    const entry = makeEntry({ lastEventAtMs });
+    const view = buildOutcomeView(makeIssue(), makeWorkspace(), entry, makeModelSelection(), {
+      status: "completed",
+    });
+    expect(view.updatedAt).toBe("2026-03-15T12:30:00.000Z");
+    expect(view.lastEventAt).toBe("2026-03-15T12:30:00.000Z");
+  });
+
+  it("sets startedAt from entry.startedAtMs", () => {
+    const startedAtMs = new Date("2026-03-15T10:00:00Z").getTime();
+    const entry = makeEntry({ startedAtMs });
+    const view = buildOutcomeView(makeIssue(), makeWorkspace(), entry, makeModelSelection(), {
+      status: "completed",
+    });
+    expect(view.startedAt).toBe("2026-03-15T10:00:00.000Z");
+  });
+
+  it("preserves entry tokenUsage in the outcome view", () => {
+    const tokenUsage = { inputTokens: 300_000, outputTokens: 200_000, totalTokens: 500_000 };
+    const entry = makeEntry({ tokenUsage });
+    const view = buildOutcomeView(makeIssue(), makeWorkspace(), entry, makeModelSelection(), {
+      status: "cancelled",
+    });
+    expect(view.tokenUsage).toEqual(tokenUsage);
+  });
 });

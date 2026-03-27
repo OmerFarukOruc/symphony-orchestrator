@@ -63,6 +63,7 @@ async function del(path: string): Promise<void> {
 }
 
 export const api = {
+  getModels: () => get<{ models: Array<{ id: string; displayName: string; isDefault: boolean }> }>("/api/v1/models"),
   getState: () => get<RuntimeSnapshot>("/api/v1/state"),
   getRuntime: () => get<RuntimeInfo>("/api/v1/runtime"),
   getIssue: (id: string) => {

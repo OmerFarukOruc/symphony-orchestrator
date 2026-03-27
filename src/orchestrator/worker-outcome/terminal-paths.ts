@@ -33,6 +33,11 @@ export function handleServiceStopped(
       message: outcome.errorMessage ?? "service stopped before the worker completed",
     }),
   );
+  ctx.deps.eventBus?.emit("issue.completed", {
+    issueId: issue.id,
+    identifier: issue.identifier,
+    outcome: "cancelled",
+  });
 }
 
 export async function handleTerminalCleanup(
@@ -59,6 +64,11 @@ export async function handleTerminalCleanup(
       message: "workspace cleaned after terminal state",
     }),
   );
+  ctx.deps.eventBus?.emit("issue.completed", {
+    issueId: issue.id,
+    identifier: issue.identifier,
+    outcome: outcomeToStatus(outcome.kind),
+  });
   ctx.releaseIssueClaim(issue.id);
 }
 
@@ -78,6 +88,11 @@ export function handleInactiveIssue(
       message: "issue is no longer active",
     }),
   );
+  ctx.deps.eventBus?.emit("issue.completed", {
+    issueId: issue.id,
+    identifier: issue.identifier,
+    outcome: "paused",
+  });
   ctx.releaseIssueClaim(issue.id);
 }
 
@@ -108,6 +123,11 @@ export function handleOperatorAbort(
       message: outcome.errorMessage ?? "worker cancelled by operator request",
     }),
   );
+  ctx.deps.eventBus?.emit("issue.completed", {
+    issueId: issue.id,
+    identifier: issue.identifier,
+    outcome: "cancelled",
+  });
 }
 
 export function handleCancelledOrHardFailure(
@@ -137,5 +157,10 @@ export function handleCancelledOrHardFailure(
       message: outcome.errorMessage ?? "worker stopped without a retry",
     }),
   );
+  ctx.deps.eventBus?.emit("issue.completed", {
+    issueId: issue.id,
+    identifier: issue.identifier,
+    outcome: outcome.kind === "cancelled" ? "cancelled" : "failed",
+  });
   ctx.releaseIssueClaim(issue.id);
 }

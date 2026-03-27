@@ -31,7 +31,7 @@ export class QueuePage extends BasePage {
   // ── Issue Cards ──────────────────────────────────────────────────────
 
   get issueCards(): Locator {
-    return this.page.locator(".kanban-card, .issue-card, [class*='kanban-card']");
+    return this.page.locator("button.kanban-card, button.issue-card");
   }
 
   issueCardByIdentifier(identifier: string): Locator {

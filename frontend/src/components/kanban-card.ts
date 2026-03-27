@@ -73,7 +73,7 @@ export function createKanbanCard(options: KanbanCardOptions): KanbanCardHandle {
   const hint = document.createElement("span");
   hint.className = "kanban-card-hint";
   hint.textContent = "↵ open · ⇧↵ full";
-  footerMeta.append(tokens, updated);
+  footerMeta.append(tokens, document.createTextNode(" "), updated);
   footer.append(footerMeta, hint);
 
   card.append(identifier, title, desc, labelsRow, meta, retry, lifecycle, footer);

@@ -5,7 +5,7 @@ import { router } from "../router";
 import { statusChip } from "../ui/status-chip";
 import { toast } from "../ui/toast";
 import { createAttemptsTable } from "./attempts-table";
-import { createButton, createField, createSelectControl, createTextInput } from "./forms.js";
+import { createButton, createField, createSelectControl } from "./forms.js";
 import { createEventRow } from "./event-row";
 import { createEmptyState } from "./empty-state";
 import {
@@ -90,11 +90,22 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
 
   const form = document.createElement("form");
   form.className = "issue-form-grid";
-  const modelInput = createTextInput({
-    className: "mc-input",
-    value: detail.configuredModel ?? detail.model ?? "",
-    placeholder: "gpt-5.4",
+  const currentModel = detail.configuredModel ?? detail.model ?? "gpt-5.4";
+  const modelSelect = createSelectControl({
+    options: [{ value: currentModel, label: currentModel }],
+    value: currentModel,
     required: true,
+  });
+  api.getModels().then(({ models }) => {
+    const selected = modelSelect.value;
+    modelSelect.replaceChildren();
+    for (const { id, displayName } of models) {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = displayName;
+      opt.selected = id === selected;
+      modelSelect.append(opt);
+    }
   });
   const effortSelect = createSelectControl({
     options: REASONING_EFFORT_OPTIONS.map((value) => ({
@@ -105,7 +116,7 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
   });
   const save = createButton("Save", "ghost", "submit");
   form.append(
-    createField({ label: "Model", hint: "Applied on the next attempt.", required: true }, modelInput),
+    createField({ label: "Model", hint: "Applied on the next attempt.", required: true }, modelSelect),
     createField({ label: "Reasoning effort", hint: "Leave blank to follow the active issue default." }, effortSelect),
     save,
   );
@@ -113,7 +124,7 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
     event.preventDefault();
     try {
       await api.postModelOverride(detail.identifier, {
-        model: modelInput.value.trim() || detail.model || "gpt-5.4",
+        model: modelSelect.value || detail.model || "gpt-5.4",
         reasoningEffort: effortSelect.value,
       });
       toast("Model override saved for next run.", "success");

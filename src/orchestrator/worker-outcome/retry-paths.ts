@@ -59,6 +59,11 @@ export async function handleContinuationExhausted(
       message,
     }),
   );
+  ctx.deps.eventBus?.emit("issue.completed", {
+    issueId: latestIssue.id,
+    identifier: latestIssue.identifier,
+    outcome: "failed",
+  });
   ctx.releaseIssueClaim(latestIssue.id);
   await ctx.deps.attemptStore.updateAttempt(entry.runId, {
     status: "failed",

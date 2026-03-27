@@ -83,7 +83,7 @@ export function openConfirmModal(options: ConfirmModalOptions): () => void {
 
   const panel = overlay.render(content);
   overlayRoot = panel.parentElement;
-  const titleId = `confirm-modal-title-${Math.random().toString(36).slice(2)}`;
+  const titleId = `confirm-modal-title-${crypto.randomUUID().slice(0, 8)}`;
   title.id = titleId;
   panel.setAttribute("aria-labelledby", titleId);
 
@@ -126,6 +126,8 @@ export function openConfirmModal(options: ConfirmModalOptions): () => void {
       if (result === false) {
         return;
       }
+      // Clear pending before close so the onClose callback doesn't block dismissal
+      pending = false;
       close("confirm");
     } catch (error) {
       console.error("Confirm modal action failed:", error);
@@ -149,4 +151,3 @@ function confirmButtonClass(variant: ConfirmModalVariant): string {
   const variantClass = variant === "primary" ? "is-primary" : `confirm-modal-button--${variant}`;
   return `mc-button ${variantClass}`;
 }
-
