@@ -182,6 +182,7 @@ function deriveCodexConfig(
     reasoningEffort: asReasoningEffort(codex.reasoning_effort, "high"),
     approvalPolicy: normalizeApprovalPolicy(codex.approval_policy),
     threadSandbox: asString(codex.thread_sandbox, "workspace-write"),
+    personality: asString(codex.personality, "friendly"),
     turnSandboxPolicy: normalizeTurnSandboxPolicy(turnSandboxPolicyRecord),
     selfReview: codex.self_review === true,
     readTimeoutMs,
@@ -189,6 +190,7 @@ function deriveCodexConfig(
     drainTimeoutMs: asNumber(codex.drain_timeout_ms, 2000),
     startupTimeoutMs: asNumber(codex.startup_timeout_ms, 30000),
     stallTimeoutMs,
+    structuredOutput: asBoolean(codex.structured_output, false),
     auth: {
       mode: asCodexAuthMode(auth.mode, "api_key"),
       sourceHome: resolveConfigString(asString(auth.source_home, "~/.codex"), secretResolver),

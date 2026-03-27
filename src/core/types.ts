@@ -37,6 +37,7 @@ export interface RunOutcome {
   kind: "normal" | "failed" | "timed_out" | "stalled" | "cancelled";
   errorCode: string | null;
   errorMessage: string | null;
+  codexErrorInfo?: { type: string; message: string; retryAfterMs?: number } | null;
   threadId: string | null;
   turnId: string | null;
   turnCount: number;
@@ -185,6 +186,7 @@ export interface RuntimeSnapshot {
   recentEvents: RecentEvent[];
   stallEvents?: StallEventView[];
   systemHealth?: SystemHealth;
+  availableModels?: string[] | null;
 }
 
 export interface ValidationError {
@@ -318,6 +320,7 @@ export interface CodexConfig {
   reasoningEffort: ReasoningEffort | null;
   approvalPolicy: string | Record<string, unknown>;
   threadSandbox: string;
+  personality: string;
   turnSandboxPolicy: { type: string; [key: string]: unknown };
   selfReview: boolean;
   readTimeoutMs: number;
@@ -325,6 +328,7 @@ export interface CodexConfig {
   drainTimeoutMs: number;
   startupTimeoutMs: number;
   stallTimeoutMs: number;
+  structuredOutput: boolean;
   auth: CodexAuthConfig;
   provider: CodexProviderConfig | null;
   sandbox: SandboxConfig;

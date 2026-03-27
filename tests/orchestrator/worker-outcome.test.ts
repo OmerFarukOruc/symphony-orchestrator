@@ -340,6 +340,135 @@ describe("handleWorkerOutcome - stop signal detection", () => {
   });
 });
 
+describe("handleWorkerOutcome - smart retry routing via codexErrorInfo", () => {
+  it("routes Unauthorized to hard_fail (no retry)", async () => {
+    const ctx = makeCtx();
+    const entry = makeEntry();
+    ctx.runningEntries.set("issue-1", entry);
+
+    await handleWorkerOutcome(
+      ctx,
+      makeOutcome({
+        kind: "failed",
+        errorCode: "turn_failed",
+        codexErrorInfo: { type: "Unauthorized", message: "invalid key" },
+      }),
+      entry,
+      makeIssue(),
+      makeWorkspace(),
+      1,
+    );
+
+    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_failed" }));
+  });
+
+  it("routes RateLimited to retry with 30s default delay", async () => {
+    const ctx = makeCtx();
+    const entry = makeEntry();
+    ctx.runningEntries.set("issue-1", entry);
+
+    await handleWorkerOutcome(
+      ctx,
+      makeOutcome({
+        kind: "failed",
+        errorCode: "turn_failed",
+        codexErrorInfo: { type: "RateLimited", message: "slow down" },
+      }),
+      entry,
+      makeIssue(),
+      makeWorkspace(),
+      1,
+    );
+
+    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 30_000, "rate_limited");
+  });
+
+  it("routes RateLimited with custom retryAfterMs", async () => {
+    const ctx = makeCtx();
+    const entry = makeEntry();
+    ctx.runningEntries.set("issue-1", entry);
+
+    await handleWorkerOutcome(
+      ctx,
+      makeOutcome({
+        kind: "failed",
+        errorCode: "turn_failed",
+        codexErrorInfo: { type: "RateLimited", message: "slow down", retryAfterMs: 5000 },
+      }),
+      entry,
+      makeIssue(),
+      makeWorkspace(),
+      1,
+    );
+
+    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 5000, "rate_limited");
+  });
+
+  it("routes UsageLimitExceeded to retry with 60s delay", async () => {
+    const ctx = makeCtx();
+    const entry = makeEntry();
+    ctx.runningEntries.set("issue-1", entry);
+
+    await handleWorkerOutcome(
+      ctx,
+      makeOutcome({
+        kind: "failed",
+        errorCode: "turn_failed",
+        codexErrorInfo: { type: "UsageLimitExceeded", message: "limit hit" },
+      }),
+      entry,
+      makeIssue(),
+      makeWorkspace(),
+      1,
+    );
+
+    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 60_000, "usage_limit");
+  });
+
+  it("routes ContextWindowExceeded to default retry (compact not yet implemented)", async () => {
+    const ctx = makeCtx();
+    const entry = makeEntry();
+    ctx.runningEntries.set("issue-1", entry);
+
+    await handleWorkerOutcome(
+      ctx,
+      makeOutcome({
+        kind: "failed",
+        errorCode: "turn_failed",
+        codexErrorInfo: { type: "ContextWindowExceeded", message: "too big" },
+      }),
+      entry,
+      makeIssue(),
+      makeWorkspace(),
+      1,
+    );
+
+    // compact_and_retry falls through to handleErrorRetry with exponential backoff
+    expect(ctx.queueRetry).toHaveBeenCalled();
+    const queueRetryMock = ctx.queueRetry as unknown as ReturnType<typeof vi.fn>;
+    const [, , , reason] = queueRetryMock.mock.calls[0] as [unknown, number, number, string];
+    expect(reason).toBe("turn_failed");
+  });
+
+  it("falls back to default retry when no codexErrorInfo is present", async () => {
+    const ctx = makeCtx();
+    const entry = makeEntry();
+    ctx.runningEntries.set("issue-1", entry);
+
+    await handleWorkerOutcome(
+      ctx,
+      makeOutcome({ kind: "failed", errorCode: "turn_failed" }),
+      entry,
+      makeIssue(),
+      makeWorkspace(),
+      1,
+    );
+
+    expect(ctx.queueRetry).toHaveBeenCalled();
+  });
+});
+
 describe("handleWorkerOutcome - continuation retry", () => {
   it("queues continuation retry for normal outcome with no stop signal", async () => {
     const ctx = makeCtx();

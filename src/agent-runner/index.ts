@@ -47,6 +47,8 @@ export class AgentRunner implements RunAttemptDispatcher {
     workspace: Workspace;
     signal: AbortSignal;
     onEvent: AgentRunnerEventHandler;
+    /** Called once the session is ready with a function to steer the active turn. */
+    onSteerReady?: (steerTurn: (message: string) => Promise<boolean>) => void;
     /** Pre-computed runtime config for data plane (skips auth.json read) */
     precomputedRuntimeConfig?: PrecomputedRuntimeConfig;
   }): Promise<RunOutcome> {
@@ -107,6 +109,8 @@ export class AgentRunner implements RunAttemptDispatcher {
       );
       throw error;
     }
+
+    input.onSteerReady?.(session.steerTurn);
 
     try {
       return await this.executeSession(session, config, inputWithContentCapture, () => lastAgentMessageContent);

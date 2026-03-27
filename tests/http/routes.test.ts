@@ -27,6 +27,7 @@ function makeOrchestrator() {
     getAttemptDetail: vi.fn().mockReturnValue(null),
     abortIssue: vi.fn().mockReturnValue({ ok: false, code: "not_found", message: "Unknown issue identifier" }),
     updateIssueModelSelection: vi.fn().mockResolvedValue(null),
+    steerIssue: vi.fn().mockResolvedValue(null),
   };
 }
 
@@ -187,6 +188,39 @@ describe("HTTP routes", () => {
     expect(body.current_attempt_id).toBe("a1");
   });
 
+  it("POST /api/v1/:identifier/steer returns 200 when steer succeeds", async () => {
+    orchestrator.steerIssue.mockResolvedValueOnce({ ok: true });
+    const res = await fetchRoute("/api/v1/MT-42/steer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "focus on tests" }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.message).toBe("steer sent");
+  });
+
+  it("POST /api/v1/:identifier/steer returns 400 with empty body", async () => {
+    const res = await fetchRoute("/api/v1/MT-42/steer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /api/v1/:identifier/steer returns 404 for unknown issue", async () => {
+    const res = await fetchRoute("/api/v1/UNKNOWN/steer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "focus on tests" }),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error.code).toBe("not_found");
+  });
+
   it("API 404 path returns JSON error", async () => {
     const res = await fetchRoute("/api/nonexistent");
     expect(res.status).toBe(404);
@@ -199,5 +233,37 @@ describe("HTTP routes", () => {
     expect(res.status).toBe(200);
     const contentType = res.headers.get("content-type");
     expect(contentType).toContain("text/plain");
+  });
+
+  it("GET /api/v1/models returns null when no models available", async () => {
+    const res = await fetchRoute("/api/v1/models");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ models: null });
+  });
+
+  it("GET /api/v1/models returns model list when available", async () => {
+    orchestrator.getSnapshot.mockReturnValueOnce({
+      generatedAt: "2024-01-01T00:00:00Z",
+      counts: { running: 0, retrying: 0, queued: 0, completed: 0 },
+      running: [],
+      retrying: [],
+      completed: [],
+      queued: [],
+      workflowColumns: [],
+      codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0, costUsd: 0 },
+      rateLimits: null,
+      recentEvents: [],
+      availableModels: ["gpt-5.4", "o3"],
+    });
+    const res = await fetchRoute("/api/v1/models");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ models: ["gpt-5.4", "o3"] });
+  });
+
+  it("GET /api/v1/models with wrong method returns 405", async () => {
+    const res = await fetchRoute("/api/v1/models", { method: "DELETE" });
+    expect(res.status).toBe(405);
   });
 });

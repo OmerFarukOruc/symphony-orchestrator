@@ -80,3 +80,13 @@ export function handleErrorRetry(
 export function handleModelOverrideRetry(ctx: OutcomeContext, latestIssue: Issue, attempt: number | null): void {
   ctx.queueRetry(latestIssue, attempt ?? 1, 0, "model_override_updated");
 }
+
+export function queueRetryWithDelay(
+  ctx: OutcomeContext,
+  latestIssue: Issue,
+  attempt: number | null,
+  delayMs: number,
+  reason: string,
+): void {
+  queueRetryWithLog(ctx, latestIssue, attempt, delayMs, reason);
+}
