@@ -6,7 +6,10 @@ export function classifyEvent(event: RecentEvent): string {
   if (type.includes("error") || message.includes("error")) {
     return "error";
   }
-  if (type.startsWith("tool_") || type.includes("exec") || type.includes("patch")) {
+  if (type === "reasoning") {
+    return "reasoning";
+  }
+  if (type.startsWith("tool_") || type === "web_search" || type.includes("exec") || type.includes("patch")) {
     return "tool";
   }
   if (type.includes("state") || type.includes("status") || type.includes("session") || type.includes("rate_limit")) {
@@ -48,6 +51,10 @@ const EVENT_LABEL_MAP: Record<string, string> = {
   tool_exec: "Shell command",
   tool_output: "Command output",
   tool_edit: "File edit",
+  tool_call: "Tool call",
+  web_search: "Web search",
+  reasoning: "Thinking",
+  user_message: "User input",
   system: "System",
   session: "Session",
   issue_queued: "Queued",

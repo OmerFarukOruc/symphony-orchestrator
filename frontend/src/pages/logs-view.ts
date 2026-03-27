@@ -11,10 +11,6 @@ import { subscribeIssueLifecycle } from "../state/event-source.js";
 type Mode = "live" | "archive";
 type Density = "compact" | "comfortable";
 
-function copyEvents(events: RecentEvent[]): Promise<void> {
-  return navigator.clipboard.writeText(events.map((event) => `${event.at} ${event.event} ${event.message}`).join("\n"));
-}
-
 function makeIconBtn(iconName: Parameters<typeof createIconButton>[0]["iconName"], label: string): HTMLButtonElement {
   return createIconButton({
     iconName,
@@ -44,7 +40,7 @@ export function createLogsPage(id: string): HTMLElement {
   const archiveBtn = document.createElement("button");
   archiveBtn.type = "button";
   archiveBtn.className = "mc-button is-sm";
-  archiveBtn.textContent = "Archive";
+  archiveBtn.textContent = "History";
   modeSegment.append(liveBtn, archiveBtn);
   header.append(breadcrumb, modeSegment);
 
@@ -59,24 +55,13 @@ export function createLogsPage(id: string): HTMLElement {
     placeholder: "Search logs",
   });
 
-  const autoToggle = makeIconBtn("scrollDown", "Auto-scroll to bottom");
+  const autoToggle = makeIconBtn("scrollDown", "Follow live");
   const expandToggle = makeIconBtn("unfold", "Expand payloads");
-  const densityToggle = makeIconBtn("dense", "Compact mode");
-  const copyButton = makeIconBtn("copy", "Copy visible logs");
-  copyButton.addEventListener("click", () => {
-    void copyEvents(filtered()).then(() => {
-      copyButton.title = "Copied!";
-      copyButton.setAttribute("aria-label", "Copied!");
-      setTimeout(() => {
-        copyButton.title = "Copy visible logs";
-        copyButton.setAttribute("aria-label", "Copy visible logs");
-      }, 1500);
-    });
-  });
+  const densityToggle = makeIconBtn("dense", "Compact");
 
   const viewActions = document.createElement("div");
   viewActions.className = "logs-view-actions";
-  viewActions.append(densityToggle, autoToggle, expandToggle, copyButton);
+  viewActions.append(densityToggle, autoToggle, expandToggle);
   controls.append(typeBar, search, viewActions);
 
   // ── Log scroll area ───────────────────────────────────────────────────────
@@ -90,6 +75,7 @@ export function createLogsPage(id: string): HTMLElement {
   indicator.textContent = "↓ New events";
   indicator.addEventListener("click", () => {
     scroll.scrollTop = scroll.scrollHeight;
+    newEventCount = 0;
     indicator.hidden = true;
   });
 
@@ -97,7 +83,7 @@ export function createLogsPage(id: string): HTMLElement {
 
   // ── State ─────────────────────────────────────────────────────────────────
   let mode: Mode = "live";
-  let typeFilter = "all";
+  const activeFilters = new Set<string>();
   let searchText = "";
   let autoScroll = false;
   let density: Density = "compact";
@@ -105,30 +91,46 @@ export function createLogsPage(id: string): HTMLElement {
   let timer = 0;
   let unsubscribeLifecycle: (() => void) | null = null;
   const expandedEvents = new Set<string>();
+  let newEventCount = 0;
 
   function filtered(): RecentEvent[] {
     return data.events.filter((event) => {
-      const matchesType = typeFilter === "all" || event.event === typeFilter;
+      const matchesType = activeFilters.size === 0 || activeFilters.has(event.event);
       return matchesType && eventMatchesSearch(event, searchText);
     });
   }
 
   function renderTypeFilters(): void {
-    const types = ["all", ...new Set(data.events.map((event) => event.event))];
-    typeBar.replaceChildren(
-      ...types.map((value) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `mc-chip is-interactive${typeFilter === value ? " is-active" : ""}`;
-        button.textContent = value === "all" ? "All events" : eventTypeLabel(value);
-        button.addEventListener("click", () => {
-          typeFilter = value;
-          renderTypeFilters();
-          render();
-        });
-        return button;
-      }),
-    );
+    const eventTypes = [...new Set(data.events.map((event) => event.event))];
+
+    const allBtn = document.createElement("button");
+    allBtn.type = "button";
+    allBtn.className = `mc-chip is-interactive${activeFilters.size === 0 ? " is-active" : ""}`;
+    allBtn.textContent = "All";
+    allBtn.addEventListener("click", () => {
+      activeFilters.clear();
+      renderTypeFilters();
+      render();
+    });
+
+    const chips = eventTypes.map((value) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `mc-chip is-interactive${activeFilters.has(value) ? " is-active" : ""}`;
+      button.textContent = eventTypeLabel(value);
+      button.addEventListener("click", () => {
+        if (activeFilters.has(value)) {
+          activeFilters.delete(value);
+        } else {
+          activeFilters.add(value);
+        }
+        renderTypeFilters();
+        render();
+      });
+      return button;
+    });
+
+    typeBar.replaceChildren(allBtn, ...chips);
   }
 
   function render(): void {
@@ -145,10 +147,10 @@ export function createLogsPage(id: string): HTMLElement {
     if (events.length === 0) {
       scroll.replaceChildren(
         createEmptyState(
-          mode === "live" ? "Waiting for agent activity" : "No archived events recorded",
+          mode === "live" ? "No activity yet" : "No archived events recorded",
           mode === "live"
-            ? "Live issue detail has not emitted timeline events yet. Stay here while the worker starts or refresh to check again."
-            : "Archived attempt data does not include any event rows. Switch back to live mode to watch the current stream.",
+            ? "Waiting for the worker to start."
+            : "Switch back to live mode to watch the current stream.",
           mode === "live" ? "Refresh logs" : "Switch to live logs",
           () => {
             if (mode === "live") {
@@ -197,7 +199,13 @@ export function createLogsPage(id: string): HTMLElement {
     const prevLength = data.events.length;
     const prevLastAt = data.events.at(-1)?.at;
     data = mode === "live" ? await loadLiveLogs(id) : await loadArchiveLogs(id);
-    if (force || data.events.length !== prevLength || data.events.at(-1)?.at !== prevLastAt) {
+    const added = Math.max(0, data.events.length - prevLength);
+    const changed = force || data.events.length !== prevLength || data.events.at(-1)?.at !== prevLastAt;
+    if (changed) {
+      if (!autoScroll && added > 0 && !indicator.hidden) {
+        newEventCount += added;
+        indicator.textContent = `↓ ${newEventCount} new`;
+      }
       render();
     }
   }
@@ -255,6 +263,10 @@ export function createLogsPage(id: string): HTMLElement {
   scroll.addEventListener("scroll", () => {
     const nearBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 24;
     indicator.hidden = nearBottom || autoScroll;
+    if (nearBottom) {
+      newEventCount = 0;
+      indicator.textContent = "↓ New events";
+    }
   });
   // Make the shell outlet non-scrolling so logs-scroll is the true scroll boundary
   const outlet = document.querySelector(".shell-outlet") as HTMLElement | null;
