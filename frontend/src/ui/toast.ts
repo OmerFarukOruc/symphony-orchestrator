@@ -1,6 +1,6 @@
 let container: HTMLElement | null = null;
 
-type ToastType = "success" | "error" | "info" | "warning";
+export type ToastType = "success" | "error" | "info" | "warning";
 
 interface ToastAction {
   label: string;
