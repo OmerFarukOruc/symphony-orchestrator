@@ -483,7 +483,7 @@ describe("AgentRunner", () => {
     });
   });
 
-  it("fails hard on interactive user input requests", async () => {
+  it("gracefully skips interactive user input requests and completes turn", async () => {
     const tempDir = await createTempDir();
     const { runner, workspaceManager } = await createRunner(tempDir, "user_input");
     const workspace = await workspaceManager.ensureWorkspace("MT-42");
@@ -502,14 +502,8 @@ describe("AgentRunner", () => {
       onEvent: () => undefined,
     });
 
-    expect(outcome).toEqual({
-      kind: "failed",
-      errorCode: "turn_input_required",
-      errorMessage: "codex requested interactive user input, which Symphony does not support",
-      threadId: "thread-1",
-      turnId: null,
-      turnCount: 1,
-    });
+    expect(outcome.kind).toBe("normal");
+    expect(outcome.threadId).toBe("thread-1");
   });
 
   it("classifies template parse failures explicitly", async () => {

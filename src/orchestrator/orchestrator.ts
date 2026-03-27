@@ -175,6 +175,15 @@ export class Orchestrator implements OrchestratorPort {
     return result;
   }
 
+  async steerIssue(identifier: string, message: string): Promise<{ ok: boolean } | null> {
+    const entry = [...this._state.runningEntries.values()].find(
+      (runningEntry) => runningEntry.issue.identifier === identifier,
+    );
+    if (!entry?.steerTurn) return null;
+    const ok = await entry.steerTurn(message);
+    return { ok };
+  }
+
   private scheduleTick(delayMs: number): void {
     if (!this._state.running || this.tickInFlight) return;
     if (this.nextTickTimer) clearTimeout(this.nextTickTimer);

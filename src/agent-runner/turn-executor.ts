@@ -7,6 +7,7 @@ import {
   getTurnSandboxPolicy,
 } from "./helpers.js";
 import { classifyRunError, failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
+import { extractCodexErrorInfo } from "./error-classifier.js";
 import { classifyExitState } from "./exit-classifier.js";
 import { composeSessionId, waitForTurnCompletion } from "./turn-state.js";
 import { detectStopSignal } from "../core/signal-detection.js";
@@ -22,6 +23,15 @@ import { compactThread } from "./thread-compact.js";
 
 const CONTINUATION_PROMPT =
   "Continue the current issue, make concrete progress, and stop only when done or blocked. When the issue is complete, end your final message with `SYMPHONY_STATUS: DONE`. If you are blocked and cannot proceed, end your final message with `SYMPHONY_STATUS: BLOCKED`.";
+
+const STRUCTURED_OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    status: { type: "string", enum: ["DONE", "BLOCKED", "CONTINUE"] },
+    summary: { type: "string" },
+  },
+  required: ["status", "summary"],
+} as const;
 
 function checkFatalFailure(state: AgentRunnerTurnExecutionState): RunOutcome | null {
   return failureOutcome(state.getFatalFailure(), state.threadId, state.turnId, state.turnCount);
@@ -41,6 +51,7 @@ function classifyTurnResult(
 ): TurnResult | null {
   if (completedStatus === "failed") {
     const errorMessage = asString(completedError.message) ?? "turn failed";
+    const codexErrorInfo = extractCodexErrorInfo(completedError);
     if (isContextWindowError(errorMessage, completedError)) {
       return { kind: "compact_needed" };
     }
@@ -50,6 +61,7 @@ function classifyTurnResult(
         kind: "failed",
         errorCode: "turn_failed",
         errorMessage,
+        codexErrorInfo,
         threadId: state.threadId,
         turnId: state.turnId,
         turnCount: state.turnCount,
@@ -116,7 +128,9 @@ async function runSingleTurn(
     effort: input.runInput.modelSelection.reasoningEffort,
     approvalPolicy: input.config.codex.approvalPolicy,
     sandboxPolicy: getTurnSandboxPolicy(input.config, input.runInput.workspace.path),
+    summary: "concise",
     input: [{ type: "text", text: prompt }],
+    ...(input.config.codex.structuredOutput ? { outputSchema: STRUCTURED_OUTPUT_SCHEMA } : {}),
   });
   state.turnId = extractTurnId(turnResult);
   if (!state.turnId) {

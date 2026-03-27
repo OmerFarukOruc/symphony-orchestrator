@@ -7,12 +7,12 @@ export function nowIso(): string {
 export function isHardFailure(errorCode: string | null): boolean {
   return [
     "startup_failed",
-    "turn_input_required",
     "inactive",
     "terminal",
     "shutdown",
     "cancelled",
     "auth_token_expired",
+    "unauthorized",
   ].includes(errorCode ?? "");
 }
 

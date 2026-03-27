@@ -46,3 +46,14 @@ export const transitionSchema = z
   .strict();
 
 export type TransitionBody = z.infer<typeof transitionSchema>;
+
+/**
+ * POST /:issue_identifier/steer
+ *
+ * Injects mid-turn guidance into a running agent session.
+ */
+export const steerSchema = z
+  .object({
+    message: z.string().min(1, "message is required"),
+  })
+  .strict();

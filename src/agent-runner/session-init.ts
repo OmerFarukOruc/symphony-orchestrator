@@ -1,6 +1,7 @@
 import type { Liquid } from "liquidjs";
 
 import { authIsRequired, extractRateLimits, extractThreadId, hasUsableAccount } from "./helpers.js";
+import { fetchAvailableModels } from "./model-validation.js";
 import { waitForStartup, StartupTimeoutError, buildDynamicTools } from "./session-helpers.js";
 import type { DockerSession } from "./docker-session.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
@@ -83,6 +84,14 @@ export async function initializeSession(
     return { ...earlyFailure, threadId, turnId, turnCount };
   }
 
+  const availableModels = await fetchAvailableModels(session.connection, deps.logger);
+  if (availableModels && !availableModels.includes(input.modelSelection.model)) {
+    deps.logger.warn(
+      { configured: input.modelSelection.model, available: availableModels },
+      "configured model not found in model/list — proceeding anyway",
+    );
+  }
+
   const resolvedThreadId = await startThread(session, config, input);
   session.threadId = resolvedThreadId;
 
@@ -96,7 +105,17 @@ async function initCodexProtocol(
 ): Promise<{ kind: "failed"; errorCode: string; errorMessage: string } | null> {
   await session.connection.request("initialize", {
     clientInfo: { name: "symphony", version: "0.2.0" },
-    capabilities: { experimentalApi: true },
+    capabilities: {
+      experimentalApi: true,
+      optOutNotificationMethods: [
+        "thread/archived",
+        "thread/unarchived",
+        "thread/closed",
+        "serverRequest/resolved",
+        "app/list/updated",
+        "windowsSandbox/setupCompleted",
+      ],
+    },
   });
   session.connection.notify("initialized", {});
 
@@ -133,7 +152,8 @@ async function startThread(session: DockerSession, config: ServiceConfig, input:
     model: input.modelSelection.model,
     approvalPolicy: config.codex.approvalPolicy,
     sandbox: config.codex.threadSandbox,
-    personality: "friendly",
+    personality: config.codex.personality,
+    serviceName: "symphony",
     dynamicTools: buildDynamicTools(),
   });
 

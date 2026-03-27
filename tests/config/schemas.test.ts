@@ -77,6 +77,14 @@ describe("agentConfigSchema", () => {
     expect(result.maxContinuationAttempts).toBe(5);
     expect(result.successState).toBe(null);
     expect(result.stallTimeoutMs).toBe(1200000);
+    expect(result.preflightCommands).toEqual([]);
+  });
+
+  it("accepts preflightCommands array", () => {
+    const result = agentConfigSchema.parse({
+      preflightCommands: ["npm test", "npm run lint"],
+    });
+    expect(result.preflightCommands).toEqual(["npm test", "npm run lint"]);
   });
 });
 
@@ -94,6 +102,26 @@ describe("codexConfigSchema", () => {
     expect(result.provider).toBe(null);
   });
 
+  it("defaults selfReview to false", () => {
+    const result = codexConfigSchema.parse({});
+    expect(result.selfReview).toBe(false);
+  });
+
+  it("accepts selfReview true", () => {
+    const result = codexConfigSchema.parse({ selfReview: true });
+    expect(result.selfReview).toBe(true);
+  });
+
+  it("defaults personality to friendly", () => {
+    const result = codexConfigSchema.parse({});
+    expect(result.personality).toBe("friendly");
+  });
+
+  it("preserves custom personality value", () => {
+    const result = codexConfigSchema.parse({ personality: "concise" });
+    expect(result.personality).toBe("concise");
+  });
+
   it("applies default turn sandbox policy for empty input", () => {
     const result = codexConfigSchema.parse({});
     expect(result.turnSandboxPolicy.type).toBe("workspaceWrite");
@@ -104,6 +132,16 @@ describe("codexConfigSchema", () => {
       turnSandboxPolicy: { type: "dangerFullAccess", networkAccess: true },
     });
     expect(result.turnSandboxPolicy.type).toBe("dangerFullAccess");
+  });
+
+  it("defaults structuredOutput to false", () => {
+    const result = codexConfigSchema.parse({});
+    expect(result.structuredOutput).toBe(false);
+  });
+
+  it("accepts structuredOutput: true", () => {
+    const result = codexConfigSchema.parse({ structuredOutput: true });
+    expect(result.structuredOutput).toBe(true);
   });
 });
 

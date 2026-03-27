@@ -32,7 +32,11 @@ export class JsonRpcConnection {
       timer: NodeJS.Timeout;
     }
   >();
-  private exited = false;
+  private _exited = false;
+
+  get exited(): boolean {
+    return this._exited;
+  }
 
   constructor(
     private readonly child: ChildProcessWithoutNullStreams,
@@ -55,7 +59,7 @@ export class JsonRpcConnection {
       this.logger.error({ error: toErrorString(error) }, "unexpected stdin error");
     });
     child.on("exit", () => {
-      this.exited = true;
+      this._exited = true;
       for (const [id, pending] of this.pending) {
         clearTimeout(pending.timer);
         pending.reject(new Error(`connection exited while waiting for request ${id}`));
@@ -65,13 +69,26 @@ export class JsonRpcConnection {
   }
 
   close(): void {
-    if (!this.exited) {
+    if (!this._exited) {
       this.child.kill("SIGTERM");
     }
   }
 
+  async interruptTurn(threadId: string, turnId: string, timeoutMs = 3000): Promise<boolean> {
+    if (this._exited) return false;
+    try {
+      await Promise.race([
+        this.request("turn/interrupt", { threadId, turnId }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("interrupt timeout")), timeoutMs)),
+      ]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   notify(method: string, params: unknown): void {
-    if (this.exited) {
+    if (this._exited) {
       return;
     }
     this.send({
@@ -82,7 +99,7 @@ export class JsonRpcConnection {
   }
 
   request(method: string, params: unknown): Promise<unknown> {
-    if (this.exited) {
+    if (this._exited) {
       return Promise.reject(new Error("connection already exited"));
     }
     const request = createRequest(method, params);
@@ -98,7 +115,7 @@ export class JsonRpcConnection {
   }
 
   private send(message: unknown): void {
-    if (this.exited) {
+    if (this._exited) {
       return;
     }
     this.child.stdin.write(`${JSON.stringify(message)}\n`);

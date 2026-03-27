@@ -11,6 +11,18 @@ export function detectStopSignal(content: string | null): StopSignal | null {
     return null;
   }
 
+  // Try structured JSON first (outputSchema responses)
+  try {
+    const parsed: unknown = JSON.parse(content.trim());
+    if (parsed && typeof parsed === "object" && "status" in parsed) {
+      const status = String((parsed as Record<string, unknown>).status).toUpperCase();
+      if (status === "DONE") return "done";
+      if (status === "BLOCKED") return "blocked";
+    }
+  } catch {
+    // Not JSON — fall through to text pattern matching
+  }
+
   const normalized = normalizeForDetection(content);
   if (normalized.includes("symphony_status: done") || normalized.includes("symphony status: done")) {
     return "done";
