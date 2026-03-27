@@ -104,6 +104,7 @@ export const codexConfigSchema = z.object({
   threadSandbox: z.string().default("workspace-write"),
   personality: z.string().default("friendly"),
   turnSandboxPolicy: turnSandboxPolicySchema,
+  selfReview: z.boolean().default(false),
   readTimeoutMs: z.number().default(5000),
   turnTimeoutMs: z.number().default(3600000),
   drainTimeoutMs: z.number().default(2000),

@@ -184,6 +184,7 @@ function deriveCodexConfig(
     threadSandbox: asString(codex.thread_sandbox, "workspace-write"),
     personality: asString(codex.personality, "friendly"),
     turnSandboxPolicy: normalizeTurnSandboxPolicy(turnSandboxPolicyRecord),
+    selfReview: codex.self_review === true,
     readTimeoutMs,
     turnTimeoutMs: asNumber(codex.turn_timeout_ms, 3600000),
     drainTimeoutMs: asNumber(codex.drain_timeout_ms, 2000),

@@ -322,6 +322,7 @@ export interface CodexConfig {
   threadSandbox: string;
   personality: string;
   turnSandboxPolicy: { type: string; [key: string]: unknown };
+  selfReview: boolean;
   readTimeoutMs: number;
   turnTimeoutMs: number;
   drainTimeoutMs: number;

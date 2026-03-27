@@ -102,6 +102,16 @@ describe("codexConfigSchema", () => {
     expect(result.provider).toBe(null);
   });
 
+  it("defaults selfReview to false", () => {
+    const result = codexConfigSchema.parse({});
+    expect(result.selfReview).toBe(false);
+  });
+
+  it("accepts selfReview true", () => {
+    const result = codexConfigSchema.parse({ selfReview: true });
+    expect(result.selfReview).toBe(true);
+  });
+
   it("defaults personality to friendly", () => {
     const result = codexConfigSchema.parse({});
     expect(result.personality).toBe("friendly");
