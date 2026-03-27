@@ -176,7 +176,7 @@ describe("Orchestrator — advanced scenarios", () => {
     expect(agentRunner.runAttempt).toHaveBeenCalledTimes(1);
     expect(orchestrator.getSnapshot().retrying).toHaveLength(1);
 
-    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(20_000);
     await Promise.resolve();
     await Promise.resolve();
 
@@ -185,7 +185,7 @@ describe("Orchestrator — advanced scenarios", () => {
       expect.objectContaining({
         identifier: "MT-42",
         status: "failed",
-        attempt: 1,
+        attempt: 2,
         error: "workspace setup exploded",
         message: "retry startup failed: workspace setup exploded",
       }),
@@ -193,7 +193,7 @@ describe("Orchestrator — advanced scenarios", () => {
     expect(orchestrator.getIssueDetail("MT-42")).toMatchObject({
       identifier: "MT-42",
       status: "failed",
-      attempt: 1,
+      attempt: 2,
       error: "workspace setup exploded",
       message: "retry startup failed: workspace setup exploded",
     });
@@ -201,7 +201,7 @@ describe("Orchestrator — advanced scenarios", () => {
       expect.objectContaining({
         issueIdentifier: "MT-42",
         status: "failed",
-        attemptNumber: 1,
+        attemptNumber: 2,
         errorCode: "worker_failed",
         errorMessage: "workspace setup exploded",
       }),
@@ -261,7 +261,7 @@ describe("Orchestrator — advanced scenarios", () => {
       expect.objectContaining({ identifier: "MT-42", state: "Done" }),
     );
 
-    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(20_000);
     await Promise.resolve();
 
     expect(agentRunner.runAttempt).toHaveBeenCalledTimes(1);
@@ -317,7 +317,7 @@ describe("Orchestrator — advanced scenarios", () => {
       expect.objectContaining({
         identifier: "MT-42",
         status: "failed",
-        attempt: null,
+        attempt: 1,
         error: "agent failed",
         message: "workspace cleaned after terminal state",
       }),
@@ -325,7 +325,7 @@ describe("Orchestrator — advanced scenarios", () => {
     expect(orchestrator.getIssueDetail("MT-42")).toMatchObject({
       identifier: "MT-42",
       status: "failed",
-      attempt: null,
+      attempt: 1,
       error: "agent failed",
       message: "workspace cleaned after terminal state",
     });
@@ -380,7 +380,7 @@ describe("Orchestrator — advanced scenarios", () => {
       expect.objectContaining({
         identifier: "MT-42",
         status: "completed",
-        attempt: null,
+        attempt: 1,
         error: null,
         message: "workspace cleaned after terminal state",
       }),
@@ -388,7 +388,7 @@ describe("Orchestrator — advanced scenarios", () => {
     expect(orchestrator.getIssueDetail("MT-42")).toMatchObject({
       identifier: "MT-42",
       status: "completed",
-      attempt: null,
+      attempt: 1,
       error: null,
       message: "workspace cleaned after terminal state",
     });

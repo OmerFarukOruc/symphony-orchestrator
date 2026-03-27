@@ -243,7 +243,7 @@ describe("launchAvailableWorkers", () => {
     await launchAvailableWorkers(ctx);
 
     expect(launchWorker).toHaveBeenCalledTimes(1);
-    expect(launchWorker).toHaveBeenCalledWith(expect.objectContaining({ id: "ok" }), null, { claimHeld: true });
+    expect(launchWorker).toHaveBeenCalledWith(expect.objectContaining({ id: "ok" }), 1, { claimHeld: true });
   });
 
   it("skips issues that fail hasAvailableStateSlot", async () => {
@@ -281,7 +281,7 @@ describe("launchAvailableWorkers", () => {
 
     await launchAvailableWorkers(ctx);
 
-    expect(launchWorker).toHaveBeenCalledWith(expect.any(Object), null, { claimHeld: true });
+    expect(launchWorker).toHaveBeenCalledWith(expect.any(Object), 1, { claimHeld: true });
   });
 
   it("claims each issue before launching it", async () => {

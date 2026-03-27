@@ -127,12 +127,12 @@ describe("Orchestrator", () => {
     expect(orchestrator.getSnapshot().retrying).toEqual([
       expect.objectContaining({
         identifier: "MT-42",
-        attempt: 1,
+        attempt: 2,
         status: "retrying",
       }),
     ]);
 
-    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(20_000);
     await Promise.resolve();
     expect(agentRunner.runAttempt).toHaveBeenCalledTimes(2);
 
@@ -330,7 +330,7 @@ describe("Orchestrator", () => {
     expect(orchestrator.getSnapshot().retrying).toEqual([
       expect.objectContaining({
         identifier: "MT-42",
-        attempt: 1,
+        attempt: 2,
         status: "retrying",
       }),
     ]);
