@@ -97,7 +97,7 @@ jobs:
           key: build-${{ github.sha }}
       - run: pnpm install --frozen-lockfile
         if: matrix.node-version == 22
-      - run: pnpm test -- --reporter=verbose --coverage
+      - run: pnpm exec vitest run --reporter=verbose --coverage
       - name: Dead code analysis
         if: matrix.node-version == 24
         run: pnpm exec knip
