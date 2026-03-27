@@ -57,6 +57,11 @@ function openConnection(): void {
     if (customEventName) {
       window.dispatchEvent(new CustomEvent(customEventName, { detail: data.payload }));
     }
+    window.dispatchEvent(
+      new CustomEvent("symphony:any-event", {
+        detail: { type: data.type, payload: data.payload },
+      }),
+    );
   };
 
   eventSource.onerror = () => {
@@ -88,6 +93,8 @@ export interface AgentEventPayload {
   type: string;
   message: string;
   sessionId: string | null;
+  timestamp?: string;
+  content?: string | null;
 }
 
 export function subscribeIssueEvents(identifier: string, handler: (event: AgentEventPayload) => void): () => void {
@@ -139,4 +146,19 @@ export function subscribePollComplete(handler: () => void): () => void {
 
 export function subscribeSystemError(handler: (payload: unknown) => void): () => void {
   return subscribeEvent("symphony:system-error", handler);
+}
+
+export function subscribeAllEvents(
+  identifier: string,
+  handler: (event: { type: string; payload: Record<string, unknown> }) => void,
+): () => void {
+  const listener = (e: Event) => {
+    const detail = (e as CustomEvent).detail as { type: string; payload?: Record<string, unknown> };
+    const payload = detail.payload;
+    if (payload && typeof payload.identifier === "string" && payload.identifier === identifier) {
+      handler({ type: detail.type, payload });
+    }
+  };
+  window.addEventListener("symphony:any-event", listener);
+  return () => window.removeEventListener("symphony:any-event", listener);
 }
