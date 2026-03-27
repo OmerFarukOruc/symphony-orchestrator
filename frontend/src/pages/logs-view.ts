@@ -195,13 +195,14 @@ export function createLogsPage(id: string): HTMLElement {
       return;
     }
     const total = events.length;
+    const isDesc = buffer.direction() === "desc";
     scroll.replaceChildren(
       ...events.map((event, index) => {
         const row = buildRow(event);
-        // Only animate the last 30 rows (most recent, visible after auto-scroll).
-        // With 24ms stagger a raw index on 1000+ events → multi-second delays.
-        const staggerPos = index - (total - 30);
-        if (staggerPos >= 0) {
+        // Animate the 30 rows visible after auto-scroll:
+        // desc → first 30 (newest, at top), asc → last 30 (newest, at bottom).
+        const staggerPos = isDesc ? index : index - (total - 30);
+        if (staggerPos >= 0 && staggerPos < 30) {
           row.classList.add("timeline-enter");
           row.style.setProperty("--stagger-index", String(staggerPos));
         }
@@ -219,31 +220,30 @@ export function createLogsPage(id: string): HTMLElement {
     render();
   }
 
+  /** Count how many visible (filtered) events precede `target` in the buffer. */
+  function domInsertIndex(target: RecentEvent): number {
+    let index = 0;
+    for (const e of buffer.events()) {
+      if (e === target) break;
+      const matches = activeFilters.size === 0 || activeFilters.has(e.event);
+      if (matches && eventMatchesSearch(e, searchText)) index++;
+    }
+    return index;
+  }
+
   function appendSingleEvent(event: RecentEvent): void {
-    const matchesType = activeFilters.size === 0 || activeFilters.has(event.event);
-    if (!matchesType || !eventMatchesSearch(event, searchText)) return;
+    if (!(activeFilters.size === 0 || activeFilters.has(event.event))) return;
+    if (!eventMatchesSearch(event, searchText)) return;
+
+    // Clear the empty-state placeholder before inserting the first real row.
+    scroll.querySelector(".mc-empty-state")?.remove();
 
     const row = buildRow(event);
     row.classList.add("timeline-enter");
 
-    // Find the correct insert position among visible DOM children.
-    // The buffer was just mutated so scroll.children tracks the previous
-    // render. We count how many filtered events precede this one in the
-    // buffer's sorted order to find the matching DOM index.
-    const sorted = buffer.events();
-    let domIndex = 0;
-    for (const e of sorted) {
-      if (e === event) break;
-      const matches = activeFilters.size === 0 || activeFilters.has(e.event);
-      if (matches && eventMatchesSearch(e, searchText)) domIndex++;
-    }
-
-    const referenceNode = scroll.children[domIndex] as Element | undefined;
-    if (referenceNode) {
-      scroll.insertBefore(row, referenceNode);
-    } else {
-      scroll.appendChild(row);
-    }
+    const refNode = scroll.children[domInsertIndex(event)] as Element | undefined;
+    if (refNode) scroll.insertBefore(row, refNode);
+    else scroll.appendChild(row);
 
     if (autoScroll) {
       scroll.scrollTop = buffer.direction() === "desc" ? 0 : scroll.scrollHeight;
