@@ -99,6 +99,16 @@ function buildQuickActionEntries(options: CreateBasePaletteEntriesOptions): Pale
       keywords: ["shortcuts", "help", "keyboard", "discover"],
       run: () => openShortcutHelp(),
     },
+    {
+      id: "action:api-docs",
+      name: "API documentation",
+      description: "Open the Swagger UI API reference",
+      meta: "Action",
+      group: "Quick actions",
+      icon: "issueDetail",
+      keywords: ["api", "docs", "swagger", "openapi", "reference"],
+      run: () => window.open("/api/docs", "_blank", "noopener"),
+    },
   ];
 
   const runsPath = options.resolveRunHistoryPath?.();
