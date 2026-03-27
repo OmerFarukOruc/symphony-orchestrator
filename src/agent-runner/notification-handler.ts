@@ -77,6 +77,21 @@ function handlePlanDelta(input: NotificationInput, params: Record<string, unknow
   appendReasoningText(input.state, asString(params.itemId), asString(delta.text) ?? asString(params.text));
 }
 
+function handleTurnPlanUpdated(input: NotificationInput, params: Record<string, unknown>): void {
+  const plan = asRecord(params.plan);
+  const steps = plan.steps;
+  input.onEvent({
+    at: new Date().toISOString(),
+    issueId: input.issue.id,
+    issueIdentifier: input.issue.identifier,
+    sessionId: composeSessionId(input.threadId, input.turnId),
+    event: "agent_plan",
+    message: "Agent plan updated",
+    content: typeof steps === "string" ? steps : JSON.stringify(steps),
+    metadata: { isPlan: true },
+  });
+}
+
 function handleTurnDiffUpdated(input: NotificationInput, params: Record<string, unknown>): void {
   const diff = asString(params.diff);
   if (!diff) {
@@ -153,6 +168,7 @@ const methodHandlers: Record<string, (input: NotificationInput, params: Record<s
   "item/reasoning/textDelta": handleReasoningDelta,
   "item/reasoning/summaryPartAdded": handleReasoningPartAdded,
   "item/plan/delta": handlePlanDelta,
+  "turn/plan/updated": handleTurnPlanUpdated,
 };
 
 export function handleNotification(input: NotificationInput): void {
@@ -204,6 +220,7 @@ const CODEX_NOTIFICATION_LABELS: Record<string, { event: string; message: string
   "account/rateLimits/updated": { event: "rate_limits", message: "API rate limits updated" },
   "item/agentMessage/delta": { event: "agent_streaming", message: "Agent streaming text" },
   "item/fileChange/outputDelta": { event: "tool_output", message: "File change output streaming" },
+  "item/commandExecution/outputDelta": { event: "tool_output", message: "Command output streaming" },
 };
 
 function mapCodexNotification(method: string, params: Record<string, unknown>): { event: string; message: string } {
