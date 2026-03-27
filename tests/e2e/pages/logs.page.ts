@@ -38,7 +38,7 @@ export class LogsPage extends BasePage {
   }
 
   get archiveButton(): Locator {
-    return this.page.locator(".mc-button-segment button").filter({ hasText: "Archive" });
+    return this.page.locator(".mc-button-segment button").filter({ hasText: "History" });
   }
 
   // ── Filter Controls ──────────────────────────────────────────────────

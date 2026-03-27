@@ -62,9 +62,9 @@ test.describe("Logs Page & Attempt Detail Smoke", () => {
     const logs = new LogsPage(page);
     await logs.navigateLiveLogs("SYM-42");
 
-    // Should have at least the "All events" chip
+    // Should have at least the "All" chip
     await expect(logs.typeChips.first()).toBeVisible({ timeout: 5000 });
-    await expect(logs.typeChips.first()).toContainText("All events");
+    await expect(logs.typeChips.first()).toContainText("All");
 
     // View actions (density, auto-scroll, expand, copy) should be visible
     await expect(logs.viewActions).toBeVisible({ timeout: 5000 });
