@@ -53,7 +53,7 @@ import { classifyExitState } from "../../src/agent-runner/exit-classifier.js";
 import type {
   AgentRunnerTurnExecutionInput,
   AgentRunnerTurnExecutionState,
-} from "../../src/agent-runner/turn-executor.types.js";
+} from "../../src/agent-runner/turn-executor-types.js";
 import type { ServiceConfig } from "../../src/core/types.js";
 
 function makeConfig(maxTurns = 5): ServiceConfig {

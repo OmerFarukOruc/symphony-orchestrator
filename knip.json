@@ -2,7 +2,16 @@
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts"],
   "entry": ["src/dispatch/entrypoint.ts"],
-  "ignore": ["frontend/src/components/issue-card.ts", "frontend/src/pages/page-factory.ts", "tests/e2e/**"],
+  "ignore": [
+    "frontend/src/pages/page-factory.ts",
+    "tests/e2e/**",
+    "src/config/index.ts",
+    "src/dispatch/index.ts",
+    "src/git/index.ts",
+    "src/orchestrator/index.ts",
+    "src/tracker/index.ts",
+    "src/workspace/index.ts"
+  ],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": [
     "agentation-mcp",
