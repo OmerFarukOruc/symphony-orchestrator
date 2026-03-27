@@ -102,6 +102,16 @@ describe("codexConfigSchema", () => {
     expect(result.provider).toBe(null);
   });
 
+  it("defaults personality to friendly", () => {
+    const result = codexConfigSchema.parse({});
+    expect(result.personality).toBe("friendly");
+  });
+
+  it("preserves custom personality value", () => {
+    const result = codexConfigSchema.parse({ personality: "concise" });
+    expect(result.personality).toBe("concise");
+  });
+
   it("applies default turn sandbox policy for empty input", () => {
     const result = codexConfigSchema.parse({});
     expect(result.turnSandboxPolicy.type).toBe("workspaceWrite");

@@ -182,6 +182,7 @@ function deriveCodexConfig(
     reasoningEffort: asReasoningEffort(codex.reasoning_effort, "high"),
     approvalPolicy: normalizeApprovalPolicy(codex.approval_policy),
     threadSandbox: asString(codex.thread_sandbox, "workspace-write"),
+    personality: asString(codex.personality, "friendly"),
     turnSandboxPolicy: normalizeTurnSandboxPolicy(turnSandboxPolicyRecord),
     readTimeoutMs,
     turnTimeoutMs: asNumber(codex.turn_timeout_ms, 3600000),

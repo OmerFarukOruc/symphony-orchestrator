@@ -319,6 +319,7 @@ export interface CodexConfig {
   reasoningEffort: ReasoningEffort | null;
   approvalPolicy: string | Record<string, unknown>;
   threadSandbox: string;
+  personality: string;
   turnSandboxPolicy: { type: string; [key: string]: unknown };
   readTimeoutMs: number;
   turnTimeoutMs: number;

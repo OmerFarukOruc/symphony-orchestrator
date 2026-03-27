@@ -311,6 +311,84 @@ describe("initializeSession", () => {
     });
   });
 
+  describe("initialize protocol params", () => {
+    it("sends optOutNotificationMethods in capabilities", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({ threadId: "thread-init" }); // thread/start
+
+      const input = makeInput();
+      const liquid = makeLiquid({ render: async () => "prompt" });
+
+      await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
+
+      const initCall = session.connection.request.mock.calls[0];
+      expect(initCall[0]).toBe("initialize");
+      expect(initCall[1]).toMatchObject({
+        capabilities: {
+          experimentalApi: true,
+          optOutNotificationMethods: [
+            "thread/archived",
+            "thread/unarchived",
+            "thread/closed",
+            "serverRequest/resolved",
+            "app/list/updated",
+            "windowsSandbox/setupCompleted",
+          ],
+        },
+      });
+    });
+  });
+
+  describe("thread/start protocol params", () => {
+    it("sends serviceName: symphony", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({ threadId: "thread-svc" }); // thread/start
+
+      const input = makeInput();
+      const liquid = makeLiquid({ render: async () => "prompt" });
+
+      await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
+
+      const threadCall = session.connection.request.mock.calls[3];
+      expect(threadCall[0]).toBe("thread/start");
+      expect(threadCall[1]).toMatchObject({ serviceName: "symphony" });
+    });
+
+    it("uses personality from config instead of hardcoded value", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({ threadId: "thread-p" }); // thread/start
+
+      const config = {
+        codex: {
+          approvalPolicy: "auto-edit",
+          threadSandbox: "none",
+          personality: "concise",
+        },
+      } as unknown as ServiceConfig;
+
+      const input = makeInput();
+      const liquid = makeLiquid({ render: async () => "prompt" });
+
+      await initializeSession(session, config, input, deps, liquid);
+
+      const threadCall = session.connection.request.mock.calls[3];
+      expect(threadCall[0]).toBe("thread/start");
+      expect(threadCall[1]).toMatchObject({ personality: "concise" });
+    });
+  });
+
   describe("thread/start failure", () => {
     it("throws when thread/start returns no thread identifier", async () => {
       const session = makeMockSession();
