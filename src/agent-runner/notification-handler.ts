@@ -69,6 +69,16 @@ function handleReasoningPartAdded(input: NotificationInput, params: Record<strin
   appendReasoningText(input.state, asString(params.itemId), asString(part.text));
 }
 
+const ITEM_TYPE_EVENT: Record<string, string> = {
+  reasoning: "reasoning",
+  agentMessage: "agent_message",
+  userMessage: "user_message",
+  commandExecution: "tool_exec",
+  fileChange: "tool_edit",
+  dynamicToolCall: "tool_call",
+  webSearch: "web_search",
+};
+
 function handleItemEvent(
   input: NotificationInput,
   params: Record<string, unknown>,
@@ -83,14 +93,16 @@ function handleItemEvent(
     deleteReasoningBuffer(input.state, itemId);
   }
 
+  const isDiff = itemType === "fileChange" && verb === "completed";
   input.onEvent({
     at: new Date().toISOString(),
     issueId: input.issue.id,
     issueIdentifier: input.issue.identifier,
     sessionId: composeSessionId(input.threadId, input.turnId),
-    event: input.notification.method.replaceAll("/", "_"),
+    event: ITEM_TYPE_EVENT[itemType] ?? input.notification.method.replaceAll("/", "_"),
     message: sanitizeContent(itemId ? `${itemType} ${itemId} ${verb}` : `${itemType} ${verb}`) || "item event",
     content,
+    metadata: { itemType, verb, ...(isDiff ? { isDiff: true } : {}) },
   });
 }
 

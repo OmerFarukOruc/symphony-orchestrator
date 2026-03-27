@@ -240,10 +240,33 @@ describe("handleNotification", () => {
 
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
-        event: "item_started",
+        event: "tool_exec",
         message: "commandExecution cmd-1 started",
         content: "ls -la",
+        metadata: { itemType: "commandExecution", verb: "started" },
       });
+    });
+
+    it.each([
+      ["agentMessage", "agent_message"],
+      ["fileChange", "tool_edit"],
+      ["dynamicToolCall", "tool_call"],
+      ["webSearch", "web_search"],
+      ["userMessage", "user_message"],
+      ["unknownType", "item_started"],
+    ])("maps item type %s → event %s for item/started", (itemType, expectedEvent) => {
+      handleNotification({
+        state,
+        notification: {
+          method: "item/started",
+          params: { item: { type: itemType, id: "x-1" } },
+        },
+        issue,
+        threadId: null,
+        turnId: null,
+        onEvent,
+      });
+      expect(events[0]).toMatchObject({ event: expectedEvent, metadata: { itemType, verb: "started" } });
     });
   });
 
@@ -265,11 +288,47 @@ describe("handleNotification", () => {
 
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
-        event: "item_completed",
+        event: "reasoning",
         message: "reasoning reason-item completed",
         content: "accumulated reasoning",
+        metadata: { itemType: "reasoning", verb: "completed" },
       });
       expect(state.reasoningBuffers.has("reason-item")).toBe(false);
+    });
+
+    it("sets isDiff: true metadata for completed fileChange items", () => {
+      handleNotification({
+        state,
+        notification: {
+          method: "item/completed",
+          params: { item: { type: "fileChange", id: "fc-1" } },
+        },
+        issue,
+        threadId: null,
+        turnId: null,
+        onEvent,
+      });
+
+      expect(events[0]).toMatchObject({
+        event: "tool_edit",
+        metadata: { itemType: "fileChange", verb: "completed", isDiff: true },
+      });
+    });
+
+    it("does NOT set isDiff: true for non-fileChange completed items", () => {
+      handleNotification({
+        state,
+        notification: {
+          method: "item/completed",
+          params: { item: { type: "agentMessage", id: "msg-1" } },
+        },
+        issue,
+        threadId: null,
+        turnId: null,
+        onEvent,
+      });
+
+      expect(events[0].metadata).not.toHaveProperty("isDiff");
     });
 
     it("uses 'item' as fallback type when item.type is absent", () => {

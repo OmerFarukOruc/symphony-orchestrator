@@ -368,25 +368,25 @@ describe("AgentRunner", () => {
     expect(emittedEvents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          event: "item_started",
+          event: "reasoning",
           message: "reasoning reason-1 started",
           content: null,
           sessionId: "thread-1-turn-1",
         }),
         expect.objectContaining({
-          event: "item_completed",
+          event: "reasoning",
           message: "reasoning reason-1 completed",
           content: "I need to run a query.",
           sessionId: "thread-1-turn-1",
         }),
         expect.objectContaining({
-          event: "item_started",
+          event: "agent_message",
           message: "agentMessage msg-1 started",
           content: null,
           sessionId: "thread-1-turn-1",
         }),
         expect.objectContaining({
-          event: "item_completed",
+          event: "agent_message",
           message: "agentMessage msg-1 completed",
           content: "Here is the result.",
           sessionId: "thread-1-turn-1",

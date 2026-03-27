@@ -419,7 +419,7 @@ describe("Orchestrator — advanced scenarios", () => {
             issueId: issue.id,
             issueIdentifier: issue.identifier,
             sessionId: "thread-1",
-            event: "item_completed",
+            event: "agent_message",
             message: "agentMessage completed",
             content: "work finished\nSYMPHONY_STATUS: DONE",
           });

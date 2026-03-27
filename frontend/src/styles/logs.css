@@ -165,9 +165,22 @@
   opacity: 0.7;
 }
 
-/* Zebra striping for visual chunking */
-.mc-log-row:nth-child(2n) {
-  background: var(--bg-surface);
+/* Reasoning rows — amber, thinking indicator */
+.mc-log-row.is-reasoning {
+  --log-accent: var(--color-retrying, #d98a1c);
+}
+.mc-log-row.is-reasoning::before {
+  opacity: 0.8;
+}
+
+/* Tool rows — copper accent */
+.mc-log-row.is-tool::before {
+  opacity: 0.6;
+}
+
+/* Subtle separator — no zebra stripe */
+.mc-log-row + .mc-log-row {
+  border-top: none;
 }
 
 /* Time gap indicators — subtle separator when timestamp changes significantly */
@@ -336,6 +349,159 @@
   background: var(--bg-muted);
   border-color: transparent;
   color: var(--text-secondary);
+}
+
+/* ── Per-section copy button ─────────────────────────────────────────────── */
+
+.mc-log-copy-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1;
+  transition: color var(--motion-fast), background var(--motion-fast);
+}
+
+.mc-log-copy-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+}
+
+/* ── Thinking block (reasoning events) ───────────────────────────────────── */
+
+.mc-log-thinking {
+  margin-top: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--color-retrying, #d98a1c) 30%, var(--border-stitch));
+  border-left: 3px solid var(--color-retrying, #d98a1c);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-retrying, #d98a1c) 5%, var(--bg-elevated));
+  overflow: hidden;
+}
+
+.mc-log-thinking-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.mc-log-thinking-header:hover {
+  background: color-mix(in srgb, var(--color-retrying, #d98a1c) 8%, var(--bg-elevated));
+}
+
+.mc-log-thinking-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-retrying, #d98a1c);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.mc-log-thinking-words {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs, 10px);
+  color: var(--text-muted);
+  margin-right: auto;
+}
+
+.mc-log-thinking-header .mc-log-copy-btn {
+  margin-left: auto;
+}
+
+.mc-log-thinking-body {
+  padding: var(--space-3);
+  padding-top: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+/* ── Prose block (agent_message / agent_output events) ───────────────────── */
+
+.mc-log-prose {
+  position: relative;
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--status-running) 25%, var(--border-stitch));
+  border-left: 3px solid var(--status-running);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--status-running) 4%, var(--bg-elevated));
+}
+
+.mc-log-prose .mc-log-copy-btn {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-2);
+}
+
+.mc-log-prose-body {
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding-right: var(--space-8);
+}
+
+/* ── Diff block (tool_edit events with unified diff content) ─────────────── */
+
+.mc-log-diff-wrapper {
+  position: relative;
+  margin-top: var(--space-2);
+  border: 1px solid var(--border-stitch);
+  border-left: 3px solid var(--color-copper-400);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.mc-log-diff-wrapper .mc-log-copy-btn {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-2);
+  z-index: 1;
+}
+
+.mc-log-diff {
+  padding: var(--space-2) var(--space-3);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.mc-log-diff-line {
+  display: block;
+}
+
+.mc-log-diff-line.is-add {
+  color: var(--status-running);
+  background: color-mix(in srgb, var(--status-running) 8%, transparent);
+}
+
+.mc-log-diff-line.is-del {
+  color: var(--status-blocked);
+  background: color-mix(in srgb, var(--status-blocked) 8%, transparent);
+}
+
+.mc-log-diff-line.is-hunk {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* ── Payload panel: code block styling ───────────────────────────────────── */
