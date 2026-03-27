@@ -8,6 +8,7 @@ import type {
   RuntimeInfo,
   RuntimeSnapshot,
   SetupStatus,
+  SteerIssueResponse,
   WorkspaceInventoryResponse,
 } from "./types";
 
@@ -73,6 +74,10 @@ export const api = {
   postAbortIssue: (id: string) => {
     if (!id) return Promise.reject(new Error("issue id is required"));
     return send<AbortIssueResponse>("POST", `/api/v1/${encodeURIComponent(id)}/abort`);
+  },
+  postSteerIssue: (id: string, message: string) => {
+    if (!id) return Promise.reject(new Error("issue id is required"));
+    return post<SteerIssueResponse>(`/api/v1/${encodeURIComponent(id)}/steer`, { message });
   },
   getAttempts: (id: string) => {
     if (!id) return Promise.resolve({ attempts: [] as AttemptSummary[], current_attempt_id: null });

@@ -111,6 +111,12 @@
   text-align: left;
 }
 
+.issue-steer-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 @media (max-width: 900px) {
   .issue-retry-strip,
   .issue-summary-strip,

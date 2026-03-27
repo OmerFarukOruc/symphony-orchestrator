@@ -76,6 +76,11 @@ export interface AbortIssueResponse {
   requested_at: string;
 }
 
+export interface SteerIssueResponse {
+  ok: boolean;
+  message: string;
+}
+
 export interface AttemptSummary {
   attemptId: string;
   attemptNumber: number | null;

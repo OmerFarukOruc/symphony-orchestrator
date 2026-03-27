@@ -5,7 +5,7 @@ import { router } from "../router";
 import { statusChip } from "../ui/status-chip";
 import { toast } from "../ui/toast";
 import { createAttemptsTable } from "./attempts-table";
-import { createButton, createField, createSelectControl } from "./forms.js";
+import { createButton, createField, createSelectControl, createTextareaControl } from "./forms.js";
 import { createEventRow } from "./event-row";
 import { createEmptyState } from "./empty-state";
 import {
@@ -193,5 +193,59 @@ export function buildAttemptsSection(detail: IssueDetail): HTMLElement {
   section.className = "issue-section mc-panel expand-in";
   section.append(Object.assign(document.createElement("h2"), { textContent: "Attempts" }));
   section.append(createAttemptsTable(detail.attempts, (attemptId) => router.navigate(`/attempts/${attemptId}`)));
+  return section;
+}
+
+export function buildSteerSection(detail: IssueDetail): HTMLElement | null {
+  if (detail.status !== "running") {
+    return null;
+  }
+
+  const section = document.createElement("section");
+  section.className = "issue-section mc-panel expand-in";
+  section.append(Object.assign(document.createElement("h2"), { textContent: "Steer agent" }));
+
+  const description = document.createElement("p");
+  description.className = "text-secondary";
+  description.textContent = "Send mid-turn guidance to the running agent.";
+  section.append(description);
+
+  const form = document.createElement("form");
+  form.className = "issue-steer-form";
+
+  const textarea = createTextareaControl({
+    placeholder: "Enter guidance for the agent...",
+    required: true,
+    rows: 3,
+  });
+
+  const submitBtn = createButton("Send", "primary", "submit");
+
+  form.append(
+    createField({ label: "Guidance", hint: "The agent will receive this message during its current turn." }, textarea),
+    submitBtn,
+  );
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = textarea.value.trim();
+    if (!message) return;
+    submitBtn.disabled = true;
+    try {
+      const result = await api.postSteerIssue(detail.identifier, message);
+      if (result.ok) {
+        toast("Guidance sent to agent.", "success");
+        textarea.value = "";
+      } else {
+        toast(result.message || "Failed to send guidance.", "error");
+      }
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to send guidance.", "error");
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  section.append(form);
   return section;
 }

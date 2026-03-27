@@ -188,6 +188,9 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
     }),
   );
 
+  // Steer
+  await page.route(/\/api\/v1\/[^/]+\/steer$/, (route) => json(route, { ok: true, message: "steer sent" }));
+
   // Model override
   await page.route(/\/api\/v1\/[^/]+\/model$/, (route) => json(route, {}, 200));
 

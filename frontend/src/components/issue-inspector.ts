@@ -14,6 +14,7 @@ import {
   buildAttemptsSection,
   buildDescriptionSection,
   buildModelSection,
+  buildSteerSection,
   buildWorkspaceSection,
 } from "./issue-inspector-sections";
 import { createIssueAbortAction } from "./issue-inspector-abort";
@@ -177,6 +178,7 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     const sections = [
       buildDescriptionSection(detail),
       buildRetrySection(detail),
+      buildSteerSection(detail),
       liveLogSection,
       buildActivitySection(detail),
       buildWorkspaceSection(detail),
