@@ -108,6 +108,7 @@ export const codexConfigSchema = z.object({
   drainTimeoutMs: z.number().default(2000),
   startupTimeoutMs: z.number().default(30000),
   stallTimeoutMs: z.number().default(300000),
+  structuredOutput: z.boolean().default(false),
   auth: codexAuthSchema.default(() => codexAuthSchema.parse({})),
   provider: codexProviderSchema,
   sandbox: sandboxConfigSchema.default(() => sandboxConfigSchema.parse({})),
