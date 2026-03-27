@@ -74,7 +74,7 @@ export function meanHistogramMs(metrics: ParsedPrometheusMetrics, baseName: stri
 
 export function summarizeMetrics(metrics: ParsedPrometheusMetrics): string {
   if (!metrics.samples.length) {
-    return "Instrumentation not yet present";
+    return "No metric samples received yet";
   }
   const total = metrics.samples.length;
   const nonZero = metrics.samples.filter((sample) => sample.value !== 0).length;
@@ -100,7 +100,7 @@ export function buildHttpHealthSummary(metrics: ParsedPrometheusMetrics): string
     .reduce((count, sample) => count + sample.value, 0);
   const latency = meanHistogramMs(metrics, "symphony_http_request_duration_seconds");
   if (total === null) {
-    return "Instrumentation not yet present";
+    return "No HTTP traffic recorded yet";
   }
   return `${formatCompactNumber(total)} requests · ${formatCompactNumber(errors)} 5xx · ${formatLatency(latency)} avg`;
 }
@@ -108,15 +108,16 @@ export function buildHttpHealthSummary(metrics: ParsedPrometheusMetrics): string
 export function buildPollSummary(metrics: ParsedPrometheusMetrics, trends: ObservabilityTrendPoint[]): string {
   const polls = sumMetric(metrics, "symphony_orchestrator_polls_total");
   const cadence = describeCadence(trends);
+  const cadenceSuffix = cadence ? ` · ${cadence}` : "";
   if (polls === null) {
-    return `Instrumentation not yet present${cadence ? ` · ${cadence}` : ""}`;
+    return `No poll cycles recorded yet${cadenceSuffix}`;
   }
-  return `${formatCompactNumber(polls)} poll cycles${cadence ? ` · ${cadence}` : ""}`;
+  return `${formatCompactNumber(polls)} poll cycles${cadenceSuffix}`;
 }
 
 export function buildRateLimitSummary(rateLimits: RateLimits | null): string {
   if (!rateLimits || typeof rateLimits !== "object") {
-    return "Instrumentation not yet present";
+    return "Rate-limit data not available";
   }
   const record = rateLimits as Record<string, unknown>;
   const remaining = Number(record.remaining ?? 0);
@@ -124,7 +125,7 @@ export function buildRateLimitSummary(rateLimits: RateLimits | null): string {
   const resetsAt = String(record.reset_at ?? record.resets_at ?? "");
   const resetSuffix = resetsAt ? ` · resets ${formatRelativeTime(resetsAt)}` : "";
   if (!limit) {
-    return "Instrumentation not yet present";
+    return "Rate-limit data not available";
   }
   return `${formatCompactNumber(remaining)} of ${formatCompactNumber(limit)} remaining${resetSuffix}`;
 }
@@ -133,14 +134,14 @@ export function formatCpuMemory(metrics: ParsedPrometheusMetrics): string {
   const cpu = sumMetric(metrics, "symphony_container_cpu_percent");
   const memory = sumMetric(metrics, "symphony_container_memory_percent");
   if (cpu === null && memory === null) {
-    return "Instrumentation not yet present";
+    return "No active containers";
   }
   return `CPU ${formatPercent(cpu)} · Memory ${formatPercent(memory)}`;
 }
 
 export function formatHeadroom(rateLimits: RateLimits | null): string {
   const headroom = formatRateLimitHeadroom(rateLimits);
-  return headroom === "N/A" ? "Instrumentation not yet present" : headroom;
+  return headroom === "N/A" ? "Rate-limit data not available" : headroom;
 }
 
 export function formatPollAge(snapshot: RuntimeSnapshot | null): string {
@@ -188,7 +189,7 @@ function parseLabels(input: string): Record<string, string> {
   }
   return Object.fromEntries(
     input
-      .split(/,(?=[a-zA-Z_][a-zA-Z0-9_]*=)/)
+      .split(/,(?=[a-zA-Z_]\w*=)/)
       .map((part) => part.trim())
       .filter(Boolean)
       .map((pair) => {
@@ -220,7 +221,7 @@ function formatPercent(value: number | null): string {
 
 export function formatLatency(valueMs: number | null): string {
   if (valueMs === null || Number.isNaN(valueMs)) {
-    return "Instrumentation not yet present";
+    return "No latency data yet";
   }
   if (valueMs >= 1000) {
     return `${(valueMs / 1000).toFixed(2)}s`;
