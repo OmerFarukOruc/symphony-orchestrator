@@ -324,6 +324,7 @@ export interface CodexConfig {
   drainTimeoutMs: number;
   startupTimeoutMs: number;
   stallTimeoutMs: number;
+  structuredOutput: boolean;
   auth: CodexAuthConfig;
   provider: CodexProviderConfig | null;
   sandbox: SandboxConfig;

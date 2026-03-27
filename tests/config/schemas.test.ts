@@ -113,6 +113,16 @@ describe("codexConfigSchema", () => {
     });
     expect(result.turnSandboxPolicy.type).toBe("dangerFullAccess");
   });
+
+  it("defaults structuredOutput to false", () => {
+    const result = codexConfigSchema.parse({});
+    expect(result.structuredOutput).toBe(false);
+  });
+
+  it("accepts structuredOutput: true", () => {
+    const result = codexConfigSchema.parse({ structuredOutput: true });
+    expect(result.structuredOutput).toBe(true);
+  });
 });
 
 describe("sandboxConfigSchema", () => {

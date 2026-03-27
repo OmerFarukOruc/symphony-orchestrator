@@ -38,4 +38,32 @@ describe("detectStopSignal", () => {
       "SYMPHONY_STATUS: DONE";
     expect(detectStopSignal(longMessage)).toBe("done");
   });
+
+  describe("structured JSON output", () => {
+    it("returns 'done' for JSON with status DONE", () => {
+      expect(detectStopSignal('{"status":"DONE","summary":"completed"}')).toBe("done");
+    });
+
+    it("returns 'blocked' for JSON with status BLOCKED", () => {
+      expect(detectStopSignal('{"status":"BLOCKED","summary":"stuck"}')).toBe("blocked");
+    });
+
+    it("returns null for JSON with status CONTINUE", () => {
+      expect(detectStopSignal('{"status":"CONTINUE","summary":"working"}')).toBeNull();
+    });
+
+    it("is case-insensitive for JSON status", () => {
+      expect(detectStopSignal('{"status":"done"}')).toBe("done");
+      expect(detectStopSignal('{"status":"Done"}')).toBe("done");
+      expect(detectStopSignal('{"status":"blocked"}')).toBe("blocked");
+    });
+
+    it("falls through to text matching for malformed JSON", () => {
+      expect(detectStopSignal("{bad json SYMPHONY_STATUS: DONE")).toBe("done");
+    });
+
+    it("falls through to text matching for JSON without status field", () => {
+      expect(detectStopSignal('{"result":"ok"}\nSYMPHONY_STATUS: BLOCKED')).toBe("blocked");
+    });
+  });
 });
