@@ -31,6 +31,8 @@ export interface RunAttemptDispatcher {
     workspace: Workspace;
     signal: AbortSignal;
     onEvent: AgentRunnerEventHandler;
+    /** Thread ID from a previous attempt — enables thread/resume on retry. */
+    previousThreadId?: string | null;
   }): Promise<RunOutcome>;
 }
 

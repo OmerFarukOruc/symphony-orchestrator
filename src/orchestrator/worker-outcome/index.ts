@@ -97,5 +97,5 @@ async function dispatchPostReconciliation(
     return;
   }
 
-  handleErrorRetry(ctx, outcome, latestIssue, attempt);
+  handleErrorRetry(ctx, outcome, latestIssue, attempt, entry);
 }

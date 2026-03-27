@@ -48,6 +48,8 @@ export class AgentRunner implements RunAttemptDispatcher {
     onEvent: AgentRunnerEventHandler;
     /** Pre-computed runtime config for data plane (skips auth.json read) */
     precomputedRuntimeConfig?: PrecomputedRuntimeConfig;
+    /** Thread ID from a previous attempt — enables thread/resume on retry. */
+    previousThreadId?: string | null;
   }): Promise<RunOutcome> {
     const config = this.deps.getConfig();
     const logger = this.deps.logger.child({
@@ -131,13 +133,18 @@ export class AgentRunner implements RunAttemptDispatcher {
       workspace: Workspace;
       signal: AbortSignal;
       onEvent: AgentRunnerEventHandler;
+      previousThreadId?: string | null;
     },
     getLastAgentMessageContent: () => string | null,
   ): Promise<RunOutcome> {
     const initResult = await initializeSession(
       session,
       config,
-      { ...input, startupTimeoutMs: config.codex.startupTimeoutMs },
+      {
+        ...input,
+        startupTimeoutMs: config.codex.startupTimeoutMs,
+        rollbackLastTurn: Boolean(input.previousThreadId),
+      },
       { logger: this.deps.logger },
       this.liquid,
     );

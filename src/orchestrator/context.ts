@@ -30,7 +30,13 @@ export interface OutcomeContext {
   releaseIssueClaim: (issueId: string) => void;
   resolveModelSelection: (identifier: string) => ModelSelection;
   notify: (event: NotificationEvent) => void;
-  queueRetry: (issue: Issue, attempt: number, delayMs: number, error: string | null) => void;
+  queueRetry: (
+    issue: Issue,
+    attempt: number,
+    delayMs: number,
+    error: string | null,
+    metadata?: { threadId?: string | null },
+  ) => void;
 }
 
 export interface OrchestratorContext {
@@ -49,9 +55,19 @@ export interface OrchestratorContext {
   claimIssue: (issueId: string) => void;
   notify: (event: NotificationEvent) => void;
   pushEvent: (event: RuntimeEventRecord) => void;
-  queueRetry: (issue: Issue, attempt: number, delayMs: number, error: string | null) => void;
+  queueRetry: (
+    issue: Issue,
+    attempt: number,
+    delayMs: number,
+    error: string | null,
+    metadata?: { threadId?: string | null },
+  ) => void;
   clearRetryEntry: (issueId: string) => void;
-  launchWorker: (issue: Issue, attempt: number | null, options?: { claimHeld?: boolean }) => Promise<void>;
+  launchWorker: (
+    issue: Issue,
+    attempt: number | null,
+    options?: { claimHeld?: boolean; previousThreadId?: string | null },
+  ) => Promise<void>;
   canDispatchIssue: (issue: Issue) => boolean;
   hasAvailableStateSlot: (issue: Issue, pendingStateCounts?: Map<string, number>) => boolean;
   revalidateAndLaunchRetry: (issueId: string, attempt: number) => Promise<void>;

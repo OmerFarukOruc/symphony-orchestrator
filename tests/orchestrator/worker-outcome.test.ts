@@ -336,7 +336,9 @@ describe("handleWorkerOutcome - stop signal detection", () => {
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
 
     // Should queue continuation retry, not mark as done
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 1000, "continuation");
+    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 1000, "continuation", {
+      threadId: "sess-xyz",
+    });
   });
 });
 
@@ -348,7 +350,9 @@ describe("handleWorkerOutcome - continuation retry", () => {
 
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
 
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 1000, "continuation");
+    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 1000, "continuation", {
+      threadId: "sess-xyz",
+    });
   });
 
   it("queues retry with exponential backoff for failure outcomes", async () => {
@@ -422,7 +426,9 @@ describe("handleWorkerOutcome - max continuation cap", () => {
     // attempt=2 → nextAttempt=3 <= maxContinuationAttempts=3 → should retry
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 2);
 
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 3, 1000, "continuation");
+    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 3, 1000, "continuation", {
+      threadId: "sess-xyz",
+    });
   });
 });
 

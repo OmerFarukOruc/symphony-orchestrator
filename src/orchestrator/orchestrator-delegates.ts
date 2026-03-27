@@ -57,8 +57,8 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
       pushRecentEvent(state.recentEvents, event);
       forwardToEventBus(deps, event);
     },
-    queueRetry: (issue, attempt, delayMs, error) =>
-      queueRetryState(buildCtx(state, deps), issue, attempt, delayMs, error),
+    queueRetry: (issue, attempt, delayMs, error, metadata) =>
+      queueRetryState(buildCtx(state, deps), issue, attempt, delayMs, error, metadata),
     clearRetryEntry: (issueId) => clearRetryEntryState(buildCtx(state, deps), issueId),
     launchWorker: async (issue, attempt, options) => launchWorkerDelegate(state, deps, issue, attempt, options),
     canDispatchIssue: (issue) => canDispatchIssueState(issue, deps.configStore.getConfig(), state.claimedIssueIds),
@@ -185,7 +185,7 @@ async function launchWorkerDelegate(
   deps: OrchestratorDeps,
   issue: Issue,
   attempt: number | null,
-  options?: { claimHeld?: boolean },
+  options?: { claimHeld?: boolean; previousThreadId?: string | null },
 ): Promise<void> {
   const ctx = buildCtx(state, deps);
   await launchWorkerState(
