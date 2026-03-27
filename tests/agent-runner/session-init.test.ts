@@ -120,6 +120,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({ models: [{ id: "gpt-5.4" }] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-abc" }); // thread/start
 
       const input = makeInput();
@@ -238,6 +239,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({}) // account/rateLimits/read
+        .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-1" }); // thread/start
 
       const liquid = makeLiquid({
@@ -267,6 +269,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({}) // account/rateLimits/read
+        .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-2" }); // thread/start
 
       const liquid = makeLiquid({
@@ -296,6 +299,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockRejectedValueOnce(new Error("rate limit unavailable")) // account/rateLimits/read
+        .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-3" }); // thread/start
 
       const liquid = makeLiquid({ render: async () => "prompt" });
@@ -318,6 +322,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({}) // initialize
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({}) // account/rateLimits/read
+        .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({}); // thread/start -- no threadId
 
       const liquid = makeLiquid();

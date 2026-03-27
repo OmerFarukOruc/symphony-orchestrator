@@ -1,6 +1,7 @@
 import type { Liquid } from "liquidjs";
 
 import { authIsRequired, extractRateLimits, extractThreadId, hasUsableAccount } from "./helpers.js";
+import { fetchAvailableModels } from "./model-validation.js";
 import { waitForStartup, StartupTimeoutError, buildDynamicTools } from "./session-helpers.js";
 import type { DockerSession } from "./docker-session.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
@@ -81,6 +82,14 @@ export async function initializeSession(
   const earlyFailure = await initCodexProtocol(session, input, deps);
   if (earlyFailure) {
     return { ...earlyFailure, threadId, turnId, turnCount };
+  }
+
+  const availableModels = await fetchAvailableModels(session.connection, deps.logger);
+  if (availableModels && !availableModels.includes(input.modelSelection.model)) {
+    deps.logger.warn(
+      { configured: input.modelSelection.model, available: availableModels },
+      "configured model not found in model/list — proceeding anyway",
+    );
   }
 
   const resolvedThreadId = await startThread(session, config, input);

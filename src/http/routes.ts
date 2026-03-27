@@ -122,6 +122,16 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
   }
 
   app
+    .route("/api/v1/models")
+    .get((_req, res) => {
+      const snapshot = deps.orchestrator.getSnapshot();
+      res.json({ models: snapshot.availableModels ?? null });
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
     .route("/api/v1/transitions")
     .get((req, res) => {
       handleGetTransitions({ orchestrator: deps.orchestrator, configStore: deps.configStore }, req, res);

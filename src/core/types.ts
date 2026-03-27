@@ -185,6 +185,7 @@ export interface RuntimeSnapshot {
   recentEvents: RecentEvent[];
   stallEvents?: StallEventView[];
   systemHealth?: SystemHealth;
+  availableModels?: string[] | null;
 }
 
 export interface ValidationError {

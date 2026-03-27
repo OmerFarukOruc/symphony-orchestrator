@@ -200,4 +200,36 @@ describe("HTTP routes", () => {
     const contentType = res.headers.get("content-type");
     expect(contentType).toContain("text/plain");
   });
+
+  it("GET /api/v1/models returns null when no models available", async () => {
+    const res = await fetchRoute("/api/v1/models");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ models: null });
+  });
+
+  it("GET /api/v1/models returns model list when available", async () => {
+    orchestrator.getSnapshot.mockReturnValueOnce({
+      generatedAt: "2024-01-01T00:00:00Z",
+      counts: { running: 0, retrying: 0, queued: 0, completed: 0 },
+      running: [],
+      retrying: [],
+      completed: [],
+      queued: [],
+      workflowColumns: [],
+      codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0, costUsd: 0 },
+      rateLimits: null,
+      recentEvents: [],
+      availableModels: ["gpt-5.4", "o3"],
+    });
+    const res = await fetchRoute("/api/v1/models");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ models: ["gpt-5.4", "o3"] });
+  });
+
+  it("GET /api/v1/models with wrong method returns 405", async () => {
+    const res = await fetchRoute("/api/v1/models", { method: "DELETE" });
+    expect(res.status).toBe(405);
+  });
 });
