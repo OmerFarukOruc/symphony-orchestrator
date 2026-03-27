@@ -3,6 +3,7 @@ import chokidar, { type FSWatcher } from "chokidar";
 import type { ConfigOverlayStore } from "./overlay.js";
 import { collectDispatchWarnings, validateDispatch } from "./validators.js";
 import type { SecretsStore } from "../secrets/store.js";
+import { toErrorString } from "../utils/type-guards.js";
 import type { SymphonyLogger, ValidationError, WorkflowDefinition, ServiceConfig } from "../core/types.js";
 import { loadWorkflowDefinition } from "../workflow/loader.js";
 import { deriveServiceConfig } from "./builders.js";
@@ -85,7 +86,7 @@ export class ConfigStore {
         {
           workflowPath: this.workflowPath,
           reason,
-          error: error instanceof Error ? error.message : String(error),
+          error: toErrorString(error),
         },
         "workflow reload rejected; keeping last known good config",
       );

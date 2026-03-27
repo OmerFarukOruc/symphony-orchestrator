@@ -5,7 +5,7 @@ import chokidar, { type FSWatcher } from "chokidar";
 import YAML from "yaml";
 
 import type { SymphonyLogger } from "../core/types.js";
-import { isRecord } from "../utils/type-guards.js";
+import { isRecord, toErrorString } from "../utils/type-guards.js";
 
 const dangerousKeys = new Set(["__proto__", "constructor", "prototype"]);
 
@@ -232,7 +232,7 @@ export class ConfigOverlayStore {
       } catch (error) {
         const code = (error as NodeJS.ErrnoException).code;
         if (code === "ENOENT" && attempt === 0) {
-          this.logger.warn({ error: String(error) }, "config overlay persist retrying after ENOENT");
+          this.logger.warn({ error: toErrorString(error) }, "config overlay persist retrying after ENOENT");
           continue;
         }
         throw error;
@@ -249,7 +249,7 @@ export class ConfigOverlayStore {
       if (code === "ENOENT" && options.allowMissingFile) {
         source = null;
       } else {
-        this.logger.warn({ error: String(error), reason }, "config overlay read failed");
+        this.logger.warn({ error: toErrorString(error), reason }, "config overlay read failed");
         return;
       }
     }
@@ -259,7 +259,10 @@ export class ConfigOverlayStore {
       const parsed = source === null ? {} : YAML.parse(source);
       nextMap = parsed === null ? {} : parsed;
     } catch (error) {
-      this.logger.warn({ reason, overlayPath: this.overlayPath, error: String(error) }, "config overlay parse failed");
+      this.logger.warn(
+        { reason, overlayPath: this.overlayPath, error: toErrorString(error) },
+        "config overlay parse failed",
+      );
       return;
     }
     if (!isRecord(nextMap)) {

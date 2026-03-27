@@ -477,7 +477,7 @@ describe("handleWorkerFailure", () => {
     expect(runningEntries.has("issue-1")).toBe(false);
     expect(releaseIssueClaim).toHaveBeenCalledWith("issue-1");
     expect(pushEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ event: "worker_failed", message: "Error: unexpected crash" }),
+      expect.objectContaining({ event: "worker_failed", message: "unexpected crash" }),
     );
     expect(updateAttempt).toHaveBeenCalledWith(
       "run-abc",

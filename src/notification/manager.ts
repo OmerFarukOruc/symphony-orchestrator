@@ -1,5 +1,6 @@
 import type { SymphonyLogger } from "../core/types.js";
 import type { NotificationChannel, NotificationEvent } from "./channel.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 interface NotificationDeliveryResult {
   deliveredChannels: string[];
@@ -60,7 +61,7 @@ export class NotificationManager {
           await channel.notify(event);
           deliveredChannels.push(channel.name);
         } catch (error) {
-          const errorText = error instanceof Error ? error.message : String(error);
+          const errorText = toErrorString(error);
           failedChannels.push({ channel: channel.name, error: errorText });
           this.options.logger?.warn(
             {

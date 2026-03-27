@@ -5,6 +5,7 @@ import {
   type NotificationVerbosity,
   shouldDeliverByVerbosity,
 } from "./channel.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -149,7 +150,7 @@ export class SlackWebhookChannel implements NotificationChannel {
           channel: this.name,
           eventType: event.type,
           issueIdentifier: event.issue.identifier,
-          error: error instanceof Error ? error.message : String(error),
+          error: toErrorString(error),
         },
         "notification delivery failed",
       );

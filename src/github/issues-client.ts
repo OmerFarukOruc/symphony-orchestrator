@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { Issue, ServiceConfig, SymphonyLogger } from "../core/types.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 // ---------------------------------------------------------------------------
 // Error type
@@ -116,7 +117,7 @@ export class GitHubIssuesClient {
         },
       });
     } catch (error) {
-      this.logger.error({ error: String(error), url }, "github api transport failed");
+      this.logger.error({ error: toErrorString(error), url }, "github api transport failed");
       throw new GitHubIssuesClientError("github_transport_error", "github api request failed during transport", {
         cause: error,
       });
@@ -152,13 +153,13 @@ export class GitHubIssuesClient {
       } catch (error) {
         if (attempt === maxAttempts) {
           this.logger.warn(
-            { operation, attempt, error: String(error) },
+            { operation, attempt, error: toErrorString(error) },
             "github write-back failed after max retries (non-fatal)",
           );
           return;
         }
         const delayMs = 1000 * 2 ** (attempt - 1) * (randomInt(500, 1000) / 1000);
-        this.logger.warn({ operation, attempt, delayMs, error: String(error) }, "github write-back retry");
+        this.logger.warn({ operation, attempt, delayMs, error: toErrorString(error) }, "github write-back retry");
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }

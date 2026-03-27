@@ -4,6 +4,7 @@ import { Buffer } from "node:buffer";
 import type { CodexConfig, CodexProviderConfig } from "../core/types.js";
 import { normalizeCodexAuthJson, readCodexAuthTokens } from "./auth-file.js";
 import { isTokenExpired, refreshAccessToken } from "./token-refresh.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 const DIRECT_OPENAI_PROVIDER_ID = "symphony_openai_api";
 const DIRECT_OPENAI_BASE_URL = "https://api.openai.com/v1";
@@ -178,7 +179,7 @@ async function readAuthJson(authJsonPath: string): Promise<string> {
   try {
     return await readFile(authJsonPath, "utf8");
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = toErrorString(error);
     throw new Error(`codex auth.json unavailable at ${authJsonPath}: ${message}`, { cause: error });
   }
 }

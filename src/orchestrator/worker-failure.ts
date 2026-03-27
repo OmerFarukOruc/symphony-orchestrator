@@ -1,4 +1,5 @@
 import type { Issue } from "../core/types.js";
+import { toErrorString } from "../utils/type-guards.js";
 import type { RuntimeEventSink } from "../core/lifecycle-events.js";
 import { nowIso } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
@@ -25,7 +26,12 @@ export async function handleWorkerFailure(
     await entry.flushPersistence();
   } catch (flushError) {
     ctx.deps.logger.warn(
-      { issue_id: issue.id, issue_identifier: issue.identifier, attempt_id: entry.runId, error: String(flushError) },
+      {
+        issue_id: issue.id,
+        issue_identifier: issue.identifier,
+        attempt_id: entry.runId,
+        error: toErrorString(flushError),
+      },
       "worker failure: failed to flush persistence, attempting fallback update",
     );
     try {
@@ -36,7 +42,7 @@ export async function handleWorkerFailure(
           issue_id: issue.id,
           issue_identifier: issue.identifier,
           attempt_id: entry.runId,
-          error: String(fallbackError),
+          error: toErrorString(fallbackError),
         },
         "worker failure: fallback attempt update also failed",
       );
@@ -51,7 +57,7 @@ export async function handleWorkerFailure(
     issueIdentifier: issue.identifier,
     sessionId: entry.sessionId,
     event: "worker_failed",
-    message: String(error),
+    message: toErrorString(error),
   });
 
   const errorCode = error instanceof TokenRefreshError ? error.code : "worker_failed";
@@ -61,7 +67,7 @@ export async function handleWorkerFailure(
       status: "failed",
       endedAt: nowIso(),
       errorCode,
-      errorMessage: String(error),
+      errorMessage: toErrorString(error),
       tokenUsage: entry.tokenUsage,
       threadId: null,
     });
@@ -71,7 +77,7 @@ export async function handleWorkerFailure(
         issue_id: issue.id,
         issue_identifier: issue.identifier,
         attempt_id: entry.runId,
-        error: String(updateError),
+        error: toErrorString(updateError),
       },
       "worker failure: failed to update attempt status, attempting fallback error code",
     );
@@ -83,7 +89,7 @@ export async function handleWorkerFailure(
           issue_id: issue.id,
           issue_identifier: issue.identifier,
           attempt_id: entry.runId,
-          error: String(fallbackError),
+          error: toErrorString(fallbackError),
         },
         "worker failure: fallback error code update also failed",
       );
