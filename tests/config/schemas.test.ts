@@ -77,6 +77,14 @@ describe("agentConfigSchema", () => {
     expect(result.maxContinuationAttempts).toBe(5);
     expect(result.successState).toBe(null);
     expect(result.stallTimeoutMs).toBe(1200000);
+    expect(result.preflightCommands).toEqual([]);
+  });
+
+  it("accepts preflightCommands array", () => {
+    const result = agentConfigSchema.parse({
+      preflightCommands: ["npm test", "npm run lint"],
+    });
+    expect(result.preflightCommands).toEqual(["npm test", "npm run lint"]);
   });
 });
 
@@ -104,6 +112,16 @@ describe("codexConfigSchema", () => {
       turnSandboxPolicy: { type: "dangerFullAccess", networkAccess: true },
     });
     expect(result.turnSandboxPolicy.type).toBe("dangerFullAccess");
+  });
+
+  it("defaults structuredOutput to false", () => {
+    const result = codexConfigSchema.parse({});
+    expect(result.structuredOutput).toBe(false);
+  });
+
+  it("accepts structuredOutput: true", () => {
+    const result = codexConfigSchema.parse({ structuredOutput: true });
+    expect(result.structuredOutput).toBe(true);
   });
 });
 

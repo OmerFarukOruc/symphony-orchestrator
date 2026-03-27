@@ -188,6 +188,7 @@ function deriveCodexConfig(
     drainTimeoutMs: asNumber(codex.drain_timeout_ms, 2000),
     startupTimeoutMs: asNumber(codex.startup_timeout_ms, 30000),
     stallTimeoutMs,
+    structuredOutput: asBoolean(codex.structured_output, false),
     auth: {
       mode: asCodexAuthMode(auth.mode, "api_key"),
       sourceHome: resolveConfigString(asString(auth.source_home, "~/.codex"), secretResolver),

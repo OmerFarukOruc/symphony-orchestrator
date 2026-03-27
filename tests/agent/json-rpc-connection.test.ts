@@ -384,6 +384,90 @@ describe("JsonRpcConnection", () => {
     });
   });
 
+  describe("exited getter", () => {
+    it("returns false initially", () => {
+      const mock = makeMockChild();
+      const conn = createConnection(mock);
+      expect(conn.exited).toBe(false);
+    });
+
+    it("returns true after child process exits", () => {
+      const mock = makeMockChild();
+      const conn = createConnection(mock);
+      mock.exit();
+      expect(conn.exited).toBe(true);
+    });
+
+    it("returns true after close() is called", () => {
+      const mock = makeMockChild();
+      const conn = createConnection(mock);
+      // close() sends SIGTERM; simulate the exit event that follows
+      conn.close();
+      mock.exit();
+      expect(conn.exited).toBe(true);
+    });
+  });
+
+  describe("interruptTurn()", () => {
+    it("sends turn/interrupt request and returns true on success", async () => {
+      const mock = makeMockChild();
+      const conn = createConnection(mock);
+
+      const promise = conn.interruptTurn("thread-1", "turn-1", 5000);
+
+      // The interruptTurn method calls request(), which writes to stdin
+      const sent = lastSentMessage(mock);
+      expect(sent.method).toBe("turn/interrupt");
+      expect(sent.params).toEqual({ threadId: "thread-1", turnId: "turn-1" });
+
+      // Respond successfully
+      mock.sendLine({ jsonrpc: "2.0", id: sent.id, result: {} });
+      const result = await promise;
+      expect(result).toBe(true);
+    });
+
+    it("returns false when the request times out", async () => {
+      const mock = makeMockChild();
+      const conn = createConnection(mock);
+
+      const promise = conn.interruptTurn("thread-1", "turn-1", 500);
+
+      // Do not respond — let the interrupt timeout fire
+      vi.advanceTimersByTime(501);
+      const result = await promise;
+      expect(result).toBe(false);
+    });
+
+    it("returns false immediately when connection already exited", async () => {
+      const mock = makeMockChild();
+      const conn = createConnection(mock);
+
+      mock.exit();
+      const result = await conn.interruptTurn("thread-1", "turn-1");
+      expect(result).toBe(false);
+      // No new writes should have been sent after exit
+      const writesAfterExit = mock.child.stdin.write.mock.calls.length;
+      expect(writesAfterExit).toBe(0);
+    });
+
+    it("returns false when the request rejects with an error", async () => {
+      const mock = makeMockChild();
+      const conn = createConnection(mock);
+
+      const promise = conn.interruptTurn("thread-1", "turn-1", 5000);
+      const sent = lastSentMessage(mock);
+
+      // Respond with a JSON-RPC error
+      mock.sendLine({
+        jsonrpc: "2.0",
+        id: sent.id,
+        error: { code: -32600, message: "not supported" },
+      });
+      const result = await promise;
+      expect(result).toBe(false);
+    });
+  });
+
   describe("stdin error handling", () => {
     it("logs EPIPE as debug (child already exited)", () => {
       const mock = makeMockChild();

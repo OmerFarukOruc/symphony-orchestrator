@@ -161,8 +161,17 @@ function buildDockerSessionObject(
     getFatalFailure: () => fatalFailure,
     inspectRunning: helpers.inspectRunning,
     abortHandler: () => {
-      session.connection.close();
-      void stopContainer(containerName, 5);
+      void (async () => {
+        if (session.threadId && session.turnId) {
+          const interrupted = await session.connection.interruptTurn(session.threadId, session.turnId, 3000);
+          if (interrupted) {
+            // Allow time for turn/completed notification before hard kill
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }
+        session.connection.close();
+        void stopContainer(containerName, 5);
+      })();
     },
     statsInterval: null,
     cleanup: async (cfg: ServiceConfig, signal: AbortSignal) => {

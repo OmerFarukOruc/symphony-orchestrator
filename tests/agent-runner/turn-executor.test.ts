@@ -299,4 +299,51 @@ describe("executeTurns", () => {
     expect(result.kind).toBe("cancelled");
     expect(result.errorCode).toBe("shutdown");
   });
+
+  it("includes summary: 'concise' in turn/start request", async () => {
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const input = makeInput();
+    const state = makeState();
+
+    await executeTurns(input, state);
+
+    const requestMock = (input.connection as { request: ReturnType<typeof vi.fn> }).request;
+    const params = requestMock.mock.calls[0][1];
+    expect(params.summary).toBe("concise");
+  });
+
+  it("includes outputSchema when structuredOutput is true", async () => {
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const input = makeInput();
+    (input.config.codex as { structuredOutput: boolean }).structuredOutput = true;
+    const state = makeState();
+
+    await executeTurns(input, state);
+
+    const requestMock = (input.connection as { request: ReturnType<typeof vi.fn> }).request;
+    const params = requestMock.mock.calls[0][1];
+    expect(params.outputSchema).toEqual({
+      type: "object",
+      properties: {
+        status: { type: "string", enum: ["DONE", "BLOCKED", "CONTINUE"] },
+        summary: { type: "string" },
+      },
+      required: ["status", "summary"],
+    });
+  });
+
+  it("does not include outputSchema when structuredOutput is false", async () => {
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const input = makeInput();
+    const state = makeState();
+
+    await executeTurns(input, state);
+
+    const requestMock = (input.connection as { request: ReturnType<typeof vi.fn> }).request;
+    const params = requestMock.mock.calls[0][1];
+    expect(params.outputSchema).toBeUndefined();
+  });
 });

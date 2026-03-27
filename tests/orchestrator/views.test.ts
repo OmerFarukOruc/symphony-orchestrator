@@ -25,7 +25,6 @@ describe("isHardFailure", () => {
   it("returns true for known hard failure codes", () => {
     const hardCodes = [
       "startup_failed",
-      "turn_input_required",
       "inactive",
       "terminal",
       "shutdown",
@@ -39,7 +38,15 @@ describe("isHardFailure", () => {
   });
 
   it("returns false for retryable codes", () => {
-    const retryCodes = ["turn_failed", "port_exit", "turn_timeout", "read_timeout", "startup_timeout", "container_oom"];
+    const retryCodes = [
+      "turn_failed",
+      "port_exit",
+      "turn_timeout",
+      "read_timeout",
+      "startup_timeout",
+      "container_oom",
+      "turn_input_required",
+    ];
     for (const code of retryCodes) {
       expect(isHardFailure(code), `expected ${code} to not be a hard failure`).toBe(false);
     }
