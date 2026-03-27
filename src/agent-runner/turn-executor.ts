@@ -22,6 +22,15 @@ import type { RunOutcome } from "../core/types.js";
 const CONTINUATION_PROMPT =
   "Continue the current issue, make concrete progress, and stop only when done or blocked. When the issue is complete, end your final message with `SYMPHONY_STATUS: DONE`. If you are blocked and cannot proceed, end your final message with `SYMPHONY_STATUS: BLOCKED`.";
 
+const STRUCTURED_OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    status: { type: "string", enum: ["DONE", "BLOCKED", "CONTINUE"] },
+    summary: { type: "string" },
+  },
+  required: ["status", "summary"],
+} as const;
+
 function checkFatalFailure(state: AgentRunnerTurnExecutionState): RunOutcome | null {
   return failureOutcome(state.getFatalFailure(), state.threadId, state.turnId, state.turnCount);
 }
@@ -98,7 +107,9 @@ async function runSingleTurn(
     effort: input.runInput.modelSelection.reasoningEffort,
     approvalPolicy: input.config.codex.approvalPolicy,
     sandboxPolicy: getTurnSandboxPolicy(input.config, input.runInput.workspace.path),
+    summary: "concise",
     input: [{ type: "text", text: prompt }],
+    ...(input.config.codex.structuredOutput ? { outputSchema: STRUCTURED_OUTPUT_SCHEMA } : {}),
   });
   state.turnId = extractTurnId(turnResult);
   if (!state.turnId) {
