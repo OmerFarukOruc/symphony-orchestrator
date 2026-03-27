@@ -31,6 +31,8 @@ export interface RunAttemptDispatcher {
     workspace: Workspace;
     signal: AbortSignal;
     onEvent: AgentRunnerEventHandler;
+    /** Called once the session is ready with a function to steer the active turn. */
+    onSteerReady?: (steerTurn: (message: string) => Promise<boolean>) => void;
   }): Promise<RunOutcome>;
 }
 

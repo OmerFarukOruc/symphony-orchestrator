@@ -35,6 +35,7 @@ export interface RunningEntry {
   repoMatch: RepoMatch | null;
   queuePersistence: (task: () => Promise<void>) => void;
   flushPersistence: () => Promise<void>;
+  steerTurn?: (message: string) => Promise<boolean>;
 }
 
 export type RetryRuntimeEntry = RetryEntry & { issue: Issue; workspaceKey: string | null };

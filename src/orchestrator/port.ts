@@ -18,4 +18,5 @@ export interface OrchestratorPort {
     model: string;
     reasoningEffort: ReasoningEffort | null;
   }): Promise<{ updated: boolean; restarted: boolean; appliesNextAttempt: boolean; selection: ModelSelection } | null>;
+  steerIssue(identifier: string, message: string): Promise<{ ok: boolean } | null>;
 }
