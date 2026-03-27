@@ -17,7 +17,9 @@ import {
   handleContinuationExhausted,
   handleErrorRetry,
   handleModelOverrideRetry,
+  queueRetryWithDelay,
 } from "./retry-paths.js";
+import { classifyRetryStrategy } from "../../agent-runner/error-classifier.js";
 import { handleStopSignal } from "./stop-signal.js";
 
 export async function handleWorkerOutcome(
@@ -97,5 +99,17 @@ async function dispatchPostReconciliation(
     return;
   }
 
-  handleErrorRetry(ctx, outcome, latestIssue, attempt);
+  const strategy = classifyRetryStrategy(outcome.codexErrorInfo ?? null, outcome.errorCode);
+  switch (strategy.action) {
+    case "hard_fail":
+      handleCancelledOrHardFailure(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
+      return;
+    case "retry":
+      queueRetryWithDelay(ctx, latestIssue, attempt, strategy.delayMs, strategy.reason);
+      return;
+    case "compact_and_retry":
+    case "default":
+      handleErrorRetry(ctx, outcome, latestIssue, attempt);
+      return;
+  }
 }

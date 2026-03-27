@@ -37,6 +37,7 @@ export interface RunOutcome {
   kind: "normal" | "failed" | "timed_out" | "stalled" | "cancelled";
   errorCode: string | null;
   errorMessage: string | null;
+  codexErrorInfo?: { type: string; message: string; retryAfterMs?: number } | null;
   threadId: string | null;
   turnId: string | null;
   turnCount: number;

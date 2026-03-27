@@ -7,6 +7,7 @@ import {
   getTurnSandboxPolicy,
 } from "./helpers.js";
 import { classifyRunError, failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
+import { extractCodexErrorInfo } from "./error-classifier.js";
 import { classifyExitState } from "./exit-classifier.js";
 import { composeSessionId, waitForTurnCompletion } from "./turn-state.js";
 import { detectStopSignal } from "../core/signal-detection.js";
@@ -41,10 +42,12 @@ function classifyTurnResult(
   state: AgentRunnerTurnExecutionState,
 ): RunOutcome | null {
   if (completedStatus === "failed") {
+    const codexErrorInfo = extractCodexErrorInfo(completedError);
     return {
       kind: "failed",
       errorCode: "turn_failed",
       errorMessage: asString(completedError.message) ?? "turn failed",
+      codexErrorInfo,
       threadId: state.threadId,
       turnId: state.turnId,
       turnCount: state.turnCount,
