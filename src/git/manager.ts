@@ -4,6 +4,8 @@ import { promisify } from "node:util";
 
 import type { Issue, SymphonyLogger } from "../core/types.js";
 import type { RepoMatch } from "./repo-router.js";
+import type { GitRunner } from "./git-types.js";
+export type { GitCommandOptions, GitRunResult, GitRunner } from "./git-types.js";
 import {
   ensureBaseClone,
   syncBaseClone,
@@ -16,18 +18,6 @@ import {
 } from "./worktree-manager.js";
 
 const execFileAsync = promisify(execFile);
-
-export interface GitCommandOptions {
-  cwd: string;
-  env?: NodeJS.ProcessEnv;
-}
-
-export interface GitRunResult {
-  stdout: string;
-  stderr: string;
-}
-
-export type GitRunner = (args: string[], options: GitCommandOptions) => Promise<GitRunResult>;
 
 export interface GitManagerDeps {
   runGit?: GitRunner;

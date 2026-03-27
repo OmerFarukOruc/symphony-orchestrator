@@ -144,23 +144,23 @@
 /* Urgent states - strong visual treatment */
 .mc-strip.is-status-running {
   border-left: var(--stroke-emphasis) solid var(--status-running);
-  background: color-mix(in srgb, var(--status-running) 4%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-running) var(--status-tint-surface), var(--bg-surface));
 }
 
 .mc-strip.is-status-blocked {
   border-left: var(--stroke-emphasis) solid var(--status-blocked);
-  background: color-mix(in srgb, var(--status-blocked) 4%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-blocked) var(--status-tint-surface), var(--bg-surface));
 }
 
 .mc-strip.is-status-retrying {
   border-left: var(--stroke-accent) solid var(--status-retrying);
-  background: color-mix(in srgb, var(--status-retrying) 4%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-retrying) var(--status-tint-surface), var(--bg-surface));
 }
 
 /* Active state - medium treatment */
 .mc-strip.is-status-claimed {
   border-left: var(--stroke-accent) solid var(--status-claimed);
-  background: color-mix(in srgb, var(--status-claimed) 3%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-claimed) var(--status-tint-surface-claimed), var(--bg-surface));
 }
 
 /* Non-urgent states - subtle treatment, no border-left accent */
@@ -185,23 +185,23 @@
 /* Urgent states - strong visual treatment */
 .mc-container.is-status-running {
   border-left: var(--stroke-emphasis) solid var(--status-running);
-  background: color-mix(in srgb, var(--status-running) 4%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-running) var(--status-tint-surface), var(--bg-surface));
 }
 
 .mc-container.is-status-blocked {
   border-left: var(--stroke-emphasis) solid var(--status-blocked);
-  background: color-mix(in srgb, var(--status-blocked) 4%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-blocked) var(--status-tint-surface), var(--bg-surface));
 }
 
 .mc-container.is-status-retrying {
   border-left: var(--stroke-accent) solid var(--status-retrying);
-  background: color-mix(in srgb, var(--status-retrying) 4%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-retrying) var(--status-tint-surface), var(--bg-surface));
 }
 
 /* Active state - medium treatment */
 .mc-container.is-status-claimed {
   border-left: var(--stroke-accent) solid var(--status-claimed);
-  background: color-mix(in srgb, var(--status-claimed) 3%, var(--bg-surface));
+  background: color-mix(in srgb, var(--status-claimed) var(--status-tint-surface-claimed), var(--bg-surface));
 }
 
 /* Non-urgent states - subtle treatment, no border-left accent */
@@ -216,26 +216,26 @@
 .mc-list-item.is-status-running,
 .mc-rail-item.is-status-running {
   border-left: var(--stroke-emphasis) solid var(--status-running);
-  background: color-mix(in srgb, var(--status-running) 6%, var(--bg-elevated));
+  background: color-mix(in srgb, var(--status-running) var(--status-tint-list), var(--bg-elevated));
 }
 
 .mc-list-item.is-status-blocked,
 .mc-rail-item.is-status-blocked {
   border-left: var(--stroke-emphasis) solid var(--status-blocked);
-  background: color-mix(in srgb, var(--status-blocked) 6%, var(--bg-elevated));
+  background: color-mix(in srgb, var(--status-blocked) var(--status-tint-list), var(--bg-elevated));
 }
 
 .mc-list-item.is-status-retrying,
 .mc-rail-item.is-status-retrying {
   border-left: var(--stroke-accent) solid var(--status-retrying);
-  background: color-mix(in srgb, var(--status-retrying) 6%, var(--bg-elevated));
+  background: color-mix(in srgb, var(--status-retrying) var(--status-tint-list), var(--bg-elevated));
 }
 
 /* Active state - medium treatment */
 .mc-list-item.is-status-claimed,
 .mc-rail-item.is-status-claimed {
   border-left: var(--stroke-accent) solid var(--status-claimed);
-  background: color-mix(in srgb, var(--status-claimed) 5%, var(--bg-elevated));
+  background: color-mix(in srgb, var(--status-claimed) var(--status-tint-list-claimed), var(--bg-elevated));
 }
 
 /* Non-urgent states - no border-left accent */
@@ -562,7 +562,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 3px 8px;
+  padding: var(--badge-padding-default);
   border: var(--stroke-default) solid var(--border-stitch);
   background: var(--bg-elevated);
   color: var(--text-secondary);
@@ -576,13 +576,13 @@
 /* Badge sizes */
 .mc-badge.is-sm,
 .mc-chip.is-sm {
-  padding: 2px 6px;
+  padding: var(--badge-padding-sm);
   font-size: var(--text-xs);
 }
 
 .mc-badge.is-lg,
 .mc-chip.is-lg {
-  padding: 4px 10px;
+  padding: var(--badge-padding-lg);
   font-size: var(--text-sm);
 }
 
@@ -615,43 +615,43 @@
 .mc-badge.is-status-queued,
 .mc-chip.is-status-queued {
   color: var(--status-queued);
-  background: color-mix(in srgb, var(--status-queued) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-queued) 34%, transparent);
+  background: color-mix(in srgb, var(--status-queued) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-queued) var(--status-tint-badge-border), transparent);
 }
 
 .mc-badge.is-status-running,
 .mc-chip.is-status-running {
   color: var(--status-running);
-  background: color-mix(in srgb, var(--status-running) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-running) 34%, transparent);
+  background: color-mix(in srgb, var(--status-running) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-running) var(--status-tint-badge-border), transparent);
 }
 
 .mc-badge.is-status-retrying,
 .mc-chip.is-status-retrying {
   color: var(--status-retrying);
-  background: color-mix(in srgb, var(--status-retrying) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-retrying) 34%, transparent);
+  background: color-mix(in srgb, var(--status-retrying) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-retrying) var(--status-tint-badge-border), transparent);
 }
 
 .mc-badge.is-status-blocked,
 .mc-chip.is-status-blocked {
   color: var(--status-blocked);
-  background: color-mix(in srgb, var(--status-blocked) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-blocked) 34%, transparent);
+  background: color-mix(in srgb, var(--status-blocked) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-blocked) var(--status-tint-badge-border), transparent);
 }
 
 .mc-badge.is-status-completed,
 .mc-chip.is-status-completed {
   color: var(--status-completed);
-  background: color-mix(in srgb, var(--status-completed) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-completed) 34%, transparent);
+  background: color-mix(in srgb, var(--status-completed) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-completed) var(--status-tint-badge-border), transparent);
 }
 
 .mc-badge.is-status-claimed,
 .mc-chip.is-status-claimed {
   color: var(--status-claimed);
-  background: color-mix(in srgb, var(--status-claimed) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-claimed) 34%, transparent);
+  background: color-mix(in srgb, var(--status-claimed) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-claimed) var(--status-tint-badge-border), transparent);
 }
 
 /* Badge variants — priority */
@@ -714,22 +714,22 @@
 .mc-chip.is-interactive.is-active {
   color: var(--text-accent);
   border-color: var(--text-accent);
-  background: color-mix(in srgb, var(--text-accent) 12%, var(--bg-elevated));
+  background: color-mix(in srgb, var(--text-accent) var(--status-tint-interactive), var(--bg-elevated));
 }
 
 /* Badge with dot indicator */
 .mc-badge.has-dot::before,
 .mc-chip.has-dot::before {
   content: "";
-  width: 6px;
-  height: 6px;
+  width: var(--badge-dot-size);
+  height: var(--badge-dot-size);
   border-radius: 50%;
   background: currentColor;
 }
 
 .mc-status-chip {
   gap: 6px;
-  padding: 4px 10px;
+  padding: var(--badge-padding-lg);
 }
 
 .mc-status-chip-dot {
@@ -788,38 +788,38 @@
 
 .status-running {
   color: var(--status-running);
-  background: color-mix(in srgb, var(--status-running) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-running) 34%, transparent);
+  background: color-mix(in srgb, var(--status-running) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-running) var(--status-tint-badge-border), transparent);
 }
 .status-retrying {
   color: var(--status-retrying);
-  background: color-mix(in srgb, var(--status-retrying) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-retrying) 34%, transparent);
+  background: color-mix(in srgb, var(--status-retrying) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-retrying) var(--status-tint-badge-border), transparent);
 }
 .status-blocked {
   color: var(--status-blocked);
-  background: color-mix(in srgb, var(--status-blocked) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-blocked) 34%, transparent);
+  background: color-mix(in srgb, var(--status-blocked) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-blocked) var(--status-tint-badge-border), transparent);
 }
 .status-completed {
   color: var(--status-completed);
-  background: color-mix(in srgb, var(--status-completed) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-completed) 34%, transparent);
+  background: color-mix(in srgb, var(--status-completed) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-completed) var(--status-tint-badge-border), transparent);
 }
 .status-queued {
   color: var(--status-queued);
-  background: color-mix(in srgb, var(--status-queued) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-queued) 34%, transparent);
+  background: color-mix(in srgb, var(--status-queued) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-queued) var(--status-tint-badge-border), transparent);
 }
 .status-claimed {
   color: var(--status-claimed);
-  background: color-mix(in srgb, var(--status-claimed) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-claimed) 34%, transparent);
+  background: color-mix(in srgb, var(--status-claimed) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-claimed) var(--status-tint-badge-border), transparent);
 }
 .status-pending_change {
   color: var(--status-pending-change);
-  background: color-mix(in srgb, var(--status-pending-change) 18%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--status-pending-change) 34%, transparent);
+  background: color-mix(in srgb, var(--status-pending-change) var(--status-tint-badge-bg), var(--bg-surface));
+  border-color: color-mix(in srgb, var(--status-pending-change) var(--status-tint-badge-border), transparent);
 }
 
 .issue-card {

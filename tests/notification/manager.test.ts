@@ -104,4 +104,91 @@ describe("NotificationManager", () => {
     expect(manager.removeChannel("dynamic")).toBe(true);
     expect(manager.listChannels()).toEqual([]);
   });
+
+  it("auto-generates a dedupe key from event fields when none is provided", async () => {
+    const notifySpy = vi.fn(async () => undefined);
+    const manager = new NotificationManager({
+      channels: [createChannel("ch", notifySpy)],
+      dedupeWindowMs: 60_000,
+    });
+    const event = createEvent(); // no dedupeKey set
+
+    await manager.notify(event);
+    await manager.notify(event);
+
+    expect(notifySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows same event after dedupe window expires", async () => {
+    vi.useFakeTimers();
+    const notifySpy = vi.fn(async () => undefined);
+    const manager = new NotificationManager({
+      channels: [createChannel("ch", notifySpy)],
+      dedupeWindowMs: 1_000,
+    });
+    const event = createEvent({ dedupeKey: "key-1" });
+
+    await manager.notify(event);
+    vi.advanceTimersByTime(1_001);
+    await manager.notify(event);
+
+    expect(notifySpy).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it("logs to the provided logger when a channel fails", async () => {
+    const warnSpy = vi.fn();
+    const logger = { warn: warnSpy, info: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn() };
+    const manager = new NotificationManager({
+      channels: [
+        createChannel("broken", async () => {
+          throw new Error("webhook unreachable");
+        }),
+      ],
+      logger: logger as never,
+    });
+
+    await manager.notify(createEvent());
+
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "broken", error: "webhook unreachable" }),
+      "notification channel failed",
+    );
+  });
+
+  it("returns empty results when no channels are registered", async () => {
+    const manager = new NotificationManager();
+
+    const result = await manager.notify(createEvent());
+
+    expect(result).toEqual({
+      deliveredChannels: [],
+      failedChannels: [],
+      skippedDuplicate: false,
+    });
+  });
+
+  it("removes stale deduplication entries during remember phase", async () => {
+    vi.useFakeTimers();
+    const notifySpy = vi.fn(async () => undefined);
+    const manager = new NotificationManager({
+      channels: [createChannel("ch", notifySpy)],
+      dedupeWindowMs: 100,
+    });
+
+    // Fill multiple dedupe entries
+    await manager.notify(createEvent({ dedupeKey: "a" }));
+    await manager.notify(createEvent({ dedupeKey: "b" }));
+    vi.advanceTimersByTime(101);
+
+    // Next notify should clean up stale entries and deliver
+    await manager.notify(createEvent({ dedupeKey: "c" }));
+
+    // Re-sending "a" should now work since it was cleaned up
+    await manager.notify(createEvent({ dedupeKey: "a" }));
+    expect(notifySpy).toHaveBeenCalledTimes(4); // a, b, c, a-again
+
+    vi.useRealTimers();
+  });
 });

@@ -6,7 +6,7 @@
  * these functions for worktree strategy operations.
  */
 
-import type { GitRunner } from "./manager.js";
+import type { GitRunner } from "./git-types.js";
 import type { SymphonyLogger } from "../core/types.js";
 
 export interface WorktreeContext {

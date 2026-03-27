@@ -73,6 +73,21 @@
   --stroke-accent: 2px;
   --stroke-emphasis: 3px;
 
+  /* Badge/chip dimensions */
+  --badge-dot-size: 6px;
+  --badge-padding-default: 3px 8px;
+  --badge-padding-sm: 2px 6px;
+  --badge-padding-lg: 4px 10px;
+
+  /* Status color tint percentages — controls the visual intensity of status color blending */
+  --status-tint-badge-bg: 18%;       /* Badge/chip background mix */
+  --status-tint-badge-border: 34%;   /* Badge/chip border mix */
+  --status-tint-surface: 4%;         /* Strip/container urgent-state background */
+  --status-tint-surface-claimed: 3%; /* Strip/container claimed-state background */
+  --status-tint-list: 6%;            /* List-item urgent-state background */
+  --status-tint-list-claimed: 5%;    /* List-item claimed-state background */
+  --status-tint-interactive: 12%;    /* Active interactive element (copper accent) background */
+
   /* Shell dimensions */
   --sidebar-width-collapsed: 56px;
   --sidebar-width-expanded: 220px;
@@ -100,6 +115,9 @@
   --tone-live-bg: color-mix(in srgb, var(--status-running) 10%, var(--bg-surface));
   --tone-warning-bg: color-mix(in srgb, var(--status-retrying) 12%, var(--bg-surface));
   --tone-danger-bg: color-mix(in srgb, var(--status-blocked) 12%, var(--bg-surface));
+
+  /* Dark mode needs slightly higher badge tint for legibility */
+  --status-tint-badge-bg: 20%;
 }
 
 html,
