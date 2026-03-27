@@ -13,7 +13,17 @@ const RECONNECT_DELAY_MS = 5_000;
 const CONNECTED_POLL_MS = 30_000;
 const DISCONNECTED_POLL_MS = 5_000;
 
-const LIFECYCLE_EVENTS = new Set(["issue.started", "issue.completed", "issue.stalled"]);
+const LIFECYCLE_EVENTS = new Set(["issue.started", "issue.completed", "issue.stalled", "issue.queued"]);
+
+/** Maps backend event types to their corresponding CustomEvent names for simple dispatch. */
+const EVENT_DISPATCH_MAP = new Map<string, string>([
+  ["agent.event", "symphony:agent-event"],
+  ["worker.failed", "symphony:worker-failed"],
+  ["model.updated", "symphony:model-updated"],
+  ["workspace.event", "symphony:workspace-event"],
+  ["poll.complete", "symphony:poll-complete"],
+  ["system.error", "symphony:system-error"],
+]);
 
 let source: EventSource | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -43,8 +53,9 @@ function openConnection(): void {
         );
       }
     }
-    if (data.type === "agent.event") {
-      window.dispatchEvent(new CustomEvent("symphony:agent-event", { detail: data.payload }));
+    const customEventName = EVENT_DISPATCH_MAP.get(data.type);
+    if (customEventName) {
+      window.dispatchEvent(new CustomEvent(customEventName, { detail: data.payload }));
     }
   };
 
@@ -99,4 +110,33 @@ export function subscribeIssueLifecycle(identifier: string, handler: () => void)
   };
   window.addEventListener("symphony:issue-lifecycle", listener);
   return () => window.removeEventListener("symphony:issue-lifecycle", listener);
+}
+
+/** Subscribe to a CustomEvent by name, forwarding the detail to the handler. */
+function subscribeEvent(eventName: string, handler: (payload: unknown) => void): () => void {
+  const listener = (e: Event) => {
+    handler((e as CustomEvent).detail);
+  };
+  window.addEventListener(eventName, listener);
+  return () => window.removeEventListener(eventName, listener);
+}
+
+export function subscribeWorkerFailed(handler: (payload: unknown) => void): () => void {
+  return subscribeEvent("symphony:worker-failed", handler);
+}
+
+export function subscribeModelUpdated(handler: (payload: unknown) => void): () => void {
+  return subscribeEvent("symphony:model-updated", handler);
+}
+
+export function subscribeWorkspaceEvent(handler: (payload: unknown) => void): () => void {
+  return subscribeEvent("symphony:workspace-event", handler);
+}
+
+export function subscribePollComplete(handler: () => void): () => void {
+  return subscribeEvent("symphony:poll-complete", handler as (payload: unknown) => void);
+}
+
+export function subscribeSystemError(handler: (payload: unknown) => void): () => void {
+  return subscribeEvent("symphony:system-error", handler);
 }
