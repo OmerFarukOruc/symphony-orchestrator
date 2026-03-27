@@ -319,6 +319,7 @@ export interface CodexConfig {
   approvalPolicy: string | Record<string, unknown>;
   threadSandbox: string;
   turnSandboxPolicy: { type: string; [key: string]: unknown };
+  selfReview: boolean;
   readTimeoutMs: number;
   turnTimeoutMs: number;
   drainTimeoutMs: number;

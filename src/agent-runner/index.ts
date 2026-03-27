@@ -5,6 +5,7 @@ import { createTurnState } from "./turn-state.js";
 import { executeTurns } from "./turn-executor.js";
 import { createDockerSession, type DockerSessionDeps, type PrecomputedRuntimeConfig } from "./docker-session.js";
 import { initializeSession } from "./session-init.js";
+import { runSelfReview } from "./self-review.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { RunAttemptDispatcher } from "../dispatch/types.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
@@ -160,7 +161,7 @@ export class AgentRunner implements RunAttemptDispatcher {
     }
 
     const { threadId, prompt } = initResult;
-    return executeTurns(
+    const outcome = await executeTurns(
       {
         connection: session.connection,
         config,
@@ -182,6 +183,24 @@ export class AgentRunner implements RunAttemptDispatcher {
         getFatalFailure: session.getFatalFailure,
       },
     );
+
+    if (config.codex.selfReview && outcome.kind === "normal" && outcome.threadId) {
+      const review = await runSelfReview(session.connection, outcome.threadId, this.deps.logger);
+      if (review) {
+        input.onEvent(
+          createLifecycleEvent({
+            issue: input.issue,
+            event: "self_review",
+            message: review.passed
+              ? `Self-review passed: ${review.summary}`
+              : `Self-review flagged issues: ${review.summary}`,
+            sessionId: outcome.threadId,
+          }),
+        );
+      }
+    }
+
+    return outcome;
   }
 }
 
