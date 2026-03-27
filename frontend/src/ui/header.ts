@@ -139,12 +139,21 @@ export function initHeader(headerEl: HTMLElement): void {
     }, 500);
   });
 
+  const apiDocsButton = createIconButton({
+    iconName: "issueDetail",
+    label: "API documentation",
+    className: "header-action-btn",
+  });
+  apiDocsButton.addEventListener("click", () => {
+    window.open("/api/docs", "_blank", "noopener");
+  });
+
   themeButton.addEventListener("click", () => {
     const next = toggleTheme();
     toast(`Theme: ${next}`, "info");
   });
 
-  actions.append(refreshButton, themeButton);
+  actions.append(refreshButton, apiDocsButton, themeButton);
   headerEl.append(brand, createZoneSeparator(), command, createZoneSeparator(), actions);
   syncHeaderNavButton(headerEl, navButton, {
     mobile: window.matchMedia(MOBILE_BREAKPOINT).matches,
