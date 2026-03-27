@@ -14,9 +14,12 @@
   flex-direction: column;
   padding: var(--space-3) 0;
   gap: var(--space-1);
-  transition: width 0.22s var(--ease-out-quart);
+  transition:
+    width var(--motion-medium) var(--ease-out-quart),
+    transform var(--motion-medium) var(--ease-out-quart);
   overflow-y: auto;
   overflow-x: hidden;
+  contain: style;
 }
 
 .shell-sidebar.is-expanded {
@@ -28,7 +31,6 @@
 .sidebar-group {
   display: flex;
   flex-direction: column;
-  gap: 0;
   padding: 0 var(--space-2);
 }
 
@@ -80,7 +82,7 @@
   cursor: pointer;
   user-select: none;
   appearance: none;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   transition:
     color var(--motion-fast) var(--ease-out-quart),
     background-color var(--motion-fast) var(--ease-out-quart);
@@ -125,9 +127,9 @@
 /* Sidebar group collapse animation */
 .sidebar-group-items {
   display: grid;
-  gap: 0;
   transition: grid-template-rows var(--motion-fast) var(--ease-out-quart);
   grid-template-rows: 1fr;
+  contain: layout style;
 }
 
 .sidebar-group.is-collapsed .sidebar-group-items {
@@ -224,7 +226,7 @@
 .sidebar-item-badge {
   margin-left: auto;
   padding: 2px 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   line-height: 1;
   color: var(--color-copper-100);
   background: color-mix(in srgb, var(--color-copper-500) 80%, transparent);
@@ -319,7 +321,7 @@
   min-height: calc(var(--sidebar-width-collapsed) - 14px);
   margin: 0 auto;
   border-left: none;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
 }
 
 .shell-sidebar:not(.is-expanded) .sidebar-item-badge {
@@ -339,7 +341,7 @@
   content: none;
 }
 
-@media (max-width: 800px) {
+@media (max-width: 760px) {
   .sidebar-item-tooltip {
     display: none;
   }
@@ -395,7 +397,7 @@
   margin: auto auto 0;
   padding: 0;
   border-top: none;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
 }
 
 .sidebar-collapse-label {
@@ -575,13 +577,13 @@
     position: absolute;
     z-index: 100;
     height: 100%;
+    will-change: transform;
   }
 
   .shell-sidebar:not(.is-expanded) {
-    width: 0;
-    padding: 0;
+    transform: translateX(-100%);
+    pointer-events: none;
     border-right: none;
-    overflow: hidden;
   }
 
   .shell-sidebar:not(.is-expanded) .sidebar-group,
@@ -627,15 +629,15 @@
   }
 }
 
-/* Touch-friendly targets */
+/* Touch-friendly targets — use control height token for consistency */
 @media (pointer: coarse) {
   .sidebar-group-header,
   .sidebar-collapse-toggle {
-    min-height: 44px;
+    min-height: var(--control-height-xl);
   }
 
   .header-action-btn,
   .header-command-trigger {
-    min-height: 44px;
+    min-height: var(--control-height-xl);
   }
 }

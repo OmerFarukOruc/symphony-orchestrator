@@ -78,6 +78,18 @@
     border: none;
     background: color-mix(in srgb, var(--bg-base) 62%, transparent);
     cursor: pointer;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    animation: backdropFadeIn var(--motion-fast) var(--ease-out-quart) both;
+  }
+
+  @keyframes backdropFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .shell-sidebar.is-mobile {
@@ -89,9 +101,8 @@
     transform: translateX(-100%);
     border-right: 1px solid var(--border-stitch);
     box-shadow: var(--shadow-lg);
-    transition:
-      transform 0.22s var(--ease-out-quart),
-      width 0.22s var(--ease-out-quart);
+    will-change: transform;
+    transition: transform var(--motion-medium) var(--ease-out-quart);
   }
 
   .shell-sidebar.is-mobile.is-mobile-open {
