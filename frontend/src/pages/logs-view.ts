@@ -94,13 +94,30 @@ export function createLogsPage(id: string): HTMLElement {
   let searchText = "";
   let autoScroll = false;
   let density: Density = "compact";
-  let data: { title: string; issueId: string; events: RecentEvent[] } = { title: "Loading…", issueId: id, events: [] };
   let timer = 0;
   let unsubscribeLifecycle: (() => void) | null = null;
   const expandedEvents = new Set<string>();
   let newEventCount = 0;
   const buffer = createLogBuffer("desc");
   let unsubscribeStream: (() => void) | null = null;
+
+  function rowKey(event: RecentEvent): string {
+    return `${event.at}:${event.event}:${event.message}`;
+  }
+
+  function buildRow(event: RecentEvent): HTMLElement {
+    const key = rowKey(event);
+    return createLogRow({
+      event,
+      expanded: expandedEvents.has(key),
+      highlightedText: searchText,
+      onToggle: () => {
+        if (expandedEvents.has(key)) expandedEvents.delete(key);
+        else expandedEvents.add(key);
+        render();
+      },
+    });
+  }
 
   function filtered(): RecentEvent[] {
     return buffer.events().filter((event) => {
@@ -143,13 +160,14 @@ export function createLogsPage(id: string): HTMLElement {
   }
 
   function render(): void {
-    breadcrumb.textContent = `Queue → ${data.issueId} → Logs`;
+    breadcrumb.textContent = `Queue → ${id} → Logs`;
     liveBtn.classList.toggle("is-active", mode === "live");
     archiveBtn.classList.toggle("is-active", mode === "archive");
     autoToggle.classList.toggle("is-active", autoScroll);
     densityToggle.classList.toggle("is-active", density === "compact");
     expandToggle.classList.toggle("is-active", expandedEvents.size > 0);
     sortToggle.classList.toggle("is-flipped", buffer.direction() === "asc");
+    sortToggle.title = buffer.direction() === "desc" ? "Newest first" : "Oldest first";
     scroll.classList.toggle("is-compact", density === "compact");
     scroll.classList.toggle("is-comfortable", density === "comfortable");
     renderTypeFilters();
@@ -179,17 +197,7 @@ export function createLogsPage(id: string): HTMLElement {
     const total = events.length;
     scroll.replaceChildren(
       ...events.map((event, index) => {
-        const key = `${event.at}:${event.event}:${event.message}`;
-        const row = createLogRow({
-          event,
-          expanded: expandedEvents.has(key),
-          highlightedText: searchText,
-          onToggle: () => {
-            if (expandedEvents.has(key)) expandedEvents.delete(key);
-            else expandedEvents.add(key);
-            render();
-          },
-        });
+        const row = buildRow(event);
         // Only animate the last 30 rows (most recent, visible after auto-scroll).
         // With 24ms stagger a raw index on 1000+ events → multi-second delays.
         const staggerPos = index - (total - 30);
@@ -206,8 +214,8 @@ export function createLogsPage(id: string): HTMLElement {
   }
 
   async function refresh(): Promise<void> {
-    data = mode === "live" ? await loadLiveLogs(id) : await loadArchiveLogs(id);
-    buffer.load(data.events);
+    const fresh = mode === "live" ? await loadLiveLogs(id) : await loadArchiveLogs(id);
+    buffer.load(fresh.events);
     render();
   }
 
@@ -215,23 +223,22 @@ export function createLogsPage(id: string): HTMLElement {
     const matchesType = activeFilters.size === 0 || activeFilters.has(event.event);
     if (!matchesType || !eventMatchesSearch(event, searchText)) return;
 
-    const key = `${event.at}:${event.event}:${event.message}`;
-    const row = createLogRow({
-      event,
-      expanded: expandedEvents.has(key),
-      highlightedText: searchText,
-      onToggle: () => {
-        if (expandedEvents.has(key)) expandedEvents.delete(key);
-        else expandedEvents.add(key);
-        render();
-      },
-    });
+    const row = buildRow(event);
     row.classList.add("timeline-enter");
 
-    const visibleEvents = filtered();
-    const eventIndex = visibleEvents.indexOf(event);
+    // Find the correct insert position among visible DOM children.
+    // The buffer was just mutated so scroll.children tracks the previous
+    // render. We count how many filtered events precede this one in the
+    // buffer's sorted order to find the matching DOM index.
+    const sorted = buffer.events();
+    let domIndex = 0;
+    for (const e of sorted) {
+      if (e === event) break;
+      const matches = activeFilters.size === 0 || activeFilters.has(e.event);
+      if (matches && eventMatchesSearch(e, searchText)) domIndex++;
+    }
 
-    const referenceNode = scroll.children[eventIndex] as Element | undefined;
+    const referenceNode = scroll.children[domIndex] as Element | undefined;
     if (referenceNode) {
       scroll.insertBefore(row, referenceNode);
     } else {
@@ -250,7 +257,6 @@ export function createLogsPage(id: string): HTMLElement {
 
   async function reconcile(): Promise<void> {
     const fresh = mode === "live" ? await loadLiveLogs(id) : await loadArchiveLogs(id);
-    data = fresh;
     const beforeSize = buffer.size();
     buffer.load(fresh.events);
     if (buffer.size() !== beforeSize) {
@@ -312,7 +318,6 @@ export function createLogsPage(id: string): HTMLElement {
   sortToggle.addEventListener("click", () => {
     const newDir: SortDirection = buffer.direction() === "desc" ? "asc" : "desc";
     buffer.setDirection(newDir);
-    sortToggle.title = newDir === "desc" ? "Newest first" : "Oldest first";
     render();
   });
   expandToggle.addEventListener("click", () => {
@@ -321,7 +326,7 @@ export function createLogsPage(id: string): HTMLElement {
     } else {
       for (const event of filtered()) {
         if (stringifyPayload(event.content)) {
-          expandedEvents.add(`${event.at}:${event.event}:${event.message}`);
+          expandedEvents.add(rowKey(event));
         }
       }
     }
