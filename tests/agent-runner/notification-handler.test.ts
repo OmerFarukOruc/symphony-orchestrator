@@ -372,6 +372,7 @@ describe("handleNotification", () => {
       ["account/rateLimits/updated", "rate_limits", "API rate limits updated"],
       ["item/agentMessage/delta", "agent_streaming", "Agent streaming text"],
       ["item/fileChange/outputDelta", "tool_output", "File change output streaming"],
+      ["item/commandExecution/outputDelta", "tool_output", "Command output streaming"],
     ])("maps %s to event=%s, message=%s", (method, expectedEvent, expectedMessage) => {
       handleNotification({
         state,
@@ -541,6 +542,97 @@ describe("handleNotification", () => {
 
       expect(state.reasoningBuffers.get("plan-1")).toBe("Step 1: analyse the codebase");
       expect(events).toHaveLength(0); // deltas do not emit events
+    });
+  });
+
+  describe("turn/plan/updated", () => {
+    it("emits agent_plan with JSON-stringified steps", () => {
+      const steps = [{ title: "Step 1", status: "completed" }];
+      handleNotification({
+        state,
+        notification: {
+          method: "turn/plan/updated",
+          params: { plan: { steps } },
+        },
+        issue,
+        threadId: "thread-1",
+        turnId: "turn-1",
+        onEvent,
+      });
+
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        at: FIXED_ISO,
+        issueId: "issue-1",
+        issueIdentifier: "ENG-42",
+        sessionId: "thread-1-turn-1",
+        event: "agent_plan",
+        message: "Agent plan updated",
+        metadata: { isPlan: true },
+      });
+      expect(events[0].content).toBe(JSON.stringify(steps));
+    });
+
+    it("passes string steps through directly", () => {
+      handleNotification({
+        state,
+        notification: {
+          method: "turn/plan/updated",
+          params: { plan: { steps: "1. Clone repo\n2. Run tests" } },
+        },
+        issue,
+        threadId: null,
+        turnId: null,
+        onEvent,
+      });
+
+      expect(events[0]).toMatchObject({
+        event: "agent_plan",
+        content: "1. Clone repo\n2. Run tests",
+      });
+    });
+
+    it("does not crash with empty plan params", () => {
+      handleNotification({
+        state,
+        notification: {
+          method: "turn/plan/updated",
+          params: {},
+        },
+        issue,
+        threadId: null,
+        turnId: null,
+        onEvent,
+      });
+
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        event: "agent_plan",
+        message: "Agent plan updated",
+        metadata: { isPlan: true },
+      });
+    });
+  });
+
+  describe("item/commandExecution/outputDelta", () => {
+    it("maps to tool_output via the label fallback path", () => {
+      handleNotification({
+        state,
+        notification: {
+          method: "item/commandExecution/outputDelta",
+          params: { delta: { text: "output chunk" } },
+        },
+        issue,
+        threadId: "thread-1",
+        turnId: "turn-1",
+        onEvent,
+      });
+
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        event: "tool_output",
+        message: "Command output streaming",
+      });
     });
   });
 
