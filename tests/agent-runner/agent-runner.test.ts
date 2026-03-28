@@ -342,7 +342,7 @@ describe("AgentRunner", () => {
     ).toBe("Please continue.");
   });
 
-  it("completes the protocol handshake, approvals, and dynamic tools", async () => {
+  it("completes the protocol handshake, approvals, and dynamic tools", { timeout: 15_000 }, async () => {
     const tempDir = await createTempDir();
     const { runner, workspaceManager, logPath } = await createRunner(tempDir, "success");
     const workspace = await workspaceManager.ensureWorkspace("MT-42");

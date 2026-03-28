@@ -2,9 +2,11 @@ import type {
   AbortIssueResponse,
   AttemptRecord,
   AttemptSummary,
+  AuditRecord,
   GitContextResponse,
   IssueDetail,
   LinearProject,
+  PromptTemplate,
   RuntimeInfo,
   RuntimeSnapshot,
   SetupStatus,
@@ -144,4 +146,53 @@ export const api = {
   removeWorkspace: (workspaceKey: string) => del(`/api/v1/workspaces/${encodeURIComponent(workspaceKey)}`),
   detectDefaultBranch: (repoUrl: string) =>
     post<{ defaultBranch: string }>("/api/v1/setup/detect-default-branch", { repoUrl }),
+
+  // ── Templates ──────────────────────────────
+  getTemplates: () => get<{ templates: PromptTemplate[] }>("/api/v1/templates"),
+
+  getTemplate: (id: string) => get<{ template: PromptTemplate }>(`/api/v1/templates/${encodeURIComponent(id)}`),
+
+  createTemplate: (data: { id: string; name: string; body: string }) =>
+    post<{ template: PromptTemplate }>("/api/v1/templates", data),
+
+  updateTemplate: (id: string, data: { name?: string; body?: string }) =>
+    put<{ template: PromptTemplate }>(`/api/v1/templates/${encodeURIComponent(id)}`, data),
+
+  deleteTemplate: (id: string) => del(`/api/v1/templates/${encodeURIComponent(id)}`),
+
+  previewTemplate: async (id: string): Promise<{ rendered: string; error: string | null }> => {
+    const response = await fetch(`${BASE}/api/v1/templates/${encodeURIComponent(id)}/preview`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    const body = (await response.json()) as { rendered: string; error: string | null };
+    // Backend returns { rendered, error } for both 200 (success) and 400 (Liquid errors).
+    // Only throw for truly unexpected failures (no error field at all).
+    if (!response.ok && !body.error) {
+      throw new Error(`${response.status} ${response.statusText}`);
+    }
+    return body;
+  },
+
+  // ── Audit ──────────────────────────────────
+  getAuditLog: (params?: {
+    tableName?: string;
+    key?: string;
+    pathPrefix?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined) qs.set(k, String(v));
+      }
+    }
+    const query = qs.toString();
+    const path = query ? "/api/v1/audit?" + query : "/api/v1/audit";
+    return get<{ entries: AuditRecord[]; total: number }>(path);
+  },
 };

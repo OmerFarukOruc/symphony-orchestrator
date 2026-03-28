@@ -2,11 +2,13 @@ import http from "node:http";
 
 import express, { type Express } from "express";
 
+import type { AuditLogger } from "../audit/logger.js";
 import type { ConfigOverlayPort } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { SymphonyEventMap } from "../core/symphony-events.js";
 import type { SymphonyLogger } from "../core/types.js";
+import type { PromptTemplateStore } from "../prompt/store.js";
 import { globalMetrics } from "../observability/metrics.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import type { SecretsStore } from "../secrets/store.js";
@@ -33,6 +35,8 @@ export class HttpServer {
 
       frontendDir?: string;
       archiveDir?: string;
+      templateStore?: PromptTemplateStore;
+      auditLogger?: AuditLogger;
     },
   ) {
     this.app = express();

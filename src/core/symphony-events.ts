@@ -44,4 +44,14 @@ export interface SymphonyEventMap {
 
   /** A system-level error not tied to a specific issue. */
   "system.error": { message: string; context?: Record<string, unknown> };
+
+  /** A config/secret/template mutation was logged. */
+  "audit.mutation": {
+    tableName: string;
+    key: string;
+    path: string | null;
+    operation: string;
+    actor: string;
+    timestamp: string;
+  };
 }
