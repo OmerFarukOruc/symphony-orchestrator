@@ -10,27 +10,12 @@ overrides:
 importers:
   .:
     dependencies:
-      "@codemirror/lang-html":
-        specifier: ^6.4.11
-        version: 6.4.11
-      "@codemirror/state":
-        specifier: ^6.6.0
-        version: 6.6.0
-      "@codemirror/theme-one-dark":
-        specifier: ^6.1.3
-        version: 6.1.3
-      "@codemirror/view":
-        specifier: ^6.40.0
-        version: 6.40.0
       better-sqlite3:
         specifier: ^12.8.0
         version: 12.8.0
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0
-      codemirror:
-        specifier: ^6.0.2
-        version: 6.0.2
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
@@ -53,6 +38,18 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      "@codemirror/lang-html":
+        specifier: ^6.4.11
+        version: 6.4.11
+      "@codemirror/state":
+        specifier: ^6.6.0
+        version: 6.6.0
+      "@codemirror/theme-one-dark":
+        specifier: ^6.1.3
+        version: 6.1.3
+      "@codemirror/view":
+        specifier: ^6.40.0
+        version: 6.40.0
       "@eslint/js":
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.1.0(jiti@2.6.1))
@@ -98,6 +95,9 @@ importers:
       autocannon:
         specifier: ^8.0.0
         version: 8.0.0
+      codemirror:
+        specifier: ^6.0.2
+        version: 6.0.2
       eslint:
         specifier: ^10.1.0
         version: 10.1.0(jiti@2.6.1)

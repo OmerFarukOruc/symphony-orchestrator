@@ -26,13 +26,6 @@ export const navItems: NavItem[] = [
 
   {
     group: "Configure",
-    name: "Templates",
-    path: "/templates",
-    hotkey: "g t",
-    icon: "config",
-  },
-  {
-    group: "Configure",
     name: "Settings",
     path: "/settings",
     hotkey: "g ,",

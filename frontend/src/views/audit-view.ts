@@ -1,3 +1,4 @@
+import { api } from "../api";
 import { createPageHeader } from "../components/page-header";
 import { createButton } from "../components/forms";
 import { toast } from "../ui/toast";
@@ -27,18 +28,14 @@ function operationClass(operation: string): string {
 /* ── Data fetching ──────────────────────────────── */
 
 async function fetchAuditLog(state: AuditState): Promise<{ entries: AuditRecord[]; total: number }> {
-  const params = new URLSearchParams();
-  if (state.filters.tableName) params.set("tableName", state.filters.tableName);
-  if (state.filters.key) params.set("key", state.filters.key);
-  if (state.filters.from) params.set("from", state.filters.from);
-  if (state.filters.to) params.set("to", state.filters.to);
-  params.set("limit", String(state.pageSize));
-  params.set("offset", String(state.page * state.pageSize));
-  const query = params.toString();
-  const path = query ? `/api/v1/audit?${query}` : "/api/v1/audit";
-  const response = await fetch(path);
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-  return response.json() as Promise<{ entries: AuditRecord[]; total: number }>;
+  return api.getAuditLog({
+    tableName: state.filters.tableName || undefined,
+    key: state.filters.key || undefined,
+    from: state.filters.from || undefined,
+    to: state.filters.to || undefined,
+    limit: state.pageSize,
+    offset: state.page * state.pageSize,
+  });
 }
 
 /* ── View ───────────────────────────────────────── */
@@ -343,6 +340,9 @@ export function createAuditPage(): HTMLElement {
         timestamp: detail.timestamp,
       };
       state.entries.unshift(liveEntry);
+      if (state.entries.length > state.pageSize) {
+        state.entries.length = state.pageSize;
+      }
       state.liveCount++;
       state.total++;
       renderTable();

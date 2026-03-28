@@ -115,6 +115,7 @@ function buildPreviewPanel(state: TemplatesState): HTMLElement {
 export function createTemplatesPage(): HTMLElement {
   const state = createTemplatesState();
   let editor: TemplateEditor | null = null;
+  let suppressEditorChange = false;
 
   const page = document.createElement("div");
   page.className = "page templates-page";
@@ -218,12 +219,15 @@ export function createTemplatesPage(): HTMLElement {
         parent: cmContainer,
         initialValue: state.editorBody,
         onChange: (value) => {
+          if (suppressEditorChange) return;
           state.editorBody = value;
           state.dirty = true;
         },
       });
     } else {
+      suppressEditorChange = true;
       editor.setValue(state.editorBody);
+      suppressEditorChange = false;
     }
 
     renderPreview();
@@ -344,7 +348,7 @@ export function createTemplatesPage(): HTMLElement {
     previewBtn.disabled = true;
     try {
       const result = await api.previewTemplate(tpl.id);
-      state.previewOutput = result.output;
+      state.previewOutput = result.rendered;
       state.previewError = null;
       state.showPreview = true;
     } catch (error_) {

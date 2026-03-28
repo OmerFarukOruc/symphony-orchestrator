@@ -1,49 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-// Inline the state types since the actual module is created by another agent
-interface PromptTemplate {
-  id: string;
-  name: string;
-  body: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface TemplatesState {
-  templates: PromptTemplate[];
-  selectedId: string | null;
-  editorName: string;
-  editorBody: string;
-  dirty: boolean;
-  previewOutput: string;
-  previewError: string | null;
-  showPreview: boolean;
-  activeTemplateId: string | null;
-  creating: boolean;
-  saving: boolean;
-  deleting: boolean;
-  loading: boolean;
-  error: string | null;
-}
-
-function createTemplatesState(): TemplatesState {
-  return {
-    templates: [],
-    selectedId: null,
-    editorName: "",
-    editorBody: "",
-    dirty: false,
-    previewOutput: "",
-    previewError: null,
-    showPreview: false,
-    activeTemplateId: null,
-    creating: false,
-    saving: false,
-    deleting: false,
-    loading: false,
-    error: null,
-  };
-}
+import { createTemplatesState } from "../../frontend/src/views/templates-state";
 
 describe("TemplatesState", () => {
   it("creates default state with empty values", () => {

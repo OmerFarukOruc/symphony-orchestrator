@@ -93,7 +93,8 @@
   color: rgb(34, 197, 94);
 }
 
-.audit-op--update {
+.audit-op--update,
+.audit-op--set {
   background: rgba(59, 130, 246, 0.15);
   color: rgb(59, 130, 246);
 }
@@ -101,11 +102,6 @@
 .audit-op--delete {
   background: rgba(239, 68, 68, 0.15);
   color: rgb(239, 68, 68);
-}
-
-.audit-op--set {
-  background: rgba(59, 130, 246, 0.15);
-  color: rgb(59, 130, 246);
 }
 
 /* ── Live entry animation ──────────────────────── */

@@ -1,10 +1,6 @@
-export interface PromptTemplate {
-  id: string;
-  name: string;
-  body: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { PromptTemplate } from "../types";
+
+export type { PromptTemplate };
 
 export interface TemplatesState {
   templates: PromptTemplate[];

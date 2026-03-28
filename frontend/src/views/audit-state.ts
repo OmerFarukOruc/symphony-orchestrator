@@ -1,24 +1,6 @@
-export interface AuditRecord {
-  id: number;
-  tableName: string;
-  key: string;
-  path: string | null;
-  operation: string;
-  previousValue: string | null;
-  newValue: string | null;
-  actor: string;
-  requestId: string | null;
-  timestamp: string;
-}
+import type { AuditRecord, AuditMutationEvent } from "../types";
 
-export interface AuditMutationEvent {
-  tableName: string;
-  key: string;
-  path: string | null;
-  operation: string;
-  actor: string;
-  timestamp: string;
-}
+export type { AuditRecord, AuditMutationEvent };
 
 export interface AuditFilters {
   tableName: string;
@@ -56,5 +38,7 @@ export function createAuditState(): AuditState {
 export function matchesFilters(event: AuditMutationEvent, filters: AuditFilters): boolean {
   if (filters.tableName && event.tableName !== filters.tableName) return false;
   if (filters.key && !event.key.includes(filters.key)) return false;
+  if (filters.from && event.timestamp < filters.from) return false;
+  if (filters.to && event.timestamp > filters.to) return false;
   return true;
 }
