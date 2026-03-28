@@ -154,7 +154,8 @@ export function getSectionById(
 }
 
 /** Static map from section ID to group, derived from SECTION_GROUPS and SECTION_IDS. */
-const SECTION_TO_GROUP: ReadonlyMap<string, (typeof SECTION_GROUPS)[keyof typeof SECTION_GROUPS]> = new Map([
+type SectionGroup = (typeof SECTION_GROUPS)[keyof typeof SECTION_GROUPS];
+const SECTION_TO_GROUP = new Map<string, SectionGroup>([
   [SECTION_IDS.TRACKER, SECTION_GROUPS.SETUP],
   [SECTION_IDS.REPOSITORIES_GITHUB, SECTION_GROUPS.SETUP],
   [SECTION_IDS.MODEL_PROVIDER_AUTH, SECTION_GROUPS.AGENT],

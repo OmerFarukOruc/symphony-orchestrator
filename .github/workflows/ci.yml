@@ -332,6 +332,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
@@ -348,7 +350,6 @@ jobs:
       - name: Incremental mutation scan (PR)
         if: github.event_name == 'pull_request'
         run: pnpm run test:mutation:incremental
-        continue-on-error: true
 
   # ── Phase 6: Docker Push to GHCR (main only, after gate) ────────────
   docker-push:

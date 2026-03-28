@@ -32,7 +32,7 @@
     "test:e2e:update": "playwright test --project=visual --update-snapshots",
     "test:frontend": "vitest run --config vitest.frontend.config.ts",
     "test:mutation": "stryker run",
-    "test:mutation:incremental": "stryker run --mutate \"$(git diff --name-only HEAD~1 HEAD | grep -E '^src/' | tr '\\n' ',')\"",
+    "test:mutation:incremental": "stryker run --mutate \"$(git diff --name-only HEAD~1 HEAD | grep -E '^src/' | paste -sd,)\"",
     "test:load": "vitest run --config vitest.load.config.ts",
     "dev": "tsx watch src/cli/index.ts",
     "dev:frontend": "vite --config frontend/vite.config.ts",
@@ -43,7 +43,7 @@
     "knip": "knip",
     "jscpd": "jscpd --config .jscpd.json",
     "docs:generate": "typedoc",
-    "typecheck": "tsc --noEmit -p tsconfig.eslint.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:coverage": "type-coverage --at-least 95 --detail --strict --ignore-catch",
     "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",
     "prepare": "husky"
