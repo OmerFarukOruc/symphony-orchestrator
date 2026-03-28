@@ -173,7 +173,7 @@ codex login                       # ChatGPT/Codex subscription path
 <td width="50%" valign="top">
 
 ### 🛡️ Operations
-- **💾 Archived attempts** — Durable event timelines under `.symphony/`
+- **💾 Archived attempts** — SQLite-backed attempt and event history in `.symphony/`
 - **🔎 `symphony-logs` CLI** — Archive-first issue and attempt inspection
 - **🔐 Encrypted secrets** — AES-encrypted credential storage
 - **✅ Strict TypeScript** — Full type safety with Vitest unit tests and Playwright E2E coverage

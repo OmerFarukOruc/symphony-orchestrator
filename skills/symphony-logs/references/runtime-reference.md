@@ -11,83 +11,95 @@ Use this file only when the main `SKILL.md` workflow is not enough. It keeps the
 - If API evidence is unavailable, say live state could not be verified and that your answer is archive-only.
 - Never infer current worker state from archive files alone.
 
-## Archive layout
+## Storage layout
 
-Symphony archives attempts under a log directory that defaults to `.symphony/` next to the workflow file. Startup can override that with `--log-dir`, and the helper script can override it with `--dir`.
+Symphony persists attempt and event data in a **SQLite database** (`symphony.db`) under the data directory, which defaults to `.symphony/` next to the workflow file. Startup can override that with `--log-dir` or `DATA_DIR`, and the helper script can override it with `--dir`.
 
 ```text
 .symphony/
-├── issue-index.json              # { "NIN-6": ["attemptA", "attemptB"], ... }
-├── attempts/
-│   └── {attemptId}.json          # one JSON file per archived attempt
-└── events/
-    └── {attemptId}.jsonl         # NDJSON event stream, one JSON object per line
+├── symphony.db               # SQLite database (attempts, events, issue index)
+├── symphony.db-shm           # WAL shared-memory file
+├── symphony.db-wal           # Write-ahead log
+├── config/                   # Operator config overlay (YAML)
+├── secrets.enc               # AES-encrypted credential store
+├── secrets.audit.log         # Secret access audit trail
+├── master.key                # Encryption master key
+└── codex-auth/               # Codex login tokens
 ```
 
-## Attempt metadata fields
+The database uses Drizzle ORM with WAL mode and contains three tables:
 
-Attempt files contain the durable run summary. Important fields include:
+- **`attempts`** — one row per agent execution attempt
+- **`attempt_events`** — individual events per attempt (one row per event)
+- **`issue_index`** — materialized index mapping issue identifiers to latest attempt state
 
-- `attemptId`, `issueId`, `issueIdentifier`, `title`
-- `workspaceKey`, `workspacePath`
+> Legacy JSONL archives (`attempts/*.json` + `events/*.jsonl`) are automatically migrated into SQLite on first startup via `SqliteAttemptStore.migrateFromArchive()`.
+
+## Attempt metadata columns
+
+The `attempts` table contains the durable run summary. Important columns include:
+
+- `attempt_id`, `issue_id`, `issue_identifier`, `title`
+- `workspace_key`, `workspace_path`
 - `status` (`running`, `completed`, `failed`, `timed_out`, `stalled`, `cancelled`, `paused`)
-- `attemptNumber`, `startedAt`, `endedAt`
-- `model`, `reasoningEffort`, `modelSource`
-- `threadId`, `turnId`, `turnCount`
-- `errorCode`, `errorMessage`
-- `tokenUsage`
+- `attempt_number`, `started_at`, `ended_at`
+- `model`, `reasoning_effort`, `model_source`
+- `thread_id`, `turn_id`, `turn_count`
+- `error_code`, `error_message`
+- `input_tokens`, `output_tokens`, `total_tokens`
+- `pull_request_url`, `stop_signal`
 
-## Event fields
+## Event columns
 
-Each event line in `events/{attemptId}.jsonl` can include:
+The `attempt_events` table stores individual events. Each row includes:
 
-- `at`, `attemptId`, `issueId`, `issueIdentifier`, `sessionId`
-- `event`, `message`
-- optional `content`, `usage`, `rateLimits`
+- `id` (auto-increment), `attempt_id`, `timestamp`
+- `issue_id`, `issue_identifier`, `session_id`
+- `type`, `message`
+- optional `content`, `input_tokens`, `output_tokens`, `total_tokens`, `metadata` (JSON)
 
-Common events include:
+Common event types include:
 
 - `item_started` / `item_completed` for reasoning steps, commands, file changes, or tool activity
-- `turn_completed` with token usage in the `usage` field
+- `turn_completed` with token usage
 - `rate_limits_updated`
 - `worker_stalled`
 - `worker_failed`
 - `model_selection_updated`
 
-## Direct file fallback details
+## Direct SQLite fallback
 
-If the helper script is unavailable or fails, fall back to the archive files directly.
+If the helper script is unavailable or fails, query the database directly.
 
-When you use this path, report the exact file path(s) you inspected.
+When you use this path, report the exact query you ran.
 
-### Normal path: issue index exists
+### Query attempts for an issue
 
 ```bash
-# Step 1: resolve issue -> attempt IDs
-jq '."NIN-6"' .symphony/issue-index.json
-
-# Step 2: inspect attempt metadata
-cat .symphony/attempts/<attemptId>.json
-
-# Step 3: inspect recent events
-tail -50 .symphony/events/<attemptId>.jsonl
-
-# Step 4: narrow to failures when relevant
-grep -i 'error\|fail\|crash\|timeout\|stall' .symphony/events/<attemptId>.jsonl
+sqlite3 .symphony/symphony.db "SELECT attempt_id, status, model, started_at, ended_at FROM attempts WHERE issue_identifier = 'NIN-6' ORDER BY started_at DESC;"
 ```
 
-### Fallback path: `issue-index.json` is missing
+### Query events for an attempt
 
-Do not stop at "index missing." Fall back to scanning attempt metadata files for the issue identifier, then use the matched `attemptId` values to inspect the corresponding event streams.
+```bash
+sqlite3 .symphony/symphony.db "SELECT timestamp, type, message FROM attempt_events WHERE attempt_id = '<attemptId>' ORDER BY timestamp;"
+```
 
-Use the same logic the helper uses conceptually:
+### Narrow to failures
 
-1. scan `.symphony/attempts/*.json`
-2. find attempt records where `issueIdentifier` matches the target issue
-3. collect their `attemptId` values
-4. open `.symphony/events/{attemptId}.jsonl`
+```bash
+sqlite3 .symphony/symphony.db "SELECT timestamp, type, message FROM attempt_events WHERE attempt_id = '<attemptId>' AND (type LIKE '%fail%' OR type LIKE '%error%' OR type LIKE '%stall%') ORDER BY timestamp;"
+```
 
-When you take this fallback path, tell the user you are scanning archived attempt metadata because the index file is missing.
+### Fallback: legacy JSONL archives
+
+If `symphony.db` does not exist (pre-migration installations), fall back to the legacy flat-file layout:
+
+1. scan `.symphony/attempts/*.json` for attempt records matching the target issue
+2. collect their `attemptId` values
+3. read `.symphony/events/{attemptId}.jsonl` for the event stream
+
+When you take this fallback path, tell the user you are reading legacy archive files because the SQLite database is not present.
 
 ## Local API endpoint notes
 
@@ -113,15 +125,12 @@ When you use the API for live-state claims, name the exact endpoint in the answe
 
 Be careful about event ordering:
 
-- raw `.jsonl` event files are written in chronological order, so later lines are newer
-- API responses that come from `getEvents()` are returned newest-first
+- SQLite queries with `ORDER BY timestamp` return events in chronological order
+- The `SqliteAttemptStore.getEvents()` method orders by `timestamp ASC` (chronological)
+- API responses from `/api/v1/attempts/<id>` return events in chronological order
+- Legacy `.jsonl` files are written in chronological order (later lines are newer)
 
-That means:
-
-- when reading the raw file directly, the tail is the newest part of the run
-- when reading `events` from the HTTP API, the first entries are the newest events
-
-Do not mix these two orderings in your summary.
+When summarizing events, always confirm the ordering of your data source. Do not mix orderings from different sources.
 
 ## Round-two sandbox benchmark note
 

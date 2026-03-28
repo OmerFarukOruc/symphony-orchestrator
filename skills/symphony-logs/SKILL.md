@@ -169,9 +169,9 @@ Use this structure unless the user asked for raw output:
 
 ## Edge cases
 
-- **No `.symphony/` directory** → tell the user Symphony has not created an archive yet and they may need to run the service first or point you at the correct `--log-dir`.
-- **No `issue-index.json`** → fall back to scanning attempt files by `issueIdentifier`.
-- **Attempt metadata exists but the events file is empty** → explain that the worker may have crashed or failed before emitting useful events; then rely on `errorCode` and `errorMessage` from attempt metadata.
+- **No `.symphony/` directory** → tell the user Symphony has not created a data directory yet and they may need to run the service first or point you at the correct `--log-dir`.
+- **No `symphony.db`** → check for legacy JSONL archives (`attempts/*.json` + `events/*.jsonl`). If neither exists, tell the user no archive data is available.
+- **Attempt exists but no events in `attempt_events`** → explain that the worker may have crashed or failed before emitting useful events; then rely on `error_code` and `error_message` from the `attempts` table.
 - **Multiple attempts for one issue** → show the latest first and mention the total number of attempts.
 - **Worker may still be running** → use the HTTP API for live state rather than relying only on archived files. If the API is unavailable, say live state could not be verified.
 - **Unknown issue or attempt** → say which lookup path failed: helper, archive index, attempt scan, or HTTP API.
@@ -200,4 +200,4 @@ Action: check `curl http://127.0.0.1:4000/api/v1/state` first for live status, t
 
 User: `the helper script is broken, inspect the raw symphony files for NIN-3`
 
-Action: read `issue-index.json` or scan `attempts/*.json`, inspect the matched attempt file, then inspect the corresponding `.jsonl` event stream directly.
+Action: query `symphony.db` directly with `sqlite3` — look up the attempt in the `attempts` table, then query `attempt_events` for its event stream. If `symphony.db` is absent, fall back to legacy JSONL files (`attempts/*.json` + `events/*.jsonl`).

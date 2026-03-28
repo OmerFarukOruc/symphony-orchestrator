@@ -13,7 +13,7 @@ The currently shipped operator surface includes:
 - `GET /metrics` with Prometheus-format service metrics
 - Request tracing via `X-Request-ID` headers (auto-generated or preserved from client)
 - Error tracking initialized on CLI startup (Sentry-compatible when `SENTRY_DSN` is set)
-- Archived attempt and event history under `.symphony/`
+- Archived attempt and event history in `.symphony/symphony.db` (SQLite, WAL mode)
 - Structured logger support used throughout the runtime
 
 ## Metrics Helper

@@ -623,7 +623,7 @@ Symphony creates and reads several directories at runtime. This section document
 
 | Path                                        | Source                                                     | Purpose                                                                                    | Safe to delete?                                     |
 | ------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| `.symphony/` (next to workflow file)        | `src/cli/index.ts` — default `archiveDir`                  | Archived attempts, event streams, issue index, config overlay, and encrypted secrets store | ⚠️ You lose all historical attempt data             |
+| `.symphony/` (next to workflow file)        | `src/cli/index.ts` — default `archiveDir`                  | SQLite database (`symphony.db`) with attempts, events, and issue index; config overlay; encrypted secrets store | ⚠️ You lose all historical attempt data             |
 | `../symphony-workspaces/` (sibling of repo) | `src/config/builders.ts` — default `workspace.root`        | Per-issue workspace directories (one subdirectory per issue identifier)                    | ✅ Yes — workspaces are re-created on next dispatch |
 | `~/.codex/`                                 | `src/config/builders.ts` — default `codex.auth.sourceHome` | Codex CLI auth credentials (`auth.json`) read for `openai_login` mode                      | ⚠️ You'll need to re-run `codex login`              |
 
@@ -688,18 +688,57 @@ These paths exist only inside worker containers and are **not** on the host file
 
 ## 🗂️ Archived Attempts and Logs
 
-By default, archives are stored in `.symphony/` next to the workflow file (override with `--log-dir`).
+By default, the data directory is `.symphony/` next to the workflow file (override with `--log-dir` or `DATA_DIR`).
+
+### Storage: SQLite
+
+All attempt and event data is persisted in a **SQLite database** (`symphony.db`) using Drizzle ORM with WAL mode:
 
 ```
 .symphony/
-├── issue-index.json
-├── attempts/<attempt-id>.json
-└── events/<attempt-id>.jsonl
+├── symphony.db           # SQLite database (attempts, events, issue index)
+├── symphony.db-shm       # WAL shared-memory file (normal, do not delete)
+├── symphony.db-wal       # Write-ahead log (normal, do not delete)
+├── config/               # Operator config overlay (YAML)
+├── secrets.enc           # AES-encrypted credential store
+├── secrets.audit.log     # Secret access audit trail
+├── master.key            # Encryption master key
+└── codex-auth/           # Codex login tokens
 ```
 
-This archive keeps historical attempt information visible in the dashboard and API after a restart.
+The database contains three tables:
 
-For archive-first CLI inspection, use the repo-root helper:
+| Table | Contents |
+| ----- | -------- |
+| `attempts` | One row per agent execution — status, model, tokens, timing, PR URL, stop signal |
+| `attempt_events` | Individual events per attempt — type, message, content, token usage |
+| `issue_index` | Materialized index mapping issue identifiers to their latest attempt state |
+
+> [!NOTE]
+> Legacy JSONL archives (`attempts/*.json` + `events/*.jsonl`) are automatically migrated into SQLite on first startup. The migration is idempotent and safe to run repeatedly.
+
+### Viewing Attempt Data
+
+**Web dashboard** — open `http://127.0.0.1:4000` for the full UI with board, overview, and attempt detail views.
+
+**API endpoints:**
+
+```bash
+curl -s http://127.0.0.1:4000/api/v1/state                         # full runtime snapshot
+curl -s http://127.0.0.1:4000/api/v1/NIN-6                         # issue detail + recent events
+curl -s http://127.0.0.1:4000/api/v1/NIN-6/attempts                # all attempts for an issue
+curl -s http://127.0.0.1:4000/api/v1/attempts/<attempt-id>         # single attempt + events
+curl -N  http://127.0.0.1:4000/api/v1/events                       # SSE real-time event stream
+```
+
+**Direct SQLite queries** (when Symphony is stopped, or read-only via WAL mode):
+
+```bash
+sqlite3 .symphony/symphony.db "SELECT attempt_id, issue_identifier, status, model, started_at FROM attempts ORDER BY started_at DESC LIMIT 10;"
+sqlite3 .symphony/symphony.db "SELECT type, message, timestamp FROM attempt_events WHERE attempt_id = '...' ORDER BY timestamp;"
+```
+
+**CLI helper** for archive-first inspection:
 
 ```bash
 ./symphony-logs MT-42
@@ -707,7 +746,22 @@ For archive-first CLI inspection, use the repo-root helper:
 ./symphony-logs --attempt 00000000-0000-4000-8000-000000000422 --dir tests/fixtures/symphony-archive-sandbox/.symphony
 ```
 
-The helper emits JSON and prefers `issue-index.json` when present, while still falling back to scanning archived attempt files if the index is missing.
+The helper emits JSON and works with both the SQLite database and legacy JSONL archives.
+
+### Process Logs
+
+Runtime process logs are emitted to **stdout** via Pino (not written to files). Control the format and verbosity with environment variables:
+
+| Variable | Values | Default |
+| -------- | ------ | ------- |
+| `SYMPHONY_LOG_FORMAT` | `logfmt`, `json` | `logfmt` |
+| `LOG_LEVEL` | `trace`, `debug`, `info`, `warn`, `error`, `fatal` | `info` |
+
+To persist process logs, pipe stdout to a file:
+
+```bash
+node dist/cli/index.js ./WORKFLOW.md --port 4000 2>&1 | tee symphony.log
+```
 
 ---
 
