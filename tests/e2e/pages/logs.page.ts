@@ -79,6 +79,10 @@ export class LogsPage extends BasePage {
 
   // ── View Actions ─────────────────────────────────────────────────────
 
+  get sortButton(): Locator {
+    return this.page.locator(".logs-view-actions button").first();
+  }
+
   get viewActions(): Locator {
     return this.page.locator(".logs-view-actions");
   }

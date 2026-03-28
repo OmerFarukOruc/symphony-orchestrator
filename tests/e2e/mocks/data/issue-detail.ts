@@ -86,6 +86,24 @@ export function buildIssueDetail(overrides?: Partial<IssueDetail>): IssueDetail 
         message: "Agent started working on SYM-42",
         content: null,
       },
+      {
+        at: "2026-01-15T12:01:00.000Z",
+        issue_id: "issue-001",
+        issue_identifier: "SYM-42",
+        session_id: "sess-001",
+        event: "tool_use",
+        message: "Reading file src/auth.ts",
+        content: null,
+      },
+      {
+        at: "2026-01-15T12:02:00.000Z",
+        issue_id: "issue-001",
+        issue_identifier: "SYM-42",
+        session_id: "sess-001",
+        event: "reasoning",
+        message: "Analyzing authentication flow",
+        content: null,
+      },
     ],
     attempts: [
       {

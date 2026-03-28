@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   subscribeIssueEvents,
+  subscribeAllEvents,
   subscribeWorkerFailed,
   subscribeModelUpdated,
   subscribeWorkspaceEvent,
@@ -152,5 +153,66 @@ describe("subscribeSystemError", () => {
     unsub();
     fakeTarget.dispatchEvent(new CustomEvent("symphony:system-error", { detail: payload }));
     expect(handler).toHaveBeenCalledOnce();
+  });
+});
+
+describe("subscribeAllEvents", () => {
+  let handler: ReturnType<typeof vi.fn>;
+  let unsubscribe: () => void;
+
+  function dispatchAnyEvent(type: string, payload: Record<string, unknown>): void {
+    fakeTarget.dispatchEvent(new CustomEvent("symphony:any-event", { detail: { type, payload } }));
+  }
+
+  beforeEach(() => {
+    handler = vi.fn();
+  });
+
+  afterEach(() => {
+    unsubscribe?.();
+  });
+
+  it("calls handler when identifier matches", () => {
+    unsubscribe = subscribeAllEvents("ENG-1", handler);
+    dispatchAnyEvent("agent.event", { identifier: "ENG-1", message: "hello" });
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledWith({
+      type: "agent.event",
+      payload: { identifier: "ENG-1", message: "hello" },
+    });
+  });
+
+  it("ignores events for a different identifier", () => {
+    unsubscribe = subscribeAllEvents("ENG-1", handler);
+    dispatchAnyEvent("agent.event", { identifier: "ENG-2", message: "hello" });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("ignores events without a payload", () => {
+    unsubscribe = subscribeAllEvents("ENG-1", handler);
+    fakeTarget.dispatchEvent(new CustomEvent("symphony:any-event", { detail: { type: "agent.event" } }));
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("returns an unsubscribe function that stops further calls", () => {
+    unsubscribe = subscribeAllEvents("ENG-1", handler);
+    unsubscribe();
+    dispatchAnyEvent("agent.event", { identifier: "ENG-1", message: "hello" });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("forwards the event type along with the payload", () => {
+    unsubscribe = subscribeAllEvents("ENG-1", handler);
+    dispatchAnyEvent("issue.started", { identifier: "ENG-1", status: "running" });
+    dispatchAnyEvent("worker.failed", { identifier: "ENG-1", error: "timeout" });
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenNthCalledWith(1, {
+      type: "issue.started",
+      payload: { identifier: "ENG-1", status: "running" },
+    });
+    expect(handler).toHaveBeenNthCalledWith(2, {
+      type: "worker.failed",
+      payload: { identifier: "ENG-1", error: "timeout" },
+    });
   });
 });

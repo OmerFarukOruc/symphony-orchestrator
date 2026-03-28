@@ -102,6 +102,12 @@
   background: color-mix(in srgb, var(--color-copper-400) 18%, var(--bg-elevated));
 }
 
+/* Sort direction flip */
+.logs-icon-btn.is-flipped svg {
+  transform: scaleY(-1);
+  transition: transform var(--motion-fast) var(--ease-out-quart);
+}
+
 /* Filter chip active state */
 .mc-chip.is-interactive.is-active {
   background: var(--color-copper-400);

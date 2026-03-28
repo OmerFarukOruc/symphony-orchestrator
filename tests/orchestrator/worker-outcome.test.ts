@@ -728,14 +728,34 @@ describe("detectStopSignal edge cases", () => {
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
   });
 
-  it("does not detect stop signal from non-normal outcomes", async () => {
+  it("detects stop signal even from timed-out outcomes", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
       lastAgentMessageContent: "SYMPHONY_STATUS: DONE",
     });
     ctx.runningEntries.set("issue-1", entry);
 
-    // Failed outcome — stop signal should not be checked
+    await handleWorkerOutcome(
+      ctx,
+      makeOutcome({ kind: "timed_out", errorCode: "turn_timeout" }),
+      entry,
+      makeIssue(),
+      makeWorkspace(),
+      1,
+    );
+
+    // Agent said DONE before timeout — should complete, not retry
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
+    expect(ctx.queueRetry).not.toHaveBeenCalled();
+  });
+
+  it("detects stop signal even from failed outcomes", async () => {
+    const ctx = makeCtx();
+    const entry = makeEntry({
+      lastAgentMessageContent: "SYMPHONY_STATUS: DONE",
+    });
+    ctx.runningEntries.set("issue-1", entry);
+
     await handleWorkerOutcome(
       ctx,
       makeOutcome({ kind: "failed", errorCode: "turn_failed" }),
@@ -745,7 +765,8 @@ describe("detectStopSignal edge cases", () => {
       1,
     );
 
-    // Should queue retry, not mark as done
-    expect(ctx.queueRetry).toHaveBeenCalled();
+    // Agent said DONE before failure — should complete, not retry
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
+    expect(ctx.queueRetry).not.toHaveBeenCalled();
   });
 });
