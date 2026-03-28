@@ -14,9 +14,9 @@ const mkdirMock = vi.fn<typeof import("node:fs/promises").mkdir>();
 const rmMock = vi.fn<typeof import("node:fs/promises").rm>();
 
 vi.mock("node:fs/promises", () => ({
-  stat: (...args: unknown[]) => statMock(...args),
-  mkdir: (...args: unknown[]) => mkdirMock(...args),
-  rm: (...args: unknown[]) => rmMock(...args),
+  stat: (...args: Parameters<typeof import("node:fs/promises").stat>) => statMock(...args),
+  mkdir: (...args: Parameters<typeof import("node:fs/promises").mkdir>) => mkdirMock(...args),
+  rm: (...args: Parameters<typeof import("node:fs/promises").rm>) => rmMock(...args),
 }));
 
 vi.mock("node:child_process", () => ({
@@ -64,10 +64,15 @@ function createIssue(identifier = "NIN-1") {
     id: "issue-1",
     identifier,
     title: "Test issue",
+    description: null,
     state: "In Progress",
     url: "https://linear.app/team/NIN-1",
     priority: 2,
     branchName: "feature/NIN-1",
+    labels: [] as string[],
+    blockedBy: [] as { id: string | null; identifier: string | null; state: string | null }[],
+    createdAt: "2026-03-15T00:00:00Z",
+    updatedAt: "2026-03-16T00:00:00Z",
   };
 }
 

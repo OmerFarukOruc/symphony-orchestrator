@@ -20,6 +20,13 @@ export default defineConfig({
         "src/cli/index.ts",
         // Frontend — needs browser testing, not Node unit tests
         "frontend/src/**",
+        // Route handlers / auth flows — require integration tests
+        "src/audit/api.ts",
+        "src/prompt/api.ts",
+        "src/cli/runtime-providers.ts",
+        "src/setup/device-auth.ts",
+        // Dispatch server — integration-level coverage
+        "src/dispatch/server.ts",
       ],
       thresholds: {
         statements: 82,
