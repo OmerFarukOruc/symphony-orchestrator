@@ -1,5 +1,6 @@
 import type { AsyncState } from "../utils/async-state.js";
 
+import { router } from "../router.js";
 import { buildSettingsSections, isSchemaLimited } from "./settings-helpers.js";
 import { renderSettingsLayout } from "./settings-sections.js";
 import type { SettingsState } from "./settings-state.js";
@@ -76,6 +77,9 @@ export function renderLoadedSettings(
     onFieldAction: (_sectionId, fieldPath, actionKind) => {
       if (actionKind === "browse-linear-projects") {
         options.onBrowseLinearProjects(fieldPath);
+      }
+      if (actionKind === "navigate-templates") {
+        router.navigate("/templates");
       }
     },
   });

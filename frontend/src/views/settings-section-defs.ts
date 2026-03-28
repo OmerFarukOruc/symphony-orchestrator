@@ -482,6 +482,17 @@ function staticSections(): SettingsSectionDefinition[] {
           unit: "ms",
           defaultValue: "300000",
         },
+        {
+          path: "system.selectedTemplateId",
+          label: "Active Prompt Template",
+          kind: "readonly",
+          tier: "standard",
+          group: "Throughput",
+          hint: "The Liquid template used for agent instructions.",
+          actionLabel: "Manage Templates",
+          actionKind: "navigate-templates",
+          editable: false,
+        },
       ],
     },
     {
