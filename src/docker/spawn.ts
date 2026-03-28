@@ -34,28 +34,33 @@ interface DockerRunResult {
   cacheVolumeName: string;
 }
 
-function buildMountArgs(args: string[], input: DockerRunInput, cacheVolumeName: string): void {
-  const { sandboxConfig, workspacePath, archiveDir, extraMountPaths = [], pathRegistry, gitBaseDir } = input;
+function collectMounts(input: DockerRunInput): Array<[string, string, string?]> {
+  const { workspacePath, archiveDir, extraMountPaths = [], pathRegistry, gitBaseDir } = input;
+  const translate = (mountPath: string) => pathRegistry?.translate(mountPath) ?? mountPath;
   const mounts: Array<[string, string, string?]> = [
-    [pathRegistry?.translate(workspacePath) ?? workspacePath, workspacePath],
-    [pathRegistry?.translate(archiveDir) ?? archiveDir, archiveDir],
-    ...extraMountPaths.map(
-      (mountPath) => [pathRegistry?.translate(mountPath) ?? mountPath, mountPath] as [string, string],
-    ),
+    [translate(workspacePath), workspacePath],
+    [translate(archiveDir), archiveDir],
   ];
+  // gitBaseDir added BEFORE extraMountPaths so the read-only mount wins
+  // dedup when both reference the same bare-clone directory.
   if (gitBaseDir) {
-    mounts.push([pathRegistry?.translate(gitBaseDir) ?? gitBaseDir, gitBaseDir, "ro"]);
+    mounts.push([translate(gitBaseDir), gitBaseDir, "ro"]);
   }
+  for (const mountPath of extraMountPaths) {
+    mounts.push([translate(mountPath), mountPath]);
+  }
+  return mounts;
+}
+
+function buildMountArgs(args: string[], input: DockerRunInput, cacheVolumeName: string): void {
   const seenMounts = new Set<string>();
-  for (const [host, container, mode] of mounts) {
-    if (seenMounts.has(container)) {
-      continue;
-    }
+  for (const [host, container, mode] of collectMounts(input)) {
+    if (seenMounts.has(container)) continue;
     seenMounts.add(container);
     args.push("-v", mode ? `${host}:${container}:${mode}` : `${host}:${container}`);
   }
   args.push("-v", `${cacheVolumeName}:${CONTAINER_HOME}`);
-  for (const mount of sandboxConfig.extraMounts) {
+  for (const mount of input.sandboxConfig.extraMounts) {
     args.push("-v", mount);
   }
 }

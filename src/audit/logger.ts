@@ -61,7 +61,7 @@ const FILTER_MAP: Array<{
     key: "pathPrefix",
     condition: "(path LIKE ? ESCAPE '\\' OR key LIKE ? ESCAPE '\\')",
     transform: (value) => {
-      const escaped = value.replaceAll("%", "\\%").replaceAll("_", "\\_");
+      const escaped = value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
       return [`${escaped}%`, `${escaped}%`];
     },
   },

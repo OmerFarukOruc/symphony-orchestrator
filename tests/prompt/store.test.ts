@@ -50,12 +50,12 @@ describe("PromptTemplateStore — CRUD", () => {
 
   it("removes a template", () => {
     store.create({ id: "t", name: "T", body: "b" });
-    expect(store.remove("t")).toBe(true);
+    expect(store.remove("t")).toEqual({ deleted: true });
     expect(store.get("t")).toBeNull();
   });
 
-  it("remove returns false for nonexistent template", () => {
-    expect(store.remove("nope")).toBe(false);
+  it("remove returns not-deleted for nonexistent template", () => {
+    expect(store.remove("nope")).toEqual({ deleted: false });
   });
 });
 
