@@ -67,7 +67,7 @@ async function installRetryingScenario(
 }
 
 /** Locator for the model text input inside the model settings form. */
-const MODEL_INPUT_SELECTOR = '.issue-form-grid input[type="text"], .issue-form-grid .mc-input';
+const MODEL_INPUT_SELECTOR = ".issue-form-grid select.mc-select";
 
 test.describe("Issue Actions: Abort", () => {
   test.beforeEach(async ({ apiMock }) => {
@@ -161,12 +161,13 @@ test.describe("Issue Actions: Model Override", () => {
 
     const modelInput = page.locator(MODEL_INPUT_SELECTOR).first();
     await expect(modelInput).toBeVisible({ timeout: 5000 });
+    await expect(modelInput.locator('option[value="gpt-5.4"]')).toBeAttached({ timeout: 5000 });
 
     const modelRequest = page.waitForRequest(
       (req) => req.method() === "POST" && /\/api\/v1\/SYM-42\/model$/.test(req.url()),
     );
 
-    await modelInput.fill("gpt-5.4");
+    await modelInput.selectOption("gpt-5.4");
     await page.locator('.issue-form-grid button[type="submit"]').click();
 
     const request = await modelRequest;
@@ -181,8 +182,9 @@ test.describe("Issue Actions: Model Override", () => {
 
     const modelInput = page.locator(MODEL_INPUT_SELECTOR).first();
     await expect(modelInput).toBeVisible({ timeout: 5000 });
+    await expect(modelInput.locator('option[value="gpt-5.4"]')).toBeAttached({ timeout: 5000 });
 
-    await modelInput.fill("gpt-5.4");
+    await modelInput.selectOption("gpt-5.4");
     await page.locator('.issue-form-grid button[type="submit"]').click();
 
     await expect(page.getByText("Model override saved for next run.")).toBeVisible({ timeout: 5000 });
