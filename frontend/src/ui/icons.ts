@@ -158,6 +158,21 @@ const ICONS = {
   issueRuns: filledIcon(
     "M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z",
   ),
+  templates: strokeIcon([
+    { tag: "rect", attrs: { x: "3", y: "3", width: "18", height: "18", rx: "2" } },
+    { tag: "line", attrs: { x1: "7", y1: "8", x2: "17", y2: "8" } },
+    { tag: "line", attrs: { x1: "7", y1: "12", x2: "13", y2: "12" } },
+    { tag: "line", attrs: { x1: "7", y1: "16", x2: "15", y2: "16" } },
+  ]),
+  audit: strokeIcon([
+    {
+      tag: "path",
+      attrs: { d: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" },
+    },
+    { tag: "rect", attrs: { x: "9", y: "3", width: "6", height: "4", rx: "1" } },
+    { tag: "line", attrs: { x1: "9", y1: "12", x2: "15", y2: "12" } },
+    { tag: "line", attrs: { x1: "9", y1: "16", x2: "13", y2: "16" } },
+  ]),
 } as const satisfies Record<string, IconDefinition>;
 
 export type IconName = keyof typeof ICONS;
