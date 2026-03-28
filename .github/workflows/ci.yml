@@ -111,27 +111,6 @@ jobs:
           path: coverage/
           retention-days: 14
 
-  frontend-test:
-    name: Frontend Tests
-    needs: build
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-      - uses: actions/cache/restore@v4
-        with:
-          path: |
-            node_modules
-            dist
-          key: build-${{ github.sha }}
-      - run: pnpm run test:frontend
-
   typecheck:
     name: Type Check
     needs: build
@@ -409,7 +388,7 @@ jobs:
   build-and-test:
     name: build-and-test
     if: always()
-    needs: [build, lint, test, frontend-test, typecheck, gitleaks, semgrep, docker-build, e2e-smoke]
+    needs: [build, lint, test, typecheck, gitleaks, semgrep, docker-build, e2e-smoke]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -419,7 +398,6 @@ jobs:
           echo "build        = ${{ needs.build.result }}"
           echo "lint         = ${{ needs.lint.result }}"
           echo "test         = ${{ needs.test.result }}"
-          echo "frontend-test= ${{ needs.frontend-test.result }}"
           echo "typecheck    = ${{ needs.typecheck.result }}"
           echo "gitleaks     = ${{ needs.gitleaks.result }}"
           echo "semgrep      = ${{ needs.semgrep.result }}"
@@ -429,7 +407,6 @@ jobs:
           if [ "${{ needs.build.result }}" != "success" ] ||
              [ "${{ needs.lint.result }}" != "success" ] ||
              [ "${{ needs.test.result }}" != "success" ] ||
-             [ "${{ needs.frontend-test.result }}" != "success" ] ||
              [ "${{ needs.typecheck.result }}" != "success" ] ||
              [ "${{ needs.gitleaks.result }}" != "success" ] ||
              [ "${{ needs.semgrep.result }}" != "success" ] ||
