@@ -17,6 +17,7 @@ import { closeDatabase, openDatabase, type SymphonyDatabase } from "./database.j
 import { SqliteAttemptStore } from "./attempt-store-sqlite.js";
 import { migrateFromJsonl } from "./migrator.js";
 import { attempts } from "./schema.js";
+import { seedDefaults, importLegacyFiles } from "../../config/legacy-import.js";
 
 export interface PersistenceRuntime {
   /** The shared Drizzle database instance. */
@@ -34,6 +35,8 @@ export interface PersistenceRuntimeOptions {
   logger: SymphonyLogger;
   /** Persistence mode — "sqlite" (default) or "jsonl" (legacy). */
   mode?: string;
+  /** Optional WORKFLOW.md path for one-time legacy import. */
+  workflowPath?: string | null;
 }
 
 /**
@@ -43,7 +46,7 @@ export interface PersistenceRuntimeOptions {
  * and constructs the attempt store with the shared connection.
  */
 export async function initPersistenceRuntime(options: PersistenceRuntimeOptions): Promise<PersistenceRuntime> {
-  const { dataDir, logger, mode = process.env.SYMPHONY_PERSISTENCE ?? "sqlite" } = options;
+  const { dataDir, logger, mode = process.env.SYMPHONY_PERSISTENCE ?? "sqlite", workflowPath } = options;
   const storeLogger = logger.child({ component: "attempt-store" });
 
   if (mode === "jsonl") {
@@ -74,6 +77,10 @@ export async function initPersistenceRuntime(options: PersistenceRuntimeOptions)
       );
     }
   }
+
+  // Seed config defaults + import legacy files (idempotent).
+  seedDefaults(db);
+  await importLegacyFiles(db, dataDir, logger, workflowPath);
 
   const attemptStore = new SqliteAttemptStore(db, storeLogger);
 
