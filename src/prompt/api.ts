@@ -92,8 +92,12 @@ export function registerTemplateApi(app: Express, deps: TemplateApiDeps): void {
       response.json({ template: updated });
     })
     .delete((request, response) => {
-      const deleted = deps.templateStore.remove(request.params.id);
-      if (!deleted) {
+      const result = deps.templateStore.remove(request.params.id);
+      if (result.error) {
+        response.status(409).json({ error: { code: "active_template", message: result.error } });
+        return;
+      }
+      if (!result.deleted) {
         response.status(404).json({
           error: { code: "template_not_found", message: `template "${request.params.id}" not found` },
         });

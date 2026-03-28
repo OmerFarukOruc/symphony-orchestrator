@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm";
 import { Liquid } from "liquidjs";
 
 import type { SymphonyDatabase } from "../persistence/sqlite/database.js";
-import { promptTemplates } from "../persistence/sqlite/schema.js";
+import { config, promptTemplates } from "../persistence/sqlite/schema.js";
 import type { SymphonyLogger } from "../core/types.js";
 
 export interface PromptTemplate {
@@ -26,26 +26,27 @@ export interface PreviewResult {
   error: string | null;
 }
 
-const SAMPLE_ISSUE = {
-  id: "sample-id",
-  identifier: "PROJ-42",
-  title: "Example issue for template preview",
-  description: "This is sample issue description text used to preview the prompt template.",
-  priority: 2,
-  state: "In Progress",
-  branchName: "feature/proj-42-example",
-  url: "https://linear.app/example/issue/PROJ-42",
-  labels: ["bug", "high-priority"],
-  blockedBy: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
-const SAMPLE_CONTEXT = {
-  issue: SAMPLE_ISSUE,
-  workspace: { path: "/home/user/workspaces/PROJ-42", workspaceKey: "PROJ-42" },
-  attempt: 1,
-};
+function buildSampleContext() {
+  const now = new Date().toISOString();
+  return {
+    issue: {
+      id: "sample-id",
+      identifier: "PROJ-42",
+      title: "Example issue for template preview",
+      description: "This is sample issue description text used to preview the prompt template.",
+      priority: 2,
+      state: "In Progress",
+      branchName: "feature/proj-42-example",
+      url: "https://linear.app/example/issue/PROJ-42",
+      labels: ["bug", "high-priority"],
+      blockedBy: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    workspace: { path: "/home/user/workspaces/PROJ-42", workspaceKey: "PROJ-42" },
+    attempt: 1,
+  };
+}
 
 export class PromptTemplateStore {
   private readonly liquid = new Liquid({ strictVariables: false, strictFilters: false });
@@ -100,12 +101,25 @@ export class PromptTemplateStore {
     };
   }
 
-  remove(id: string): boolean {
+  remove(id: string): { deleted: boolean; error?: string } {
     const existing = this.get(id);
-    if (!existing) return false;
+    if (!existing) return { deleted: false };
+
+    // Guard: prevent deleting the currently active template.
+    const systemRow = this.db.select().from(config).where(eq(config.key, "system")).get();
+    if (systemRow) {
+      const system = JSON.parse(systemRow.value) as Record<string, unknown>;
+      if (system.selectedTemplateId === id) {
+        return {
+          deleted: false,
+          error: `cannot delete the active template "${id}" — select a different template first`,
+        };
+      }
+    }
+
     this.db.delete(promptTemplates).where(eq(promptTemplates.id, id)).run();
     this.logger.info({ templateId: id }, "prompt template deleted");
-    return true;
+    return { deleted: true };
   }
 
   async preview(id: string): Promise<PreviewResult> {
@@ -119,7 +133,7 @@ export class PromptTemplateStore {
   async renderPreview(body: string): Promise<PreviewResult> {
     try {
       const parsed = this.liquid.parse(body);
-      const rendered = await this.liquid.render(parsed, SAMPLE_CONTEXT);
+      const rendered = await this.liquid.render(parsed, buildSampleContext());
       return { rendered, error: null };
     } catch (error) {
       return { rendered: "", error: String(error) };
