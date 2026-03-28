@@ -81,3 +81,69 @@ export const issueIndex = sqliteTable("issue_index", {
   attemptCount: integer("attempt_count").notNull().default(0),
   updatedAt: text("updated_at").notNull(),
 });
+
+// ---------------------------------------------------------------------------
+// Dashboard-first config tables (Phase 1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Section-based config store. Each row holds a JSON-serialized config
+ * section (e.g., "tracker", "codex", "workspace"). The keys map 1:1
+ * to the sections consumed by `deriveServiceConfig()`.
+ */
+export const config = sqliteTable("config", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/**
+ * Per-key encrypted secrets. Key names are stored in plaintext;
+ * values are AES-256-GCM encrypted with individual IV + authTag.
+ */
+export const encryptedSecrets = sqliteTable("encrypted_secrets", {
+  key: text("key").primaryKey(),
+  ciphertext: text("ciphertext").notNull(),
+  iv: text("iv").notNull(),
+  authTag: text("auth_tag").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/**
+ * Prompt templates for agent instructions. The active template is
+ * determined by `config.system.selectedTemplateId`, not an isDefault column.
+ */
+export const promptTemplates = sqliteTable("prompt_templates", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  body: text("body").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/**
+ * Audit log for config, secret, and template mutations.
+ * Stores both old and new values for diffing. Secret values are
+ * recorded as the literal string "[REDACTED]".
+ */
+export const configHistory = sqliteTable("config_history", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tableName: text("table_name").notNull(),
+  key: text("key").notNull(),
+  path: text("path"),
+  operation: text("operation").notNull(),
+  previousValue: text("previous_value"),
+  newValue: text("new_value"),
+  actor: text("actor").notNull().default("dashboard"),
+  requestId: text("request_id"),
+  timestamp: text("timestamp").notNull(),
+});
+
+/**
+ * Schema version tracking. Checked on boot to guard future
+ * ALTER TABLE migrations.
+ */
+export const schemaVersion = sqliteTable("schema_version", {
+  version: integer("version").primaryKey(),
+  appliedAt: text("applied_at").notNull(),
+});

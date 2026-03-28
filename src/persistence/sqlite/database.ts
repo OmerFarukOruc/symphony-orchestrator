@@ -71,6 +71,49 @@ const CREATE_TABLES_SQL = `
   CREATE INDEX IF NOT EXISTS idx_attempts_issue_identifier ON attempts(issue_identifier);
   CREATE INDEX IF NOT EXISTS idx_attempts_status ON attempts(status);
   CREATE INDEX IF NOT EXISTS idx_attempt_events_attempt_id ON attempt_events(attempt_id);
+
+  CREATE TABLE IF NOT EXISTS config (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS encrypted_secrets (
+    key        TEXT PRIMARY KEY,
+    ciphertext TEXT NOT NULL,
+    iv         TEXT NOT NULL,
+    auth_tag   TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS prompt_templates (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    body       TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS config_history (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name      TEXT NOT NULL,
+    key             TEXT NOT NULL,
+    path            TEXT,
+    operation       TEXT NOT NULL,
+    previous_value  TEXT,
+    new_value       TEXT,
+    actor           TEXT NOT NULL DEFAULT 'dashboard',
+    request_id      TEXT,
+    timestamp       TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_config_history_table_key ON config_history(table_name, key);
+  CREATE INDEX IF NOT EXISTS idx_config_history_timestamp ON config_history(timestamp);
+
+  CREATE TABLE IF NOT EXISTS schema_version (
+    version    INTEGER PRIMARY KEY,
+    applied_at TEXT NOT NULL
+  );
 `;
 
 /**
@@ -85,8 +128,20 @@ export function openDatabase(dbPath: string): SymphonyDatabase {
 
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
+  sqlite.pragma("synchronous = NORMAL");
+  sqlite.pragma("busy_timeout = 5000");
 
   sqlite.exec(CREATE_TABLES_SQL);
+
+  // Seed schema version if not present (v2 = Phase 1 config tables).
+  const versionRow = sqlite.prepare("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1").get() as
+    | { version: number }
+    | undefined;
+  if (!versionRow || versionRow.version < 2) {
+    sqlite
+      .prepare("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (?, ?)")
+      .run(2, new Date().toISOString());
+  }
 
   return drizzle(sqlite, { schema });
 }
