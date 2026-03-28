@@ -32,6 +32,9 @@ pnpm run format:check
 echo "🧪 Running tests..."
 pnpm test
 
+echo "🧪 Running frontend tests..."
+pnpm run test:frontend
+
 echo "🧹 Checking for dead code..."
 pnpm run knip
 
@@ -43,5 +46,24 @@ pnpm exec playwright test --project=smoke
 
 echo "🔒 Running Semgrep security scan..."
 semgrep scan --config auto --config p/typescript --error
+
+# Stryker mutation testing — only if changed files overlap with mutate targets
+STRYKER_TARGETS="src/config/coercion.ts src/config/validators.ts src/state/policy.ts src/state/machine.ts src/workspace/path-registry.ts src/workspace/paths.ts src/core/content-sanitizer.ts src/orchestrator/retry-failure.ts src/orchestrator/retry-manager.ts src/utils/type-guards.ts src/workflow/columns.ts src/workflow/loader.ts"
+CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || true)
+MUTATE_HITS=""
+for target in $STRYKER_TARGETS; do
+  if echo "$CHANGED_FILES" | grep -qx "$target"; then
+    MUTATE_HITS="$MUTATE_HITS $target"
+  fi
+done
+if [ -n "$MUTATE_HITS" ]; then
+  echo "🧬 Running incremental mutation testing (changed targets:$MUTATE_HITS)..."
+  pnpm run test:mutation:incremental
+else
+  echo "🧬 Skipping mutation testing — no Stryker mutate targets changed."
+fi
+
+echo "📊 Checking type coverage..."
+pnpm run typecheck:coverage
 
 echo "✅ All pre-push checks passed!"
