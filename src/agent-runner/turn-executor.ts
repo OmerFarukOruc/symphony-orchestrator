@@ -214,7 +214,10 @@ async function resolveTurnResult(
   if (result.kind === "stop") return null;
   if (result.kind === "outcome") return result.outcome;
   if (result.kind === "compact_needed") return tryCompactAndRetry(input, state);
-  // kind === "continue" — check for early stop signal
+  // kind === "continue" — check for early stop signal.
+  // Prefer the pre-truncation stop signal extracted from raw content by the
+  // notification handler; fall back to content-based detection for safety.
+  if (input.getLastStopSignal?.() !== null && input.getLastStopSignal?.() !== undefined) return null;
   const lastContent = input.getLastAgentMessageContent?.() ?? null;
   if (detectStopSignal(lastContent) !== null) return null;
   return undefined;

@@ -16,12 +16,15 @@ export interface DockerRunInput {
   command: string;
   workspacePath: string;
   archiveDir: string;
+  extraMountPaths?: string[];
   pathRegistry?: PathRegistry;
   runtimeConfigToml: string;
   runtimeAuthJsonBase64?: string | null;
   requiredEnv?: string[];
   issueIdentifier?: string;
   model?: string;
+  /** Bare-clone dir for worktree workspaces — mounted read-only so git resolves inside the container. */
+  gitBaseDir?: string;
 }
 
 interface DockerRunResult {
@@ -32,12 +35,23 @@ interface DockerRunResult {
 }
 
 function buildMountArgs(args: string[], input: DockerRunInput, cacheVolumeName: string): void {
-  const { sandboxConfig, workspacePath, archiveDir, pathRegistry } = input;
+  const { sandboxConfig, workspacePath, archiveDir, extraMountPaths = [], pathRegistry, gitBaseDir } = input;
   const mounts: Array<[string, string, string?]> = [
     [pathRegistry?.translate(workspacePath) ?? workspacePath, workspacePath],
     [pathRegistry?.translate(archiveDir) ?? archiveDir, archiveDir],
+    ...extraMountPaths.map(
+      (mountPath) => [pathRegistry?.translate(mountPath) ?? mountPath, mountPath] as [string, string],
+    ),
   ];
+  if (gitBaseDir) {
+    mounts.push([pathRegistry?.translate(gitBaseDir) ?? gitBaseDir, gitBaseDir, "ro"]);
+  }
+  const seenMounts = new Set<string>();
   for (const [host, container, mode] of mounts) {
+    if (seenMounts.has(container)) {
+      continue;
+    }
+    seenMounts.add(container);
     args.push("-v", mode ? `${host}:${container}:${mode}` : `${host}:${container}`);
   }
   args.push("-v", `${cacheVolumeName}:${CONTAINER_HOME}`);

@@ -1,6 +1,13 @@
 import type { Issue, TokenUsageSnapshot } from "../core/types.js";
-import { asRecord, asString, extractItemContent, extractTokenUsageSnapshot } from "./helpers.js";
+import {
+  asRecord,
+  asString,
+  extractAgentOrUserMessage,
+  extractItemContent,
+  extractTokenUsageSnapshot,
+} from "./helpers.js";
 import { sanitizeContent } from "../core/content-sanitizer.js";
+import { detectStopSignal, type StopSignal } from "../core/signal-detection.js";
 import {
   appendReasoningText,
   composeSessionId,
@@ -16,6 +23,8 @@ interface AgentRunnerNotificationEvent {
   sessionId: string | null;
   event: string;
   message: string;
+  /** Stop signal detected from raw (pre-truncation) agent message content. */
+  stopSignal?: StopSignal | null;
   usage?: TokenUsageSnapshot;
   usageMode?: "absolute_total" | "delta";
   content?: string | null;
@@ -137,6 +146,14 @@ function handleItemEvent(
     deleteReasoningBuffer(input.state, itemId);
   }
 
+  // Detect stop signal from the RAW agent message text (before sanitizeContent
+  // truncation) so the signal is never lost on long messages.
+  let stopSignal: StopSignal | null = null;
+  if (itemType === "agentMessage" && verb === "completed") {
+    const rawText = extractAgentOrUserMessage(item);
+    stopSignal = detectStopSignal(rawText);
+  }
+
   const isDiff = itemType === "fileChange" && verb === "completed";
   input.onEvent({
     at: new Date().toISOString(),
@@ -146,6 +163,7 @@ function handleItemEvent(
     event: ITEM_TYPE_EVENT[itemType] ?? input.notification.method.replaceAll("/", "_"),
     message: sanitizeContent(itemId ? `${itemType} ${itemId} ${verb}` : `${itemType} ${verb}`) || "item event",
     content,
+    ...(stopSignal ? { stopSignal } : {}),
     metadata: { itemType, verb, ...(isDiff ? { isDiff: true } : {}) },
   });
 }

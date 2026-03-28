@@ -183,6 +183,7 @@ function extractItemContent(
 export { asRecord, asStringOrNull as asString } from "../utils/type-guards.js";
 export {
   authIsRequired,
+  extractAgentOrUserMessage,
   extractItemContent,
   extractRateLimits,
   extractThreadId,

@@ -160,7 +160,7 @@ export class WorkspaceManager {
       );
     }
 
-    const workspace = { path: workspacePath, workspaceKey, createdNow };
+    const workspace = { path: workspacePath, workspaceKey, createdNow, gitBaseDir: baseCloneDir };
     if (createdNow) {
       await this.runHook(config.workspace.hooks.afterCreate, workspace, issueIdentifier, workspaceKey);
     }

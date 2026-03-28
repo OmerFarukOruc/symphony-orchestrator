@@ -506,6 +506,29 @@ describe("AgentRunner", () => {
     expect(outcome.threadId).toBe("thread-1");
   });
 
+  it("stops after the first turn when the agent emits SYMPHONY_STATUS: DONE", async () => {
+    const tempDir = await createTempDir();
+    const { runner, workspaceManager } = await createRunner(tempDir, "done_signal");
+    const workspace = await workspaceManager.ensureWorkspace("MT-42");
+
+    const outcome = await runner.runAttempt({
+      issue: baseIssue(),
+      attempt: null,
+      modelSelection: {
+        model: "gpt-5.4",
+        reasoningEffort: "high",
+        source: "default",
+      },
+      promptTemplate: "Prompt",
+      workspace,
+      signal: new AbortController().signal,
+      onEvent: () => undefined,
+    });
+
+    expect(outcome.kind).toBe("normal");
+    expect(outcome.turnCount).toBe(1);
+  });
+
   it("classifies template parse failures explicitly", async () => {
     const tempDir = await createTempDir();
     const { runner, workspaceManager } = await createRunner(tempDir, "success");

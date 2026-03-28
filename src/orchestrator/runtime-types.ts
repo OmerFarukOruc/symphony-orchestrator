@@ -15,6 +15,7 @@ import type {
   TokenUsageSnapshot,
   Workspace,
 } from "../core/types.js";
+import type { StopSignal } from "../core/signal-detection.js";
 import { WorkspaceManager } from "../workspace/manager.js";
 
 export interface RunningEntry {
@@ -32,6 +33,8 @@ export interface RunningEntry {
   tokenUsage: TokenUsageSnapshot | null;
   modelSelection: ModelSelection;
   lastAgentMessageContent: string | null;
+  /** Stop signal detected from raw (pre-truncation) agent message. */
+  lastStopSignal: StopSignal | null;
   repoMatch: RepoMatch | null;
   queuePersistence: (task: () => Promise<void>) => void;
   flushPersistence: () => Promise<void>;

@@ -11,6 +11,7 @@ import { createSuccessResponse, type JsonRpcRequest } from "../codex/protocol.js
 import { JsonRpcConnection } from "../agent/json-rpc-connection.js";
 import { prepareCodexRuntimeConfig, getRequiredProviderEnvNames } from "../codex/runtime-config.js";
 import { buildDockerRunArgs, buildInitCacheVolumeArgs } from "../docker/spawn.js";
+import { resolveWorkspaceExtraMountPaths } from "../docker/workspace-mounts.js";
 import { inspectContainerRunning, removeContainer, removeVolume, stopContainer } from "../docker/lifecycle.js";
 import { getContainerStats } from "../docker/stats.js";
 import { handleCodexRequest } from "../agent/codex-request-handler.js";
@@ -92,12 +93,14 @@ export async function createDockerSession(
     command: config.codex.command,
     workspacePath: input.workspace.path,
     archiveDir,
+    extraMountPaths: await resolveWorkspaceExtraMountPaths(input.workspace.path),
     pathRegistry: deps.pathRegistry,
     runtimeConfigToml: runtimeConfig.configToml,
     runtimeAuthJsonBase64: runtimeConfig.authJsonBase64,
     requiredEnv: getRequiredProviderEnvNames(config.codex),
     issueIdentifier: input.issue.identifier,
     model: input.modelSelection.model,
+    gitBaseDir: input.workspace.gitBaseDir,
   });
 
   // Initialize cache volume ownership before spawning the main container.

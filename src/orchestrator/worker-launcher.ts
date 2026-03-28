@@ -152,6 +152,7 @@ function buildRunningEntry(
     tokenUsage: null,
     modelSelection,
     lastAgentMessageContent: null,
+    lastStopSignal: null,
     repoMatch: ctx.deps.repoRouter?.matchIssue(issue) ?? null,
     queuePersistence,
     flushPersistence: () => persistenceQueue,
@@ -236,6 +237,7 @@ function buildOnEventHandler(
     usageMode?: "absolute_total" | "delta";
     rateLimits?: unknown;
     content?: string | null;
+    stopSignal?: import("../core/signal-detection.js").StopSignal | null;
   },
 ) => void {
   return (event) => {
@@ -243,6 +245,9 @@ function buildOnEventHandler(
     entry.lastEventAtMs = Date.now();
     if (event.event === "agent_message" && event.content) {
       entry.lastAgentMessageContent = event.content;
+    }
+    if (event.stopSignal) {
+      entry.lastStopSignal = event.stopSignal;
     }
     ctx.pushEvent(event);
     if (event.usage) {

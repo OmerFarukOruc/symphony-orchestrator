@@ -197,6 +197,29 @@ describe("buildDockerRunArgs", () => {
     expect(mountArgs).toContain("/data/models:/models:ro");
   });
 
+  it("includes additional identity-mapped runtime mounts", () => {
+    const result = buildDockerRunArgs(
+      baseInput({
+        extraMountPaths: ["/tmp/workspaces/.base/repo.git"],
+      }),
+    );
+    const mountArgs = result.args.filter((_, i) => result.args[i - 1] === "-v");
+    expect(mountArgs).toContain("/tmp/workspaces/.base/repo.git:/tmp/workspaces/.base/repo.git");
+  });
+
+  it("deduplicates repeated runtime mounts", () => {
+    const result = buildDockerRunArgs(
+      baseInput({
+        extraMountPaths: ["/tmp/workspaces/.base/repo.git"],
+        gitBaseDir: "/tmp/workspaces/.base/repo.git",
+      }),
+    );
+    const mountArgs = result.args.filter((_, i) => result.args[i - 1] === "-v");
+    expect(
+      mountArgs.filter((mount) => mount.startsWith("/tmp/workspaces/.base/repo.git:/tmp/workspaces/.base/repo.git")),
+    ).toHaveLength(1);
+  });
+
   it("translates workspace and archive mounts through PathRegistry while preserving container workdir", () => {
     const result = buildDockerRunArgs(
       baseInput({
@@ -213,6 +236,19 @@ describe("buildDockerRunArgs", () => {
     expect(mountArgs).toContain("/host/archives:/data/archives");
     const wdIdx = result.args.indexOf("--workdir");
     expect(result.args[wdIdx + 1]).toBe("/data/workspaces/MT-1");
+  });
+
+  it("translates additional runtime mounts through PathRegistry", () => {
+    const result = buildDockerRunArgs(
+      baseInput({
+        extraMountPaths: ["/data/workspaces/.base/repo.git"],
+        pathRegistry: new PathRegistry({
+          "/data/workspaces": "/host/workspaces",
+        }),
+      }),
+    );
+    const mountArgs = result.args.filter((_, i) => result.args[i - 1] === "-v");
+    expect(mountArgs).toContain("/host/workspaces/.base/repo.git:/data/workspaces/.base/repo.git");
   });
 
   it("includes observability labels", () => {

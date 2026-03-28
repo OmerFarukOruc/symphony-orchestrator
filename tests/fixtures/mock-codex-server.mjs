@@ -36,7 +36,7 @@ function sendRequest(method, params) {
   });
 }
 
-function startSuccessTurnSequence(turnRequestId) {
+function startSuccessTurnSequence(turnRequestId, agentText = "Here is the result.") {
   sendRequest("item/commandExecution/requestApproval", { command: "echo hi" })
     .then(() => sendRequest("item/fileChange/requestApproval", { path: "file.txt" }))
     .then(() =>
@@ -83,7 +83,7 @@ function startSuccessTurnSequence(turnRequestId) {
 
       // Emulate agent message
       send({ jsonrpc: "2.0", method: "item/started", params: { item: { type: "agentMessage", id: "msg-1" } } });
-      send({ jsonrpc: "2.0", method: "item/completed", params: { item: { type: "agentMessage", id: "msg-1", text: "Here is the result." } } });
+      send({ jsonrpc: "2.0", method: "item/completed", params: { item: { type: "agentMessage", id: "msg-1", text: agentText } } });
 
       send({
         jsonrpc: "2.0",
@@ -165,6 +165,10 @@ async function onClientRequest(message) {
       if (scenario === "user_input") {
         sendRequest("item/tool/requestUserInput", { prompt: "Need input" }).catch(() => undefined);
         startSuccessTurnSequence(message.id);
+        return;
+      }
+      if (scenario === "done_signal") {
+        startSuccessTurnSequence(message.id, "Smoke test complete.\n\nSYMPHONY_STATUS: DONE");
         return;
       }
       if (scenario === "hang_turn") {
