@@ -6,6 +6,7 @@ export interface LogBuffer {
   events(): RecentEvent[];
   insert(event: RecentEvent): boolean;
   load(events: RecentEvent[]): void;
+  clear(): void;
   setDirection(direction: SortDirection): void;
   direction(): SortDirection;
   size(): number;
@@ -97,6 +98,11 @@ export function createLogBuffer(initialDirection: SortDirection = "desc"): LogBu
       if (added) {
         items.sort(compareFn(currentDirection));
       }
+    },
+
+    clear(): void {
+      items.length = 0;
+      seen.clear();
     },
 
     setDirection(direction: SortDirection): void {
