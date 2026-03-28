@@ -62,8 +62,8 @@ export function renderSettingsLayout(
         sectionMatchesFilter(section, state.filter, state.drafts[section.id]),
     )
     .sort((a, b) => {
-      const aGroup = groupOrder.indexOf(a.groupId ?? "");
-      const bGroup = groupOrder.indexOf(b.groupId ?? "");
+      const aGroup = groupOrder.indexOf((a.groupId ?? "") as (typeof groupOrder)[number]);
+      const bGroup = groupOrder.indexOf((b.groupId ?? "") as (typeof groupOrder)[number]);
       return aGroup - bGroup;
     });
   if (!visibleSections.some((section) => section.id === state.selectedSectionId)) {

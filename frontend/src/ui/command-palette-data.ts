@@ -107,7 +107,9 @@ function buildQuickActionEntries(options: CreateBasePaletteEntriesOptions): Pale
       group: "Quick actions",
       icon: "issueDetail",
       keywords: ["api", "docs", "swagger", "openapi", "reference"],
-      run: () => window.open("/api/docs", "_blank", "noopener"),
+      run: () => {
+        window.open("/api/docs", "_blank", "noopener");
+      },
     },
   ];
 

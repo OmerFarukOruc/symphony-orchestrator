@@ -68,7 +68,6 @@ const EVENT_LABEL_MAP: Record<string, string> = {
   agent_plan: "Plan",
   context_compaction: "Compaction",
   image_view: "Image view",
-  turn_diff: "Turn diff",
   system: "System",
   session: "Session",
   issue_queued: "Queued",
