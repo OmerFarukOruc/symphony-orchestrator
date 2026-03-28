@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -130,7 +130,8 @@ describe("importLegacyFiles", () => {
       await writeFile(workflowPath, workflowContent, "utf8");
 
       const overlayContent = "tracker:\n  project_slug: FROM-OVERLAY\n";
-      await writeFile(path.join(dir, "config-overlay.yaml"), overlayContent, "utf8");
+      await mkdir(path.join(dir, "config"), { recursive: true });
+      await writeFile(path.join(dir, "config", "overlay.yaml"), overlayContent, "utf8");
 
       await importLegacyFiles(db, dir, createLogger(), workflowPath);
 

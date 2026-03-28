@@ -6,6 +6,7 @@
  * legacy files are never live-read again.
  */
 
+import { accessSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -111,7 +112,7 @@ async function loadOverlaySource(
   base: Record<string, unknown>,
   logger: SymphonyLogger,
 ): Promise<{ merged: Record<string, unknown>; overlayPath: string | null }> {
-  const overlayPath = path.join(dataDir, "config-overlay.yaml");
+  const overlayPath = path.join(dataDir, "config", "overlay.yaml");
   try {
     const overlayText = await readFile(overlayPath, "utf8");
     const overlayData = YAML.parse(overlayText);
@@ -207,11 +208,9 @@ function findLegacyWorkflow(dataDir: string): string | null {
     path.join(parentDir, "WORKFLOW.yml"),
   ];
 
-  // Synchronous existence check — fine for one-time startup
   for (const candidate of candidates) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require("node:fs").accessSync(candidate);
+      accessSync(candidate);
       return candidate;
     } catch {
       continue;

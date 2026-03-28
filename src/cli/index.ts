@@ -89,7 +89,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
   const config = configStore.getConfig();
   const port = selectedPort ?? config.server.port;
-  const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger);
+  const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger, workflowPath);
   wireNotifications(services.notificationManager, configStore, logger);
 
   const { orchestrator, httpServer, eventBus } = services;

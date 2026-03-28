@@ -27,7 +27,7 @@ export function registerAuditApi(app: Express, deps: AuditApiDeps): void {
     .get((request, response) => {
       const { tableName, key, pathPrefix, from, to, limit, offset } = request.query;
 
-      const entries = deps.auditLogger.query({
+      const queryOptions = {
         tableName: typeof tableName === "string" ? tableName : undefined,
         key: typeof key === "string" ? key : undefined,
         pathPrefix: typeof pathPrefix === "string" ? pathPrefix : undefined,
@@ -35,12 +35,10 @@ export function registerAuditApi(app: Express, deps: AuditApiDeps): void {
         to: typeof to === "string" ? to : undefined,
         limit: typeof limit === "string" ? Number(limit) || 50 : 50,
         offset: typeof offset === "string" ? Number(offset) || 0 : 0,
-      });
+      };
 
-      const total = deps.auditLogger.count({
-        tableName: typeof tableName === "string" ? tableName : undefined,
-        key: typeof key === "string" ? key : undefined,
-      });
+      const entries = deps.auditLogger.query(queryOptions);
+      const total = deps.auditLogger.count(queryOptions);
 
       response.json({ entries, total });
     })

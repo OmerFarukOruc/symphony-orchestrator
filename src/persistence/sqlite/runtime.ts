@@ -20,8 +20,8 @@ import { attempts } from "./schema.js";
 import { seedDefaults, importLegacyFiles } from "../../config/legacy-import.js";
 
 export interface PersistenceRuntime {
-  /** The shared Drizzle database instance. */
-  db: SymphonyDatabase;
+  /** The shared Drizzle database instance. Null in JSONL mode. */
+  db: SymphonyDatabase | null;
   /** Attempt store — backed by SQLite or JSONL depending on mode. */
   attemptStore: AttemptStorePort;
   /** Gracefully close the database connection (WAL checkpoint + release locks). */
@@ -54,7 +54,7 @@ export async function initPersistenceRuntime(options: PersistenceRuntimeOptions)
     const store = new AttemptStore(dataDir, storeLogger);
     await store.start();
     return {
-      db: null as unknown as SymphonyDatabase,
+      db: null,
       attemptStore: store,
       close() {
         /* no DB to close in JSONL mode */

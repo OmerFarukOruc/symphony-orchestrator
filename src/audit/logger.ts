@@ -57,7 +57,14 @@ const FILTER_MAP: Array<{
 }> = [
   { key: "tableName", condition: "table_name = ?" },
   { key: "key", condition: "key = ?" },
-  { key: "pathPrefix", condition: "(path LIKE ? OR key LIKE ?)", transform: (value) => [`${value}%`, `${value}%`] },
+  {
+    key: "pathPrefix",
+    condition: "(path LIKE ? ESCAPE '\\' OR key LIKE ? ESCAPE '\\')",
+    transform: (value) => {
+      const escaped = value.replaceAll("%", "\\%").replaceAll("_", "\\_");
+      return [`${escaped}%`, `${escaped}%`];
+    },
+  },
   { key: "from", condition: "timestamp >= ?" },
   { key: "to", condition: "timestamp <= ?" },
 ];
@@ -145,20 +152,8 @@ export class AuditLogger {
     return rows.map(rowToAuditRecord);
   }
 
-  count(options?: { tableName?: string; key?: string }): number {
-    const conditions: string[] = [];
-    const params: unknown[] = [];
-
-    if (options?.tableName) {
-      conditions.push("table_name = ?");
-      params.push(options.tableName);
-    }
-    if (options?.key) {
-      conditions.push("key = ?");
-      params.push(options.key);
-    }
-
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  count(options?: AuditQueryOptions): number {
+    const { where, params } = buildWhereClause(options);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const raw = (this.db as any).session.client;
     const result = raw.prepare(`SELECT COUNT(*) as count FROM config_history ${where}`).get(...params) as {

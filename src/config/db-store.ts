@@ -22,6 +22,20 @@ import type { SecretsStore } from "../secrets/store.js";
 
 const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
+function sortForStableStringify(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortForStableStringify);
+  if (!value || typeof value !== "object") return value;
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+    sorted[key] = sortForStableStringify((value as Record<string, unknown>)[key]);
+  }
+  return sorted;
+}
+
+function stableStringify(value: unknown): string {
+  return JSON.stringify(sortForStableStringify(value));
+}
+
 /**
  * Read all section rows and reconstruct a flat config map that
  * looks identical to what YAML front matter would produce.
@@ -200,7 +214,7 @@ export class DbConfigStore implements ConfigOverlayPort {
     const currentMap = this.toMap();
     const merged = mergeDeep(currentMap, patch);
 
-    if (JSON.stringify(merged) === JSON.stringify(currentMap)) return false;
+    if (stableStringify(merged) === stableStringify(currentMap)) return false;
 
     this.writeSections(merged);
     this.refresh();
@@ -245,15 +259,25 @@ export class DbConfigStore implements ConfigOverlayPort {
 
   private writeSections(map: Record<string, unknown>): void {
     const now = new Date().toISOString();
+    const mapKeys = new Set<string>();
+
     for (const [key, value] of Object.entries(map)) {
       if (DANGEROUS_KEYS.has(key)) continue;
+      mapKeys.add(key);
       const serialized = JSON.stringify(value);
-      // Upsert: insert or update
       const existing = this.db.select().from(config).where(eq(config.key, key)).get();
       if (existing) {
         this.db.update(config).set({ value: serialized, updatedAt: now }).where(eq(config.key, key)).run();
       } else {
         this.db.insert(config).values({ key, value: serialized, updatedAt: now }).run();
+      }
+    }
+
+    // Remove DB rows for keys no longer present in the map.
+    const allRows = this.db.select({ key: config.key }).from(config).all();
+    for (const row of allRows) {
+      if (!mapKeys.has(row.key)) {
+        this.db.delete(config).where(eq(config.key, row.key)).run();
       }
     }
   }
