@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeContent } from "../../src/core/content-sanitizer.js";
+import { redactSensitiveValue, sanitizeContent } from "../../src/core/content-sanitizer.js";
 
 describe("sanitizeContent", () => {
   it("passes clean content through unchanged", () => {
@@ -182,6 +182,24 @@ Done.`;
       );
 
       expect(sanitizeContent(json)).toBe(expected);
+    });
+  });
+
+  describe("clone fallback behavior", () => {
+    it("does not attempt JSON parsing for plain text with braces", () => {
+      expect(sanitizeContent("stdout {not-json} tail")).toBe("stdout {not-json} tail");
+    });
+
+    it("redacts non-cloneable object values without throwing", () => {
+      const value = {
+        password: "secret",
+        callback: () => "noop",
+      };
+
+      expect(redactSensitiveValue(value)).toEqual({
+        password: "[REDACTED]",
+        callback: "[REDACTED_OBJECT]",
+      });
     });
   });
 });

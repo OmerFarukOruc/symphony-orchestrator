@@ -16,20 +16,34 @@ export interface IssueLocatorCallbacks {
   resolveModelSelection: (identifier: string) => ModelSelection;
 }
 
+function buildRunningEntryIndex(entries: Map<string, RunningEntry>): Map<string, RunningEntry> {
+  const index = new Map<string, RunningEntry>();
+  for (const entry of entries.values()) {
+    index.set(entry.issue.identifier, entry);
+  }
+  return index;
+}
+
+function buildRetryEntryIndex(entries: Map<string, RetryRuntimeEntry>): Map<string, RetryRuntimeEntry> {
+  const index = new Map<string, RetryRuntimeEntry>();
+  for (const entry of entries.values()) {
+    index.set(entry.identifier, entry);
+  }
+  return index;
+}
+
 /**
  * Resolves an issue identifier to its authoritative runtime location.
  * Single point of resolution — callers use the returned location instead of
  * re-searching multiple state maps.
  */
 export function resolveIssue(identifier: string, callbacks: IssueLocatorCallbacks): IssueLocation | null {
-  const runningEntry = [...callbacks.getRunningEntries().values()].find(
-    (entry) => entry.issue.identifier === identifier,
-  );
+  const runningEntry = buildRunningEntryIndex(callbacks.getRunningEntries()).get(identifier);
   if (runningEntry) {
     return { kind: "running", entry: runningEntry };
   }
 
-  const retryEntry = [...callbacks.getRetryEntries().values()].find((entry) => entry.identifier === identifier);
+  const retryEntry = buildRetryEntryIndex(callbacks.getRetryEntries()).get(identifier);
   if (retryEntry) {
     return { kind: "retry", entry: retryEntry };
   }

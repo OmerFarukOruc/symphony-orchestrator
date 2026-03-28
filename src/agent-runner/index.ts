@@ -23,7 +23,6 @@ export type { AgentRunnerEventHandler } from "./contracts.js";
 
 export class AgentRunner implements RunAttemptDispatcher {
   private readonly liquid = new Liquid({ strictFilters: true, strictVariables: true });
-  private readonly turnState = createTurnState();
 
   constructor(
     private readonly deps: {
@@ -55,6 +54,7 @@ export class AgentRunner implements RunAttemptDispatcher {
     previousThreadId?: string | null;
   }): Promise<RunOutcome> {
     const config = this.deps.getConfig();
+    const turnState = createTurnState();
     const logger = this.deps.logger.child({
       issueIdentifier: input.issue.identifier,
       workspacePath: input.workspace.path,
@@ -102,7 +102,7 @@ export class AgentRunner implements RunAttemptDispatcher {
           logger: this.deps.logger,
           spawnProcess: this.deps.spawnProcess,
         },
-        this.turnState,
+        turnState,
         input.precomputedRuntimeConfig,
       );
     } catch (error) {
@@ -126,6 +126,7 @@ export class AgentRunner implements RunAttemptDispatcher {
       return await this.executeSession(
         session,
         config,
+        turnState,
         inputWithContentCapture,
         () => lastAgentMessageContent,
         () => lastStopSignal,
@@ -144,6 +145,7 @@ export class AgentRunner implements RunAttemptDispatcher {
   private async executeSession(
     session: Awaited<ReturnType<typeof createDockerSession>>,
     config: ServiceConfig,
+    turnState: ReturnType<typeof createTurnState>,
     input: {
       issue: Issue;
       attempt: number | null;
@@ -193,7 +195,7 @@ export class AgentRunner implements RunAttemptDispatcher {
         config,
         prompt,
         runInput: input,
-        turnState: this.turnState,
+        turnState,
         tracker: this.deps.tracker,
         setActiveTurnId: (turnId) => {
           session.turnId = turnId;

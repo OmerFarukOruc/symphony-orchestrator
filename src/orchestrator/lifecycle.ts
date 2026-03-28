@@ -1,49 +1,61 @@
 import { sortIssuesForDispatch } from "./dispatch.js";
 import { createLifecycleEvent, type RuntimeEventSink } from "../core/lifecycle-events.js";
 import { toErrorString } from "../utils/type-guards.js";
-import { issueView, nowIso } from "./views.js";
+import { issueView } from "./views.js";
 import { isActiveState, isTerminalState } from "../state/policy.js";
 import type { AttemptRecord, Issue, ServiceConfig } from "../core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
 
-function enforceStallTimeouts(ctx: ReconcileContext, now: number, config: ServiceConfig): void {
-  if (config.codex.stallTimeoutMs <= 0) {
-    return;
-  }
-  for (const entry of ctx.runningEntries.values()) {
-    if (!entry.abortController.signal.aborted && now - entry.lastEventAtMs > config.codex.stallTimeoutMs) {
-      entry.abortController.abort("stalled");
-      entry.status = "stopping";
-      ctx.pushEvent({
-        at: nowIso(),
-        issueId: entry.issue.id,
-        issueIdentifier: entry.issue.identifier,
-        sessionId: entry.sessionId,
-        event: "worker_stalled",
-        message: "worker exceeded stall timeout and was cancelled",
-      });
-    }
-  }
-}
-
-function reconcileRunning(entries: Map<string, RunningEntry>, byId: Map<string, Issue>, config: ServiceConfig): void {
+function reconcileRunning(
+  entries: Map<string, RunningEntry>,
+  byId: Map<string, Issue>,
+  config: ServiceConfig,
+): boolean {
+  let changed = false;
   for (const entry of entries.values()) {
     const latest = byId.get(entry.issue.id);
     if (!latest) {
       continue;
     }
-    entry.issue = latest;
-    if (isTerminalState(latest.state, config)) {
-      entry.cleanupOnExit = true;
-      if (!entry.abortController.signal.aborted) {
-        entry.abortController.abort("terminal");
-      }
-      entry.status = "stopping";
-    } else if (!isActiveState(latest.state, config) && !entry.abortController.signal.aborted) {
-      entry.abortController.abort("inactive");
-      entry.status = "stopping";
-    }
+    changed = syncRunningEntry(entry, latest, config) || changed;
   }
+  return changed;
+}
+
+function syncRunningEntry(entry: RunningEntry, latest: Issue, config: ServiceConfig): boolean {
+  let changed = false;
+  if (entry.issue !== latest) {
+    entry.issue = latest;
+    changed = true;
+  }
+
+  if (isTerminalState(latest.state, config)) {
+    return markRunningEntryStopping(entry, "terminal", true) || changed;
+  }
+  if (!isActiveState(latest.state, config) && !entry.abortController.signal.aborted) {
+    return markRunningEntryStopping(entry, "inactive", false) || changed;
+  }
+  return changed;
+}
+
+function markRunningEntryStopping(
+  entry: RunningEntry,
+  reason: "terminal" | "inactive",
+  cleanupOnExit: boolean,
+): boolean {
+  let changed = false;
+  if (cleanupOnExit && !entry.cleanupOnExit) {
+    entry.cleanupOnExit = true;
+    changed = true;
+  }
+  if (!entry.abortController.signal.aborted) {
+    entry.abortController.abort(reason);
+  }
+  if (entry.status !== "stopping") {
+    entry.status = "stopping";
+    changed = true;
+  }
+  return changed;
 }
 async function reconcileRetries(ctx: ReconcileContext, byId: Map<string, Issue>, config: ServiceConfig): Promise<void> {
   for (const retryEntry of ctx.retryEntries.values()) {
@@ -81,22 +93,20 @@ interface ReconcileContext {
   clearRetryEntry: (issueId: string) => void;
   pushEvent: RuntimeEventSink;
 }
-export async function reconcileRunningAndRetrying(ctx: ReconcileContext): Promise<void> {
-  const now = Date.now();
+export async function reconcileRunningAndRetrying(ctx: ReconcileContext): Promise<boolean> {
   const config = ctx.getConfig();
-
-  enforceStallTimeouts(ctx, now, config);
 
   const trackedIds = new Set<string>([...ctx.runningEntries.keys(), ...ctx.retryEntries.keys()]);
   if (trackedIds.size === 0) {
-    return;
+    return false;
   }
 
   const issues = await ctx.deps.tracker.fetchIssueStatesByIds([...trackedIds]);
   const byId = new Map(issues.map((issue) => [issue.id, issue]));
 
-  reconcileRunning(ctx.runningEntries, byId, config);
+  const runningChanged = reconcileRunning(ctx.runningEntries, byId, config);
   await reconcileRetries(ctx, byId, config);
+  return runningChanged;
 }
 interface ModelSelectionResolver {
   (identifier: string): {
@@ -106,19 +116,22 @@ interface ModelSelectionResolver {
   };
 }
 
-export async function refreshQueueViews(ctx: {
-  queuedViews: IssueView[];
-  detailViews: Map<string, IssueView>;
-  claimedIssueIds: Set<string>;
-  deps: {
-    tracker: { fetchCandidateIssues: () => Promise<Issue[]> };
-  };
-  canDispatchIssue: (issue: Issue) => boolean;
-  resolveModelSelection: ModelSelectionResolver;
-  setQueuedViews: (views: IssueView[]) => void;
-  pushEvent?: RuntimeEventSink;
-}): Promise<void> {
-  const issues = sortIssuesForDispatch(await ctx.deps.tracker.fetchCandidateIssues());
+export async function refreshQueueViews(
+  ctx: {
+    queuedViews: IssueView[];
+    detailViews: Map<string, IssueView>;
+    claimedIssueIds: Set<string>;
+    deps: {
+      tracker: { fetchCandidateIssues: () => Promise<Issue[]> };
+    };
+    canDispatchIssue: (issue: Issue) => boolean;
+    resolveModelSelection: ModelSelectionResolver;
+    setQueuedViews: (views: IssueView[]) => void;
+    pushEvent?: RuntimeEventSink;
+  },
+  candidateIssues?: Issue[],
+): Promise<void> {
+  const issues = candidateIssues ?? sortIssuesForDispatch(await ctx.deps.tracker.fetchCandidateIssues());
   const dispatchableIssues = issues.filter((issue) => ctx.canDispatchIssue(issue));
   const previousQueuedIssueIds = new Set(ctx.queuedViews.map((view) => view.issueId));
   const visibleQueuedIssues = dispatchableIssues.slice(0, 50);

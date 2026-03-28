@@ -2,7 +2,7 @@
  * Stall detector for orchestrator-level stall detection.
  *
  * Detects running agents that have emitted no events for longer than
- * `config.agent.stallTimeoutMs` and aborts them so the retry mechanism can
+ * `config.codex.stallTimeoutMs` and aborts them so the retry mechanism can
  * requeue the work.  A `StallEvent` record is stored per detected stall for
  * dashboard display (stall timeline widget).
  */
@@ -41,7 +41,7 @@ const MAX_STALL_EVENTS = 100;
  */
 export function detectAndKillStalledWorkers(ctx: StallDetectorContext): number {
   const config = ctx.getConfig();
-  const stallTimeoutMs = config.agent.stallTimeoutMs;
+  const stallTimeoutMs = config.codex.stallTimeoutMs;
   if (stallTimeoutMs <= 0) return 0;
 
   const now = Date.now();
@@ -83,7 +83,7 @@ export function detectAndKillStalledWorkers(ctx: StallDetectorContext): number {
       issueId: entry.issue.id,
       issueIdentifier: entry.issue.identifier,
       sessionId: entry.sessionId,
-      event: "agent_stalled",
+      event: "worker_stalled",
       message: `agent silent for ${Math.round(silentMs / 1000)}s — killed by stall detector`,
     });
   }

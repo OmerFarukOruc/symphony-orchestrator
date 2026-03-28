@@ -25,22 +25,42 @@ export function createSSEHandler(eventBus: TypedEventBus<SymphonyEventMap>): (re
   return (req: Request, res: Response) => {
     configureSSEHeaders(res);
 
-    res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+    let closed = false;
+    let keepAliveTimer: ReturnType<typeof setInterval> | null = null;
 
-    const handler: AnyHandler = (channel, payload) => {
-      res.write(`data: ${JSON.stringify({ type: channel, payload })}\n\n`);
+    const safeWrite = (chunk: string): void => {
+      if (closed || res.writableEnded || res.destroyed) {
+        return;
+      }
+      res.write(chunk);
     };
 
+    const handler: AnyHandler = (channel, payload) => {
+      safeWrite(`data: ${JSON.stringify({ type: channel, payload })}\n\n`);
+    };
+
+    const cleanup = (): void => {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      if (keepAliveTimer !== null) {
+        clearInterval(keepAliveTimer);
+        keepAliveTimer = null;
+      }
+      eventBus.offAny(handler);
+    };
+
+    safeWrite(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
     eventBus.onAny(handler);
 
-    const keepAliveTimer = setInterval(() => {
-      res.write(":\n\n");
+    keepAliveTimer = setInterval(() => {
+      safeWrite(":\n\n");
     }, KEEP_ALIVE_MS);
 
-    req.on("close", () => {
-      clearInterval(keepAliveTimer);
-      eventBus.offAny(handler);
-    });
+    req.once("close", cleanup);
+    res.once("close", cleanup);
+    res.once("error", cleanup);
   };
 }
 

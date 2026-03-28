@@ -6,6 +6,7 @@ export interface OrchestratorPort {
   stop(): Promise<void>;
   requestRefresh(reason: string): { queued: boolean; coalesced: boolean; requestedAt: string };
   getSnapshot(): RuntimeSnapshot;
+  getSerializedState(): Record<string, unknown>;
   getIssueDetail(identifier: string): IssueDetailView | null;
   getAttemptDetail(attemptId: string): AttemptDetailView | null;
   abortIssue(

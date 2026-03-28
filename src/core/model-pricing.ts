@@ -32,6 +32,19 @@ export function lookupModelPrice(model: string): ModelPrice | null {
   return PRICES[model] ?? null;
 }
 
+/** Computes cost in USD for a single attempt. Returns `null` when token usage or pricing is unavailable. */
+export function computeAttemptCostUsd(attempt: {
+  model: string;
+  tokenUsage: { inputTokens: number; outputTokens: number } | null;
+}): number | null {
+  if (!attempt.tokenUsage) return null;
+  const price = lookupModelPrice(attempt.model);
+  if (!price) return null;
+  return (
+    (attempt.tokenUsage.inputTokens * price.inputUsd + attempt.tokenUsage.outputTokens * price.outputUsd) / 1_000_000
+  );
+}
+
 /** Returns all model IDs present in the pricing table. */
 export function getAvailableModelIds(): string[] {
   return Object.keys(PRICES);

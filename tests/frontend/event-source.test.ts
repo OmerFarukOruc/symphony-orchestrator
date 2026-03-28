@@ -3,11 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   subscribeIssueEvents,
   subscribeAllEvents,
-  subscribeWorkerFailed,
-  subscribeModelUpdated,
-  subscribeWorkspaceEvent,
-  subscribePollComplete,
-  subscribeSystemError,
   type AgentEventPayload,
 } from "../../frontend/src/state/event-source";
 
@@ -81,78 +76,6 @@ describe("subscribeIssueEvents", () => {
     expect(handler).toHaveBeenCalledOnce();
     expect(handler2).toHaveBeenCalledOnce();
     unsub2();
-  });
-});
-
-describe("subscribeWorkerFailed", () => {
-  it("receives the payload and unsubscribes cleanly", () => {
-    const handler = vi.fn();
-    const unsub = subscribeWorkerFailed(handler);
-    const payload = { issueId: "id-1", identifier: "ENG-1", error: "timeout" };
-    fakeTarget.dispatchEvent(new CustomEvent("symphony:worker-failed", { detail: payload }));
-    expect(handler).toHaveBeenCalledOnce();
-    expect(handler).toHaveBeenCalledWith(payload);
-    unsub();
-    fakeTarget.dispatchEvent(new CustomEvent("symphony:worker-failed", { detail: payload }));
-    expect(handler).toHaveBeenCalledOnce();
-  });
-});
-
-describe("subscribeModelUpdated", () => {
-  it("receives the payload and unsubscribes cleanly", () => {
-    const handler = vi.fn();
-    const unsub = subscribeModelUpdated(handler);
-    const payload = { identifier: "ENG-1", model: "gpt-4o", source: "override" };
-    fakeTarget.dispatchEvent(new CustomEvent("symphony:model-updated", { detail: payload }));
-    expect(handler).toHaveBeenCalledOnce();
-    expect(handler).toHaveBeenCalledWith(payload);
-    unsub();
-    fakeTarget.dispatchEvent(new CustomEvent("symphony:model-updated", { detail: payload }));
-    expect(handler).toHaveBeenCalledOnce();
-  });
-});
-
-describe("subscribeWorkspaceEvent", () => {
-  it("receives the payload and unsubscribes cleanly", () => {
-    const handler = vi.fn();
-    const unsub = subscribeWorkspaceEvent(handler);
-    const payload = { issueId: "id-1", identifier: "ENG-1", status: "ready" };
-    fakeTarget.dispatchEvent(new CustomEvent("symphony:workspace-event", { detail: payload }));
-    expect(handler).toHaveBeenCalledOnce();
-    expect(handler).toHaveBeenCalledWith(payload);
-    unsub();
-    fakeTarget.dispatchEvent(new CustomEvent("symphony:workspace-event", { detail: payload }));
-    expect(handler).toHaveBeenCalledOnce();
-  });
-});
-
-describe("subscribePollComplete", () => {
-  it("calls the handler and unsubscribes cleanly", () => {
-    const handler = vi.fn();
-    const unsub = subscribePollComplete(handler);
-    fakeTarget.dispatchEvent(
-      new CustomEvent("symphony:poll-complete", { detail: { timestamp: "now", issueCount: 3 } }),
-    );
-    expect(handler).toHaveBeenCalledOnce();
-    unsub();
-    fakeTarget.dispatchEvent(
-      new CustomEvent("symphony:poll-complete", { detail: { timestamp: "now", issueCount: 3 } }),
-    );
-    expect(handler).toHaveBeenCalledOnce();
-  });
-});
-
-describe("subscribeSystemError", () => {
-  it("receives the payload and unsubscribes cleanly", () => {
-    const handler = vi.fn();
-    const unsub = subscribeSystemError(handler);
-    const payload = { message: "connection lost", context: { code: 500 } };
-    fakeTarget.dispatchEvent(new CustomEvent("symphony:system-error", { detail: payload }));
-    expect(handler).toHaveBeenCalledOnce();
-    expect(handler).toHaveBeenCalledWith(payload);
-    unsub();
-    fakeTarget.dispatchEvent(new CustomEvent("symphony:system-error", { detail: payload }));
-    expect(handler).toHaveBeenCalledOnce();
   });
 });
 

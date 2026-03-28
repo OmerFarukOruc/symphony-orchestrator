@@ -128,6 +128,8 @@ export function handleOperatorAbort(
     identifier: issue.identifier,
     outcome: "cancelled",
   });
+  ctx.suppressIssueDispatch?.(issue);
+  ctx.releaseIssueClaim(issue.id);
 }
 
 export function handleCancelledOrHardFailure(

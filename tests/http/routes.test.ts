@@ -11,6 +11,18 @@ import { registerHttpRoutes } from "../../src/http/routes.js";
 
 function makeOrchestrator() {
   return {
+    getSerializedState: vi.fn().mockReturnValue({
+      generated_at: "2024-01-01T00:00:00Z",
+      counts: { running: 0, retrying: 0, queued: 0, completed: 0 },
+      running: [],
+      retrying: [],
+      completed: [],
+      queued: [],
+      workflow_columns: [],
+      codex_totals: { input_tokens: 0, output_tokens: 0, total_tokens: 0, seconds_running: 0, cost_usd: 0 },
+      rate_limits: null,
+      recent_events: [],
+    }),
     getSnapshot: vi.fn().mockReturnValue({
       generatedAt: "2024-01-01T00:00:00Z",
       counts: { running: 0, retrying: 0, queued: 0, completed: 0 },
@@ -76,6 +88,8 @@ describe("HTTP routes", () => {
     expect(body).toHaveProperty("running");
     expect(body).toHaveProperty("codex_totals");
     expect(body).toHaveProperty("recent_events");
+    expect(orchestrator.getSerializedState).toHaveBeenCalledOnce();
+    expect(orchestrator.getSnapshot).not.toHaveBeenCalled();
   });
 
   it("GET /api/v1/runtime returns runtime info", async () => {

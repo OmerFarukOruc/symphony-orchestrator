@@ -142,7 +142,7 @@ function makeCtx(
 }
 
 describe("worker-outcome branch invariants", () => {
-  it("operator_abort does NOT release claim", async () => {
+  it("operator_abort releases the claim", async () => {
     const ctx = makeCtx();
     const entry = makeEntry();
     ctx.runningEntries.set("issue-1", entry);
@@ -156,7 +156,7 @@ describe("worker-outcome branch invariants", () => {
       1,
     );
 
-    expect(ctx.releaseIssueClaim).not.toHaveBeenCalled();
+    expect(ctx.releaseIssueClaim).toHaveBeenCalledWith("issue-1");
   });
 
   it("tracker fetch fallback uses original issue", async () => {

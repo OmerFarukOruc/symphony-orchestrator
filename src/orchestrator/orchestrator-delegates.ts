@@ -22,6 +22,7 @@ import {
 } from "./retry-manager.js";
 import { cleanupTerminalIssueWorkspaces as cleanupTerminalIssueWorkspacesState } from "./lifecycle.js";
 import {
+  buildIssueDispatchFingerprint,
   canDispatchIssue as canDispatchIssueState,
   hasAvailableStateSlot as hasAvailableStateSlotState,
   launchWorker as launchWorkerState,
@@ -51,19 +52,34 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
     resolveModelSelection: (identifier) =>
       resolveModelSelectionFromConfig(state.issueModelOverrides, deps.configStore.getConfig(), identifier),
     releaseIssueClaim: (issueId) => state.claimedIssueIds.delete(issueId),
+    suppressIssueDispatch: (issue) =>
+      state.operatorAbortSuppressions?.set(issue.id, buildIssueDispatchFingerprint(issue)),
     claimIssue: (issueId) => state.claimedIssueIds.add(issueId),
     notify: (event) => notifyChannel(deps, event),
     pushEvent: (event) => {
       pushRecentEvent(state.recentEvents, event);
+      state.markDirty();
       forwardToEventBus(deps, event);
     },
     queueRetry: (issue, attempt, delayMs, error, metadata) =>
       queueRetryState(buildCtx(state, deps), issue, attempt, delayMs, error, metadata),
     clearRetryEntry: (issueId) => clearRetryEntryState(buildCtx(state, deps), issueId),
     launchWorker: async (issue, attempt, options) => launchWorkerDelegate(state, deps, issue, attempt, options),
-    canDispatchIssue: (issue) => canDispatchIssueState(issue, deps.configStore.getConfig(), state.claimedIssueIds),
-    hasAvailableStateSlot: (issue, pendingStateCounts) =>
-      hasAvailableStateSlotState(issue, deps.configStore.getConfig(), state.runningEntries, pendingStateCounts),
+    canDispatchIssue: (issue) =>
+      canDispatchIssueState(
+        issue,
+        deps.configStore.getConfig(),
+        state.claimedIssueIds,
+        state.operatorAbortSuppressions,
+      ),
+    hasAvailableStateSlot: (issue, pendingStateCounts, runningStateCounts) =>
+      hasAvailableStateSlotState(
+        issue,
+        deps.configStore.getConfig(),
+        state.runningEntries,
+        pendingStateCounts,
+        runningStateCounts,
+      ),
     revalidateAndLaunchRetry: (issueId, attempt) =>
       revalidateAndLaunchRetryState(buildCtx(state, deps), issueId, attempt),
     handleRetryLaunchFailure: (issue, attempt, error) =>
@@ -71,10 +87,12 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
     getQueuedViews: () => state.queuedViews,
     setQueuedViews: (views) => {
       state.queuedViews = views;
+      state.markDirty();
     },
     applyUsageEvent: (entry, usage, usageMode) => applyUsageEvent(state, entry, usage, usageMode),
     setRateLimits: (rateLimits) => {
       state.rateLimits = rateLimits;
+      state.markDirty();
     },
     getStallEvents: () => state.stallEvents,
     detectAndKillStalled: () =>
@@ -103,9 +121,11 @@ export interface OrchestratorState {
   recentEvents: RecentEvent[];
   rateLimits: unknown;
   issueModelOverrides: Map<string, Omit<ModelSelection, "source">>;
+  operatorAbortSuppressions?: Map<string, string>;
   sessionUsageTotals: Map<string, TokenUsageSnapshot>;
   codexTotals: { inputTokens: number; outputTokens: number; totalTokens: number; secondsRunning: number };
   stallEvents: StallEvent[];
+  markDirty: () => void;
 }
 
 function notifyChannel(deps: OrchestratorDeps, event: NotificationEvent): void {
@@ -180,6 +200,7 @@ function applyUsageEvent(
     if (entry.sessionId) {
       state.sessionUsageTotals.set(entry.sessionId, usage);
     }
+    state.markDirty();
     return;
   }
 
@@ -191,6 +212,7 @@ function applyUsageEvent(
     outputTokens: (entry.tokenUsage?.outputTokens ?? 0) + usage.outputTokens,
     totalTokens: (entry.tokenUsage?.totalTokens ?? 0) + usage.totalTokens,
   };
+  state.markDirty();
 }
 
 async function launchWorkerDelegate(

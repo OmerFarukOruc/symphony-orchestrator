@@ -107,9 +107,8 @@ describe("reconcileRunningAndRetrying", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("aborts stalled entries and pushes an event", async () => {
+  it("does not enforce stall timeouts during reconciliation", async () => {
     const entry = makeRunningEntry({ lastEventAtMs: Date.now() - 120000 });
-    const pushed: unknown[] = [];
     await reconcileRunningAndRetrying({
       runningEntries: new Map([["issue-1", entry]]),
       retryEntries: new Map(),
@@ -123,34 +122,10 @@ describe("reconcileRunningAndRetrying", () => {
       },
       getConfig: () => makeConfig(),
       clearRetryEntry: vi.fn(),
-      pushEvent: (ev: unknown) => pushed.push(ev),
-    });
-    expect(entry.abortController.signal.aborted).toBe(true);
-    expect(entry.status).toBe("stopping");
-    expect(pushed.length).toBe(1);
-    expect((pushed[0] as Record<string, unknown>).event).toBe("worker_stalled");
-  });
-
-  it("skips stall check when stallTimeoutMs is 0", async () => {
-    const entry = makeRunningEntry({ lastEventAtMs: Date.now() - 120000 });
-    const config = makeConfig();
-    (config as unknown as Record<string, unknown>).codex = { stallTimeoutMs: 0 };
-    await reconcileRunningAndRetrying({
-      runningEntries: new Map([["issue-1", entry]]),
-      retryEntries: new Map(),
-      deps: {
-        tracker: {
-          fetchIssueStatesByIds: vi.fn().mockResolvedValue([makeIssue()]),
-          fetchIssuesByStates: vi.fn(),
-        },
-        workspaceManager: { removeWorkspace: vi.fn() },
-        logger: makeMockLogger(),
-      },
-      getConfig: () => config,
-      clearRetryEntry: vi.fn(),
       pushEvent: vi.fn(),
     });
     expect(entry.abortController.signal.aborted).toBe(false);
+    expect(entry.status).toBe("running");
   });
 
   it("aborts running entry when issue moves to terminal state", async () => {

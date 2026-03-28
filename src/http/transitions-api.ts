@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 
-import { StateMachine } from "../state/machine.js";
+import { getStateMachine } from "../state/policy.js";
 import type { ConfigStore } from "../config/store.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 
@@ -16,17 +16,7 @@ export function handleGetTransitions(deps: TransitionsDeps, _req: Request, res: 
   }
 
   const config = deps.configStore.getConfig();
-  const machine = config.stateMachine
-    ? new StateMachine({
-        stages: config.stateMachine.stages.map((s) => ({ key: s.name, terminal: s.kind === "terminal" })),
-        transitions: config.stateMachine.transitions,
-        activeStates: config.tracker.activeStates,
-        terminalStates: config.tracker.terminalStates,
-      })
-    : new StateMachine({
-        activeStates: config.tracker.activeStates,
-        terminalStates: config.tracker.terminalStates,
-      });
+  const machine = getStateMachine(config);
 
   const stages = machine.getStages();
   const transitions: Record<string, string[]> = {};

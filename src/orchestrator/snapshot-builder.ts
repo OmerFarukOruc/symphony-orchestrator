@@ -1,5 +1,5 @@
 import { buildWorkflowColumns } from "../workflow/columns.js";
-import { lookupModelPrice } from "../core/model-pricing.js";
+import { computeAttemptCostUsd } from "../core/model-pricing.js";
 import { nowIso } from "./views.js";
 import { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
 export { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
@@ -255,14 +255,4 @@ function buildAttemptSummary(attempt: AttemptRecord): AttemptSummary {
     threadId: attempt.threadId,
     turnId: attempt.turnId,
   };
-}
-
-// Computes cost in USD for a single attempt. Returns null when token usage or pricing is unavailable.
-function computeAttemptCostUsd(attempt: AttemptRecord): number | null {
-  if (!attempt.tokenUsage) return null;
-  const price = lookupModelPrice(attempt.model);
-  if (!price) return null;
-  return (
-    (attempt.tokenUsage.inputTokens * price.inputUsd + attempt.tokenUsage.outputTokens * price.outputUsd) / 1_000_000
-  );
 }

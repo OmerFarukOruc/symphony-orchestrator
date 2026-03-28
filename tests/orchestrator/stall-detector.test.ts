@@ -19,7 +19,7 @@ function makeConfig(stallTimeoutMs: number): ServiceConfig {
       maxRetryBackoffMs: 300000,
       maxContinuationAttempts: 5,
       successState: null,
-      stallTimeoutMs,
+      stallTimeoutMs: 300000,
     },
     codex: {
       command: "codex",
@@ -32,7 +32,7 @@ function makeConfig(stallTimeoutMs: number): ServiceConfig {
       turnTimeoutMs: 10000,
       drainTimeoutMs: 0,
       startupTimeoutMs: 5000,
-      stallTimeoutMs: 300000,
+      stallTimeoutMs,
       auth: { mode: "api_key", sourceHome: "/tmp" },
       provider: null,
       sandbox: {
@@ -145,7 +145,7 @@ describe("detectAndKillStalledWorkers", () => {
     expect(stallEvents[0].timeoutMs).toBe(60000);
   });
 
-  it("pushes an agent_stalled event for each stalled entry", () => {
+  it("pushes a worker_stalled event for each stalled entry", () => {
     const entry = makeEntry({ lastEventAtMs: Date.now() - 120000 });
     const ctx = makeCtx([entry], 60000);
 
@@ -153,7 +153,7 @@ describe("detectAndKillStalledWorkers", () => {
 
     expect(ctx.pushedEvents).toHaveLength(1);
     const ev = ctx.pushedEvents[0] as Record<string, unknown>;
-    expect(ev["event"]).toBe("agent_stalled");
+    expect(ev["event"]).toBe("worker_stalled");
     expect(ev["issueIdentifier"]).toBe("MT-1");
   });
 

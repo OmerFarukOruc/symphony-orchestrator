@@ -119,35 +119,6 @@ export function subscribeIssueLifecycle(identifier: string, handler: () => void)
   return () => window.removeEventListener("symphony:issue-lifecycle", listener);
 }
 
-/** Subscribe to a CustomEvent by name, forwarding the detail to the handler. */
-function subscribeEvent(eventName: string, handler: (payload: unknown) => void): () => void {
-  const listener = (e: Event) => {
-    handler((e as CustomEvent).detail);
-  };
-  window.addEventListener(eventName, listener);
-  return () => window.removeEventListener(eventName, listener);
-}
-
-export function subscribeWorkerFailed(handler: (payload: unknown) => void): () => void {
-  return subscribeEvent("symphony:worker-failed", handler);
-}
-
-export function subscribeModelUpdated(handler: (payload: unknown) => void): () => void {
-  return subscribeEvent("symphony:model-updated", handler);
-}
-
-export function subscribeWorkspaceEvent(handler: (payload: unknown) => void): () => void {
-  return subscribeEvent("symphony:workspace-event", handler);
-}
-
-export function subscribePollComplete(handler: () => void): () => void {
-  return subscribeEvent("symphony:poll-complete", handler as (payload: unknown) => void);
-}
-
-export function subscribeSystemError(handler: (payload: unknown) => void): () => void {
-  return subscribeEvent("symphony:system-error", handler);
-}
-
 export function subscribeAllEvents(
   identifier: string,
   handler: (event: { type: string; payload: Record<string, unknown> }) => void,

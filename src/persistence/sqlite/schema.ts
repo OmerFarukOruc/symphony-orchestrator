@@ -138,12 +138,3 @@ export const configHistory = sqliteTable("config_history", {
   requestId: text("request_id"),
   timestamp: text("timestamp").notNull(),
 });
-
-/**
- * Schema version tracking. Checked on boot to guard future
- * ALTER TABLE migrations.
- */
-export const schemaVersion = sqliteTable("schema_version", {
-  version: integer("version").primaryKey(),
-  appliedAt: text("applied_at").notNull(),
-});

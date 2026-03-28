@@ -3,7 +3,6 @@
   "project": ["src/**/*.ts", "frontend/**/*.ts", "tests/**/*.ts"],
   "entry": ["src/dispatch/entrypoint.ts"],
   "ignore": [
-    "frontend/src/pages/page-factory.ts",
     "tests/e2e/**",
     "src/config/index.ts",
     "src/dispatch/index.ts",
@@ -13,30 +12,6 @@
     "src/workspace/index.ts"
   ],
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": [
-    "agentation-mcp",
-    "@stryker-mutator/core",
-    "eslint",
-    "husky",
-    "jscpd",
-    "lint-staged",
-    "prettier",
-    "tsx",
-    "typedoc"
-  ],
-  "ignoreBinaries": [
-    "knip",
-    "jscpd",
-    "playwright",
-    "lint-staged",
-    "eslint",
-    "prettier",
-    "stryker",
-    "tsc",
-    "vite",
-    "vitest",
-    "tsx",
-    "typedoc",
-    "husky"
-  ]
+  "ignoreDependencies": ["agentation-mcp"],
+  "ignoreBinaries": []
 }

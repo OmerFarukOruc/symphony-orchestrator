@@ -28,6 +28,7 @@ interface WatchdogContext {
   getRunningCount: () => number;
   getQueuedCount: () => number;
   getRecentStalls: () => StallEvent[];
+  onHealthUpdated?: () => void;
   logger: {
     info: (meta: Record<string, unknown>, message: string) => void;
     warn: (meta: Record<string, unknown>, message: string) => void;
@@ -96,6 +97,7 @@ export class Watchdog {
     }
 
     this.health = { status, checkedAt, runningCount, recentStalls, message };
+    this.ctx.onHealthUpdated?.();
 
     if (status === "healthy") {
       this.ctx.logger.info({ status, runningCount }, "watchdog: health check passed");

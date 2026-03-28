@@ -34,34 +34,63 @@ describe("HttpServer", () => {
   }
 
   it("serves SPA and API routes in the expected order with 405 handling", async () => {
-    const orchestrator = {
-      getSnapshot: () => ({
-        generatedAt: "2026-03-16T00:00:00Z",
-        counts: { running: 0, retrying: 0 },
-        running: [],
-        retrying: [],
-        queued: [],
-        completed: [],
-        workflowColumns: [
-          {
-            key: "todo",
-            label: "Todo",
-            kind: "todo",
-            terminal: false,
-            count: 0,
-            issues: [],
-          },
-        ],
-        codexTotals: {
-          inputTokens: 0,
-          outputTokens: 0,
-          totalTokens: 0,
-          secondsRunning: 0,
-          costUsd: 0,
+    const snapshotData = {
+      generatedAt: "2026-03-16T00:00:00Z",
+      counts: { running: 0, retrying: 0 },
+      running: [],
+      retrying: [],
+      queued: [],
+      completed: [],
+      workflowColumns: [
+        {
+          key: "todo",
+          label: "Todo",
+          kind: "todo",
+          terminal: false,
+          count: 0,
+          issues: [],
         },
-        rateLimits: null,
-        recentEvents: [],
-      }),
+      ],
+      codexTotals: {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        secondsRunning: 0,
+        costUsd: 0,
+      },
+      rateLimits: null,
+      recentEvents: [],
+    };
+    const serializedState = {
+      generated_at: "2026-03-16T00:00:00Z",
+      counts: { running: 0, retrying: 0 },
+      running: [],
+      retrying: [],
+      queued: [],
+      completed: [],
+      workflow_columns: [
+        {
+          key: "todo",
+          label: "Todo",
+          kind: "todo",
+          terminal: false,
+          count: 0,
+          issues: [],
+        },
+      ],
+      codex_totals: {
+        input_tokens: 0,
+        output_tokens: 0,
+        total_tokens: 0,
+        seconds_running: 0,
+        cost_usd: 0,
+      },
+      rate_limits: null,
+      recent_events: [],
+    };
+    const orchestrator = {
+      getSnapshot: () => snapshotData,
+      getSerializedState: () => serializedState,
       requestRefresh: () => ({
         queued: true,
         coalesced: false,

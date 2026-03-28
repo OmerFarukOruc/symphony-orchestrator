@@ -90,6 +90,13 @@ describe("CLI parseCliArgs (via main module)", () => {
     const archiveDir = path.resolve(path.join(dataDir, "archives"));
     expect(archiveDir).toBe(path.resolve("/data/custom/archives"));
   });
+
+  it("rejects invalid --port values before startup", async () => {
+    const { main } = await import("../../src/cli/index.js");
+    await expect(main(["--port", "abc"])).rejects.toThrow(
+      "invalid --port value: abc. Expected an integer between 0 and 65535.",
+    );
+  });
 });
 
 describe("CLI readMasterKeyFile equivalent", () => {

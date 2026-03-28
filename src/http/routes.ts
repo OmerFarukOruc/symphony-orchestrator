@@ -10,7 +10,6 @@ import type { ConfigStore } from "../config/store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import { fetchCodexModels } from "../codex/model-list.js";
 import type { SymphonyEventMap } from "../core/symphony-events.js";
-import type { RuntimeSnapshot } from "../core/types.js";
 import { globalMetrics } from "../observability/metrics.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import { registerSecretsApi } from "../secrets/api.js";
@@ -27,7 +26,7 @@ import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
 import { getOpenApiSpec } from "./openapi.js";
 import { modelUpdateSchema, steerSchema, transitionSchema } from "./request-schemas.js";
-import { methodNotAllowed, refreshReason, sanitizeConfigValue, serializeSnapshot } from "./route-helpers.js";
+import { methodNotAllowed, refreshReason, sanitizeConfigValue } from "./route-helpers.js";
 import { createSSEHandler } from "./sse.js";
 import { getSwaggerHtml } from "./swagger-html.js";
 import { handleTransition } from "./transition-handler.js";
@@ -78,7 +77,7 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
   app
     .route("/api/v1/state")
     .get((_req, res) => {
-      res.json(serializeSnapshot(deps.orchestrator.getSnapshot() as RuntimeSnapshot & Record<string, unknown>));
+      res.json(deps.orchestrator.getSerializedState());
     })
     .all((_req, res) => {
       methodNotAllowed(res);

@@ -77,6 +77,7 @@ describe("Orchestrator", () => {
     await Promise.resolve();
 
     expect(launched).toEqual(["MT-01"]);
+    expect(tracker.fetchCandidateIssues).toHaveBeenCalledTimes(1);
     expect(orchestrator.getSnapshot().queued).toEqual([expect.objectContaining({ identifier: "MT-02" })]);
 
     await orchestrator.stop();

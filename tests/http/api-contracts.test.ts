@@ -55,6 +55,38 @@ function makeOrchestrator() {
     getAttemptDetail: vi.fn().mockReturnValue(null),
     abortIssue: vi.fn().mockReturnValue({ ok: false, code: "not_found", message: "Unknown issue identifier" }),
     updateIssueModelSelection: vi.fn().mockResolvedValue(null),
+    getSerializedState: vi.fn().mockReturnValue({
+      generated_at: "2024-01-01T00:00:00Z",
+      counts: { running: 2, retrying: 1, queued: 3, completed: 10 },
+      running: [
+        {
+          id: "issue-1",
+          identifier: "NIN-1",
+          title: "Auth flow",
+          state: "In Progress",
+          runningAttemptId: "att-1",
+          model: "o4-mini",
+          startedAt: "2024-01-01T00:00:00Z",
+        },
+      ],
+      retrying: [],
+      completed: [],
+      queued: [{ id: "issue-2", identifier: "NIN-2", title: "Dashboard", state: "Todo" }],
+      workflow_columns: [
+        { key: "backlog", label: "Backlog", terminal: false, count: 0, issues: [] },
+        { key: "in progress", label: "In Progress", terminal: false, count: 0, issues: [] },
+        { key: "done", label: "Done", terminal: true, count: 0, issues: [] },
+      ],
+      codex_totals: {
+        input_tokens: 15000,
+        output_tokens: 8000,
+        total_tokens: 23000,
+        seconds_running: 37,
+        cost_usd: 0.1944,
+      },
+      rate_limits: null,
+      recent_events: [{ issue_identifier: "NIN-1", content: null, metadata: null }],
+    }),
   };
 }
 

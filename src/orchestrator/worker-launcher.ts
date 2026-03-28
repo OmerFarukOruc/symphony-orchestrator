@@ -17,7 +17,29 @@ import type {
 import type { OrchestratorDeps, RunningEntry } from "./runtime-types.js";
 import { toErrorString } from "../utils/type-guards.js";
 
-export function canDispatchIssue(issue: Issue, config: ServiceConfig, claimedIssueIds: Set<string>): boolean {
+export function buildIssueDispatchFingerprint(issue: Issue): string {
+  return JSON.stringify({
+    state: issue.state,
+    updatedAt: issue.updatedAt ?? null,
+    priority: issue.priority ?? null,
+    labels: issue.labels,
+    title: issue.title,
+  });
+}
+
+export function canDispatchIssue(
+  issue: Issue,
+  config: ServiceConfig,
+  claimedIssueIds: Set<string>,
+  operatorAbortSuppressions?: Map<string, string>,
+): boolean {
+  const suppressionFingerprint = operatorAbortSuppressions?.get(issue.id);
+  if (suppressionFingerprint !== undefined) {
+    if (suppressionFingerprint === buildIssueDispatchFingerprint(issue)) {
+      return false;
+    }
+    operatorAbortSuppressions?.delete(issue.id);
+  }
   if (!isActiveState(issue.state, config)) {
     return false;
   }
@@ -35,6 +57,7 @@ export function hasAvailableStateSlot(
   config: ServiceConfig,
   runningEntries: Map<string, RunningEntry>,
   pendingStateCounts?: Map<string, number>,
+  runningStateCounts?: Map<string, number>,
 ): boolean {
   const stateKey = normalizeStateKey(issue.state);
   const configuredLimit = config.agent.maxConcurrentAgentsByState[stateKey];
@@ -42,34 +65,51 @@ export function hasAvailableStateSlot(
     return true;
   }
 
-  const runningCount = [...runningEntries.values()].filter(
-    (entry) => normalizeStateKey(entry.issue.state) === stateKey,
-  ).length;
+  const runningCount =
+    runningStateCounts?.get(stateKey) ??
+    [...runningEntries.values()].filter((entry) => normalizeStateKey(entry.issue.state) === stateKey).length;
   const pendingCount = pendingStateCounts?.get(stateKey) ?? 0;
   return runningCount + pendingCount < configuredLimit;
 }
 
-export async function launchAvailableWorkers(ctx: {
-  deps: Pick<OrchestratorDeps, "tracker">;
-  getConfig: () => ServiceConfig;
-  runningEntries: Map<string, RunningEntry>;
-  claimIssue: (issueId: string) => void;
-  canDispatchIssue: (issue: Issue) => boolean;
-  hasAvailableStateSlot: (issue: Issue, pendingStateCounts?: Map<string, number>) => boolean;
-  launchWorker: (
-    issue: Issue,
-    attempt: number | null,
-    options?: { claimHeld?: boolean; previousThreadId?: string | null },
-  ) => Promise<void>;
-}): Promise<void> {
+function buildRunningStateCounts(runningEntries: Map<string, RunningEntry>): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const entry of runningEntries.values()) {
+    const stateKey = normalizeStateKey(entry.issue.state);
+    counts.set(stateKey, (counts.get(stateKey) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export async function launchAvailableWorkers(
+  ctx: {
+    deps: Pick<OrchestratorDeps, "tracker">;
+    getConfig: () => ServiceConfig;
+    runningEntries: Map<string, RunningEntry>;
+    claimIssue: (issueId: string) => void;
+    canDispatchIssue: (issue: Issue) => boolean;
+    hasAvailableStateSlot: (
+      issue: Issue,
+      pendingStateCounts?: Map<string, number>,
+      runningStateCounts?: Map<string, number>,
+    ) => boolean;
+    launchWorker: (
+      issue: Issue,
+      attempt: number | null,
+      options?: { claimHeld?: boolean; previousThreadId?: string | null },
+    ) => Promise<void>;
+  },
+  candidateIssues?: Issue[],
+): Promise<void> {
   const config = ctx.getConfig();
   const availableSlots = config.agent.maxConcurrentAgents - ctx.runningEntries.size;
   if (availableSlots <= 0) {
     return;
   }
 
-  const issues = sortIssuesForDispatch(await ctx.deps.tracker.fetchCandidateIssues());
+  const issues = candidateIssues ?? sortIssuesForDispatch(await ctx.deps.tracker.fetchCandidateIssues());
   let launched = 0;
+  const runningStateCounts = buildRunningStateCounts(ctx.runningEntries);
   const pendingStateCounts = new Map<string, number>();
   for (const issue of issues) {
     if (launched >= availableSlots) {
@@ -78,7 +118,7 @@ export async function launchAvailableWorkers(ctx: {
     if (!ctx.canDispatchIssue(issue)) {
       continue;
     }
-    if (!ctx.hasAvailableStateSlot(issue, pendingStateCounts)) {
+    if (!ctx.hasAvailableStateSlot(issue, pendingStateCounts, runningStateCounts)) {
       continue;
     }
     ctx.claimIssue(issue.id);

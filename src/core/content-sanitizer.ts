@@ -15,7 +15,7 @@ const SECRET_PATTERNS = [
 function redactSecretPatterns(text: string): string {
   let processed = text;
   for (const pattern of SECRET_PATTERNS) {
-    processed = processed.replace(pattern, (match) => {
+    processed = processed.replaceAll(pattern, (match) => {
       if (/^https?:\/\//i.test(match)) {
         return match.replace(/\/\/[^/\s:@]+:[^/\s@]+@/i, `//${REDACTION}@`);
       }
@@ -27,6 +27,48 @@ function redactSecretPatterns(text: string): string {
     });
   }
   return processed;
+}
+
+function cloneValueFallback(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => cloneValueFallback(entry, seen));
+  }
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
+    return value;
+  }
+  if (typeof value === "bigint" || typeof value === "symbol") {
+    return String(value);
+  }
+  if (typeof value === "function" || value === undefined) {
+    return REDACTED_OBJECT;
+  }
+  if (typeof value !== "object") {
+    return String(value);
+  }
+  if (seen.has(value)) {
+    return REDACTED_OBJECT;
+  }
+
+  seen.add(value);
+  const cloned: Record<string, unknown> = {};
+  for (const [key, nestedValue] of Object.entries(value)) {
+    cloned[key] = cloneValueFallback(nestedValue, seen);
+  }
+  seen.delete(value);
+  return cloned;
+}
+
+function cloneObjectForRedaction(value: Record<string, unknown>): Record<string, unknown> {
+  try {
+    return structuredClone(value) as Record<string, unknown>;
+  } catch {
+    const fallback = cloneValueFallback(value);
+    return normalizeCloneFallbackRecord(fallback);
+  }
+}
+
+function normalizeCloneFallbackRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 }
 
 function cloneAndRedactValue(value: unknown): unknown {
@@ -43,7 +85,7 @@ function cloneAndRedactValue(value: unknown): unknown {
     return value;
   }
 
-  const cloned = structuredClone(value) as Record<string, unknown> | unknown[];
+  const cloned = cloneObjectForRedaction(value as Record<string, unknown>);
   redactObjectPayload(cloned);
   return cloned;
 }
@@ -61,25 +103,34 @@ export function sanitizeContent(
   }
 
   const maxLength = options?.maxLength ?? (options?.isDiff ? 500 : 2000);
-  let processed = redactSecretPatterns(text);
+  const processed = maybeRedactStructuredJson(redactSecretPatterns(text));
+  return truncateSanitizedContent(processed, maxLength, options?.isDiff === true);
+}
 
-  if (processed.includes("{") && processed.includes("}")) {
-    try {
-      const parsed = JSON.parse(processed);
-      if (typeof parsed === "object" && parsed !== null) {
-        processed = JSON.stringify(redactSensitiveValue(parsed), null, 2);
-      }
-    } catch {
-      // Fall through to plain string handling.
+function maybeRedactStructuredJson(text: string): string {
+  const trimmed = text.trim();
+  if (!((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]")))) {
+    return text;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (typeof parsed === "object" && parsed !== null) {
+      return JSON.stringify(redactSensitiveValue(parsed), null, 2);
     }
+  } catch {
+    /* not valid JSON — return as-is */
+  }
+  return text;
+}
+
+function truncateSanitizedContent(text: string, maxLength: number, isDiff: boolean): string {
+  if (text.length <= maxLength) {
+    return text;
   }
 
-  if (processed.length > maxLength) {
-    const hint = options?.isDiff ? "diff truncated" : "truncated";
-    processed = processed.slice(0, maxLength) + `\n…[${hint}, ${processed.length - maxLength} more chars]`;
-  }
-
-  return processed;
+  const hint = isDiff ? "diff truncated" : "truncated";
+  return text.slice(0, maxLength) + `\n…[${hint}, ${text.length - maxLength} more chars]`;
 }
 
 function redactArrayItems(arr: unknown[]): void {

@@ -2,6 +2,7 @@ import {
   updateIssueModelSelection,
   resolveModelSelection as resolveModelSelectionFromConfig,
 } from "./model-selection.js";
+import { sortIssuesForDispatch } from "./dispatch.js";
 import { Watchdog } from "./watchdog.js";
 import {
   reconcileRunningAndRetrying as reconcileRunningAndRetryingState,
@@ -21,8 +22,65 @@ import type { OrchestratorPort } from "./port.js";
 import type { OrchestratorDeps } from "./runtime-types.js";
 import { nowIso } from "./views.js";
 import type { ModelSelection, ReasoningEffort, RuntimeSnapshot } from "../core/types.js";
+import { serializeSnapshot } from "../http/route-helpers.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { globalMetrics } from "../observability/metrics.js";
+
+function clearTrackedCollection(size: number, clear: () => void, onDirty: () => void): void {
+  if (size === 0) {
+    return;
+  }
+  clear();
+  onDirty();
+}
+
+class DirtyTrackingMap<K, V> extends Map<K, V> {
+  constructor(private readonly onDirty: () => void) {
+    super();
+  }
+
+  override set(key: K, value: V): this {
+    super.set(key, value);
+    this.onDirty();
+    return this;
+  }
+
+  override delete(key: K): boolean {
+    const deleted = super.delete(key);
+    if (deleted) {
+      this.onDirty();
+    }
+    return deleted;
+  }
+
+  override clear(): void {
+    clearTrackedCollection(this.size, () => super.clear(), this.onDirty);
+  }
+}
+
+class DirtyTrackingSet<T> extends Set<T> {
+  constructor(private readonly onDirty: () => void) {
+    super();
+  }
+
+  override add(value: T): this {
+    super.add(value);
+    this.onDirty();
+    return this;
+  }
+
+  override delete(value: T): boolean {
+    const deleted = super.delete(value);
+    if (deleted) {
+      this.onDirty();
+    }
+    return deleted;
+  }
+
+  override clear(): void {
+    clearTrackedCollection(this.size, () => super.clear(), this.onDirty);
+  }
+}
 
 export class Orchestrator implements OrchestratorPort {
   private readonly _state: OrchestratorState;
@@ -30,27 +88,37 @@ export class Orchestrator implements OrchestratorPort {
   private nextTickTimer: NodeJS.Timeout | null = null;
   private refreshQueued = false;
   private readonly watchdog: Watchdog;
+  private stateRevision = 0;
+  private cachedSnapshot: {
+    revision: number;
+    snapshot: RuntimeSnapshot;
+    serializedState: Record<string, unknown>;
+  } | null = null;
 
   constructor(private readonly deps: OrchestratorDeps) {
+    const markDirty = () => this.markStateDirty();
     this._state = {
       running: false,
-      runningEntries: new Map(),
-      retryEntries: new Map(),
-      completedViews: new Map(),
-      detailViews: new Map(),
-      claimedIssueIds: new Set(),
+      runningEntries: new DirtyTrackingMap(markDirty),
+      retryEntries: new DirtyTrackingMap(markDirty),
+      completedViews: new DirtyTrackingMap(markDirty),
+      detailViews: new DirtyTrackingMap(markDirty),
+      claimedIssueIds: new DirtyTrackingSet(markDirty),
       queuedViews: [],
       recentEvents: [],
       rateLimits: null,
-      issueModelOverrides: new Map(),
-      sessionUsageTotals: new Map(),
+      issueModelOverrides: new DirtyTrackingMap(markDirty),
+      operatorAbortSuppressions: new Map(),
+      sessionUsageTotals: new DirtyTrackingMap(markDirty),
       codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0 },
       stallEvents: [],
+      markDirty,
     };
     this.watchdog = new Watchdog({
       getRunningCount: () => this._state.runningEntries.size,
       getQueuedCount: () => this._state.queuedViews.length,
       getRecentStalls: () => [...this._state.stallEvents],
+      onHealthUpdated: () => this.markStateDirty(),
       logger: deps.logger,
     });
   }
@@ -59,9 +127,15 @@ export class Orchestrator implements OrchestratorPort {
     return buildCtx(this._state, this.deps);
   }
 
+  private markStateDirty(): void {
+    this.stateRevision += 1;
+    this.cachedSnapshot = null;
+  }
+
   async start(): Promise<void> {
     if (this._state.running) return;
     this._state.running = true;
+    this.markStateDirty();
     this.watchdog.start();
     await cleanupTerminalWorkspaces(this._state, this.deps);
     seedCompletedClaims({
@@ -74,6 +148,7 @@ export class Orchestrator implements OrchestratorPort {
 
   async stop(): Promise<void> {
     this._state.running = false;
+    this.markStateDirty();
     this.watchdog.stop();
     if (this.nextTickTimer) {
       clearTimeout(this.nextTickTimer);
@@ -99,8 +174,30 @@ export class Orchestrator implements OrchestratorPort {
   }
 
   getSnapshot(): RuntimeSnapshot {
+    return this.getCachedSnapshot().snapshot;
+  }
+
+  getSerializedState(): Record<string, unknown> {
+    return this.getCachedSnapshot().serializedState;
+  }
+
+  private getCachedSnapshot(): {
+    revision: number;
+    snapshot: RuntimeSnapshot;
+    serializedState: Record<string, unknown>;
+  } {
+    if (this.cachedSnapshot && this.cachedSnapshot.revision === this.stateRevision) {
+      return this.cachedSnapshot;
+    }
+
     const cb = this.snapshotCallbacks();
-    return buildSnapshot({ attemptStore: this.deps.attemptStore }, cb);
+    const snapshot = buildSnapshot({ attemptStore: this.deps.attemptStore }, cb);
+    this.cachedSnapshot = {
+      revision: this.stateRevision,
+      serializedState: serializeSnapshot(snapshot as RuntimeSnapshot & Record<string, unknown>),
+      snapshot,
+    };
+    return this.cachedSnapshot;
   }
 
   getIssueDetail(identifier: string): IssueDetailView | null {
@@ -133,6 +230,7 @@ export class Orchestrator implements OrchestratorPort {
     const alreadyStopping = entry.status === "stopping" || entry.abortController.signal.aborted;
     if (!alreadyStopping) {
       entry.status = "stopping";
+      this.markStateDirty();
       this.ctx().pushEvent({
         at: requestedAt,
         issueId: entry.issue.id,
@@ -197,10 +295,15 @@ export class Orchestrator implements OrchestratorPort {
     if (!this._state.running || this.tickInFlight) return;
     this.tickInFlight = true;
     try {
-      this.ctx().detectAndKillStalled();
-      await reconcileRunningAndRetryingState(this.ctx());
-      await refreshQueueViewsState(this.ctx());
-      await launchAvailableWorkersState(this.ctx());
+      if (this.ctx().detectAndKillStalled() > 0) {
+        this.markStateDirty();
+      }
+      if (await reconcileRunningAndRetryingState(this.ctx())) {
+        this.markStateDirty();
+      }
+      const candidateIssues = sortIssuesForDispatch(await this.deps.tracker.fetchCandidateIssues());
+      await refreshQueueViewsState(this.ctx(), candidateIssues);
+      await launchAvailableWorkersState(this.ctx(), candidateIssues);
       globalMetrics.orchestratorPollsTotal.increment({ status: "ok" });
       this.deps.eventBus?.emit("poll.complete", {
         timestamp: nowIso(),

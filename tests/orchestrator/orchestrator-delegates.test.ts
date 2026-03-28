@@ -26,6 +26,8 @@ function makeState(overrides: Partial<OrchestratorState> = {}): OrchestratorStat
     issueModelOverrides: new Map(),
     sessionUsageTotals: new Map(),
     codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0 },
+    stallEvents: [],
+    markDirty: () => {},
     ...overrides,
   };
 }

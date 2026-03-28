@@ -61,7 +61,10 @@ class Histogram {
     }
     for (let idx = 0; idx < this.buckets.length; idx++) {
       if (value <= this.buckets[idx]) {
-        state.bucketCounts[idx]++;
+        for (let bucketIndex = idx; bucketIndex < this.buckets.length; bucketIndex++) {
+          state.bucketCounts[bucketIndex]++;
+        }
+        break;
       }
     }
     state.sum += value;

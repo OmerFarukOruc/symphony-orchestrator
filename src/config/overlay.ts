@@ -6,120 +6,16 @@ import YAML from "yaml";
 
 import type { SymphonyLogger } from "../core/types.js";
 import { isRecord, toErrorString } from "../utils/type-guards.js";
-
-const dangerousKeys = new Set(["__proto__", "constructor", "prototype"]);
-
-function isDangerousKey(key: string): boolean {
-  return dangerousKeys.has(key);
-}
-
-function normalizePath(pathExpression: string): string[] {
-  return pathExpression
-    .split(".")
-    .map((segment) => segment.trim())
-    .filter((segment) => segment.length > 0);
-}
-
-function sortForStableStringify(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(sortForStableStringify);
-  }
-  if (!isRecord(value)) {
-    return value;
-  }
-
-  const sorted: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-  for (const key of Object.keys(value).sort((left, right) => left.localeCompare(right))) {
-    sorted[key] = sortForStableStringify(value[key]);
-  }
-  return sorted;
-}
-
-function stableStringify(value: unknown): string {
-  return JSON.stringify(sortForStableStringify(value));
-}
+import {
+  mergeOverlayMaps,
+  normalizePathExpression,
+  removeOverlayPathValue,
+  setOverlayPathValue,
+  stableStringify,
+} from "./overlay-helpers.js";
 
 function isDeepEqual(left: unknown, right: unknown): boolean {
   return stableStringify(left) === stableStringify(right);
-}
-
-function removeAtPath(target: Record<string, unknown>, segments: string[]): boolean {
-  if (segments.length === 0) {
-    return false;
-  }
-
-  const [head, ...tail] = segments;
-  if (isDangerousKey(head)) {
-    throw new TypeError(`Refusing to traverse dangerous key: ${head}`);
-  }
-  if (head === "__proto__" || head === "constructor" || head === "prototype") {
-    return false;
-  }
-  if (tail.length === 0) {
-    if (!Object.hasOwn(target, head)) {
-      return false;
-    }
-    delete target[head];
-    return true;
-  }
-
-  const child = Object.hasOwn(target, head) ? target[head] : undefined;
-  if (!isRecord(child)) {
-    return false;
-  }
-
-  const removed = removeAtPath(child, tail);
-  if (removed && Object.keys(child).length === 0) {
-    delete target[head];
-  }
-  return removed;
-}
-
-function setAtPath(target: Record<string, unknown>, segments: string[], value: unknown): void {
-  let cursor = target;
-  for (let index = 0; index < segments.length - 1; index += 1) {
-    const key = segments[index];
-    if (isDangerousKey(key)) {
-      throw new TypeError(`Refusing to traverse dangerous key: ${key}`);
-    }
-    if (key === "__proto__" || key === "constructor" || key === "prototype") {
-      return;
-    }
-    const child = Object.hasOwn(cursor, key) ? cursor[key] : undefined;
-    if (!isRecord(child)) {
-      const next: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-      cursor[key] = next;
-      cursor = next;
-      continue;
-    }
-    cursor = child;
-  }
-
-  const leafKey = segments.at(-1)!;
-  if (isDangerousKey(leafKey)) {
-    throw new TypeError(`Refusing to set dangerous key: ${leafKey}`);
-  }
-  if (leafKey === "__proto__" || leafKey === "constructor" || leafKey === "prototype") {
-    return;
-  }
-  cursor[leafKey] = value;
-}
-
-function mergeDeep(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
-  const output = structuredClone(base) as Record<string, unknown>;
-
-  for (const key of Object.keys(patch)) {
-    if (isDangerousKey(key)) continue;
-    const patchValue = patch[key];
-    const baseValue = Object.hasOwn(output, key) ? output[key] : undefined;
-    if (isRecord(baseValue) && isRecord(patchValue)) {
-      output[key] = mergeDeep(baseValue, patchValue);
-      continue;
-    }
-    output[key] = structuredClone(patchValue);
-  }
-
-  return output;
 }
 
 /**
@@ -183,28 +79,28 @@ export class ConfigOverlayStore implements ConfigOverlayPort {
   }
 
   async applyPatch(patch: Record<string, unknown>): Promise<boolean> {
-    return this.commit(mergeDeep(this.overlay, patch), "patch");
+    return this.commit(mergeOverlayMaps(this.overlay, patch), "patch");
   }
 
   async set(pathExpression: string, value: unknown): Promise<boolean> {
-    const segments = normalizePath(pathExpression);
+    const segments = normalizePathExpression(pathExpression);
     if (segments.length === 0) {
       throw new Error("overlay path must contain at least one segment");
     }
 
     const next = this.toMap();
-    setAtPath(next, segments, value);
+    setOverlayPathValue(next, segments, value, { dangerousKeyMode: "throw" });
     return this.commit(next, `set:${pathExpression}`);
   }
 
   async delete(pathExpression: string): Promise<boolean> {
-    const segments = normalizePath(pathExpression);
+    const segments = normalizePathExpression(pathExpression);
     if (segments.length === 0) {
       throw new Error("overlay path must contain at least one segment");
     }
 
     const next = this.toMap();
-    const removed = removeAtPath(next, segments);
+    const removed = removeOverlayPathValue(next, segments, { dangerousKeyMode: "throw" });
     if (!removed) {
       return false;
     }

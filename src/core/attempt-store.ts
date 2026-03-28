@@ -2,7 +2,7 @@ import { appendFile, mkdir, readdir, readFile, writeFile } from "node:fs/promise
 import path from "node:path";
 
 import { sortAttemptsDesc, sumAttemptDurationSeconds } from "./attempt-store-port.js";
-import { lookupModelPrice } from "./model-pricing.js";
+import { computeAttemptCostUsd } from "./model-pricing.js";
 import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "./types.js";
 import { toErrorString } from "../utils/type-guards.js";
 
@@ -10,6 +10,9 @@ export class AttemptStore {
   private readonly attempts = new Map<string, AttemptRecord>();
   private readonly attemptsByIssue = new Map<string, string[]>();
   private readonly eventsByAttempt = new Map<string, AttemptEvent[]>();
+  private archivedSeconds = 0;
+  private archivedCostUsd = 0;
+  private archivedTokenTotals = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
   constructor(
     private readonly baseDir: string,
@@ -19,14 +22,17 @@ export class AttemptStore {
   async start(): Promise<void> {
     await mkdir(this.attemptsDir(), { recursive: true });
     await mkdir(this.eventsDir(), { recursive: true });
+    this.attempts.clear();
+    this.attemptsByIssue.clear();
+    this.eventsByAttempt.clear();
+    this.resetAggregates();
 
     const entries = await readdir(this.attemptsDir(), { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith(".json")) {
-        continue;
-      }
-      await this.loadAttemptFromDisk(entry.name);
-    }
+    await Promise.all(
+      entries
+        .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+        .map((entry) => this.loadAttemptFromDisk(entry.name)),
+    );
     await this.persistIssueIndex();
   }
 
@@ -36,6 +42,7 @@ export class AttemptStore {
       const attempt = JSON.parse(await readFile(attemptPath, "utf8")) as AttemptRecord;
       this.attempts.set(attempt.attemptId, attempt);
       this.indexAttempt(attempt);
+      this.applyAttemptAggregates(attempt, 1);
 
       const events = await this.loadAttemptEvents(attempt.attemptId);
       this.eventsByAttempt.set(attempt.attemptId, events);
@@ -86,33 +93,15 @@ export class AttemptStore {
   }
 
   sumArchivedSeconds(): number {
-    return sumAttemptDurationSeconds(this.attempts.values());
+    return this.archivedSeconds;
   }
 
   sumCostUsd(): number {
-    let total = 0;
-    for (const attempt of this.attempts.values()) {
-      if (!attempt.tokenUsage) continue;
-      const price = lookupModelPrice(attempt.model);
-      if (!price) continue;
-      total +=
-        (attempt.tokenUsage.inputTokens * price.inputUsd + attempt.tokenUsage.outputTokens * price.outputUsd) /
-        1_000_000;
-    }
-    return total;
+    return this.archivedCostUsd;
   }
 
   sumArchivedTokens(): { inputTokens: number; outputTokens: number; totalTokens: number } {
-    let inputTokens = 0;
-    let outputTokens = 0;
-    let totalTokens = 0;
-    for (const attempt of this.attempts.values()) {
-      if (!attempt.tokenUsage) continue;
-      inputTokens += attempt.tokenUsage.inputTokens;
-      outputTokens += attempt.tokenUsage.outputTokens;
-      totalTokens += attempt.tokenUsage.totalTokens;
-    }
-    return { inputTokens, outputTokens, totalTokens };
+    return { ...this.archivedTokenTotals };
   }
 
   getEvents(attemptId: string): AttemptEvent[] {
@@ -128,9 +117,14 @@ export class AttemptStore {
   }
 
   async createAttempt(attempt: AttemptRecord): Promise<void> {
+    const existing = this.attempts.get(attempt.attemptId);
+    if (existing) {
+      this.applyAttemptAggregates(existing, -1);
+    }
     this.attempts.set(attempt.attemptId, attempt);
     this.indexAttempt(attempt);
     this.eventsByAttempt.set(attempt.attemptId, []);
+    this.applyAttemptAggregates(attempt, 1);
     await this.persistAttempt(attempt);
     await writeFile(this.eventsPath(attempt.attemptId), "", "utf8");
     await this.persistIssueIndex();
@@ -143,7 +137,9 @@ export class AttemptStore {
     }
 
     const next = { ...current, ...patch };
+    this.applyAttemptAggregates(current, -1);
     this.attempts.set(attemptId, next);
+    this.applyAttemptAggregates(next, 1);
     await this.reindexAttempt(current, next);
     await this.persistAttempt(next);
   }
@@ -204,5 +200,27 @@ export class AttemptStore {
       index[identifier] = [...attemptIds];
     }
     await writeFile(path.join(this.baseDir, "issue-index.json"), JSON.stringify(index, null, 2) + "\n", "utf8");
+  }
+
+  private resetAggregates(): void {
+    this.archivedSeconds = 0;
+    this.archivedCostUsd = 0;
+    this.archivedTokenTotals = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  }
+
+  private applyAttemptAggregates(attempt: AttemptRecord, direction: 1 | -1): void {
+    this.archivedSeconds += direction * sumAttemptDurationSeconds([attempt]);
+    if (!attempt.tokenUsage) {
+      return;
+    }
+
+    this.archivedTokenTotals.inputTokens += direction * attempt.tokenUsage.inputTokens;
+    this.archivedTokenTotals.outputTokens += direction * attempt.tokenUsage.outputTokens;
+    this.archivedTokenTotals.totalTokens += direction * attempt.tokenUsage.totalTokens;
+
+    const cost = computeAttemptCostUsd(attempt);
+    if (cost !== null) {
+      this.archivedCostUsd += direction * cost;
+    }
   }
 }

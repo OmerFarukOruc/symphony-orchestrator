@@ -31,6 +31,7 @@ export interface OutcomeContext {
   isRunning: () => boolean;
   getConfig: () => ServiceConfig;
   releaseIssueClaim: (issueId: string) => void;
+  suppressIssueDispatch?: (issue: Issue) => void;
   resolveModelSelection: (identifier: string) => ModelSelection;
   notify: (event: NotificationEvent) => void;
   queueRetry: (
@@ -72,11 +73,16 @@ export interface OrchestratorContext {
     options?: { claimHeld?: boolean; previousThreadId?: string | null },
   ) => Promise<void>;
   canDispatchIssue: (issue: Issue) => boolean;
-  hasAvailableStateSlot: (issue: Issue, pendingStateCounts?: Map<string, number>) => boolean;
+  hasAvailableStateSlot: (
+    issue: Issue,
+    pendingStateCounts?: Map<string, number>,
+    runningStateCounts?: Map<string, number>,
+  ) => boolean;
   revalidateAndLaunchRetry: (issueId: string, attempt: number) => Promise<void>;
   handleRetryLaunchFailure: (issue: Issue, attempt: number, error: unknown) => Promise<void>;
   getQueuedViews: () => RuntimeIssueView[];
   setQueuedViews: (views: RuntimeIssueView[]) => void;
+  suppressIssueDispatch?: (issue: Issue) => void;
   applyUsageEvent: (entry: RunningEntry, usage: TokenUsageSnapshot, usageMode: "absolute_total" | "delta") => void;
   setRateLimits: (rateLimits: unknown) => void;
   getStallEvents: () => StallEvent[];

@@ -8,7 +8,6 @@ import type { TypedEventBus } from "../core/event-bus.js";
 import { HttpServer } from "../http/server.js";
 import { createLogger } from "../core/logger.js";
 import { getErrorTracker, initErrorTracking } from "../core/error-tracking.js";
-import { loadFlags } from "../core/feature-flags.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import type { PersistenceRuntime } from "../persistence/sqlite/runtime.js";
 import { SecretsStore } from "../secrets/store.js";
@@ -115,6 +114,16 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   return 0;
 }
 
+function parsePortValue(rawPort: string | undefined): number | undefined {
+  if (rawPort === undefined) {
+    return undefined;
+  }
+  if (!/^\d+$/.test(rawPort) || Number(rawPort) > 65535) {
+    throw new TypeError(`invalid --port value: ${rawPort}. Expected an integer between 0 and 65535.`);
+  }
+  return Number(rawPort);
+}
+
 function parseCliArgs(argv: string[]) {
   const parsed = parseArgs({
     args: argv,
@@ -128,7 +137,6 @@ function parseCliArgs(argv: string[]) {
   const workflowPath = parsed.positionals[0] ?? "./WORKFLOW.md";
   const resolvedWorkflowPath = path.resolve(workflowPath);
   const logger = createLogger();
-  loadFlags(path.dirname(resolvedWorkflowPath));
   initErrorTracking(logger.child({ component: "error-tracking" }));
   const archiveDir = path.resolve(
     parsed.values["log-dir"] ??
@@ -136,7 +144,7 @@ function parseCliArgs(argv: string[]) {
         ? path.join(process.env.DATA_DIR, "archives")
         : path.join(path.dirname(resolvedWorkflowPath), ".symphony")),
   );
-  const selectedPort = parsed.values.port ? Number(parsed.values.port) : undefined;
+  const selectedPort = parsePortValue(parsed.values.port);
   return { workflowPath, resolvedWorkflowPath, archiveDir, selectedPort, logger };
 }
 

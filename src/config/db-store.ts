@@ -14,27 +14,18 @@ import type { ConfigOverlayPort } from "./overlay.js";
 import type { SymphonyDatabase } from "../persistence/sqlite/database.js";
 import { config, promptTemplates } from "../persistence/sqlite/schema.js";
 import type { SymphonyLogger, WorkflowDefinition, ServiceConfig, ValidationError } from "../core/types.js";
-import { isRecord } from "../utils/type-guards.js";
 import { deriveServiceConfig } from "./builders.js";
 import { collectDispatchWarnings, validateDispatch } from "./validators.js";
 import { DEFAULT_PROMPT_TEMPLATE } from "./defaults.js";
 import type { SecretsStore } from "../secrets/store.js";
-
-const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
-
-function sortForStableStringify(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sortForStableStringify);
-  if (!value || typeof value !== "object") return value;
-  const sorted: Record<string, unknown> = {};
-  for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-    sorted[key] = sortForStableStringify((value as Record<string, unknown>)[key]);
-  }
-  return sorted;
-}
-
-function stableStringify(value: unknown): string {
-  return JSON.stringify(sortForStableStringify(value));
-}
+import {
+  isDangerousKey,
+  mergeOverlayMaps,
+  normalizePathExpression,
+  removeOverlayPathValue,
+  setOverlayPathValue,
+  stableStringify,
+} from "./overlay-helpers.js";
 
 /**
  * Read all section rows and reconstruct a flat config map that
@@ -74,77 +65,6 @@ function readActiveTemplate(db: SymphonyDatabase): string {
 
   // 3. Hardcoded default
   return DEFAULT_PROMPT_TEMPLATE;
-}
-
-/**
- * Normalize a dotted path expression into segments.
- */
-function normalizePath(pathExpression: string): string[] {
-  return pathExpression
-    .split(".")
-    .map((segment) => segment.trim())
-    .filter((segment) => segment.length > 0);
-}
-
-/**
- * Deep-merge two records (overlay semantics: arrays replace, objects merge).
- */
-function mergeDeep(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
-  const output = structuredClone(base) as Record<string, unknown>;
-  for (const key of Object.keys(patch)) {
-    if (DANGEROUS_KEYS.has(key)) continue;
-    const patchValue = patch[key];
-    const baseValue = Object.hasOwn(output, key) ? output[key] : undefined;
-    if (isRecord(baseValue) && isRecord(patchValue)) {
-      output[key] = mergeDeep(baseValue, patchValue);
-      continue;
-    }
-    output[key] = structuredClone(patchValue);
-  }
-  return output;
-}
-
-/**
- * Set a value at a dotted path inside a nested object.
- */
-function setAtPath(target: Record<string, unknown>, segments: string[], value: unknown): void {
-  let cursor = target;
-  for (let index = 0; index < segments.length - 1; index++) {
-    const key = segments[index];
-    if (DANGEROUS_KEYS.has(key)) return;
-    const child = Object.hasOwn(cursor, key) ? cursor[key] : undefined;
-    if (!isRecord(child)) {
-      const next: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-      cursor[key] = next;
-      cursor = next;
-      continue;
-    }
-    cursor = child;
-  }
-  const leafKey = segments.at(-1)!;
-  if (DANGEROUS_KEYS.has(leafKey)) return;
-  cursor[leafKey] = value;
-}
-
-/**
- * Remove a value at a dotted path inside a nested object.
- */
-function removeAtPath(target: Record<string, unknown>, segments: string[]): boolean {
-  if (segments.length === 0) return false;
-  const [head, ...tail] = segments;
-  if (DANGEROUS_KEYS.has(head)) return false;
-  if (tail.length === 0) {
-    if (!Object.hasOwn(target, head)) return false;
-    delete target[head];
-    return true;
-  }
-  const child = Object.hasOwn(target, head) ? target[head] : undefined;
-  if (!isRecord(child)) return false;
-  const removed = removeAtPath(child, tail);
-  if (removed && Object.keys(child).length === 0) {
-    delete target[head];
-  }
-  return removed;
 }
 
 export class DbConfigStore implements ConfigOverlayPort {
@@ -212,7 +132,7 @@ export class DbConfigStore implements ConfigOverlayPort {
 
   async applyPatch(patch: Record<string, unknown>): Promise<boolean> {
     const currentMap = this.toMap();
-    const merged = mergeDeep(currentMap, patch);
+    const merged = mergeOverlayMaps(currentMap, patch);
 
     if (stableStringify(merged) === stableStringify(currentMap)) return false;
 
@@ -223,12 +143,12 @@ export class DbConfigStore implements ConfigOverlayPort {
   }
 
   async set(pathExpression: string, value: unknown): Promise<boolean> {
-    const segments = normalizePath(pathExpression);
+    const segments = normalizePathExpression(pathExpression);
     if (segments.length === 0) throw new Error("overlay path must contain at least one segment");
 
     const before = this.toMap();
     const after = this.toMap();
-    setAtPath(after, segments, value);
+    setOverlayPathValue(after, segments, value);
     if (stableStringify(after) === stableStringify(before)) return false;
 
     this.writeSections(after);
@@ -238,11 +158,11 @@ export class DbConfigStore implements ConfigOverlayPort {
   }
 
   async delete(pathExpression: string): Promise<boolean> {
-    const segments = normalizePath(pathExpression);
+    const segments = normalizePathExpression(pathExpression);
     if (segments.length === 0) throw new Error("overlay path must contain at least one segment");
 
     const currentMap = this.toMap();
-    const removed = removeAtPath(currentMap, segments);
+    const removed = removeOverlayPathValue(currentMap, segments);
     if (!removed) return false;
 
     this.writeSections(currentMap);
@@ -265,7 +185,7 @@ export class DbConfigStore implements ConfigOverlayPort {
     const mapKeys = new Set<string>();
 
     for (const [key, value] of Object.entries(map)) {
-      if (DANGEROUS_KEYS.has(key)) continue;
+      if (isDangerousKey(key)) continue;
       mapKeys.add(key);
       const serialized = JSON.stringify(value);
       const existing = this.db.select().from(config).where(eq(config.key, key)).get();
