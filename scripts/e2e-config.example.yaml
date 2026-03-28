@@ -1,0 +1,46 @@
+# Symphony E2E Lifecycle Test Configuration
+# Copy to e2e-config.yaml and fill in your values.
+# $VAR references are expanded from environment variables.
+
+linear:
+  api_key: $LINEAR_API_KEY
+  project_slug: "symphony-test"
+  team_id: "TEAM_UUID_HERE"
+
+codex:
+  auth_mode: "openai_login"
+  source_home: "~/.codex"
+  model: "o3-mini"
+  reasoning_effort: "low"
+
+github:
+  token: $GITHUB_TOKEN
+  test_repo:
+    url: "https://github.com/owner/test-repo.git"
+    branch: "main"
+    # Note: config uses snake_case, but the API POST body uses camelCase (identifierPrefix)
+    identifier_prefix: "SYM"
+    owner: "owner"
+    repo: "test-repo"
+
+server:
+  port: 4111
+
+timeouts:
+  symphony_startup_ms: 15000
+  setup_complete_ms: 30000
+  issue_pickup_ms: 60000
+  lifecycle_complete_ms: 1800000
+  pr_verification_ms: 30000
+  graceful_shutdown_ms: 10000
+
+test_issue:
+  title: "E2E smoke: add hello-world.txt"
+  description: |
+    Create a file called `hello-world.txt` at the repo root containing
+    "Hello from Symphony E2E test -- run {run_id}".
+    Automated smoke test -- keep changes minimal.
+  priority: 3
+
+cleanup:
+  enabled: true
