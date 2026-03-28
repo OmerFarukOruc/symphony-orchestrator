@@ -87,6 +87,16 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
   // State & Runtime
   await page.route("**/api/v1/state", (route) => json(route, snapshot));
   await page.route("**/api/v1/runtime", (route) => json(route, runtimeInfo));
+  await page.route("**/api/v1/models", (route) =>
+    json(route, {
+      models: [
+        { id: "o3-mini", displayName: "o3-mini" },
+        { id: "o4-mini", displayName: "o4-mini" },
+        { id: "gpt-5.4", displayName: "gpt-5.4" },
+        { id: "gpt-4.1", displayName: "gpt-4.1" },
+      ],
+    }),
+  );
 
   // Workspaces
   await page.route("**/api/v1/workspaces", (route) =>
@@ -134,7 +144,7 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
 
   // Issue detail — match /api/v1/:identifier but NOT sub-paths
   await page.route(
-    /\/api\/v1\/(?!setup|config|secrets|refresh|transitions|state|runtime|attempts|workspaces)([^/]+)$/,
+    /\/api\/v1\/(?!setup|config|secrets|refresh|transitions|state|runtime|attempts|workspaces|models)([^/]+)$/,
     (route) => {
       const url = new URL(route.request().url());
       const segments = url.pathname.split("/");
