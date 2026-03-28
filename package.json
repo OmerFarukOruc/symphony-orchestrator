@@ -32,6 +32,7 @@
     "test:e2e:update": "playwright test --project=visual --update-snapshots",
     "test:frontend": "vitest run --config vitest.frontend.config.ts",
     "test:mutation": "stryker run",
+    "test:mutation:incremental": "stryker run --mutate \"$(git diff --name-only HEAD~1 HEAD | grep -E '^src/' | tr '\\n' ',')\"",
     "test:load": "vitest run --config vitest.load.config.ts",
     "dev": "tsx watch src/cli/index.ts",
     "dev:frontend": "vite --config frontend/vite.config.ts",
@@ -43,6 +44,7 @@
     "jscpd": "jscpd --config .jscpd.json",
     "docs:generate": "typedoc",
     "typecheck": "tsc --noEmit -p tsconfig.eslint.json",
+    "typecheck:coverage": "type-coverage --at-least 95 --detail --strict --ignore-catch",
     "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",
     "prepare": "husky"
   },
@@ -88,6 +90,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tsx": "^4.20.6",
+    "type-coverage": "^2.29.7",
     "typedoc": "^0.28.17",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.1",
