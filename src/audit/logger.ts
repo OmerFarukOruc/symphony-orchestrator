@@ -6,6 +6,8 @@
  * and newValue.
  */
 
+import type { TypedEventBus } from "../core/event-bus.js";
+import type { SymphonyEventMap } from "../core/symphony-events.js";
 import type { SymphonyDatabase } from "../persistence/sqlite/database.js";
 import { configHistory } from "../persistence/sqlite/schema.js";
 
@@ -87,24 +89,40 @@ function buildWhereClause(options?: AuditQueryOptions): WhereResult {
 }
 
 export class AuditLogger {
-  constructor(private readonly db: SymphonyDatabase) {}
+  constructor(
+    private readonly db: SymphonyDatabase,
+    private readonly eventBus?: TypedEventBus<SymphonyEventMap>,
+  ) {}
 
   log(entry: AuditEntry): void {
     const isSecret = entry.tableName === "secrets";
+    const path = entry.path ?? null;
+    const actor = entry.actor ?? "dashboard";
+    const timestamp = new Date().toISOString();
+
     this.db
       .insert(configHistory)
       .values({
         tableName: entry.tableName,
         key: entry.key,
-        path: entry.path ?? null,
+        path,
         operation: entry.operation,
         previousValue: isSecret ? REDACTED : (entry.previousValue ?? null),
         newValue: isSecret ? REDACTED : (entry.newValue ?? null),
-        actor: entry.actor ?? "dashboard",
+        actor,
         requestId: entry.requestId ?? null,
-        timestamp: new Date().toISOString(),
+        timestamp,
       })
       .run();
+
+    this.eventBus?.emit("audit.mutation", {
+      tableName: entry.tableName,
+      key: entry.key,
+      path,
+      operation: entry.operation,
+      actor,
+      timestamp,
+    });
   }
 
   logConfigChange(key: string, previousValue: string | null, newValue: string | null, path?: string): void {
