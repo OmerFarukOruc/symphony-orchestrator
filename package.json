@@ -91,12 +91,16 @@
     "vitest": "^4.1.0"
   },
   "overrides": {
-    "flatted": ">=3.4.2"
+    "flatted": ">=3.4.2",
+    "path-to-regexp": ">=8.4.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "path-to-regexp": ">=8.4.0"
+    }
   }
 }
