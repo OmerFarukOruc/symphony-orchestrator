@@ -43,7 +43,7 @@ function cloneValueFallback(value: unknown, seen = new WeakSet<object>()): unkno
     return REDACTED_OBJECT;
   }
   if (typeof value !== "object") {
-    return String(value);
+    return REDACTED_OBJECT;
   }
   if (seen.has(value)) {
     return REDACTED_OBJECT;

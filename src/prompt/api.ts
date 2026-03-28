@@ -38,7 +38,7 @@ export function registerTemplateApi(app: Express, deps: TemplateApiDeps): void {
         return;
       }
 
-      const existing = deps.templateStore.get(body.id as string);
+      const existing = deps.templateStore.get(body.id);
       if (existing) {
         response.status(409).json({
           error: { code: "template_exists", message: `template "${body.id}" already exists` },
@@ -47,9 +47,9 @@ export function registerTemplateApi(app: Express, deps: TemplateApiDeps): void {
       }
 
       const template = deps.templateStore.create({
-        id: body.id as string,
-        name: body.name as string,
-        body: body.body as string,
+        id: body.id,
+        name: body.name,
+        body: body.body,
       });
       response.status(201).json({ template });
     })

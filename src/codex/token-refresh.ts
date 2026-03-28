@@ -87,8 +87,11 @@ function extractJwtExp(token: string): number | null {
   try {
     const parts = token.split(".");
     if (parts.length < 2) return null;
-    const payload = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as { exp?: number };
-    return typeof payload.exp === "number" ? payload.exp : null;
+    const payload: unknown = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8"));
+    if (typeof payload === "object" && payload !== null && "exp" in payload) {
+      return typeof payload.exp === "number" ? payload.exp : null;
+    }
+    return null;
   } catch {
     return null;
   }
