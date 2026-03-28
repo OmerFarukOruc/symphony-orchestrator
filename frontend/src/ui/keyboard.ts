@@ -38,6 +38,8 @@ function handlePrefixKey(event: KeyboardEvent, router: Router, options: Keyboard
     d: "/containers",
     w: "/workspaces",
     ",": "/settings",
+    t: "/templates",
+    a: "/audit",
   };
   resetPrefix();
   if (nextKey === "r") {

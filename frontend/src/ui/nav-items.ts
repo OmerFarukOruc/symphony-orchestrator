@@ -32,6 +32,13 @@ export const navItems: NavItem[] = [
     icon: "settings",
   },
   {
+    group: "Configure",
+    name: "Templates",
+    path: "/templates",
+    hotkey: "g t",
+    icon: "templates",
+  },
+  {
     group: "Observe",
     name: "Observability",
     path: "/observability",
@@ -65,6 +72,13 @@ export const navItems: NavItem[] = [
     path: "/workspaces",
     hotkey: "g w",
     icon: "workspaces",
+  },
+  {
+    group: "Observe",
+    name: "Audit Log",
+    path: "/audit",
+    hotkey: "g a",
+    icon: "audit",
   },
   {
     group: "System",
