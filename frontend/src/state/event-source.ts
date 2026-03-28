@@ -23,6 +23,7 @@ const EVENT_DISPATCH_MAP = new Map<string, string>([
   ["workspace.event", "symphony:workspace-event"],
   ["poll.complete", "symphony:poll-complete"],
   ["system.error", "symphony:system-error"],
+  ["audit.mutation", "symphony:audit-mutation"],
 ]);
 
 let source: EventSource | null = null;
