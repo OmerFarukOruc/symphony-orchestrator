@@ -1,5 +1,7 @@
+import { AuditLogger } from "../audit/logger.js";
 import { TypedEventBus } from "../core/event-bus.js";
 import type { SymphonyEventMap } from "../core/symphony-events.js";
+import { PromptTemplateStore } from "../prompt/store.js";
 import { createGitHubToolProvider, createRepoRouterProvider } from "./runtime-providers.js";
 import type { ConfigOverlayPort } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
@@ -63,6 +65,11 @@ export async function createServices(
   const eventBus = new TypedEventBus<SymphonyEventMap>();
   const notificationManager = new NotificationManager({ logger: logger.child({ component: "notifications" }) });
 
+  const templateStore = persistence.db
+    ? new PromptTemplateStore(persistence.db, logger.child({ component: "templates" }))
+    : undefined;
+  const auditLogger = persistence.db ? new AuditLogger(persistence.db, eventBus) : undefined;
+
   const orchestrator = new Orchestrator({
     attemptStore: persistence.attemptStore,
     configStore,
@@ -85,6 +92,8 @@ export async function createServices(
     secretsStore,
     eventBus,
     archiveDir,
+    templateStore,
+    auditLogger,
   });
 
   return { orchestrator, httpServer, notificationManager, linearClient, eventBus, persistence };
