@@ -209,6 +209,88 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
     json(route, { ok: true, from: "In Progress", to: "Done" }),
   );
 
+  // Templates
+  await page.route("**/api/v1/templates", (route) => {
+    if (route.request().method() === "GET") {
+      return json(route, {
+        templates: [
+          {
+            id: "default",
+            name: "Default Template",
+            body: "You are working on {{ issue.id }}.",
+            createdAt: "2026-03-20T10:00:00Z",
+            updatedAt: "2026-03-25T12:00:00Z",
+          },
+        ],
+      });
+    }
+    if (route.request().method() === "POST") {
+      return json(route, {
+        template: {
+          id: "new-tmpl",
+          name: "New Template",
+          body: "",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      });
+    }
+    return route.fallback();
+  });
+  await page.route("**/api/v1/templates/**/preview", (route) =>
+    json(route, { rendered: "You are working on PROJ-42.", error: null }),
+  );
+  await page.route("**/api/v1/templates/*", (route) => {
+    if (route.request().method() === "PUT") {
+      return json(route, {
+        template: {
+          id: "default",
+          name: "Default Template",
+          body: "Updated body",
+          createdAt: "2026-03-20T10:00:00Z",
+          updatedAt: new Date().toISOString(),
+        },
+      });
+    }
+    if (route.request().method() === "DELETE") {
+      return json(route, { deleted: true });
+    }
+    return route.fallback();
+  });
+
+  // Audit
+  await page.route("**/api/v1/audit*", (route) =>
+    json(route, {
+      entries: [
+        {
+          id: 1,
+          tableName: "config",
+          key: "codex.model",
+          path: null,
+          operation: "update",
+          previousValue: '"gpt-4.1"',
+          newValue: '"gpt-5.4"',
+          actor: "dashboard",
+          requestId: "req_001",
+          timestamp: "2026-03-28T10:30:00Z",
+        },
+        {
+          id: 2,
+          tableName: "secrets",
+          key: "OPENAI_API_KEY",
+          path: null,
+          operation: "set",
+          previousValue: null,
+          newValue: "[REDACTED]",
+          actor: "dashboard",
+          requestId: "req_002",
+          timestamp: "2026-03-28T09:15:00Z",
+        },
+      ],
+      total: 2,
+    }),
+  );
+
   // Apply any custom route overrides last
   if (overrides.routeOverrides) {
     for (const [pattern, handler] of Object.entries(overrides.routeOverrides)) {

@@ -66,17 +66,21 @@ describe("matchesFilters", () => {
     expect(matchesFilters(baseEvent, { tableName: "secrets", key: "", from: "", to: "" })).toBe(false);
   });
 
-  it("matches when key filter is a substring", () => {
-    expect(matchesFilters(baseEvent, { tableName: "", key: "codex", from: "", to: "" })).toBe(true);
+  it("matches when key filter matches exactly", () => {
+    expect(matchesFilters(baseEvent, { tableName: "", key: "codex.model", from: "", to: "" })).toBe(true);
   });
 
-  it("rejects when key filter is not found", () => {
+  it("rejects when key filter is only a substring (exact match required)", () => {
+    expect(matchesFilters(baseEvent, { tableName: "", key: "codex", from: "", to: "" })).toBe(false);
+  });
+
+  it("rejects when key filter does not match", () => {
     expect(matchesFilters(baseEvent, { tableName: "", key: "tracker", from: "", to: "" })).toBe(false);
   });
 
   it("applies both tableName and key filters", () => {
-    expect(matchesFilters(baseEvent, { tableName: "config", key: "codex", from: "", to: "" })).toBe(true);
-    expect(matchesFilters(baseEvent, { tableName: "secrets", key: "codex", from: "", to: "" })).toBe(false);
+    expect(matchesFilters(baseEvent, { tableName: "config", key: "codex.model", from: "", to: "" })).toBe(true);
+    expect(matchesFilters(baseEvent, { tableName: "secrets", key: "codex.model", from: "", to: "" })).toBe(false);
   });
 
   it("rejects when timestamp is before from filter", () => {
@@ -85,5 +89,14 @@ describe("matchesFilters", () => {
 
   it("rejects when timestamp is after to filter", () => {
     expect(matchesFilters(baseEvent, { tableName: "", key: "", from: "", to: "2026-03-27T00:00:00Z" })).toBe(false);
+  });
+
+  it("includes same-day events when to filter is date-only", () => {
+    expect(matchesFilters(baseEvent, { tableName: "", key: "", from: "", to: "2026-03-28" })).toBe(true);
+  });
+
+  it("excludes next-day events when to filter is date-only", () => {
+    const tomorrowEvent = { ...baseEvent, timestamp: "2026-03-29T01:00:00Z" };
+    expect(matchesFilters(tomorrowEvent, { tableName: "", key: "", from: "", to: "2026-03-28" })).toBe(false);
   });
 });

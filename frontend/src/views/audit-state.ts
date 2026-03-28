@@ -37,8 +37,10 @@ export function createAuditState(): AuditState {
 
 export function matchesFilters(event: AuditMutationEvent, filters: AuditFilters): boolean {
   if (filters.tableName && event.tableName !== filters.tableName) return false;
-  if (filters.key && !event.key.includes(filters.key)) return false;
+  if (filters.key && event.key !== filters.key) return false;
   if (filters.from && event.timestamp < filters.from) return false;
-  if (filters.to && event.timestamp > filters.to) return false;
+  // Date-only "to" values need end-of-day so same-day events are included
+  const toLimit = filters.to && !filters.to.includes("T") ? filters.to + "T23:59:59.999Z" : filters.to;
+  if (toLimit && event.timestamp > toLimit) return false;
   return true;
 }

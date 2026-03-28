@@ -1,5 +1,5 @@
 import { EditorView, basicSetup } from "codemirror";
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { html } from "@codemirror/lang-html";
 import { oneDark } from "@codemirror/theme-one-dark";
 
@@ -16,8 +16,12 @@ export interface TemplateEditor {
   destroy: () => void;
 }
 
+function isDarkTheme(): boolean {
+  return document.documentElement.dataset.theme === "dark";
+}
+
 export function createTemplateEditor(options: TemplateEditorOptions): TemplateEditor {
-  const isDark = document.documentElement.dataset.theme === "dark";
+  const themeCompartment = new Compartment();
 
   const extensions = [
     basicSetup,
@@ -28,11 +32,8 @@ export function createTemplateEditor(options: TemplateEditorOptions): TemplateEd
         options.onChange(update.state.doc.toString());
       }
     }),
+    themeCompartment.of(isDarkTheme() ? oneDark : []),
   ];
-
-  if (isDark) {
-    extensions.push(oneDark);
-  }
 
   const view = new EditorView({
     state: EditorState.create({
@@ -42,6 +43,13 @@ export function createTemplateEditor(options: TemplateEditorOptions): TemplateEd
     parent: options.parent,
   });
 
+  const onThemeChange = (): void => {
+    view.dispatch({
+      effects: themeCompartment.reconfigure(isDarkTheme() ? oneDark : []),
+    });
+  };
+  window.addEventListener("theme:change", onThemeChange);
+
   return {
     view,
     getValue: () => view.state.doc.toString(),
@@ -50,6 +58,9 @@ export function createTemplateEditor(options: TemplateEditorOptions): TemplateEd
         changes: { from: 0, to: view.state.doc.length, insert: value },
       });
     },
-    destroy: () => view.destroy(),
+    destroy: () => {
+      window.removeEventListener("theme:change", onThemeChange);
+      view.destroy();
+    },
   };
 }

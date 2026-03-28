@@ -160,8 +160,18 @@ export const api = {
 
   deleteTemplate: (id: string) => del(`/api/v1/templates/${encodeURIComponent(id)}`),
 
-  previewTemplate: (id: string) =>
-    post<{ rendered: string; error: string | null }>(`/api/v1/templates/${encodeURIComponent(id)}/preview`, {}),
+  previewTemplate: async (id: string): Promise<{ rendered: string; error: string | null }> => {
+    const response = await fetch(`${BASE}/api/v1/templates/${encodeURIComponent(id)}/preview`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    const body = (await response.json()) as { rendered: string; error: string | null };
+    if (!response.ok && !body.error) {
+      throw new Error(await readError(response));
+    }
+    return body;
+  },
 
   // ── Audit ──────────────────────────────────
   getAuditLog: (params?: {

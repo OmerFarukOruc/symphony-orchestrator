@@ -175,6 +175,7 @@ export function createTemplatesPage(): HTMLElement {
   previewBtn.type = "button";
   previewBtn.className = "mc-button is-ghost is-sm";
   previewBtn.textContent = "Preview";
+  previewBtn.title = "Preview the saved template";
 
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
@@ -222,6 +223,7 @@ export function createTemplatesPage(): HTMLElement {
           if (suppressEditorChange) return;
           state.editorBody = value;
           state.dirty = true;
+          syncPreviewButton();
         },
       });
     } else {
@@ -230,7 +232,18 @@ export function createTemplatesPage(): HTMLElement {
       suppressEditorChange = false;
     }
 
+    syncPreviewButton();
     renderPreview();
+  }
+
+  function syncPreviewButton(): void {
+    if (state.dirty) {
+      previewBtn.disabled = true;
+      previewBtn.title = "Save first — preview renders the saved version";
+    } else {
+      previewBtn.disabled = false;
+      previewBtn.title = "Preview the saved template";
+    }
   }
 
   function renderPreview(): void {
