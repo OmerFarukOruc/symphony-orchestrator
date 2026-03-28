@@ -216,6 +216,7 @@ export function createLogsPage(id: string): HTMLElement {
 
   async function refresh(): Promise<void> {
     const fresh = mode === "live" ? await loadLiveLogs(id) : await loadArchiveLogs(id);
+    buffer.clear();
     buffer.load(fresh.events);
     render();
   }

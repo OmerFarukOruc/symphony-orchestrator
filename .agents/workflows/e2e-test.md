@@ -135,6 +135,7 @@ Poll the API every 15 seconds until the issue appears in the `completed` list:
 ISSUE_ID="<identifier_from_2.1>"
 
 for i in $(seq 1 12); do
+  # nosemgrep: skills.command-execution.skill-curl-silent-pipe.skill-curl-silent-pipe
   RESULT=$(curl -s http://127.0.0.1:4000/api/v1/state | python3 -c "
 import json, sys
 d = json.load(sys.stdin)
@@ -175,6 +176,7 @@ Expected lines:
 ### 5.1 Check API state
 
 ```bash
+# nosemgrep: skills.command-execution.skill-curl-silent-pipe.skill-curl-silent-pipe
 curl -s http://127.0.0.1:4000/api/v1/state | python3 -c "
 import json, sys
 d = json.load(sys.stdin)
