@@ -349,6 +349,13 @@ jobs:
           key: build-${{ github.sha }}
       - name: Restore pnpm virtual store symlinks
         run: pnpm install --frozen-lockfile
+      - name: Restore Stryker incremental cache
+        uses: actions/cache@v4
+        with:
+          path: reports/stryker-incremental.json
+          key: stryker-incremental-${{ github.sha }}
+          restore-keys: |
+            stryker-incremental-
       - name: Full mutation scan (weekly)
         if: github.event_name == 'schedule'
         run: pnpm run test:mutation
@@ -362,6 +369,15 @@ jobs:
           else
             echo "No src/ files changed — skipping mutation testing"
           fi
+      - name: Upload mutation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report-${{ github.event_name }}
+          path: |
+            reports/stryker-report.html
+            reports/stryker-incremental.json
+          retention-days: 30
 
   # ── Phase 6: Docker Push to GHCR (main only, after gate) ────────────
   docker-push:

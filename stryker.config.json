@@ -7,16 +7,54 @@
   "mutate": [
     "src/config/coercion.ts",
     "src/config/validators.ts",
+    "src/config/builders.ts",
+    "src/config/normalizers.ts",
+    "src/config/merge.ts",
+    "src/config/resolvers.ts",
+
+    "src/core/attempt-store.ts",
+    "src/core/attempt-store-port.ts",
+    "src/core/content-sanitizer.ts",
+    "src/core/model-pricing.ts",
+
     "src/state/policy.ts",
     "src/state/machine.ts",
-    "src/workspace/path-registry.ts",
-    "src/workspace/paths.ts",
-    "src/core/content-sanitizer.ts",
+
+    "src/agent-runner/abort-outcomes.ts",
+    "src/agent-runner/error-classifier.ts",
+    "src/agent-runner/exit-classifier.ts",
+    "src/agent-runner/helpers.ts",
+    "src/agent-runner/model-validation.ts",
+    "src/agent-runner/turn-executor.ts",
+    "src/agent-runner/turn-state.ts",
+
+    "src/orchestrator/dispatch.ts",
+    "src/orchestrator/git-post-run.ts",
+    "src/orchestrator/issue-locator.ts",
+    "src/orchestrator/issue-view-builders.ts",
+    "src/orchestrator/lifecycle.ts",
+    "src/orchestrator/model-selection.ts",
+    "src/orchestrator/outcome-view-builder.ts",
     "src/orchestrator/retry-failure.ts",
     "src/orchestrator/retry-manager.ts",
+    "src/orchestrator/snapshot-builder.ts",
+    "src/orchestrator/stall-detector.ts",
+    "src/orchestrator/views.ts",
+    "src/orchestrator/worker-failure.ts",
+
     "src/utils/type-guards.ts",
+    "src/workspace/path-registry.ts",
+    "src/workspace/paths.ts",
+    "src/workspace/manager.ts",
+
     "src/workflow/columns.ts",
-    "src/workflow/loader.ts"
+    "src/workflow/loader.ts",
+
+    "src/git/repo-router.ts",
+    "src/git/manager.ts",
+
+    "src/linear/issue-parser.ts",
+    "src/linear/errors.ts"
   ],
   "incremental": true,
   "incrementalFile": "reports/stryker-incremental.json",
