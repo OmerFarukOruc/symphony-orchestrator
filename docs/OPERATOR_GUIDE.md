@@ -489,6 +489,18 @@ Steps:
 
 The checked-in workflows also instruct the agent to finish with `SYMPHONY_STATUS: DONE` on success or `SYMPHONY_STATUS: BLOCKED` when it cannot proceed. Symphony uses that explicit signal to stop local continuation turns for one-shot issues.
 
+### Automated E2E Lifecycle Test
+
+For repeatable, hands-free verification of the full pipeline (startup through PR creation), use the automated E2E lifecycle test:
+
+```bash
+cp scripts/e2e-config.example.yaml scripts/e2e-config.yaml
+# Fill in your Linear project slug, team ID, GitHub repo, etc.
+./scripts/run-e2e.sh
+```
+
+This creates a real Linear issue, waits for Symphony to pick it up and complete it, verifies the PR, checks Linear state, tests restart resilience, and cleans up — all in one command. See **[E2E Testing Guide](E2E_TESTING.md)** for full configuration and phase details.
+
 ---
 
 ## ⚙️ Runtime Behavior

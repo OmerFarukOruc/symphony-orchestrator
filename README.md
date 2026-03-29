@@ -344,7 +344,7 @@ Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are th
 ## 🧪 Testing
 
 ```bash
-pnpm test                  # Deterministic unit tests (Vitest, 783 tests)
+pnpm test                  # Deterministic unit tests (Vitest, 2593 tests)
 pnpm run test:watch        # Watch mode for local iteration
 pnpm run test:integration  # Opt-in live integration (requires credentials)
 ```
@@ -359,8 +359,20 @@ pnpm exec playwright test --project=visual  # Visual regression (3 baselines)
 pnpm exec playwright test --project=visual --update-snapshots  # Regenerate baselines
 ```
 
+### E2E Lifecycle Test
+
+Full-pipeline integration test that drives the complete Symphony lifecycle against real Linear + GitHub APIs:
+
+```bash
+cp scripts/e2e-config.example.yaml scripts/e2e-config.yaml
+# Edit scripts/e2e-config.yaml with your credentials and test project
+./scripts/run-e2e.sh
+```
+
+Runs 12 phases: preflight, start, setup wizard, issue creation, agent monitoring, PR verification, restart resilience, and cleanup. Produces a structured report in `e2e-reports/`. See **[E2E Testing Guide](docs/E2E_TESTING.md)** for full setup and config reference.
+
 > [!TIP]
-> The integration suite skips cleanly when required credentials are absent — safe to run without API keys. E2E smoke tests require Playwright browsers (`pnpm exec playwright install chromium`).
+> The integration suite skips cleanly when required credentials are absent — safe to run without API keys. E2E smoke tests require Playwright browsers (`pnpm exec playwright install chromium`). The lifecycle test requires Linear/GitHub credentials and Docker.
 
 ---
 
@@ -380,6 +392,7 @@ pnpm exec playwright test --project=visual --update-snapshots  # Regenerate base
 | -------- | -------------- |
 | **[Runbooks](docs/RUNBOOKS.md)** | Troubleshooting playbooks for common failures |
 | **[Observability](docs/OBSERVABILITY.md)** | Prometheus metrics, request tracing, error tracking, alert rules |
+| **[E2E Testing](docs/E2E_TESTING.md)** | Automated lifecycle test: setup, config, phases, diagnostics |
 | **[Releasing](docs/RELEASING.md)** | Release preparation checklist |
 
 ### 🏛️ Architecture & Security
