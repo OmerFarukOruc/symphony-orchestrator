@@ -223,4 +223,78 @@ describe("detectAndKillStalledWorkers", () => {
     // The new entry was appended and the oldest was shifted out
     expect(ctx.stallEvents.at(-1)?.issueIdentifier).toBe("MT-1");
   });
+
+  it("returns 0 when stallTimeoutMs is negative (disabled)", () => {
+    const entry = makeEntry({ lastEventAtMs: Date.now() - 9999999 });
+    const ctx = makeCtx([entry], -1);
+    const killed = detectAndKillStalledWorkers(ctx);
+    expect(killed).toBe(0);
+    expect(entry.abortController.signal.aborted).toBe(false);
+  });
+
+  it("does NOT abort entry at exactly the timeout boundary", () => {
+    // silentMs === stallTimeoutMs should NOT trigger abort (uses <=)
+    const now = Date.now();
+    const entry = makeEntry({ lastEventAtMs: now - 60000 });
+    const ctx = makeCtx([entry], 60000);
+    // At exactly 60000ms, silentMs <= stallTimeoutMs -> continue (not killed)
+    const killed = detectAndKillStalledWorkers(ctx);
+    expect(killed).toBe(0);
+    expect(entry.abortController.signal.aborted).toBe(false);
+  });
+
+  it("aborts entry one ms past the timeout boundary", () => {
+    const entry = makeEntry({ lastEventAtMs: Date.now() - 60001 });
+    const ctx = makeCtx([entry], 60000);
+    const killed = detectAndKillStalledWorkers(ctx);
+    expect(killed).toBe(1);
+    expect(entry.abortController.signal.aborted).toBe(true);
+  });
+
+  it("aborts with 'stalled' reason string", () => {
+    const entry = makeEntry({ lastEventAtMs: Date.now() - 120000 });
+    const ctx = makeCtx([entry], 60000);
+    detectAndKillStalledWorkers(ctx);
+    expect(entry.abortController.signal.reason).toBe("stalled");
+  });
+
+  it("includes silentMs converted to seconds in pushed event message", () => {
+    const entry = makeEntry({ lastEventAtMs: Date.now() - 120000 });
+    const ctx = makeCtx([entry], 60000);
+    detectAndKillStalledWorkers(ctx);
+    const ev = ctx.pushedEvents[0] as Record<string, unknown>;
+    expect(ev["message"]).toMatch(/agent silent for 120s/);
+    expect(ev["message"]).toContain("killed by stall detector");
+  });
+
+  it("logs warning with issue_identifier, silent_ms, timeout_ms", () => {
+    const entry = makeEntry({ lastEventAtMs: Date.now() - 120000, identifier: "MT-77" });
+    const ctx = makeCtx([entry], 60000);
+    detectAndKillStalledWorkers(ctx);
+    expect(ctx.warnCalls[0][0]).toEqual(
+      expect.objectContaining({
+        issue_identifier: "MT-77",
+        silent_ms: expect.any(Number),
+        timeout_ms: 60000,
+      }),
+    );
+    expect(ctx.warnCalls[0][1]).toBe("stall detector: agent killed (no events within stall timeout)");
+  });
+
+  it("does not shift stallEvents when below 100", () => {
+    const existing: StallEvent[] = Array.from({ length: 99 }, (_, i) => ({
+      at: new Date().toISOString(),
+      issueId: `issue-${i}`,
+      issueIdentifier: `MT-${i}`,
+      silentMs: 120000,
+      timeoutMs: 60000,
+    }));
+    const entry = makeEntry({ lastEventAtMs: Date.now() - 120000 });
+    const ctx = makeCtx([entry], 60000, existing);
+    detectAndKillStalledWorkers(ctx);
+    // 99 existing + 1 new = 100, exactly at cap, no shift
+    expect(ctx.stallEvents).toHaveLength(100);
+    // First element is still the original first
+    expect(ctx.stallEvents[0].issueId).toBe("issue-0");
+  });
 });

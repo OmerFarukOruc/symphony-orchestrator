@@ -109,4 +109,31 @@ describe("executeGitPostRun", () => {
       "GitHub API error",
     );
   });
+
+  it("returns null pullRequestUrl when PR response is null", async () => {
+    const gitManager = {
+      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42" }),
+      createPullRequest: vi.fn().mockResolvedValue(null),
+    };
+    const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
+    expect(result).toEqual({ pullRequestUrl: null });
+  });
+
+  it("returns null pullRequestUrl when PR response is a string", async () => {
+    const gitManager = {
+      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42" }),
+      createPullRequest: vi.fn().mockResolvedValue("not an object"),
+    };
+    const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
+    expect(result).toEqual({ pullRequestUrl: null });
+  });
+
+  it("returns null pullRequestUrl when PR response is a number", async () => {
+    const gitManager = {
+      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42" }),
+      createPullRequest: vi.fn().mockResolvedValue(42),
+    };
+    const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
+    expect(result).toEqual({ pullRequestUrl: null });
+  });
 });

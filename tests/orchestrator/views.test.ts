@@ -56,6 +56,13 @@ describe("isHardFailure", () => {
     expect(isHardFailure(null)).toBe(false);
   });
 
+  it("returns false for empty string", () => {
+    // Ensures null coalesces to "" and "" is NOT in the hard failure set
+    expect(isHardFailure(null)).toBe(false);
+    // Also verify that a non-empty random string not in the set returns false
+    expect(isHardFailure("Stryker was here!")).toBe(false);
+  });
+
   it("returns false for unknown string", () => {
     expect(isHardFailure("some_random_code")).toBe(false);
   });

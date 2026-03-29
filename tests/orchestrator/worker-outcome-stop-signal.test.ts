@@ -304,6 +304,40 @@ describe("handleStopSignal — attempt store error handling", () => {
   });
 });
 
+describe("handleStopSignal — pullRequestUrl logging", () => {
+  it("does not log PR created when pullRequestUrl is null", async () => {
+    const ctx = makeCtx();
+    const entry = createRunningEntry({ repoMatch: null });
+    const issue = createIssue();
+
+    await handleStopSignal(ctx, "done", entry, issue, createWorkspace(), createModelSelection(), 1);
+
+    // Should NOT have the "pull request created" log
+    const infoCalls = (ctx.deps.logger.info as ReturnType<typeof vi.fn>).mock.calls;
+    const prCreatedCall = infoCalls.find(
+      (call: unknown[]) => typeof call[1] === "string" && call[1].includes("pull request created"),
+    );
+    expect(prCreatedCall).toBeUndefined();
+  });
+
+  it("logs PR created when pullRequestUrl is present", async () => {
+    const gitManager = {
+      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42" }),
+      createPullRequest: vi.fn().mockResolvedValue({ html_url: "https://github.com/org/repo/pull/1" }),
+    };
+    const ctx = makeCtx({ gitManager });
+    const entry = createRunningEntry({ repoMatch });
+    const issue = createIssue();
+
+    await handleStopSignal(ctx, "done", entry, issue, createWorkspace(), createModelSelection(), 1);
+
+    expect(ctx.deps.logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ url: "https://github.com/org/repo/pull/1" }),
+      "pull request created",
+    );
+  });
+});
+
 describe("handleStopSignal — writeback integration", () => {
   /** Flush void-dispatched microtask from writeCompletionWriteback. */
   const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));

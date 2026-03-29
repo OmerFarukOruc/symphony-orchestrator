@@ -590,4 +590,136 @@ describe("extractItemContent", () => {
       expect(result).toBeNull();
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Mutation-killing tests: extractItemContent isDiff propagation
+  // -------------------------------------------------------------------------
+
+  describe("isDiff flag propagation", () => {
+    it("fileChange started returns isDiff=false (path is not a diff)", () => {
+      // Kills: BooleanLiteral helpers.ts:122 isDiff: false -> true
+      // Kills: BooleanLiteral helpers.ts:158 let isDiff = false -> true
+      // The sanitizeContent call receives isDiff, but we verify the behavior
+      // by checking that started fileChange content is the path itself
+      const result = extractItemContent("fileChange", null, { path: "/src/index.ts" }, "started", emptyBuffers);
+      // If isDiff were true, sanitizeContent would treat it as diff content
+      expect(result).toBe("/src/index.ts");
+    });
+
+    it("fileChange completed returns diff content (isDiff=true)", () => {
+      const result = extractItemContent("fileChange", null, { diff: "+new line" }, "completed", emptyBuffers);
+      expect(result).toBe("+new line");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Mutation-killing tests: extractFileChangeContent verb branching
+  // -------------------------------------------------------------------------
+
+  describe("fileChange verb branching", () => {
+    it("started verb returns path, not diff", () => {
+      // Kills: ConditionalExpression helpers.ts:121 if (verb === "started") -> if (false)
+      // Kills: BlockStatement helpers.ts:121 block removal
+      const startedResult = extractItemContent(
+        "fileChange",
+        null,
+        { path: "/src/a.ts", diff: "+change", content: "full" },
+        "started",
+        emptyBuffers,
+      );
+      expect(startedResult).toBe("/src/a.ts");
+
+      const completedResult = extractItemContent(
+        "fileChange",
+        null,
+        { path: "/src/a.ts", diff: "+change", content: "full" },
+        "completed",
+        emptyBuffers,
+      );
+      expect(completedResult).toBe("+change");
+      // Verify they are different — started returns path, completed returns diff
+      expect(startedResult).not.toBe(completedResult);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Mutation-killing tests: extractCommandContent exitCode type handling
+  // -------------------------------------------------------------------------
+
+  describe("extractCommandContent exitCode type branching", () => {
+    it("numeric exitCode uses String() representation", () => {
+      // Kills: ConditionalExpression helpers.ts:113 typeof rawCode === "number" -> true/false
+      // Kills: EqualityOperator helpers.ts:113 === -> !==
+      const result = extractItemContent("commandExecution", null, { exitCode: 42 }, "completed", emptyBuffers);
+      expect(result).toBe("Exit code: 42");
+    });
+
+    it("non-numeric exitCode uses JSON.stringify representation", () => {
+      const result = extractItemContent(
+        "commandExecution",
+        null,
+        { exitCode: { special: true } },
+        "completed",
+        emptyBuffers,
+      );
+      // JSON.stringify produces quoted/structured output; String() would give [object Object]
+      expect(result).toContain("special");
+      expect(result).not.toContain("[object Object]");
+    });
+
+    it("string exitCode is JSON-stringified (not passed through String())", () => {
+      const result = extractItemContent("commandExecution", null, { exitCode: "SIGKILL" }, "completed", emptyBuffers);
+      // JSON.stringify wraps strings in quotes: "\"SIGKILL\""
+      expect(result).toBe('Exit code: "SIGKILL"');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Mutation-killing tests: extractAgentOrUserMessage .map mutation
+  // -------------------------------------------------------------------------
+
+  describe("extractAgentOrUserMessage content mapping", () => {
+    it("maps content items through asRecord().text extraction", () => {
+      // Kills: MethodExpression helpers.ts:89 .map -> removal
+      const item = { content: [{ text: "hello " }, { text: "world" }] };
+      const result = extractAgentOrUserMessage(item);
+      expect(result).toBe("hello world");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Mutation-killing tests: dynamicToolCall args fallback
+  // -------------------------------------------------------------------------
+
+  describe("dynamicToolCall args fallback", () => {
+    it("uses '{}' as fallback when sanitizeContent returns null for args", () => {
+      // Kills: StringLiteral helpers.ts:137 args ?? "{}" -> args ?? ""
+      // When arguments is a string that sanitizeContent nullifies, the fallback should be "{}"
+      const result = extractItemContent(
+        "dynamicToolCall",
+        null,
+        { name: "myTool", arguments: undefined },
+        "started",
+        emptyBuffers,
+      );
+      // With no arguments, it should show the fallback
+      expect(result).toContain("myTool");
+      expect(result).toContain("{}");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Mutation-killing tests: plan verb === "completed" check
+  // -------------------------------------------------------------------------
+
+  describe("plan verb filtering", () => {
+    it("plan extracts content only for completed verb, not started", () => {
+      // Kills: ConditionalExpression helpers.ts:163 (type === "plan" && verb === "completed") -> (type === "plan" && true)
+      const completedResult = extractItemContent("plan", null, { text: "the plan" }, "completed", emptyBuffers);
+      expect(completedResult).toBe("the plan");
+
+      const startedResult = extractItemContent("plan", null, { text: "the plan" }, "started", emptyBuffers);
+      expect(startedResult).toBeNull();
+    });
+  });
 });

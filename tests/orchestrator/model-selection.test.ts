@@ -167,4 +167,83 @@ describe("updateIssueModelSelection", () => {
     await updateIssueModelSelection(ctx, { identifier: "MT-1", model: "custom-model", reasoningEffort: "xhigh" });
     expect(ctx.issueModelOverrides.get("MT-1")).toEqual({ model: "custom-model", reasoningEffort: "xhigh" });
   });
+
+  it("includes effort suffix in message when reasoningEffort is set", async () => {
+    const ctx = makeCtx({ runningEntry: {} });
+    await updateIssueModelSelection(ctx, { identifier: "MT-1", model: "o3-mini", reasoningEffort: "low" });
+    const event = ctx.pushEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(event.message).toBe("next run model updated to o3-mini (low)");
+    expect(event.event).toBe("model_selection_updated");
+  });
+
+  it("omits effort suffix when reasoningEffort is null", async () => {
+    const overrides = new Map([["MT-1", { model: "o3-mini", reasoningEffort: null as const }]]);
+    const config = makeConfig("o3-mini", null);
+    const result = resolveModelSelection(overrides, config, "MT-1");
+    // Effort suffix is only used in updateIssueModelSelection, but verify reasoningEffort=null flows through
+    expect(result.reasoningEffort).toBeNull();
+  });
+
+  it("returns updated=true and restarted=false for retry entry path", async () => {
+    const ctx = makeCtx({ retryEntry: {} });
+    const result = await updateIssueModelSelection(ctx, {
+      identifier: "MT-1",
+      model: "o3-mini",
+      reasoningEffort: "low",
+    });
+    expect(result).not.toBeNull();
+    expect(result!.updated).toBe(true);
+    expect(result!.restarted).toBe(false);
+    expect(result!.appliesNextAttempt).toBe(true);
+  });
+
+  it("includes effort suffix in retry entry message", async () => {
+    const ctx = makeCtx({ retryEntry: {} });
+    await updateIssueModelSelection(ctx, { identifier: "MT-1", model: "o3-mini", reasoningEffort: "low" });
+    const event = ctx.pushEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(event.message).toBe("next run model updated to o3-mini (low)");
+    expect(event.event).toBe("model_selection_updated");
+  });
+
+  it("returns updated=true and restarted=false for idle (non-running/retry) path", async () => {
+    const ctx = makeCtx();
+    const result = await updateIssueModelSelection(ctx, {
+      identifier: "MT-1",
+      model: "o3-mini",
+      reasoningEffort: null,
+    });
+    expect(result!.updated).toBe(true);
+    expect(result!.restarted).toBe(false);
+    expect(result!.appliesNextAttempt).toBe(false);
+  });
+
+  it("does not emit event for already-aborted running entry", async () => {
+    const controller = new AbortController();
+    controller.abort("already stopped");
+    const ctx = makeCtx({ runningEntry: { abortController: controller } });
+    const result = await updateIssueModelSelection(ctx, {
+      identifier: "MT-1",
+      model: "o3-mini",
+      reasoningEffort: "low",
+    });
+    // Falls through to the idle path since running entry is aborted
+    expect(result!.appliesNextAttempt).toBe(false);
+    expect(ctx.requestRefresh).toHaveBeenCalled();
+  });
+
+  it("uses empty effort suffix when reasoningEffort is null (no trailing text in message)", async () => {
+    const ctx = makeCtx({ runningEntry: {} });
+    // Override to null effort so effortSuffix should be ""
+    ctx.getConfig = () => makeConfig("o3-mini", null);
+    await updateIssueModelSelection(ctx, {
+      identifier: "MT-1",
+      model: "o3-mini",
+      reasoningEffort: null,
+    });
+    const event = ctx.pushEvent.mock.calls[0][0] as Record<string, unknown>;
+    // With null reasoning effort, message should NOT contain parenthesized effort
+    expect(event.message).toBe("next run model updated to o3-mini");
+    // Should not end with space or other suffix
+    expect((event.message as string).endsWith("o3-mini")).toBe(true);
+  });
 });

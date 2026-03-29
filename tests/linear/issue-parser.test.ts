@@ -170,5 +170,69 @@ describe("normalizeIssue", () => {
       const issue = normalizeIssue(raw);
       expect(issue.blockedBy[0].state).toBe(null);
     });
+
+    it("uses issue field as blocker when relatedIssue is empty", () => {
+      // Kills: normalizeBlockers condition: Object.keys(relatedIssue).length > 0
+      // When issue.id matches but relatedIssue is empty, should fall back to issue
+      const raw = makeRawIssue({
+        id: "the-issue",
+        inverseRelations: {
+          nodes: [
+            {
+              issue: { id: "the-issue", identifier: "MT-1", state: { name: "In Progress" } },
+              relatedIssue: {},
+            },
+          ],
+        },
+      });
+      const issue = normalizeIssue(raw);
+      // relatedIssue is empty (no keys), so even though issue.id === issueId,
+      // it should use `issue` field as the blocker (because relatedIssue is empty)
+      expect(issue.blockedBy).toHaveLength(1);
+      expect(issue.blockedBy[0].identifier).toBe("MT-1");
+    });
+
+    it("extracts blocker id, identifier, and state fields", () => {
+      // Kills: ensures all three fields are extracted from the blocker
+      const raw = makeRawIssue({
+        id: "the-issue",
+        inverseRelations: {
+          nodes: [
+            {
+              issue: { id: "the-issue", identifier: "MT-1", state: { name: "Active" } },
+              relatedIssue: { id: "blocker-99", identifier: "MT-99", state: { name: "Blocked" } },
+            },
+          ],
+        },
+      });
+      const issue = normalizeIssue(raw);
+      expect(issue.blockedBy[0]).toEqual({
+        id: "blocker-99",
+        identifier: "MT-99",
+        state: "Blocked",
+      });
+    });
+
+    it("handles multiple blockers", () => {
+      const raw = makeRawIssue({
+        id: "the-issue",
+        inverseRelations: {
+          nodes: [
+            {
+              issue: { id: "the-issue", identifier: "MT-1" },
+              relatedIssue: { id: "b1", identifier: "MT-10", state: { name: "Open" } },
+            },
+            {
+              issue: { id: "other-issue", identifier: "MT-20", state: { name: "Done" } },
+              relatedIssue: { id: "the-issue", identifier: "MT-1" },
+            },
+          ],
+        },
+      });
+      const issue = normalizeIssue(raw);
+      expect(issue.blockedBy).toHaveLength(2);
+      expect(issue.blockedBy[0].identifier).toBe("MT-10");
+      expect(issue.blockedBy[1].identifier).toBe("MT-20");
+    });
   });
 });

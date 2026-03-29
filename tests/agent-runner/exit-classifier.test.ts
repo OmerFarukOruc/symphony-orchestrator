@@ -108,4 +108,17 @@ describe("classifyExitState", () => {
     expect(result.turnId).toBe("turn-1");
     expect(result.turnCount).toBe(2);
   });
+
+  it("returns port_exit (not OOM) for non-137 exit codes even with containerName", async () => {
+    // Kills: ConditionalExpression exit-classifier.ts:21 exitState.code === 137 -> true
+    // Verifying that only exit code 137 triggers the OOM check
+    const inspectMock = vi.mocked(inspectOomKilled);
+    inspectMock.mockClear();
+    const result = await classifyExitState(makeInput(), makeState({ exitCode: 1, containerName: "container-abc" }));
+    expect(result.kind).toBe("failed");
+    expect(result.errorCode).toBe("port_exit");
+    expect(result.errorMessage).toContain("1");
+    // inspectOomKilled should NOT have been called for non-137 exit codes
+    expect(inspectMock).not.toHaveBeenCalled();
+  });
 });
