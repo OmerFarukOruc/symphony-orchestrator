@@ -234,7 +234,7 @@ async function pollAttempts(ctx: RunContext, monitor: MonitorState): Promise<voi
     const attemptsResp = (await fetchJson(`${ctx.baseUrl}/api/v1/${ctx.issueIdentifier}/attempts`)) as AttemptsResponse;
 
     if (attemptsResp.attempts.length > 0) {
-      monitor.lastAttempt = attemptsResp.attempts.at(-1) ?? null;
+      monitor.lastAttempt = attemptsResp.attempts.at(0) ?? null;
     }
 
     if (!monitor.lastAttempt) return;
@@ -410,8 +410,8 @@ export async function restartResilience(ctx: RunContext): Promise<PhaseResult> {
     return null;
   });
 
-  // 6. Shut down the restarted process.
-  if (ctx.symphonyProcess) {
+  // 6. Shut down the restarted process (unless --keep-symphony).
+  if (ctx.symphonyProcess && !ctx.keepSymphony) {
     log(ctx, "Shutting down restarted Symphony");
     await stopProcess(ctx.symphonyProcess, gracefulMs);
     ctx.symphonyProcess = null;

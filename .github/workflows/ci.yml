@@ -347,6 +347,8 @@ jobs:
             node_modules
             dist
           key: build-${{ github.sha }}
+      - name: Restore pnpm virtual store symlinks
+        run: pnpm install --frozen-lockfile
       - name: Full mutation scan (weekly)
         if: github.event_name == 'schedule'
         run: pnpm run test:mutation

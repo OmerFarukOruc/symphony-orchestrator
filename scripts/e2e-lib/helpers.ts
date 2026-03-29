@@ -219,8 +219,8 @@ export function generateWorkflowScaffold(config: E2EConfig): string {
  * inside `reportDir`.
  */
 export function spawnSymphony(port: number, workflowPath: string, reportDir: string): ReturnType<typeof spawn> {
-  const stdoutLog = createWriteStream(path.join(reportDir, "symphony-stdout.log"));
-  const stderrLog = createWriteStream(path.join(reportDir, "symphony-stderr.log"));
+  const stdoutLog = createWriteStream(path.join(reportDir, "symphony-stdout.log"), { flags: "a" });
+  const stderrLog = createWriteStream(path.join(reportDir, "symphony-stderr.log"), { flags: "a" });
 
   const child = spawn("node", ["dist/cli/index.js", workflowPath, "--port", String(port)], {
     env: process.env,
