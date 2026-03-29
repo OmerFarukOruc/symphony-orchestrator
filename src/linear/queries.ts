@@ -217,3 +217,70 @@ export function buildCreateProjectMutation(): string {
     }
   `;
 }
+
+export function buildWebhooksQuery(): string {
+  return `
+    query SymphonyWebhooks {
+      webhooks(first: 50) {
+        nodes {
+          id
+          url
+          enabled
+          label
+          teamId
+          resourceTypes
+          secret
+          createdAt
+          updatedAt
+        }
+      }
+    }
+  `;
+}
+
+export function buildWebhookCreateMutation(): string {
+  return `
+    mutation SymphonyWebhookCreate($url: String!, $teamId: String, $resourceTypes: [String!]!, $label: String, $secret: String) {
+      webhookCreate(input: { url: $url, teamId: $teamId, resourceTypes: $resourceTypes, label: $label, secret: $secret }) {
+        success
+        webhook {
+          id
+          url
+          enabled
+          label
+          secret
+          resourceTypes
+          createdAt
+        }
+      }
+    }
+  `;
+}
+
+export function buildWebhookUpdateMutation(): string {
+  return `
+    mutation SymphonyWebhookUpdate($id: String!, $enabled: Boolean, $url: String, $label: String, $resourceTypes: [String!], $secret: String) {
+      webhookUpdate(id: $id, input: { enabled: $enabled, url: $url, label: $label, resourceTypes: $resourceTypes, secret: $secret }) {
+        success
+        webhook {
+          id
+          url
+          enabled
+          label
+          secret
+          resourceTypes
+        }
+      }
+    }
+  `;
+}
+
+export function buildWebhookDeleteMutation(): string {
+  return `
+    mutation SymphonyWebhookDelete($id: String!) {
+      webhookDelete(id: $id) {
+        success
+      }
+    }
+  `;
+}

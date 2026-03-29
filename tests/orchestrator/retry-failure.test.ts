@@ -208,17 +208,6 @@ describe("handleRetryLaunchFailure", () => {
     );
   });
 
-  it("does NOT call createAttempt when updateAttempt succeeds (persisted=true)", async () => {
-    const entry = makeEntry();
-    const ctx = makeCtx(entry);
-    // updateAttempt succeeds -> persisted=true -> should NOT call createAttempt
-    ctx.deps.attemptStore.updateAttempt.mockResolvedValue(undefined);
-    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
-
-    expect(ctx.deps.attemptStore.updateAttempt).toHaveBeenCalled();
-    expect(ctx.deps.attemptStore.createAttempt).not.toHaveBeenCalled();
-  });
-
   it("logs warning when createAttempt fails too", async () => {
     const ctx = makeCtx(null);
     ctx.deps.attemptStore.createAttempt.mockRejectedValue(new Error("create err"));

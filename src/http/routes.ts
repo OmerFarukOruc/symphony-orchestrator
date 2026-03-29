@@ -32,6 +32,8 @@ import { getSwaggerHtml } from "./swagger-html.js";
 import { handleTransition } from "./transition-handler.js";
 import { handleGetTransitions } from "./transitions-api.js";
 import { validateBody } from "./validation.js";
+import { handleWebhookLinear, type WebhookHandlerDeps } from "./webhook-handler.js";
+import type { WebhookRequest } from "./webhook-types.js";
 import { handleWorkspaceInventory, handleWorkspaceRemove } from "./workspace-inventory.js";
 
 const frontendDist = join(process.cwd(), "dist/frontend");
@@ -48,6 +50,7 @@ interface HttpRouteDeps {
   auditLogger?: AuditLogger;
   frontendDir?: string;
   archiveDir?: string;
+  webhookHandlerDeps?: WebhookHandlerDeps;
 }
 
 export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
@@ -63,6 +66,12 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   registerGitRoutes(app, deps);
   registerWorkspaceRoutes(app, deps);
   registerIssueRoutes(app, deps);
+  registerWebhookRoutes(app, deps);
+
+  /* JSON 404 for unmatched webhook paths — prevent SPA catch-all returning HTML. */
+  app.all("/webhooks/*path", (_request, response) => {
+    response.status(404).json({ error: { code: "not_found", message: "Not found" } });
+  });
 
   app.use((request, response) => {
     if (request.path.startsWith("/api/") || request.path === "/metrics") {
@@ -310,6 +319,28 @@ function registerWorkspaceRoutes(app: Express, deps: HttpRouteDeps): void {
         req,
         res,
       );
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+}
+
+function registerWebhookRoutes(app: Express, deps: HttpRouteDeps): void {
+  if (!deps.webhookHandlerDeps) return;
+
+  const webhookLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: 600,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  const webhookDeps = deps.webhookHandlerDeps;
+
+  app
+    .route("/webhooks/linear")
+    .post(webhookLimiter, (req, res) => {
+      handleWebhookLinear(webhookDeps, req as WebhookRequest, res);
     })
     .all((_req, res) => {
       methodNotAllowed(res);

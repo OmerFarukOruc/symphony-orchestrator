@@ -66,4 +66,26 @@ export class OverviewPage extends BasePage {
   get quickActionsSection(): Locator {
     return this.page.getByText("QUICK ACTIONS");
   }
+
+  // ── Webhook Health ──────────────────────────────────────────────────
+
+  get webhookHealthPanel(): Locator {
+    return this.page.locator("[data-testid='webhook-health-panel']");
+  }
+
+  get webhookStatus(): Locator {
+    return this.page.locator("[data-testid='webhook-status']");
+  }
+
+  get webhookLastEvent(): Locator {
+    return this.page.locator("[data-testid='webhook-last-event']");
+  }
+
+  get webhookInterval(): Locator {
+    return this.page.locator("[data-testid='webhook-interval']");
+  }
+
+  get webhookDeliveries(): Locator {
+    return this.page.locator("[data-testid='webhook-deliveries']");
+  }
 }

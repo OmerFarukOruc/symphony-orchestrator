@@ -62,6 +62,19 @@ export function serializeSnapshot(snapshot: RuntimeSnapshot & Record<string, unk
           message: snapshot.systemHealth.message,
         }
       : undefined,
+    webhook_health: snapshot.webhookHealth
+      ? {
+          status: snapshot.webhookHealth.status,
+          effective_interval_ms: snapshot.webhookHealth.effectiveIntervalMs,
+          stats: {
+            deliveries_received: snapshot.webhookHealth.stats.deliveriesReceived,
+            last_delivery_at: snapshot.webhookHealth.stats.lastDeliveryAt,
+            last_event_type: snapshot.webhookHealth.stats.lastEventType,
+          },
+          last_delivery_at: snapshot.webhookHealth.lastDeliveryAt,
+          last_event_type: snapshot.webhookHealth.lastEventType,
+        }
+      : undefined,
   };
 }
 

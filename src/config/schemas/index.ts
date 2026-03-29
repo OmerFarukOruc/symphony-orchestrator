@@ -6,6 +6,7 @@
  */
 
 export { trackerConfigSchema } from "./tracker.js";
+export { webhookConfigSchema } from "./webhook.js";
 export { workspaceConfigSchema } from "./workspace.js";
 export { agentConfigSchema } from "./agent.js";
 export {

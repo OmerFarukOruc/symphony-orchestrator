@@ -31,6 +31,36 @@ function startApp(writeToken?: string): Promise<{ port: number; server: http.Ser
   });
 }
 
+/**
+ * Start an app with the write guard mounted globally (matching production
+ * `server.ts`) so that `/webhooks/` exemption is exercised.
+ */
+function startGlobalApp(writeToken?: string): Promise<{ port: number; server: http.Server }> {
+  if (writeToken) {
+    vi.stubEnv("SYMPHONY_WRITE_TOKEN", writeToken);
+  }
+
+  const app = express();
+  app.use(express.json());
+  app.use(createWriteGuard());
+
+  app.route("/api/v1/refresh").post((_req, res) => {
+    res.status(202).json({ queued: true });
+  });
+  app.route("/webhooks/linear").post((_req, res) => {
+    res.status(200).json({ ok: true });
+  });
+
+  return new Promise((resolve) => {
+    const server = app.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (address && typeof address === "object") {
+        resolve({ port: address.port, server });
+      }
+    });
+  });
+}
+
 function closeServer(server: http.Server): Promise<void> {
   return new Promise((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
@@ -110,5 +140,66 @@ describe("createWriteGuard", () => {
       body: "{}",
     });
     expect(response.status).toBe(401);
+  });
+});
+
+describe("createWriteGuard — webhook path exemption", () => {
+  let server: http.Server | null = null;
+
+  afterEach(async () => {
+    vi.unstubAllEnvs();
+    if (server) {
+      await closeServer(server);
+      server = null;
+    }
+  });
+
+  it("allows POST to /webhooks/linear from loopback without token", async () => {
+    const { port, server: s } = await startGlobalApp();
+    server = s;
+
+    const response = await fetch(`http://127.0.0.1:${port}/webhooks/linear`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "update" }),
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it("allows POST to /webhooks/linear when SYMPHONY_WRITE_TOKEN is set (guard skipped)", async () => {
+    const { port, server: s } = await startGlobalApp("secret-token");
+    server = s;
+
+    const response = await fetch(`http://127.0.0.1:${port}/webhooks/linear`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "update" }),
+    });
+    // Write guard skipped entirely for webhook paths — no Bearer token needed
+    expect(response.status).toBe(200);
+  });
+
+  it("still blocks POST to /api/v1/refresh when SYMPHONY_WRITE_TOKEN is set and no token supplied", async () => {
+    const { port, server: s } = await startGlobalApp("secret-token");
+    server = s;
+
+    const response = await fetch(`http://127.0.0.1:${port}/api/v1/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    expect(response.status).toBe(401);
+  });
+
+  it("allows GET to non-webhook paths unchanged", async () => {
+    const { port, server: s } = await startGlobalApp();
+    server = s;
+
+    // GET is a safe method — always passes through regardless of path
+    const response = await fetch(`http://127.0.0.1:${port}/api/v1/refresh`);
+    // No GET handler registered, but the guard itself should not block it.
+    // Express will return 404 or similar, but NOT 401/403.
+    expect(response.status).not.toBe(401);
+    expect(response.status).not.toBe(403);
   });
 });

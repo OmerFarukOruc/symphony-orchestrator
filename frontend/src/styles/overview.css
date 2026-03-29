@@ -490,6 +490,108 @@
 }
 
 /* ============================================
+   WEBHOOK HEALTH PANEL
+   Linear webhook connectivity indicator
+   ============================================ */
+
+.webhook-health-panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--bg-muted);
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
+}
+
+.webhook-health-panel[hidden] {
+  display: none;
+}
+
+.webhook-health-status-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.webhook-health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+
+/* Connected — green */
+.webhook-health-panel.is-connected .webhook-health-dot {
+  background: var(--status-running);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-running) 25%, transparent);
+}
+
+/* Degraded — yellow/warning */
+.webhook-health-panel.is-degraded .webhook-health-dot {
+  background: var(--status-retrying);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-retrying) 25%, transparent);
+}
+
+/* Disconnected — gray */
+.webhook-health-panel.is-disconnected .webhook-health-dot {
+  background: var(--text-muted);
+}
+
+/* Background tints per status */
+.webhook-health-panel.is-degraded {
+  background: color-mix(in srgb, var(--status-retrying) 6%, var(--bg-muted));
+  border-color: color-mix(in srgb, var(--status-retrying) 20%, transparent);
+}
+
+.webhook-health-status-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-secondary);
+}
+
+.webhook-health-panel.is-connected .webhook-health-status-label {
+  color: var(--status-running);
+}
+
+.webhook-health-panel.is-degraded .webhook-health-status-label {
+  color: var(--status-retrying);
+}
+
+.webhook-health-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.webhook-health-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.webhook-health-detail-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+.webhook-health-detail-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-features-tabular);
+}
+
+/* ============================================
    STALL EVENTS TABLE
    Recent stalled-agent kills timeline
    ============================================ */

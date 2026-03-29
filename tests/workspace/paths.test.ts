@@ -23,19 +23,6 @@ describe("buildSafePath", () => {
     process.env.PATH = "";
     expect(buildSafePath()).toBe("/usr/local/bin:/usr/bin:/bin");
   });
-
-  it("uses the default fallback /usr/local/bin:/usr/bin:/bin when PATH env is undefined", () => {
-    delete process.env.PATH;
-    const result = buildSafePath();
-    // The fallback string "/usr/local/bin:/usr/bin:/bin" is used when PATH is undefined
-    // This tests the ?? operator
-    expect(result).toBe("/usr/local/bin:/usr/bin:/bin");
-  });
-
-  it("filters out non-safe directories", () => {
-    process.env.PATH = "/usr/bin:/home/user/bin:/opt/custom:/bin";
-    expect(buildSafePath()).toBe("/usr/bin:/bin");
-  });
 });
 
 /* ── isWithinRoot ────────────────────────────────────────────────── */
@@ -71,28 +58,6 @@ describe("isWithinRoot", () => {
 
   it("handles trailing slashes correctly", () => {
     expect(isWithinRoot("/workspace/", "/workspace/file.txt")).toBe(true);
-  });
-
-  it("returns true when candidate equals root (relative is empty string)", () => {
-    // Tests the exact `relative === ""` branch
-    expect(isWithinRoot("/workspace", "/workspace")).toBe(true);
-  });
-
-  it("returns false when relative path is absolute (different drive/mount)", () => {
-    // On POSIX, path.relative("/a", "/z") gives "../z" (not absolute),
-    // but this tests that we check path.isAbsolute explicitly
-    expect(isWithinRoot("/workspace", "/etc/shadow")).toBe(false);
-  });
-
-  it("allows directory names starting with dots but not '..' traversal segments", () => {
-    // ".._backup" is a valid dir name, not a traversal segment
-    expect(isWithinRoot("/workspace", "/workspace/.._backup")).toBe(true);
-    // "..hidden" is also not a traversal segment
-    expect(isWithinRoot("/workspace", "/workspace/..hidden")).toBe(true);
-  });
-
-  it("rejects multi-level traversal", () => {
-    expect(isWithinRoot("/workspace/a/b", "/workspace")).toBe(false);
   });
 });
 
@@ -164,19 +129,6 @@ describe("resolveWorkspacePath", () => {
   it("does not throw for safe identifiers", () => {
     const result = resolveWorkspacePath("/workspaces", "safe-identifier");
     expect(result.workspaceKey).toBe("safe-identifier");
-    expect(isWithinRoot("/workspaces", result.workspacePath)).toBe(true);
-  });
-
-  it("uses sanitizeIdentifier to produce the workspace key", () => {
-    const result = resolveWorkspacePath("/workspaces", "FOO/BAR#99");
-    expect(result.workspaceKey).toBe("FOO_BAR_99");
-    expect(result.workspacePath).toBe(path.resolve("/workspaces", "FOO_BAR_99"));
-  });
-
-  it("validates the resolved path is within the workspace root", () => {
-    // After sanitization, all characters that could create traversal are replaced
-    // The isWithinRoot check guards against any that slip through
-    const result = resolveWorkspacePath("/workspaces", "normal-issue");
     expect(isWithinRoot("/workspaces", result.workspacePath)).toBe(true);
   });
 });

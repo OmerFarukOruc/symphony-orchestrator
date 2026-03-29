@@ -13,6 +13,8 @@ import type { PersistenceRuntime } from "../persistence/sqlite/runtime.js";
 import { SecretsStore } from "../secrets/store.js";
 import type { SymphonyEventMap } from "../core/symphony-events.js";
 import type { ValidationError } from "../core/types.js";
+import type { WebhookHealthTracker } from "../webhook/health-tracker.js";
+import type { WebhookRegistrar } from "../webhook/registrar.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { createServices } from "./services.js";
 import { wireNotifications, watchConfigChanges } from "./notifications.js";
@@ -98,6 +100,9 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   }
   await httpServer.start(port);
 
+  // Register webhook AFTER HTTP listener is live (startup invariant: no delivery failures during gap)
+  await services.webhookRegistrar?.register();
+
   const shutdown = buildShutdown({
     httpServer,
     orchestrator,
@@ -105,6 +110,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     overlayStore,
     eventBus,
     persistence: services.persistence,
+    webhookHealthTracker: services.webhookHealthTracker,
+    webhookRegistrar: services.webhookRegistrar,
     logger,
   });
   logger.info({ workflowPath, port, logDir: archiveDir }, "service started");
@@ -183,6 +190,8 @@ function buildShutdown({
   overlayStore,
   eventBus,
   persistence,
+  webhookHealthTracker,
+  webhookRegistrar,
   logger,
 }: {
   httpServer: HttpServer;
@@ -191,6 +200,8 @@ function buildShutdown({
   overlayStore: ConfigOverlayStore;
   eventBus: TypedEventBus<SymphonyEventMap>;
   persistence: PersistenceRuntime;
+  webhookHealthTracker?: WebhookHealthTracker;
+  webhookRegistrar?: WebhookRegistrar;
   logger: ReturnType<typeof createLogger>;
 }): () => Promise<void> {
   let shuttingDown = false;
@@ -203,6 +214,8 @@ function buildShutdown({
     await orchestrator.stop().catch((error: unknown) => {
       logger.warn({ error: toErrorString(error) }, "orchestrator shutdown failed");
     });
+    webhookRegistrar?.stop();
+    webhookHealthTracker?.stop();
     await configStore.stop().catch((error: unknown) => {
       logger.warn({ error: toErrorString(error) }, "config store shutdown failed");
     });

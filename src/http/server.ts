@@ -1,6 +1,8 @@
-import http from "node:http";
+import http, { type IncomingMessage } from "node:http";
 
 import express, { type Express } from "express";
+
+import type { WebhookRequest } from "./webhook-types.js";
 
 import type { AuditLogger } from "../audit/logger.js";
 import type { ConfigOverlayPort } from "../config/overlay.js";
@@ -18,6 +20,7 @@ import type { TrackerPort } from "../tracker/port.js";
 import { registerHttpRoutes } from "./routes.js";
 import { createWriteGuard } from "./write-guard.js";
 import { serviceErrorHandler } from "./service-errors.js";
+import type { WebhookHandlerDeps } from "./webhook-handler.js";
 
 export class HttpServer {
   private readonly app: Express;
@@ -37,6 +40,7 @@ export class HttpServer {
       archiveDir?: string;
       templateStore?: PromptTemplateStore;
       auditLogger?: AuditLogger;
+      webhookHandlerDeps?: WebhookHandlerDeps;
     },
   ) {
     this.app = express();
@@ -57,7 +61,15 @@ export class HttpServer {
       });
       next();
     });
-    this.app.use(express.json());
+    this.app.use(
+      express.json({
+        verify: (req: IncomingMessage, _res, buf: Buffer) => {
+          if (req.url?.startsWith("/webhooks/")) {
+            (req as unknown as WebhookRequest).rawBody = buf;
+          }
+        },
+      }),
+    );
     this.app.use(createWriteGuard());
     registerHttpRoutes(this.app, this.deps);
     this.app.use(serviceErrorHandler);

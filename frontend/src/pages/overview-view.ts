@@ -1,9 +1,10 @@
 import { router } from "../router";
 import { store } from "../state/store";
 import type { AppState } from "../state/store";
-import type { RuntimeIssueView } from "../types";
+import type { RuntimeIssueView, WebhookHealth } from "../types";
 import { createEventRow } from "../components/event-row";
 import { createSystemHealthBadge } from "../components/system-health-badge";
+import { createWebhookHealthPanel } from "../components/webhook-health-panel";
 import { createStallEventsTable } from "../components/stall-events-table";
 import { buildAttentionList, latestTerminalIssues } from "../utils/issues";
 import {
@@ -318,7 +319,8 @@ export function createOverviewPage(): HTMLElement {
   healthSection.className = "overview-health-section";
   healthSection.append(createSectionHeader("System health", "Watchdog"));
   const { root: healthBadge, update: updateHealthBadge } = createSystemHealthBadge();
-  healthSection.append(healthBadge);
+  const { root: webhookPanel, update: updateWebhookPanel } = createWebhookHealthPanel();
+  healthSection.append(healthBadge, webhookPanel);
 
   // Stall events section
   const stallSection = document.createElement("div");
@@ -418,6 +420,9 @@ export function createOverviewPage(): HTMLElement {
     // System health badge
     updateHealthBadge(snapshot.system_health);
 
+    // Webhook health panel
+    updateWebhookPanel(snapshot.webhook_health);
+
     // Stall events table
     updateStallEvents(snapshot.stall_events);
 
@@ -450,8 +455,27 @@ export function createOverviewPage(): HTMLElement {
 
   const handler = (event: Event): void => renderSnapshot((event as CustomEvent<AppState>).detail);
   window.addEventListener("state:update", handler);
+
+  // SSE webhook events — trigger immediate panel re-render
+  const webhookHealthHandler = (event: Event): void => {
+    const health = (event as CustomEvent).detail as Record<string, unknown> | undefined;
+    if (health && typeof health.status === "string") {
+      updateWebhookPanel(health as unknown as WebhookHealth);
+    }
+  };
+  const webhookReceivedHandler = (): void => {
+    // Re-render from current store state to pick up any timestamp changes
+    renderSnapshot(store.getState());
+  };
+  window.addEventListener("symphony:webhook-health-changed", webhookHealthHandler);
+  window.addEventListener("symphony:webhook-received", webhookReceivedHandler);
+
   renderSnapshot(store.getState());
-  registerPageCleanup(page, () => window.removeEventListener("state:update", handler));
+  registerPageCleanup(page, () => {
+    window.removeEventListener("state:update", handler);
+    window.removeEventListener("symphony:webhook-health-changed", webhookHealthHandler);
+    window.removeEventListener("symphony:webhook-received", webhookReceivedHandler);
+  });
 
   return page;
 }

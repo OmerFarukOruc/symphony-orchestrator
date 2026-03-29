@@ -7,6 +7,7 @@ import type { GitIntegrationPort } from "../git/port.js";
 import type { TrackerPort } from "../tracker/port.js";
 import type { NotificationManager } from "../notification/manager.js";
 import type { RepoMatch, RepoRouter } from "../git/repo-router.js";
+import type { WebhookHealthTracker } from "../webhook/health-tracker.js";
 import type {
   Issue,
   ModelSelection,
@@ -53,5 +54,6 @@ export interface OrchestratorDeps {
   notificationManager?: NotificationManager;
   repoRouter?: Pick<RepoRouter, "matchIssue">;
   gitManager?: GitIntegrationPort;
+  webhookHealthTracker?: WebhookHealthTracker;
   logger: SymphonyLogger;
 }

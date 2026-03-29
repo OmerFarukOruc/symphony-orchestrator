@@ -17,6 +17,7 @@ export interface RuntimeSnapshot {
   recent_events: RecentEvent[];
   stall_events?: StallEventView[];
   system_health?: SystemHealth;
+  webhook_health?: WebhookHealth;
 }
 
 export interface WorkflowColumn {
@@ -131,6 +132,18 @@ export interface SystemHealth {
   checked_at: string;
   running_count: number;
   message: string;
+}
+
+export interface WebhookHealth {
+  status: "connected" | "degraded" | "disconnected";
+  effective_interval_ms: number;
+  stats: {
+    deliveries_received: number;
+    last_delivery_at: string | null;
+    last_event_type: string | null;
+  };
+  last_delivery_at: string | null;
+  last_event_type: string | null;
 }
 
 export interface RateLimits {

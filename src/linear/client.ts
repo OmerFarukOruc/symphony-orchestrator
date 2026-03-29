@@ -9,6 +9,10 @@ import {
   buildIssuesByIdsQuery,
   buildIssuesByStatesQuery,
   buildProjectLookupQuery,
+  buildWebhooksQuery,
+  buildWebhookCreateMutation,
+  buildWebhookUpdateMutation,
+  buildWebhookDeleteMutation,
 } from "./queries.js";
 import { fetchCandidateIssues, fetchIssueStatesByIds, fetchIssuesByStates } from "./issue-pagination.js";
 import { LinearClientError } from "./errors.js";
@@ -191,6 +195,92 @@ export class LinearClient {
   }
 
   /**
+   * List all webhooks registered in the Linear workspace.
+   */
+  async listWebhooks(): Promise<
+    Array<{
+      id: string;
+      url: string;
+      enabled: boolean;
+      label: string | null;
+      secret: string | null;
+      resourceTypes: string[];
+      teamId: string | null;
+    }>
+  > {
+    const payload = await this.runGraphQL(buildWebhooksQuery());
+    const nodes = asArray(asRecord(asRecord(payload.data).webhooks).nodes);
+    return nodes.map((node) => {
+      const n = asRecord(node);
+      return {
+        id: asStringOrNull(n.id) ?? "",
+        url: asStringOrNull(n.url) ?? "",
+        enabled: n.enabled === true,
+        label: asStringOrNull(n.label),
+        secret: asStringOrNull(n.secret),
+        resourceTypes: asArray(n.resourceTypes).map((rt) => String(rt)),
+        teamId: asStringOrNull(n.teamId),
+      };
+    });
+  }
+
+  /**
+   * Create a new webhook in the Linear workspace.
+   * Retries up to 3 times with exponential backoff.
+   */
+  async createWebhook(input: {
+    url: string;
+    teamId?: string;
+    resourceTypes: string[];
+    label?: string;
+    secret?: string;
+  }): Promise<{ id: string; secret: string | null }> {
+    const payload = await this.withRetryReturn("createWebhook", async () => {
+      return this.runGraphQL(buildWebhookCreateMutation(), {
+        url: input.url,
+        teamId: input.teamId ?? null,
+        resourceTypes: input.resourceTypes,
+        label: input.label ?? null,
+        secret: input.secret ?? null,
+      });
+    });
+    const webhook = asRecord(asRecord(asRecord(payload.data).webhookCreate).webhook);
+    return {
+      id: asStringOrNull(webhook.id) ?? "",
+      secret: asStringOrNull(webhook.secret),
+    };
+  }
+
+  /**
+   * Update an existing webhook (e.g. re-enable, change URL or resource types).
+   * Retries up to 3 times with exponential backoff.
+   */
+  async updateWebhook(
+    id: string,
+    input: {
+      enabled?: boolean;
+      url?: string;
+      label?: string;
+      resourceTypes?: string[];
+      secret?: string;
+    },
+  ): Promise<void> {
+    await this.withRetry("updateWebhook", async () => {
+      await this.runGraphQL(buildWebhookUpdateMutation(), { id, ...input });
+    });
+  }
+
+  /**
+   * Delete a webhook by ID.
+   * Retries up to 3 times with exponential backoff.
+   */
+  async deleteWebhook(id: string): Promise<void> {
+    await this.withRetry("deleteWebhook", async () => {
+      await this.runGraphQL(buildWebhookDeleteMutation(), { id });
+    });
+  }
+
+  /**
    * Transition a Linear issue to the given state ID.
    * Retries up to 3 times with exponential backoff. Non-blocking on failure.
    */
@@ -229,6 +319,24 @@ export class LinearClient {
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
+  }
+
+  private async withRetryReturn<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          throw error;
+        }
+        const delayMs = 1000 * 2 ** (attempt - 1) * (randomInt(500, 1000) / 1000);
+        this.logger.warn({ operation, attempt, delayMs, error: toErrorString(error) }, "linear write-back retry");
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    /* c8 ignore next -- unreachable: loop always returns or throws */
+    throw new LinearClientError("linear_unknown_payload", `${operation} exhausted retries without result`);
   }
 
   async runGraphQL(

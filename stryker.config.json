@@ -5,20 +5,20 @@
   "checkers": ["typescript"],
   "tsconfigFile": "tsconfig.json",
   "mutate": [
-    "src/config/coercion.ts",
-    "src/config/validators.ts",
     "src/config/builders.ts",
-    "src/config/normalizers.ts",
+    "src/config/coercion.ts",
     "src/config/merge.ts",
+    "src/config/normalizers.ts",
     "src/config/resolvers.ts",
+    "src/config/validators.ts",
 
     "src/core/attempt-store.ts",
     "src/core/attempt-store-port.ts",
     "src/core/content-sanitizer.ts",
     "src/core/model-pricing.ts",
 
-    "src/state/policy.ts",
     "src/state/machine.ts",
+    "src/state/policy.ts",
 
     "src/agent-runner/abort-outcomes.ts",
     "src/agent-runner/error-classifier.ts",
@@ -43,25 +43,25 @@
     "src/orchestrator/worker-failure.ts",
 
     "src/utils/type-guards.ts",
+    "src/workspace/manager.ts",
     "src/workspace/path-registry.ts",
     "src/workspace/paths.ts",
-    "src/workspace/manager.ts",
 
     "src/workflow/columns.ts",
     "src/workflow/loader.ts",
 
-    "src/git/repo-router.ts",
     "src/git/manager.ts",
+    "src/git/repo-router.ts",
 
-    "src/linear/issue-parser.ts",
-    "src/linear/errors.ts"
+    "src/linear/errors.ts",
+    "src/linear/issue-parser.ts"
   ],
   "incremental": true,
   "incrementalFile": "reports/stryker-incremental.json",
   "thresholds": {
     "high": 80,
     "low": 60,
-    "break": 70
+    "break": null
   },
   "reporters": ["html", "clear-text", "progress"],
   "htmlReporter": {

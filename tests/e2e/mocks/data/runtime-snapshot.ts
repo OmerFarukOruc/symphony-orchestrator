@@ -49,6 +49,18 @@ export interface RecentEvent {
   metadata?: Record<string, unknown> | null;
 }
 
+export interface WebhookHealth {
+  status: "connected" | "degraded" | "disconnected";
+  effective_interval_ms: number;
+  stats: {
+    deliveries_received: number;
+    last_delivery_at: string | null;
+    last_event_type: string | null;
+  };
+  last_delivery_at: string | null;
+  last_event_type: string | null;
+}
+
 export interface RuntimeSnapshot {
   generated_at: string;
   counts: { running: number; retrying: number };
@@ -73,6 +85,7 @@ export interface RuntimeSnapshot {
     running_count: number;
     message: string;
   };
+  webhook_health?: WebhookHealth;
 }
 
 function buildIssueView(overrides?: Partial<RuntimeIssueView>): RuntimeIssueView {
@@ -185,6 +198,21 @@ export function buildRuntimeSnapshot(overrides?: Partial<RuntimeSnapshot>): Runt
       running_count: 1,
       message: "All systems operational",
     },
+    ...overrides,
+  };
+}
+
+export function buildWebhookHealth(overrides?: Partial<WebhookHealth>): WebhookHealth {
+  return {
+    status: "connected",
+    effective_interval_ms: 120_000,
+    stats: {
+      deliveries_received: 47,
+      last_delivery_at: "2026-01-15T11:59:45.000Z",
+      last_event_type: "Issue",
+    },
+    last_delivery_at: "2026-01-15T11:59:45.000Z",
+    last_event_type: "Issue",
     ...overrides,
   };
 }

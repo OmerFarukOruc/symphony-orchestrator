@@ -190,6 +190,13 @@ export interface RuntimeSnapshot {
   recentEvents: RecentEvent[];
   stallEvents?: StallEventView[];
   systemHealth?: SystemHealth;
+  webhookHealth?: {
+    status: string;
+    effectiveIntervalMs: number;
+    stats: { deliveriesReceived: number; lastDeliveryAt: string | null; lastEventType: string | null };
+    lastDeliveryAt: string | null;
+    lastEventType: string | null;
+  };
   availableModels?: string[] | null;
 }
 
@@ -235,6 +242,14 @@ export interface RepoConfig {
 
 export interface PollingConfig {
   intervalMs: number;
+}
+
+export interface WebhookConfig {
+  webhookUrl: string;
+  webhookSecret: string;
+  pollingStretchMs: number;
+  pollingBaseMs: number;
+  healthCheckIntervalMs: number;
 }
 
 interface WorkspaceHooks {
@@ -365,6 +380,7 @@ export interface ServiceConfig {
   codex: CodexConfig;
   stateMachine?: StateMachineConfig | null;
   server: ServerConfig;
+  webhook?: WebhookConfig | null;
 }
 
 export interface SymphonyLogger {
