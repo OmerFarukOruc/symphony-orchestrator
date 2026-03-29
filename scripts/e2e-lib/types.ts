@@ -106,6 +106,12 @@ export interface RunContext {
   reportDir: string;
   events: JsonlWriter;
   verbose: boolean;
+  /** --keep flag: skip cleanup of issue + PR. */
+  keep: boolean;
+  /** --skip-build flag: skip pnpm build in preflight. */
+  skipBuild: boolean;
+  /** --keep-symphony flag: don't kill Symphony after run. */
+  keepSymphony: boolean;
 }
 
 /** Result returned by each lifecycle phase. */
@@ -119,16 +125,6 @@ export interface PhaseResult {
 
 /** Async function signature for a single E2E phase. */
 export type PhaseFn = (ctx: RunContext) => Promise<PhaseResult>;
-
-/** CLI flags parsed from process.argv. */
-export interface CliFlags {
-  config: string;
-  timeout?: number;
-  skipBuild: boolean;
-  keep: boolean;
-  keepSymphony: boolean;
-  verbose: boolean;
-}
 
 /** Structured diagnosis produced by error analysis helpers. */
 export interface DiagnosisResult {

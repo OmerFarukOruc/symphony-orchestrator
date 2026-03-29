@@ -8,10 +8,17 @@
  *   7.5 restartResilience  — restart Symphony and verify the issue is NOT re-dispatched
  */
 
-import type { ChildProcess } from "node:child_process";
-
 import type { RunContext, PhaseResult } from "./types.js";
-import { callLinearGraphQL, resolveEnvValue, sleep, waitForHttp, spawnSymphony, fetchJson } from "./helpers.js";
+import {
+  callLinearGraphQL,
+  errorMsg,
+  resolveEnvValue,
+  sleep,
+  waitForHttp,
+  spawnSymphony,
+  fetchJson,
+  stopProcess,
+} from "./helpers.js";
 
 // ---------------------------------------------------------------------------
 // Inline types for API responses (avoids importing from src/)
@@ -93,32 +100,6 @@ function log(ctx: RunContext, message: string): void {
     console.log(line);
   }
   ctx.events.write({ at: new Date().toISOString(), event: "log", message });
-}
-
-/**
- * Gracefully stop a Symphony child process: SIGTERM, then SIGKILL after a timeout.
- * Returns once the process has exited.
- */
-async function stopProcess(child: ChildProcess, gracefulMs: number): Promise<void> {
-  if (child.exitCode !== null) {
-    return; // Already exited
-  }
-
-  child.kill("SIGTERM");
-
-  const exited = await Promise.race([
-    new Promise<boolean>((resolve) => {
-      child.once("exit", () => resolve(true));
-    }),
-    sleep(gracefulMs).then(() => false),
-  ]);
-
-  if (!exited && child.exitCode === null) {
-    child.kill("SIGKILL");
-    await new Promise<void>((resolve) => {
-      child.once("exit", () => resolve());
-    });
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -219,119 +200,111 @@ export async function waitPickup(ctx: RunContext): Promise<PhaseResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 6: Monitor Lifecycle — helpers
+// ---------------------------------------------------------------------------
+
+interface MonitorState {
+  lastAttempt: AttemptSummaryEntry | null;
+  completed: boolean;
+  failReason: string | null;
+  lastStatePoll: number;
+  lastAttemptPoll: number;
+}
+
+/** Poll /api/v1/state, returns whether to force an immediate attempt poll. */
+async function pollState(ctx: RunContext, monitor: MonitorState): Promise<void> {
+  try {
+    const state = (await fetchJson(`${ctx.baseUrl}/api/v1/state`)) as StateResponse;
+    const inRunning = state.running.some((entry) => entry.identifier === ctx.issueIdentifier);
+    log(ctx, `State poll: running=${state.running.length}, ours_in_running=${String(inRunning)}`);
+
+    if (!inRunning && monitor.lastAttempt === null) {
+      monitor.lastAttemptPoll = 0;
+    }
+  } catch (error_) {
+    log(ctx, `State poll error: ${errorMsg(error_)}`);
+  }
+}
+
+/** Poll /api/v1/{identifier}/attempts, detect terminal status. */
+async function pollAttempts(ctx: RunContext, monitor: MonitorState): Promise<void> {
+  try {
+    const attemptsResp = (await fetchJson(`${ctx.baseUrl}/api/v1/${ctx.issueIdentifier}/attempts`)) as AttemptsResponse;
+
+    if (attemptsResp.attempts.length > 0) {
+      monitor.lastAttempt = attemptsResp.attempts.at(-1) ?? null;
+    }
+
+    if (!monitor.lastAttempt) return;
+
+    log(
+      ctx,
+      `Attempt poll: #${String(monitor.lastAttempt.attemptNumber)} status=${monitor.lastAttempt.status} model=${monitor.lastAttempt.model}`,
+    );
+
+    if (TERMINAL_ATTEMPT_STATUSES.has(monitor.lastAttempt.status)) {
+      if (monitor.lastAttempt.status === "completed") {
+        monitor.completed = true;
+      } else {
+        const suffix = monitor.lastAttempt.errorCode ? ` (${monitor.lastAttempt.errorCode})` : "";
+        monitor.failReason = `Attempt ended with status: ${monitor.lastAttempt.status}${suffix}`;
+      }
+    }
+  } catch (error_) {
+    log(ctx, `Attempt poll error: ${errorMsg(error_)}`);
+  }
+}
+
+function buildAttemptData(attempt: AttemptSummaryEntry): Record<string, unknown> {
+  const durationMs =
+    attempt.endedAt && attempt.startedAt
+      ? new Date(attempt.endedAt).getTime() - new Date(attempt.startedAt).getTime()
+      : null;
+
+  return {
+    number: attempt.attemptNumber,
+    model: attempt.model,
+    turns: attempt.turnCount ?? null,
+    tokens: attempt.tokenUsage,
+    durationMs,
+    status: attempt.status,
+    errorCode: attempt.errorCode,
+    errorMessage: attempt.errorMessage,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Phase 6: Monitor Lifecycle
 // ---------------------------------------------------------------------------
 
-export async function monitorLifecycle(ctx: RunContext): Promise<PhaseResult> {
-  const start = Date.now();
-  const timeoutMs = ctx.config.timeouts.lifecycle_complete_ms;
-  const deadline = start + timeoutMs;
-
-  const stateIntervalMs = 5000;
-  const attemptIntervalMs = 30_000;
-
-  log(ctx, `Monitoring lifecycle for ${ctx.issueIdentifier} (timeout: ${timeoutMs}ms)`);
-
-  let lastAttempt: AttemptSummaryEntry | null = null;
-  let completed = false;
-  let failReason: string | null = null;
-
-  // Track last poll timestamps so both loops run on independent cadences.
-  let lastStatePoll = 0;
-  let lastAttemptPoll = 0;
-
+async function runPollingLoop(
+  ctx: RunContext,
+  monitor: MonitorState,
+  deadline: number,
+  stateIntervalMs: number,
+  attemptIntervalMs: number,
+): Promise<void> {
   while (Date.now() < deadline) {
     const now = Date.now();
 
-    // --- State polling (every 5s) ---
-    if (now - lastStatePoll >= stateIntervalMs) {
-      lastStatePoll = now;
-      try {
-        const state = (await fetchJson(`${ctx.baseUrl}/api/v1/state`)) as StateResponse;
-        const inRunning = state.running.some((entry) => entry.identifier === ctx.issueIdentifier);
-
-        log(ctx, `State poll: running=${state.running.length}, ours_in_running=${String(inRunning)}`);
-
-        // If the issue disappeared from running, check attempts for terminal state.
-        if (!inRunning && lastAttempt === null) {
-          // Force an immediate attempt poll to pick up completion.
-          lastAttemptPoll = 0;
-        }
-      } catch (error_) {
-        const message = error_ instanceof Error ? error_.message : String(error_);
-        log(ctx, `State poll error: ${message}`);
-      }
+    if (now - monitor.lastStatePoll >= stateIntervalMs) {
+      monitor.lastStatePoll = now;
+      await pollState(ctx, monitor);
     }
 
-    // --- Attempt polling (every 30s or forced) ---
-    if (now - lastAttemptPoll >= attemptIntervalMs) {
-      lastAttemptPoll = now;
-      try {
-        const attemptsResp = (await fetchJson(
-          `${ctx.baseUrl}/api/v1/${ctx.issueIdentifier}/attempts`,
-        )) as AttemptsResponse;
-
-        const attempts = attemptsResp.attempts;
-        if (attempts.length > 0) {
-          lastAttempt = attempts.at(-1) ?? null;
-        }
-
-        if (lastAttempt) {
-          log(
-            ctx,
-            `Attempt poll: #${String(lastAttempt.attemptNumber)} status=${lastAttempt.status} model=${lastAttempt.model}`,
-          );
-
-          if (TERMINAL_ATTEMPT_STATUSES.has(lastAttempt.status)) {
-            if (lastAttempt.status === "completed") {
-              completed = true;
-            } else {
-              failReason = `Attempt ended with status: ${lastAttempt.status}`;
-              if (lastAttempt.errorCode) {
-                failReason += ` (${lastAttempt.errorCode})`;
-              }
-            }
-            break;
-          }
-        }
-      } catch (error_) {
-        const message = error_ instanceof Error ? error_.message : String(error_);
-        log(ctx, `Attempt poll error: ${message}`);
-      }
+    if (now - monitor.lastAttemptPoll >= attemptIntervalMs) {
+      monitor.lastAttemptPoll = now;
+      await pollAttempts(ctx, monitor);
+      if (monitor.completed || monitor.failReason) return;
     }
 
-    // Sleep a short tick to avoid busy-looping.
     const remaining = deadline - Date.now();
-    if (remaining <= 0) break;
+    if (remaining <= 0) return;
     await sleep(Math.min(1000, remaining));
   }
+}
 
-  // --- Timeout ---
-  if (!completed && failReason === null) {
-    failReason = `Lifecycle timed out after ${timeoutMs}ms`;
-  }
-
-  // --- Gather final attempt data ---
-  let attemptData: Record<string, unknown> = {};
-  if (lastAttempt) {
-    const durationMs =
-      lastAttempt.endedAt && lastAttempt.startedAt
-        ? new Date(lastAttempt.endedAt).getTime() - new Date(lastAttempt.startedAt).getTime()
-        : null;
-
-    attemptData = {
-      number: lastAttempt.attemptNumber,
-      model: lastAttempt.model,
-      turns: lastAttempt.turnCount ?? null,
-      tokens: lastAttempt.tokenUsage,
-      durationMs,
-      status: lastAttempt.status,
-      errorCode: lastAttempt.errorCode,
-      errorMessage: lastAttempt.errorMessage,
-    };
-  }
-
-  // --- Pull PR URL from the issue detail endpoint ---
+async function enrichWithPrUrl(ctx: RunContext, attemptData: Record<string, unknown>): Promise<void> {
   try {
     const detail = (await fetchJson(`${ctx.baseUrl}/api/v1/${ctx.issueIdentifier}`)) as IssueDetailResponse;
     if (detail.pullRequestUrl) {
@@ -341,28 +314,47 @@ export async function monitorLifecycle(ctx: RunContext): Promise<PhaseResult> {
   } catch {
     log(ctx, "Could not fetch issue detail for PR URL");
   }
+}
 
-  if (completed) {
-    log(ctx, `Lifecycle completed successfully`);
+export async function monitorLifecycle(ctx: RunContext): Promise<PhaseResult> {
+  const start = Date.now();
+  const timeoutMs = ctx.config.timeouts.lifecycle_complete_ms;
+
+  log(ctx, `Monitoring lifecycle for ${ctx.issueIdentifier} (timeout: ${timeoutMs}ms)`);
+
+  const monitor: MonitorState = {
+    lastAttempt: null,
+    completed: false,
+    failReason: null,
+    lastStatePoll: 0,
+    lastAttemptPoll: 0,
+  };
+
+  await runPollingLoop(ctx, monitor, start + timeoutMs, 5000, 30_000);
+
+  if (!monitor.completed && monitor.failReason === null) {
+    monitor.failReason = `Lifecycle timed out after ${timeoutMs}ms`;
+  }
+
+  const attemptData = monitor.lastAttempt ? buildAttemptData(monitor.lastAttempt) : {};
+  await enrichWithPrUrl(ctx, attemptData);
+
+  if (monitor.completed) {
+    log(ctx, "Lifecycle completed successfully");
     return {
       phase: "monitor-lifecycle",
       status: "pass",
       durationMs: Date.now() - start,
-      data: {
-        turns: attemptData.turns ?? null,
-        tokens: attemptData.tokens ?? null,
-        status: attemptData.status ?? null,
-        attemptData,
-      },
+      data: { turns: attemptData.turns ?? null, tokens: attemptData.tokens ?? null, attemptData },
     };
   }
 
-  log(ctx, `Lifecycle failed: ${failReason}`);
+  log(ctx, `Lifecycle failed: ${monitor.failReason}`);
   return {
     phase: "monitor-lifecycle",
     status: "fail",
     durationMs: Date.now() - start,
-    error: { message: failReason ?? "unknown failure" },
+    error: { message: monitor.failReason ?? "unknown failure" },
     data: { attemptData },
   };
 }
@@ -395,7 +387,7 @@ export async function restartResilience(ctx: RunContext): Promise<PhaseResult> {
   try {
     await waitForHttp(`${ctx.baseUrl}/api/v1/state`, startupMs);
   } catch (error_) {
-    const message = error_ instanceof Error ? error_.message : String(error_);
+    const message = errorMsg(error_);
     return {
       phase: "restart-resilience",
       status: "fail",
@@ -411,20 +403,10 @@ export async function restartResilience(ctx: RunContext): Promise<PhaseResult> {
   await sleep(pollSettleMs);
 
   // 5. Check that the completed issue is NOT re-dispatched.
-  let redispatched = false;
-  try {
-    const state = (await fetchJson(`${ctx.baseUrl}/api/v1/state`)) as StateResponse;
-    redispatched = state.running.some((entry) => entry.identifier === ctx.issueIdentifier);
-    log(ctx, `Post-restart state: running=${state.running.length}, our_issue_in_running=${String(redispatched)}`);
-  } catch (error_) {
-    const message = error_ instanceof Error ? error_.message : String(error_);
-    return {
-      phase: "restart-resilience",
-      status: "fail",
-      durationMs: Date.now() - start,
-      error: { message: `Failed to fetch state after restart: ${message}` },
-    };
-  }
+  const postRestartState = await fetchJson(`${ctx.baseUrl}/api/v1/state`).catch((caught: unknown) => {
+    log(ctx, `Failed to fetch state after restart: ${errorMsg(caught)}`);
+    return null;
+  });
 
   // 6. Shut down the restarted process.
   if (ctx.symphonyProcess) {
@@ -432,6 +414,19 @@ export async function restartResilience(ctx: RunContext): Promise<PhaseResult> {
     await stopProcess(ctx.symphonyProcess, gracefulMs);
     ctx.symphonyProcess = null;
   }
+
+  if (postRestartState === null) {
+    return {
+      phase: "restart-resilience",
+      status: "fail",
+      durationMs: Date.now() - start,
+      error: { message: "Failed to fetch state after restart" },
+    };
+  }
+
+  const state = postRestartState as StateResponse;
+  const redispatched = state.running.some((entry) => entry.identifier === ctx.issueIdentifier);
+  log(ctx, `Post-restart state: running=${state.running.length}, our_issue_in_running=${String(redispatched)}`);
 
   if (redispatched) {
     return {

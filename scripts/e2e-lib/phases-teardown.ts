@@ -3,10 +3,11 @@
  * Also exports shutdownSymphony for graceful Symphony process termination.
  */
 import { execFileSync } from "node:child_process";
-import { cp, mkdir, access } from "node:fs/promises";
+import { cp, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+
 import type { RunContext, PhaseResult } from "./types.js";
-import { callLinearGraphQL, resolveEnvValue } from "./helpers.js";
+import { callLinearGraphQL, errorMsg, resolveEnvValue, stopProcess } from "./helpers.js";
 
 /* ------------------------------------------------------------------ */
 /*  Utilities                                                          */
@@ -17,12 +18,16 @@ function extractPrNumber(prUrl: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
-function elapsed(start: number): number {
-  return Math.round(performance.now() - start);
-}
-
-function errorMsg(error_: unknown): string {
-  return error_ instanceof Error ? error_.message : String(error_);
+/**
+ * Copy a source path to a destination, silently skipping if source does not
+ * exist (avoids the TOCTOU of checking existence then copying).
+ */
+async function tryCopy(src: string, dst: string, recursive = false): Promise<void> {
+  try {
+    await cp(src, dst, { recursive });
+  } catch (error_: unknown) {
+    if ((error_ as NodeJS.ErrnoException).code !== "ENOENT") throw error_;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -30,14 +35,14 @@ function errorMsg(error_: unknown): string {
 /* ------------------------------------------------------------------ */
 
 export async function verifyPr(ctx: RunContext): Promise<PhaseResult> {
-  const start = performance.now();
+  const start = Date.now();
 
   if (!ctx.prUrl) {
     return {
       phase: "verify-pr",
       status: "fail",
-      durationMs: elapsed(start),
-      error: "No PR URL found in attempt record",
+      durationMs: Date.now() - start,
+      error: { message: "No PR URL found in attempt record" },
     };
   }
 
@@ -46,8 +51,8 @@ export async function verifyPr(ctx: RunContext): Promise<PhaseResult> {
     return {
       phase: "verify-pr",
       status: "fail",
-      durationMs: elapsed(start),
-      error: `Could not parse PR number from URL: ${ctx.prUrl}`,
+      durationMs: Date.now() - start,
+      error: { message: `Could not parse PR number from URL: ${ctx.prUrl}` },
     };
   }
 
@@ -72,8 +77,8 @@ export async function verifyPr(ctx: RunContext): Promise<PhaseResult> {
     return {
       phase: "verify-pr",
       status: "fail",
-      durationMs: elapsed(start),
-      error: `gh pr view failed: ${errorMsg(error_)}`,
+      durationMs: Date.now() - start,
+      error: { message: `gh pr view failed: ${errorMsg(error_)}` },
     };
   }
 
@@ -102,15 +107,15 @@ export async function verifyPr(ctx: RunContext): Promise<PhaseResult> {
     return {
       phase: "verify-pr",
       status: "fail",
-      durationMs: elapsed(start),
-      error: errors.join("; "),
+      durationMs: Date.now() - start,
+      error: { message: errors.join("; ") },
     };
   }
 
   return {
     phase: "verify-pr",
     status: "pass",
-    durationMs: elapsed(start),
+    durationMs: Date.now() - start,
     data: {
       prNumber,
       commits: commitCount,
@@ -125,30 +130,23 @@ export async function verifyPr(ctx: RunContext): Promise<PhaseResult> {
 /* ------------------------------------------------------------------ */
 
 export async function verifyLinear(ctx: RunContext): Promise<PhaseResult> {
-  const start = performance.now();
+  const start = Date.now();
 
   if (!ctx.issueId) {
     return {
       phase: "verify-linear",
       status: "fail",
-      durationMs: elapsed(start),
-      error: "No issue ID available in context",
+      durationMs: Date.now() - start,
+      error: { message: "No issue ID available in context" },
     };
   }
 
   const apiKey = resolveEnvValue(ctx.config.linear.api_key);
-  if (!apiKey) {
-    return {
-      phase: "verify-linear",
-      status: "fail",
-      durationMs: elapsed(start),
-      error: "LINEAR_API_KEY could not be resolved",
-    };
-  }
 
+  // Parameterized query — avoids GraphQL injection via ctx.issueId
   const query = `
-    query {
-      issue(id: "${ctx.issueId}") {
+    query VerifyIssue($issueId: String!) {
+      issue(id: $issueId) {
         state { name }
         comments(first: 10) { nodes { body createdAt } }
       }
@@ -157,13 +155,15 @@ export async function verifyLinear(ctx: RunContext): Promise<PhaseResult> {
 
   let payload: { data?: Record<string, unknown> };
   try {
-    payload = await callLinearGraphQL(apiKey, query, {});
+    payload = (await callLinearGraphQL(apiKey, query, { issueId: ctx.issueId })) as {
+      data?: Record<string, unknown>;
+    };
   } catch (error_) {
     return {
       phase: "verify-linear",
       status: "fail",
-      durationMs: elapsed(start),
-      error: `Linear GraphQL failed: ${errorMsg(error_)}`,
+      durationMs: Date.now() - start,
+      error: { message: `Linear GraphQL failed: ${errorMsg(error_)}` },
     };
   }
 
@@ -178,8 +178,8 @@ export async function verifyLinear(ctx: RunContext): Promise<PhaseResult> {
     return {
       phase: "verify-linear",
       status: "fail",
-      durationMs: elapsed(start),
-      error: "Issue not found in Linear response",
+      durationMs: Date.now() - start,
+      error: { message: "Issue not found in Linear response" },
     };
   }
 
@@ -204,15 +204,15 @@ export async function verifyLinear(ctx: RunContext): Promise<PhaseResult> {
     return {
       phase: "verify-linear",
       status: "fail",
-      durationMs: elapsed(start),
-      error: errors.join("; "),
+      durationMs: Date.now() - start,
+      error: { message: errors.join("; ") },
     };
   }
 
   return {
     phase: "verify-linear",
     status: "pass",
-    durationMs: elapsed(start),
+    durationMs: Date.now() - start,
     data: { finalState: "Done", commentCount },
   };
 }
@@ -221,52 +221,31 @@ export async function verifyLinear(ctx: RunContext): Promise<PhaseResult> {
 /*  Phase 10 — collect-artifacts (ALWAYS runs)                         */
 /* ------------------------------------------------------------------ */
 
-async function pathExists(filePath: string): Promise<boolean> {
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function collectArtifacts(ctx: RunContext): Promise<PhaseResult> {
-  const start = performance.now();
-
+  const start = Date.now();
   const artifactsDir = join(ctx.reportDir, "artifacts");
 
   try {
     await mkdir(artifactsDir, { recursive: true });
 
-    const symphonyDir = join(ctx.workspaceDir ?? ".", ".symphony");
+    const symphonyDir = join(".", ".symphony");
 
-    const attemptsDir = join(symphonyDir, "attempts");
-    if (await pathExists(attemptsDir)) {
-      await cp(attemptsDir, join(artifactsDir, "attempts"), { recursive: true });
-    }
-
-    const eventsDir = join(symphonyDir, "events");
-    if (await pathExists(eventsDir)) {
-      await cp(eventsDir, join(artifactsDir, "events"), { recursive: true });
-    }
-
-    const dbPath = join(symphonyDir, "symphony.db");
-    if (await pathExists(dbPath)) {
-      await cp(dbPath, join(artifactsDir, "symphony.db"));
-    }
+    await tryCopy(join(symphonyDir, "attempts"), join(artifactsDir, "attempts"), true);
+    await tryCopy(join(symphonyDir, "events"), join(artifactsDir, "events"), true);
+    await tryCopy(join(symphonyDir, "symphony.db"), join(artifactsDir, "symphony.db"));
   } catch (error_) {
     return {
       phase: "collect-artifacts",
       status: "fail",
-      durationMs: elapsed(start),
-      error: `Artifact collection failed: ${errorMsg(error_)}`,
+      durationMs: Date.now() - start,
+      error: { message: `Artifact collection failed: ${errorMsg(error_)}` },
     };
   }
 
   return {
     phase: "collect-artifacts",
     status: "pass",
-    durationMs: elapsed(start),
+    durationMs: Date.now() - start,
   };
 }
 
@@ -275,13 +254,13 @@ export async function collectArtifacts(ctx: RunContext): Promise<PhaseResult> {
 /* ------------------------------------------------------------------ */
 
 export async function cleanup(ctx: RunContext): Promise<PhaseResult> {
-  const start = performance.now();
+  const start = Date.now();
 
-  if (ctx.config.cleanup.enabled === false || ctx.flags?.keep) {
+  if (ctx.config.cleanup.enabled === false || ctx.keep) {
     return {
       phase: "cleanup",
       status: "pass",
-      durationMs: elapsed(start),
+      durationMs: Date.now() - start,
       data: { skipped: true },
     };
   }
@@ -306,76 +285,56 @@ export async function cleanup(ctx: RunContext): Promise<PhaseResult> {
 
   // Cancel issue — only if we have an issue ID
   if (ctx.issueId) {
-    const apiKey = resolveEnvValue(ctx.config.linear.api_key);
-    if (apiKey) {
-      try {
-        const teamId = ctx.config.linear.team_id;
+    try {
+      const apiKey = resolveEnvValue(ctx.config.linear.api_key);
+      const teamId = ctx.config.linear.team_id;
 
-        // Step 1: Find "Canceled" state ID
-        const statesQuery = `
-          query {
-            team(id: "${teamId}") {
-              states { nodes { id name } }
+      // Parameterized queries — avoids GraphQL injection
+      const statesQuery = `
+        query TeamStates($teamId: String!) {
+          team(id: $teamId) {
+            states { nodes { id name } }
+          }
+        }
+      `;
+      const statesPayload = (await callLinearGraphQL(apiKey, statesQuery, { teamId })) as {
+        data?: { team?: { states?: { nodes?: Array<{ id: string; name: string }> } } };
+      };
+      const stateNodes = statesPayload.data?.team?.states?.nodes ?? [];
+      const canceledState = stateNodes.find((node) => node.name === "Canceled");
+
+      if (canceledState) {
+        const mutation = `
+          mutation CancelIssue($issueId: String!, $stateId: String!) {
+            issueUpdate(id: $issueId, input: { stateId: $stateId }) {
+              success
             }
           }
         `;
-        const statesPayload = await callLinearGraphQL(apiKey, statesQuery, {});
-        const stateNodes =
-          (statesPayload.data?.team as { states?: { nodes?: Array<{ id: string; name: string }> } })?.states?.nodes ??
-          [];
-        const canceledState = stateNodes.find((node) => node.name === "Canceled");
-
-        // Step 2: Transition issue
-        if (canceledState) {
-          const mutation = `
-            mutation {
-              issueUpdate(id: "${ctx.issueId}", input: { stateId: "${canceledState.id}" }) {
-                success
-              }
-            }
-          `;
-          await callLinearGraphQL(apiKey, mutation, {});
-          results.issueCanceled = true;
-        }
-      } catch (error_) {
-        console.warn(`[cleanup] failed to cancel issue ${ctx.issueId}: ${errorMsg(error_)}`);
+        await callLinearGraphQL(apiKey, mutation, { issueId: ctx.issueId, stateId: canceledState.id });
+        results.issueCanceled = true;
       }
+    } catch (error_) {
+      console.warn(`[cleanup] failed to cancel issue ${ctx.issueId}: ${errorMsg(error_)}`);
     }
   }
 
   return {
     phase: "cleanup",
     status: "pass",
-    durationMs: elapsed(start),
+    durationMs: Date.now() - start,
     data: results,
   };
 }
 
 /* ------------------------------------------------------------------ */
-/*  shutdownSymphony — graceful SIGTERM → SIGKILL escalation           */
+/*  shutdownSymphony — delegates to shared stopProcess from helpers    */
 /* ------------------------------------------------------------------ */
 
 export async function shutdownSymphony(ctx: RunContext): Promise<void> {
-  const proc = ctx.symphonyProcess;
-  if (!proc || proc.exitCode !== null) {
+  if (!ctx.symphonyProcess || ctx.symphonyProcess.exitCode !== null) {
     return;
   }
-
   const gracefulMs = ctx.config.timeouts.graceful_shutdown_ms ?? 10_000;
-
-  proc.kill("SIGTERM");
-
-  const exited = await Promise.race([
-    new Promise<boolean>((resolve) => {
-      proc.once("exit", () => resolve(true));
-    }),
-    new Promise<boolean>((resolve) => {
-      setTimeout(() => resolve(false), gracefulMs);
-    }),
-  ]);
-
-  if (!exited && proc.exitCode === null) {
-    console.warn("[shutdown] Symphony did not exit gracefully, sending SIGKILL");
-    proc.kill("SIGKILL");
-  }
+  await stopProcess(ctx.symphonyProcess, gracefulMs);
 }

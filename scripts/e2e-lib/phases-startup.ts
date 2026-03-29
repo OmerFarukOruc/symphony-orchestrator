@@ -64,17 +64,13 @@ function logStep(ctx: RunContext, stepNumber: number, name: string, passed: bool
 // Phase 0 — Preflight
 // ---------------------------------------------------------------------------
 
-interface PreflightOptions {
-  skipBuild?: boolean;
-}
-
 /**
  * Validate all preconditions before launching Symphony.
  *
  * Checks credentials, CLI tools, port availability, repo reachability,
  * and optionally runs the build step.
  */
-export async function preflight(ctx: RunContext, options: PreflightOptions = {}): Promise<PhaseResult> {
+export async function preflight(ctx: RunContext): Promise<PhaseResult> {
   const start = Date.now();
   const { config } = ctx;
   let checkCount = 0;
@@ -161,7 +157,7 @@ export async function preflight(ctx: RunContext, options: PreflightOptions = {})
   }
 
   // 8. Build (unless skipped)
-  if (!options.skipBuild) {
+  if (!ctx.skipBuild) {
     try {
       execFileSync("pnpm", ["run", "build"], { timeout: 60_000, stdio: "ignore" });
       checkCount++;

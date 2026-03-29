@@ -153,9 +153,9 @@ export function generateSummary(
     finished_at: finishedAt.toISOString(),
     duration_ms: finishedAt.getTime() - ctx.startedAt.getTime(),
     config_summary: {
-      model: (ctx.config as Record<string, unknown>)["model"] ?? null,
-      project: (ctx.config as Record<string, unknown>)["project"] ?? null,
-      repo: (ctx.config as Record<string, unknown>)["repo"] ?? null,
+      model: ctx.config.codex.model,
+      project: ctx.config.linear.project_slug,
+      repo: `${ctx.config.github.test_repo.owner}/${ctx.config.github.test_repo.repo}`,
     },
     phases: phases.map((phase) => ({
       name: phase.phase,

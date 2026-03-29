@@ -6,6 +6,7 @@
  * the local filesystem.
  */
 
+import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import net from "node:net";
@@ -230,4 +231,43 @@ export function spawnSymphony(port: number, workflowPath: string, reportDir: str
   child.stderr?.pipe(stderrLog);
 
   return child;
+}
+
+// ---------------------------------------------------------------------------
+// Error helpers
+// ---------------------------------------------------------------------------
+
+/** Extract a human-readable message from an unknown error value. */
+export function errorMsg(caught: unknown): string {
+  return caught instanceof Error ? caught.message : String(caught);
+}
+
+// ---------------------------------------------------------------------------
+// Graceful shutdown
+// ---------------------------------------------------------------------------
+
+/**
+ * Gracefully stop a child process: SIGTERM, then SIGKILL after a timeout.
+ * Resolves once the process has exited.
+ */
+export async function stopProcess(child: ChildProcess, gracefulMs: number): Promise<void> {
+  if (child.exitCode !== null) {
+    return;
+  }
+
+  child.kill("SIGTERM");
+
+  const exited = await Promise.race([
+    new Promise<boolean>((resolve) => {
+      child.once("exit", () => resolve(true));
+    }),
+    sleep(gracefulMs).then(() => false),
+  ]);
+
+  if (!exited && child.exitCode === null) {
+    child.kill("SIGKILL");
+    await new Promise<void>((resolve) => {
+      child.once("exit", () => resolve());
+    });
+  }
 }
