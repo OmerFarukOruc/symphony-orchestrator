@@ -4,6 +4,9 @@
 # Agents directory (external tooling, not our source)
 .agents/skills/
 
+# Stitch design system output
+.stitch/
+
 # Build output
 dist/
 node_modules/

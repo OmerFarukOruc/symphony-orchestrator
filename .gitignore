@@ -3,6 +3,7 @@ dist/
 .desloppify/
 .symphony/
 .sisyphus/
+.stitch/
 
 # Logs and local runtime output
 *.log
