@@ -18,6 +18,7 @@ Use Node.js 22 or newer.
 - `pnpm exec playwright test --project=visual` runs visual regression tests (3 baselines). Use `--update-snapshots` to regenerate reference screenshots.
 - `pnpm run dev -- ./WORKFLOW.example.md` runs the CLI directly through `tsx`.
 - `node dist/cli/index.js ./WORKFLOW.example.md --port 4000` runs the built service.
+- `./scripts/run-e2e.sh` runs the full E2E lifecycle test against real Linear + GitHub APIs (requires credentials + Docker). See `docs/E2E_TESTING.md` for config and usage.
 
 ## Pre-commit & Pre-push Checks — MANDATORY
 
