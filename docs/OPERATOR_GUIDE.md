@@ -693,8 +693,32 @@ These paths exist only inside worker containers and are **not** on the host file
 | `POST`   | `/api/v1/setup/codex-auth`             | Upload `auth.json` for Codex Login mode                                               |
 | `POST`   | `/api/v1/setup/pkce-auth/start`        | Start the browser-based PKCE login flow and return the auth URL                       |
 | `GET`    | `/api/v1/setup/pkce-auth/status`       | Poll PKCE authorization status; exchanges code for tokens when the callback arrives   |
+| `POST`   | `/api/v1/setup/pkce-auth/cancel`       | Cancel an active PKCE login flow                                                      |
 | `POST`   | `/api/v1/setup/github-token`           | Validate and store a GitHub PAT                                                       |
+| `POST`   | `/api/v1/setup/create-test-issue`      | Create a smoke test issue in the configured tracker                                   |
+| `POST`   | `/api/v1/setup/create-label`           | Create a workflow label in the tracker                                                |
+| `POST`   | `/api/v1/setup/create-project`         | Create a new tracker project                                                          |
+| `GET`    | `/api/v1/setup/repo-routes`           | List configured repository routing rules                                              |
+| `POST`   | `/api/v1/setup/repo-route`            | Add a repository routing rule                                                         |
+| `DELETE` | `/api/v1/setup/repo-route/:index`     | Remove a repository routing rule by index                                             |
+| `POST`   | `/api/v1/setup/detect-default-branch` | Detect the default branch of a configured repository                                  |
 | `POST`   | `/api/v1/setup/reset`                  | Clear stored secrets plus auth-mode overlay values and restart setup                  |
+| `GET`    | `/api/v1/events`                       | SSE stream of real-time orchestrator events                                           |
+| `GET`    | `/api/v1/models`                       | List available Codex models from the provider                                         |
+| `POST`   | `/api/v1/:issue_identifier/abort`      | Abort a running issue                                                                 |
+| `POST`   | `/api/v1/:issue_identifier/steer`      | Inject a steering message into a running agent session                                |
+| `GET`    | `/api/v1/git/context`                  | Git repository context and configured repo routes                                     |
+| `GET`    | `/api/v1/workspaces`                   | Workspace inventory with disk usage and lifecycle info                                |
+| `DELETE` | `/api/v1/workspaces/:workspace_key`    | Remove a workspace directory                                                          |
+| `GET`    | `/api/v1/templates`                    | List prompt templates                                                                 |
+| `POST`   | `/api/v1/templates`                    | Create a prompt template                                                              |
+| `GET`    | `/api/v1/templates/:id`               | Get a prompt template by ID                                                           |
+| `PUT`    | `/api/v1/templates/:id`               | Update a prompt template                                                              |
+| `DELETE` | `/api/v1/templates/:id`               | Delete a prompt template                                                              |
+| `POST`   | `/api/v1/templates/:id/preview`       | Preview a rendered template with sample data                                          |
+| `GET`    | `/api/v1/audit`                        | Query audit log entries with optional filters                                         |
+| `GET`    | `/api/v1/openapi.json`                 | OpenAPI 3.0 specification                                                             |
+| `GET`    | `/api/docs`                            | Swagger UI for interactive API exploration                                            |
 
 ---
 

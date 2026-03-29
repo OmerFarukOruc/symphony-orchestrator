@@ -4,7 +4,7 @@
 > Research sources: Composio, OpenSwarm, mog, **thepopebot**, **jinyang**, **Orchestra**, **Eva**, **pilot (alekspetrov)**, **pilot (crisner1978)**, **vibe-kanban**, **hatice**.
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.5.0-blue?style=flat-square" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.6.0-blue?style=flat-square" />
   <img alt="Spec Conformance" src="https://img.shields.io/badge/spec-238%2F239-brightgreen?style=flat-square" />
 </p>
 

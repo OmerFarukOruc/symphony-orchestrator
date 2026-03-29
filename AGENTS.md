@@ -14,8 +14,8 @@ Use Node.js 22 or newer.
 - `pnpm test` runs the main Vitest suite.
 - `pnpm run test:watch` starts Vitest in watch mode for local iteration.
 - `pnpm run test:integration` runs the opt-in integration config; set `LINEAR_API_KEY` first when you want real credential coverage.
-- `pnpm exec playwright test --project=smoke` runs the Playwright E2E smoke tests (37 tests) against a Vite dev server with mocked API routes.
-- `pnpm exec playwright test --project=visual` runs visual regression tests (3 baselines). Use `--update-snapshots` to regenerate reference screenshots.
+- `pnpm exec playwright test --project=smoke` runs the Playwright E2E smoke tests (114 tests across 16 spec files) against a Vite dev server with mocked API routes.
+- `pnpm exec playwright test --project=visual` runs visual regression tests (4 visual specs with 4 baselines). Use `--update-snapshots` to regenerate reference screenshots.
 - `pnpm run dev -- ./WORKFLOW.example.md` runs the CLI directly through `tsx`.
 - `node dist/cli/index.js ./WORKFLOW.example.md --port 4000` runs the built service.
 - `./scripts/run-e2e.sh` runs the full E2E lifecycle test against real Linear + GitHub APIs (requires credentials + Docker). See `docs/E2E_TESTING.md` for config and usage.
@@ -34,9 +34,15 @@ Runs the full CI-mirror gate before any push is allowed:
 
 1. `pnpm run build` — TypeScript compilation
 2. `pnpm run lint` — ESLint checks
-3. `pnpm run format:check` — Prettier formatting verification
-4. `pnpm test` — Vitest test suite
-5. `pnpm run knip` — dead code / unused export analysis
+3. `pnpm run format` — Prettier auto-fix
+4. `pnpm run format:check` — Prettier formatting verification
+5. `pnpm test` — Vitest test suite
+6. `pnpm run knip` — dead code / unused export analysis
+7. `pnpm run jscpd` — duplicate code detection
+8. `pnpm exec playwright test --project=smoke` — E2E smoke tests
+9. `semgrep scan --config auto --config p/typescript --error` — security scan
+10. `pnpm run test:mutation:incremental` — mutation testing *(conditional: only runs when changed files overlap Stryker mutate targets)*
+11. `pnpm run typecheck:coverage` — type coverage (95% threshold)
 
 If any step fails, the push is aborted.
 

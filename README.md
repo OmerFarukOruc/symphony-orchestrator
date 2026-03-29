@@ -12,7 +12,7 @@
   <img alt="Node.js" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square&logo=node.js" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-blue?style=flat-square&logo=typescript" />
   <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker" />
-  <img alt="Status" src="https://img.shields.io/badge/status-v0.4.0-orange?style=flat-square" />
+  <img alt="Status" src="https://img.shields.io/badge/status-v0.6.0-orange?style=flat-square" />
 </p>
 
 <br/>
@@ -133,7 +133,7 @@ codex login                       # ChatGPT/Codex subscription path
 
 ---
 
-## ✨ What Ships Today (v0.4.0)
+## ✨ What Ships Today (v0.6.0)
 
 <table>
 <tr>
@@ -154,7 +154,9 @@ codex login                       # ChatGPT/Codex subscription path
 
 ### 🖥️ Dashboard & API
 - **📊 Real-time dashboard** — Board and overview views at `localhost:4000`
-- **📡 Full JSON API** — 30+ endpoints under `/api/v1/*`
+- **📡 Full JSON API** — 50+ endpoints under `/api/v1/*`
+- **💰 Cost tracking** — Per-issue and per-model dollar cost in dashboard and API
+- **📡 Live agent feed** — Real-time SSE streaming with subagent drill-down
 - **📈 Prometheus metrics** — `GET /metrics` for scrape-friendly monitoring
 - **⚙️ Setup wizard** — Guided credential setup via web UI
 - **🔧 Config overlay** — Persistent operator config with encrypted secrets
@@ -166,6 +168,7 @@ codex login                       # ChatGPT/Codex subscription path
 
 ### 🔗 Integrations
 - **🐙 Git automation** — Clone, commit, push, and PR creation on completion
+- **🐙 GitHub Issues adapter** — Use GitHub Issues instead of (or alongside) Linear
 - **📬 Slack notifications** — Lifecycle alerts with verbosity controls
 - **🤖 Codex integration** — `codex app-server` via JSON-RPC with dynamic tool handling
 
@@ -193,15 +196,12 @@ Symphony's roadmap ([#9 — Feature Roadmap](https://github.com/OmerFarukOruc/sy
 | Feature | What it unlocks |
 | ------- | --------------- |
 | [**⚡ Reactions System**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/10) | CI/review/approval events trigger automatic agent actions |
-| [**🐙 GitHub Issues Adapter**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/11) | Use GitHub Issues instead of (or alongside) Linear |
 | [**📱 Mobile Dashboard**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/12) | Fully responsive UI for monitoring on any device |
-| [**💰 Cost Tracking**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/14) | Per-issue and per-model dollar cost with budget enforcement |
-| [**📡 Live Agent Feed**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/15) | Real-time SSE streaming with subagent drill-down |
 | [**🧹 Auto-squash Commits**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/59) | Conventional commit formatting with execution metrics in PRs |
 
 ### 🏗️ Tier 2 — High Impact
 
-Multi-agent role pipelines • Agent-agnostic runner (10+ agent backends) • Kanban board with drag-and-drop • Inline diff review with agent feedback loop • Command bar (Cmd+K) • MCP server for orchestrator tools • `npx` zero-install distribution • GitLab adapter • Prompt templates • Chat integrations (Slack/Discord/Telegram) • and [43 more →](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/9)
+Multi-agent role pipelines • Agent-agnostic runner (10+ agent backends) • Kanban board with drag-and-drop • Inline diff review with agent feedback loop • MCP server for orchestrator tools • `npx` zero-install distribution • GitLab adapter • Chat integrations (Slack/Discord/Telegram) • and [43 more →](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/9)
 
 ### 🔭 Tier 3–4 — Long Horizon
 
@@ -262,14 +262,18 @@ Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are th
 | Endpoint | What it does |
 | -------- | ------------ |
 | `GET /api/v1/state` | Runtime snapshot — queued, running, retrying, completed issues |
-| `GET /api/v1/runtime` | Version, workflow path, feature flags |
+| `GET /api/v1/runtime` | Version, workflow path, provider summary |
+| `GET /api/v1/events` | SSE stream of real-time orchestrator events |
+| `GET /api/v1/models` | List available Codex models |
+| `POST /api/v1/:issue/abort` | Abort a running issue |
+| `POST /api/v1/:issue/steer` | Inject steering message into a running agent |
 | `POST /api/v1/refresh` | Trigger immediate orchestration pass |
 | `GET /api/v1/:issue/attempts` | Archived attempts + current live attempt |
 | `POST /api/v1/:issue/model` | Save per-issue model override |
 | `GET /metrics` | Prometheus-format service metrics |
 
 <details>
-<summary>📋 <strong>Full API reference</strong> — 30+ endpoints</summary>
+<summary>📋 <strong>Full API reference</strong> — 50+ endpoints</summary>
 
 ### Core Endpoints
 
@@ -277,7 +281,7 @@ Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are th
 | ------ | -------- | ----------- |
 | `GET` | `/` | Local operator dashboard |
 | `GET` | `/metrics` | Prometheus metrics |
-| `GET` | `/api/v1/runtime` | Runtime info — version, workflow path, feature flags |
+| `GET` | `/api/v1/runtime` | Runtime info — version, workflow path, provider summary |
 | `GET` | `/api/v1/state` | Runtime snapshot — queued, running, retrying, completed, workflow columns, and token totals |
 | `POST` | `/api/v1/refresh` | Trigger immediate orchestration refresh |
 | `GET` | `/api/v1/transitions` | List available Linear workflow transitions |
@@ -286,6 +290,15 @@ Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are th
 | `GET` | `/api/v1/attempts/:attempt_id` | Archived event stream for a specific attempt |
 | `POST` | `/api/v1/:issue_identifier/model` | Save per-issue model override |
 | `POST` | `/api/v1/:issue_identifier/transition` | Transition a Linear issue to a new state |
+| `POST` | `/api/v1/:issue_identifier/abort` | Abort a running issue |
+| `POST` | `/api/v1/:issue_identifier/steer` | Inject a steering message into a running agent |
+| `GET` | `/api/v1/events` | SSE stream of real-time orchestrator events |
+| `GET` | `/api/v1/models` | List available Codex models from the provider |
+| `GET` | `/api/v1/git/context` | Git repository context and configured repo routes |
+| `GET` | `/api/v1/workspaces` | Workspace inventory with disk usage |
+| `DELETE` | `/api/v1/workspaces/:workspace_key` | Remove a workspace directory |
+| `GET` | `/api/v1/openapi.json` | OpenAPI 3.0 specification |
+| `GET` | `/api/docs` | Swagger UI for interactive API exploration |
 
 ### Config & Secrets Endpoints
 
@@ -310,8 +323,9 @@ Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are th
 | `POST` | `/api/v1/setup/linear-project` | Select a Linear project |
 | `POST` | `/api/v1/setup/openai-key` | Validate and store OpenAI API key |
 | `POST` | `/api/v1/setup/codex-auth` | Store Codex auth.json |
-| `POST` | `/api/v1/setup/device-auth/start` | Start OAuth device flow |
-| `POST` | `/api/v1/setup/device-auth/poll` | Poll for OAuth tokens |
+| `POST` | `/api/v1/setup/pkce-auth/start` | Start browser-based PKCE login flow |
+| `GET` | `/api/v1/setup/pkce-auth/status` | Poll PKCE authorization status |
+| `POST` | `/api/v1/setup/pkce-auth/cancel` | Cancel active PKCE flow |
 | `POST` | `/api/v1/setup/github-token` | Validate and store GitHub token |
 
 </details>
@@ -344,18 +358,18 @@ Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are th
 ## 🧪 Testing
 
 ```bash
-pnpm test                  # Deterministic unit tests (Vitest, 2593 tests)
+pnpm test                  # Deterministic unit tests (Vitest, 2630 tests)
 pnpm run test:watch        # Watch mode for local iteration
 pnpm run test:integration  # Opt-in live integration (requires credentials)
 ```
 
 ### Playwright E2E Tests
 
-The dashboard has a full Playwright E2E suite with 37 smoke tests and 3 visual regression baselines. Tests run against a Vite dev server with fully mocked API routes — no backend needed.
+The dashboard has a full Playwright E2E suite with 100+ smoke tests across 16 spec files and 4 visual regression baselines. Tests run against a Vite dev server with fully mocked API routes — no backend needed.
 
 ```bash
-pnpm exec playwright test --project=smoke   # Smoke tests (37 tests, ~7s)
-pnpm exec playwright test --project=visual  # Visual regression (3 baselines)
+pnpm exec playwright test --project=smoke   # Smoke tests (100+ tests, ~7s)
+pnpm exec playwright test --project=visual  # Visual regression (4 baselines)
 pnpm exec playwright test --project=visual --update-snapshots  # Regenerate baselines
 ```
 

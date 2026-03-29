@@ -356,7 +356,7 @@ jobs:
           CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^src/' | paste -sd, || true)
           if [ -n "$CHANGED" ]; then
             echo "Mutating changed files: $CHANGED"
-            stryker run --mutate "$CHANGED"
+            pnpm exec stryker run --mutate "$CHANGED"
           else
             echo "No src/ files changed — skipping mutation testing"
           fi

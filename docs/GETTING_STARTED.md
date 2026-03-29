@@ -25,7 +25,7 @@ Before you begin, make sure you have:
 ```bash
 git clone https://github.com/OmerFarukOruc/symphony-orchestrator.git
 cd symphony-orchestrator
-npm install && npm run build
+pnpm install && pnpm run build
 ```
 
 If you plan to run agents in Docker containers (recommended for production):
@@ -70,7 +70,7 @@ codex login
 **Development mode** (with auto-reload):
 
 ```bash
-npm run dev -- ./WORKFLOW.example.md --port 4000
+pnpm run dev -- ./WORKFLOW.example.md --port 4000
 ```
 
 **Production mode** (from built output):

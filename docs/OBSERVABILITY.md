@@ -70,17 +70,7 @@ When `SENTRY_DSN` is not set, a no-op tracker is used with zero overhead.
 
 ## Feature Flags
 
-Control runtime behavior via `SYMPHONY_FLAGS` env var or a `flags.json` file:
-
-```bash
-# Environment
-export SYMPHONY_FLAGS="new_dashboard,parallel_agents"
-
-# File (placed in working directory)
-echo '{"experimental_retry": true}' > flags.json
-```
-
-Check flag state via `isEnabled("flag_name")` from `src/core/feature-flags.ts`.
+Feature flags were removed in v0.5.0. The `/api/v1/runtime` endpoint returns an empty `feature_flags` object for backward compatibility.
 
 ---
 

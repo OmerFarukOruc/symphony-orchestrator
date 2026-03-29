@@ -21,14 +21,24 @@ Confirm each of the following before creating a release tag:
 Run the following commands and confirm all pass:
 
 ```bash
-# Unit tests
-pnpm test
-
-# Build
+# Minimum validation
 pnpm run build
+pnpm test
+node dist/cli/index.js ./WORKFLOW.example.md   # Dry-start (no credentials needed)
+```
 
-# Dry-start (no credentials needed)
-node dist/cli/index.js ./WORKFLOW.example.md
+Full CI-mirror validation (recommended — matches `.husky/pre-push`):
+
+```bash
+pnpm run build
+pnpm run lint
+pnpm run format:check
+pnpm test
+pnpm run knip
+pnpm run jscpd
+pnpm exec playwright test --project=smoke
+semgrep scan --config auto --config p/typescript --error
+pnpm run typecheck:coverage
 ```
 
 If you have real credentials available:
