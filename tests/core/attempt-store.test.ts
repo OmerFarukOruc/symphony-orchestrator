@@ -367,6 +367,207 @@ describe("AttemptStore", () => {
     expect(store.sumCostUsd()).toBe(0);
   });
 
+  it("reindexAttempt removes only the moved attemptId from the previous issue list", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    const first = createAttempt({
+      attemptId: "attempt-1",
+      issueIdentifier: "MT-42",
+      startedAt: "2026-03-16T10:00:00.000Z",
+    });
+    const second = createAttempt({
+      attemptId: "attempt-2",
+      issueIdentifier: "MT-42",
+      attemptNumber: 2,
+      startedAt: "2026-03-16T10:05:00.000Z",
+    });
+
+    await store.createAttempt(first);
+    await store.createAttempt(second);
+
+    // Both should be under MT-42
+    expect(store.getAttemptsForIssue("MT-42").map((a) => a.attemptId)).toEqual(["attempt-2", "attempt-1"]);
+
+    // Move only attempt-1 to a different issue
+    await store.updateAttempt("attempt-1", { issueIdentifier: "MT-99" });
+
+    // attempt-2 must still be under MT-42 (filter must not remove all items)
+    const remaining = store.getAttemptsForIssue("MT-42").map((a) => a.attemptId);
+    expect(remaining).toEqual(["attempt-2"]);
+
+    // attempt-1 must be under MT-99
+    expect(store.getAttemptsForIssue("MT-99").map((a) => a.attemptId)).toEqual(["attempt-1"]);
+  });
+
+  it("issue-index.json ends with a trailing newline", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    await store.createAttempt(createAttempt());
+
+    const raw = await readFile(path.join(baseDir, "issue-index.json"), "utf8");
+    expect(raw.endsWith("\n")).toBe(true);
+    // Verify it is not just empty — contains valid JSON followed by newline
+    expect(raw.length).toBeGreaterThan(1);
+    expect(raw.at(-2)).not.toBe("\n"); // Only one trailing newline, not two
+  });
+
+  it("resetAggregates zeroes all counters when start() is called on a populated store", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    const attempt = createAttempt({
+      attemptId: "attempt-1",
+      model: "gpt-5.4",
+      status: "completed",
+      startedAt: "2026-03-16T10:00:00.000Z",
+      endedAt: "2026-03-16T10:05:00.000Z",
+      tokenUsage: { inputTokens: 1000, outputTokens: 500, totalTokens: 1500 },
+    });
+
+    await store.createAttempt(attempt);
+
+    // Confirm aggregates are non-zero before restart
+    expect(store.sumArchivedSeconds()).toBeGreaterThan(0);
+    expect(store.sumCostUsd()).toBeGreaterThan(0);
+    expect(store.sumArchivedTokens().inputTokens).toBeGreaterThan(0);
+
+    // Restart — internally calls resetAggregates then reloads from disk
+    await store.start();
+
+    // After restart the aggregates should be reconstructed from disk (not accumulated twice)
+    // This verifies resetAggregates actually zeros the fields before reload
+    expect(store.sumArchivedSeconds()).toBe(300); // 5 minutes
+    expect(store.sumArchivedTokens()).toEqual({
+      inputTokens: 1000,
+      outputTokens: 500,
+      totalTokens: 1500,
+    });
+  });
+
+  it("sumArchivedTokens accumulates token counts correctly with +=", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    const first = createAttempt({
+      attemptId: "attempt-1",
+      model: "gpt-5.4",
+      status: "completed",
+      startedAt: "2026-03-16T10:00:00.000Z",
+      endedAt: "2026-03-16T10:01:00.000Z",
+      tokenUsage: { inputTokens: 100, outputTokens: 200, totalTokens: 300 },
+    });
+    const second = createAttempt({
+      attemptId: "attempt-2",
+      model: "gpt-4o",
+      status: "completed",
+      startedAt: "2026-03-16T11:00:00.000Z",
+      endedAt: "2026-03-16T11:01:00.000Z",
+      tokenUsage: { inputTokens: 400, outputTokens: 600, totalTokens: 1000 },
+    });
+
+    await store.createAttempt(first);
+    await store.createAttempt(second);
+
+    const tokens = store.sumArchivedTokens();
+    // Verifies += (not -=): 100 + 400 = 500, not 100 - 400 = -300
+    expect(tokens.inputTokens).toBe(500);
+    // Verifies += (not -=): 200 + 600 = 800, not 200 - 600 = -400
+    expect(tokens.outputTokens).toBe(800);
+    // Verifies += (not -=): 300 + 1000 = 1300, not 300 - 1000 = -700
+    expect(tokens.totalTokens).toBe(1300);
+  });
+
+  it("applyAttemptAggregates uses multiplication for cost (direction * cost)", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    // gpt-5.4: inputUsd=3.0, outputUsd=12.0 per 1M tokens
+    // cost = (500 * 3.0 + 250 * 12.0) / 1_000_000 = 0.0045
+    const attempt = createAttempt({
+      attemptId: "attempt-1",
+      model: "gpt-5.4",
+      status: "completed",
+      startedAt: "2026-03-16T10:00:00.000Z",
+      endedAt: "2026-03-16T10:01:00.000Z",
+      tokenUsage: { inputTokens: 500, outputTokens: 250, totalTokens: 750 },
+    });
+
+    await store.createAttempt(attempt);
+
+    // direction * cost = 1 * 0.0045 = 0.0045 (not 1 / 0.0045)
+    expect(store.sumCostUsd()).toBeCloseTo(0.0045, 10);
+  });
+
+  it("updateAttempt reverses old aggregates and applies new ones correctly", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    const attempt = createAttempt({
+      attemptId: "attempt-1",
+      model: "gpt-5.4",
+      status: "running",
+      startedAt: "2026-03-16T10:00:00.000Z",
+      endedAt: null,
+      tokenUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+    });
+
+    await store.createAttempt(attempt);
+
+    const tokensBefore = store.sumArchivedTokens();
+    expect(tokensBefore.inputTokens).toBe(100);
+
+    // Update with new token usage — should subtract old and add new
+    await store.updateAttempt("attempt-1", {
+      status: "completed",
+      endedAt: "2026-03-16T10:05:00.000Z",
+      tokenUsage: { inputTokens: 500, outputTokens: 300, totalTokens: 800 },
+    });
+
+    const tokensAfter = store.sumArchivedTokens();
+    // New values (not old + new): old subtracted via direction=-1, new added via direction=1
+    expect(tokensAfter.inputTokens).toBe(500);
+    expect(tokensAfter.outputTokens).toBe(300);
+    expect(tokensAfter.totalTokens).toBe(800);
+    expect(store.sumArchivedSeconds()).toBe(300); // 5 minutes
+  });
+
+  it("sumArchivedTokens returns a defensive copy", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    await store.createAttempt(
+      createAttempt({
+        tokenUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+      }),
+    );
+
+    const tokens = store.sumArchivedTokens();
+    tokens.inputTokens = 999;
+
+    // Mutating the returned object must not affect the store's internal state
+    expect(store.sumArchivedTokens().inputTokens).toBe(100);
+  });
+
+  it("applyAttemptAggregates uses direction * duration for seconds", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    const attempt = createAttempt({
+      attemptId: "attempt-1",
+      startedAt: "2026-03-16T10:00:00.000Z",
+      endedAt: "2026-03-16T10:02:00.000Z", // 120 seconds
+      status: "completed",
+      tokenUsage: null,
+    });
+
+    await store.createAttempt(attempt);
+
+    // Verify direction * sumAttemptDurationSeconds uses * not /
+    expect(store.sumArchivedSeconds()).toBe(120);
+  });
+
   it("migrates legacy newest-first event archives to chronological storage on startup", async () => {
     const baseDir = await createTempDir();
     const attemptsDir = path.join(baseDir, "attempts");
