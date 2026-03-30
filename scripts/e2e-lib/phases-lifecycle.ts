@@ -8,8 +8,6 @@
  *   7.5 restartResilience  — restart Symphony and verify the issue is NOT re-dispatched
  */
 
-import path from "node:path";
-
 import type { RunContext, PhaseResult } from "./types.js";
 import {
   buildSymphonyEnv,
@@ -472,10 +470,12 @@ export async function restartResilience(ctx: RunContext): Promise<PhaseResult> {
     log(ctx, "Symphony stopped");
   }
 
-  // 2. Restart Symphony with the same port and credentials.
-  const workflowPath = path.join(ctx.reportDir, "WORKFLOW.e2e.md");
+  // 2. Restart Symphony pointing at the same dataDir. The overlay and DB state
+  //    persist on disk — no re-seeding needed. Symphony reads from the same
+  //    <dataDir>/config/overlay.yaml and SQLite DB naturally on restart.
+  const dataDir = `${ctx.reportDir}/symphony-data`;
   log(ctx, `Restarting Symphony on port ${ctx.symphonyPort}`);
-  ctx.symphonyProcess = spawnSymphony(ctx.symphonyPort, workflowPath, ctx.reportDir, buildSymphonyEnv(ctx));
+  ctx.symphonyProcess = spawnSymphony(ctx.symphonyPort, dataDir, ctx.reportDir, buildSymphonyEnv(ctx));
 
   // 3. Wait for HTTP ready.
   try {

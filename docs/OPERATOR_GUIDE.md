@@ -25,9 +25,7 @@ bash bin/build-sandbox.sh
 **2. Start Symphony**
 
 ```bash
-export LINEAR_API_KEY="lin_api_..."
-export LINEAR_PROJECT_SLUG="your-linear-project-slug"
-node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+node dist/cli/index.js --port 4000
 ```
 
 Open http://127.0.0.1:4000 — the **setup wizard** opens automatically and walks you through:
@@ -46,13 +44,14 @@ Set a Linear issue to "In Progress". Within one poll cycle (default: 30s), Symph
 
 Make sure the following are in place before running Symphony:
 
-| Requirement             | Details                                                            |
-| ----------------------- | ------------------------------------------------------------------ |
-| **Node.js**             | v22 or newer                                                       |
-| **Docker**              | Docker Engine installed and running (`docker info` should succeed) |
-| **Linear API key**      | `LINEAR_API_KEY` in your environment                               |
-| **Linear project slug** | `LINEAR_PROJECT_SLUG` for the project Symphony should poll         |
-| **Codex auth**          | Working auth setup for your `codex app-server` command             |
+| Requirement        | Details                                                                     |
+| ------------------ | --------------------------------------------------------------------------- |
+| **Node.js**        | v22 or newer                                                                |
+| **Docker**         | Docker Engine installed and running (`docker info` should succeed)          |
+| **Codex auth**     | Working auth for `codex app-server` (API key or `codex login`)              |
+
+> [!TIP]
+> Credentials (Linear API key, OpenAI key, GitHub PAT) are entered through the setup wizard — no environment variables needed upfront when using Docker or the WebUI bootstrap flow.
 
 ---
 
@@ -131,10 +130,8 @@ export OPENAI_API_KEY="sk-..."
 # 5. Optional: configure a host-side OpenAI-compatible proxy
 #    Example: CLIProxyAPI listening on 127.0.0.1:8317
 
-# 6. Export credentials and start
-export LINEAR_API_KEY="lin_api_..."
-export LINEAR_PROJECT_SLUG="your-linear-project-slug"
-node dist/cli/index.js ./WORKFLOW.md --port 4000
+# 6. Start Symphony — complete setup via the wizard at http://server:4000
+node dist/cli/index.js --log-dir /var/lib/symphony --port 4000
 ```
 
 > [!TIP]
@@ -142,35 +139,30 @@ node dist/cli/index.js ./WORKFLOW.md --port 4000
 
 ---
 
-## 📄 Choose the Right Workflow File
+## 📁 Data Directory
 
-| File                  | When to use                                              |
-| --------------------- | -------------------------------------------------------- |
-| `WORKFLOW.example.md` | Portable example setup (recommended for getting started) |
-| `WORKFLOW.md`         | Repository's checked-in live smoke path                  |
+Symphony stores all runtime state in a single directory (default: `~/.symphony`):
 
-> [!TIP]
-> `WORKFLOW.example.md` is the API-key/custom-provider example. `WORKFLOW.md` is the local `codex login` smoke path. Both create a fresh temporary container-local runtime `CODEX_HOME` for each attempt instead of relying on a checked-in fixture home.
+| Path inside `--log-dir` | Purpose |
+| ----------------------- | ------- |
+| `config/overlay.yaml`   | Persistent operator config (written by setup wizard and config API) |
+| `master.key`            | Encryption key for the secrets store |
+| `secrets.enc`           | AES-256-GCM encrypted credentials |
+| `symphony.db`           | SQLite database for attempt history and issue state |
+| `archives/`             | Per-attempt event archives |
 
-Both checked-in workflows resolve `tracker.project_slug` from `LINEAR_PROJECT_SLUG`, so you can reuse the same files across different Linear projects without editing tracked config.
-
-To find that value, open the Linear project in your browser and copy the segment after `/project/` from the URL:
-
-```text
-https://linear.app/<workspace>/project/<project-slug>/overview
-```
-
-Example:
-
-```text
-https://linear.app/ninetech/project/symphony-test-e1e26e4576d1/overview
-```
-
-uses:
+Override the default with `--log-dir`:
 
 ```bash
-export LINEAR_PROJECT_SLUG="symphony-test-e1e26e4576d1"
+node dist/cli/index.js --log-dir /var/lib/symphony --port 4000
 ```
+
+> [!TIP]
+> In Docker deployments the data directory maps to a named volume (`symphony-archives`). The `DATA_DIR` env var is an alternative way to set it: Symphony resolves `$DATA_DIR/archives` as the archive root.
+
+### Legacy auto-import
+
+On the first boot of a fresh data directory, Symphony checks for a `WORKFLOW.md` file in the current working directory (or the parent of the data directory). If found, it imports the front-matter as the initial overlay config and the prompt body as the prompt template. This is a one-time migration path — subsequent boots use the data directory exclusively.
 
 ---
 
@@ -189,28 +181,17 @@ pnpm run build
 # Build the Docker sandbox image
 bash bin/build-sandbox.sh
 
-# Point Symphony at the Linear project it should dispatch from
-export LINEAR_PROJECT_SLUG="your-linear-project-slug"
-
-# Dry-start the portable workflow
-node dist/cli/index.js ./WORKFLOW.example.md
+# Start Symphony — setup wizard runs on first boot
+node dist/cli/index.js --port 4000
 ```
 
-If `LINEAR_PROJECT_SLUG` is missing, Symphony exits with:
+Symphony stores all runtime config in `~/.symphony/` by default (override with `--log-dir <path>`). On first boot with no config seeded, Symphony enters **setup mode** and the wizard at http://127.0.0.1:4000/setup guides you through credentials.
+
+If credentials are missing after setup, Symphony logs a warning and stays in setup mode. Common startup errors when starting without the wizard (e.g. with a pre-seeded overlay):
 
 ```text
 error code=missing_tracker_project_slug msg="tracker.project_slug is required when tracker.kind is linear"
-```
-
-If `LINEAR_API_KEY` is missing, Symphony exits with:
-
-```text
 error code=missing_tracker_api_key msg="tracker.api_key is required after env resolution"
-```
-
-If `WORKFLOW.example.md` is using the default API-key mode and `OPENAI_API_KEY` is missing, Symphony exits with:
-
-```text
 error code=missing_codex_provider_env msg="codex runtime requires OPENAI_API_KEY in the host environment"
 ```
 
@@ -219,11 +200,20 @@ error code=missing_codex_provider_env msg="codex runtime requires OPENAI_API_KEY
 ## ▶️ Start the Service
 
 ```bash
-node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+node dist/cli/index.js --port 4000
+# Override the data directory:
+node dist/cli/index.js --log-dir /var/lib/symphony --port 4000
 ```
 
 - 🖥️ **Dashboard**: [http://127.0.0.1:4000/](http://127.0.0.1:4000/)
 - 📡 **API**: `curl -s http://127.0.0.1:4000/api/v1/state`
+
+### CLI flags
+
+| Flag | Default | Purpose |
+| ---- | ------- | ------- |
+| `--port <n>` | `4000` (or `server.port` from config) | HTTP listen port |
+| `--log-dir <path>` | `~/.symphony` | Data directory for DB, secrets, config overlay, and archives |
 
 ## 🐳 Run the Service in Docker
 
@@ -253,10 +243,10 @@ docker compose up --build
 
 Container-specific notes:
 
-- The service image boots with `WORKFLOW.docker.md` copied into `/app/WORKFLOW.md`.
-- `DATA_DIR=/data` makes the archive root `/data/archives`.
+- `DATA_DIR=/data` makes the archive root `/data/archives` — the same directory serves as `--log-dir`.
 - `workspace.root` resolves to `/data/workspaces` inside the service container.
 - `PathRegistry` translates those container paths back to the host bind-mount sources before worker containers are launched.
+- The setup wizard stores credentials in the `symphony-archives` volume — no workflow file is needed in the image.
 
 ### Control/Data Plane Architecture (Remote Dispatch Mode)
 

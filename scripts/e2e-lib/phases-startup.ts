@@ -13,12 +13,14 @@ import { rm, writeFile, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
+import YAML from "yaml";
+
 import type { RunContext, PhaseResult } from "./types.js";
 import {
   resolveEnvValue,
   checkPortAvailable,
   waitForHttp,
-  generateWorkflowScaffold,
+  buildOverlayPayload,
   spawnSymphony,
   buildSymphonyEnv,
   fetchJson,
@@ -214,36 +216,47 @@ interface StateResponse {
  * Spawn the Symphony server in **normal mode**, bypassing setup entirely.
  *
  * How setup is bypassed:
- * - WORKFLOW.e2e.md has the real `project_slug` (not empty) so
+ * - Config overlay is pre-seeded to `<dataDir>/config/overlay.yaml` BEFORE
+ *   Symphony starts. The overlay contains the real `project_slug` so
  *   `validateDispatch()` passes without triggering setup mode.
- * - A random `MASTER_KEY` env var is passed to the child process so
- *   `SecretsStore.start()` succeeds on the first try.
- * - `repos` are pre-populated in the workflow so routing works immediately.
+ * - A random `MASTER_KEY` is written to `<dataDir>/master.key` so
+ *   `SecretsStore.start()` succeeds on the first try (no MASTER_KEY env var needed).
+ * - `repos` are pre-populated in the overlay so routing works immediately.
+ * - Symphony starts with `--log-dir <dataDir>` (no positional workflow file arg).
  */
 export async function startSymphony(ctx: RunContext): Promise<PhaseResult> {
   const start = Date.now();
   const { config } = ctx;
 
-  // 1. Generate WORKFLOW.e2e.md with all real values
-  const workflowContent = generateWorkflowScaffold(config);
-  const workflowPath = path.join(ctx.reportDir, "WORKFLOW.e2e.md");
-  await mkdir(ctx.reportDir, { recursive: true });
-  await writeFile(workflowPath, workflowContent, "utf-8");
+  // 1. Determine the dataDir — a subdirectory of reportDir keeps each run isolated.
+  const dataDir = path.join(ctx.reportDir, "symphony-data");
+  const configDir = path.join(dataDir, "config");
+  await mkdir(configDir, { recursive: true });
 
-  ctx.events.write({ phase: "start-symphony", step: "workflow-generated", path: workflowPath });
-  console.log(`  [start-symphony] generated workflow at ${workflowPath}`);
-
-  // 2. Generate a MASTER_KEY for the child process and store it on ctx for reuse
+  // 2. Generate a MASTER_KEY and write it to master.key so SecretsStore boots
+  //    without requiring the MASTER_KEY environment variable.
   const masterKey = randomBytes(32).toString("hex");
   ctx.masterKey = masterKey;
+  await writeFile(path.join(dataDir, "master.key"), masterKey, "utf-8");
 
-  // 3. Spawn Symphony with resolved credentials injected as env vars.
-  ctx.symphonyProcess = spawnSymphony(ctx.symphonyPort, workflowPath, ctx.reportDir, buildSymphonyEnv(ctx));
+  // 3. Write the overlay config to <dataDir>/config/overlay.yaml BEFORE spawning.
+  //    ConfigOverlayStore reads this path on startup.
+  const overlayPayload = buildOverlayPayload(config);
+  const overlayYaml = YAML.stringify(overlayPayload);
+  const overlayPath = path.join(configDir, "overlay.yaml");
+  await writeFile(overlayPath, overlayYaml, "utf-8");
+
+  ctx.events.write({ phase: "start-symphony", step: "overlay-seeded", path: overlayPath });
+  console.log(`  [start-symphony] seeded overlay at ${overlayPath}`);
+
+  // 4. Spawn Symphony with --log-dir pointing at dataDir. No positional workflow
+  //    file arg — Symphony reads config from the pre-seeded overlay.
+  ctx.symphonyProcess = spawnSymphony(ctx.symphonyPort, dataDir, ctx.reportDir, buildSymphonyEnv(ctx));
 
   ctx.events.write({ phase: "start-symphony", step: "process-spawned", pid: ctx.symphonyProcess.pid ?? null });
   console.log(`  [start-symphony] spawned Symphony (pid: ${ctx.symphonyProcess.pid ?? "unknown"})`);
 
-  // 4. Wait for HTTP readiness — use /api/v1/state since that only returns 200
+  // 5. Wait for HTTP readiness — use /api/v1/state since that only returns 200
   //    when the orchestrator has started (not in setup mode)
   const stateUrl = `${ctx.baseUrl}/api/v1/state`;
   await waitForHttp(stateUrl, config.timeouts.symphony_startup_ms);
@@ -251,7 +264,7 @@ export async function startSymphony(ctx: RunContext): Promise<PhaseResult> {
   ctx.events.write({ phase: "start-symphony", step: "http-ready" });
   console.log("  [start-symphony] HTTP server is ready");
 
-  // 5. Verify orchestrator is alive (normal mode, not setup mode)
+  // 6. Verify orchestrator is alive (normal mode, not setup mode)
   const state = (await fetchJson(stateUrl)) as StateResponse;
   if (!state.generated_at) {
     return {

@@ -114,14 +114,12 @@ Set a Linear issue to "In Progress". Within one poll cycle (~30s), Symphony pick
 
 ```bash
 pnpm install && pnpm run build && bash bin/build-sandbox.sh
-export LINEAR_API_KEY="lin_api_..."
-export LINEAR_PROJECT_SLUG="your-linear-project-slug"
-node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+node dist/cli/index.js --port 4000
 ```
 
-Open http://127.0.0.1:4000 and the setup wizard guides you through the rest.
+Open http://127.0.0.1:4000 — the setup wizard guides you through credentials. No workflow file needed; all config is stored in `~/.symphony/` via the WebUI.
 
-Set your Codex auth:
+Set your Codex auth before or after setup:
 
 ```bash
 export OPENAI_API_KEY="sk-..."   # API key path
@@ -332,23 +330,17 @@ Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are th
 
 ---
 
-## 📄 Workflow Files
+## ⚙️ Configuration
 
-| File | Purpose |
-| ---- | ------- |
-| `WORKFLOW.example.md` | Portable example for normal local setup |
-| `WORKFLOW.md` | Checked-in live smoke workflow for this repo |
-
-> [!TIP]
-> Both workflows resolve `tracker.project_slug` from `LINEAR_PROJECT_SLUG` env var, so the same repo checkout works across different Linear projects without editing tracked files.
+Symphony stores all config in `~/.symphony/` (or the directory passed via `--log-dir`). There is no workflow file to edit — credentials and settings are managed through the WebUI setup wizard or the `/api/v1/config/overlay` API.
 
 ### Auth Modes
 
-| Mode | Config | How it works |
-| ---- | ------ | ------------ |
-| **API Key** | `codex.auth.mode: "api_key"` | Forwards `OPENAI_API_KEY` into the container |
-| **Codex Login** | `codex.auth.mode: "openai_login"` | Injects `auth.json` from `codex.auth.source_home` |
-| **Custom Provider** | `codex.provider` block | OpenAI-compatible endpoints with `base_url`, headers, query params |
+| Mode | How to configure | How it works |
+| ---- | ---------------- | ------------ |
+| **API Key** | Paste `sk-...` in the setup wizard | Forwards `OPENAI_API_KEY` into the container |
+| **Codex Login** | Browser PKCE flow or upload `auth.json` | Injects `auth.json` from the encrypted secrets store |
+| **Custom Provider** | `codex.provider` overlay key | OpenAI-compatible endpoints with `base_url`, headers, query params |
 
 > [!NOTE]
 > Host-bound provider URLs like `http://127.0.0.1:8317/v1` are automatically rewritten to `host.docker.internal` inside Docker containers.
@@ -398,7 +390,6 @@ Runs 12 phases: preflight, start, setup wizard, issue creation, agent monitoring
 | -------- | ----------------- |
 | **[Getting Started](docs/GETTING_STARTED.md)** | First 10 minutes: install, setup wizard, first issue |
 | **[Operator Guide](docs/OPERATOR_GUIDE.md)** | Full setup walkthrough, deployment options, Docker networking, wizard details |
-| **[Workflow Examples](WORKFLOW.example.md)** | Template workflow file with all config options explained |
 
 ### 🔧 Operating & Monitoring
 

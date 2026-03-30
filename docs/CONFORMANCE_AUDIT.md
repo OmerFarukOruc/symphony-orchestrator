@@ -22,8 +22,9 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 ### §5.1 File Discovery and Path Resolution
 
 - ✅ CLI accepts optional positional workflow path argument
-- ✅ Default: `./WORKFLOW.md` when no argument provided
+- ✅ Default: `./WORKFLOW.md` when no argument provided (legacy path — setup wizard is the primary bootstrap)
 - ✅ Missing workflow file returns `missing_workflow_file` error (via configStore.start failure)
+- 🔵 `--log-dir` flag sets the data directory; config overlay at `<dataDir>/config/overlay.yaml` supersedes the workflow file when present
 
 ### §5.2 File Format
 
@@ -117,10 +118,13 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 - ✅ `$VAR` env expansion for selected fields
 - ✅ `~` home path expansion
 - ✅ Built-in defaults
+- 🔵 Config overlay (`<dataDir>/config/overlay.yaml`) merged on top of workflow config with deep-merge semantics
+- 🔵 Encrypted secrets store resolved via `$SECRET:key` references
 
 ### §6.2 Dynamic Reload
 
 - ✅ `chokidar` watcher on `WORKFLOW.md`
+- ✅ `chokidar` watcher on `<dataDir>/config/overlay.yaml` (live hot-reload without restart)
 - ✅ Re-reads and re-applies config without restart
 - ✅ Reloaded config applies to future dispatch, retry scheduling, hook execution
 - ✅ Invalid reload keeps last known good config
@@ -135,6 +139,7 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 - ✅ `tracker.api_key` is present after `$` resolution
 - ✅ `tracker.project_slug` — enforced as required when `tracker.kind == "linear"`
 - ✅ `codex.command` is present and non-empty
+- 🔵 Validation failure triggers setup mode (wizard) rather than fatal exit when the error code is `missing_tracker_api_key` or `missing_tracker_project_slug`
 
 ---
 
@@ -485,7 +490,9 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 
 ### §14.4 Operator Intervention Points
 
-- ✅ Edit `WORKFLOW.md` → auto-detected and re-applied
+- ✅ Edit `WORKFLOW.md` → auto-detected and re-applied (legacy path)
+- 🔵 Edit `<dataDir>/config/overlay.yaml` → chokidar watcher reloads and re-applies config
+- 🔵 Use `PUT /api/v1/config/overlay` → API-driven config change, persisted to overlay file
 - ✅ Change issue state in tracker → reconciliation stops/cleans affected runs
 - ✅ Service restart for process recovery
 
@@ -533,7 +540,7 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 - ✅ Prompt renders `issue` and `attempt`
 - ✅ Strict unknown variable checking
 
-**Test files:** `workflow-config.test.ts`, `codex-runtime-config.test.ts`, `integration/config-workflow.integration.test.ts`
+**Test files:** `workflow-config.test.ts`, `codex-runtime-config.test.ts`, `integration/config-workflow.integration.test.ts` (overlay derivation tests)
 
 ### §17.2 Workspace Manager and Safety
 
@@ -704,8 +711,8 @@ Capabilities shipped that go beyond the spec requirements:
 | GitHub API tool           |   3   | Agent-available `github_api` tool (read-only: `add_pr_comment`, `get_pr_status`)                                          |
 | Secrets management        |   4   | AES-256-GCM encrypted store, CRUD API, `$SECRET:key` config resolution, audit log                                         |
 | Docker service deployment |   5   | Multi-stage Dockerfile, `PathRegistry` for container→host path translation, `.env.example`                                |
-| Container workflow        |   5   | `WORKFLOW.docker.md` with container-specific paths, `DATA_DIR` env support                                                |
-| Persistent config overlay |   6   | Additive YAML overlay on top of WORKFLOW.md, API-managed, live merge on change                                            |
+| Container workflow        |   5   | `DATA_DIR` env support; container boots via WebUI wizard, no workflow file required in image                              |
+| Persistent config overlay |   6   | Additive YAML overlay (primary config source), API-managed, live hot-reload via chokidar watcher                          |
 | Kanban state machine      |   7   | Configurable stages and transitions, dynamic dashboard columns                                                            |
 | CI extensions             |   8   | `integration` + `docker-build` jobs added to `ci.yml`; Docker lifecycle + E2E smoke tests                                 |
 | ~~Desktop app~~           |   9   | ~~Tauri v2 desktop shell~~ — **Removed** in favor of CLI-first operation                                                 |

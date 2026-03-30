@@ -3,12 +3,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  resolveEnvValue,
-  errorMsg,
-  generateWorkflowScaffold,
-  checkPortAvailable,
-} from "../../scripts/e2e-lib/helpers.js";
+import { resolveEnvValue, errorMsg, buildOverlayPayload, checkPortAvailable } from "../../scripts/e2e-lib/helpers.js";
 import { extractPrNumber } from "../../scripts/e2e-lib/phases-teardown.js";
 import { expandTilde } from "../../scripts/e2e-lib/phases-startup.js";
 import type { E2EConfig } from "../../scripts/e2e-lib/types.js";
@@ -113,10 +108,10 @@ describe("expandTilde", () => {
 });
 
 // ---------------------------------------------------------------------------
-// generateWorkflowScaffold
+// buildOverlayPayload
 // ---------------------------------------------------------------------------
 
-describe("generateWorkflowScaffold", () => {
+describe("buildOverlayPayload", () => {
   const baseConfig: E2EConfig = {
     linear: { api_key: "$LINEAR_API_KEY", project_slug: "TEST", team_id: "team-1" },
     codex: { auth_mode: "api_key", source_home: "~/.codex", model: "o3-mini", reasoning_effort: "low" },
@@ -137,29 +132,49 @@ describe("generateWorkflowScaffold", () => {
     cleanup: { enabled: true },
   };
 
-  it("generates valid YAML scaffold with config values", () => {
-    const output = generateWorkflowScaffold(baseConfig);
-    expect(output).toContain("model: o3-mini");
-    expect(output).toContain("reasoning_effort: low");
-    expect(output).toContain("port: 4111");
-    expect(output).toContain("mode: api_key");
+  it("returns an object with the expected top-level keys", () => {
+    const payload = buildOverlayPayload(baseConfig);
+    expect(payload).toHaveProperty("tracker");
+    expect(payload).toHaveProperty("codex");
+    expect(payload).toHaveProperty("polling");
+    expect(payload).toHaveProperty("agent");
+    expect(payload).toHaveProperty("workspace");
+    expect(payload).toHaveProperty("server");
+    expect(payload).toHaveProperty("repos");
   });
 
   it("includes real project_slug from config", () => {
-    const output = generateWorkflowScaffold(baseConfig);
-    expect(output).toContain('project_slug: "TEST"');
+    const payload = buildOverlayPayload(baseConfig);
+    const tracker = payload.tracker as Record<string, unknown>;
+    expect(tracker.project_slug).toBe("TEST");
   });
 
-  it("uses env-var expansion for api_key", () => {
-    const output = generateWorkflowScaffold(baseConfig);
-    expect(output).toContain("api_key: $LINEAR_API_KEY");
+  it("uses env-var expansion reference for api_key", () => {
+    const payload = buildOverlayPayload(baseConfig);
+    const tracker = payload.tracker as Record<string, unknown>;
+    expect(tracker.api_key).toBe("$LINEAR_API_KEY");
   });
 
-  it("includes repos from test_repo config", () => {
-    const output = generateWorkflowScaffold(baseConfig);
-    expect(output).toContain('repo_url: "https://github.com/o/r"');
-    expect(output).toContain('identifier_prefix: "E2E"');
-    expect(output).toContain('github_token_env: "GITHUB_TOKEN"');
+  it("populates repos from test_repo config", () => {
+    const payload = buildOverlayPayload(baseConfig);
+    const repos = payload.repos as Array<Record<string, unknown>>;
+    expect(repos).toHaveLength(1);
+    expect(repos[0].repo_url).toBe("https://github.com/o/r");
+    expect(repos[0].identifier_prefix).toBe("E2E");
+    expect(repos[0].github_token_env).toBe("GITHUB_TOKEN");
+  });
+
+  it("populates codex model and reasoning_effort from config", () => {
+    const payload = buildOverlayPayload(baseConfig);
+    const codex = payload.codex as Record<string, unknown>;
+    expect(codex.model).toBe("o3-mini");
+    expect(codex.reasoning_effort).toBe("low");
+  });
+
+  it("sets server port from config", () => {
+    const payload = buildOverlayPayload(baseConfig);
+    const server = payload.server as Record<string, unknown>;
+    expect(server.port).toBe(4111);
   });
 });
 
