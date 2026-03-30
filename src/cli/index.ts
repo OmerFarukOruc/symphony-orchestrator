@@ -66,8 +66,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       throw error;
     }
   }
-  // Unit 2 will remove workflowPath from ConfigStore constructor entirely.
-  const configStore = new ConfigStore("", logger.child({ component: "config" }), {
+  const configStore = new ConfigStore(logger.child({ component: "config" }), {
     overlayStore,
     secretsStore,
   });

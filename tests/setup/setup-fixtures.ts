@@ -71,7 +71,7 @@ export function createOrchestratorMock(): Orchestrator {
   const logger = createMockLogger();
   const orchestrator = new Orchestrator({
     attemptStore: new AttemptStore("/attempt-store", logger),
-    configStore: new ConfigStore("/workflow.md", logger),
+    configStore: new ConfigStore(logger),
     tracker: new LinearTrackerAdapter(
       new LinearClient(() => {
         throw new Error("not used in setup api tests");
