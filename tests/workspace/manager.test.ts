@@ -309,4 +309,147 @@ describe("WorkspaceManager", () => {
       expect(workspace.workspaceKey).toBe("FOO_BAR_123");
     });
   });
+
+  describe("ensureDirectoryWorkspace — error paths", () => {
+    it("re-throws non-ENOENT stat errors", async () => {
+      const config = createConfig();
+      const manager = new WorkspaceManager(() => config, logger);
+
+      statMock.mockRejectedValue(Object.assign(new Error("EPERM"), { code: "EPERM" }));
+
+      await expect(manager.ensureWorkspace("NIN-1")).rejects.toThrow("EPERM");
+    });
+
+    it("cleans up workspace directory when afterCreate hook fails", async () => {
+      // To trigger the cleanup path, we need ENOENT -> mkdir succeeds -> afterCreate hook fails.
+      // The catch block only calls rm if createdNow is true.
+      // We mock spawn to simulate a hook error via its "error" callback.
+      const hookConfig = createConfig({
+        hooks: { afterCreate: "false", beforeRun: null, afterRun: null, beforeRemove: null, timeoutMs: 5000 },
+      });
+      const manager = new WorkspaceManager(() => hookConfig, logger);
+
+      const { spawn: spawnMocked } = await import("node:child_process");
+
+      vi.mocked(spawnMocked).mockImplementation(() => {
+        const eventHandlers: Record<string, ((...args: unknown[]) => void)[]> = {};
+        const child = {
+          on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+            eventHandlers[event] = eventHandlers[event] ?? [];
+            eventHandlers[event].push(handler);
+            if (event === "error") {
+              process.nextTick(() => handler(new Error("spawn hook failed")));
+            }
+            return child;
+          }),
+          stderr: { on: vi.fn() },
+          stdout: { on: vi.fn() },
+          kill: vi.fn(),
+          pid: 12345,
+        };
+        return child as unknown as ReturnType<typeof spawnMocked>;
+      });
+
+      statMock.mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+      mkdirMock.mockResolvedValue(undefined as never);
+
+      await expect(manager.ensureWorkspace("NIN-1")).rejects.toThrow("spawn hook failed");
+      // The workspace was created (createdNow=true), so rm should be called on failure
+      expect(rmMock).toHaveBeenCalledWith(
+        expect.stringContaining("NIN-1"),
+        expect.objectContaining({ recursive: true }),
+      );
+    });
+  });
+
+  describe("ensureWorktreeWorkspace — gitBaseDir", () => {
+    it("returns gitBaseDir in the workspace result", async () => {
+      const config = createConfig({ strategy: "worktree" });
+      const deps = createWorktreeDeps();
+      const manager = new WorkspaceManager(() => config, logger, deps);
+
+      statMock.mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+
+      const workspace = await manager.ensureWorkspace("NIN-1", createIssue());
+      expect(workspace.gitBaseDir).toBe("/tmp/workspaces/.bare-clones/repo");
+    });
+  });
+
+  describe("removeWorkspace (worktree strategy) — edge cases", () => {
+    it("is a no-op when workspace path does not exist", async () => {
+      const config = createConfig({ strategy: "worktree" });
+      const deps = createWorktreeDeps();
+      const manager = new WorkspaceManager(() => config, logger, deps);
+
+      statMock.mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+
+      await manager.removeWorkspace("NIN-1", createIssue());
+      expect(deps.gitManager.removeWorktree).not.toHaveBeenCalled();
+      expect(rmMock).not.toHaveBeenCalled();
+    });
+
+    it("falls back to rm when issue is not provided", async () => {
+      const config = createConfig({ strategy: "worktree" });
+      const deps = createWorktreeDeps();
+      const manager = new WorkspaceManager(() => config, logger, deps);
+
+      statMock.mockResolvedValue({ isDirectory: () => true });
+
+      await manager.removeWorkspace("NIN-1");
+      // No issue means no repo match possible, falls back to rm
+      expect(rmMock).toHaveBeenCalledWith(
+        expect.stringContaining("NIN-1"),
+        expect.objectContaining({ recursive: true }),
+      );
+    });
+
+    it("falls back to rm when repoRouter returns no match", async () => {
+      const config = createConfig({ strategy: "worktree" });
+      const deps = createWorktreeDeps();
+      vi.mocked(deps.repoRouter.matchIssue).mockReturnValue(null);
+      const manager = new WorkspaceManager(() => config, logger, deps);
+
+      statMock.mockResolvedValue({ isDirectory: () => true });
+
+      await manager.removeWorkspace("NIN-1", createIssue());
+      expect(rmMock).toHaveBeenCalledWith(
+        expect.stringContaining("NIN-1"),
+        expect.objectContaining({ recursive: true }),
+      );
+    });
+
+    it("continues with worktree removal even without beforeRemove hook", async () => {
+      const config = createConfig({
+        strategy: "worktree",
+        hooks: { afterCreate: null, beforeRun: null, afterRun: null, beforeRemove: null, timeoutMs: 5000 },
+      });
+      const deps = createWorktreeDeps();
+      const manager = new WorkspaceManager(() => config, logger, deps);
+
+      statMock.mockResolvedValue({ isDirectory: () => true });
+
+      await manager.removeWorkspace("NIN-1", createIssue());
+      expect(deps.gitManager.removeWorktree).toHaveBeenCalled();
+    });
+  });
+
+  describe("prepareForAttempt — transient directory safety", () => {
+    it("does not remove directories outside workspace path", async () => {
+      const config = createConfig();
+      const manager = new WorkspaceManager(() => config, logger);
+      const workspace = {
+        path: "/tmp/workspaces/NIN-1",
+        workspaceKey: "NIN-1",
+        createdNow: false,
+      };
+
+      await manager.prepareForAttempt(workspace);
+
+      // Each rm call should be for a path within the workspace
+      for (const call of rmMock.mock.calls) {
+        const targetPath = call[0] as string;
+        expect(targetPath.startsWith("/tmp/workspaces/NIN-1/")).toBe(true);
+      }
+    });
+  });
 });

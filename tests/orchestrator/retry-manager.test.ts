@@ -335,4 +335,84 @@ describe("revalidateAndLaunchRetry", () => {
     expect(ctx.retryEntries.has("issue-1")).toBe(false);
     expect(ctx.clearRetryEntry).not.toHaveBeenCalled(); // manual delete, not via clearRetryEntry
   });
+
+  it("passes issueId to fetchIssueStatesByIds", async () => {
+    const ctx = makeCtx();
+    await revalidateAndLaunchRetry(ctx, "issue-1", 1);
+    expect(ctx.deps.tracker.fetchIssueStatesByIds).toHaveBeenCalledWith(["issue-1"]);
+  });
+
+  it("includes notification metadata with delayMs and error", () => {
+    vi.useFakeTimers();
+    const retryEntries = new Map<string, RetryRuntimeEntry>();
+    const notify = vi.fn();
+    const ctx = {
+      isRunning: () => true,
+      claimIssue: vi.fn(),
+      retryEntries,
+      detailViews: new Map(),
+      notify,
+      revalidateAndLaunchRetry: vi.fn().mockResolvedValue(undefined),
+      handleRetryLaunchFailure: vi.fn().mockResolvedValue(undefined),
+    };
+
+    queueRetry(ctx, makeIssue(), 2, 5000, "turn_failed");
+
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "retry queued in 5000ms",
+        metadata: { delayMs: 5000, error: "turn_failed" },
+      }),
+    );
+  });
+
+  it("logs workspace cleanup failure during terminal retry launch", async () => {
+    const ctx = makeCtx({ latestIssue: makeIssue({ state: "Done" }) });
+    ctx.deps.workspaceManager.removeWorkspace.mockRejectedValue(new Error("cleanup fail"));
+    await revalidateAndLaunchRetry(ctx, "issue-1", 1);
+
+    expect(ctx.deps.logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "cleanup fail" }),
+      "workspace cleanup failed during retry launch",
+    );
+  });
+
+  it("passes threadId when re-queuing at capacity", async () => {
+    const ctx = makeCtx({ runningCount: 5, latestIssue: makeIssue() });
+    // Set threadId on the retry entry
+    ctx.retryEntries.get("issue-1")!.threadId = "prev-thread";
+    await revalidateAndLaunchRetry(ctx, "issue-1", 2);
+
+    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 1000, null, { threadId: "prev-thread" });
+  });
+
+  it("passes previousThreadId to launchWorker", async () => {
+    const ctx = makeCtx();
+    ctx.retryEntries.get("issue-1")!.threadId = "thread-abc";
+    await revalidateAndLaunchRetry(ctx, "issue-1", 3);
+
+    expect(ctx.launchWorker).toHaveBeenCalledWith(expect.any(Object), 3, {
+      claimHeld: true,
+      previousThreadId: "thread-abc",
+    });
+  });
+
+  it("picks up workspaceKey from detailViews when queuing retry", () => {
+    vi.useFakeTimers();
+    const retryEntries = new Map<string, RetryRuntimeEntry>();
+    const detailViews = new Map([["MT-1", { workspaceKey: "ws-from-detail" }]]);
+    const ctx = {
+      isRunning: () => true,
+      claimIssue: vi.fn(),
+      retryEntries,
+      detailViews,
+      notify: vi.fn(),
+      revalidateAndLaunchRetry: vi.fn().mockResolvedValue(undefined),
+      handleRetryLaunchFailure: vi.fn().mockResolvedValue(undefined),
+    };
+
+    queueRetry(ctx, makeIssue(), 1, 1000, null);
+
+    expect(retryEntries.get("issue-1")!.workspaceKey).toBe("ws-from-detail");
+  });
 });

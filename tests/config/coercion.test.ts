@@ -116,6 +116,31 @@ describe("asNumberMap", () => {
     expect(asNumberMap(null)).toEqual({});
     expect(asNumberMap([1, 2])).toEqual({});
   });
+
+  it("filters out entries where value is typeof number but not finite", () => {
+    const input = { good: 42, inf: Infinity, negInf: -Infinity, nan: NaN };
+    const result = asNumberMap(input);
+    expect(result).toEqual({ good: 42 });
+    expect(Object.keys(result)).toEqual(["good"]);
+  });
+
+  it("filters out entries where typeof check is not number", () => {
+    const input = { str: "42", bool: true, obj: {}, num: 7 };
+    const result = asNumberMap(input);
+    expect(result).toEqual({ num: 7 });
+  });
+
+  it("filters out string numbers that would pass Number.isFinite when coerced", () => {
+    // "42" as a string: typeof "42" !== "number" but Number.isFinite("42" as any) is false
+    // However, if typeof check is mutated to `true`, then Number.isFinite("42") is false anyway
+    // So we need a value where typeof is not "number" but Number.isFinite would return true
+    // Actually Number.isFinite only returns true for actual number types, so this mutant
+    // is equivalent. But let's verify the exact output shape.
+    const input = { a: 1, b: "not-a-number", c: null, d: undefined };
+    const result = asNumberMap(input);
+    expect(result).toEqual({ a: 1 });
+    expect(Object.keys(result)).toHaveLength(1);
+  });
 });
 
 describe("asStringArray", () => {

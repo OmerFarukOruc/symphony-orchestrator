@@ -708,4 +708,584 @@ describe("snapshot-builder", () => {
       expect(seconds).toBe(0);
     });
   });
+
+  describe("buildSnapshot — additional coverage", () => {
+    it("caps completed views at 25 entries", () => {
+      const completedViews = new Map<string, RuntimeIssueView>();
+      for (let i = 0; i < 30; i++) {
+        completedViews.set(`MT-${i}`, {
+          issueId: `issue-${i}`,
+          identifier: `MT-${i}`,
+          title: `Issue ${i}`,
+          state: "Done",
+          workspaceKey: null,
+          message: null,
+          status: "completed",
+          updatedAt: "2026-03-16T00:00:00Z",
+          attempt: 1,
+          error: null,
+        });
+      }
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => completedViews,
+      });
+
+      const snapshot = buildSnapshot(deps, callbacks);
+
+      expect(snapshot.completed).toHaveLength(25);
+    });
+
+    it("uses Math.max for token fields (archived vs live)", () => {
+      const deps = { attemptStore: createAttemptStore() };
+      // Live totals are higher
+      (deps.attemptStore.sumArchivedTokens as ReturnType<typeof vi.fn>).mockReturnValue({
+        inputTokens: 50,
+        outputTokens: 25,
+        totalTokens: 75,
+      });
+      const callbacks = createCallbacks({
+        getCodexTotals: () => ({
+          inputTokens: 200,
+          outputTokens: 100,
+          totalTokens: 300,
+          secondsRunning: 60,
+        }),
+      });
+
+      const snapshot = buildSnapshot(deps, callbacks);
+
+      expect(snapshot.codexTotals.inputTokens).toBe(200);
+      expect(snapshot.codexTotals.outputTokens).toBe(100);
+      expect(snapshot.codexTotals.totalTokens).toBe(300);
+    });
+
+    it("uses archived token counts when they exceed live totals", () => {
+      const deps = { attemptStore: createAttemptStore() };
+      // Archived is higher (e.g., after restart)
+      (deps.attemptStore.sumArchivedTokens as ReturnType<typeof vi.fn>).mockReturnValue({
+        inputTokens: 500,
+        outputTokens: 250,
+        totalTokens: 750,
+      });
+      const callbacks = createCallbacks({
+        getCodexTotals: () => ({
+          inputTokens: 100,
+          outputTokens: 50,
+          totalTokens: 150,
+          secondsRunning: 10,
+        }),
+      });
+
+      const snapshot = buildSnapshot(deps, callbacks);
+
+      expect(snapshot.codexTotals.inputTokens).toBe(500);
+      expect(snapshot.codexTotals.outputTokens).toBe(250);
+      expect(snapshot.codexTotals.totalTokens).toBe(750);
+    });
+
+    it("includes stall events when getStallEvents callback is provided", () => {
+      const stallEvents = [
+        { at: "2026-03-16T00:00:00Z", issueId: "i1", issueIdentifier: "MT-1", silentMs: 120000, timeoutMs: 60000 },
+      ];
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks({
+        getStallEvents: () => stallEvents,
+      });
+
+      const snapshot = buildSnapshot(deps, callbacks);
+
+      expect(snapshot.stallEvents).toHaveLength(1);
+      expect(snapshot.stallEvents![0]).toMatchObject({ issueId: "i1" });
+    });
+
+    it("excludes stall events when getStallEvents callback is absent", () => {
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks();
+      // Make sure getStallEvents is undefined
+      delete (callbacks as Partial<SnapshotBuilderCallbacks>).getStallEvents;
+
+      const snapshot = buildSnapshot(deps, callbacks);
+
+      expect(snapshot.stallEvents).toBeUndefined();
+    });
+
+    it("includes systemHealth when getSystemHealth callback is provided", () => {
+      const health = { status: "healthy", lastCheck: "2026-03-16T00:00:00Z" };
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks({
+        getSystemHealth: () =>
+          health as unknown as ReturnType<NonNullable<SnapshotBuilderCallbacks["getSystemHealth"]>>,
+      });
+
+      const snapshot = buildSnapshot(deps, callbacks);
+
+      expect(snapshot.systemHealth).toBeDefined();
+    });
+
+    it("merges detailViews into workflowColumns completed list", () => {
+      const detailView: RuntimeIssueView = {
+        issueId: "issue-detail",
+        identifier: "MT-99",
+        title: "Detail Issue",
+        state: "Done",
+        workspaceKey: null,
+        message: null,
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: null,
+        error: null,
+      };
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks({
+        getDetailViews: () => new Map([["MT-99", detailView]]),
+      });
+
+      const snapshot = buildSnapshot(deps, callbacks);
+
+      // Just verify it doesn't crash and includes the detail view data
+      expect(snapshot.workflowColumns).toBeDefined();
+    });
+  });
+
+  describe("buildIssueDetail — additional coverage", () => {
+    it("filters retry entry events by issueIdentifier", () => {
+      const retryEntry = createRetryEntry();
+      const matchingEvent = createEvent({ issueIdentifier: "MT-43" });
+      const nonMatchingEvent = createEvent({ issueIdentifier: "MT-99" });
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks({
+        getRetryEntries: () => new Map([["MT-43", retryEntry]]),
+        getRecentEvents: () => [matchingEvent, nonMatchingEvent],
+      });
+
+      const detail = buildIssueDetail("MT-43", deps, callbacks);
+
+      expect(detail).not.toBeNull();
+      expect(detail!.recentEvents).toEqual([matchingEvent]);
+    });
+
+    it("loads events from archived attempts when issue is completed", () => {
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Completed Issue",
+        state: "Done",
+        workspaceKey: "MT-42",
+        message: "Completed",
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 1,
+        error: null,
+      };
+      const archivedAttempt = createAttemptRecord({ attemptId: "a1" });
+      const archivedEvent = createEvent({ attemptId: "a1" } as Partial<RecentEvent> as RecentEvent);
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [archivedAttempt],
+          events: [archivedEvent],
+          attemptsByIssue: new Map([["MT-42", [archivedAttempt]]]),
+        }),
+      };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      expect(detail).not.toBeNull();
+      expect(detail!.recentEvents).toEqual([archivedEvent]);
+    });
+
+    it("falls back to filtered recent events when no archived attempts", () => {
+      const detailView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-50",
+        title: "Queued Issue",
+        state: "In Progress",
+        workspaceKey: null,
+        message: null,
+        status: "queued",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: null,
+        error: null,
+      };
+      const matchingEvent = createEvent({ issueIdentifier: "MT-50" });
+      const otherEvent = createEvent({ issueIdentifier: "MT-99" });
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks({
+        getDetailViews: () => new Map([["MT-50", detailView]]),
+        getRecentEvents: () => [matchingEvent, otherEvent],
+      });
+
+      const detail = buildIssueDetail("MT-50", deps, callbacks);
+
+      expect(detail).not.toBeNull();
+      expect(detail!.recentEvents).toEqual([matchingEvent]);
+    });
+
+    it("enriches tokenUsage from archived attempts when missing on view", () => {
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Issue",
+        state: "Done",
+        workspaceKey: "MT-42",
+        message: null,
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 1,
+        error: null,
+        // tokenUsage is undefined/null
+      };
+      const attempt1 = createAttemptRecord({
+        attemptId: "a1",
+        tokenUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+      });
+      const attempt2 = createAttemptRecord({
+        attemptId: "a2",
+        tokenUsage: { inputTokens: 200, outputTokens: 80, totalTokens: 280 },
+      });
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt1, attempt2],
+          attemptsByIssue: new Map([["MT-42", [attempt1, attempt2]]]),
+        }),
+      };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      expect(detail!.tokenUsage).toEqual({
+        inputTokens: 300,
+        outputTokens: 130,
+        totalTokens: 430,
+      });
+    });
+
+    it("does not override existing tokenUsage with archived data", () => {
+      const runningEntry = createRunningEntry({
+        tokenUsage: { inputTokens: 500, outputTokens: 200, totalTokens: 700 },
+      });
+      const attempt = createAttemptRecord({
+        tokenUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+      });
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          attemptsByIssue: new Map([["MT-42", [attempt]]]),
+        }),
+      };
+      const callbacks = createCallbacks({
+        getRunningEntries: () => new Map([["MT-42", runningEntry]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      expect(detail!.tokenUsage).toEqual({ inputTokens: 500, outputTokens: 200, totalTokens: 700 });
+    });
+
+    it("enriches startedAt from archived attempts when missing", () => {
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Issue",
+        state: "Done",
+        workspaceKey: "MT-42",
+        message: null,
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 1,
+        error: null,
+        // startedAt is undefined
+      };
+      const attempt = createAttemptRecord({ startedAt: "2026-01-05T00:00:00Z" });
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          attemptsByIssue: new Map([["MT-42", [attempt]]]),
+        }),
+      };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      expect(detail!.startedAt).toBe("2026-01-05T00:00:00Z");
+    });
+
+    it("does not override existing startedAt from archived data", () => {
+      const runningEntry = createRunningEntry({ startedAtMs: Date.now() - 10000 });
+      const attempt = createAttemptRecord({ startedAt: "2025-01-01T00:00:00Z" });
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          attemptsByIssue: new Map([["MT-42", [attempt]]]),
+        }),
+      };
+      const callbacks = createCallbacks({
+        getRunningEntries: () => new Map([["MT-42", runningEntry]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      // startedAt should come from the running entry, not the archive
+      expect(detail!.startedAt).not.toBe("2025-01-01T00:00:00Z");
+    });
+
+    it("skips token usage enrichment for attempts with null tokenUsage", () => {
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Issue",
+        state: "Done",
+        workspaceKey: null,
+        message: null,
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 1,
+        error: null,
+      };
+      const attemptWithTokens = createAttemptRecord({
+        attemptId: "a1",
+        tokenUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+      });
+      const attemptWithout = createAttemptRecord({
+        attemptId: "a2",
+        tokenUsage: null,
+      });
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attemptWithTokens, attemptWithout],
+          attemptsByIssue: new Map([["MT-42", [attemptWithTokens, attemptWithout]]]),
+        }),
+      };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      expect(detail!.tokenUsage).toEqual({
+        inputTokens: 100,
+        outputTokens: 50,
+        totalTokens: 150,
+      });
+    });
+
+    it("returns currentAttemptId as null for non-running entries", () => {
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Issue",
+        state: "Done",
+        workspaceKey: null,
+        message: null,
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 1,
+        error: null,
+      };
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      expect(detail!.currentAttemptId).toBeNull();
+    });
+
+    it("includes attempt summaries with all fields", () => {
+      const attempt = createAttemptRecord({
+        tokenUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+        turnCount: 3,
+        threadId: "t1",
+        turnId: "turn-1",
+        errorCode: "worker_failed",
+        errorMessage: "something broke",
+      });
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Issue",
+        state: "Done",
+        workspaceKey: null,
+        message: null,
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 1,
+        error: null,
+        tokenUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+      };
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          attemptsByIssue: new Map([["MT-42", [attempt]]]),
+        }),
+      };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+      const summary = detail!.attempts[0];
+
+      expect(summary.attemptId).toBe("attempt-1");
+      expect(summary.attemptNumber).toBe(1);
+      expect(summary.model).toBe("gpt-5.4");
+      expect(summary.reasoningEffort).toBe("high");
+      expect(summary.turnCount).toBe(3);
+      expect(summary.threadId).toBe("t1");
+      expect(summary.turnId).toBe("turn-1");
+      expect(summary.errorCode).toBe("worker_failed");
+      expect(summary.errorMessage).toBe("something broke");
+      expect(summary.issueIdentifier).toBe("MT-42");
+      expect(summary.title).toBe("Test Issue");
+      expect(summary.workspacePath).toBe("/tmp/symphony/MT-42");
+      expect(summary.workspaceKey).toBe("MT-42");
+      expect(summary.modelSource).toBe("default");
+    });
+
+    it("does not enrich tokenUsage when no archived attempts exist (length 0)", () => {
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Issue",
+        state: "Done",
+        workspaceKey: null,
+        message: null,
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 1,
+        error: null,
+        // tokenUsage is undefined/falsy
+      };
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [],
+          attemptsByIssue: new Map([["MT-42", []]]),
+        }),
+      };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      // With 0 archived attempts, tokenUsage should remain undefined
+      expect(detail!.tokenUsage).toBeUndefined();
+    });
+
+    it("does not enrich startedAt when no archived attempts exist (length 0)", () => {
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Issue",
+        state: "Done",
+        workspaceKey: null,
+        message: null,
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 1,
+        error: null,
+        // startedAt is undefined
+      };
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [],
+          attemptsByIssue: new Map([["MT-42", []]]),
+        }),
+      };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      // With no archived attempts, startedAt should remain unset
+      expect(detail!.startedAt).toBeUndefined();
+    });
+
+    it("uses recent events (not archived) for retry entry even when archives exist", () => {
+      // Targets: } else if (retryEntry) { — mutated to } else if (false) {
+      // When retryEntry branch is false, it falls to archivedAttempts.length > 0 which
+      // uses flatMap on archived events. We must make archived events DIFFERENT from
+      // recent events so we can distinguish which branch was taken.
+      const retryEntry = createRetryEntry({ identifier: "MT-43" });
+      const recentEvent = createEvent({ issueIdentifier: "MT-43", event: "retry_scheduled", message: "from recent" });
+      const archivedEvent = createEvent({
+        issueIdentifier: "MT-43",
+        event: "worker_started",
+        message: "from archive",
+      });
+      const archivedAttempt = createAttemptRecord({
+        attemptId: "arch-1",
+        issueIdentifier: "MT-43",
+      });
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [archivedAttempt],
+          events: [archivedEvent],
+          attemptsByIssue: new Map([["MT-43", [archivedAttempt]]]),
+        }),
+      };
+      const callbacks = createCallbacks({
+        getRetryEntries: () => new Map([["MT-43", retryEntry]]),
+        getRecentEvents: () => [recentEvent],
+      });
+
+      const detail = buildIssueDetail("MT-43", deps, callbacks);
+
+      expect(detail).not.toBeNull();
+      // retryEntry branch should use getRecentEvents().filter(), NOT archived flatMap
+      expect(detail!.recentEvents).toHaveLength(1);
+      expect(detail!.recentEvents[0].message).toBe("from recent");
+    });
+
+    it("includes completed+detailViews in workflowColumns so they appear in correct columns", () => {
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Completed",
+        state: "Done",
+        workspaceKey: null,
+        message: null,
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 1,
+        error: null,
+      };
+      const detailView: RuntimeIssueView = {
+        issueId: "issue-2",
+        identifier: "MT-99",
+        title: "Detail",
+        state: "In Progress",
+        workspaceKey: null,
+        message: null,
+        status: "queued",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: null,
+        error: null,
+      };
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+        getDetailViews: () => new Map([["MT-99", detailView]]),
+      });
+
+      const snapshot = buildSnapshot(deps, callbacks);
+
+      // The completed + detailViews should be passed to buildWorkflowColumns.
+      // completedView (state "Done") goes into the "Done" column.
+      // detailView (state "In Progress") goes into the "In Progress" column.
+      const allIssues = snapshot.workflowColumns.flatMap((col) => col.issues ?? []);
+      const identifiers = allIssues.map((issue: { identifier?: string }) => issue.identifier);
+      expect(identifiers).toContain("MT-42");
+      expect(identifiers).toContain("MT-99");
+    });
+  });
 });

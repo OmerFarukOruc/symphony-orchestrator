@@ -154,4 +154,129 @@ describe("handleRetryLaunchFailure", () => {
     const detail = ctx.detailViews.get("MT-1") as Record<string, unknown>;
     expect(detail.workspaceKey).toBe("my-ws-key");
   });
+
+  it("sets modelChangePending to false in failure view", async () => {
+    const ctx = makeCtx();
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+    const detail = ctx.detailViews.get("MT-1") as Record<string, unknown>;
+    expect(detail.modelChangePending).toBe(false);
+  });
+
+  it("includes workspacePath from running entry", async () => {
+    const entry = makeEntry({ workspace: { path: "/tmp/specific-path", workspaceKey: "ws", createdNow: false } });
+    const ctx = makeCtx(entry);
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+    const detail = ctx.detailViews.get("MT-1") as Record<string, unknown>;
+    expect(detail.workspacePath).toBe("/tmp/specific-path");
+  });
+
+  it("sets workspacePath to null when no running entry", async () => {
+    const ctx = makeCtx(null);
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+    const detail = ctx.detailViews.get("MT-1") as Record<string, unknown>;
+    expect(detail.workspacePath).toBeNull();
+  });
+
+  it("includes tokenUsage from running entry", async () => {
+    const usage = { inputTokens: 100, outputTokens: 50, totalTokens: 150 };
+    const entry = makeEntry({ tokenUsage: usage });
+    const ctx = makeCtx(entry);
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+    const detail = ctx.detailViews.get("MT-1") as Record<string, unknown>;
+    expect(detail.tokenUsage).toEqual(usage);
+  });
+
+  it("sets tokenUsage to null when no running entry", async () => {
+    const ctx = makeCtx(null);
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+    const detail = ctx.detailViews.get("MT-1") as Record<string, unknown>;
+    expect(detail.tokenUsage).toBeNull();
+  });
+
+  it("falls back to createAttempt when updateAttempt fails", async () => {
+    const entry = makeEntry();
+    const ctx = makeCtx(entry);
+    ctx.deps.attemptStore.updateAttempt.mockRejectedValue(new Error("DB err"));
+    (ctx.deps.logger as Record<string, ReturnType<typeof vi.fn>>).warn = vi.fn();
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("startup error"));
+
+    expect(ctx.deps.attemptStore.updateAttempt).toHaveBeenCalled();
+    expect(ctx.deps.attemptStore.createAttempt).toHaveBeenCalled();
+    expect((ctx.deps.logger as Record<string, ReturnType<typeof vi.fn>>).warn).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "DB err" }),
+      "retry failure: failed to update attempt record, falling back to create",
+    );
+  });
+
+  it("does NOT call createAttempt when updateAttempt succeeds (persisted=true)", async () => {
+    const entry = makeEntry();
+    const ctx = makeCtx(entry);
+    // updateAttempt succeeds -> persisted=true -> should NOT call createAttempt
+    ctx.deps.attemptStore.updateAttempt.mockResolvedValue(undefined);
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+
+    expect(ctx.deps.attemptStore.updateAttempt).toHaveBeenCalled();
+    expect(ctx.deps.attemptStore.createAttempt).not.toHaveBeenCalled();
+  });
+
+  it("logs warning when createAttempt fails too", async () => {
+    const ctx = makeCtx(null);
+    ctx.deps.attemptStore.createAttempt.mockRejectedValue(new Error("create err"));
+    (ctx.deps.logger as Record<string, ReturnType<typeof vi.fn>>).warn = vi.fn();
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("startup error"));
+
+    expect((ctx.deps.logger as Record<string, ReturnType<typeof vi.fn>>).warn).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "create err" }),
+      "retry failure: failed to create fallback attempt record",
+    );
+  });
+
+  it("passes sessionId as threadId in updateAttempt", async () => {
+    const entry = makeEntry({ sessionId: "session-abc" });
+    const ctx = makeCtx(entry);
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+
+    expect(ctx.deps.attemptStore.updateAttempt).toHaveBeenCalledWith(
+      "run-abc",
+      expect.objectContaining({ threadId: "session-abc" }),
+    );
+  });
+
+  it("passes tokenUsage in updateAttempt when running entry has it", async () => {
+    const usage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
+    const entry = makeEntry({ tokenUsage: usage });
+    const ctx = makeCtx(entry);
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+
+    expect(ctx.deps.attemptStore.updateAttempt).toHaveBeenCalledWith(
+      "run-abc",
+      expect.objectContaining({ tokenUsage: usage }),
+    );
+  });
+
+  it("passes workspaceKey from failureView to persistRetryFailure", async () => {
+    const entry = makeEntry({ workspace: { path: "/tmp/ws", workspaceKey: "ws-k", createdNow: false } });
+    const ctx = makeCtx(entry);
+    ctx.deps.attemptStore.updateAttempt.mockRejectedValue(new Error("err"));
+    (ctx.deps.logger as Record<string, ReturnType<typeof vi.fn>>).warn = vi.fn();
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+
+    // The createAttempt fallback should include workspaceKey
+    expect(ctx.deps.attemptStore.createAttempt).toHaveBeenCalledWith(expect.objectContaining({ workspaceKey: "ws-k" }));
+  });
+
+  it("includes sessionId in pushed event", async () => {
+    const entry = makeEntry({ sessionId: "sess-xyz" });
+    const ctx = makeCtx(entry);
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+
+    expect(ctx.pushEvent).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "sess-xyz" }));
+  });
+
+  it("uses null sessionId in pushed event when no running entry", async () => {
+    const ctx = makeCtx(null);
+    await handleRetryLaunchFailure(ctx, makeIssue(), 1, new Error("error"));
+
+    expect(ctx.pushEvent).toHaveBeenCalledWith(expect.objectContaining({ sessionId: null }));
+  });
 });
