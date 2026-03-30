@@ -136,6 +136,8 @@ export interface RuntimeIssueView {
   configuredReasoningEffort?: ReasoningEffort | null;
   configuredModelSource?: "default" | "override" | null;
   modelChangePending?: boolean;
+  configuredTemplateId?: string | null;
+  configuredTemplateName?: string | null;
   url?: string | null;
   description?: string | null;
   blockedBy?: IssueBlockerRef[];

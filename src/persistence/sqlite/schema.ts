@@ -152,15 +152,3 @@ export const configHistory = sqliteTable("config_history", {
   requestId: text("request_id"),
   timestamp: text("timestamp").notNull(),
 });
-
-/**
- * Per-issue configuration overrides: model selection and prompt template.
- * One row per issue identifier. Columns are nullable so partial overrides
- * are possible (e.g., model-only or template-only).
- */
-export const issueConfig = sqliteTable("issue_config", {
-  identifier: text("identifier").primaryKey(),
-  model: text("model"),
-  reasoningEffort: text("reasoning_effort"),
-  templateId: text("template_id"),
-});

@@ -25,10 +25,11 @@ import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
 import { getOpenApiSpec } from "./openapi.js";
-import { modelUpdateSchema, steerSchema, transitionSchema } from "./request-schemas.js";
+import { modelUpdateSchema, steerSchema, templateOverrideSchema, transitionSchema } from "./request-schemas.js";
 import { methodNotAllowed, refreshReason, sanitizeConfigValue } from "./route-helpers.js";
 import { createSSEHandler } from "./sse.js";
 import { getSwaggerHtml } from "./swagger-html.js";
+import { handleTemplateClear, handleTemplateOverride } from "./template-override-handler.js";
 import { handleTransition } from "./transition-handler.js";
 import { handleGetTransitions } from "./transitions-api.js";
 import { validateBody } from "./validation.js";
@@ -202,6 +203,22 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/:issue_identifier/model")
     .post(validateBody(modelUpdateSchema), async (req, res) => {
       await handleModelUpdate(deps.orchestrator, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/:issue_identifier/template")
+    .post(validateBody(templateOverrideSchema), (req, res) => {
+      if (!deps.templateStore) {
+        res.status(503).json({ error: { code: "not_configured", message: "template store not available" } });
+        return;
+      }
+      handleTemplateOverride(deps.orchestrator, deps.templateStore, req, res);
+    })
+    .delete((req, res) => {
+      handleTemplateClear(deps.orchestrator, req, res);
     })
     .all((_req, res) => {
       methodNotAllowed(res);

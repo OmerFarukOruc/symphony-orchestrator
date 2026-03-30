@@ -57,3 +57,17 @@ export const steerSchema = z
     message: z.string().min(1, "message is required"),
   })
   .strict();
+
+/**
+ * POST /:issue_identifier/template
+ *
+ * Sets a per-issue prompt template override.
+ * `template_id` must reference an existing template in the template store.
+ */
+export const templateOverrideSchema = z
+  .object({
+    template_id: z.string().trim().min(1, "template_id is required"),
+  })
+  .strict();
+
+export type TemplateOverrideBody = z.infer<typeof templateOverrideSchema>;

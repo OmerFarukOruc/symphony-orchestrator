@@ -73,6 +73,8 @@ export interface SnapshotBuilderCallbacks {
   getStallEvents?: () => StallEventView[];
   getSystemHealth?: () => SystemHealth | null;
   getWebhookHealth?: () => RuntimeSnapshot["webhookHealth"] | undefined;
+  getTemplateOverride?: (identifier: string) => string | null;
+  getTemplateName?: (templateId: string) => string | null;
 }
 
 // Builds a runtime snapshot from orchestrator state.
@@ -126,6 +128,43 @@ export interface IssueDetailView extends RuntimeIssueView {
   currentAttemptId: string | null;
 }
 
+function resolveRelatedEvents(
+  identifier: string,
+  archivedAttempts: AttemptRecord[],
+  runningEntry: RunningEntry | null,
+  retryEntry: RetryRuntimeEntry | null,
+  deps: SnapshotBuilderDeps,
+  callbacks: SnapshotBuilderCallbacks,
+): RecentEvent[] {
+  if (runningEntry) return deps.attemptStore.getEvents(runningEntry.runId);
+  if (retryEntry || archivedAttempts.length === 0) {
+    return callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier);
+  }
+  return archivedAttempts.flatMap((attempt) => deps.attemptStore.getEvents(attempt.attemptId));
+}
+
+function enrichFromArchive(detail: RuntimeIssueView, archivedAttempts: AttemptRecord[]): RuntimeIssueView {
+  if (archivedAttempts.length === 0) return detail;
+  const enriched: RuntimeIssueView = { ...detail };
+  if (!enriched.tokenUsage) {
+    enriched.tokenUsage = archivedAttempts.reduce(
+      (acc, attempt) => {
+        if (!attempt.tokenUsage) return acc;
+        return {
+          inputTokens: acc.inputTokens + attempt.tokenUsage.inputTokens,
+          outputTokens: acc.outputTokens + attempt.tokenUsage.outputTokens,
+          totalTokens: acc.totalTokens + attempt.tokenUsage.totalTokens,
+        };
+      },
+      { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    );
+  }
+  if (!enriched.startedAt) {
+    enriched.startedAt = archivedAttempts.at(0)?.startedAt ?? null;
+  }
+  return enriched;
+}
+
 // Builds issue detail view including archived attempts.
 export function buildIssueDetail(
   identifier: string,
@@ -149,37 +188,16 @@ export function buildIssueDetail(
   const retryEntry = location.kind === "retry" ? location.entry : null;
 
   const archivedAttempts = deps.attemptStore.getAttemptsForIssue(identifier);
-  let relatedEvents: RecentEvent[];
-  if (runningEntry) {
-    relatedEvents = deps.attemptStore.getEvents(runningEntry.runId);
-  } else if (retryEntry) {
-    relatedEvents = callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier);
-  } else if (archivedAttempts.length > 0) {
-    relatedEvents = archivedAttempts.flatMap((attempt) => deps.attemptStore.getEvents(attempt.attemptId));
-  } else {
-    relatedEvents = callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier);
-  }
+  const relatedEvents = resolveRelatedEvents(identifier, archivedAttempts, runningEntry, retryEntry, deps, callbacks);
+  const enriched = enrichFromArchive(detail, archivedAttempts);
 
-  const enriched: typeof detail = { ...detail };
-  if (!enriched.tokenUsage && archivedAttempts.length > 0) {
-    enriched.tokenUsage = archivedAttempts.reduce(
-      (acc, attempt) => {
-        if (!attempt.tokenUsage) return acc;
-        return {
-          inputTokens: acc.inputTokens + attempt.tokenUsage.inputTokens,
-          outputTokens: acc.outputTokens + attempt.tokenUsage.outputTokens,
-          totalTokens: acc.totalTokens + attempt.tokenUsage.totalTokens,
-        };
-      },
-      { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-    );
-  }
-  if (!enriched.startedAt && archivedAttempts.length > 0) {
-    enriched.startedAt = archivedAttempts.at(0)?.startedAt ?? null;
-  }
+  const templateId = callbacks.getTemplateOverride ? callbacks.getTemplateOverride(identifier) : null;
+  const templateName = templateId && callbacks.getTemplateName ? callbacks.getTemplateName(templateId) : null;
 
   return {
     ...enriched,
+    configuredTemplateId: templateId,
+    configuredTemplateName: templateName,
     recentEvents: relatedEvents,
     attempts: archivedAttempts.map((attempt) => buildAttemptSummary(attempt)),
     currentAttemptId: runningEntry?.runId ?? null,

@@ -53,10 +53,10 @@ export class IssueConfigStore {
   upsertModel(identifier: string, model: string, reasoningEffort: string | null): void {
     this.db
       .insert(issueConfig)
-      .values({ identifier, model, reasoningEffort })
+      .values({ identifier, model, reasoningEffort: reasoningEffort as never })
       .onConflictDoUpdate({
         target: [issueConfig.identifier],
-        set: { model, reasoningEffort },
+        set: { model, reasoningEffort: reasoningEffort as never },
       })
       .run();
   }

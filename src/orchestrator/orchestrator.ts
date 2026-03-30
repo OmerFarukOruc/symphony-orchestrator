@@ -291,14 +291,20 @@ export class Orchestrator implements OrchestratorPort {
     return this._state.issueTemplateOverrides.get(identifier) ?? null;
   }
 
-  updateIssueTemplateOverride(identifier: string, templateId: string): void {
+  updateIssueTemplateOverride(identifier: string, templateId: string): boolean {
+    const detail = this.getIssueDetail(identifier);
+    if (!detail) return false;
     this._state.issueTemplateOverrides.set(identifier, templateId);
     this.deps.issueConfigStore.upsertTemplateId(identifier, templateId);
+    return true;
   }
 
-  clearIssueTemplateOverride(identifier: string): void {
+  clearIssueTemplateOverride(identifier: string): boolean {
+    const detail = this.getIssueDetail(identifier);
+    if (!detail) return false;
     this._state.issueTemplateOverrides.delete(identifier);
     this.deps.issueConfigStore.clearTemplateId(identifier);
+    return true;
   }
 
   async steerIssue(identifier: string, message: string): Promise<{ ok: boolean } | null> {
@@ -372,6 +378,8 @@ export class Orchestrator implements OrchestratorPort {
       getRateLimits: () => this._state.rateLimits,
       getCodexTotals: () => this._state.codexTotals,
       getStallEvents: () => this._state.stallEvents,
+      getTemplateOverride: (identifier: string) => this._state.issueTemplateOverrides.get(identifier) ?? null,
+      getTemplateName: (templateId: string) => this.deps.templateStore?.get(templateId)?.name ?? null,
       getSystemHealth: () => {
         const h = this.watchdog.getHealth();
         return { status: h.status, checkedAt: h.checkedAt, runningCount: h.runningCount, message: h.message };

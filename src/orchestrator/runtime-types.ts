@@ -8,6 +8,7 @@ import type { TrackerPort } from "../tracker/port.js";
 import type { NotificationManager } from "../notification/manager.js";
 import type { RepoMatch, RepoRouter } from "../git/repo-router.js";
 import type { WebhookHealthTracker } from "../webhook/health-tracker.js";
+import type { PromptTemplateStore } from "../prompt/store.js";
 import type {
   Issue,
   ModelSelection,
@@ -57,6 +58,7 @@ export interface OrchestratorDeps {
   repoRouter?: Pick<RepoRouter, "matchIssue">;
   gitManager?: GitIntegrationPort;
   webhookHealthTracker?: WebhookHealthTracker;
+  templateStore?: PromptTemplateStore;
   logger: SymphonyLogger;
   resolveTemplate: (identifier: string) => Promise<string>;
 }
