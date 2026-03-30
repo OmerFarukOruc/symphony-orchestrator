@@ -104,6 +104,9 @@ export const api = {
       model: payload.model,
       reasoning_effort: payload.reasoningEffort,
     }),
+  postTemplateOverride: (identifier: string, templateId: string) =>
+    post<void>(`/api/v1/${encodeURIComponent(identifier)}/template`, { template_id: templateId }),
+  deleteTemplateOverride: (identifier: string) => del(`/api/v1/${encodeURIComponent(identifier)}/template`),
   getTransitions: () => get<{ transitions: Record<string, string[]> }>("/api/v1/transitions"),
   postTransition: (id: string, targetState: string) =>
     post<{ ok: boolean; from?: string; to?: string; reason?: string }>(`/api/v1/${encodeURIComponent(id)}/transition`, {

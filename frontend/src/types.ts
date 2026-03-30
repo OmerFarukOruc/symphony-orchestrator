@@ -68,6 +68,8 @@ export interface IssueDetail extends RuntimeIssueView {
   recentEvents: RecentEvent[];
   attempts: AttemptSummary[];
   currentAttemptId: string | null;
+  configuredTemplateId: string | null;
+  configuredTemplateName: string | null;
 }
 
 export interface AbortIssueResponse {
