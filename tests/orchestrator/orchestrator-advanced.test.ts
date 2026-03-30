@@ -8,6 +8,7 @@ import {
   createConfigStore,
   createAttemptStore,
   createLogger,
+  createResolveTemplate,
 } from "./orchestrator-fixtures.js";
 
 afterEach(() => {
@@ -38,6 +39,7 @@ describe("Orchestrator — advanced scenarios", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -92,6 +94,7 @@ describe("Orchestrator — advanced scenarios", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     const seededView = {
@@ -167,6 +170,7 @@ describe("Orchestrator — advanced scenarios", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -251,6 +255,7 @@ describe("Orchestrator — advanced scenarios", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -306,6 +311,7 @@ describe("Orchestrator — advanced scenarios", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -369,6 +375,7 @@ describe("Orchestrator — advanced scenarios", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -476,6 +483,7 @@ describe("Orchestrator — advanced scenarios", () => {
       repoRouter,
       gitManager,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -514,6 +522,7 @@ describe("Orchestrator — eventBus emissions", () => {
       agentRunner: { runAttempt: vi.fn() } as unknown as AgentRunner,
       eventBus: eventBus as never,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -546,6 +555,7 @@ describe("Orchestrator — eventBus emissions", () => {
       agentRunner: { runAttempt: vi.fn() } as unknown as AgentRunner,
       eventBus: eventBus as never,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     // updateIssueModelSelection requires an issue detail to exist.

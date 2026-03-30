@@ -132,7 +132,14 @@ export async function launchAvailableWorkers(
 type LaunchContext = {
   deps: Pick<
     OrchestratorDeps,
-    "agentRunner" | "attemptStore" | "configStore" | "workspaceManager" | "repoRouter" | "gitManager" | "logger"
+    | "agentRunner"
+    | "attemptStore"
+    | "configStore"
+    | "workspaceManager"
+    | "repoRouter"
+    | "gitManager"
+    | "logger"
+    | "resolveTemplate"
   >;
   runningEntries: Map<string, RunningEntry>;
   completedViews: Map<string, ReturnType<typeof issueView>>;
@@ -353,12 +360,12 @@ export async function launchWorker(
   );
   emitLaunchNotifications(ctx, issue, workspace, attempt, modelSelection);
 
-  const workflow = ctx.deps.configStore.getWorkflow();
+  const promptTemplate = await ctx.deps.resolveTemplate(issue.identifier);
   const promise = ctx.deps.agentRunner.runAttempt({
     issue,
     attempt,
     modelSelection,
-    promptTemplate: workflow.promptTemplate,
+    promptTemplate,
     workspace,
     signal: entry.abortController.signal,
     onEvent: buildOnEventHandler(ctx, entry),

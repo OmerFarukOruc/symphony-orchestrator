@@ -56,4 +56,5 @@ export interface OrchestratorDeps {
   gitManager?: GitIntegrationPort;
   webhookHealthTracker?: WebhookHealthTracker;
   logger: SymphonyLogger;
+  resolveTemplate: (identifier: string) => Promise<string>;
 }

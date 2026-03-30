@@ -8,6 +8,7 @@ import {
   createConfigStore,
   createAttemptStore,
   createLogger,
+  createResolveTemplate,
 } from "./orchestrator-fixtures.js";
 
 afterEach(() => {
@@ -70,6 +71,7 @@ describe("Orchestrator", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -118,6 +120,7 @@ describe("Orchestrator", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -187,6 +190,7 @@ describe("Orchestrator", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -250,6 +254,7 @@ describe("Orchestrator", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -322,6 +327,7 @@ describe("Orchestrator", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -381,6 +387,7 @@ describe("Orchestrator", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -438,6 +445,7 @@ describe("Orchestrator", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -505,6 +513,7 @@ describe("Orchestrator", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -568,6 +577,7 @@ describe("Orchestrator", () => {
       workspaceManager,
       agentRunner,
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();

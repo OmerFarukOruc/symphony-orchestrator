@@ -98,6 +98,10 @@ export function createConfigStore(config: ServiceConfig): ConfigStore {
   } as unknown as ConfigStore;
 }
 
+export function createResolveTemplate(): (identifier: string) => Promise<string> {
+  return async (_identifier: string) => "Prompt";
+}
+
 export function createAttemptStore(): AttemptStore {
   return {
     createAttempt: vi.fn(async () => undefined),
