@@ -52,11 +52,11 @@
   "dependencies": {
     "better-sqlite3": "^12.8.0",
     "chokidar": "^5.0.0",
-    "drizzle-orm": "^0.45.1",
+    "drizzle-orm": "^0.45.2",
     "express": "^5.1.0",
     "express-rate-limit": "^8.3.1",
     "liquidjs": "^10.25.1",
-    "pino": "^9.6.0",
+    "pino": "^10.3.1",
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
   },
