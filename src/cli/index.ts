@@ -1,4 +1,5 @@
 import { mkdir, readFile, readdir, rm } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
@@ -40,7 +41,7 @@ async function cleanupTransientWorkspaceDirs(workspaceRoot: string): Promise<voi
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
-  const { workflowPath, archiveDir, selectedPort, logger } = parseCliArgs(argv);
+  const { dataDir, archiveDir, selectedPort, logger } = parseCliArgs(argv);
 
   const overlayStore = new ConfigOverlayStore(
     path.join(archiveDir, "config", "overlay.yaml"),
@@ -65,7 +66,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       throw error;
     }
   }
-  const configStore = new ConfigStore(workflowPath, logger.child({ component: "config" }), {
+  // Unit 2 will remove workflowPath from ConfigStore constructor entirely.
+  const configStore = new ConfigStore("", logger.child({ component: "config" }), {
     overlayStore,
     secretsStore,
   });
@@ -90,7 +92,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
   const config = configStore.getConfig();
   const port = selectedPort ?? config.server.port;
-  const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger, workflowPath);
+  const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger);
   wireNotifications(services.notificationManager, configStore, logger);
 
   const { orchestrator, httpServer, eventBus } = services;
@@ -114,7 +116,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     webhookRegistrar: services.webhookRegistrar,
     logger,
   });
-  logger.info({ workflowPath, port, logDir: archiveDir }, "service started");
+  logger.info({ dataDir, port, archiveDir }, "service started");
   watchConfigChanges(configStore, services.notificationManager, config.server.port, logger);
 
   await awaitShutdown(logger, shutdown);
@@ -134,25 +136,19 @@ function parsePortValue(rawPort: string | undefined): number | undefined {
 function parseCliArgs(argv: string[]) {
   const parsed = parseArgs({
     args: argv,
-    allowPositionals: true,
+    allowPositionals: false,
     options: {
       port: { type: "string" },
-      "log-dir": { type: "string" },
+      "data-dir": { type: "string" },
     },
   });
 
-  const workflowPath = parsed.positionals[0] ?? "./WORKFLOW.md";
-  const resolvedWorkflowPath = path.resolve(workflowPath);
   const logger = createLogger();
   initErrorTracking(logger.child({ component: "error-tracking" }));
-  const archiveDir = path.resolve(
-    parsed.values["log-dir"] ??
-      (process.env.DATA_DIR
-        ? path.join(process.env.DATA_DIR, "archives")
-        : path.join(path.dirname(resolvedWorkflowPath), ".symphony")),
-  );
+  const dataDir = path.resolve(parsed.values["data-dir"] ?? process.env.DATA_DIR ?? path.join(homedir(), ".symphony"));
+  const archiveDir = path.resolve(path.join(dataDir, "archives"));
   const selectedPort = parsePortValue(parsed.values.port);
-  return { workflowPath, resolvedWorkflowPath, archiveDir, selectedPort, logger };
+  return { dataDir, archiveDir, selectedPort, logger };
 }
 
 async function readMasterKeyFile(archiveDir: string): Promise<string | null> {

@@ -51,9 +51,8 @@ export async function createServices(
   secretsStore: SecretsStore,
   archiveDir: string,
   logger: ReturnType<typeof createLogger>,
-  workflowPath?: string,
 ) {
-  const persistence = await initPersistenceRuntime({ dataDir: archiveDir, logger, workflowPath });
+  const persistence = await initPersistenceRuntime({ dataDir: archiveDir, logger });
 
   const { tracker, linearClient } = createTracker(() => configStore.getConfig(), logger);
 

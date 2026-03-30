@@ -203,22 +203,7 @@ describe("createServices", () => {
     expect(mockInitPersistenceRuntime).toHaveBeenCalledWith(expect.objectContaining({ dataDir: archiveDir, logger }));
   });
 
-  it("passes workflowPath to persistence when provided", async () => {
-    const workflowPath = "/tmp/WORKFLOW.md";
-
-    await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
-      archiveDir,
-      logger,
-      workflowPath,
-    );
-
-    expect(mockInitPersistenceRuntime).toHaveBeenCalledWith(expect.objectContaining({ workflowPath }));
-  });
-
-  it("passes undefined workflowPath to persistence when omitted", async () => {
+  it("does not pass workflowPath to persistence", async () => {
     await createServices(
       makeConfigStore() as never,
       makeOverlayStore() as never,
@@ -227,7 +212,9 @@ describe("createServices", () => {
       logger,
     );
 
-    expect(mockInitPersistenceRuntime).toHaveBeenCalledWith(expect.objectContaining({ workflowPath: undefined }));
+    expect(mockInitPersistenceRuntime).toHaveBeenCalledWith(
+      expect.not.objectContaining({ workflowPath: expect.anything() }),
+    );
   });
 
   it("creates tracker using the config getter", async () => {
