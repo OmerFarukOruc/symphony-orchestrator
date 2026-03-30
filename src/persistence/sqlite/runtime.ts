@@ -35,8 +35,6 @@ export interface PersistenceRuntimeOptions {
   logger: SymphonyLogger;
   /** Persistence mode — "sqlite" (default) or "jsonl" (legacy). */
   mode?: string;
-  /** Optional WORKFLOW.md path for one-time legacy import. */
-  workflowPath?: string | null;
 }
 
 /**
@@ -46,7 +44,7 @@ export interface PersistenceRuntimeOptions {
  * and constructs the attempt store with the shared connection.
  */
 export async function initPersistenceRuntime(options: PersistenceRuntimeOptions): Promise<PersistenceRuntime> {
-  const { dataDir, logger, mode = process.env.SYMPHONY_PERSISTENCE ?? "sqlite", workflowPath } = options;
+  const { dataDir, logger, mode = process.env.SYMPHONY_PERSISTENCE ?? "sqlite" } = options;
   const storeLogger = logger.child({ component: "attempt-store" });
 
   if (mode === "jsonl") {
@@ -80,7 +78,7 @@ export async function initPersistenceRuntime(options: PersistenceRuntimeOptions)
 
   // Seed config defaults + import legacy files (idempotent).
   seedDefaults(db);
-  await importLegacyFiles(db, dataDir, logger, workflowPath);
+  await importLegacyFiles(db, dataDir, logger);
 
   const attemptStore = new SqliteAttemptStore(db, storeLogger);
 

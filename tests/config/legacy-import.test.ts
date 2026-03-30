@@ -170,7 +170,8 @@ describe("importLegacyFiles", () => {
     try {
       seedDefaults(db);
 
-      const result = await importLegacyFiles(db, dir, createLogger());
+      // Pass null to bypass process.cwd() discovery — the temp dir has no WORKFLOW files
+      const result = await importLegacyFiles(db, dir, createLogger(), null);
       expect(result.imported).toBe(false);
     } finally {
       closeDatabase(db);

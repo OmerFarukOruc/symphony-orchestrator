@@ -31,18 +31,20 @@ interface ImportResult {
  * Seed default config sections into the DB if the config table is empty.
  */
 export function seedDefaults(db: SymphonyDatabase): void {
-  const existing = db.select().from(config).limit(1).all();
-  if (existing.length > 0) return;
-
   const now = new Date().toISOString();
-  for (const [key, value] of Object.entries(DEFAULT_CONFIG_SECTIONS)) {
-    db.insert(config)
-      .values({ key, value: JSON.stringify(value), updatedAt: now })
-      .onConflictDoNothing()
-      .run();
+
+  const existing = db.select().from(config).limit(1).all();
+  if (existing.length === 0) {
+    for (const [key, value] of Object.entries(DEFAULT_CONFIG_SECTIONS)) {
+      db.insert(config)
+        .values({ key, value: JSON.stringify(value), updatedAt: now })
+        .onConflictDoNothing()
+        .run();
+    }
   }
 
-  // Seed default prompt template
+  // Seed default prompt template independently — runs whenever the table is
+  // empty, regardless of whether config rows already exist (e.g. upgraded DBs).
   const existingTemplates = db.select().from(promptTemplates).limit(1).all();
   if (existingTemplates.length === 0) {
     db.insert(promptTemplates)
@@ -89,7 +91,8 @@ async function loadWorkflowSource(
   let merged: Record<string, unknown> = {};
   let promptBody: string | null = null;
 
-  const resolvedPath = workflowPath ?? findLegacyWorkflow(dataDir);
+  // undefined → auto-discover; null → skip discovery; string → use directly
+  const resolvedPath = workflowPath === undefined ? findLegacyWorkflow(dataDir) : workflowPath;
   if (resolvedPath) {
     try {
       const workflow = await loadWorkflowDefinition(resolvedPath);
@@ -201,17 +204,19 @@ export async function importLegacyFiles(
 
 /**
  * Look for a WORKFLOW.md in common locations relative to dataDir.
+ * Checks process.cwd() first, then falls back to the parent of dataDir.
  */
 function findLegacyWorkflow(dataDir: string): string | null {
-  // dataDir is typically .symphony/ — WORKFLOW.md is one level up
-  const parentDir = path.dirname(dataDir);
-  const candidates = [
-    path.join(parentDir, "WORKFLOW.md"),
-    path.join(parentDir, "WORKFLOW.yaml"),
-    path.join(parentDir, "WORKFLOW.yml"),
+  // Check CWD first — covers the common case where the user runs symphony
+  // from the project root that contains WORKFLOW.md.
+  const cwd = process.cwd();
+  const cwdCandidates = [
+    path.join(cwd, "WORKFLOW.md"),
+    path.join(cwd, "WORKFLOW.yaml"),
+    path.join(cwd, "WORKFLOW.yml"),
   ];
 
-  for (const candidate of candidates) {
+  for (const candidate of cwdCandidates) {
     try {
       accessSync(candidate);
       return candidate;
@@ -219,5 +224,28 @@ function findLegacyWorkflow(dataDir: string): string | null {
       continue;
     }
   }
+
+  // Fall back: dataDir is typically .symphony/ — WORKFLOW.md is one level up
+  const parentDir = path.dirname(dataDir);
+  if (parentDir === cwd) {
+    // Already checked this directory above; avoid redundant probes.
+    return null;
+  }
+
+  const parentCandidates = [
+    path.join(parentDir, "WORKFLOW.md"),
+    path.join(parentDir, "WORKFLOW.yaml"),
+    path.join(parentDir, "WORKFLOW.yml"),
+  ];
+
+  for (const candidate of parentCandidates) {
+    try {
+      accessSync(candidate);
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+
   return null;
 }
