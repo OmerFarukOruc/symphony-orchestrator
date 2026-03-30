@@ -122,6 +122,20 @@ export const promptTemplates = sqliteTable("prompt_templates", {
 });
 
 /**
+ * Per-issue model and template overrides.
+ * One row per issue identifier; all override columns are nullable so
+ * the orchestrator falls back to global defaults when they are absent.
+ */
+export const issueConfig = sqliteTable("issue_config", {
+  identifier: text("identifier").primaryKey(),
+  templateId: text("template_id").references(() => promptTemplates.id),
+  model: text("model"),
+  reasoningEffort: text("reasoning_effort", {
+    enum: ["none", "minimal", "low", "medium", "high", "xhigh"],
+  }),
+});
+
+/**
  * Audit log for config, secret, and template mutations.
  * Stores both old and new values for diffing. Secret values are
  * recorded as the literal string "[REDACTED]".
