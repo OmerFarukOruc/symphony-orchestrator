@@ -54,4 +54,13 @@ export interface SymphonyEventMap {
     actor: string;
     timestamp: string;
   };
+
+  /** A verified webhook delivery was received from Linear. */
+  "webhook.received": { eventType: string; timestamp: string };
+
+  /** The webhook health state machine transitioned between statuses. */
+  "webhook.health_changed": {
+    oldStatus: import("../webhook/types.js").WebhookHealthStatus;
+    newStatus: import("../webhook/types.js").WebhookHealthStatus;
+  };
 }

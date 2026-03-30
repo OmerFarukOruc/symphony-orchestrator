@@ -282,6 +282,16 @@ export class Orchestrator implements OrchestratorPort {
     return { ok };
   }
 
+  getEffectivePollingInterval(): number {
+    const tracker = this.deps.webhookHealthTracker;
+    if (!tracker) return this.deps.configStore.getConfig().polling.intervalMs;
+
+    const health = tracker.getHealth();
+    if (health.status === "disconnected") return this.deps.configStore.getConfig().polling.intervalMs;
+    if (health.status === "connected") return health.effectiveIntervalMs;
+    return this.deps.configStore.getConfig().polling.intervalMs; // degraded = base rate from config
+  }
+
   private scheduleTick(delayMs: number): void {
     if (!this._state.running || this.tickInFlight) return;
     if (this.nextTickTimer) clearTimeout(this.nextTickTimer);
@@ -314,7 +324,7 @@ export class Orchestrator implements OrchestratorPort {
       this.deps.logger.error({ error: toErrorString(error) }, "orchestrator tick failed");
     } finally {
       this.tickInFlight = false;
-      const delayMs = this.refreshQueued ? 0 : this.deps.configStore.getConfig().polling.intervalMs;
+      const delayMs = this.refreshQueued ? 0 : this.getEffectivePollingInterval();
       this.refreshQueued = false;
       if (this._state.running) this.scheduleTick(delayMs);
     }
@@ -337,6 +347,18 @@ export class Orchestrator implements OrchestratorPort {
       getSystemHealth: () => {
         const h = this.watchdog.getHealth();
         return { status: h.status, checkedAt: h.checkedAt, runningCount: h.runningCount, message: h.message };
+      },
+      getWebhookHealth: () => {
+        const tracker = this.deps.webhookHealthTracker;
+        if (!tracker) return undefined;
+        const h = tracker.getHealth();
+        return {
+          status: h.status,
+          effectiveIntervalMs: h.effectiveIntervalMs,
+          stats: h.stats,
+          lastDeliveryAt: h.lastDeliveryAt,
+          lastEventType: h.lastEventType,
+        };
       },
     };
   }

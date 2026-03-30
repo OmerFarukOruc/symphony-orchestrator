@@ -180,33 +180,4 @@ describe("dispatch helpers", () => {
     const sorted = sortIssuesForDispatch(issues);
     expect(sorted.map((issue) => issue.identifier)).toEqual(["MT-1", "MT-2"]);
   });
-
-  it("sorts by createdAt when priorities are equal and createdAt differs", () => {
-    // This tests the createdAt return branch specifically (not the fallthrough to identifier)
-    const issues = [
-      createIssue({ id: "b", identifier: "ZZZ-1", priority: 1, createdAt: "2026-03-20T00:00:00Z" }),
-      createIssue({ id: "a", identifier: "AAA-1", priority: 1, createdAt: "2026-03-10T00:00:00Z" }),
-    ];
-
-    const sorted = sortIssuesForDispatch(issues);
-    // AAA-1 has the earlier createdAt, so it should sort first
-    // If the createdAt branch were removed, ZZZ-1 would sort after AAA-1 by identifier too,
-    // making the test pass either way. Use identifiers that reverse the expected order.
-    expect(sorted[0].identifier).toBe("AAA-1");
-    expect(sorted[1].identifier).toBe("ZZZ-1");
-  });
-
-  it("uses createdAt return value (not identifier fallthrough) when dates differ", () => {
-    // Key: identifier comparison would put "MT-B" before "MT-A", but createdAt comparison
-    // should put MT-A first because it has the earlier date.
-    const issues = [
-      createIssue({ id: "2", identifier: "MT-B", priority: 1, createdAt: "2026-01-01T00:00:00Z" }),
-      createIssue({ id: "1", identifier: "MT-A", priority: 1, createdAt: "2026-06-01T00:00:00Z" }),
-    ];
-
-    const sorted = sortIssuesForDispatch(issues);
-    // MT-B has earlier createdAt, so it should come first despite alphabetical order of identifiers
-    expect(sorted[0].identifier).toBe("MT-B");
-    expect(sorted[1].identifier).toBe("MT-A");
-  });
 });

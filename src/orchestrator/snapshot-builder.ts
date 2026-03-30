@@ -72,6 +72,7 @@ export interface SnapshotBuilderCallbacks {
   };
   getStallEvents?: () => StallEventView[];
   getSystemHealth?: () => SystemHealth | null;
+  getWebhookHealth?: () => RuntimeSnapshot["webhookHealth"] | undefined;
 }
 
 // Builds a runtime snapshot from orchestrator state.
@@ -114,6 +115,7 @@ export function buildSnapshot(deps: SnapshotBuilderDeps, callbacks: SnapshotBuil
     recentEvents: [...callbacks.getRecentEvents()],
     stallEvents: callbacks.getStallEvents ? [...callbacks.getStallEvents()] : undefined,
     systemHealth: callbacks.getSystemHealth ? (callbacks.getSystemHealth() ?? undefined) : undefined,
+    webhookHealth: callbacks.getWebhookHealth ? callbacks.getWebhookHealth() : undefined,
   };
 }
 

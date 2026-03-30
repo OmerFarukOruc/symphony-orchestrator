@@ -201,6 +201,28 @@ function deriveCodexConfig(
 }
 
 /**
+ * Build the webhook configuration subsection.
+ *
+ * Returns null when `webhook_url` is absent or empty,
+ * which disables the webhook integration entirely.
+ */
+function deriveWebhookConfig(
+  webhook: Record<string, unknown>,
+  secretResolver?: (name: string) => string | undefined,
+): ServiceConfig["webhook"] | null {
+  const webhookUrl = resolveConfigString(webhook.webhook_url, secretResolver) || null;
+  if (!webhookUrl) return null;
+
+  return {
+    webhookUrl,
+    webhookSecret: resolveConfigString(webhook.webhook_secret, secretResolver) || "",
+    pollingStretchMs: asNumber(webhook.polling_stretch_ms, 120000),
+    pollingBaseMs: asNumber(webhook.polling_base_ms, 15000),
+    healthCheckIntervalMs: asNumber(webhook.health_check_interval_ms, 300000),
+  };
+}
+
+/**
  * Build the polling configuration subsection.
  */
 function derivePollingConfig(polling: Record<string, unknown>): ServiceConfig["polling"] {
@@ -240,6 +262,7 @@ export function deriveServiceConfig(workflow: WorkflowDefinition, options?: Deri
   const codex = asRecord(root.codex);
   const stateMachine = asRecord(root.state_machine);
   const server = asRecord(root.server);
+  const webhook = asRecord(root.webhook);
 
   return {
     tracker: deriveTrackerConfig(tracker, secretResolver),
@@ -252,5 +275,6 @@ export function deriveServiceConfig(workflow: WorkflowDefinition, options?: Deri
     codex: deriveCodexConfig(codex, agent, secretResolver),
     stateMachine: normalizeStateMachine(stateMachine),
     server: deriveServerConfig(server),
+    webhook: deriveWebhookConfig(webhook, secretResolver),
   };
 }

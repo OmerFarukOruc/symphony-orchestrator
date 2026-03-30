@@ -50,6 +50,13 @@ export function createWriteGuard(
       return;
     }
 
+    /* Webhook routes handle their own authentication via HMAC signature
+       verification — skip IP/token write protection entirely. */
+    if (req.path.startsWith("/webhooks/")) {
+      next();
+      return;
+    }
+
     const remote = req.socket.remoteAddress;
     const fromLoopback = isLoopback(remote);
 

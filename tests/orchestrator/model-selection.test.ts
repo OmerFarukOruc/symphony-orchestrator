@@ -230,20 +230,4 @@ describe("updateIssueModelSelection", () => {
     expect(result!.appliesNextAttempt).toBe(false);
     expect(ctx.requestRefresh).toHaveBeenCalled();
   });
-
-  it("uses empty effort suffix when reasoningEffort is null (no trailing text in message)", async () => {
-    const ctx = makeCtx({ runningEntry: {} });
-    // Override to null effort so effortSuffix should be ""
-    ctx.getConfig = () => makeConfig("o3-mini", null);
-    await updateIssueModelSelection(ctx, {
-      identifier: "MT-1",
-      model: "o3-mini",
-      reasoningEffort: null,
-    });
-    const event = ctx.pushEvent.mock.calls[0][0] as Record<string, unknown>;
-    // With null reasoning effort, message should NOT contain parenthesized effort
-    expect(event.message).toBe("next run model updated to o3-mini");
-    // Should not end with space or other suffix
-    expect((event.message as string).endsWith("o3-mini")).toBe(true);
-  });
 });

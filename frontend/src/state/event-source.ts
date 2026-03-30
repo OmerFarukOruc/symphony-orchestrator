@@ -24,6 +24,8 @@ const EVENT_DISPATCH_MAP = new Map<string, string>([
   ["poll.complete", "symphony:poll-complete"],
   ["system.error", "symphony:system-error"],
   ["audit.mutation", "symphony:audit-mutation"],
+  ["webhook.received", "symphony:webhook-received"],
+  ["webhook.health_changed", "symphony:webhook-health-changed"],
 ]);
 
 let source: EventSource | null = null;
