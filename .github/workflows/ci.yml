@@ -39,7 +39,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v5
         with:
           path: |
             node_modules
@@ -60,7 +60,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         with:
           path: |
             node_modules
@@ -88,7 +88,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       # Node 24: restore cached build. Node 22: fresh install for native compat.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         if: matrix.node-version == 24
         with:
           path: |
@@ -124,7 +124,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         with:
           path: |
             node_modules
@@ -216,7 +216,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         with:
           path: |
             node_modules
@@ -224,7 +224,7 @@ jobs:
           key: build-${{ github.sha }}
       - name: Cache Playwright browsers
         id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ hashFiles('pnpm-lock.yaml') }}
@@ -258,7 +258,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         with:
           path: |
             node_modules
@@ -315,7 +315,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         with:
           path: |
             node_modules
@@ -341,7 +341,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         with:
           path: |
             node_modules
@@ -350,7 +350,7 @@ jobs:
       - name: Restore pnpm virtual store symlinks
         run: pnpm install --frozen-lockfile
       - name: Restore Stryker incremental cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: reports/stryker-incremental.json
           key: stryker-incremental-${{ github.sha }}
