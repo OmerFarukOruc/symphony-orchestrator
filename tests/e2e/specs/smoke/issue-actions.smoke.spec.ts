@@ -168,7 +168,7 @@ test.describe("Issue Actions: Model Override", () => {
     );
 
     await modelInput.selectOption("gpt-5.4");
-    await page.locator('.issue-form-grid button[type="submit"]').click();
+    await modelInput.locator("xpath=ancestor::form").locator('button[type="submit"]').click();
 
     const request = await modelRequest;
     const body = request.postDataJSON();
@@ -185,7 +185,7 @@ test.describe("Issue Actions: Model Override", () => {
     await expect(modelInput.locator('option[value="gpt-5.4"]')).toBeAttached({ timeout: 5000 });
 
     await modelInput.selectOption("gpt-5.4");
-    await page.locator('.issue-form-grid button[type="submit"]').click();
+    await modelInput.locator("xpath=ancestor::form").locator('button[type="submit"]').click();
 
     await expect(page.getByText("Model override saved for next run.")).toBeVisible({ timeout: 5000 });
   });
