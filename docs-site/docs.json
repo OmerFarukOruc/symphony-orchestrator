@@ -1,17 +1,36 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "maple",
   "name": "Risoluto",
   "colors": {
-    "primary": "#6366f1",
-    "light": "#818cf8",
-    "dark": "#4f46e5"
+    "primary": "#9a472b",
+    "light": "#c96e4a",
+    "dark": "#9a472b"
+  },
+  "background": {
+    "color": {
+      "light": "#f7f5f1",
+      "dark": "#0c1016"
+    }
   },
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg"
   },
   "favicon": "/favicon.svg",
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/OmerFarukOruc/risoluto"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://risolu.to"
+    }
+  },
   "contextual": {
     "options": [
       "copy",
