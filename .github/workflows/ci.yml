@@ -454,7 +454,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: e2e-lifecycle-report-${{ github.sha }}
-          path: e2e-reports/
+          path: |
+            e2e-reports/
+            !e2e-reports/**/risoluto-data/
+            !e2e-reports/**/artifacts/*.db
           retention-days: 14
       - name: Publish JUnit results
         if: always()
