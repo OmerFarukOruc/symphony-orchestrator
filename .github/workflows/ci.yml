@@ -288,10 +288,10 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
-      - run: docker build -t symphony-orchestrator-service .
+      - run: docker build -t risoluto-service .
       - name: Verify container structure
         run: |
-          docker run --rm --entrypoint sh symphony-orchestrator-service -c "
+          docker run --rm --entrypoint sh risoluto-service -c "
             node --version &&
             test -f dist/cli/index.js &&
             test -d node_modules &&

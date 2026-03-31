@@ -73,7 +73,7 @@ export function initHeader(headerEl: HTMLElement): void {
   brandIcon.append(createIcon("planner", { size: 20 }));
   const titleSpan = document.createElement("span");
   titleSpan.className = "header-brand-name";
-  titleSpan.textContent = "Symphony";
+  titleSpan.textContent = "Risoluto";
   const badgeSpan = document.createElement("span");
   badgeSpan.className = "mc-badge header-env-badge";
   const dot = document.createElement("span");
@@ -84,7 +84,7 @@ export function initHeader(headerEl: HTMLElement): void {
   envLabel.textContent = "Local";
   badgeSpan.append(dot, envLabel);
   badgeSpan.title =
-    "Local mode — Symphony is running on your machine. Issues are processed in sandboxed Docker containers for security.";
+    "Local mode — Risoluto is running on your machine. Issues are processed in sandboxed Docker containers for security.";
   brand.append(brandIcon, titleSpan, badgeSpan);
 
   const command = document.createElement("div");

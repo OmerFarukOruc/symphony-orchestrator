@@ -1,7 +1,7 @@
 type Theme = "dark" | "light";
 export type ThemePreference = Theme | "system";
 
-const STORAGE_KEY = "symphony-theme";
+const STORAGE_KEY = "risoluto-theme";
 
 let mediaQueryList: MediaQueryList | null = null;
 let listeningForSystemTheme = false;

@@ -102,12 +102,12 @@ export function buildRepoConfigStep(state: RepoConfigStepState, actions: RepoCon
   const titleRow = buildTitleWithBadge("Link your repository", "is-optional", "Optional");
   const sub = document.createElement("div");
   sub.className = "setup-subtitle";
-  sub.textContent = "Tell Symphony which GitHub repo to target when handling issues from this Linear project.";
+  sub.textContent = "Tell Risoluto which GitHub repo to target when handling issues from this Linear project.";
 
   const callout = document.createElement("div");
   callout.className = "setup-callout";
   callout.textContent =
-    "Repos are optional — Symphony can use directory strategy without them. But linking a repo enables direct branch pushes and PR creation.";
+    "Repos are optional — Risoluto can use directory strategy without them. But linking a repo enables direct branch pushes and PR creation.";
   el.append(titleRow, sub, callout);
 
   const existingRoutes = buildExistingRoutes(state.routes, actions, state.loading);

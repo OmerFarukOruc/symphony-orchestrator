@@ -9,5 +9,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     npm install -g @openai/codex@latest && \
     rm -rf /var/lib/apt/lists/*
 
-# Symphony will supply --user $(id -u):$(id -g) at run time
+# Risoluto will supply --user $(id -u):$(id -g) at run time
 WORKDIR /workspace

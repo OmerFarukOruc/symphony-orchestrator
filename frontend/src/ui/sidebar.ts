@@ -4,7 +4,7 @@ import { buildSidebarBadgeCounts } from "./sidebar-badges.js";
 import { createIcon, createIconSlot, type IconName } from "./icons";
 import { navGroups, navItems } from "./nav-items";
 
-const STORAGE_KEY = "symphony-sidebar-expanded";
+const STORAGE_KEY = "risoluto-sidebar-expanded";
 const MOBILE_BREAKPOINT = "(max-width: 760px)";
 
 let _navHandler: (() => void) | null = null;

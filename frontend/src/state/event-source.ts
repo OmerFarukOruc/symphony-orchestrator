@@ -17,15 +17,15 @@ const LIFECYCLE_EVENTS = new Set(["issue.started", "issue.completed", "issue.sta
 
 /** Maps backend event types to their corresponding CustomEvent names for simple dispatch. */
 const EVENT_DISPATCH_MAP = new Map<string, string>([
-  ["agent.event", "symphony:agent-event"],
-  ["worker.failed", "symphony:worker-failed"],
-  ["model.updated", "symphony:model-updated"],
-  ["workspace.event", "symphony:workspace-event"],
-  ["poll.complete", "symphony:poll-complete"],
-  ["system.error", "symphony:system-error"],
-  ["audit.mutation", "symphony:audit-mutation"],
-  ["webhook.received", "symphony:webhook-received"],
-  ["webhook.health_changed", "symphony:webhook-health-changed"],
+  ["agent.event", "risoluto:agent-event"],
+  ["worker.failed", "risoluto:worker-failed"],
+  ["model.updated", "risoluto:model-updated"],
+  ["workspace.event", "risoluto:workspace-event"],
+  ["poll.complete", "risoluto:poll-complete"],
+  ["system.error", "risoluto:system-error"],
+  ["audit.mutation", "risoluto:audit-mutation"],
+  ["webhook.received", "risoluto:webhook-received"],
+  ["webhook.health_changed", "risoluto:webhook-health-changed"],
 ]);
 
 let source: EventSource | null = null;
@@ -50,7 +50,7 @@ function openConnection(): void {
       const payload = data.payload as { identifier?: string } | undefined;
       if (typeof payload?.identifier === "string") {
         window.dispatchEvent(
-          new CustomEvent("symphony:issue-lifecycle", {
+          new CustomEvent("risoluto:issue-lifecycle", {
             detail: { type: data.type, identifier: payload.identifier },
           }),
         );
@@ -61,7 +61,7 @@ function openConnection(): void {
       window.dispatchEvent(new CustomEvent(customEventName, { detail: data.payload }));
     }
     window.dispatchEvent(
-      new CustomEvent("symphony:any-event", {
+      new CustomEvent("risoluto:any-event", {
         detail: { type: data.type, payload: data.payload },
       }),
     );
@@ -107,8 +107,8 @@ export function subscribeIssueEvents(identifier: string, handler: (event: AgentE
       handler(payload);
     }
   };
-  window.addEventListener("symphony:agent-event", listener);
-  return () => window.removeEventListener("symphony:agent-event", listener);
+  window.addEventListener("risoluto:agent-event", listener);
+  return () => window.removeEventListener("risoluto:agent-event", listener);
 }
 
 export function subscribeIssueLifecycle(identifier: string, handler: () => void): () => void {
@@ -118,8 +118,8 @@ export function subscribeIssueLifecycle(identifier: string, handler: () => void)
       handler();
     }
   };
-  window.addEventListener("symphony:issue-lifecycle", listener);
-  return () => window.removeEventListener("symphony:issue-lifecycle", listener);
+  window.addEventListener("risoluto:issue-lifecycle", listener);
+  return () => window.removeEventListener("risoluto:issue-lifecycle", listener);
 }
 
 export function subscribeAllEvents(
@@ -133,6 +133,6 @@ export function subscribeAllEvents(
       handler({ type: detail.type, payload });
     }
   };
-  window.addEventListener("symphony:any-event", listener);
-  return () => window.removeEventListener("symphony:any-event", listener);
+  window.addEventListener("risoluto:any-event", listener);
+  return () => window.removeEventListener("risoluto:any-event", listener);
 }

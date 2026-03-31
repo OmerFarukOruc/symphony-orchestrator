@@ -30,7 +30,7 @@ export const SECTION_GROUPS = {
     id: "agent-config",
     label: "Agent",
     icon: "settings" as IconName,
-    description: "Configure how Symphony works",
+    description: "Configure how Risoluto works",
   },
   NOTIFICATIONS: {
     id: "notify",

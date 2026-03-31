@@ -354,12 +354,12 @@ export function createAuditPage(): HTMLElement {
       renderTable();
     }
   };
-  window.addEventListener("symphony:audit-mutation", onAuditMutation);
+  window.addEventListener("risoluto:audit-mutation", onAuditMutation);
 
   /* ── Cleanup ────────────────────────────────── */
 
   registerPageCleanup(page, () => {
-    window.removeEventListener("symphony:audit-mutation", onAuditMutation);
+    window.removeEventListener("risoluto:audit-mutation", onAuditMutation);
     clearTimeout(keyDebounce);
   });
 

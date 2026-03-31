@@ -194,7 +194,7 @@ function buildMasterKeyStep(): HTMLElement {
   if (keyAlreadySet) {
     // Key was set in a previous session — show confirmation with reconfigure option
     sub.textContent =
-      "Your encryption key was generated during a previous setup. It is stored in .symphony/master.key — make sure you have a backup.";
+      "Your encryption key was generated during a previous setup. It is stored in .risoluto/master.key — make sure you have a backup.";
 
     const badge = document.createElement("div");
     badge.className = "setup-callout";
@@ -262,7 +262,7 @@ function buildMasterKeyStep(): HTMLElement {
 
   // Key was just generated — show it so the user can copy
   sub.textContent =
-    "Symphony uses an encryption key to protect stored credentials on your machine. A key has been generated for you — copy it somewhere safe before continuing.";
+    "Risoluto uses an encryption key to protect stored credentials on your machine. A key has been generated for you — copy it somewhere safe before continuing.";
 
   const callout = document.createElement("div");
   callout.className = "setup-callout";
@@ -272,7 +272,7 @@ function buildMasterKeyStep(): HTMLElement {
     "Save this key somewhere safe. It cannot be recovered if lost — you will need to delete ",
   );
   const calloutCode = document.createElement("code");
-  calloutCode.textContent = ".symphony/secrets.enc";
+  calloutCode.textContent = ".risoluto/secrets.enc";
   const calloutText2 = document.createTextNode(" and re-enter your secrets.");
   callout.append(calloutStrong, calloutText1, calloutCode, calloutText2);
 
@@ -420,7 +420,7 @@ function buildLinearProjectStep(): HTMLElement {
 
   const sub = document.createElement("div");
   sub.className = "setup-subtitle";
-  const subText = document.createTextNode("Enter your Linear API key and choose the project Symphony should track. ");
+  const subText = document.createTextNode("Enter your Linear API key and choose the project Risoluto should track. ");
   const subLink = document.createElement("a");
   subLink.className = "setup-link";
   subLink.href = "https://linear.app/settings/account/security/api-keys/new";
@@ -871,7 +871,7 @@ function buildGithubTokenStep(): HTMLElement {
     "margin:0;padding-left:var(--space-4);font-family:var(--font-body);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8";
 
   const optAItems = [
-    ["Name it ", "Symphony"],
+    ["Name it ", "Risoluto"],
     ["Repository access → ", "Only select repositories", " → pick repos"],
     ["Permissions → Repository → ", "Contents", " and ", "Pull requests", ": Read and write"],
     ["Generate token"],
@@ -904,7 +904,7 @@ function buildGithubTokenStep(): HTMLElement {
   const optBLink = document.createElement("a");
   optBLink.className = "setup-link";
   optBLink.style.cssText = "display:inline-block;margin-bottom:var(--space-3)";
-  optBLink.href = "https://github.com/settings/tokens/new?scopes=repo&description=Symphony+Orchestrator";
+  optBLink.href = "https://github.com/settings/tokens/new?scopes=repo&description=Risoluto";
   optBLink.target = "_blank";
   optBLink.rel = "noopener";
   optBLink.textContent = "Create token →";
@@ -1006,7 +1006,7 @@ function buildFlowDiagram(): HTMLElement {
 
   const steps = [
     { icon: "📋", label: "Linear Issue", sub: "Create or tag" },
-    { icon: "🎵", label: "Symphony", sub: "Agent works" },
+    { icon: "🎵", label: "Risoluto", sub: "Agent works" },
     { icon: "🐙", label: "GitHub PR", sub: "Results delivered" },
   ];
 
@@ -1118,7 +1118,7 @@ function buildDoneStep(): HTMLElement {
 
   const desc = document.createElement("div");
   desc.className = "setup-done-desc";
-  desc.textContent = "Symphony is connected and polling. Here's how it works:";
+  desc.textContent = "Risoluto is connected and polling. Here's how it works:";
 
   const flow = buildFlowDiagram();
 
@@ -1133,7 +1133,7 @@ function buildDoneStep(): HTMLElement {
   const testIssueCard = buildQuickStartCard({
     icon: "⚡",
     title: "Create a test issue",
-    desc: "Creates a Linear issue and moves it to In Progress. Symphony will pick it up within 30 seconds.",
+    desc: "Creates a Linear issue and moves it to In Progress. Risoluto will pick it up within 30 seconds.",
     buttonText: "Create Test Issue",
     loading: state.testIssueLoading,
     created: state.testIssueCreated,
@@ -1145,8 +1145,8 @@ function buildDoneStep(): HTMLElement {
 
   const labelCard = buildQuickStartCard({
     icon: "🏷️",
-    title: "Create Symphony label",
-    desc: "Adds a symphony label to your Linear team for tagging issues you want Symphony to handle.",
+    title: "Create Risoluto label",
+    desc: "Adds a risoluto label to your Linear team for tagging issues you want Risoluto to handle.",
     buttonText: "Create Label",
     loading: state.labelLoading,
     created: state.labelCreated,
@@ -1302,12 +1302,12 @@ function buildPage(): HTMLElement {
 
     const introHeading = document.createElement("h2");
     introHeading.className = "setup-intro-heading";
-    introHeading.textContent = "Welcome to Symphony";
+    introHeading.textContent = "Welcome to Risoluto";
 
     const introSub = document.createElement("p");
     introSub.className = "setup-intro-sub";
     introSub.textContent =
-      "This takes about 3–5 minutes. You'll connect Symphony to your project tracker and add the credentials it needs.";
+      "This takes about 3–5 minutes. You'll connect Risoluto to your project tracker and add the credentials it needs.";
 
     intro.append(introHeading, introSub);
     wrap.append(intro);

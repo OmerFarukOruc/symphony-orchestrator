@@ -16,10 +16,10 @@ export interface ParsedPrometheusMetrics {
 }
 
 const REQUIRED_FAMILIES = [
-  "symphony_http_requests_total",
-  "symphony_http_request_duration_seconds",
-  "symphony_orchestrator_polls_total",
-  "symphony_agent_runs_total",
+  "risoluto_http_requests_total",
+  "risoluto_http_request_duration_seconds",
+  "risoluto_orchestrator_polls_total",
+  "risoluto_agent_runs_total",
 ];
 
 export function parsePrometheusText(raw: string): ParsedPrometheusMetrics {
@@ -94,11 +94,11 @@ export function getMissingFamilies(metrics: ParsedPrometheusMetrics): string[] {
 }
 
 export function buildHttpHealthSummary(metrics: ParsedPrometheusMetrics): string {
-  const total = sumMetric(metrics, "symphony_http_requests_total");
+  const total = sumMetric(metrics, "risoluto_http_requests_total");
   const errors = metrics.samples
-    .filter((sample) => sample.name === "symphony_http_requests_total" && sample.labels.status?.startsWith("5"))
+    .filter((sample) => sample.name === "risoluto_http_requests_total" && sample.labels.status?.startsWith("5"))
     .reduce((count, sample) => count + sample.value, 0);
-  const latency = meanHistogramMs(metrics, "symphony_http_request_duration_seconds");
+  const latency = meanHistogramMs(metrics, "risoluto_http_request_duration_seconds");
   if (total === null) {
     return "No HTTP traffic recorded yet";
   }
@@ -106,7 +106,7 @@ export function buildHttpHealthSummary(metrics: ParsedPrometheusMetrics): string
 }
 
 export function buildPollSummary(metrics: ParsedPrometheusMetrics, trends: ObservabilityTrendPoint[]): string {
-  const polls = sumMetric(metrics, "symphony_orchestrator_polls_total");
+  const polls = sumMetric(metrics, "risoluto_orchestrator_polls_total");
   const cadence = describeCadence(trends);
   const cadenceSuffix = cadence ? ` · ${cadence}` : "";
   if (polls === null) {
@@ -131,8 +131,8 @@ export function buildRateLimitSummary(rateLimits: RateLimits | null): string {
 }
 
 export function formatCpuMemory(metrics: ParsedPrometheusMetrics): string {
-  const cpu = sumMetric(metrics, "symphony_container_cpu_percent");
-  const memory = sumMetric(metrics, "symphony_container_memory_percent");
+  const cpu = sumMetric(metrics, "risoluto_container_cpu_percent");
+  const memory = sumMetric(metrics, "risoluto_container_memory_percent");
   if (cpu === null && memory === null) {
     return "No active containers";
   }

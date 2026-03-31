@@ -229,10 +229,10 @@ export function createWorkspacesPage(): HTMLElement {
     void fetchAndRender().then(() => flashDiff(body));
   };
   window.addEventListener("state:update", handler);
-  window.addEventListener("symphony:workspace-event", onWorkspaceEvent);
+  window.addEventListener("risoluto:workspace-event", onWorkspaceEvent);
   registerPageCleanup(page, () => {
     window.removeEventListener("state:update", handler);
-    window.removeEventListener("symphony:workspace-event", onWorkspaceEvent);
+    window.removeEventListener("risoluto:workspace-event", onWorkspaceEvent);
   });
 
   return page;

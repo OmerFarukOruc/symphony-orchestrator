@@ -100,7 +100,7 @@ export function createRunsPage(issueId: string): HTMLElement {
       tableColumn.replaceChildren(
         createEmptyState(
           "No archived runs yet",
-          "Archived runs appear after the first attempt finishes and Symphony persists the summary.",
+          "Archived runs appear after the first attempt finishes and Risoluto persists the summary.",
           "View live logs",
           () => router.navigate(`/issues/${state.issueIdentifier}/logs`),
         ),

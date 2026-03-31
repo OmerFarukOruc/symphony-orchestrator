@@ -102,7 +102,7 @@ class Router {
 
 function getRouteTitle(rendered: HTMLElement): string {
   const titleElement = rendered.querySelector<HTMLElement>(".page-title, .issue-title, h1");
-  return titleElement?.textContent?.trim() || document.title || "Symphony";
+  return titleElement?.textContent?.trim() || document.title || "Risoluto";
 }
 
 export { type Route, Router };

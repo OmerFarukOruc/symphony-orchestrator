@@ -33,7 +33,7 @@ import { deduplicatedToast } from "./utils/toast-events.js";
 let lastIssueContextId: string | null = null;
 
 function setDocumentTitle(pageTitle: string): void {
-  document.title = pageTitle === "Symphony" ? pageTitle : `${pageTitle} · Symphony`;
+  document.title = pageTitle === "Risoluto" ? pageTitle : `${pageTitle} · Risoluto`;
 }
 
 function announceRouteChange(pageTitle: string): void {
@@ -181,19 +181,19 @@ window.addEventListener("setup:complete", () => {
 
 // ── SSE system event toast notifications ──────────────────────────────
 
-window.addEventListener("symphony:worker-failed", (event) => {
+window.addEventListener("risoluto:worker-failed", (event) => {
   const detail = (event as CustomEvent<{ error?: string; identifier?: string }>).detail;
   const message = detail?.error ?? "A worker process failed";
   deduplicatedToast(`Worker failed: ${message}`, "error");
 });
 
-window.addEventListener("symphony:system-error", (event) => {
+window.addEventListener("risoluto:system-error", (event) => {
   const detail = (event as CustomEvent<{ message?: string }>).detail;
   const message = detail?.message ?? "An unexpected system error occurred";
   deduplicatedToast(`System error: ${message}`, "error");
 });
 
-window.addEventListener("symphony:model-updated", (event) => {
+window.addEventListener("risoluto:model-updated", (event) => {
   const detail = (event as CustomEvent<{ identifier?: string; model?: string }>).detail;
   const identifier = detail?.identifier ?? "unknown";
   deduplicatedToast(`Model updated for ${identifier}`, "info");

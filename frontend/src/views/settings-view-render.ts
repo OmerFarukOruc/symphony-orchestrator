@@ -49,8 +49,8 @@ export function updateSettingsHeader(
   }
   syncLoadedData(state, loadState.data);
   subtitle.textContent = isSchemaLimited(state.schema)
-    ? "Configure your tracker, provider, and sandbox so Symphony can start processing issues."
-    : "Select a section to review how Symphony connects, authenticates, and runs work.";
+    ? "Configure your tracker, provider, and sandbox so Risoluto can start processing issues."
+    : "Select a section to review how Risoluto connects, authenticates, and runs work.";
   schemaBadge.textContent = isSchemaLimited(state.schema) ? "Schema limited" : "Schema guided";
 }
 
