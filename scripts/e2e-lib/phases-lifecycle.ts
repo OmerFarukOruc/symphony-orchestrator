@@ -398,14 +398,24 @@ async function runPollingLoop(
 }
 
 async function enrichWithPrUrl(ctx: RunContext, attemptData: Record<string, unknown>): Promise<void> {
-  try {
-    const detail = (await fetchJson(`${ctx.baseUrl}/api/v1/${ctx.issueIdentifier}`)) as IssueDetailResponse;
-    if (detail.pullRequestUrl) {
-      ctx.prUrl = detail.pullRequestUrl;
-      attemptData.pullRequestUrl = detail.pullRequestUrl;
+  // The PR is created asynchronously after the attempt reaches `completed` status.
+  // Retry for up to 10 seconds to allow the git post-run step to finish.
+  const maxAttempts = 5;
+  const retryDelayMs = 2000;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const detail = (await fetchJson(`${ctx.baseUrl}/api/v1/${ctx.issueIdentifier}`)) as IssueDetailResponse;
+      if (detail.pullRequestUrl) {
+        ctx.prUrl = detail.pullRequestUrl;
+        attemptData.pullRequestUrl = detail.pullRequestUrl;
+        return;
+      }
+    } catch {
+      log(ctx, "Could not fetch issue detail for PR URL");
     }
-  } catch {
-    log(ctx, "Could not fetch issue detail for PR URL");
+    if (i < maxAttempts - 1) {
+      await sleep(retryDelayMs);
+    }
   }
 }
 
