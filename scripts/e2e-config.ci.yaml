@@ -1,0 +1,45 @@
+## CI-specific E2E lifecycle test config.
+## All credentials use $ENV_VAR references — expanded by resolveEnvValue() at runtime.
+## See scripts/e2e-config.yaml for the local development equivalent.
+
+linear:
+  api_key: "$LINEAR_API_KEY"
+  project_slug: "cc32c67bd46b"
+  team_id: "84f97131-06b9-49e5-a494-66f6e18a383a"
+
+codex:
+  auth_mode: "openai_login"
+  source_home: "/tmp/codex-auth"
+  model: "gpt-5-codex-mini"
+  reasoning_effort: "low"
+
+github:
+  token: "$E2E_GITHUB_TOKEN"
+  test_repo:
+    url: "https://github.com/OmerFarukOruc/sentinel-test-arena.git"
+    branch: "master"
+    identifier_prefix: "NIN"
+    owner: "OmerFarukOruc"
+    repo: "sentinel-test-arena"
+
+server:
+  port: 4111
+
+timeouts:
+  risoluto_startup_ms: 20000
+  setup_complete_ms: 30000
+  issue_pickup_ms: 120000
+  lifecycle_complete_ms: 900000 # 15 min — CI should not run forever
+  pr_verification_ms: 30000
+  graceful_shutdown_ms: 10000
+
+test_issue:
+  title: "E2E smoke: add hello-world.txt"
+  description: |
+    Create a file called `hello-world.txt` at the repo root containing
+    "Hello from Risoluto E2E test -- run {run_id}".
+    Automated smoke test -- keep changes minimal.
+  priority: 3
+
+cleanup:
+  enabled: true

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LinearClient, LinearClientError } from "../../src/linear/client.js";
 import { createMockLogger } from "../helpers.js";
-import type { ServiceConfig, SymphonyLogger } from "../../src/core/types.js";
+import type { ServiceConfig, RisolutoLogger } from "../../src/core/types.js";
 
 function createConfig(): ServiceConfig {
   return {
@@ -61,7 +61,7 @@ function makeClient(fetchMock: ReturnType<typeof vi.fn>): LinearClient {
   return new LinearClient(() => createConfig(), createMockLogger());
 }
 
-function makeClientWithLogger(fetchMock: ReturnType<typeof vi.fn>, logger: SymphonyLogger): LinearClient {
+function makeClientWithLogger(fetchMock: ReturnType<typeof vi.fn>, logger: RisolutoLogger): LinearClient {
   vi.stubGlobal("fetch", fetchMock);
   return new LinearClient(() => createConfig(), logger);
 }
@@ -93,7 +93,7 @@ describe("LinearClient.listWebhooks", () => {
               id: "wh-1",
               url: "https://example.com/webhook",
               enabled: true,
-              label: "Symphony",
+              label: "Risoluto",
               teamId: "team-1",
               resourceTypes: ["Issue", "Comment"],
               secret: "sec-abc",
@@ -123,7 +123,7 @@ describe("LinearClient.listWebhooks", () => {
         id: "wh-1",
         url: "https://example.com/webhook",
         enabled: true,
-        label: "Symphony",
+        label: "Risoluto",
         teamId: "team-1",
         resourceTypes: ["Issue", "Comment"],
         secret: "sec-abc",
@@ -140,7 +140,7 @@ describe("LinearClient.listWebhooks", () => {
     ]);
 
     const body = getRequestBody(fetchMock, 0);
-    expect(body.query).toContain("SymphonyWebhooks");
+    expect(body.query).toContain("RisolutoWebhooks");
   });
 
   it("handles empty nodes array", async () => {
@@ -195,7 +195,7 @@ describe("LinearClient.createWebhook", () => {
             id: "wh-new",
             url: "https://example.com/hook",
             enabled: true,
-            label: "Symphony",
+            label: "Risoluto",
             secret: "generated-secret",
             resourceTypes: ["Issue"],
             createdAt: "2026-03-30T00:00:00Z",
@@ -207,7 +207,7 @@ describe("LinearClient.createWebhook", () => {
     const result = await client.createWebhook({
       url: "https://example.com/hook",
       resourceTypes: ["Issue"],
-      label: "Symphony",
+      label: "Risoluto",
       secret: "my-secret",
       teamId: "team-1",
     });
@@ -215,12 +215,12 @@ describe("LinearClient.createWebhook", () => {
     expect(result).toEqual({ id: "wh-new", secret: "generated-secret" });
 
     const body = getRequestBody(fetchMock, 0);
-    expect(body.query).toContain("SymphonyWebhookCreate");
+    expect(body.query).toContain("RisolutoWebhookCreate");
     expect(body.variables).toEqual({
       url: "https://example.com/hook",
       teamId: "team-1",
       resourceTypes: ["Issue"],
-      label: "Symphony",
+      label: "Risoluto",
       secret: "my-secret",
     });
   });
@@ -310,7 +310,7 @@ describe("LinearClient.updateWebhook", () => {
     });
 
     const body = getRequestBody(fetchMock, 0);
-    expect(body.query).toContain("SymphonyWebhookUpdate");
+    expect(body.query).toContain("RisolutoWebhookUpdate");
     expect(body.variables).toEqual({
       id: "wh-1",
       url: "https://new.example.com",
@@ -343,7 +343,7 @@ describe("LinearClient.deleteWebhook", () => {
     await client.deleteWebhook("wh-1");
 
     const body = getRequestBody(fetchMock, 0);
-    expect(body.query).toContain("SymphonyWebhookDelete");
+    expect(body.query).toContain("RisolutoWebhookDelete");
     expect(body.variables).toEqual({ id: "wh-1" });
   });
 

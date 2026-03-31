@@ -771,8 +771,7 @@ describe("refreshQueueViews — additional coverage", () => {
       setQueuedViews: () => undefined,
     });
     const detail = detailViews.get("MT-1");
-    expect(detail).toBeDefined();
-    expect(detail!.configuredModel).toBe("claude-3");
+    expect(detail).toMatchObject({ configuredModel: "claude-3" });
     expect(detail!.configuredReasoningEffort).toBe("medium");
     expect(detail!.configuredModelSource).toBe("override");
     expect(detail!.model).toBe("claude-3");

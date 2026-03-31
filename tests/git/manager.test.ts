@@ -43,10 +43,10 @@ describe("GitManager", () => {
     const manager = new GitManager({ runGit, env: {} });
     const result = await manager.cloneInto(createRepoMatch(), "/tmp/ws", createIssue());
 
-    expect(result.branchName).toBe("symphony/nin-42");
+    expect(result.branchName).toBe("risoluto/nin-42");
     expect(calls).toEqual([
       ["clone", "--branch", "main", "--single-branch", "https://github.com/acme/backend.git", "."],
-      ["checkout", "-b", "symphony/nin-42"],
+      ["checkout", "-b", "risoluto/nin-42"],
     ]);
   });
 
@@ -90,7 +90,7 @@ describe("GitManager", () => {
         return { stdout: ".git\n", stderr: "" };
       }
       if (args[0] === "rev-parse" && args[1] === "--verify") {
-        return { stdout: "refs/heads/symphony/nin-42\n", stderr: "" };
+        return { stdout: "refs/heads/risoluto/nin-42\n", stderr: "" };
       }
       return { stdout: "", stderr: "" };
     };
@@ -103,13 +103,13 @@ describe("GitManager", () => {
       createIssue(),
     );
 
-    expect(result).toEqual({ branchName: "symphony/nin-42" });
+    expect(result).toEqual({ branchName: "risoluto/nin-42" });
     expect(calls).toEqual([
       ["rev-parse", "--git-dir"],
       ["fetch", "origin", "--prune"],
       ["fetch", "origin", "--prune"],
-      ["rev-parse", "--verify", "refs/heads/symphony/nin-42"],
-      ["worktree", "add", "/tmp/worktrees/NIN-42", "symphony/nin-42"],
+      ["rev-parse", "--verify", "refs/heads/risoluto/nin-42"],
+      ["worktree", "add", "/tmp/worktrees/NIN-42", "risoluto/nin-42"],
     ]);
   });
 
@@ -145,8 +145,8 @@ describe("GitManager", () => {
   it("derives the base clone directory from the repo URL", () => {
     const manager = new GitManager({ env: {} });
 
-    expect(manager.deriveBaseCloneDir("/tmp/symphony", "https://github.com/acme/backend.git")).toBe(
-      "/tmp/symphony/.base/https-github.com-acme-backend.git",
+    expect(manager.deriveBaseCloneDir("/tmp/risoluto", "https://github.com/acme/backend.git")).toBe(
+      "/tmp/risoluto/.base/https-github.com-acme-backend.git",
     );
   });
 
@@ -179,7 +179,7 @@ describe("GitManager", () => {
         return { stdout: " M src/file.ts\n", stderr: "" };
       }
       if (args[0] === "rev-parse") {
-        return { stdout: "symphony/nin-42\n", stderr: "" };
+        return { stdout: "risoluto/nin-42\n", stderr: "" };
       }
       return { stdout: "", stderr: "" };
     };
@@ -190,14 +190,14 @@ describe("GitManager", () => {
     expect(result).toEqual({
       committed: true,
       pushed: true,
-      branchName: "symphony/nin-42",
+      branchName: "risoluto/nin-42",
     });
     expect(calls).toEqual([
       ["status", "--porcelain"],
       ["rev-parse", "--abbrev-ref", "HEAD"],
       ["add", "-A"],
       ["commit", "-m", "feat: finish issue"],
-      ["push", "-u", "origin", "symphony/nin-42"],
+      ["push", "-u", "origin", "risoluto/nin-42"],
     ]);
   });
 
@@ -216,7 +216,7 @@ describe("GitManager", () => {
       env: { GITHUB_TOKEN: "ghs_test" },
     });
 
-    const payload = await manager.createPullRequest(createRepoMatch(), createIssue(), "symphony/nin-42");
+    const payload = await manager.createPullRequest(createRepoMatch(), createIssue(), "risoluto/nin-42");
     expect(payload).toMatchObject({ number: 101 });
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api.github.com/repos/acme/backend/pulls",
@@ -235,7 +235,7 @@ describe("GitManager", () => {
       env: {},
     });
 
-    await expect(manager.createPullRequest(createRepoMatch(), createIssue(), "symphony/nin-42")).rejects.toThrow(
+    await expect(manager.createPullRequest(createRepoMatch(), createIssue(), "risoluto/nin-42")).rejects.toThrow(
       "missing GitHub token env var",
     );
   });
@@ -255,7 +255,7 @@ describe("GitManager", () => {
       env: { GITHUB_TOKEN: "ghs_test" },
     });
 
-    await expect(manager.createPullRequest(createRepoMatch(), createIssue(), "symphony/nin-42")).rejects.toThrow(
+    await expect(manager.createPullRequest(createRepoMatch(), createIssue(), "risoluto/nin-42")).rejects.toThrow(
       "github request failed with status 502",
     );
   });

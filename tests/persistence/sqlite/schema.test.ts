@@ -48,13 +48,13 @@ function getColumnNames(table: Parameters<typeof getTableConfig>[0]): string[] {
 // ---------------------------------------------------------------------------
 describe("schema table exports", () => {
   it("exports all seven tables", () => {
-    expect(attempts).toBeDefined();
-    expect(attemptEvents).toBeDefined();
-    expect(issueIndex).toBeDefined();
-    expect(config).toBeDefined();
-    expect(encryptedSecrets).toBeDefined();
-    expect(promptTemplates).toBeDefined();
-    expect(configHistory).toBeDefined();
+    expect(getTableConfig(attempts).name).toBe("attempts");
+    expect(getTableConfig(attemptEvents).name).toBe("attempt_events");
+    expect(getTableConfig(issueIndex).name).toBe("issue_index");
+    expect(getTableConfig(config).name).toBe("config");
+    expect(getTableConfig(encryptedSecrets).name).toBe("encrypted_secrets");
+    expect(getTableConfig(promptTemplates).name).toBe("prompt_templates");
+    expect(getTableConfig(configHistory).name).toBe("config_history");
   });
 
   it("tables have correct SQL names", () => {

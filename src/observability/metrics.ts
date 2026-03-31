@@ -52,6 +52,8 @@ class Histogram {
     this.buckets = buckets;
   }
 
+  // Hot path: called per HTTP request. In-place mutation is intentional to avoid
+  // allocating a new BucketState + bucketCounts array on every observation.
   observe(value: number, labels: Labels = {}): void {
     const key = labelKey(labels);
     let state = this.states.get(key);
@@ -105,7 +107,7 @@ class Gauge {
 }
 
 /**
- * Prometheus-format metrics collector for Symphony.
+ * Prometheus-format metrics collector for Risoluto.
  *
  * Tracks HTTP requests, request durations, orchestrator polls,
  * agent run completions, and container resource snapshots.
@@ -121,15 +123,15 @@ export class MetricsCollector {
 
   serialize(): string {
     return [
-      this.httpRequestsTotal.serialize("symphony_http_requests_total", "Total HTTP requests"),
+      this.httpRequestsTotal.serialize("risoluto_http_requests_total", "Total HTTP requests"),
       this.httpRequestDurationSeconds.serialize(
-        "symphony_http_request_duration_seconds",
+        "risoluto_http_request_duration_seconds",
         "HTTP request duration in seconds",
       ),
-      this.orchestratorPollsTotal.serialize("symphony_orchestrator_polls_total", "Orchestrator poll cycles"),
-      this.agentRunsTotal.serialize("symphony_agent_runs_total", "Agent run completions by status"),
-      this.containerCpuPercent.serialize("symphony_container_cpu_percent", "Container CPU usage percentage"),
-      this.containerMemoryPercent.serialize("symphony_container_memory_percent", "Container memory usage percentage"),
+      this.orchestratorPollsTotal.serialize("risoluto_orchestrator_polls_total", "Orchestrator poll cycles"),
+      this.agentRunsTotal.serialize("risoluto_agent_runs_total", "Agent run completions by status"),
+      this.containerCpuPercent.serialize("risoluto_container_cpu_percent", "Container CPU usage percentage"),
+      this.containerMemoryPercent.serialize("risoluto_container_memory_percent", "Container memory usage percentage"),
     ].join("\n\n");
   }
 }

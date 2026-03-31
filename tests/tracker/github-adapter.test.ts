@@ -24,9 +24,9 @@ function createConfig(): ServiceConfig {
     github: { token: "gh-token", apiBaseUrl: "https://api.github.com" },
     polling: { intervalMs: 1000 },
     workspace: {
-      root: "/tmp/symphony",
+      root: "/tmp/risoluto",
       strategy: "directory",
-      branchPrefix: "symphony/",
+      branchPrefix: "risoluto/",
       hooks: { afterCreate: null, beforeRun: null, afterRun: null, beforeRemove: null, timeoutMs: 1000 },
     },
     agent: {
@@ -53,7 +53,7 @@ function createConfig(): ServiceConfig {
       auth: { mode: "api_key", sourceHome: "/tmp/auth" },
       provider: null,
       sandbox: {
-        image: "symphony-codex:latest",
+        image: "risoluto-codex:latest",
         network: "",
         security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false, seccompProfile: "" },
         resources: { memory: "4g", memoryReservation: "1g", memorySwap: "4g", cpus: "2.0", tmpfsSize: "512m" },

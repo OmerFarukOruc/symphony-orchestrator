@@ -1,16 +1,16 @@
-# Symphony Context
+# Risoluto Context
 
 Project identity, runtime self-discovery commands, and architectural pattern library
-for Symphony Orchestrator. Import this file at the top of any agent prompt that needs
+for Risoluto. Import this file at the top of any agent prompt that needs
 accurate knowledge of the codebase.
 
 ---
 
 ## 1. Identity
 
-### What Symphony Is
+### What Risoluto Is
 
-Symphony Orchestrator is an autonomous AI agent orchestration platform. It polls an
+Risoluto is an autonomous AI agent orchestration platform. It polls an
 issue tracker (Linear or GitHub Issues), dispatches Codex CLI workers against each
 issue, manages retries and timeouts, persists full attempt history, and serves a
 real-time dashboard over HTTP + SSE.
@@ -54,8 +54,8 @@ real-time dashboard over HTTP + SSE.
 
 ### Repo Coordinates
 
-- **URL**: `https://github.com/OmerFarukOruc/symphony-orchestrator`
-- **Epic**: `#9` — Symphony v2 Feature Roadmap
+- **URL**: `https://github.com/OmerFarukOruc/risoluto`
+- **Epic**: `#9` — Risoluto v2 Feature Roadmap
 
 ---
 
@@ -97,10 +97,10 @@ grep -r "\.route\(" src/http/ --include="*.ts" -l
 find tests/ -name "*.test.ts" | sort
 
 # ── Current open issues ──
-gh issue list --repo OmerFarukOruc/symphony-orchestrator --limit 100 --state open --json number,title,labels
+gh issue list --repo OmerFarukOruc/risoluto --limit 100 --state open --json number,title,labels
 
 # ── Epic #9 current state ──
-gh issue view 9 --repo OmerFarukOruc/symphony-orchestrator --json body --jq '.body' | head -100
+gh issue view 9 --repo OmerFarukOruc/risoluto --json body --jq '.body' | head -100
 
 # ── CLAUDE.md conventions (first 50 lines) ──
 head -50 CLAUDE.md
@@ -179,7 +179,7 @@ Generic typed pub/sub system in `src/core/event-bus.ts`. Type parameter
 `TEventMap` maps channel names to payload types, enforcing compile-time safety
 on both `emit()` and `on()`.
 
-**Event map**: `SymphonyEventMap` in `src/core/symphony-events.ts` defines all channels:
+**Event map**: `RisolutoEventMap` in `src/core/risoluto-events.ts` defines all channels:
 
 | Channel | Payload summary |
 |---------|----------------|

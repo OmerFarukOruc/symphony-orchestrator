@@ -57,7 +57,7 @@ function mockLinearApiKey(): ReturnType<typeof createSecretsStoreMock> {
   return secretsStore;
 }
 
-function mockProjectSlug(slug = "symphony"): ReturnType<typeof createConfigOverlayStoreMock> {
+function mockProjectSlug(slug = "risoluto"): ReturnType<typeof createConfigOverlayStoreMock> {
   const configOverlayStore = createConfigOverlayStoreMock();
   vi.spyOn(configOverlayStore, "toMap").mockReturnValue({ "tracker.project_slug": slug });
   return configOverlayStore;
@@ -70,8 +70,8 @@ function projectLookupResponse(): Response {
         nodes: [
           {
             id: "project-1",
-            name: "Symphony",
-            slugId: "symphony",
+            name: "Risoluto",
+            slugId: "risoluto",
             teams: { nodes: [{ id: "team-1", key: "ENG" }] },
           },
         ],
@@ -117,7 +117,7 @@ function labelCreateResponse(): Response {
         success: true,
         issueLabel: {
           id: "label-1",
-          name: "symphony",
+          name: "risoluto",
         },
       },
     },
@@ -191,7 +191,7 @@ describe("registerSetupApi — quick start helpers", () => {
 
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({
-      error: { code: "linear_api_error", message: 'Project "symphony" not found' },
+      error: { code: "linear_api_error", message: 'Project "risoluto" not found' },
     });
   });
 
@@ -207,7 +207,7 @@ describe("registerSetupApi — quick start helpers", () => {
     expect(await response.json()).toEqual({
       ok: true,
       labelId: "label-1",
-      labelName: "symphony",
+      labelName: "risoluto",
       alreadyExists: false,
     });
     expect(getExternalFetchMock()).toHaveBeenCalledTimes(2);

@@ -574,11 +574,11 @@ function createSettingsIntro(): HTMLElement {
 function createNextStepHint(sectionId: string): HTMLElement | null {
   const text =
     sectionId === SECTION_IDS.TRACKER
-      ? "Next: set your model provider so Symphony can authenticate and run Codex."
+      ? "Next: set your model provider so Risoluto can authenticate and run Codex."
       : sectionId === SECTION_IDS.MODEL_PROVIDER_AUTH
         ? "Next: review sandbox defaults so agent runs match your local safety posture."
         : sectionId === SECTION_IDS.SANDBOX
-          ? "Next: create or move an issue into an active state so Symphony can start working."
+          ? "Next: create or move an issue into an active state so Risoluto can start working."
           : null;
 
   if (!text) {

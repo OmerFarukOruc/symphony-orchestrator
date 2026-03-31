@@ -195,7 +195,7 @@ describe("registerSetupApi", () => {
         data: {
           projects: {
             nodes: [
-              { id: "project-1", name: "Symphony", slugId: "symphony", teams: { nodes: [{ key: "ENG" }] } },
+              { id: "project-1", name: "Risoluto", slugId: "risoluto", teams: { nodes: [{ key: "ENG" }] } },
               { id: "project-2", name: "Platform", slugId: "platform", teams: { nodes: [] } },
             ],
           },
@@ -209,7 +209,7 @@ describe("registerSetupApi", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       projects: [
-        { id: "project-1", name: "Symphony", slugId: "symphony", teamKey: "ENG" },
+        { id: "project-1", name: "Risoluto", slugId: "risoluto", teamKey: "ENG" },
         { id: "project-2", name: "Platform", slugId: "platform", teamKey: null },
       ],
     });

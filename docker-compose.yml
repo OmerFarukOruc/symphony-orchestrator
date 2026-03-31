@@ -1,13 +1,13 @@
 services:
-  symphony:
+  risoluto:
     build: .
     ports:
-      - "${SYMPHONY_PORT:-4000}:4000"
+      - "${RISOLUTO_PORT:-4000}:4000"
     networks:
-      - symphony-internal
+      - risoluto-internal
     volumes:
-      - ${SYMPHONY_HOST_WORKSPACE_ROOT:-symphony-workspaces}:/data/workspaces
-      - ${SYMPHONY_HOST_ARCHIVE_DIR:-symphony-archives}:/data/archives
+      - ${RISOLUTO_HOST_WORKSPACE_ROOT:-risoluto-workspaces}:/data/workspaces
+      - ${RISOLUTO_HOST_ARCHIVE_DIR:-risoluto-archives}:/data/archives
       - /var/run/docker.sock:/var/run/docker.sock
       - ${CODEX_AUTH_SOURCE_HOME:-codex-auth}:/codex-auth:ro
     environment:
@@ -15,11 +15,11 @@ services:
       LINEAR_PROJECT_SLUG: ${LINEAR_PROJECT_SLUG:-}
       MASTER_KEY: ${MASTER_KEY:-}
       DATA_DIR: /data
-      SYMPHONY_BIND: "0.0.0.0"
-      SYMPHONY_HOST_WORKSPACE_ROOT: ${SYMPHONY_HOST_WORKSPACE_ROOT:-}
-      SYMPHONY_HOST_ARCHIVE_DIR: ${SYMPHONY_HOST_ARCHIVE_DIR:-}
-      SYMPHONY_CONTAINER_WORKSPACE_ROOT: /data/workspaces
-      SYMPHONY_CONTAINER_ARCHIVE_DIR: /data/archives
+      RISOLUTO_BIND: "0.0.0.0"
+      RISOLUTO_HOST_WORKSPACE_ROOT: ${RISOLUTO_HOST_WORKSPACE_ROOT:-}
+      RISOLUTO_HOST_ARCHIVE_DIR: ${RISOLUTO_HOST_ARCHIVE_DIR:-}
+      RISOLUTO_CONTAINER_WORKSPACE_ROOT: /data/workspaces
+      RISOLUTO_CONTAINER_ARCHIVE_DIR: /data/archives
       CODEX_AUTH_SOURCE_HOME: ${CODEX_AUTH_SOURCE_HOME:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
@@ -45,10 +45,10 @@ services:
       context: .
       dockerfile: Dockerfile.data-plane
     networks:
-      - symphony-internal
+      - risoluto-internal
     volumes:
-      - ${SYMPHONY_HOST_WORKSPACE_ROOT:-symphony-workspaces}:/data/workspaces
-      - ${SYMPHONY_HOST_ARCHIVE_DIR:-symphony-archives}:/data/archives
+      - ${RISOLUTO_HOST_WORKSPACE_ROOT:-risoluto-workspaces}:/data/workspaces
+      - ${RISOLUTO_HOST_ARCHIVE_DIR:-risoluto-archives}:/data/archives
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       DATA_DIR: /data
@@ -57,10 +57,10 @@ services:
       LINEAR_API_KEY: ${LINEAR_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      SYMPHONY_HOST_WORKSPACE_ROOT: ${SYMPHONY_HOST_WORKSPACE_ROOT:-}
-      SYMPHONY_HOST_ARCHIVE_DIR: ${SYMPHONY_HOST_ARCHIVE_DIR:-}
-      SYMPHONY_CONTAINER_WORKSPACE_ROOT: /data/workspaces
-      SYMPHONY_CONTAINER_ARCHIVE_DIR: /data/archives
+      RISOLUTO_HOST_WORKSPACE_ROOT: ${RISOLUTO_HOST_WORKSPACE_ROOT:-}
+      RISOLUTO_HOST_ARCHIVE_DIR: ${RISOLUTO_HOST_ARCHIVE_DIR:-}
+      RISOLUTO_CONTAINER_WORKSPACE_ROOT: /data/workspaces
+      RISOLUTO_CONTAINER_ARCHIVE_DIR: /data/archives
     restart: unless-stopped
     healthcheck:
       test:
@@ -75,10 +75,10 @@ services:
       retries: 3
 
 volumes:
-  symphony-workspaces:
-  symphony-archives:
+  risoluto-workspaces:
+  risoluto-archives:
   codex-auth:
 
 networks:
-  symphony-internal:
+  risoluto-internal:
     driver: bridge

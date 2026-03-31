@@ -1,10 +1,10 @@
-# Symphony runtime reference
+# Risoluto runtime reference
 
 Use this file only when the main `SKILL.md` workflow is not enough. It keeps the deep lookup material out of the early read path.
 
 ## Source selection rules
 
-- Use `./symphony-logs` first for historical issue inspection.
+- Use `./risoluto-logs` first for historical issue inspection.
 - Use raw archive files only when the helper is unavailable, the index is missing, you need raw verification, or the user explicitly asked for raw files.
 - Use the local API first for live-state questions such as `now`, `current`, `still running`, `active`, or `stalled again`.
 - Always name the exact helper command, archive file path(s), or API endpoint(s) that support your answer.
@@ -13,13 +13,13 @@ Use this file only when the main `SKILL.md` workflow is not enough. It keeps the
 
 ## Storage layout
 
-Symphony persists attempt and event data in a **SQLite database** (`symphony.db`) under the data directory, which defaults to `.symphony/` next to the workflow file. Startup can override that with `--log-dir` or `DATA_DIR`, and the helper script can override it with `--dir`.
+Risoluto persists attempt and event data in a **SQLite database** (`risoluto.db`) under the data directory, which defaults to `.risoluto/` next to the workflow file. Startup can override that with `--log-dir` or `DATA_DIR`, and the helper script can override it with `--dir`.
 
 ```text
-.symphony/
-├── symphony.db               # SQLite database (attempts, events, issue index)
-├── symphony.db-shm           # WAL shared-memory file
-├── symphony.db-wal           # Write-ahead log
+.risoluto/
+├── risoluto.db               # SQLite database (attempts, events, issue index)
+├── risoluto.db-shm           # WAL shared-memory file
+├── risoluto.db-wal           # Write-ahead log
 ├── config/                   # Operator config overlay (YAML)
 ├── secrets.enc               # AES-encrypted credential store
 ├── secrets.audit.log         # Secret access audit trail
@@ -76,28 +76,28 @@ When you use this path, report the exact query you ran.
 ### Query attempts for an issue
 
 ```bash
-sqlite3 .symphony/symphony.db "SELECT attempt_id, status, model, started_at, ended_at FROM attempts WHERE issue_identifier = 'NIN-6' ORDER BY started_at DESC;"
+sqlite3 .risoluto/risoluto.db "SELECT attempt_id, status, model, started_at, ended_at FROM attempts WHERE issue_identifier = 'NIN-6' ORDER BY started_at DESC;"
 ```
 
 ### Query events for an attempt
 
 ```bash
-sqlite3 .symphony/symphony.db "SELECT timestamp, type, message FROM attempt_events WHERE attempt_id = '<attemptId>' ORDER BY timestamp;"
+sqlite3 .risoluto/risoluto.db "SELECT timestamp, type, message FROM attempt_events WHERE attempt_id = '<attemptId>' ORDER BY timestamp;"
 ```
 
 ### Narrow to failures
 
 ```bash
-sqlite3 .symphony/symphony.db "SELECT timestamp, type, message FROM attempt_events WHERE attempt_id = '<attemptId>' AND (type LIKE '%fail%' OR type LIKE '%error%' OR type LIKE '%stall%') ORDER BY timestamp;"
+sqlite3 .risoluto/risoluto.db "SELECT timestamp, type, message FROM attempt_events WHERE attempt_id = '<attemptId>' AND (type LIKE '%fail%' OR type LIKE '%error%' OR type LIKE '%stall%') ORDER BY timestamp;"
 ```
 
 ### Fallback: legacy JSONL archives
 
-If `symphony.db` does not exist (pre-migration installations), fall back to the legacy flat-file layout:
+If `risoluto.db` does not exist (pre-migration installations), fall back to the legacy flat-file layout:
 
-1. scan `.symphony/attempts/*.json` for attempt records matching the target issue
+1. scan `.risoluto/attempts/*.json` for attempt records matching the target issue
 2. collect their `attemptId` values
-3. read `.symphony/events/{attemptId}.jsonl` for the event stream
+3. read `.risoluto/events/{attemptId}.jsonl` for the event stream
 
 When you take this fallback path, tell the user you are reading legacy archive files because the SQLite database is not present.
 
@@ -134,7 +134,7 @@ When summarizing events, always confirm the ordering of your data source. Do not
 
 ## Round-two sandbox benchmark note
 
-This skill was rerun against the controlled archive fixture at `tests/fixtures/symphony-archive-sandbox/.symphony` using the same three eval prompts already tracked in `evals/evals.json`, with baseline vs with-skill comparisons judged under the tighter provenance-focused expectations.
+This skill was rerun against the controlled archive fixture at `tests/fixtures/risoluto-archive-sandbox/.risoluto` using the same three eval prompts already tracked in `evals/evals.json`, with baseline vs with-skill comparisons judged under the tighter provenance-focused expectations.
 
 Result summary:
 

@@ -1,13 +1,13 @@
 import type { Response as ExpressResponse } from "express";
 import { vi } from "vitest";
-import type { SymphonyLogger } from "../src/core/types.js";
+import type { RisolutoLogger } from "../src/core/types.js";
 
 /**
- * Creates a mock SymphonyLogger for testing.
+ * Creates a mock RisolutoLogger for testing.
  * All methods are vi.fn() mocks that can be inspected in tests.
  */
-export function createMockLogger(): SymphonyLogger {
-  const logger: SymphonyLogger = {
+export function createMockLogger(): RisolutoLogger {
+  const logger: RisolutoLogger = {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),

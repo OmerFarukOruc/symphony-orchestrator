@@ -1,0 +1,140 @@
+---
+title: Quickstart
+description: "Go from zero to your first automated PR in 10 minutes. Install Risoluto, run the setup wizard, and watch an AI agent close a real issue."
+---
+
+# Quickstart
+
+Get Risoluto running and process your first issue in under 10 minutes.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+| Requirement | Details |
+| ----------- | ------- |
+| **Node.js** | v22 or newer |
+| **Docker** | Docker Engine installed and running (`docker info` should succeed) |
+| **pnpm** | Package manager (`npm install -g pnpm`) |
+| **Linear** | A Linear account with at least one project |
+
+## Install
+
+<Steps>
+  <Step title="Clone and build">
+    ```bash
+    git clone <repo-url> && cd risoluto
+    pnpm install && pnpm run build
+    ```
+  </Step>
+
+  <Step title="Build the sandbox image">
+    This creates the Docker image that isolated AI agents run inside:
+
+    ```bash
+    bash bin/build-sandbox.sh
+    ```
+
+    <Info>
+      The sandbox image is based on `node:22-bookworm` with the Codex CLI pre-installed. It provides process isolation, resource limits, and security hardening out of the box.
+    </Info>
+  </Step>
+
+  <Step title="Start Risoluto">
+    ```bash
+    node dist/cli/index.js --port 4000
+    ```
+
+    Open [http://127.0.0.1:4000](http://127.0.0.1:4000) — the **setup wizard** opens automatically.
+  </Step>
+</Steps>
+
+## Setup Wizard
+
+The wizard walks you through four steps:
+
+<Steps>
+  <Step title="Protect secrets">
+    Generates an AES-256 encryption master key that protects all stored credentials on disk. This key never leaves your machine.
+  </Step>
+
+  <Step title="Connect Linear">
+    Paste your Linear API key. The wizard validates it, lists your projects, and lets you select the one to monitor.
+  </Step>
+
+  <Step title="Add OpenAI">
+    Choose one of three methods:
+
+    <Tabs>
+      <Tab title="API Key">
+        Paste an `sk-...` API key directly. Risoluto validates and encrypts it.
+      </Tab>
+      <Tab title="Browser Sign-In">
+        Click **"Sign in with OpenAI"** — authenticates via PKCE in your browser. No CLI needed.
+      </Tab>
+      <Tab title="Manual">
+        Run `codex login` in your terminal, then paste `~/.codex/auth.json` contents.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Add GitHub (optional)">
+    Paste a GitHub PAT to enable automatic PR creation when agents complete work.
+  </Step>
+</Steps>
+
+## Verify It Works
+
+Create a test issue in your Linear project:
+
+**Title:**
+```
+SMOKE: create workspace proof file
+```
+
+**Description:**
+```markdown
+Create `RISOLUTO_SMOKE_RESULT.md` in the workspace with:
+- the issue identifier
+- the current UTC timestamp
+- the output of `pwd` and `ls -la`
+- whether the workspace looks empty or repo-backed
+```
+
+Set the issue to **In Progress**. Within one poll cycle (default: 30 seconds), Risoluto picks it up automatically.
+
+### Check the results
+
+<CardGroup cols={2}>
+  <Card title="Dashboard" icon="chart-mixed">
+    The issue appears on the board at [http://127.0.0.1:4000](http://127.0.0.1:4000) with real-time progress.
+  </Card>
+  <Card title="API" icon="code">
+    ```bash
+    curl -s http://127.0.0.1:4000/api/v1/state | jq
+    ```
+  </Card>
+</CardGroup>
+
+When the agent finishes, inspect the workspace:
+
+```bash
+cat ../risoluto-workspaces/<ISSUE_ID>/RISOLUTO_SMOKE_RESULT.md
+```
+
+## What's Next
+
+<CardGroup cols={2}>
+  <Card title="How It Works" icon="diagram-project" href="/concepts/how-it-works">
+    Understand the architecture — polling, workspaces, sandboxes, and delivery.
+  </Card>
+  <Card title="Docker Deployment" icon="docker" href="/guides/docker">
+    Deploy with Docker Compose for persistent operation.
+  </Card>
+  <Card title="Configuration" icon="gear" href="/guides/configuration">
+    Customize models, timeouts, retries, and workspace strategies.
+  </Card>
+  <Card title="Network Security" icon="shield" href="/guides/security">
+    Secure the API with write tokens and bind address controls.
+  </Card>
+</CardGroup>

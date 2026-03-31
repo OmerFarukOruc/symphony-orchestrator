@@ -1,0 +1,91 @@
+---
+title: Notifications & Git
+description: "Configure Slack notifications, multi-repo routing, and automatic Git workflows for PR creation."
+---
+
+# Notifications & Git Automation
+
+Risoluto integrates with Slack for notifications and GitHub for automated git workflows.
+
+## Slack Notifications
+
+Configure Slack to receive alerts when agents complete, fail, or stall:
+
+```yaml
+notifications:
+  slack:
+    webhook_url: $SECRET:SLACK_WEBHOOK_URL
+    verbosity: critical  # off | critical | verbose
+```
+
+| Verbosity | Events |
+|-----------|--------|
+| `off` | No notifications |
+| `critical` | Failures, stalls, and errors |
+| `verbose` | All events including completions |
+
+Notifications are best-effort. Delivery failures are logged but do not crash the orchestrator.
+
+## Repository Routing
+
+Route issues to different repositories based on identifiers or labels:
+
+```yaml
+repos:
+  - prefix: "FE-"
+    url: "https://github.com/org/frontend.git"
+    default_branch: "main"
+  - label: "backend"
+    url: "https://github.com/org/backend.git"
+    default_branch: "main"
+```
+
+**Routing precedence:**
+1. **Label routes** are checked first
+2. **Identifier-prefix routes** are the fallback
+
+Use labels for per-issue overrides and prefixes for the default team-to-repo mapping.
+
+### Managing Routes via API
+
+```bash
+# List routes
+curl -s http://127.0.0.1:4000/api/v1/setup/repo-routes
+
+# Add a route
+curl -s -X POST http://127.0.0.1:4000/api/v1/setup/repo-route \
+  -H 'Content-Type: application/json' \
+  -d '{"prefix":"API-","url":"https://github.com/org/api.git","default_branch":"main"}'
+
+# Remove a route
+curl -s -X DELETE http://127.0.0.1:4000/api/v1/setup/repo-route/0
+```
+
+## Git Automation
+
+When a routed issue reports `RISOLUTO_STATUS: DONE`, Risoluto can automatically:
+
+1. **Commit** changes in the workspace branch
+2. **Push** the branch to the remote
+3. **Open a GitHub pull request**
+4. **Expose GitHub tools** to the agent via the `github_api` dynamic tool
+
+### Agent GitHub Access
+
+Agents can read and comment on GitHub issues/PRs through the dynamic tool system. This allows the agent to:
+
+- Read PR review comments for context
+- Post progress updates as PR comments
+- Reference related issues
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `GITHUB_TOKEN` | GitHub Personal Access Token |
+| `LINEAR_API_KEY` | Linear API key |
+| `OPENAI_API_KEY` | OpenAI API key |
+
+<Tip>
+  Store credentials via the setup wizard rather than environment variables. The encrypted secrets store (`secrets.enc`) is more secure than plaintext env vars.
+</Tip>

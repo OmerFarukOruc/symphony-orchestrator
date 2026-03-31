@@ -218,7 +218,6 @@ describe("API Contract Snapshots", () => {
           "feature_flags": {},
           "provider_summary": "string",
           "version": "string",
-          "workflow_path": "string",
         }
       `);
     });

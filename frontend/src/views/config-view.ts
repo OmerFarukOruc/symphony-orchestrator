@@ -21,7 +21,7 @@ export function createConfigPage(options: ConfigPageOptions = {}): HTMLElement {
 
   const header = createPageHeader(
     "Configuration",
-    "Override settings without modifying your workflow file. Changes persist across restarts.",
+    "Override settings without modifying the defaults. Changes persist across restarts.",
   );
 
   const helpBanner = document.createElement("section");
@@ -61,7 +61,7 @@ export function createConfigPage(options: ConfigPageOptions = {}): HTMLElement {
   // Dismiss help banner
   helpDismiss.addEventListener("click", () => {
     helpBanner.classList.add("is-hidden");
-    localStorage.setItem("symphony.configHelpDismissed", "true");
+    localStorage.setItem("risoluto.configHelpDismissed", "true");
   });
 
   // Show schema link
@@ -71,7 +71,7 @@ export function createConfigPage(options: ConfigPageOptions = {}): HTMLElement {
     render();
   });
 
-  if (localStorage.getItem("symphony.configHelpDismissed") === "true") {
+  if (localStorage.getItem("risoluto.configHelpDismissed") === "true") {
     helpBanner.classList.add("is-hidden");
   }
 

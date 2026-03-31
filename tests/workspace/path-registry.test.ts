@@ -11,12 +11,12 @@ describe("PathRegistry", () => {
 
   it("translates matching container prefixes to host prefixes", () => {
     const registry = new PathRegistry({
-      "/data/workspaces": "/home/user/symphony/workspaces",
-      "/data/archives": "/home/user/symphony/archives",
+      "/data/workspaces": "/home/user/risoluto/workspaces",
+      "/data/archives": "/home/user/risoluto/archives",
     });
 
-    expect(registry.translate("/data/workspaces/MT-1")).toBe("/home/user/symphony/workspaces/MT-1");
-    expect(registry.translate("/data/archives/attempts")).toBe("/home/user/symphony/archives/attempts");
+    expect(registry.translate("/data/workspaces/MT-1")).toBe("/home/user/risoluto/workspaces/MT-1");
+    expect(registry.translate("/data/archives/attempts")).toBe("/home/user/risoluto/archives/attempts");
     expect(registry.hasMappings()).toBe(true);
   });
 
@@ -38,10 +38,10 @@ describe("PathRegistry", () => {
 
   it("builds mappings from environment variables", () => {
     const registry = PathRegistry.fromEnv({
-      SYMPHONY_HOST_WORKSPACE_ROOT: "/host/ws",
-      SYMPHONY_HOST_ARCHIVE_DIR: "/host/arc",
-      SYMPHONY_CONTAINER_WORKSPACE_ROOT: "/container/ws",
-      SYMPHONY_CONTAINER_ARCHIVE_DIR: "/container/arc",
+      RISOLUTO_HOST_WORKSPACE_ROOT: "/host/ws",
+      RISOLUTO_HOST_ARCHIVE_DIR: "/host/arc",
+      RISOLUTO_CONTAINER_WORKSPACE_ROOT: "/container/ws",
+      RISOLUTO_CONTAINER_ARCHIVE_DIR: "/container/arc",
     });
 
     expect(registry.translate("/container/ws/MT-7")).toBe("/host/ws/MT-7");

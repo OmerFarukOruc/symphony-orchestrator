@@ -1,0 +1,96 @@
+---
+title: Setup Wizard
+description: "Walk through the interactive setup wizard that configures credentials, selects projects, and connects integrations."
+---
+
+# Setup Wizard
+
+When Risoluto starts without a master key, it enters **setup mode** and serves a step-by-step wizard at `/setup`. All routes redirect to `/setup` until configuration is complete.
+
+## Wizard Steps
+
+<Steps>
+  <Step title="Protect Secrets">
+    Calls `POST /api/v1/setup/master-key` to generate and persist the encryption key that protects all stored credentials on disk.
+
+    <Info>
+      Returning to this step after completion shows a confirmation. Click **Reconfigure** to reset all stored secrets and generate a new encryption key.
+    </Info>
+  </Step>
+
+  <Step title="Connect Linear">
+    1. Stores `LINEAR_API_KEY` via `POST /api/v1/secrets/:key`
+    2. Lists projects with `GET /api/v1/setup/linear-projects`
+    3. Saves the selected `tracker.project_slug`
+
+    <Note>
+      If the Linear workspace has no projects, the wizard displays guidance with a link to create one in Linear.
+    </Note>
+  </Step>
+
+  <Step title="Add OpenAI">
+    Three authentication options:
+
+    <Tabs>
+      <Tab title="API Key">
+        Paste an `sk-...` key directly. Risoluto validates it and stores it in the encrypted secrets store.
+
+        **Endpoint:** `POST /api/v1/setup/openai-key`
+      </Tab>
+      <Tab title="Browser Sign-In (PKCE)">
+        Click **"Sign in with OpenAI"** — a new browser tab opens to `auth.openai.com`. After approval, the browser redirects to `localhost:1455/auth/callback` and tokens are exchanged automatically.
+
+        **Endpoints:** `POST /api/v1/setup/pkce-auth/start` → `GET /api/v1/setup/pkce-auth/status`
+
+        <Warning>
+          The PKCE flow requires port `1455` to be free on `localhost`. If another Codex CLI instance is running, close it first.
+        </Warning>
+      </Tab>
+      <Tab title="Manual Fallback">
+        Run `codex login` (or `codex login --device-auth` for headless servers) in your terminal, then paste the contents of `~/.codex/auth.json`.
+
+        **Endpoint:** `POST /api/v1/setup/codex-auth`
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Add GitHub (Optional)">
+    Validates and stores a GitHub PAT with `POST /api/v1/setup/github-token`. This enables automatic PR creation when agents complete work.
+
+    This step is skippable.
+  </Step>
+</Steps>
+
+After completing all steps, click **"Go to Dashboard"** to unlock normal navigation.
+
+## Navigation
+
+- **Clickable stepper**: Click any completed step to go back and review or change credentials
+- **Keyboard accessible**: Step indicators support `Tab`, `Enter`, and `Space`
+- **Master key reconfigure**: Returning to Step 1 shows a "Reconfigure" option
+
+## Reset & Re-run Setup
+
+To re-configure credentials without a full factory reset:
+
+1. Navigate to **System → Setup** in the sidebar (or go to `/setup`)
+2. Click **"Reset & Re-run Setup"** on the done screen
+3. Confirm the dialog — all API keys are cleared
+4. The wizard restarts from Step 2 (master key is preserved)
+
+## Factory Reset
+
+To start completely fresh:
+
+```bash
+docker compose down -v && docker compose up --build -d
+```
+
+The `-v` flag deletes all named volumes. You lose:
+
+- Master key and all encrypted secrets
+- Config overlay and auth tokens
+- Agent run archives and logs
+- Cloned workspaces (re-cloned on next dispatch)
+
+What you keep: source code, Docker images, external services (Linear, GitHub, OpenAI).

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Risoluto",
+  "colors": {
+    "primary": "#6366f1",
+    "light": "#818cf8",
+    "dark": "#4f46e5"
+  },
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "assistant",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "grok",
+      "aistudio",
+      "devin",
+      "windsurf",
+      "mcp",
+      "add-mcp",
+      "cursor",
+      "vscode",
+      "devin-mcp"
+    ]
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": ["concepts/how-it-works", "concepts/runtime", "concepts/trust-model"]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/setup-wizard",
+              "guides/docker",
+              "guides/configuration",
+              "guides/dashboard",
+              "guides/notifications",
+              "guides/security"
+            ]
+          },
+          {
+            "group": "Operating",
+            "pages": ["operating/observability", "operating/troubleshooting"]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API Reference",
+            "pages": ["api-reference/overview", "api-reference/endpoints"]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/OmerFarukOruc/risoluto"
+    }
+  },
+  "seo": {
+    "indexing": "all",
+    "metatags": {
+      "canonical": "https://risolu.to",
+      "og:site_name": "Risoluto",
+      "og:type": "website",
+      "og:locale": "en_US",
+      "twitter:card": "summary_large_image",
+      "description": "Risoluto turns your issue tracker into an autonomous coding pipeline. Local orchestration engine that dispatches sandboxed AI agents to close Linear issues automatically.",
+      "keywords": "AI coding agent, autonomous coding, Linear integration, issue automation, code generation, AI orchestration, developer tools"
+    }
+  }
+}

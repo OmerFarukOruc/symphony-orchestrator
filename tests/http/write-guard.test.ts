@@ -7,7 +7,7 @@ import { createWriteGuard } from "../../src/http/write-guard.js";
 /* eslint-disable sonarjs/x-powered-by -- test-only express app, not production */
 function startApp(writeToken?: string): Promise<{ port: number; server: http.Server }> {
   if (writeToken) {
-    vi.stubEnv("SYMPHONY_WRITE_TOKEN", writeToken);
+    vi.stubEnv("RISOLUTO_WRITE_TOKEN", writeToken);
   }
 
   const app = express();
@@ -37,7 +37,7 @@ function startApp(writeToken?: string): Promise<{ port: number; server: http.Ser
  */
 function startGlobalApp(writeToken?: string): Promise<{ port: number; server: http.Server }> {
   if (writeToken) {
-    vi.stubEnv("SYMPHONY_WRITE_TOKEN", writeToken);
+    vi.stubEnv("RISOLUTO_WRITE_TOKEN", writeToken);
   }
 
   const app = express();
@@ -98,7 +98,7 @@ describe("createWriteGuard", () => {
     expect(response.status).toBe(201);
   });
 
-  it("rejects POST without token when SYMPHONY_WRITE_TOKEN is set", async () => {
+  it("rejects POST without token when RISOLUTO_WRITE_TOKEN is set", async () => {
     const { port, server: s } = await startApp("test-secret-token");
     server = s;
 
@@ -112,7 +112,7 @@ describe("createWriteGuard", () => {
     expect(body.error.code).toBe("write_unauthorized");
   });
 
-  it("allows POST with correct token when SYMPHONY_WRITE_TOKEN is set", async () => {
+  it("allows POST with correct token when RISOLUTO_WRITE_TOKEN is set", async () => {
     const { port, server: s } = await startApp("test-secret-token");
     server = s;
 
@@ -127,7 +127,7 @@ describe("createWriteGuard", () => {
     expect(response.status).toBe(201);
   });
 
-  it("rejects POST with wrong token when SYMPHONY_WRITE_TOKEN is set", async () => {
+  it("rejects POST with wrong token when RISOLUTO_WRITE_TOKEN is set", async () => {
     const { port, server: s } = await startApp("test-secret-token");
     server = s;
 
@@ -166,7 +166,7 @@ describe("createWriteGuard — webhook path exemption", () => {
     expect(response.status).toBe(200);
   });
 
-  it("allows POST to /webhooks/linear when SYMPHONY_WRITE_TOKEN is set (guard skipped)", async () => {
+  it("allows POST to /webhooks/linear when RISOLUTO_WRITE_TOKEN is set (guard skipped)", async () => {
     const { port, server: s } = await startGlobalApp("secret-token");
     server = s;
 
@@ -179,7 +179,7 @@ describe("createWriteGuard — webhook path exemption", () => {
     expect(response.status).toBe(200);
   });
 
-  it("still blocks POST to /api/v1/refresh when SYMPHONY_WRITE_TOKEN is set and no token supplied", async () => {
+  it("still blocks POST to /api/v1/refresh when RISOLUTO_WRITE_TOKEN is set and no token supplied", async () => {
     const { port, server: s } = await startGlobalApp("secret-token");
     server = s;
 

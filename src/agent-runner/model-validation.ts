@@ -1,10 +1,10 @@
 import type { JsonRpcConnection } from "../agent/json-rpc-connection.js";
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 import { asRecord, asString } from "./helpers.js";
 
 export async function fetchAvailableModels(
   connection: JsonRpcConnection,
-  logger: SymphonyLogger,
+  logger: RisolutoLogger,
 ): Promise<string[] | null> {
   try {
     const result = await connection.request("model/list", {});

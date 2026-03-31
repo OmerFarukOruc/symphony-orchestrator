@@ -43,7 +43,12 @@ CLAUDE.local.md
 .gstack/
 .factory/
 .qwen/
+.mintlify/
+!docs-site/.mintlify/
+docs-site/.mintlify/*
+!docs-site/.mintlify/Assistant.md
 
 # E2E lifecycle test
 scripts/e2e-config.yaml
 e2e-reports/
+.claude/worktrees/

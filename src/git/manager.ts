@@ -2,7 +2,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-import type { Issue, SymphonyLogger } from "../core/types.js";
+import type { Issue, RisolutoLogger } from "../core/types.js";
 import { GitHubPrClient } from "./github-pr-client.js";
 import type { GitIntegrationPort } from "./port.js";
 import type { RepoMatch } from "./repo-router.js";
@@ -27,7 +27,7 @@ export interface GitManagerDeps {
   env?: NodeJS.ProcessEnv;
   apiBaseUrl?: string;
   defaultGithubTokenEnv?: string;
-  logger?: SymphonyLogger;
+  logger?: RisolutoLogger;
 }
 
 function sanitizeBranchSegment(value: string): string {
@@ -43,7 +43,7 @@ function sanitizeBranchSegment(value: string): string {
   );
 }
 
-function deriveBranchName(issue: Pick<Issue, "identifier" | "branchName">, branchPrefix = "symphony/"): string {
+function deriveBranchName(issue: Pick<Issue, "identifier" | "branchName">, branchPrefix = "risoluto/"): string {
   if (issue.branchName && issue.branchName.trim().length > 0) {
     return issue.branchName.trim();
   }
@@ -64,7 +64,7 @@ export class GitManager implements GitIntegrationPort {
   private readonly runGit: GitRunner;
   private readonly env: NodeJS.ProcessEnv;
   private readonly defaultGithubTokenEnv: string;
-  private readonly logger: SymphonyLogger | null;
+  private readonly logger: RisolutoLogger | null;
   private readonly githubPrClient: GitHubPrClient;
 
   constructor(deps: GitManagerDeps = {}) {
@@ -97,7 +97,7 @@ export class GitManager implements GitIntegrationPort {
         info: () => {},
         warn: () => {},
         error: () => {},
-        child: () => this.logger ?? ({} as SymphonyLogger),
+        child: () => this.logger ?? ({} as RisolutoLogger),
       },
     };
   }

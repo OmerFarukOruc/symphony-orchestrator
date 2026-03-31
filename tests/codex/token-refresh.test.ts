@@ -9,7 +9,7 @@ import { isTokenExpired, refreshAccessToken } from "../../src/codex/token-refres
 const tempDirs: string[] = [];
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-token-refresh-test-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-token-refresh-test-"));
   tempDirs.push(dir);
   return dir;
 }

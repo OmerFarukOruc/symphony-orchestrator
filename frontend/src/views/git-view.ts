@@ -308,7 +308,7 @@ function renderGitContext(page: HTMLElement, data: GitContextResponse): void {
     body.append(
       createEmptyState(
         "No repositories configured",
-        "Add repos to your workflow YAML to see git context here. Each repo entry maps a Linear identifier prefix to a GitHub repository.",
+        "Add repos in Settings \u2192 Repositories to see git context here. Each repo entry maps a Linear identifier prefix to a GitHub repository.",
         "Open advanced settings",
         () => router.navigate("/settings#devtools"),
       ),

@@ -10,6 +10,7 @@ import { ConfigStore } from "../../src/config/store.js";
 import { LinearClient } from "../../src/linear/client.js";
 import { LinearTrackerAdapter } from "../../src/tracker/linear-adapter.js";
 import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
+import { IssueConfigStore } from "../../src/persistence/sqlite/issue-config-store.js";
 import { SecretsStore } from "../../src/secrets/store.js";
 import { registerSetupApi } from "../../src/setup/api.js";
 import { WorkspaceManager } from "../../src/workspace/manager.js";
@@ -71,7 +72,7 @@ export function createOrchestratorMock(): Orchestrator {
   const logger = createMockLogger();
   const orchestrator = new Orchestrator({
     attemptStore: new AttemptStore("/attempt-store", logger),
-    configStore: new ConfigStore("/workflow.md", logger),
+    configStore: new ConfigStore(logger),
     tracker: new LinearTrackerAdapter(
       new LinearClient(() => {
         throw new Error("not used in setup api tests");
@@ -81,7 +82,9 @@ export function createOrchestratorMock(): Orchestrator {
       throw new Error("not used in setup api tests");
     }, logger),
     agentRunner: createAgentRunnerMock(),
+    issueConfigStore: IssueConfigStore.create(null),
     logger,
+    resolveTemplate: async (_identifier: string) => "",
   });
   vi.spyOn(orchestrator, "start").mockResolvedValue(undefined);
   vi.spyOn(orchestrator, "stop").mockResolvedValue(undefined);

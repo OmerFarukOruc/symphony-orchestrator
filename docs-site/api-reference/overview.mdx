@@ -1,0 +1,26 @@
+---
+title: API Overview
+description: "Explore Risoluto's 50+ JSON API endpoints for runtime state, configuration, events, and issue management."
+---
+
+# API Reference
+
+Risoluto exposes a comprehensive REST API at `http://127.0.0.1:4000/api/v1/`. All endpoints return JSON.
+
+<Info>
+  Interactive API docs are available at [http://127.0.0.1:4000/api/docs](http://127.0.0.1:4000/api/docs) (Swagger UI) and the OpenAPI 3.0 spec at [http://127.0.0.1:4000/api/v1/openapi.json](http://127.0.0.1:4000/api/v1/openapi.json).
+</Info>
+
+## Authentication
+
+- **Loopback requests** (`127.0.0.1`, `::1`): No auth required
+- **Remote requests**: Require `Authorization: Bearer <RISOLUTO_WRITE_TOKEN>` for mutating operations
+- **Read-only methods** (`GET`, `HEAD`, `OPTIONS`): Always allowed from any address
+
+## Rate Limiting
+
+All `/api/*` and `/metrics` endpoints: **300 requests per 60 seconds** per client.
+
+## Endpoint Reference
+
+See the [full endpoint table](/api-reference/endpoints) for all 50+ endpoints.

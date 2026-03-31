@@ -46,7 +46,7 @@ const ISSUE_FIELDS = `
 export function buildCandidateIssuesQuery(includeProjectFilter: boolean): string {
   const projectFilter = includeProjectFilter ? "project: { slugId: { eq: $projectSlug } }" : "";
   return `
-    query SymphonyCandidateIssues($after: String, $activeStates: [String!]${includeProjectFilter ? ", $projectSlug: String!" : ""}) {
+    query RisolutoCandidateIssues($after: String, $activeStates: [String!]${includeProjectFilter ? ", $projectSlug: String!" : ""}) {
       issues(first: ${PAGE_SIZE}, after: $after, filter: {
         state: { name: { in: $activeStates } }
         ${projectFilter}
@@ -66,7 +66,7 @@ export function buildCandidateIssuesQuery(includeProjectFilter: boolean): string
 export function buildCandidateIssuesByStateIdsQuery(includeProjectFilter: boolean): string {
   const projectFilter = includeProjectFilter ? "project: { slugId: { eq: $projectSlug } }" : "";
   return `
-    query SymphonyCandidateIssuesByStateIds($after: String, $stateIds: [ID!]${includeProjectFilter ? ", $projectSlug: String!" : ""}) {
+    query RisolutoCandidateIssuesByStateIds($after: String, $stateIds: [ID!]${includeProjectFilter ? ", $projectSlug: String!" : ""}) {
       issues(first: ${PAGE_SIZE}, after: $after, filter: {
         state: { id: { in: $stateIds } }
         ${projectFilter}
@@ -85,7 +85,7 @@ export function buildCandidateIssuesByStateIdsQuery(includeProjectFilter: boolea
 
 export function buildIssuesByIdsQuery(): string {
   return `
-    query SymphonyIssuesByIds($ids: [ID!], $after: String) {
+    query RisolutoIssuesByIds($ids: [ID!], $after: String) {
       issues(first: ${PAGE_SIZE}, after: $after, filter: { id: { in: $ids } }) {
         nodes {
           ${ISSUE_FIELDS}
@@ -101,7 +101,7 @@ export function buildIssuesByIdsQuery(): string {
 
 export function buildIssuesByStatesQuery(): string {
   return `
-    query SymphonyIssuesByStates($states: [String!], $after: String) {
+    query RisolutoIssuesByStates($states: [String!], $after: String) {
       issues(first: ${PAGE_SIZE}, after: $after, filter: { state: { name: { in: $states } } }) {
         nodes {
           ${ISSUE_FIELDS}
@@ -117,7 +117,7 @@ export function buildIssuesByStatesQuery(): string {
 
 export function buildProjectLookupQuery(): string {
   return `
-    query SymphonyPlanProject($projectSlug: String!) {
+    query RisolutoPlanProject($projectSlug: String!) {
       projects(first: 1, filter: { slugId: { eq: $projectSlug } }) {
         nodes {
           id
@@ -138,7 +138,7 @@ export function buildProjectLookupQuery(): string {
 
 export function buildTeamStatesQuery(): string {
   return `
-    query SymphonyTeamStates($teamId: String!) {
+    query RisolutoTeamStates($teamId: String!) {
       team(id: $teamId) {
         id
         name
@@ -156,7 +156,7 @@ export function buildTeamStatesQuery(): string {
 
 export function buildCreateIssueMutation(): string {
   return `
-    mutation SymphonyCreateIssue($teamId: String!, $projectId: String, $title: String!, $description: String, $stateId: String) {
+    mutation RisolutoCreateIssue($teamId: String!, $projectId: String, $title: String!, $description: String, $stateId: String) {
       issueCreate(input: { teamId: $teamId, projectId: $projectId, title: $title, description: $description, stateId: $stateId }) {
         success
         issue {
@@ -171,7 +171,7 @@ export function buildCreateIssueMutation(): string {
 
 export function buildCreateLabelMutation(): string {
   return `
-    mutation SymphonyCreateLabel($teamId: String, $name: String!, $color: String) {
+    mutation RisolutoCreateLabel($teamId: String, $name: String!, $color: String) {
       issueLabelCreate(input: { teamId: $teamId, name: $name, color: $color }) {
         success
         issueLabel {
@@ -185,7 +185,7 @@ export function buildCreateLabelMutation(): string {
 
 export function buildTeamsQuery(): string {
   return `
-    query SymphonyTeams {
+    query RisolutoTeams {
       teams(first: 50) {
         nodes {
           id
@@ -199,7 +199,7 @@ export function buildTeamsQuery(): string {
 
 export function buildCreateProjectMutation(): string {
   return `
-    mutation SymphonyCreateProject($name: String!, $teamIds: [String!]!) {
+    mutation RisolutoCreateProject($name: String!, $teamIds: [String!]!) {
       projectCreate(input: { name: $name, teamIds: $teamIds }) {
         success
         project {
@@ -220,7 +220,7 @@ export function buildCreateProjectMutation(): string {
 
 export function buildWebhooksQuery(): string {
   return `
-    query SymphonyWebhooks {
+    query RisolutoWebhooks {
       webhooks(first: 50) {
         nodes {
           id
@@ -240,7 +240,7 @@ export function buildWebhooksQuery(): string {
 
 export function buildWebhookCreateMutation(): string {
   return `
-    mutation SymphonyWebhookCreate($url: String!, $teamId: String, $resourceTypes: [String!]!, $label: String, $secret: String) {
+    mutation RisolutoWebhookCreate($url: String!, $teamId: String, $resourceTypes: [String!]!, $label: String, $secret: String) {
       webhookCreate(input: { url: $url, teamId: $teamId, resourceTypes: $resourceTypes, label: $label, secret: $secret }) {
         success
         webhook {
@@ -259,7 +259,7 @@ export function buildWebhookCreateMutation(): string {
 
 export function buildWebhookUpdateMutation(): string {
   return `
-    mutation SymphonyWebhookUpdate($id: String!, $enabled: Boolean, $url: String, $label: String, $resourceTypes: [String!], $secret: String) {
+    mutation RisolutoWebhookUpdate($id: String!, $enabled: Boolean, $url: String, $label: String, $resourceTypes: [String!], $secret: String) {
       webhookUpdate(id: $id, input: { enabled: $enabled, url: $url, label: $label, resourceTypes: $resourceTypes, secret: $secret }) {
         success
         webhook {
@@ -277,7 +277,7 @@ export function buildWebhookUpdateMutation(): string {
 
 export function buildWebhookDeleteMutation(): string {
   return `
-    mutation SymphonyWebhookDelete($id: String!) {
+    mutation RisolutoWebhookDelete($id: String!) {
       webhookDelete(id: $id) {
         success
       }

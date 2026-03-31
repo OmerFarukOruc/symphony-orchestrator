@@ -123,7 +123,7 @@ export function renderObservabilitySections(
       {
         title: "Request latency",
         source: "backend counter",
-        value: formatLatency(meanHistogramMs(metrics, "symphony_http_request_duration_seconds")),
+        value: formatLatency(meanHistogramMs(metrics, "risoluto_http_request_duration_seconds")),
         detail: "Average latency from Prometheus histogram sum/count.",
       },
       {

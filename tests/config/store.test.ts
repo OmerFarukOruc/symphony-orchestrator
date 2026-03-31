@@ -1,136 +1,38 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
-import { writeFile, mkdir, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
+import { describe, expect, it, vi } from "vitest";
 
 import { ConfigStore } from "../../src/config/store.js";
-import type { SymphonyLogger } from "../../src/core/types.js";
+import type { RisolutoLogger } from "../../src/core/types.js";
 
-function makeLogger(): SymphonyLogger {
+function makeLogger(): RisolutoLogger {
   return {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn(),
-  } as unknown as SymphonyLogger;
-}
-
-// Uses front-matter format (starts with ---) so the loader parses the YAML config section
-const MINIMAL_WORKFLOW_YAML = `---
-tracker:
-  kind: linear
-  api_key: lin_test
-  endpoint: https://api.linear.app/graphql
-  project_slug: TEST
-  active_states:
-    - In Progress
-  terminal_states:
-    - Done
-codex:
-  command: codex
-  turn_timeout_ms: 30000
-  auth:
-    mode: api_key
-    source_home: /tmp
-agent: {}
-server: {}
-workspace:
-  root: /tmp/symphony
----
-Work on the issue.
-`;
-
-// Unclosed bracket causes YAML.parse to throw
-const INVALID_YAML = `---
-tracker:
-  kind: [unclosed
----
-Work on the issue.
-`;
-
-async function writeTempWorkflow(dir: string, content = MINIMAL_WORKFLOW_YAML): Promise<string> {
-  const filePath = join(dir, "workflow.yaml");
-  await writeFile(filePath, content);
-  return filePath;
-}
-
-let tmpDir: string;
-
-afterEach(async () => {
-  if (tmpDir) {
-    await rm(tmpDir, { recursive: true, force: true }).catch(() => undefined);
-  }
-});
-
-async function makeTestDir(): Promise<string> {
-  tmpDir = join(tmpdir(), `config-store-test-${randomUUID()}`);
-  await mkdir(tmpDir, { recursive: true });
-  return tmpDir;
+  } as unknown as RisolutoLogger;
 }
 
 describe("ConfigStore", () => {
-  it("loads workflow successfully on start", async () => {
-    const dir = await makeTestDir();
-    const workflowPath = await writeTempWorkflow(dir);
-    const logger = makeLogger();
-    const store = new ConfigStore(workflowPath, logger);
-
+  it("starts successfully with no deps and returns a config", async () => {
+    const store = new ConfigStore(makeLogger());
     await store.start();
     try {
       const config = store.getConfig();
+      // defaults come from builders.ts
       expect(config.tracker.kind).toBe("linear");
-      expect(config.tracker.activeStates).toContain("In Progress");
     } finally {
       await store.stop();
     }
   });
 
   it("throws when getConfig is called before start", () => {
-    const store = new ConfigStore("/nonexistent/path.yaml", makeLogger());
+    const store = new ConfigStore(makeLogger());
     expect(() => store.getConfig()).toThrow("config store has not been started");
   });
 
-  it("throws when getWorkflow is called before start", () => {
-    const store = new ConfigStore("/nonexistent/path.yaml", makeLogger());
-    expect(() => store.getWorkflow()).toThrow("config store has not been started");
-  });
-
-  it("throws on start when workflow file does not exist", async () => {
-    const store = new ConfigStore("/nonexistent/path.yaml", makeLogger());
-    await expect(store.start()).rejects.toThrow();
-  });
-
-  it("keeps last known good config on failed refresh", async () => {
-    const dir = await makeTestDir();
-    const workflowPath = await writeTempWorkflow(dir);
-    const logger = makeLogger();
-    const store = new ConfigStore(workflowPath, logger);
-
-    await store.start();
-    try {
-      const firstConfig = store.getConfig();
-      expect(firstConfig.tracker.kind).toBe("linear");
-
-      // Write invalid YAML to trigger a reload failure
-      await writeFile(workflowPath, INVALID_YAML);
-      // Manually trigger refresh
-      await store.refresh("test:bad-reload");
-
-      // Config should be unchanged (last known good)
-      const configAfterError = store.getConfig();
-      expect(configAfterError.tracker.kind).toBe("linear");
-      expect(logger.error).toHaveBeenCalled();
-    } finally {
-      await store.stop();
-    }
-  });
-
   it("notifies listeners on successful refresh", async () => {
-    const dir = await makeTestDir();
-    const workflowPath = await writeTempWorkflow(dir);
-    const store = new ConfigStore(workflowPath, makeLogger());
+    const store = new ConfigStore(makeLogger());
     await store.start();
 
     try {
@@ -144,9 +46,7 @@ describe("ConfigStore", () => {
   });
 
   it("subscribe returns an unsubscribe function that stops notifications", async () => {
-    const dir = await makeTestDir();
-    const workflowPath = await writeTempWorkflow(dir);
-    const store = new ConfigStore(workflowPath, makeLogger());
+    const store = new ConfigStore(makeLogger());
     await store.start();
 
     try {
@@ -160,15 +60,13 @@ describe("ConfigStore", () => {
     }
   });
 
-  it("stop cleans up watchers and subscriptions", async () => {
-    const dir = await makeTestDir();
-    const workflowPath = await writeTempWorkflow(dir);
+  it("stop cleans up subscriptions", async () => {
     const overlayUnsubscribeFn = vi.fn();
     const overlayStore = {
       toMap: vi.fn().mockReturnValue({}),
       subscribe: vi.fn().mockReturnValue(overlayUnsubscribeFn),
     };
-    const store = new ConfigStore(workflowPath, makeLogger(), { overlayStore });
+    const store = new ConfigStore(makeLogger(), { overlayStore });
     await store.start();
     await store.stop();
 
@@ -176,13 +74,11 @@ describe("ConfigStore", () => {
   });
 
   it("merges overlay store values into config map", async () => {
-    const dir = await makeTestDir();
-    const workflowPath = await writeTempWorkflow(dir);
     const overlayStore = {
       toMap: vi.fn().mockReturnValue({ custom_field: "overlay_value" }),
       subscribe: vi.fn().mockReturnValue(() => undefined),
     };
-    const store = new ConfigStore(workflowPath, makeLogger(), { overlayStore });
+    const store = new ConfigStore(makeLogger(), { overlayStore });
     await store.start();
 
     try {
@@ -193,10 +89,44 @@ describe("ConfigStore", () => {
     }
   });
 
+  it("hydrates config from the injected workflow store before applying overlay", async () => {
+    const overlayStore = {
+      toMap: vi.fn().mockReturnValue({
+        tracker: { project_slug: "OVERLAY-PROJECT" },
+      }),
+      subscribe: vi.fn().mockReturnValue(() => undefined),
+    };
+    const workflowStore = {
+      getWorkflow: vi.fn().mockReturnValue({
+        config: {
+          tracker: {
+            project_slug: "DB-PROJECT",
+            api_key: "$LINEAR_API_KEY",
+          },
+          server: {
+            port: 4400,
+          },
+        },
+        promptTemplate: "Template body",
+      }),
+    };
+    const store = new ConfigStore(makeLogger(), { overlayStore, workflowStore });
+
+    await store.start();
+    try {
+      expect(store.getConfig().tracker.projectSlug).toBe("OVERLAY-PROJECT");
+      expect(store.getConfig().server.port).toBe(4400);
+      expect(store.getMergedConfigMap()).toMatchObject({
+        tracker: { project_slug: "OVERLAY-PROJECT", api_key: "$LINEAR_API_KEY" },
+        server: { port: 4400 },
+      });
+    } finally {
+      await store.stop();
+    }
+  });
+
   it("getMergedConfigMap returns a clone (mutations don't affect store)", async () => {
-    const dir = await makeTestDir();
-    const workflowPath = await writeTempWorkflow(dir);
-    const store = new ConfigStore(workflowPath, makeLogger());
+    const store = new ConfigStore(makeLogger());
     await store.start();
 
     try {
@@ -209,39 +139,60 @@ describe("ConfigStore", () => {
     }
   });
 
-  it("logs a warning when repo routing points back to symphony-orchestrator", async () => {
-    const dir = await makeTestDir();
-    const workflowPath = await writeTempWorkflow(
-      dir,
-      `---
-tracker:
-  kind: linear
-  api_key: lin_test
-  project_slug: TEST
-codex:
-  command: codex
-  auth:
-    mode: api_key
-    source_home: /tmp
-agent: {}
-server: {}
-workspace:
-  root: /tmp/symphony
-repos:
-  - repo_url: https://github.com/OmerFarukOruc/symphony-orchestrator.git
-    identifier_prefix: NIN
----
-Work on the issue.
-`,
-    );
+  it("logs a warning for self-routing repos via overlay", async () => {
+    const overlayStore = {
+      toMap: vi.fn().mockReturnValue({
+        repos: [
+          {
+            repo_url: "https://github.com/OmerFarukOruc/risoluto.git",
+            identifier_prefix: "NIN",
+          },
+        ],
+      }),
+      subscribe: vi.fn().mockReturnValue(() => undefined),
+    };
     const logger = makeLogger();
-    const store = new ConfigStore(workflowPath, logger);
+    const store = new ConfigStore(logger, { overlayStore });
 
     await store.start();
     try {
       expect(logger.warn).toHaveBeenCalledWith(
         expect.objectContaining({ code: "self_routing_repo" }),
-        expect.stringContaining("points to symphony-orchestrator itself"),
+        expect.stringContaining("points to risoluto itself"),
+      );
+    } finally {
+      await store.stop();
+    }
+  });
+
+  it("keeps last known good config when overlay throws during refresh", async () => {
+    let callCount = 0;
+    const overlayStore = {
+      toMap: vi.fn(() => {
+        callCount++;
+        if (callCount > 1) {
+          throw new TypeError("overlay exploded");
+        }
+        return {};
+      }),
+      subscribe: vi.fn().mockReturnValue(() => undefined),
+    };
+    const logger = makeLogger();
+    const store = new ConfigStore(logger, { overlayStore });
+
+    await store.start();
+    try {
+      const firstConfig = store.getConfig();
+      expect(firstConfig).toBeTypeOf("object");
+
+      // Second refresh — overlayStore.toMap throws → error branch runs
+      await store.refresh("test:broken-overlay");
+
+      // Config should still be the last known good
+      expect(store.getConfig()).toBeTypeOf("object");
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ reason: "test:broken-overlay" }),
+        expect.stringContaining("keeping last known good config"),
       );
     } finally {
       await store.stop();

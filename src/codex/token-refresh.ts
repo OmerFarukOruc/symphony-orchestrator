@@ -1,7 +1,7 @@
 /**
  * Token expiry detection and automatic refresh for OpenAI auth tokens.
  *
- * Symphony stores OpenAI credentials in auth.json. This module checks
+ * Risoluto stores OpenAI credentials in auth.json. This module checks
  * whether the access_token has expired (or will expire soon) and uses
  * the stored refresh_token to obtain a fresh access_token transparently
  * before dispatching Codex workers.
@@ -87,7 +87,7 @@ function extractJwtExp(token: string): number | null {
   try {
     const parts = token.split(".");
     if (parts.length < 2) return null;
-    const payload = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as { exp?: number };
+    const payload: { exp?: number } = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8"));
     return typeof payload.exp === "number" ? payload.exp : null;
   } catch {
     return null;

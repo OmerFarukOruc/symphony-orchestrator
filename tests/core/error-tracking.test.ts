@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { initErrorTracking, getErrorTracker, resetErrorTracking } from "../../src/core/error-tracking.js";
-import type { SymphonyLogger } from "../../src/core/types.js";
+import type { RisolutoLogger } from "../../src/core/types.js";
 
-function createMockLogger(): SymphonyLogger {
+function createMockLogger(): RisolutoLogger {
   return {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     child: vi.fn(() => createMockLogger()),
-  } as unknown as SymphonyLogger;
+  } as unknown as RisolutoLogger;
 }
 
 describe("error-tracking", () => {

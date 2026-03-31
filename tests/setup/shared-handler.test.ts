@@ -159,8 +159,8 @@ describe("lookupProject", () => {
   it("returns the first matching project node", async () => {
     const projectNode = {
       id: "proj-1",
-      name: "Symphony",
-      slugId: "symphony",
+      name: "Risoluto",
+      slugId: "risoluto",
       teams: { nodes: [{ id: "team-1", key: "ENG" }] },
     };
     mockFetchResponse(
@@ -169,7 +169,7 @@ describe("lookupProject", () => {
       }),
     );
 
-    const result = await lookupProject("api-key", "symphony");
+    const result = await lookupProject("api-key", "risoluto");
 
     expect(result).toEqual(projectNode);
   });

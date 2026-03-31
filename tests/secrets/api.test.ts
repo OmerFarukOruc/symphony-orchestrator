@@ -14,7 +14,7 @@ const tempDirs: string[] = [];
 const originalMasterKey = process.env.MASTER_KEY;
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-secrets-api-test-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-secrets-api-test-"));
   tempDirs.push(dir);
   return dir;
 }

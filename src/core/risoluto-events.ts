@@ -1,12 +1,12 @@
 /**
- * Event map for the Symphony orchestrator event bus.
+ * Event map for the Risoluto orchestrator event bus.
  *
  * Each key is a dot-delimited channel name; the value is the typed payload
  * subscribers receive. Channels mirror the categories already flowing through
  * the RecentEvent ring buffer so the bus is a superset of existing telemetry.
  */
 
-export interface SymphonyEventMap {
+export interface RisolutoEventMap {
   /** An agent worker was launched for an issue. */
   "issue.started": { issueId: string; identifier: string; attempt: number | null };
 

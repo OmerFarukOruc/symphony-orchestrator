@@ -1,4 +1,4 @@
-import type { SymphonyLogger } from "./types.js";
+import type { RisolutoLogger } from "./types.js";
 
 /**
  * Error tracking interface — all error tracking implementations must
@@ -44,7 +44,7 @@ class LoggerErrorTracker implements ErrorTracker {
 
   constructor(
     private readonly dsn: string,
-    private readonly logger: SymphonyLogger,
+    private readonly logger: RisolutoLogger,
   ) {
     // eslint-disable-next-line sonarjs/slow-regex -- [^@]+ bounded by literal @; safe
     logger.info({ dsn: dsn.replaceAll(/\/\/[^@]+@/g, "//<redacted>@") }, "Sentry error tracking initialized");
@@ -92,7 +92,7 @@ let tracker: ErrorTracker = new NoopTracker();
  * Initialize error tracking.  If `SENTRY_DSN` is set to a valid URL,
  * enables the Sentry-backed tracker; otherwise falls back to no-op.
  */
-export function initErrorTracking(logger: SymphonyLogger): ErrorTracker {
+export function initErrorTracking(logger: RisolutoLogger): ErrorTracker {
   const dsn = process.env.SENTRY_DSN;
   if (dsn?.startsWith("https://")) {
     tracker = new LoggerErrorTracker(dsn, logger);

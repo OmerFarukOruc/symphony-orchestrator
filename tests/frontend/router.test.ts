@@ -127,12 +127,12 @@ describe("match", () => {
 
 describe("getRouteTitle (algorithm)", () => {
   it("trims and returns empty on blank", () => {
-    const title = "   ".trim() || "Symphony";
-    expect(title).toBe("Symphony");
+    const title = "   ".trim() || "Risoluto";
+    expect(title).toBe("Risoluto");
   });
 
   it("returns trimmed text when present", () => {
-    const title = "  My Issue Title  ".trim() || "Symphony";
+    const title = "  My Issue Title  ".trim() || "Risoluto";
     expect(title).toBe("My Issue Title");
   });
 });

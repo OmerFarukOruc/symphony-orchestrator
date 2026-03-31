@@ -4,16 +4,16 @@ import express from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TypedEventBus } from "../../src/core/event-bus.js";
-import type { SymphonyEventMap } from "../../src/core/symphony-events.js";
+import type { RisolutoEventMap } from "../../src/core/risoluto-events.js";
 import { createSSEHandler } from "../../src/http/sse.js";
 
 describe("SSE handler", () => {
-  let eventBus: TypedEventBus<SymphonyEventMap>;
+  let eventBus: TypedEventBus<RisolutoEventMap>;
   let server: http.Server;
   let baseUrl: string;
 
   beforeEach(async () => {
-    eventBus = new TypedEventBus<SymphonyEventMap>();
+    eventBus = new TypedEventBus<RisolutoEventMap>();
     const app = express();
     app.disable("x-powered-by");
     app.get("/api/v1/events", createSSEHandler(eventBus));

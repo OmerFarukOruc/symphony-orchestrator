@@ -77,7 +77,7 @@ async function githubGet(path: string, options: GitHubFetchOptions): Promise<unk
     headers: {
       authorization: `Bearer ${options.token}`,
       accept: "application/vnd.github+json",
-      "user-agent": "symphony-orchestrator",
+      "user-agent": "risoluto",
       "x-github-api-version": "2022-11-28",
     },
   });

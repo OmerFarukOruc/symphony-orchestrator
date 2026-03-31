@@ -59,9 +59,9 @@ describe("trackerConfigSchema", () => {
 describe("workspaceConfigSchema", () => {
   it("applies defaults for empty input", () => {
     const result = workspaceConfigSchema.parse({});
-    expect(result.root).toBe("../symphony-workspaces");
+    expect(result.root).toBe("../risoluto-workspaces");
     expect(result.strategy).toBe("directory");
-    expect(result.branchPrefix).toBe("symphony/");
+    expect(result.branchPrefix).toBe("risoluto/");
     expect(result.hooks.afterCreate).toBe(null);
     expect(result.hooks.timeoutMs).toBe(60000);
   });
@@ -273,7 +273,7 @@ describe("codexConfigSchema", () => {
 
   it("defaults nested sandbox config within codex", () => {
     const result = codexConfigSchema.parse({});
-    expect(result.sandbox.image).toBe("symphony-codex:latest");
+    expect(result.sandbox.image).toBe("risoluto-codex:latest");
     expect(result.sandbox.security.noNewPrivileges).toBe(true);
     expect(result.sandbox.resources.memory).toBe("4g");
   });
@@ -295,7 +295,7 @@ describe("codexConfigSchema", () => {
 describe("sandboxConfigSchema", () => {
   it("applies defaults for empty input", () => {
     const result = sandboxConfigSchema.parse({});
-    expect(result.image).toBe("symphony-codex:latest");
+    expect(result.image).toBe("risoluto-codex:latest");
     expect(result.security.noNewPrivileges).toBe(true);
     expect(result.resources.memory).toBe("4g");
     expect(result.logs.driver).toBe("json-file");

@@ -1,21 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { WebhookRegistrar, type WebhookRegistrarDeps } from "../../src/webhook/registrar.js";
-import type { WebhookConfig, SymphonyLogger } from "../../src/core/types.js";
+import type { WebhookConfig, RisolutoLogger } from "../../src/core/types.js";
 
-function makeLogger(): SymphonyLogger {
+function makeLogger(): RisolutoLogger {
   return {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn().mockReturnThis(),
-  } as unknown as SymphonyLogger;
+  } as unknown as RisolutoLogger;
 }
 
 function makeWebhookConfig(overrides: Partial<WebhookConfig> = {}): WebhookConfig {
   return {
-    webhookUrl: "https://symphony.example.com/webhooks/linear",
+    webhookUrl: "https://risoluto.example.com/webhooks/linear",
     webhookSecret: "whsec_test_secret",
     pollingStretchMs: 120000,
     pollingBaseMs: 15000,

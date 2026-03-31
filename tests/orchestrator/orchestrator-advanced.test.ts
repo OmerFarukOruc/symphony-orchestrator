@@ -7,7 +7,9 @@ import {
   createConfig,
   createConfigStore,
   createAttemptStore,
+  createIssueConfigStore,
   createLogger,
+  createResolveTemplate,
 } from "./orchestrator-fixtures.js";
 
 afterEach(() => {
@@ -37,7 +39,9 @@ describe("Orchestrator — advanced scenarios", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -77,7 +81,7 @@ describe("Orchestrator — advanced scenarios", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: false,
       })),
@@ -91,7 +95,9 @@ describe("Orchestrator — advanced scenarios", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     const seededView = {
@@ -152,7 +158,7 @@ describe("Orchestrator — advanced scenarios", () => {
           throw new Error("workspace setup exploded");
         }
         return {
-          path: "/tmp/symphony/MT-42",
+          path: "/tmp/risoluto/MT-42",
           workspaceKey: "MT-42",
           createdNow: true,
         };
@@ -166,7 +172,9 @@ describe("Orchestrator — advanced scenarios", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -237,7 +245,7 @@ describe("Orchestrator — advanced scenarios", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: true,
       })),
@@ -250,7 +258,9 @@ describe("Orchestrator — advanced scenarios", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -292,7 +302,7 @@ describe("Orchestrator — advanced scenarios", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: true,
       })),
@@ -305,7 +315,9 @@ describe("Orchestrator — advanced scenarios", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -355,7 +367,7 @@ describe("Orchestrator — advanced scenarios", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: true,
       })),
@@ -368,7 +380,9 @@ describe("Orchestrator — advanced scenarios", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -396,7 +410,7 @@ describe("Orchestrator — advanced scenarios", () => {
     await orchestrator.stop();
   });
 
-  it("runs git post-processing only when the worker reports SYMPHONY_STATUS: DONE", async () => {
+  it("runs git post-processing only when the worker reports RISOLUTO_STATUS: DONE", async () => {
     vi.useFakeTimers();
     const issue = createIssue();
     const agentRunner = {
@@ -421,7 +435,7 @@ describe("Orchestrator — advanced scenarios", () => {
             sessionId: "thread-1",
             event: "agent_message",
             message: "agentMessage completed",
-            content: "work finished\nSYMPHONY_STATUS: DONE",
+            content: "work finished\nRISOLUTO_STATUS: DONE",
           });
           return {
             kind: "normal",
@@ -441,17 +455,17 @@ describe("Orchestrator — advanced scenarios", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: true,
       })),
       removeWorkspace: vi.fn(async () => undefined),
     } as unknown as WorkspaceManager;
     const gitManager = {
-      cloneInto: vi.fn(async () => ({ branchName: "symphony/mt-42" })),
-      commitAndPush: vi.fn(async () => ({ committed: true, pushed: true, branchName: "symphony/mt-42" })),
+      cloneInto: vi.fn(async () => ({ branchName: "risoluto/mt-42" })),
+      commitAndPush: vi.fn(async () => ({ committed: true, pushed: true, branchName: "risoluto/mt-42" })),
       createPullRequest: vi.fn(async () => ({ html_url: "https://github.com/acme/repo/pull/1" })),
-      setupWorktree: vi.fn(async () => ({ branchName: "symphony/mt-42" })),
+      setupWorktree: vi.fn(async () => ({ branchName: "risoluto/mt-42" })),
       syncWorktree: vi.fn(async () => undefined),
       removeWorktree: vi.fn(async () => undefined),
       deriveBaseCloneDir: vi.fn((workspaceRoot: string, _repoUrl: string) => `${workspaceRoot}/.base/repo.git`),
@@ -475,7 +489,9 @@ describe("Orchestrator — advanced scenarios", () => {
       agentRunner,
       repoRouter,
       gitManager,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -513,7 +529,9 @@ describe("Orchestrator — eventBus emissions", () => {
       } as unknown as WorkspaceManager,
       agentRunner: { runAttempt: vi.fn() } as unknown as AgentRunner,
       eventBus: eventBus as never,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -545,7 +563,9 @@ describe("Orchestrator — eventBus emissions", () => {
       } as unknown as WorkspaceManager,
       agentRunner: { runAttempt: vi.fn() } as unknown as AgentRunner,
       eventBus: eventBus as never,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     // updateIssueModelSelection requires an issue detail to exist.

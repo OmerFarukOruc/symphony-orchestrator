@@ -2,10 +2,10 @@ const REDACTION = "[REDACTED]";
 const REDACTED_OBJECT = "[REDACTED_OBJECT]";
 const REDACT_KEYS = /secret|token|key|password|credential|authorization|auth|webhook/i;
 const SECRET_PATTERNS = [
-  /lin_api_[A-Za-z0-9]+/g,
-  /sk-[A-Za-z0-9]{20,}/g,
+  /lin_api_\w+/g,
+  /sk-\w{20,}/g,
   /Bearer\s+(?!null|undefined)[\w.~+/-]+=*/gi,
-  /ghp_[A-Za-z0-9]{36}/g,
+  /ghp_\w{36}/g,
   /AKIA[0-9A-Z]{16}/g,
   /xox[baprs]-[0-9a-zA-Z-]+/g,
   /(?:token|api[_-]?key|secret|password|authorization)[:=]\s?["']?[^"'\s,}]+/gi,

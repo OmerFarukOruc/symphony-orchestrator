@@ -2,6 +2,20 @@
 
 export type StopSignal = "done" | "blocked";
 
+const DONE_MARKERS = [
+  "risoluto_status: done",
+  "risoluto status: done",
+  "symphony_status: done",
+  "symphony status: done",
+] as const;
+
+const BLOCKED_MARKERS = [
+  "risoluto_status: blocked",
+  "risoluto status: blocked",
+  "symphony_status: blocked",
+  "symphony status: blocked",
+] as const;
+
 function normalizeForDetection(content: string): string {
   return content.trim().toLowerCase().replaceAll(/\s+/g, " ");
 }
@@ -24,10 +38,10 @@ export function detectStopSignal(content: string | null): StopSignal | null {
   }
 
   const normalized = normalizeForDetection(content);
-  if (normalized.includes("symphony_status: done") || normalized.includes("symphony status: done")) {
+  if (DONE_MARKERS.some((marker) => normalized.includes(marker))) {
     return "done";
   }
-  if (normalized.includes("symphony_status: blocked") || normalized.includes("symphony status: blocked")) {
+  if (BLOCKED_MARKERS.some((marker) => normalized.includes(marker))) {
     return "blocked";
   }
   return null;

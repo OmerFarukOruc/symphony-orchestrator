@@ -17,7 +17,7 @@ import {
 import { flashDiff, setTextWithDiff } from "../utils/diff";
 import { registerPageCleanup } from "../utils/page";
 
-const EMPTY_STATE_DISMISSED_KEY = "symphony-empty-state-dismissed";
+const EMPTY_STATE_DISMISSED_KEY = "risoluto-empty-state-dismissed";
 
 function isGettingStartedDismissed(): boolean {
   return localStorage.getItem(EMPTY_STATE_DISMISSED_KEY) === "true";
@@ -200,7 +200,7 @@ function createGettingStartedCard(onDismiss: () => void): HTMLElement {
   const desc = document.createElement("p");
   desc.className = "overview-getting-started-desc";
   desc.textContent =
-    "Symphony is polling your Linear project every 30 seconds. Create an issue and move it to In Progress to get started.";
+    "Risoluto is polling your Linear project every 30 seconds. Create an issue and move it to In Progress to get started.";
 
   const steps = document.createElement("div");
   steps.className = "overview-getting-started-steps";
@@ -208,7 +208,7 @@ function createGettingStartedCard(onDismiss: () => void): HTMLElement {
   const stepItems = [
     { n: "1", text: "Create an issue in Linear" },
     { n: "2", text: "Move it to In Progress" },
-    { n: "3", text: "Symphony picks it up within 30 seconds" },
+    { n: "3", text: "Risoluto picks it up within 30 seconds" },
   ];
 
   for (const s of stepItems) {
@@ -467,14 +467,14 @@ export function createOverviewPage(): HTMLElement {
     // Re-render from current store state to pick up any timestamp changes
     renderSnapshot(store.getState());
   };
-  window.addEventListener("symphony:webhook-health-changed", webhookHealthHandler);
-  window.addEventListener("symphony:webhook-received", webhookReceivedHandler);
+  window.addEventListener("risoluto:webhook-health-changed", webhookHealthHandler);
+  window.addEventListener("risoluto:webhook-received", webhookReceivedHandler);
 
   renderSnapshot(store.getState());
   registerPageCleanup(page, () => {
     window.removeEventListener("state:update", handler);
-    window.removeEventListener("symphony:webhook-health-changed", webhookHealthHandler);
-    window.removeEventListener("symphony:webhook-received", webhookReceivedHandler);
+    window.removeEventListener("risoluto:webhook-health-changed", webhookHealthHandler);
+    window.removeEventListener("risoluto:webhook-received", webhookReceivedHandler);
   });
 
   return page;

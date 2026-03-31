@@ -1,12 +1,12 @@
 # 🔐 Trust and Auth
 
-> Trust boundary and authentication model for Symphony Orchestrator.
+> Trust boundary and authentication model for Risoluto.
 
 ---
 
-## 🎵 Symphony's Role
+## 🎵 Risoluto's Role
 
-Symphony has a narrow job: it launches a local Codex app-server, talks to Linear, manages issue workspaces, and reports state locally. It does **not** choose backing Codex accounts, perform browser login, or implement provider pooling itself.
+Risoluto has a narrow job: it launches a local Codex app-server, talks to Linear, manages issue workspaces, and reports state locally. It does **not** choose backing Codex accounts, perform browser login, or implement provider pooling itself.
 
 ---
 
@@ -14,7 +14,7 @@ Symphony has a narrow job: it launches a local Codex app-server, talks to Linear
 
 ```mermaid
 flowchart TB
-    S["🎵 Symphony\nDecides WHEN to launch\nand WHICH workspace"]
+    S["🎵 Risoluto\nDecides WHEN to launch\nand WHICH workspace"]
     C["🤖 Codex\nDecides HOW to execute\neach turn"]
     P["🌐 Provider / Proxy\nDecides HOW the model\ncall is routed"]
 
@@ -27,7 +27,7 @@ flowchart TB
 
 | Layer | Component            | Responsibility                                                                       |
 | :---: | -------------------- | ------------------------------------------------------------------------------------ |
-| **1** | **Symphony**         | Decides when to launch work and what workspace directory the worker can use          |
+| **1** | **Risoluto**         | Decides when to launch work and what workspace directory the worker can use          |
 | **2** | **Codex**            | Decides how to execute each turn, including approvals and any configured MCP servers |
 | **3** | **Provider / Proxy** | Decides which backing account or route handles the actual model call                 |
 
@@ -44,30 +44,30 @@ flowchart TB
 | `thread_sandbox`      | `"danger-full-access"`         |
 | `turn_sandbox_policy` | `{ type: "dangerFullAccess" }` |
 
-Symphony now generates a fresh per-attempt container-local `CODEX_HOME` for every worker run. API-key flows render provider config into that runtime home, and `openai_login` flows read `auth.json` from `codex.auth.source_home` and inject it into the container runtime home.
+Risoluto now generates a fresh per-attempt container-local `CODEX_HOME` for every worker run. API-key flows render provider config into that runtime home, and `openai_login` flows read `auth.json` from `codex.auth.source_home` and inject it into the container runtime home.
 
 ---
 
 ## 🌐 Provider Boundary
 
-Symphony launches the exact `codex.command` from the workflow, but it now owns the minimal runtime config that `codex app-server` sees inside Docker. That config is generic:
+Risoluto launches the exact `codex.command` from the workflow, but it now owns the minimal runtime config that `codex app-server` sees inside Docker. That config is generic:
 
 - Direct OpenAI API usage: `codex.auth.mode: "api_key"` with no `codex.provider` block
 - OpenAI-compatible proxy or third-party endpoint: `codex.auth.mode: "api_key"` plus `codex.provider.base_url`, `env_key`, and optional headers/query params
 - ChatGPT/Codex login backed flows: `codex.auth.mode: "openai_login"` with an optional custom provider that sets `requires_openai_auth: true`
 
-When running inside Docker, the container cannot reach the host's `127.0.0.1` directly. Symphony handles that transparently by:
+When running inside Docker, the container cannot reach the host's `127.0.0.1` directly. Risoluto handles that transparently by:
 
 - adding `--add-host=host.docker.internal:host-gateway` to every container
 - rewriting host-bound provider URLs such as `127.0.0.1` and `localhost` to `host.docker.internal` in the generated runtime config
 
-This keeps provider routing **below** Symphony without keeping repo-local launcher scripts or checked-in Codex homes.
+This keeps provider routing **below** Risoluto without keeping repo-local launcher scripts or checked-in Codex homes.
 
 ---
 
 ## 🐳 Docker Sandbox Boundary
 
-Symphony runs the Codex agent inside a Docker container using a `node:22-bookworm` base image with the Codex CLI installed globally. The container is a **transparent wrapper** — the same `codex.command` runs inside, with the same paths and environment.
+Risoluto runs the Codex agent inside a Docker container using a `node:22-bookworm` base image with the Codex CLI installed globally. The container is a **transparent wrapper** — the same `codex.command` runs inside, with the same paths and environment.
 
 **Key properties:**
 
@@ -76,15 +76,15 @@ Symphony runs the Codex agent inside a Docker container using a `node:22-bookwor
 | **Path identity**       | Workspace and archive paths are bind-mounted at the same absolute path inside the container                                       |
 | **Auth preservation**   | `openai_login` reads `auth.json` from `codex.auth.source_home` and injects it into the container-local runtime home before launch |
 | **Host permissions**    | Container runs as `--user $(id -u):$(id -g)` — files it creates are owned by the host user                                        |
-| **Provider decoupling** | Symphony renders the runtime config, but the configured provider still decides how model calls are routed                         |
+| **Provider decoupling** | Risoluto renders the runtime config, but the configured provider still decides how model calls are routed                         |
 | **Network**             | Default is Docker's default bridge (full internet). Operators can pre-provision a restricted network and reference it by name     |
 
 > [!NOTE]
-> Named Docker volumes (used for build caches) survive container and image replacement, but **not** `docker system prune --volumes`. Operator docs should warn against pruning volumes prefixed with `symphony-`.
+> Named Docker volumes (used for build caches) survive container and image replacement, but **not** `docker system prune --volumes`. Operator docs should warn against pruning volumes prefixed with `risoluto-`.
 
 ### Sandbox Hardening Options
 
-Symphony supports several opt-in hardening knobs configured under `codex.sandbox` in the workflow file.
+Risoluto supports several opt-in hardening knobs configured under `codex.sandbox` in the config overlay.
 
 #### Egress Domain Allowlist
 
@@ -99,7 +99,7 @@ codex:
       - "*.github.com"
 ```
 
-When the allowlist is non-empty, Symphony:
+When the allowlist is non-empty, Risoluto:
 
 1. Adds `--cap-add=NET_ADMIN` to the container (required for iptables manipulation)
 2. Injects iptables OUTPUT rules before launching Codex:
@@ -129,35 +129,35 @@ Every sandbox container is tagged with observability labels:
 
 | Label                 | Value                           |
 | --------------------- | ------------------------------- |
-| `symphony.issue`      | Issue identifier (e.g. `NIN-5`) |
-| `symphony.model`      | Model in use (e.g. `gpt-5.4`)   |
-| `symphony.workspace`  | Workspace directory path        |
-| `symphony.started-at` | UTC ISO-8601 start timestamp    |
+| `risoluto.issue`      | Issue identifier (e.g. `NIN-5`) |
+| `risoluto.model`      | Model in use (e.g. `gpt-5.4`)   |
+| `risoluto.workspace`  | Workspace directory path        |
+| `risoluto.started-at` | UTC ISO-8601 start timestamp    |
 
-Filter containers with: `docker ps --filter label=symphony.issue=NIN-5`
+Filter containers with: `docker ps --filter label=risoluto.issue=NIN-5`
 
 #### Startup Readiness & Graceful Drain
 
-- **Startup readiness** (`codex.startup_timeout_ms`, default 30s): Symphony waits for the child process to emit output before sending `initialize`. Returns `startup_timeout` error on failure.
-- **Graceful drain** (`codex.drain_timeout_ms`, default 2s): After the last turn completes, Symphony waits before closing the JSON-RPC connection, giving final notifications (token usage, events) time to flush.
+- **Startup readiness** (`codex.startup_timeout_ms`, default 30s): Risoluto waits for the child process to emit output before sending `initialize`. Returns `startup_timeout` error on failure.
+- **Graceful drain** (`codex.drain_timeout_ms`, default 2s): After the last turn completes, Risoluto waits before closing the JSON-RPC connection, giving final notifications (token usage, events) time to flush.
 
-### Containerized Symphony
+### Containerized Risoluto
 
-When Symphony itself runs inside Docker, worker containers still need host-side bind mounts for the workspace and archive directories. Symphony now supports that by translating container-visible paths back to host-visible paths before it launches a worker container.
+When Risoluto itself runs inside Docker, worker containers still need host-side bind mounts for the workspace and archive directories. Risoluto now supports that by translating container-visible paths back to host-visible paths before it launches a worker container.
 
 Required environment variables for the service container:
 
 - `DATA_DIR=/data`
-- `SYMPHONY_HOST_WORKSPACE_ROOT`
-- `SYMPHONY_HOST_ARCHIVE_DIR`
-- `SYMPHONY_CONTAINER_WORKSPACE_ROOT=/data/workspaces`
-- `SYMPHONY_CONTAINER_ARCHIVE_DIR=/data/archives`
+- `RISOLUTO_HOST_WORKSPACE_ROOT`
+- `RISOLUTO_HOST_ARCHIVE_DIR`
+- `RISOLUTO_CONTAINER_WORKSPACE_ROOT=/data/workspaces`
+- `RISOLUTO_CONTAINER_ARCHIVE_DIR=/data/archives`
 
 This keeps the worker contract stable:
 
-- Symphony sees `/data/workspaces/<ISSUE>` inside its own container.
+- Risoluto sees `/data/workspaces/<ISSUE>` inside its own container.
 - Docker bind mounts the real host workspace root into `/data/workspaces`.
-- Before launching a worker, Symphony translates `/data/workspaces/<ISSUE>` back to the host path and mounts it into the worker container at the original container-side path.
+- Before launching a worker, Risoluto translates `/data/workspaces/<ISSUE>` back to the host path and mounts it into the worker container at the original container-side path.
 
 ### `openai_login` Auth Chain in Docker
 
@@ -166,9 +166,9 @@ For `codex.auth.mode: openai_login`, the expected mount chain is:
 1. Host `~/.codex/auth.json`
 2. Service container mount at `/codex-auth`
 3. `WORKFLOW.docker.md` sets `codex.auth.source_home: /codex-auth`
-4. Symphony reads `/codex-auth/auth.json`, base64-encodes it, and injects it into the worker container runtime home
+4. Risoluto reads `/codex-auth/auth.json`, base64-encodes it, and injects it into the worker container runtime home
 
-That means the service container must be able to read the mounted source home directly. Symphony does not perform browser login inside containers.
+That means the service container must be able to read the mounted source home directly. Risoluto does not perform browser login inside containers.
 
 ## 🔔 Local Operator APIs
 
@@ -212,7 +212,7 @@ The setup wizard at `/setup` stores all credentials in the encrypted secrets sto
 ## 🚨 Required MCP Failure
 
 > [!NOTE]
-> This failure is a **Codex runtime startup problem**, not a Symphony orchestration bug:
+> This failure is a **Codex runtime startup problem**, not a Risoluto orchestration bug:
 >
 > ```text
 > error code=startup_failed msg="thread/start failed because a required MCP server did not initialize"

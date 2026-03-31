@@ -42,7 +42,7 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
   const runtimeInfo = overrides.runtimeInfo ?? {
     version: "0.3.1",
     workflow_path: "/tmp/WORKFLOW.md",
-    data_dir: "/tmp/symphony-data",
+    data_dir: "/tmp/risoluto-data",
     feature_flags: {},
     provider_summary: "Codex",
   };
@@ -70,7 +70,7 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
     json(route, { ok: true, issueIdentifier: "TST-1", issueUrl: "https://linear.app/test/issue/TST-1" }),
   );
   await page.route("**/api/v1/setup/create-label", (route) =>
-    json(route, { ok: true, labelId: "label-1", labelName: "symphony" }),
+    json(route, { ok: true, labelId: "label-1", labelName: "risoluto" }),
   );
   await page.route("**/api/v1/setup/create-project", (route) =>
     json(route, {
@@ -138,7 +138,7 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
     route.fulfill({
       status: 200,
       contentType: "text/plain; version=0.0.4; charset=utf-8",
-      body: "# HELP symphony_http_requests_total Total HTTP requests\nsymphony_http_requests_total 42\n",
+      body: "# HELP risoluto_http_requests_total Total HTTP requests\nrisoluto_http_requests_total 42\n",
     }),
   );
 

@@ -41,7 +41,7 @@ describe("LinearClientError", () => {
 
   it("produces a useful stack trace", () => {
     const error = new LinearClientError("linear_graphql_error", "parse error");
-    expect(error.stack).toBeDefined();
+    expect(error.stack).toBeTypeOf("string");
     expect(error.stack).toContain("LinearClientError");
     expect(error.stack).toContain("parse error");
   });

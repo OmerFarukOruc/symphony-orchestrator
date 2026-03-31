@@ -1,0 +1,81 @@
+---
+title: Dashboard
+description: "Tour the Risoluto real-time dashboard — board view, overview, issue inspector, and live agent feed."
+---
+
+# Dashboard
+
+Risoluto serves a real-time web dashboard at [http://127.0.0.1:4000](http://127.0.0.1:4000) that shows everything happening in the system.
+
+## Views
+
+### Board View
+
+A Kanban-style board showing issues organized by workflow stage. Each card shows:
+
+- Issue identifier and title
+- Current status and model in use
+- Attempt count and token usage
+- Real-time progress indicator
+
+### Overview
+
+A summary view with:
+
+- **Running agents** with live progress
+- **Queued issues** waiting for slots
+- **Completed work** with success/failure breakdown
+- **Token totals** across all agents
+
+### Issue Inspector
+
+Click any issue to see:
+
+- Full event timeline with timestamps
+- Attempt history (current + archived)
+- Model override controls
+- Agent output and conversation log
+- Workspace status
+
+### Live Log
+
+A streaming view of all orchestrator events powered by [Server-Sent Events](#real-time-events). Shows:
+
+- Issue lifecycle events (queued, started, completed)
+- Worker events (spawn, failure, OOM)
+- Agent events (tool calls, file edits, messages)
+- System events (polls, errors)
+
+## Navigation
+
+The dashboard sidebar provides access to:
+
+| Section | Description |
+|---------|-------------|
+| **Board** | Kanban board view |
+| **Overview** | Summary dashboard |
+| **Logs** | Full event log view |
+| **Templates** | Prompt template editor (CodeMirror) |
+| **Audit Log** | Config and secret mutation history |
+| **System → Setup** | Re-run the setup wizard |
+| **System → Configuration** | Edit the config overlay |
+
+## Real-time Events
+
+The dashboard connects to `GET /api/v1/events` via SSE and updates all views in real time. Event types include:
+
+| Event | Description |
+|-------|-------------|
+| `issue.started` | Agent launched for an issue |
+| `issue.completed` | Agent finished (any outcome) |
+| `issue.stalled` | Stall detected, agent killed |
+| `issue.queued` | Issue waiting for a slot |
+| `worker.failed` | Worker crash or timeout |
+| `model.updated` | Model selection changed |
+| `agent.event` | Raw agent event from worker stream |
+| `poll.complete` | Polling cycle finished |
+| `audit.mutation` | Config/secret/template change logged |
+
+## Keyboard Shortcuts
+
+The dashboard supports keyboard navigation throughout. All interactive elements (buttons, cards, step indicators) are accessible via `Tab`, `Enter`, and `Space`.

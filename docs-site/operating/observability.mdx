@@ -1,0 +1,132 @@
+---
+title: Observability
+description: "Monitor Risoluto with Prometheus metrics, request tracing, error tracking, and real-time event streams."
+---
+
+# Observability
+
+Risoluto exposes metrics, tracing, and structured logs for monitoring and alerting.
+
+## Prometheus Metrics
+
+Available at `GET /metrics` in Prometheus exposition format:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `risoluto_http_requests_total` | Counter | HTTP requests by method and status |
+| `risoluto_http_request_duration_seconds` | Histogram | Request latency distribution |
+| `risoluto_orchestrator_polls_total` | Counter | Poll cycles by status |
+| `risoluto_agent_runs_total` | Counter | Agent completions by outcome |
+
+### Example Alert Rules
+
+```yaml
+groups:
+  - name: risoluto
+    rules:
+      - alert: HighErrorRate
+        expr: >
+          rate(risoluto_http_requests_total{status=~"5.."}[5m])
+          / rate(risoluto_http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP error rate above 5%"
+
+      - alert: AgentRunFailures
+        expr: rate(risoluto_agent_runs_total{outcome="failed"}[15m]) > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Agent runs failing consistently"
+
+      - alert: PollStalled
+        expr: increase(risoluto_orchestrator_polls_total[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Orchestrator hasn't polled in 10 minutes"
+```
+
+## Request Tracing
+
+Every request gets an `X-Request-ID` header:
+
+- **Incoming**: If the client sends `X-Request-ID`, it's preserved
+- **Generated**: Otherwise a UUID v4 is generated
+- **Response**: The ID is always returned in the response headers
+
+## Error Tracking
+
+Sentry-compatible error tracking when `SENTRY_DSN` is set:
+
+```bash
+export SENTRY_DSN=https://your-key@sentry.io/project-id
+```
+
+When enabled:
+- Exceptions captured with full stack traces
+- Breadcrumbs track the last 100 operations
+- Context (issue identifier, attempt count) attached to errors
+- DSN is redacted in log output
+
+When `SENTRY_DSN` is not set, a no-op tracker is used with zero overhead.
+
+## Process Logs
+
+Logs are emitted to **stdout** via Pino:
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `RISOLUTO_LOG_FORMAT` | `logfmt`, `json` | `logfmt` |
+| `LOG_LEVEL` | `trace` through `fatal` | `info` |
+
+To persist logs:
+
+```bash
+node dist/cli/index.js --port 4000 2>&1 | tee risoluto.log
+```
+
+## Event Stream (SSE)
+
+Connect to `GET /api/v1/events` for real-time orchestrator events:
+
+```bash
+curl -N http://localhost:4000/api/v1/events
+```
+
+See the [Dashboard guide](/guides/dashboard#real-time-events) for the full event type reference.
+
+## Data Persistence
+
+All attempt and event data is stored in SQLite (`risoluto.db`) with WAL mode:
+
+```
+.risoluto/
+├── risoluto.db           # Attempts, events, issue index
+├── risoluto.db-shm       # WAL shared-memory (normal)
+├── risoluto.db-wal       # Write-ahead log (normal)
+├── config/               # Operator config overlay
+├── secrets.enc           # Encrypted credential store
+├── secrets.audit.log     # Access audit trail
+└── master.key            # Encryption master key
+```
+
+### Querying Data
+
+```bash
+# Via API
+curl -s http://127.0.0.1:4000/api/v1/state
+curl -s http://127.0.0.1:4000/api/v1/NIN-6/attempts
+
+# Via CLI helper
+./risoluto MT-42
+./risoluto --attempt <attempt-id>
+
+# Direct SQLite (read-only via WAL)
+sqlite3 .risoluto/risoluto.db \
+  "SELECT attempt_id, issue_identifier, status FROM attempts ORDER BY started_at DESC LIMIT 10;"
+```

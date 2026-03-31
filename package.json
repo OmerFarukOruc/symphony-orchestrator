@@ -1,23 +1,23 @@
 {
-  "name": "symphony-orchestrator",
+  "name": "risoluto",
   "version": "0.6.0",
   "private": true,
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/OmerFarukOruc/symphony-orchestrator.git"
+    "url": "https://github.com/OmerFarukOruc/risoluto.git"
   },
-  "homepage": "https://github.com/OmerFarukOruc/symphony-orchestrator",
+  "homepage": "https://github.com/OmerFarukOruc/risoluto",
   "bugs": {
-    "url": "https://github.com/OmerFarukOruc/symphony-orchestrator/issues"
+    "url": "https://github.com/OmerFarukOruc/risoluto/issues"
   },
   "engines": {
     "node": ">=22"
   },
   "packageManager": "pnpm@10.33.0",
   "bin": {
-    "symphony": "./bin/symphony"
+    "risoluto": "./bin/risoluto"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && pnpm run build:frontend",

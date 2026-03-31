@@ -136,6 +136,8 @@ export interface RuntimeIssueView {
   configuredReasoningEffort?: ReasoningEffort | null;
   configuredModelSource?: "default" | "override" | null;
   modelChangePending?: boolean;
+  configuredTemplateId?: string | null;
+  configuredTemplateName?: string | null;
   url?: string | null;
   description?: string | null;
   blockedBy?: IssueBlockerRef[];
@@ -383,10 +385,10 @@ export interface ServiceConfig {
   webhook?: WebhookConfig | null;
 }
 
-export interface SymphonyLogger {
+export interface RisolutoLogger {
   debug(meta: unknown, message?: string): void;
   info(meta: unknown, message?: string): void;
   warn(meta: unknown, message?: string): void;
   error(meta: unknown, message?: string): void;
-  child(meta: Record<string, unknown>): SymphonyLogger;
+  child(meta: Record<string, unknown>): RisolutoLogger;
 }

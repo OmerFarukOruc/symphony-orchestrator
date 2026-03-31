@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { TypedEventBus } from "../../src/core/event-bus.js";
-import type { SymphonyEventMap } from "../../src/core/symphony-events.js";
+import type { RisolutoEventMap } from "../../src/core/risoluto-events.js";
 import { AuditLogger } from "../../src/audit/logger.js";
 
 /** Stub db with insert().values().run() chain. */
@@ -10,7 +10,7 @@ function createMockDb() {
 
 describe("AuditLogger SSE emission", () => {
   it("emits audit.mutation when eventBus is provided", () => {
-    const eventBus = new TypedEventBus<SymphonyEventMap>();
+    const eventBus = new TypedEventBus<RisolutoEventMap>();
     const handler = vi.fn();
     eventBus.on("audit.mutation", handler);
 

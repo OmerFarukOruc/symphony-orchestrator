@@ -23,7 +23,7 @@ describe("PAGE_SIZE", () => {
 describe("buildCandidateIssuesQuery", () => {
   it("produces valid GraphQL without project filter", () => {
     const query = buildCandidateIssuesQuery(false);
-    expect(query).toContain("query SymphonyCandidateIssues");
+    expect(query).toContain("query RisolutoCandidateIssues");
     expect(query).toContain("$after: String");
     expect(query).toContain("$activeStates: [String!]");
     expect(query).toContain(`first: ${PAGE_SIZE}`);
@@ -56,7 +56,7 @@ describe("buildCandidateIssuesQuery", () => {
 describe("buildCandidateIssuesByStateIdsQuery", () => {
   it("produces valid GraphQL without project filter", () => {
     const query = buildCandidateIssuesByStateIdsQuery(false);
-    expect(query).toContain("query SymphonyCandidateIssuesByStateIds");
+    expect(query).toContain("query RisolutoCandidateIssuesByStateIds");
     expect(query).toContain("$stateIds: [ID!]");
     expect(query).toContain(`first: ${PAGE_SIZE}`);
     expect(query).toContain("state: { id: { in: $stateIds } }");
@@ -164,9 +164,9 @@ describe("buildTeamStatesQuery", () => {
 });
 
 describe("buildCreateIssueMutation", () => {
-  it("is a mutation named SymphonyCreateIssue", () => {
+  it("is a mutation named RisolutoCreateIssue", () => {
     const query = buildCreateIssueMutation();
-    expect(query).toContain("mutation SymphonyCreateIssue");
+    expect(query).toContain("mutation RisolutoCreateIssue");
   });
 
   it("declares all required and optional variables", () => {
@@ -191,9 +191,9 @@ describe("buildCreateIssueMutation", () => {
 });
 
 describe("buildCreateLabelMutation", () => {
-  it("is a mutation named SymphonyCreateLabel", () => {
+  it("is a mutation named RisolutoCreateLabel", () => {
     const query = buildCreateLabelMutation();
-    expect(query).toContain("mutation SymphonyCreateLabel");
+    expect(query).toContain("mutation RisolutoCreateLabel");
   });
 
   it("declares teamId, name, and color variables", () => {
@@ -209,9 +209,9 @@ describe("buildCreateLabelMutation", () => {
 });
 
 describe("buildTeamsQuery", () => {
-  it("is a query named SymphonyTeams", () => {
+  it("is a query named RisolutoTeams", () => {
     const query = buildTeamsQuery();
-    expect(query).toContain("query SymphonyTeams");
+    expect(query).toContain("query RisolutoTeams");
   });
 
   it("requests team id, name, and key", () => {
@@ -227,9 +227,9 @@ describe("buildTeamsQuery", () => {
 });
 
 describe("buildCreateProjectMutation", () => {
-  it("is a mutation named SymphonyCreateProject", () => {
+  it("is a mutation named RisolutoCreateProject", () => {
     const query = buildCreateProjectMutation();
-    expect(query).toContain("mutation SymphonyCreateProject");
+    expect(query).toContain("mutation RisolutoCreateProject");
   });
 
   it("declares $name and $teamIds variables", () => {

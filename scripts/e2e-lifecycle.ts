@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
 /**
- * Symphony E2E Lifecycle Test — Main Entry Point
+ * Risoluto E2E Lifecycle Test — Main Entry Point
  *
- * Drives the full Symphony lifecycle:
- *   preflight → clean-slate → start-symphony →
+ * Drives the full Risoluto lifecycle:
+ *   preflight → clean-slate → start-risoluto →
  *   create-issue → wait-pickup → monitor-lifecycle →
  *   verify-pr → verify-linear → restart-resilience →
  *   collect-artifacts → cleanup
@@ -19,18 +19,20 @@ import { mkdir } from "node:fs/promises";
 
 import { parse as parseYaml } from "yaml";
 
-import type { RunContext, PhaseResult, PhaseFn } from "./e2e-lib/types.js";
+import type { RunContext, PhaseResult, PhaseFn, E2EConfig } from "./e2e-lib/types.js";
 import { e2eConfigSchema } from "./e2e-lib/types.js";
 import { errorMsg } from "./e2e-lib/helpers.js";
-import { preflight, cleanSlate, startSymphony } from "./e2e-lib/phases-startup.js";
+import { preflight, cleanSlate, startRisoluto } from "./e2e-lib/phases-startup.js";
 import { createIssue, waitPickup, monitorLifecycle, restartResilience } from "./e2e-lib/phases-lifecycle.js";
-import { verifyPr, verifyLinear, collectArtifacts, cleanup, shutdownSymphony } from "./e2e-lib/phases-teardown.js";
+import { verifyApiSurface } from "./e2e-lib/phases-verification.js";
+import { verifyPr, verifyLinear, collectArtifacts, cleanup, shutdownRisoluto } from "./e2e-lib/phases-teardown.js";
 import {
   JsonlWriter,
   printPhaseResult,
   printFinalReport,
   generateSummary,
   writeSummaryFile,
+  writeJunitXml,
   diagnoseProblem,
 } from "./e2e-lib/reporting.js";
 
@@ -40,7 +42,7 @@ import {
 
 function printHelp(): void {
   console.log(`
-Symphony E2E Lifecycle Test
+Risoluto E2E Lifecycle Test
 
 Usage:
   npx tsx scripts/e2e-lifecycle.ts [options]
@@ -50,7 +52,7 @@ Options:
   --timeout <sec>   Lifecycle timeout override in seconds
   --skip-build      Skip pnpm build step in preflight
   --keep            Don't auto-cleanup issue + PR
-  --keep-symphony   Don't kill Symphony after the run
+  --keep-risoluto   Don't kill Risoluto after the run
   --verbose         Debug-level logging
   --help            Show this message
 `);
@@ -69,10 +71,11 @@ interface PhaseEntry {
 const PHASES: PhaseEntry[] = [
   { name: "preflight", fn: preflight },
   { name: "clean-slate", fn: cleanSlate },
-  { name: "start-symphony", fn: startSymphony },
+  { name: "start-risoluto", fn: startRisoluto },
   { name: "create-issue", fn: createIssue },
   { name: "wait-pickup", fn: waitPickup },
   { name: "monitor-lifecycle", fn: monitorLifecycle },
+  { name: "verify-api-surface", fn: verifyApiSurface },
   { name: "verify-pr", fn: verifyPr },
   { name: "verify-linear", fn: verifyLinear },
   { name: "restart-resilience", fn: restartResilience },
@@ -83,8 +86,6 @@ const PHASES: PhaseEntry[] = [
 // ---------------------------------------------------------------------------
 // Config loading
 // ---------------------------------------------------------------------------
-
-import type { E2EConfig } from "./e2e-lib/types.js";
 
 function loadConfig(configPath: string): E2EConfig | null {
   let rawConfig: unknown;
@@ -153,7 +154,7 @@ async function main(): Promise<number> {
       timeout: { type: "string" },
       "skip-build": { type: "boolean", default: false },
       keep: { type: "boolean", default: false },
-      "keep-symphony": { type: "boolean", default: false },
+      "keep-risoluto": { type: "boolean", default: false },
       verbose: { type: "boolean", default: false },
       help: { type: "boolean", default: false },
     },
@@ -187,8 +188,8 @@ async function main(): Promise<number> {
     runId,
     config,
     startedAt: new Date(),
-    symphonyProcess: null,
-    symphonyPort: config.server.port,
+    risolutoProcess: null,
+    risolutoPort: config.server.port,
     baseUrl: `http://127.0.0.1:${config.server.port}`,
     issueIdentifier: null,
     issueId: null,
@@ -199,7 +200,7 @@ async function main(): Promise<number> {
     verbose: values.verbose ?? false,
     keep: values.keep ?? false,
     skipBuild: values["skip-build"] ?? false,
-    keepSymphony: values["keep-symphony"] ?? false,
+    keepRisoluto: values["keep-risoluto"] ?? false,
     masterKey: null,
   };
 
@@ -215,7 +216,7 @@ async function main(): Promise<number> {
     } catch {
       // Best-effort
     }
-    await shutdownSymphony(ctx);
+    await shutdownRisoluto(ctx);
     events.close();
     process.exit(1);
   };
@@ -223,14 +224,14 @@ async function main(): Promise<number> {
   process.on("SIGTERM", () => void onSignal());
 
   // Run
-  console.log(`\nSymphony E2E Lifecycle Test — run ${runId}\n`);
+  console.log(`\nRisoluto E2E Lifecycle Test — run ${runId}\n`);
   const { results, failed } = await runPipeline(ctx);
 
-  if (!ctx.keepSymphony) await shutdownSymphony(ctx);
+  if (!ctx.keepRisoluto) await shutdownRisoluto(ctx);
 
   let stderrLog = "";
   try {
-    stderrLog = readFileSync(`${reportDir}/symphony-stderr.log`, "utf-8");
+    stderrLog = readFileSync(`${reportDir}/risoluto-stderr.log`, "utf-8");
   } catch {
     // No stderr log available
   }
@@ -238,6 +239,7 @@ async function main(): Promise<number> {
   const diagnosis = failed ? diagnoseProblem(stderrLog) : null;
   const summary = generateSummary(ctx, results, diagnosis);
   writeSummaryFile(reportDir, summary);
+  writeJunitXml(reportDir, results);
 
   console.log("");
   printFinalReport(ctx, results, diagnosis);

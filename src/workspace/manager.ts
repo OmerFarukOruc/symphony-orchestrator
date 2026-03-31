@@ -3,7 +3,7 @@ import { rm, mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
-import type { Issue, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
+import type { Issue, ServiceConfig, RisolutoLogger, Workspace } from "../core/types.js";
 import type { RepoMatch } from "../git/repo-router.js";
 import { buildSafePath, isWithinRoot, sanitizeIdentifier, resolveWorkspacePath } from "./paths.js";
 import { toErrorString } from "../utils/type-guards.js";
@@ -42,7 +42,7 @@ export class WorkspaceManager {
 
   constructor(
     private readonly getConfig: () => ServiceConfig,
-    private readonly logger: SymphonyLogger,
+    private readonly logger: RisolutoLogger,
     worktreeDeps?: WorkspaceManagerWorktreeDeps,
   ) {
     this.worktreeDeps = worktreeDeps ?? null;
@@ -268,8 +268,8 @@ export class WorkspaceManager {
         env: {
           ...process.env,
           PATH: buildSafePath(),
-          SYMPHONY_WORKSPACE_PATH: workspace.path,
-          SYMPHONY_ISSUE_IDENTIFIER: sanitizedIdentifier,
+          RISOLUTO_WORKSPACE_PATH: workspace.path,
+          RISOLUTO_ISSUE_IDENTIFIER: sanitizedIdentifier,
         },
         stdio: ["ignore", "pipe", "pipe"],
       });

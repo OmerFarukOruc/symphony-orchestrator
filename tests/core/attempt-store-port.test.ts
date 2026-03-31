@@ -10,7 +10,7 @@ function makeAttempt(overrides: Partial<AttemptRecord> = {}): AttemptRecord {
     issueIdentifier: "MT-42",
     title: "Test attempt",
     workspaceKey: "MT-42",
-    workspacePath: "/tmp/symphony/MT-42",
+    workspacePath: "/tmp/risoluto/MT-42",
     status: "completed",
     attemptNumber: 1,
     startedAt: "2026-03-16T10:00:00.000Z",

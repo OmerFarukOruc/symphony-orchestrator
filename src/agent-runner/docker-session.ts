@@ -21,7 +21,7 @@ import { globalMetrics } from "../observability/metrics.js";
 import { createLifecycleEvent } from "../core/lifecycle-events.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
-import type { Issue, ModelSelection, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
+import type { Issue, ModelSelection, ServiceConfig, RisolutoLogger, Workspace } from "../core/types.js";
 
 function parsePercent(value: string): number {
   const parsed = Number.parseFloat(value.replaceAll("%", "").trim());
@@ -37,7 +37,7 @@ export interface DockerSessionDeps {
   pathRegistry?: PathRegistry;
   githubToolClient?: GithubApiToolClient;
   linearClient: LinearClient | null;
-  logger: SymphonyLogger;
+  logger: RisolutoLogger;
   spawnProcess?: typeof spawn;
 }
 

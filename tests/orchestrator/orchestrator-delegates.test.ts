@@ -24,6 +24,7 @@ function makeState(overrides: Partial<OrchestratorState> = {}): OrchestratorStat
     recentEvents: [],
     rateLimits: null,
     issueModelOverrides: new Map(),
+    issueTemplateOverrides: new Map(),
     sessionUsageTotals: new Map(),
     codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0 },
     stallEvents: [],
@@ -47,7 +48,14 @@ function makeDeps(overrides: Partial<OrchestratorDeps> = {}): OrchestratorDeps {
     tracker: {} as never,
     workspaceManager: {} as never,
     agentRunner: {} as never,
+    issueConfigStore: {
+      loadAll: vi.fn(() => []),
+      upsertModel: vi.fn(),
+      upsertTemplateId: vi.fn(),
+      clearTemplateId: vi.fn(),
+    } as never,
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn() } as never,
+    resolveTemplate: vi.fn().mockResolvedValue("Work on {{ issue.identifier }}"),
     ...overrides,
   };
 }
@@ -209,33 +217,33 @@ describe("buildCtx — pushEvent → eventBus routing", () => {
   it("routes agent_stalled to issue.stalled SSE channel", () => {
     const calls = pushLifecycleEvent("agent_stalled");
     const stalledCall = calls.find((c) => c[0] === "issue.stalled");
-    expect(stalledCall).toBeDefined();
+    expect(stalledCall).toEqual(expect.arrayContaining(["issue.stalled"]));
     expect(stalledCall![1]).toMatchObject({ issueId: "i1", identifier: "MT-1" });
   });
 
   it("routes worker_stalled to issue.stalled SSE channel", () => {
     const calls = pushLifecycleEvent("worker_stalled");
-    expect(calls.find((c) => c[0] === "issue.stalled")).toBeDefined();
+    expect(calls.some((c) => c[0] === "issue.stalled")).toBe(true);
   });
 
   it("routes worker_failed to worker.failed SSE channel", () => {
     const calls = pushLifecycleEvent("worker_failed");
     const failedCall = calls.find((c) => c[0] === "worker.failed");
-    expect(failedCall).toBeDefined();
+    expect(failedCall).toEqual(expect.arrayContaining(["worker.failed"]));
     expect(failedCall![1]).toMatchObject({ issueId: "i1", identifier: "MT-1" });
   });
 
   it("routes issue_queued to issue.queued SSE channel", () => {
     const calls = pushLifecycleEvent("issue_queued");
     const queuedCall = calls.find((c) => c[0] === "issue.queued");
-    expect(queuedCall).toBeDefined();
+    expect(queuedCall).toEqual(expect.arrayContaining(["issue.queued"]));
     expect(queuedCall![1]).toMatchObject({ issueId: "i1", identifier: "MT-1" });
   });
 
   it("always also emits agent.event for all events", () => {
     for (const evName of ["agent_stalled", "worker_failed", "issue_queued", "some_other_event"]) {
       const calls = pushLifecycleEvent(evName);
-      expect(calls.find((c) => c[0] === "agent.event")).toBeDefined();
+      expect(calls.some((c) => c[0] === "agent.event")).toBe(true);
     }
   });
 

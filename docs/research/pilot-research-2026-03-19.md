@@ -73,9 +73,9 @@ Pilot is an autonomous AI development pipeline written in Go that:
 
 | Issue                                                                   | Title                                            | Tier | Rationale                                                                                                                                                                      |
 | ----------------------------------------------------------------------- | ------------------------------------------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [#94](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/94) | Scope-aware execution mode auto-switching        | T2   | Pilot's `auto` mode is a practical improvement over manual sequential/parallel selection. Symphony can analyze workspace scope before dispatch.                                |
-| [#95](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/95) | Smart retry with error-category-specific backoff | T2   | Pilot's per-category retry strategies (rate_limit, api_error, timeout, invalid_config) are more resilient than uniform retry. Directly applicable to Symphony's retry manager. |
-| [#96](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/96) | Hot upgrade / self-update                        | T3   | Pilot's `pilot upgrade` with rollback and health-check validation reduces operational friction for long-lived daemon deployments.                                              |
+| [#94](https://github.com/OmerFarukOruc/risoluto/issues/94) | Scope-aware execution mode auto-switching        | T2   | Pilot's `auto` mode is a practical improvement over manual sequential/parallel selection. Risoluto can analyze workspace scope before dispatch.                                |
+| [#95](https://github.com/OmerFarukOruc/risoluto/issues/95) | Smart retry with error-category-specific backoff | T2   | Pilot's per-category retry strategies (rate_limit, api_error, timeout, invalid_config) are more resilient than uniform retry. Directly applicable to Risoluto's retry manager. |
+| [#96](https://github.com/OmerFarukOruc/risoluto/issues/96) | Hot upgrade / self-update                        | T3   | Pilot's `pilot upgrade` with rollback and health-check validation reduces operational friction for long-lived daemon deployments.                                              |
 
 ---
 
@@ -103,14 +103,14 @@ Pilot is an autonomous AI development pipeline written in Go that:
 
 | Pilot Feature                          | Why Skipped                                                                                                                           | Consider Later?         |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| **Bubble Tea TUI**                     | Symphony already has #21 (TUI view) with Bubble Tea architecture from Orchestra. Pilot confirms the pattern but adds nothing new.     | No                      |
-| **Navigator `.agent/` directory**      | Symphony already uses WORKFLOW.md for agent context. Pilot's approach is similar but less suited to Symphony's Linear-first workflow. | No                      |
-| **GitLab/Azure DevOps/Plane adapters** | Out of scope — Symphony is Linear-first. These would only matter if Symphony adds multi-tracker support beyond GitHub (#11).          | If multi-tracker needed |
+| **Bubble Tea TUI**                     | Risoluto already has #21 (TUI view) with Bubble Tea architecture from Orchestra. Pilot confirms the pattern but adds nothing new.     | No                      |
+| **Navigator `.agent/` directory**      | Risoluto already uses WORKFLOW.md for agent context. Pilot's approach is similar but less suited to Risoluto's Linear-first workflow. | No                      |
+| **GitLab/Azure DevOps/Plane adapters** | Out of scope — Risoluto is Linear-first. These would only matter if Risoluto adds multi-tracker support beyond GitHub (#11).          | If multi-tracker needed |
 | **Discord adapter**                    | Covered by #66 (chat integration layer). Pilot's Discord support confirms the pattern.                                                | No                      |
-| **Desktop app (Wails v2)**             | Symphony already has #53 (Tauri desktop). Different framework, same goal. No value-add.                                               | No                      |
+| **Desktop app (Wails v2)**             | Risoluto already has #53 (Tauri desktop). Different framework, same goal. No value-add.                                               | No                      |
 | **Chaos/fault injection tests**        | Testing practice, not a feature. Worth adopting internally but doesn't belong in the feature roadmap.                                 | Adopt internally        |
 | **Secret pattern detection hooks**     | Development tooling, not a feature. Worth adopting as a repo convention.                                                              | Adopt internally        |
-| **Effort routing**                     | Covered by model routing (#23). Pilot separates effort and model routing, but Symphony can fold effort into model config.             | No                      |
+| **Effort routing**                     | Covered by model routing (#23). Pilot separates effort and model routing, but Risoluto can fold effort into model config.             | No                      |
 | **Rich PR comments**                   | Enriched into #59 rather than standalone. Pilot confirms the pattern is valuable.                                                     | No                      |
 
 ---
@@ -119,7 +119,7 @@ Pilot is an autonomous AI development pipeline written in Go that:
 
 **3 new issues created**, **13 existing issues enriched** with Pilot-inspired details.
 
-Pilot's strongest contributions to Symphony's roadmap:
+Pilot's strongest contributions to Risoluto's roadmap:
 
 1. **Scope-aware dispatch** — solves the parallel-vs-sequential tension without operator tuning
 2. **Smart retry** — practical improvement over uniform backoff, especially for rate-limit handling
@@ -127,4 +127,4 @@ Pilot's strongest contributions to Symphony's roadmap:
 4. **Stagnation loop detection** — state history tracking catches a class of bugs that pure timeout-based stall detection misses
 5. **Cross-project pattern learning** — concrete SQLite implementation for the vector memory vision (#30)
 
-Pilot confirms many of Symphony's existing roadmap choices (TUI, plugin architecture, multi-provider, chat integration) while introducing concrete implementation patterns that can accelerate delivery.
+Pilot confirms many of Risoluto's existing roadmap choices (TUI, plugin architecture, multi-provider, chat integration) while introducing concrete implementation patterns that can accelerate delivery.

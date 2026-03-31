@@ -20,9 +20,9 @@ export const DEFAULT_CONFIG_SECTIONS: Record<string, Record<string, unknown>> = 
   },
 
   workspace: {
-    root: "../symphony-workspaces",
+    root: "../risoluto-workspaces",
     strategy: "directory",
-    branch_prefix: "symphony/",
+    branch_prefix: "risoluto/",
   },
 
   hooks: {
@@ -41,7 +41,7 @@ export const DEFAULT_CONFIG_SECTIONS: Record<string, Record<string, unknown>> = 
     command: "codex app-server",
     model: "gpt-5.4",
     reasoning_effort: "high",
-    approval_policy: "auto-edit",
+    approval_policy: "never",
     thread_sandbox: "workspace-write",
     personality: "friendly",
     self_review: false,
@@ -56,7 +56,7 @@ export const DEFAULT_CONFIG_SECTIONS: Record<string, Record<string, unknown>> = 
       source_home: "~/.codex",
     },
     sandbox: {
-      image: "symphony-codex:latest",
+      image: "risoluto-codex:latest",
       network: "",
       security: {
         no_new_privileges: true,
@@ -112,7 +112,7 @@ export const DEFAULT_PROMPT_TEMPLATE = `You are working on Linear issue {{ issue
 {{ issue.description }}
 {% endif %}
 
-When you have truly finished the issue and should stop, end your final message with \`SYMPHONY_STATUS: DONE\`. If you are blocked and cannot make further progress, end your final message with \`SYMPHONY_STATUS: BLOCKED\`.
+When you have truly finished the issue and should stop, end your final message with \`RISOLUTO_STATUS: DONE\`. If you are blocked and cannot make further progress, end your final message with \`RISOLUTO_STATUS: BLOCKED\`.
 
 Respect the repository state you find in the workspace, explain what you are doing in short operator-friendly updates, and stop once the issue is either complete or blocked.
 `;

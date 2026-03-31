@@ -50,25 +50,25 @@ describe("docker lifecycle helpers", () => {
     it("stops a container successfully", async () => {
       simulateExecFileSuccess();
 
-      await expect(stopContainer("symphony-test", 10)).resolves.toBeUndefined();
+      await expect(stopContainer("risoluto-test", 10)).resolves.toBeUndefined();
 
       expect(mockExecFile).toHaveBeenCalledWith(
         "docker",
-        ["stop", "--time", "10", "symphony-test"],
+        ["stop", "--time", "10", "risoluto-test"],
         expect.any(Function),
       );
     });
 
     it("swallows docker not-found errors", async () => {
       simulateExecFileError(
-        createExecError("container missing", "Error response from daemon: No such container: symphony-missing"),
+        createExecError("container missing", "Error response from daemon: No such container: risoluto-missing"),
       );
 
-      await expect(stopContainer("symphony-missing")).resolves.toBeUndefined();
+      await expect(stopContainer("risoluto-missing")).resolves.toBeUndefined();
 
       expect(mockExecFile).toHaveBeenCalledWith(
         "docker",
-        ["stop", "--time", "5", "symphony-missing"],
+        ["stop", "--time", "5", "risoluto-missing"],
         expect.any(Function),
       );
     });
@@ -77,7 +77,7 @@ describe("docker lifecycle helpers", () => {
       const error = createExecError("docker failed", "permission denied");
       simulateExecFileError(error);
 
-      await expect(stopContainer("symphony-test")).rejects.toBe(error);
+      await expect(stopContainer("risoluto-test")).rejects.toBe(error);
     });
   });
 
@@ -85,24 +85,24 @@ describe("docker lifecycle helpers", () => {
     it("removes a container successfully", async () => {
       simulateExecFileSuccess();
 
-      await expect(removeContainer("symphony-test")).resolves.toBeUndefined();
+      await expect(removeContainer("risoluto-test")).resolves.toBeUndefined();
 
-      expect(mockExecFile).toHaveBeenCalledWith("docker", ["rm", "-f", "symphony-test"], expect.any(Function));
+      expect(mockExecFile).toHaveBeenCalledWith("docker", ["rm", "-f", "risoluto-test"], expect.any(Function));
     });
 
     it("swallows missing-container errors", async () => {
       simulateExecFileError(
-        createExecError("container missing", "Error response from daemon: No such container: symphony-missing"),
+        createExecError("container missing", "Error response from daemon: No such container: risoluto-missing"),
       );
 
-      await expect(removeContainer("symphony-missing")).resolves.toBeUndefined();
+      await expect(removeContainer("risoluto-missing")).resolves.toBeUndefined();
     });
 
     it("rethrows non-not-found errors", async () => {
       const error = createExecError("docker failed", "permission denied");
       simulateExecFileError(error);
 
-      await expect(removeContainer("symphony-test")).rejects.toBe(error);
+      await expect(removeContainer("risoluto-test")).rejects.toBe(error);
     });
   });
 
@@ -110,28 +110,28 @@ describe("docker lifecycle helpers", () => {
     it("removes a volume successfully", async () => {
       simulateExecFileSuccess();
 
-      await expect(removeVolume("symphony-cache")).resolves.toBeUndefined();
+      await expect(removeVolume("risoluto-cache")).resolves.toBeUndefined();
 
       expect(mockExecFile).toHaveBeenCalledWith(
         "docker",
-        ["volume", "rm", "-f", "symphony-cache"],
+        ["volume", "rm", "-f", "risoluto-cache"],
         expect.any(Function),
       );
     });
 
     it("swallows missing-volume errors", async () => {
       simulateExecFileError(
-        createExecError("volume missing", "Error response from daemon: No such volume: symphony-cache-missing"),
+        createExecError("volume missing", "Error response from daemon: No such volume: risoluto-cache-missing"),
       );
 
-      await expect(removeVolume("symphony-cache-missing")).resolves.toBeUndefined();
+      await expect(removeVolume("risoluto-cache-missing")).resolves.toBeUndefined();
     });
 
     it("rethrows non-not-found errors", async () => {
       const error = createExecError("docker failed", "volume is in use");
       simulateExecFileError(error);
 
-      await expect(removeVolume("symphony-cache")).rejects.toBe(error);
+      await expect(removeVolume("risoluto-cache")).rejects.toBe(error);
     });
   });
 
@@ -139,11 +139,11 @@ describe("docker lifecycle helpers", () => {
     it("returns true when docker reports OOMKilled=true", async () => {
       simulateExecFileSuccess("true\n");
 
-      await expect(inspectOomKilled("symphony-test")).resolves.toBe(true);
+      await expect(inspectOomKilled("risoluto-test")).resolves.toBe(true);
 
       expect(mockExecFile).toHaveBeenCalledWith(
         "docker",
-        ["inspect", "symphony-test", "--format", "{{.State.OOMKilled}}"],
+        ["inspect", "risoluto-test", "--format", "{{.State.OOMKilled}}"],
         expect.any(Function),
       );
     });
@@ -151,22 +151,22 @@ describe("docker lifecycle helpers", () => {
     it("returns false when docker reports OOMKilled=false", async () => {
       simulateExecFileSuccess("false\n");
 
-      await expect(inspectOomKilled("symphony-test")).resolves.toBe(false);
+      await expect(inspectOomKilled("risoluto-test")).resolves.toBe(false);
     });
 
     it("returns null when the container does not exist", async () => {
       simulateExecFileError(
-        createExecError("container missing", "Error response from daemon: No such container: symphony-missing"),
+        createExecError("container missing", "Error response from daemon: No such container: risoluto-missing"),
       );
 
-      await expect(inspectOomKilled("symphony-missing")).resolves.toBeNull();
+      await expect(inspectOomKilled("risoluto-missing")).resolves.toBeNull();
     });
 
     it("rethrows non-not-found errors", async () => {
       const error = createExecError("docker failed", "Cannot connect to the Docker daemon");
       simulateExecFileError(error);
 
-      await expect(inspectOomKilled("symphony-test")).rejects.toBe(error);
+      await expect(inspectOomKilled("risoluto-test")).rejects.toBe(error);
     });
   });
 
@@ -174,11 +174,11 @@ describe("docker lifecycle helpers", () => {
     it("returns true when docker reports Running=true", async () => {
       simulateExecFileSuccess("true\n");
 
-      await expect(inspectContainerRunning("symphony-test")).resolves.toBe(true);
+      await expect(inspectContainerRunning("risoluto-test")).resolves.toBe(true);
 
       expect(mockExecFile).toHaveBeenCalledWith(
         "docker",
-        ["inspect", "symphony-test", "--format", "{{.State.Running}}"],
+        ["inspect", "risoluto-test", "--format", "{{.State.Running}}"],
         expect.any(Function),
       );
     });
@@ -186,15 +186,15 @@ describe("docker lifecycle helpers", () => {
     it("returns false when docker reports Running=false", async () => {
       simulateExecFileSuccess("false\n");
 
-      await expect(inspectContainerRunning("symphony-test")).resolves.toBe(false);
+      await expect(inspectContainerRunning("risoluto-test")).resolves.toBe(false);
     });
 
     it("returns null when the container does not exist", async () => {
       simulateExecFileError(
-        createExecError("container missing", "Error response from daemon: No such container: symphony-missing"),
+        createExecError("container missing", "Error response from daemon: No such container: risoluto-missing"),
       );
 
-      await expect(inspectContainerRunning("symphony-missing")).resolves.toBeNull();
+      await expect(inspectContainerRunning("risoluto-missing")).resolves.toBeNull();
     });
   });
 });

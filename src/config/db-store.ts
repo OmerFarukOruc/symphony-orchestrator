@@ -11,9 +11,9 @@
 import { eq } from "drizzle-orm";
 
 import type { ConfigOverlayPort } from "./overlay.js";
-import type { SymphonyDatabase } from "../persistence/sqlite/database.js";
+import type { RisolutoDatabase } from "../persistence/sqlite/database.js";
 import { config, promptTemplates } from "../persistence/sqlite/schema.js";
-import type { SymphonyLogger, WorkflowDefinition, ServiceConfig, ValidationError } from "../core/types.js";
+import type { RisolutoLogger, WorkflowDefinition, ServiceConfig, ValidationError } from "../core/types.js";
 import { deriveServiceConfig } from "./builders.js";
 import { collectDispatchWarnings, validateDispatch } from "./validators.js";
 import { DEFAULT_PROMPT_TEMPLATE } from "./defaults.js";
@@ -31,7 +31,7 @@ import {
  * Read all section rows and reconstruct a flat config map that
  * looks identical to what YAML front matter would produce.
  */
-function readConfigMap(db: SymphonyDatabase): Record<string, unknown> {
+function readConfigMap(db: RisolutoDatabase): Record<string, unknown> {
   const rows = db.select().from(config).all();
   const map: Record<string, unknown> = {};
   for (const row of rows) {
@@ -47,7 +47,7 @@ function readConfigMap(db: SymphonyDatabase): Record<string, unknown> {
 /**
  * Read the active prompt template body from the DB.
  */
-function readActiveTemplate(db: SymphonyDatabase): string {
+function readActiveTemplate(db: RisolutoDatabase): string {
   // 1. Check system.selectedTemplateId
   const systemRow = db.select().from(config).where(eq(config.key, "system")).get();
   if (systemRow) {
@@ -74,8 +74,8 @@ export class DbConfigStore implements ConfigOverlayPort {
   private readonly listeners = new Set<() => void>();
 
   constructor(
-    private readonly db: SymphonyDatabase,
-    private readonly logger: SymphonyLogger,
+    private readonly db: RisolutoDatabase,
+    private readonly logger: RisolutoLogger,
     private readonly deps?: {
       secretsStore?: Pick<SecretsStore, "get" | "subscribe">;
     },

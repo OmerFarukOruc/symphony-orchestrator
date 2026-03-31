@@ -1,0 +1,131 @@
+---
+title: Troubleshooting
+description: "Common failure cases, diagnostic commands, and recovery procedures for Risoluto."
+---
+
+# Troubleshooting
+
+## Common Failures
+
+<AccordionGroup>
+  <Accordion title="Missing Tracker API Key">
+    **Error:** `missing_tracker_api_key`
+
+    **Cause:** `tracker.api_key` resolves to an empty value.
+
+    **Fix:** Run the setup wizard at `/setup` and re-enter your Linear API key, or ensure `LINEAR_API_KEY` is set in your environment.
+  </Accordion>
+
+  <Accordion title="Missing Codex Auth">
+    **Error:** `account/read` failure during startup
+
+    **Cause:** `codex app-server` cannot authenticate.
+
+    **Fix:** Verify your auth mode:
+    - **API key**: Check `OPENAI_API_KEY` is set
+    - **Codex Login**: Run `codex login` and re-upload `auth.json` via the setup wizard
+  </Accordion>
+
+  <Accordion title="Required MCP Startup Failure">
+    **Error:** `thread/start failed because a required MCP server did not initialize`
+
+    **Cause:** This is a **Codex runtime** problem, not a Risoluto bug. The agent's MCP configuration references a server that failed to start.
+
+    **Fix:** Check the `codex.sandbox.extraMounts` and ensure any required MCP server binaries are available inside the container.
+  </Accordion>
+
+  <Accordion title="Invalid External Credentials">
+    **Cause:** Linear token or provider credentials are invalid or expired.
+
+    **Fix:** Re-enter credentials via the setup wizard at `/setup`. Risoluto surfaces the upstream error message.
+  </Accordion>
+
+  <Accordion title="Container OOM (Out of Memory)">
+    **Error:** Exit code 137 with `OOMKilled=true`
+
+    **Fix:** Increase `codex.sandbox.resources.memory` in your config:
+    ```bash
+    curl -s -X PUT http://127.0.0.1:4000/api/v1/config/overlay \
+      -H 'Content-Type: application/json' \
+      -d '{"codex":{"sandbox":{"resources":{"memory":"8g"}}}}'
+    ```
+  </Accordion>
+
+  <Accordion title="Master Key Mismatch">
+    **Cause:** `secrets.enc` cannot be decrypted with the current `MASTER_KEY`.
+
+    **Fix:** Use the correct master key, or perform a factory reset:
+    ```bash
+    docker compose down -v && docker compose up --build -d
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Diagnostic Commands
+
+### Check System State
+
+```bash
+# Full runtime snapshot
+curl -s http://127.0.0.1:4000/api/v1/state | jq
+
+# Runtime metadata (version, data dir, provider)
+curl -s http://127.0.0.1:4000/api/v1/runtime | jq
+
+# Setup status
+curl -s http://127.0.0.1:4000/api/v1/setup/status | jq
+```
+
+### Inspect Issues
+
+```bash
+# Issue detail with recent events
+curl -s http://127.0.0.1:4000/api/v1/NIN-6 | jq
+
+# All attempts for an issue
+curl -s http://127.0.0.1:4000/api/v1/NIN-6/attempts | jq
+
+# Single attempt with full event timeline
+curl -s http://127.0.0.1:4000/api/v1/attempts/<attempt-id> | jq
+```
+
+### CLI Log Inspector
+
+```bash
+# Inspect by issue identifier
+./risoluto MT-42
+
+# Inspect by attempt ID
+./risoluto --attempt <attempt-id>
+
+# Use a custom data directory
+./risoluto NIN-3 --dir /var/lib/risoluto
+```
+
+### Container Inspection
+
+```bash
+# List running agent containers
+docker ps --filter label=risoluto.issue
+
+# Filter by specific issue
+docker ps --filter label=risoluto.issue=NIN-5
+
+# View container logs
+docker logs <container-id>
+
+# Check for OOM kills
+docker inspect <container-id> | jq '.[0].State.OOMKilled'
+```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `info` | Pino log level (`debug` for verbose) |
+| `RISOLUTO_LOG_FORMAT` | `logfmt` | `logfmt` or `json` |
+| `SENTRY_DSN` | — | Error tracking endpoint |
+
+<Tip>
+  Set `LOG_LEVEL=debug` for verbose diagnostic output when troubleshooting startup or dispatch issues.
+</Tip>

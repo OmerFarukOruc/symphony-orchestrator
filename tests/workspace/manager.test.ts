@@ -36,7 +36,7 @@ function createConfig(overrides?: Partial<ServiceConfig["workspace"]>): ServiceC
     workspace: {
       root: "/tmp/workspaces",
       strategy: "directory",
-      branchPrefix: "symphony/",
+      branchPrefix: "risoluto/",
       hooks: { afterCreate: null, beforeRun: null, afterRun: null, beforeRemove: null, timeoutMs: 5000 },
       ...overrides,
     },
@@ -46,7 +46,7 @@ function createConfig(overrides?: Partial<ServiceConfig["workspace"]>): ServiceC
 function createWorktreeDeps(): WorkspaceManagerWorktreeDeps {
   return {
     gitManager: {
-      setupWorktree: vi.fn().mockResolvedValue({ branchName: "symphony/NIN-1" }),
+      setupWorktree: vi.fn().mockResolvedValue({ branchName: "risoluto/NIN-1" }),
       removeWorktree: vi.fn().mockResolvedValue(undefined),
       deriveBaseCloneDir: vi.fn().mockReturnValue("/tmp/workspaces/.bare-clones/repo"),
     },

@@ -12,19 +12,19 @@ interface ModelPrice {
 
 const PRICES: Record<string, ModelPrice> = {
   // OpenAI
-  "gpt-5.4": { inputUsd: 3.0, outputUsd: 12.0 },
-  "gpt-4.1": { inputUsd: 2.0, outputUsd: 8.0 },
+  "gpt-5.4": { inputUsd: 3, outputUsd: 12 },
+  "gpt-4.1": { inputUsd: 2, outputUsd: 8 },
   "gpt-4.1-mini": { inputUsd: 0.4, outputUsd: 1.6 },
   "gpt-4.1-nano": { inputUsd: 0.1, outputUsd: 0.4 },
-  "gpt-4o": { inputUsd: 2.5, outputUsd: 10.0 },
+  "gpt-4o": { inputUsd: 2.5, outputUsd: 10 },
   "gpt-4o-mini": { inputUsd: 0.15, outputUsd: 0.6 },
-  o3: { inputUsd: 10.0, outputUsd: 40.0 },
+  o3: { inputUsd: 10, outputUsd: 40 },
   "o4-mini": { inputUsd: 1.1, outputUsd: 4.4 },
   "o3-mini": { inputUsd: 1.1, outputUsd: 4.4 },
   // Anthropic
-  "claude-opus-4-6": { inputUsd: 15.0, outputUsd: 75.0 },
-  "claude-sonnet-4-6": { inputUsd: 3.0, outputUsd: 15.0 },
-  "claude-haiku-4-5": { inputUsd: 0.8, outputUsd: 4.0 },
+  "claude-opus-4-6": { inputUsd: 15, outputUsd: 75 },
+  "claude-sonnet-4-6": { inputUsd: 3, outputUsd: 15 },
+  "claude-haiku-4-5": { inputUsd: 0.8, outputUsd: 4 },
 };
 
 /** Returns the USD-per-1M-token price for a given model name, or `null` if unknown. */

@@ -149,14 +149,14 @@ export function collectDispatchWarnings(config: ServiceConfig): ValidationError[
   for (const repo of config.repos ?? []) {
     const normalizedRepoUrl = normalizeRepoTarget(repo.repoUrl);
     const githubRepo = normalizeRepoTarget(repo.githubRepo);
-    if (!normalizedRepoUrl.includes("symphony-orchestrator") && githubRepo !== "symphony-orchestrator") {
+    if (!normalizedRepoUrl.includes("risoluto") && githubRepo !== "risoluto") {
       continue;
     }
     warnings.push({
       code: "self_routing_repo",
       message:
         `repo route ${JSON.stringify(repo.identifierPrefix ?? repo.label ?? repo.repoUrl)} points to ` +
-        `symphony-orchestrator itself. This is fine for self-test traffic, but it will make dispatched agents modify ` +
+        `risoluto itself. This is fine for self-test traffic, but it will make dispatched agents modify ` +
         "the orchestrator repo instead of the intended target repository.",
     });
   }

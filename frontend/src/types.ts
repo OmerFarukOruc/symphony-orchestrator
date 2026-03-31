@@ -54,6 +54,8 @@ export interface RuntimeIssueView {
   configuredReasoningEffort: string | null;
   configuredModelSource: string | null;
   modelChangePending: boolean;
+  configuredTemplateId?: string | null;
+  configuredTemplateName?: string | null;
   url?: string | null;
   description?: string | null;
   blockedBy?: { id: string | null; identifier: string | null; state: string | null }[];
@@ -152,7 +154,6 @@ export interface RateLimits {
 
 export interface RuntimeInfo {
   version: string;
-  workflow_path: string;
   data_dir: string;
   feature_flags: Record<string, boolean>;
   provider_summary: string;

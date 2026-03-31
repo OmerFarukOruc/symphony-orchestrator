@@ -1,4 +1,4 @@
-# 🔧 Symphony Runbooks
+# 🔧 Risoluto Runbooks
 
 > Operational playbooks grounded in actual committed code.
 
@@ -20,9 +20,9 @@
    ```bash
    echo $LINEAR_API_KEY | head -c 10
    ```
-4. **Check workflow file** — ensure the YAML front matter in your workflow file is valid.
+4. **Check config overlay** — verify that the overlay YAML is valid:
    ```bash
-   node dist/cli/index.js ./WORKFLOW.md
+   curl -s http://127.0.0.1:4000/api/v1/config/overlay | jq .
    ```
 
 ---
@@ -36,7 +36,7 @@
    curl -s http://127.0.0.1:4000/api/v1/state | jq '.rate_limits'
    ```
 2. **Interpret the source correctly** — the `rate_limits` field comes from Codex `account/rateLimits/read` preflight, not a dedicated Linear poll-backoff subsystem.
-3. **Reduce Linear pressure** — increase `polling.interval_ms` in your workflow YAML if you are polling too aggressively.
+3. **Reduce Linear pressure** — increase `polling.interval_ms` via the config overlay API or the Settings page if you are polling too aggressively.
 4. **Check tracker credentials and endpoint** — verify `tracker.api_key` and `tracker.endpoint` still point at the expected Linear API.
 
 ---
@@ -66,7 +66,7 @@
    ```bash
    curl -X POST http://127.0.0.1:4000/api/v1/refresh
    ```
-2. **Check polling interval** — verify `polling.interval_ms` in your workflow YAML isn't set too high.
+2. **Check polling interval** — verify `polling.interval_ms` in the config overlay isn't set too high.
 3. **Browser cache** — hard-refresh the browser (`Ctrl+Shift+R`).
 
 ---
@@ -85,4 +85,4 @@
      -H 'Content-Type: application/json' \
      -d '{"model": "gpt-4.1-mini", "reasoning_effort": "medium"}'
    ```
-3. **Limit turns** — reduce `agent.max_turns` in your workflow YAML.
+3. **Limit turns** — reduce `agent.max_turns` via the config overlay API or the Settings page.

@@ -111,6 +111,12 @@ describe("updateIssueModelSelection", () => {
       retryEntries,
       pushEvent,
       requestRefresh,
+      issueConfigStore: {
+        loadAll: vi.fn(() => []),
+        upsertModel: vi.fn(),
+        upsertTemplateId: vi.fn(),
+        clearTemplateId: vi.fn(),
+      } as never,
     };
   }
 
@@ -166,6 +172,26 @@ describe("updateIssueModelSelection", () => {
     const ctx = makeCtx();
     await updateIssueModelSelection(ctx, { identifier: "MT-1", model: "custom-model", reasoningEffort: "xhigh" });
     expect(ctx.issueModelOverrides.get("MT-1")).toEqual({ model: "custom-model", reasoningEffort: "xhigh" });
+  });
+
+  it("persists the model override to issueConfigStore", async () => {
+    const ctx = makeCtx();
+    await updateIssueModelSelection(ctx, { identifier: "MT-1", model: "persisted-model", reasoningEffort: "medium" });
+    expect(ctx.issueConfigStore.upsertModel as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
+      "MT-1",
+      "persisted-model",
+      "medium",
+    );
+  });
+
+  it("passes null reasoningEffort to issueConfigStore.upsertModel", async () => {
+    const ctx = makeCtx();
+    await updateIssueModelSelection(ctx, { identifier: "MT-1", model: "some-model", reasoningEffort: null });
+    expect(ctx.issueConfigStore.upsertModel as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
+      "MT-1",
+      "some-model",
+      null,
+    );
   });
 
   it("includes effort suffix in message when reasoningEffort is set", async () => {

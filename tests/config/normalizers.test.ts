@@ -222,25 +222,45 @@ describe("normalizeStateMachine", () => {
 });
 
 describe("normalizeApprovalPolicy", () => {
-  it("passes through string values", () => {
+  it("passes through valid Codex approval policy strings", () => {
     expect(normalizeApprovalPolicy("never")).toBe("never");
-    expect(normalizeApprovalPolicy("auto-edit")).toBe("auto-edit");
+    expect(normalizeApprovalPolicy("untrusted")).toBe("untrusted");
+    expect(normalizeApprovalPolicy("on-failure")).toBe("on-failure");
+    expect(normalizeApprovalPolicy("on-request")).toBe("on-request");
+  });
+
+  it("migrates legacy string aliases to valid Codex values", () => {
+    expect(normalizeApprovalPolicy("auto-edit")).toBe("never");
+    expect(normalizeApprovalPolicy("auto-approve")).toBe("never");
+    expect(normalizeApprovalPolicy("reject")).toBe("never");
+    expect(normalizeApprovalPolicy("suggest")).toBe("on-request");
+  });
+
+  it("falls back to never for unknown string values", () => {
+    expect(normalizeApprovalPolicy("unknown-value")).toBe("never");
   });
 
   it("returns the record when non-empty", () => {
-    const policy = { approve: { rules: true } };
+    const policy = { granular: { rules: true, sandbox_approval: true, mcp_elicitations: true } };
     expect(normalizeApprovalPolicy(policy)).toEqual(policy);
+  });
+
+  it("migrates legacy reject key to granular", () => {
+    const legacy = { reject: { sandbox_approval: true, rules: true, mcp_elicitations: true } };
+    expect(normalizeApprovalPolicy(legacy)).toEqual({
+      granular: { sandbox_approval: true, rules: true, mcp_elicitations: true },
+    });
   });
 
   it("returns default policy for empty object", () => {
     const result = normalizeApprovalPolicy({}) as Record<string, unknown>;
-    expect(result).toHaveProperty("reject");
-    expect((result.reject as Record<string, unknown>).sandbox_approval).toBe(true);
+    expect(result).toHaveProperty("granular");
+    expect((result.granular as Record<string, unknown>).sandbox_approval).toBe(true);
   });
 
   it("returns default policy for non-string, non-object input", () => {
     const result = normalizeApprovalPolicy(null) as Record<string, unknown>;
-    expect(result).toHaveProperty("reject");
+    expect(result).toHaveProperty("granular");
   });
 });
 

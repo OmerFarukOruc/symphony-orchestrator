@@ -10,12 +10,12 @@ import type { WriteAuditLog } from "./write-audit.js";
  * requests originate from a loopback address (127.0.0.1 / ::1 / ::ffff:127.0.0.1),
  * matching the default bind behavior in `server.ts`.
  *
- * When `SYMPHONY_BIND` is set to a non-loopback address, operators MUST also
- * set `SYMPHONY_WRITE_TOKEN` to require a bearer token on every mutating request.
+ * When `RISOLUTO_BIND` is set to a non-loopback address, operators MUST also
+ * set `RISOLUTO_WRITE_TOKEN` to require a bearer token on every mutating request.
  *
  * Failure modes:
  * - 403 `write_forbidden` — request came from a non-loopback address without a valid token.
- * - 401 `write_unauthorized` — `SYMPHONY_WRITE_TOKEN` is configured but the request
+ * - 401 `write_unauthorized` — `RISOLUTO_WRITE_TOKEN` is configured but the request
  *   did not supply a matching `Authorization: Bearer <token>` header.
  */
 
@@ -41,7 +41,7 @@ export interface WriteGuardOptions {
 export function createWriteGuard(
   options?: WriteGuardOptions,
 ): (req: Request, res: Response, next: NextFunction) => void {
-  const writeToken = process.env.SYMPHONY_WRITE_TOKEN?.trim() || undefined;
+  const writeToken = process.env.RISOLUTO_WRITE_TOKEN?.trim() || undefined;
   const auditLog = options?.auditLog;
 
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -85,7 +85,7 @@ export function createWriteGuard(
           code: "write_forbidden",
           message:
             "Mutating requests are only allowed from loopback addresses. " +
-            "Set SYMPHONY_WRITE_TOKEN to allow remote write access.",
+            "Set RISOLUTO_WRITE_TOKEN to allow remote write access.",
         },
       });
       return;

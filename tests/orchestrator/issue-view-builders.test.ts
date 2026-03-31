@@ -19,7 +19,7 @@ describe("issue-view-builders", () => {
         status: "running",
         attempt: 1,
         workspaceKey: "MT-42",
-        workspacePath: "/tmp/symphony/MT-42",
+        workspacePath: "/tmp/risoluto/MT-42",
         model: "gpt-5.4",
         reasoningEffort: "high",
         modelSource: "default",
@@ -116,7 +116,7 @@ describe("issue-view-builders", () => {
       const view = buildRunningIssueView(entry, resolveModelSelection);
 
       expect(view.status).toBe("stopping");
-      expect(view.message).toBe("stopping in /tmp/symphony/MT-42");
+      expect(view.message).toBe("stopping in /tmp/risoluto/MT-42");
     });
 
     it("sets message to 'running in <path>' when status is running", () => {
@@ -125,7 +125,7 @@ describe("issue-view-builders", () => {
 
       const view = buildRunningIssueView(entry, resolveModelSelection);
 
-      expect(view.message).toBe("running in /tmp/symphony/MT-42");
+      expect(view.message).toBe("running in /tmp/risoluto/MT-42");
     });
 
     it("calls resolveModelSelection with the entry identifier", () => {

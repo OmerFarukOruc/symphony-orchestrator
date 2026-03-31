@@ -6,6 +6,8 @@ import { isActiveState, isTerminalState } from "../state/policy.js";
 import type { AttemptRecord, Issue, ServiceConfig } from "../core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
 
+const VISIBLE_QUEUE_LIMIT = 50;
+
 function reconcileRunning(
   entries: Map<string, RunningEntry>,
   byId: Map<string, Issue>,
@@ -108,13 +110,11 @@ export async function reconcileRunningAndRetrying(ctx: ReconcileContext): Promis
   await reconcileRetries(ctx, byId, config);
   return runningChanged;
 }
-interface ModelSelectionResolver {
-  (identifier: string): {
-    model: string;
-    reasoningEffort: ServiceConfig["codex"]["reasoningEffort"];
-    source: "default" | "override";
-  };
-}
+type ModelSelectionResolver = (identifier: string) => {
+  model: string;
+  reasoningEffort: ServiceConfig["codex"]["reasoningEffort"];
+  source: "default" | "override";
+};
 
 export async function refreshQueueViews(
   ctx: {
@@ -134,7 +134,7 @@ export async function refreshQueueViews(
   const issues = candidateIssues ?? sortIssuesForDispatch(await ctx.deps.tracker.fetchCandidateIssues());
   const dispatchableIssues = issues.filter((issue) => ctx.canDispatchIssue(issue));
   const previousQueuedIssueIds = new Set(ctx.queuedViews.map((view) => view.issueId));
-  const visibleQueuedIssues = dispatchableIssues.slice(0, 50);
+  const visibleQueuedIssues = dispatchableIssues.slice(0, VISIBLE_QUEUE_LIMIT);
   const queuedViews = visibleQueuedIssues.map((issue) => {
     const selection = ctx.resolveModelSelection(issue.identifier);
     return issueView(issue, {

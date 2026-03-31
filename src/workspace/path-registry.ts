@@ -48,14 +48,14 @@ export class PathRegistry {
 
   static fromEnv(env: NodeJS.ProcessEnv = process.env): PathRegistry {
     const mappings = new Map<string, string>();
-    const workspaceHost = env.SYMPHONY_HOST_WORKSPACE_ROOT;
-    const workspaceContainer = env.SYMPHONY_CONTAINER_WORKSPACE_ROOT ?? "/data/workspaces";
+    const workspaceHost = env.RISOLUTO_HOST_WORKSPACE_ROOT;
+    const workspaceContainer = env.RISOLUTO_CONTAINER_WORKSPACE_ROOT ?? "/data/workspaces";
     if (workspaceHost) {
       mappings.set(workspaceContainer, workspaceHost);
     }
 
-    const archiveHost = env.SYMPHONY_HOST_ARCHIVE_DIR;
-    const archiveContainer = env.SYMPHONY_CONTAINER_ARCHIVE_DIR ?? "/data/archives";
+    const archiveHost = env.RISOLUTO_HOST_ARCHIVE_DIR;
+    const archiveContainer = env.RISOLUTO_CONTAINER_ARCHIVE_DIR ?? "/data/archives";
     if (archiveHost) {
       mappings.set(archiveContainer, archiveHost);
     }

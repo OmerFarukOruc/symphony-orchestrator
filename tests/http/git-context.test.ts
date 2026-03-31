@@ -14,7 +14,7 @@ function makeOrchestrator() {
           issueId: "i1",
           identifier: "MT-1",
           title: "Fix auth bug",
-          branchName: "symphony/mt-1",
+          branchName: "risoluto/mt-1",
           workspacePath: "/workspaces/mt-1",
           pullRequestUrl: "https://github.com/acme/app/pull/42",
           state: "In Progress",
@@ -26,7 +26,7 @@ function makeOrchestrator() {
           issueId: "i2",
           identifier: "MT-2",
           title: "Update docs",
-          branchName: "symphony/mt-2",
+          branchName: "risoluto/mt-2",
           workspacePath: "/workspaces/mt-2",
           pullRequestUrl: null,
           state: "In Progress",
@@ -124,7 +124,7 @@ describe("GET /api/v1/git/context", () => {
       const branches = body.activeBranches as Array<Record<string, unknown>>;
       expect(branches).toHaveLength(2);
       expect(branches[0].identifier).toBe("MT-1");
-      expect(branches[0].branchName).toBe("symphony/mt-1");
+      expect(branches[0].branchName).toBe("risoluto/mt-1");
       expect(branches[0].status).toBe("running");
       expect(branches[0].pullRequestUrl).toBe("https://github.com/acme/app/pull/42");
       expect(branches[1].identifier).toBe("MT-2");
@@ -151,7 +151,7 @@ describe("GET /api/v1/git/context", () => {
                 state: "open",
                 updated_at: "2024-01-01T00:00:00Z",
                 html_url: "https://github.com/acme/app/pull/42",
-                head: { ref: "symphony/mt-1" },
+                head: { ref: "risoluto/mt-1" },
               },
             ],
           };
@@ -220,8 +220,7 @@ describe("GET /api/v1/git/context", () => {
       const repos = body.repos as Array<Record<string, unknown>>;
       expect(repos).toHaveLength(1);
       const github = repos[0].github as Record<string, unknown>;
-      expect(github).toBeDefined();
-      expect(github.description).toBe("The app repo");
+      expect(github).toMatchObject({ description: "The app repo" });
       expect(github.visibility).toBe("private");
       expect(github.openPrCount).toBe(1);
 

@@ -1,17 +1,12 @@
-import chokidar, { type FSWatcher } from "chokidar";
-
 import type { ConfigOverlayPort } from "./overlay.js";
 import { collectDispatchWarnings, validateDispatch } from "./validators.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { toErrorString } from "../utils/type-guards.js";
-import type { SymphonyLogger, ValidationError, WorkflowDefinition, ServiceConfig } from "../core/types.js";
-import { loadWorkflowDefinition } from "../workflow/loader.js";
+import type { RisolutoLogger, ValidationError, WorkflowDefinition, ServiceConfig } from "../core/types.js";
 import { deriveServiceConfig } from "./builders.js";
 import { cloneConfigMap, deepMerge } from "./merge.js";
 
 export class ConfigStore {
-  private watcher: FSWatcher | null = null;
-  private workflow: WorkflowDefinition | null = null;
   private config: ServiceConfig | null = null;
   private mergedConfigMap: Record<string, unknown> = {};
   private readonly listeners = new Set<() => void>();
@@ -19,11 +14,11 @@ export class ConfigStore {
   private secretsUnsubscribe: (() => void) | null = null;
 
   constructor(
-    private readonly workflowPath: string,
-    private readonly logger: SymphonyLogger,
+    private readonly logger: RisolutoLogger,
     private readonly deps?: {
       overlayStore?: Pick<ConfigOverlayPort, "toMap" | "subscribe">;
       secretsStore?: Pick<SecretsStore, "get" | "subscribe">;
+      workflowStore?: Pick<{ getWorkflow(): WorkflowDefinition }, "getWorkflow">;
     },
   ) {}
 
@@ -37,22 +32,9 @@ export class ConfigStore {
       this.deps?.secretsStore?.subscribe(() => {
         void this.refresh("secrets:change");
       }) ?? null;
-    this.watcher = chokidar.watch(this.workflowPath, {
-      ignoreInitial: true,
-      awaitWriteFinish: {
-        stabilityThreshold: 200,
-        pollInterval: 50,
-      },
-    });
-    this.watcher.on("add", () => void this.refresh("watch:add"));
-    this.watcher.on("change", () => void this.refresh("watch:change"));
   }
 
   async stop(): Promise<void> {
-    if (this.watcher) {
-      await this.watcher.close();
-      this.watcher = null;
-    }
     this.overlayUnsubscribe?.();
     this.overlayUnsubscribe = null;
     this.secretsUnsubscribe?.();
@@ -61,43 +43,34 @@ export class ConfigStore {
 
   async refresh(reason: string): Promise<void> {
     try {
-      const workflow = await loadWorkflowDefinition(this.workflowPath);
+      const workflow = this.deps?.workflowStore?.getWorkflow() ?? { config: {}, promptTemplate: "" };
       const overlay = cloneConfigMap(this.deps?.overlayStore?.toMap() ?? {});
       const mergedConfigMap = deepMerge(workflow.config, overlay) as Record<string, unknown>;
       const config = deriveServiceConfig(workflow, {
         overlay,
         secretResolver: (name) => this.deps?.secretsStore?.get(name) ?? undefined,
       });
-      this.workflow = workflow;
       this.config = config;
       this.mergedConfigMap = mergedConfigMap;
-      this.logger.info({ workflowPath: this.workflowPath, reason }, "workflow loaded");
+      this.logger.info({ reason }, "config refreshed");
       for (const warning of collectDispatchWarnings(config)) {
-        this.logger.warn({ workflowPath: this.workflowPath, code: warning.code, reason }, warning.message);
+        this.logger.warn({ code: warning.code, reason }, warning.message);
       }
       for (const listener of this.listeners) {
         listener();
       }
     } catch (error) {
-      if (this.config === null || this.workflow === null) {
+      if (this.config === null) {
         throw error;
       }
       this.logger.error(
         {
-          workflowPath: this.workflowPath,
           reason,
           error: toErrorString(error),
         },
-        "workflow reload rejected; keeping last known good config",
+        "config reload rejected; keeping last known good config",
       );
     }
-  }
-
-  getWorkflow(): WorkflowDefinition {
-    if (!this.workflow) {
-      throw new Error("config store has not been started");
-    }
-    return this.workflow;
   }
 
   getConfig(): ServiceConfig {

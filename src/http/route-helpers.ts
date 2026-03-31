@@ -4,6 +4,10 @@ import type { RuntimeSnapshot } from "../core/types.js";
 import { redactSensitiveValue } from "../core/content-sanitizer.js";
 import { isRecord } from "../utils/type-guards.js";
 
+export function issueNotFound(response: Response): void {
+  response.status(404).json({ error: { code: "not_found", message: "Unknown issue identifier" } });
+}
+
 export function methodNotAllowed(response: Response): void {
   response.status(405).json({
     error: {
@@ -103,5 +107,5 @@ export function sanitizeConfigValue(value: unknown, path: string[] = []): unknow
 }
 
 export function refreshReason(request: Request): string {
-  return request.get("x-symphony-reason") ?? "http_refresh";
+  return request.get("x-risoluto-reason") ?? "http_refresh";
 }

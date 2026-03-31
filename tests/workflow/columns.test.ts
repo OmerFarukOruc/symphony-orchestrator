@@ -40,7 +40,7 @@ function makeConfig(overrides?: Partial<ServiceConfig>): ServiceConfig {
         timeoutMs: 60000,
       },
       strategy: "directory",
-      branchPrefix: "symphony/",
+      branchPrefix: "risoluto/",
     },
     agent: {
       maxConcurrentAgents: 2,
@@ -206,11 +206,13 @@ describe("buildWorkflowColumns", () => {
       });
 
       const otherCol = columns.find((col) => col.key === "other");
-      expect(otherCol).toBeDefined();
-      expect(otherCol?.label).toBe("Other");
-      expect(otherCol?.kind).toBe("other");
-      expect(otherCol?.terminal).toBe(false);
-      expect(otherCol?.count).toBe(1);
+      expect(otherCol).toMatchObject({
+        key: "other",
+        label: "Other",
+        kind: "other",
+        terminal: false,
+        count: 1,
+      });
       expect(otherCol?.issues[0].identifier).toBe("T-1");
     });
 

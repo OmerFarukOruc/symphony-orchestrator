@@ -8,8 +8,8 @@ import type { AuditLogger } from "../audit/logger.js";
 import type { ConfigOverlayPort } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
-import type { SymphonyEventMap } from "../core/symphony-events.js";
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoEventMap } from "../core/risoluto-events.js";
+import type { RisolutoLogger } from "../core/types.js";
 import type { PromptTemplateStore } from "../prompt/store.js";
 import { globalMetrics } from "../observability/metrics.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
@@ -29,12 +29,12 @@ export class HttpServer {
   constructor(
     private readonly deps: {
       orchestrator: OrchestratorPort;
-      logger: SymphonyLogger;
+      logger: RisolutoLogger;
       tracker?: TrackerPort;
       configStore?: ConfigStore;
       configOverlayStore?: ConfigOverlayPort;
       secretsStore?: SecretsStore;
-      eventBus?: TypedEventBus<SymphonyEventMap>;
+      eventBus?: TypedEventBus<RisolutoEventMap>;
 
       frontendDir?: string;
       archiveDir?: string;
@@ -79,7 +79,7 @@ export class HttpServer {
     if (this.server) {
       throw new Error("http server already started");
     }
-    const host = process.env.SYMPHONY_BIND ?? "127.0.0.1";
+    const host = process.env.RISOLUTO_BIND ?? "127.0.0.1";
     let startedServer: http.Server | null = null;
     await new Promise<void>((resolve, reject) => {
       const server = this.app.listen(port, host, () => {
@@ -91,7 +91,7 @@ export class HttpServer {
           reject(
             new Error(
               `Port ${port} is already in use on ${host}. ` +
-                `Another Symphony instance (or another process) is likely still running. ` +
+                `Another Risoluto instance (or another process) is likely still running. ` +
                 `Kill it first or use a different port with --port.`,
             ),
           );

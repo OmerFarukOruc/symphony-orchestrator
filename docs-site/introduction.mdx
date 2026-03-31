@@ -1,0 +1,50 @@
+---
+title: Introduction
+description: "Risoluto turns your issue tracker into an autonomous coding pipeline. Linear issues in → sandboxed AI agents out → PRs delivered."
+---
+
+# Welcome to Risoluto
+
+Risoluto is a **local orchestration engine** that watches your project tracker for actionable issues, spins up sandboxed AI coding agents to work on each one, and delivers the results — all without you supervising a single prompt.
+
+```
+You create an issue  →  Risoluto picks it up  →  AI agent writes code  →  PR lands on GitHub
+```
+
+<Info>
+  **No cloud service. No SaaS. Your code stays on your machine.** Risoluto runs on your local machine or a VDS you control, connecting your existing Linear project to AI-powered agents running inside isolated Docker containers.
+</Info>
+
+## What Ships Today
+
+<CardGroup cols={2}>
+  <Card title="Core Engine" icon="engine">
+    Linear polling, Docker sandbox with resource limits, workspace isolation, retry & stall handling, model overrides, and orchestrator health monitoring.
+  </Card>
+  <Card title="Dashboard & API" icon="chart-mixed">
+    Real-time dashboard with board and overview views, 50+ JSON API endpoints, cost tracking, live agent feed via SSE, and Prometheus metrics.
+  </Card>
+  <Card title="Integrations" icon="plug">
+    Git automation (clone, commit, push, PR), GitHub Issues adapter, Slack notifications, and Codex integration via JSON-RPC.
+  </Card>
+  <Card title="Operations" icon="shield-check">
+    SQLite-backed attempt history, CLI log inspector, AES-encrypted credential storage, and full Playwright E2E test coverage.
+  </Card>
+</CardGroup>
+
+## Get Started
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Go from zero to your first automated PR in 10 minutes.
+  </Card>
+  <Card title="How It Works" icon="diagram-project" href="/concepts/how-it-works">
+    Understand the architecture — polling, workspaces, sandboxes, and delivery.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Explore 50+ endpoints for runtime state, config, events, and issue management.
+  </Card>
+  <Card title="Docker Deployment" icon="docker" href="/guides/docker">
+    Deploy with Docker Compose — zero-config start or control/data plane split.
+  </Card>
+</CardGroup>

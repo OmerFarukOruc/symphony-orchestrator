@@ -491,7 +491,7 @@ describe("executeTurns", () => {
     delete (input as Record<string, unknown>).getLastStopSignal;
     (input as { getLastAgentMessageContent: () => string | null }).getLastAgentMessageContent = vi
       .fn()
-      .mockReturnValue("All done.\nSYMPHONY_STATUS: DONE");
+      .mockReturnValue("All done.\nRISOLUTO_STATUS: DONE");
 
     const state = makeState();
     const result = await executeTurns(input, state);

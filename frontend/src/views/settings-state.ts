@@ -18,7 +18,7 @@ export interface SettingsState {
 }
 
 function readPersistedMode(): SettingsMode {
-  const stored = localStorage.getItem("symphony.settingsMode");
+  const stored = localStorage.getItem("risoluto.settingsMode");
   return stored === "advanced" ? "advanced" : "simple";
 }
 

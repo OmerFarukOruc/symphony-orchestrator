@@ -8,8 +8,8 @@ describe("getOpenApiSpec", () => {
 
   it("returns a valid OpenAPI 3.1 document", () => {
     expect(spec.openapi).toBe("3.1.0");
-    expect(spec.info).toBeDefined();
-    expect(spec.paths).toBeDefined();
+    expect(spec).toHaveProperty("info");
+    expect(spec).toHaveProperty("paths");
   });
 
   it("includes server info", () => {
@@ -20,40 +20,40 @@ describe("getOpenApiSpec", () => {
 
   it("includes core state routes", () => {
     const paths = spec.paths as Record<string, unknown>;
-    expect(paths["/api/v1/state"]).toBeDefined();
-    expect(paths["/api/v1/runtime"]).toBeDefined();
-    expect(paths["/api/v1/refresh"]).toBeDefined();
-    expect(paths["/metrics"]).toBeDefined();
+    expect(paths).toHaveProperty("/api/v1/state");
+    expect(paths).toHaveProperty("/api/v1/runtime");
+    expect(paths).toHaveProperty("/api/v1/refresh");
+    expect(paths).toHaveProperty("/metrics");
   });
 
   it("includes issue routes with path parameters", () => {
     const paths = spec.paths as Record<string, Record<string, Record<string, unknown>>>;
-    expect(paths["/api/v1/{issue_identifier}"]).toBeDefined();
-    expect(paths["/api/v1/{issue_identifier}/abort"]).toBeDefined();
-    expect(paths["/api/v1/{issue_identifier}/model"]).toBeDefined();
-    expect(paths["/api/v1/{issue_identifier}/transition"]).toBeDefined();
-    expect(paths["/api/v1/{issue_identifier}/attempts"]).toBeDefined();
-    expect(paths["/api/v1/attempts/{attempt_id}"]).toBeDefined();
+    expect(paths).toHaveProperty("/api/v1/{issue_identifier}");
+    expect(paths).toHaveProperty("/api/v1/{issue_identifier}/abort");
+    expect(paths).toHaveProperty("/api/v1/{issue_identifier}/model");
+    expect(paths).toHaveProperty("/api/v1/{issue_identifier}/transition");
+    expect(paths).toHaveProperty("/api/v1/{issue_identifier}/attempts");
+    expect(paths).toHaveProperty("/api/v1/attempts/{attempt_id}");
   });
 
   it("includes workspace, git, config, and secrets routes", () => {
     const paths = spec.paths as Record<string, unknown>;
-    expect(paths["/api/v1/workspaces"]).toBeDefined();
-    expect(paths["/api/v1/workspaces/{workspace_key}"]).toBeDefined();
-    expect(paths["/api/v1/git/context"]).toBeDefined();
-    expect(paths["/api/v1/config"]).toBeDefined();
-    expect(paths["/api/v1/config/overlay"]).toBeDefined();
-    expect(paths["/api/v1/secrets"]).toBeDefined();
-    expect(paths["/api/v1/secrets/{key}"]).toBeDefined();
+    expect(paths).toHaveProperty("/api/v1/workspaces");
+    expect(paths).toHaveProperty("/api/v1/workspaces/{workspace_key}");
+    expect(paths).toHaveProperty("/api/v1/git/context");
+    expect(paths).toHaveProperty("/api/v1/config");
+    expect(paths).toHaveProperty("/api/v1/config/overlay");
+    expect(paths).toHaveProperty("/api/v1/secrets");
+    expect(paths).toHaveProperty("/api/v1/secrets/{key}");
   });
 
   it("references request body schemas on POST endpoints", () => {
     const paths = spec.paths as Record<string, Record<string, Record<string, unknown>>>;
     const modelPost = paths["/api/v1/{issue_identifier}/model"].post;
-    expect(modelPost.requestBody).toBeDefined();
+    expect(modelPost).toHaveProperty("requestBody");
 
     const transitionPost = paths["/api/v1/{issue_identifier}/transition"].post;
-    expect(transitionPost.requestBody).toBeDefined();
+    expect(transitionPost).toHaveProperty("requestBody");
   });
 
   it("groups routes by tags", () => {

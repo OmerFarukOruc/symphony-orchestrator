@@ -128,14 +128,14 @@ export function createObservabilityPage(): HTMLElement {
 
   window.addEventListener(APP_STATE_UPDATE_EVENT, onState);
   window.addEventListener(APP_STATE_HEARTBEAT_EVENT, onState);
-  window.addEventListener("symphony:poll-complete", onPollComplete);
+  window.addEventListener("risoluto:poll-complete", onPollComplete);
   window.addEventListener("keydown", onKey);
   sync(store.getState());
   void loadMetrics();
   registerPageCleanup(page, () => {
     window.removeEventListener(APP_STATE_UPDATE_EVENT, onState);
     window.removeEventListener(APP_STATE_HEARTBEAT_EVENT, onState);
-    window.removeEventListener("symphony:poll-complete", onPollComplete);
+    window.removeEventListener("risoluto:poll-complete", onPollComplete);
     window.removeEventListener("keydown", onKey);
   });
   return page;

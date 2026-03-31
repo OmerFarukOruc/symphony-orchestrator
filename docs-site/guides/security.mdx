@@ -1,0 +1,87 @@
+---
+title: Network Security
+description: "Secure the Risoluto API with bind address controls, write tokens, and rate limiting."
+---
+
+# Network Security
+
+Risoluto's HTTP surface is designed for local, trusted environments. These controls help you expose it safely when needed.
+
+## Bind Address
+
+By default, Risoluto binds to `127.0.0.1` (loopback only):
+
+```bash
+# Listen on all interfaces
+export RISOLUTO_BIND="0.0.0.0"
+```
+
+<Warning>
+  Never bind to `0.0.0.0` without also setting `RISOLUTO_WRITE_TOKEN`.
+</Warning>
+
+## Write Guard
+
+All mutating API requests (POST, PUT, PATCH, DELETE) are protected by a write guard:
+
+| Scenario | Behavior |
+|----------|----------|
+| Request from loopback (`127.0.0.1`, `::1`) | ✅ Allowed — no token required |
+| Non-loopback, no `RISOLUTO_WRITE_TOKEN` set | ❌ **403 `write_forbidden`** |
+| `RISOLUTO_WRITE_TOKEN` set, valid bearer token | ✅ Allowed from any address |
+| `RISOLUTO_WRITE_TOKEN` set, missing/invalid token | ❌ **401 `write_unauthorized`** |
+
+### Enable Remote Write Access
+
+```bash
+export RISOLUTO_BIND="0.0.0.0"
+export RISOLUTO_WRITE_TOKEN="your-secret-token"
+```
+
+All mutating requests then require:
+
+```
+Authorization: Bearer your-secret-token
+```
+
+### Read-Only Methods
+
+`GET`, `HEAD`, and `OPTIONS` are exempt from write guard checks and always allowed from any address.
+
+## Rate Limiting
+
+All `/api/*` and `/metrics` endpoints are rate-limited to **300 requests per 60 seconds** per client. Exceeding the limit returns HTTP `429 Too Many Requests`.
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RISOLUTO_BIND` | `127.0.0.1` | HTTP bind address |
+| `RISOLUTO_WRITE_TOKEN` | — | Bearer token for remote writes |
+
+## Filesystem Paths
+
+### Host-Side Paths
+
+| Path | Purpose | Safe to delete? |
+|------|---------|----------------|
+| `.risoluto/` | SQLite DB, config overlay, encrypted secrets | ⚠️ Lose all history |
+| `../risoluto-workspaces/` | Per-issue workspace directories | ✅ Re-created on dispatch |
+| `~/.codex/` | Codex CLI auth credentials | ⚠️ Need to re-run `codex login` |
+
+### Inside Docker Containers
+
+| Path | Purpose |
+|------|---------|
+| `/home/agent/.codex-runtime` | Ephemeral per-attempt `CODEX_HOME` |
+| `/home/agent` | Container `HOME` with build caches |
+
+### Named Docker Volumes
+
+| Volume | Purpose |
+|--------|---------|
+| `risoluto-cache-<runId>` | Persistent build caches per worker |
+
+<Tip>
+  Directories like `~/.risoluto-codex` or `~/.risoluto-codex-home` are **not** created by Risoluto. If found on your host, they are leftover Codex CLI data and can be safely deleted.
+</Tip>

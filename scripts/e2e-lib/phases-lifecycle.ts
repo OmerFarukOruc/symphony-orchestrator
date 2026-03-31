@@ -1,23 +1,22 @@
 /**
- * Lifecycle phases (4 – 7.5) for the Symphony E2E test.
+ * Lifecycle phases (4 – 7.5) for the Risoluto E2E test.
  *
  * Phases:
  *   4   createIssue        — create a test issue via Linear GraphQL
- *   5   waitPickup         — poll /api/v1/state until Symphony claims the issue
+ *   5   waitPickup         — poll /api/v1/state until Risoluto claims the issue
  *   6   monitorLifecycle   — poll state + attempts until completion or timeout
- *   7.5 restartResilience  — restart Symphony and verify the issue is NOT re-dispatched
+ *   7.5 restartResilience  — restart Risoluto and verify the issue is NOT re-dispatched
  */
-
-import path from "node:path";
 
 import type { RunContext, PhaseResult } from "./types.js";
 import {
-  buildSymphonyEnv,
+  buildRisolutoEnv,
   callLinearGraphQL,
   errorMsg,
+  resolveEnvValue,
   sleep,
   waitForHttp,
-  spawnSymphony,
+  spawnRisoluto,
   fetchJson,
   stopProcess,
 } from "./helpers.js";
@@ -460,21 +459,23 @@ export async function monitorLifecycle(ctx: RunContext): Promise<PhaseResult> {
 export async function restartResilience(ctx: RunContext): Promise<PhaseResult> {
   const start = Date.now();
   const gracefulMs = ctx.config.timeouts.graceful_shutdown_ms;
-  const startupMs = ctx.config.timeouts.symphony_startup_ms;
+  const startupMs = ctx.config.timeouts.risoluto_startup_ms;
 
   log(ctx, "Phase 7.5: restart-resilience — verifying seedCompletedClaims dedup");
 
-  // 1. Stop the running Symphony process.
-  if (ctx.symphonyProcess) {
-    log(ctx, "Sending SIGTERM to Symphony");
-    await stopProcess(ctx.symphonyProcess, gracefulMs);
-    log(ctx, "Symphony stopped");
+  // 1. Stop the running Risoluto process.
+  if (ctx.risolutoProcess) {
+    log(ctx, "Sending SIGTERM to Risoluto");
+    await stopProcess(ctx.risolutoProcess, gracefulMs);
+    log(ctx, "Risoluto stopped");
   }
 
-  // 2. Restart Symphony with the same port and credentials.
-  const workflowPath = path.join(ctx.reportDir, "WORKFLOW.e2e.md");
-  log(ctx, `Restarting Symphony on port ${ctx.symphonyPort}`);
-  ctx.symphonyProcess = spawnSymphony(ctx.symphonyPort, workflowPath, ctx.reportDir, buildSymphonyEnv(ctx));
+  // 2. Restart Risoluto pointing at the same dataDir. The overlay and DB state
+  //    persist on disk — no re-seeding needed. Risoluto reads from the same
+  //    <dataDir>/config/overlay.yaml and SQLite DB naturally on restart.
+  const dataDir = `${ctx.reportDir}/risoluto-data`;
+  log(ctx, `Restarting Risoluto on port ${ctx.risolutoPort}`);
+  ctx.risolutoProcess = spawnRisoluto(ctx.risolutoPort, dataDir, ctx.reportDir, buildRisolutoEnv(ctx));
 
   // 3. Wait for HTTP ready.
   try {
@@ -485,10 +486,10 @@ export async function restartResilience(ctx: RunContext): Promise<PhaseResult> {
       phase: "restart-resilience",
       status: "fail",
       durationMs: Date.now() - start,
-      error: { message: `Symphony failed to restart: ${message}` },
+      error: { message: `Risoluto failed to restart: ${message}` },
     };
   }
-  log(ctx, "Restarted Symphony is HTTP-ready");
+  log(ctx, "Restarted Risoluto is HTTP-ready");
 
   // 4. Wait for the first orchestrator poll cycle to complete.
   const pollSettleMs = 10_000;
@@ -496,16 +497,16 @@ export async function restartResilience(ctx: RunContext): Promise<PhaseResult> {
   await sleep(pollSettleMs);
 
   // 5. Check that the completed issue is NOT re-dispatched.
-  const postRestartState = await fetchJson(`${ctx.baseUrl}/api/v1/state`).catch((caught: unknown) => {
-    log(ctx, `Failed to fetch state after restart: ${errorMsg(caught)}`);
+  const postRestartState = await fetchJson(`${ctx.baseUrl}/api/v1/state`).catch((error_: unknown) => {
+    log(ctx, `Failed to fetch state after restart: ${errorMsg(error_)}`);
     return null;
   });
 
-  // 6. Shut down the restarted process (unless --keep-symphony).
-  if (ctx.symphonyProcess && !ctx.keepSymphony) {
-    log(ctx, "Shutting down restarted Symphony");
-    await stopProcess(ctx.symphonyProcess, gracefulMs);
-    ctx.symphonyProcess = null;
+  // 6. Shut down the restarted process (unless --keep-risoluto).
+  if (ctx.risolutoProcess && !ctx.keepRisoluto) {
+    log(ctx, "Shutting down restarted Risoluto");
+    await stopProcess(ctx.risolutoProcess, gracefulMs);
+    ctx.risolutoProcess = null;
   }
 
   if (postRestartState === null) {

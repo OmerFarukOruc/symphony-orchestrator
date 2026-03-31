@@ -31,7 +31,7 @@ interface TempCtx {
 const tempDirs: string[] = [];
 
 async function createTempWorkflow(): Promise<TempCtx> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-cli-test-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-cli-test-"));
   tempDirs.push(dir);
   const workflowPath = path.join(dir, "WORKFLOW.md");
   const archiveDir = path.join(dir, "archive");
@@ -139,7 +139,7 @@ describe("CLI printValidationError", () => {
 
 describe("CLI cleanupTransientWorkspaceDirs", () => {
   it("removes transient subdirectories but preserves workspace dirs", async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-cleanup-test-"));
+    const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-cleanup-test-"));
     tempDirs.push(dir);
 
     const wsRoot = path.join(dir, "workspaces");
@@ -147,7 +147,7 @@ describe("CLI cleanupTransientWorkspaceDirs", () => {
     await mkdir(path.join(issueDir, "tmp"), { recursive: true });
     await writeFile(path.join(issueDir, "tmp", "junk.txt"), "junk", "utf8");
     await mkdir(path.join(issueDir, ".elixir_ls"), { recursive: true });
-    await writeFile(path.join(issueDir, "SYMPHONY_SMOKE.md"), "keep", "utf8");
+    await writeFile(path.join(issueDir, "RISOLUTO_SMOKE.md"), "keep", "utf8");
 
     // Simulate the cleanup logic (same as src/cli/index.ts)
     const { readdir, rm: rmFs } = await import("node:fs/promises");
@@ -161,6 +161,6 @@ describe("CLI cleanupTransientWorkspaceDirs", () => {
 
     // Verify transients removed but workspace preserved
     const remaining = await readdir(issueDir);
-    expect(remaining).toEqual(["SYMPHONY_SMOKE.md"]);
+    expect(remaining).toEqual(["RISOLUTO_SMOKE.md"]);
   });
 });

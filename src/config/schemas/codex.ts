@@ -37,7 +37,7 @@ const sandboxLogsSchema = z.object({
 });
 
 export const sandboxConfigSchema = z.object({
-  image: z.string().default("symphony-codex:latest"),
+  image: z.string().default("risoluto-codex:latest"),
   network: z.string().default(""),
   security: sandboxSecuritySchema.default(() => sandboxSecuritySchema.parse({})),
   resources: sandboxResourcesSchema.default(() => sandboxResourcesSchema.parse({})),

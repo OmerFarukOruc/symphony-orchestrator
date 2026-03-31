@@ -130,7 +130,7 @@ export function createSettingsPage(options: SettingsPageOptions = {}): HTMLEleme
       renderEmpty: () =>
         createEmptyState(
           "No settings available",
-          "Symphony did not return any editable settings.",
+          "Risoluto did not return any editable settings.",
           "Retry",
           () => void load(),
         ),
@@ -167,7 +167,7 @@ export function createSettingsPage(options: SettingsPageOptions = {}): HTMLEleme
           onSaveSection: (sectionId) => void saveSection(sectionId),
           onSetMode: (mode) => {
             state.mode = mode;
-            localStorage.setItem("symphony.settingsMode", mode);
+            localStorage.setItem("risoluto.settingsMode", mode);
             // If current section is now hidden, fall back to first visible
             const sections = buildSettingsSections(state.schema, state.effective);
             const visible = sections.filter((s) => sectionVisibleInMode(s, mode));

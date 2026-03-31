@@ -81,12 +81,12 @@ function buildEnvArgs(args: string[], input: DockerRunInput): void {
     "-e",
     `CODEX_HOME=${CONTAINER_CODEX_HOME}`,
     "-e",
-    `SYMPHONY_CODEX_CONFIG_TOML=${trustedProjectConfig}`,
+    `RISOLUTO_CODEX_CONFIG_TOML=${trustedProjectConfig}`,
   );
   if (runtimeAuthJsonBase64) {
-    args.push("-e", `SYMPHONY_CODEX_AUTH_JSON_B64=${runtimeAuthJsonBase64}`);
+    args.push("-e", `RISOLUTO_CODEX_AUTH_JSON_B64=${runtimeAuthJsonBase64}`);
   }
-  args.push("-e", `SYMPHONY_CODEX_COMMAND=${command}`);
+  args.push("-e", `RISOLUTO_CODEX_COMMAND=${command}`);
 
   const envNames = new Set([...sandboxConfig.envPassthrough, ...requiredEnv]);
   for (const envName of envNames) {
@@ -138,12 +138,12 @@ function buildEntrypointScript(egressAllowlist: string[], options?: { unsetApiKe
 
   if (egressAllowlist.length > 0) {
     steps.push(
-      'if command -v iptables >/dev/null 2>&1 && [ -n "${SYMPHONY_EGRESS_ALLOWLIST:-}" ]; then',
+      'if command -v iptables >/dev/null 2>&1 && [ -n "${RISOLUTO_EGRESS_ALLOWLIST:-}" ]; then',
       "  iptables -A OUTPUT -o lo -j ACCEPT",
       "  iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT",
       "  iptables -A OUTPUT -p udp --dport 53 -j ACCEPT",
       "  iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT",
-      "  for domain in $SYMPHONY_EGRESS_ALLOWLIST; do",
+      "  for domain in $RISOLUTO_EGRESS_ALLOWLIST; do",
       "    for ip in $(getent hosts \"$domain\" 2>/dev/null | awk '{print $1}' | head -5); do",
       '      iptables -A OUTPUT -d "$ip" -j ACCEPT',
       "    done",
@@ -156,8 +156,8 @@ function buildEntrypointScript(egressAllowlist: string[], options?: { unsetApiKe
   steps.push(
     'rm -rf "$CODEX_HOME"',
     'mkdir -p "$CODEX_HOME"',
-    'printf "%s" "$SYMPHONY_CODEX_CONFIG_TOML" > "$CODEX_HOME/config.toml"',
-    'if [ -n "${SYMPHONY_CODEX_AUTH_JSON_B64:-}" ]; then printf "%s" "$SYMPHONY_CODEX_AUTH_JSON_B64" | base64 -d > "$CODEX_HOME/auth.json"; fi',
+    'printf "%s" "$RISOLUTO_CODEX_CONFIG_TOML" > "$CODEX_HOME/config.toml"',
+    'if [ -n "${RISOLUTO_CODEX_AUTH_JSON_B64:-}" ]; then printf "%s" "$RISOLUTO_CODEX_AUTH_JSON_B64" | base64 -d > "$CODEX_HOME/auth.json"; fi',
   );
 
   // When using openai_login auth, prevent stale OPENAI_API_KEY from the host
@@ -166,15 +166,15 @@ function buildEntrypointScript(egressAllowlist: string[], options?: { unsetApiKe
     steps.push("unset OPENAI_API_KEY 2>/dev/null || true");
   }
 
-  steps.push('echo "symphony:container_ready"', 'exec bash -lc "$SYMPHONY_CODEX_COMMAND"');
+  steps.push('echo "risoluto:container_ready"', 'exec bash -lc "$RISOLUTO_CODEX_COMMAND"');
 
   return steps.join("; ");
 }
 
 export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
   const { sandboxConfig, runId, workspacePath } = input;
-  const containerName = `symphony-${runId}`;
-  const cacheVolumeName = `symphony-cache-${runId}`;
+  const containerName = `risoluto-${runId}`;
+  const cacheVolumeName = `risoluto-cache-${runId}`;
   const uid = os.userInfo().uid;
   const gid = os.userInfo().gid;
 
@@ -193,21 +193,21 @@ export function buildDockerRunArgs(input: DockerRunInput): DockerRunResult {
   buildSecurityArgs(args, sandboxConfig);
 
   if (input.issueIdentifier) {
-    args.push("--label", `symphony.issue=${input.issueIdentifier}`);
+    args.push("--label", `risoluto.issue=${input.issueIdentifier}`);
   }
   if (input.model) {
-    args.push("--label", `symphony.model=${input.model}`);
+    args.push("--label", `risoluto.model=${input.model}`);
   }
   args.push(
     "--label",
-    `symphony.workspace=${workspacePath}`,
+    `risoluto.workspace=${workspacePath}`,
     "--label",
-    `symphony.started-at=${new Date().toISOString()}`,
+    `risoluto.started-at=${new Date().toISOString()}`,
   );
 
   const egressAllowlist = sandboxConfig.egressAllowlist ?? [];
   if (egressAllowlist.length > 0) {
-    args.push("--cap-add=NET_ADMIN", "-e", `SYMPHONY_EGRESS_ALLOWLIST=${egressAllowlist.join(" ")}`);
+    args.push("--cap-add=NET_ADMIN", "-e", `RISOLUTO_EGRESS_ALLOWLIST=${egressAllowlist.join(" ")}`);
   }
 
   args.push(

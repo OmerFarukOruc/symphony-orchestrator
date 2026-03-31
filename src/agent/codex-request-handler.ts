@@ -75,7 +75,7 @@ export async function handleCodexRequest(
     case "mcpServer/elicitation/request":
       return fatalResult("startup_failed", "thread/start failed because a required MCP server did not initialize");
     case "account/chatgptAuthTokens/refresh":
-      return fatalResult("auth_token_expired", "ChatGPT auth token expired and Symphony cannot refresh it");
+      return fatalResult("auth_token_expired", "ChatGPT auth token expired and Risoluto cannot refresh it");
     case "applyPatchApproval":
     case "execCommandApproval":
       return fatalResult("startup_failed", `unsupported interactive request from codex: ${request.method}`);

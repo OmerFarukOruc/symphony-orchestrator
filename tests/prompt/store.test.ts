@@ -1,10 +1,10 @@
 import { describe, expect, it, beforeEach } from "vitest";
 
-import { openDatabase, closeDatabase, type SymphonyDatabase } from "../../src/persistence/sqlite/database.js";
+import { openDatabase, closeDatabase, type RisolutoDatabase } from "../../src/persistence/sqlite/database.js";
 import { PromptTemplateStore } from "../../src/prompt/store.js";
 import { createLogger } from "../../src/core/logger.js";
 
-let db: SymphonyDatabase;
+let db: RisolutoDatabase;
 let store: PromptTemplateStore;
 
 beforeEach(() => {

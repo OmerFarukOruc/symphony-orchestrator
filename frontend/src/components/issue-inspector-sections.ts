@@ -86,7 +86,11 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
 
   const active = document.createElement("div");
   active.className = "issue-summary-strip";
-  active.append(kv("Active model", detail.model ?? "—"), kv("Reasoning", detail.reasoningEffort ?? "—"));
+  active.append(
+    kv("Active model", detail.model ?? "—"),
+    kv("Reasoning", detail.reasoningEffort ?? "—"),
+    kv("Template", detail.configuredTemplateName ?? "Default"),
+  );
 
   const form = document.createElement("form");
   form.className = "issue-form-grid";
@@ -133,6 +137,48 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
     }
   });
 
+  const templateForm = document.createElement("form");
+  templateForm.className = "issue-form-grid";
+  const templateSelect = createSelectControl({
+    options: [{ value: "", label: "Default" }],
+    value: detail.configuredTemplateId ?? "",
+  });
+  api.getTemplates().then(({ templates }) => {
+    const selected = templateSelect.value;
+    templateSelect.replaceChildren();
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = "";
+    defaultOpt.textContent = "Default";
+    defaultOpt.selected = selected === "";
+    templateSelect.append(defaultOpt);
+    for (const { id, name } of templates) {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = name;
+      opt.selected = id === selected;
+      templateSelect.append(opt);
+    }
+  });
+  const saveTemplate = createButton("Save template", "ghost", "submit");
+  templateForm.append(
+    createField({ label: "Template", hint: "Leave as Default to use the global prompt template." }, templateSelect),
+    saveTemplate,
+  );
+  templateForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      if (templateSelect.value === "") {
+        await api.deleteTemplateOverride(detail.identifier);
+        toast("Template override cleared.", "success");
+      } else {
+        await api.postTemplateOverride(detail.identifier, templateSelect.value);
+        toast("Template override saved for next run.", "success");
+      }
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to save template override.", "error");
+    }
+  });
+
   const note = document.createElement("p");
   note.className = "text-secondary";
   note.textContent = detail.modelChangePending
@@ -155,7 +201,7 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
     });
     footer.append(cancelBtn);
   }
-  section.append(active, form, footer);
+  section.append(active, form, templateForm, footer);
   return section;
 }
 

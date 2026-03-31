@@ -68,7 +68,7 @@ describe("writeCompletionWriteback — comment content", () => {
     const createComment = ctx.deps.tracker.createComment as ReturnType<typeof vi.fn>;
     expect(createComment).toHaveBeenCalledOnce();
     const body = createComment.mock.calls[0][1] as string;
-    expect(body).toContain("**Symphony agent completed**");
+    expect(body).toContain("**Risoluto agent completed**");
   });
 
   it("includes token usage when available", async () => {

@@ -6,7 +6,7 @@ import { normalizeCodexAuthJson, readCodexAuthTokens } from "./auth-file.js";
 import { isTokenExpired, refreshAccessToken } from "./token-refresh.js";
 import { toErrorString } from "../utils/type-guards.js";
 
-const DIRECT_OPENAI_PROVIDER_ID = "symphony_openai_api";
+const DIRECT_OPENAI_PROVIDER_ID = "risoluto_openai_api";
 const DIRECT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 
 interface PreparedCodexRuntimeConfig {
@@ -19,7 +19,7 @@ function formatTomlString(value: string): string {
 }
 
 function formatTomlKey(value: string): string {
-  return /^[A-Za-z0-9_-]+$/.test(value) ? value : formatTomlString(value);
+  return /^[\w-]+$/.test(value) ? value : formatTomlString(value);
 }
 
 function rewriteHostBoundUrl(value: string): string {
@@ -64,7 +64,7 @@ function effectiveProvider(config: CodexConfig): CodexProviderConfig | null {
 }
 
 function providerIdFor(provider: CodexProviderConfig): string {
-  return provider.id || (provider.requiresOpenaiAuth ? "symphony_openai_auth" : "symphony_custom_provider");
+  return provider.id || (provider.requiresOpenaiAuth ? "risoluto_openai_auth" : "risoluto_custom_provider");
 }
 
 function appendStringMap(lines: string[], tableName: string, values: Record<string, string>): void {

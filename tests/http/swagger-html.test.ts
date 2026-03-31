@@ -26,7 +26,7 @@ describe("getSwaggerHtml", () => {
   it("includes page metadata", () => {
     const html = getSwaggerHtml();
     expect(html).toContain('charset="UTF-8"');
-    expect(html).toContain("Symphony API Docs");
+    expect(html).toContain("Risoluto API Docs");
   });
 
   it("returns the same cached reference on subsequent calls", () => {

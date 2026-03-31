@@ -1,10 +1,10 @@
-# Symphony Design System
+# Risoluto Design System
 
 ## Design Context
 
 ### Users
 
-Symphony is for developers and operators running autonomous coding workflows on their own machines. They are usually scanning status quickly, stepping into details only when something needs intervention, and they often work with several terminal and browser surfaces open at once.
+Risoluto is for developers and operators running autonomous coding workflows on their own machines. They are usually scanning status quickly, stepping into details only when something needs intervention, and they often work with several terminal and browser surfaces open at once.
 
 Their workflow expectations are:
 
@@ -17,7 +17,7 @@ Their workflow expectations are:
 
 **Precise, calm, reliable.** The product should feel like an instrument panel for serious engineering work: trustworthy, composed, and efficient. Distinctive is good; cute is not.
 
-Symphony should read as:
+Risoluto should read as:
 
 - technically credible
 - operationally calm

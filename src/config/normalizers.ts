@@ -145,9 +145,11 @@ export function normalizeStateMachine(value: unknown): StateMachineConfig | null
 /**
  * Create a default approval policy object.
  */
+const VALID_APPROVAL_POLICIES = new Set(["untrusted", "on-failure", "on-request", "never"]);
+
 function defaultApprovalPolicy(): Record<string, unknown> {
   return {
-    reject: {
+    granular: {
       sandbox_approval: true,
       rules: true,
       mcp_elicitations: true,
@@ -181,13 +183,28 @@ export function normalizeTurnSandboxPolicy(value: Record<string, unknown>): { ty
  * Normalize approval policy configuration.
  * Passes through strings, returns default for empty objects.
  */
-// eslint-disable-next-line sonarjs/function-return-type -- union return is intentional
+
+/** Legacy string aliases that predate the Codex 0.117+ AskForApproval enum. */
+const LEGACY_APPROVAL_ALIASES: Record<string, string> = {
+  "auto-edit": "never",
+  "auto-approve": "never",
+  reject: "never",
+  suggest: "on-request",
+};
+
+// Codex AskForApproval accepts string | { granular: {...} } — mixed return is intentional.
+// eslint-disable-next-line sonarjs/function-return-type
 export function normalizeApprovalPolicy(value: unknown): string | Record<string, unknown> {
   if (typeof value === "string") {
-    return value;
+    return LEGACY_APPROVAL_ALIASES[value] ?? (VALID_APPROVAL_POLICIES.has(value) ? value : "never");
   }
   const record = asRecord(value);
-  return Object.keys(record).length > 0 ? record : defaultApprovalPolicy();
+  if (Object.keys(record).length === 0) return defaultApprovalPolicy();
+  // Migrate legacy { reject: { ... } } → { granular: { ... } }
+  if ("reject" in record && !("granular" in record)) {
+    return { granular: record.reject };
+  }
+  return record;
 }
 
 /**

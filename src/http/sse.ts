@@ -9,11 +9,11 @@
 import type { Request, Response } from "express";
 
 import type { TypedEventBus } from "../core/event-bus.js";
-import type { SymphonyEventMap } from "../core/symphony-events.js";
+import type { RisolutoEventMap } from "../core/risoluto-events.js";
 
 const KEEP_ALIVE_MS = 30_000;
 
-type AnyHandler = (channel: keyof SymphonyEventMap, payload: SymphonyEventMap[keyof SymphonyEventMap]) => void;
+type AnyHandler = (channel: keyof RisolutoEventMap, payload: RisolutoEventMap[keyof RisolutoEventMap]) => void;
 
 /**
  * Creates an Express request handler that streams EventBus events over SSE.
@@ -21,7 +21,7 @@ type AnyHandler = (channel: keyof SymphonyEventMap, payload: SymphonyEventMap[ke
  * On connect the client receives `{"type":"connected"}`. Subsequent frames
  * carry `{"type":"<channel>","payload":{...}}` for every bus emission.
  */
-export function createSSEHandler(eventBus: TypedEventBus<SymphonyEventMap>): (req: Request, res: Response) => void {
+export function createSSEHandler(eventBus: TypedEventBus<RisolutoEventMap>): (req: Request, res: Response) => void {
   return (req: Request, res: Response) => {
     configureSSEHeaders(res);
 

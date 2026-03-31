@@ -7,12 +7,12 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { closeDatabase, openDatabase } from "../../../src/persistence/sqlite/database.js";
 import { attemptEvents, attempts, issueIndex } from "../../../src/persistence/sqlite/schema.js";
-import type { SymphonyDatabase } from "../../../src/persistence/sqlite/database.js";
+import type { RisolutoDatabase } from "../../../src/persistence/sqlite/database.js";
 
 const tempDirs: string[] = [];
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-sqlite-test-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-sqlite-test-"));
   tempDirs.push(dir);
   return dir;
 }
@@ -118,7 +118,7 @@ describe("openDatabase", () => {
 });
 
 describe("attempts table", () => {
-  let db: SymphonyDatabase;
+  let db: RisolutoDatabase;
   let dir: string;
 
   afterEach(() => {
@@ -136,7 +136,7 @@ describe("attempts table", () => {
         issueIdentifier: "MT-42",
         title: "Implement persistence",
         workspaceKey: "MT-42",
-        workspacePath: "/tmp/symphony/MT-42",
+        workspacePath: "/tmp/risoluto/MT-42",
         status: "running",
         attemptNumber: 1,
         startedAt: "2026-03-20T10:00:00.000Z",

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TypedEventBus } from "../../src/core/event-bus.js";
-import type { SymphonyEventMap } from "../../src/core/symphony-events.js";
-import type { SymphonyLogger, WebhookConfig } from "../../src/core/types.js";
+import type { RisolutoEventMap } from "../../src/core/risoluto-events.js";
+import type { RisolutoLogger, WebhookConfig } from "../../src/core/types.js";
 import { DefaultWebhookHealthTracker } from "../../src/webhook/health-tracker.js";
 import type { WebhookHealthTrackerDeps } from "../../src/webhook/health-tracker.js";
 
@@ -10,19 +10,19 @@ import type { WebhookHealthTrackerDeps } from "../../src/webhook/health-tracker.
 // Test helpers
 // ---------------------------------------------------------------------------
 
-function makeLogger(): SymphonyLogger {
+function makeLogger(): RisolutoLogger {
   return {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn().mockReturnThis(),
-  } as unknown as SymphonyLogger;
+  } as unknown as RisolutoLogger;
 }
 
 function makeWebhookConfig(overrides: Partial<WebhookConfig> = {}): WebhookConfig {
   return {
-    webhookUrl: "https://symphony.example.com/webhooks/linear",
+    webhookUrl: "https://risoluto.example.com/webhooks/linear",
     webhookSecret: "whsec_test_secret_value",
     pollingStretchMs: 120_000,
     pollingBaseMs: 15_000,
@@ -34,7 +34,7 @@ function makeWebhookConfig(overrides: Partial<WebhookConfig> = {}): WebhookConfi
 function makeDeps(overrides: Partial<WebhookHealthTrackerDeps> = {}): WebhookHealthTrackerDeps {
   return {
     config: makeWebhookConfig(),
-    eventBus: new TypedEventBus<SymphonyEventMap>(),
+    eventBus: new TypedEventBus<RisolutoEventMap>(),
     logger: makeLogger(),
     ...overrides,
   };
@@ -384,7 +384,7 @@ describe("DefaultWebhookHealthTracker", () => {
     const linearClient = {
       runGraphQL: vi.fn().mockResolvedValue({
         webhooks: {
-          nodes: [{ url: "https://symphony.example.com/webhooks/linear", enabled: true }],
+          nodes: [{ url: "https://risoluto.example.com/webhooks/linear", enabled: true }],
         },
       }),
     };
@@ -411,7 +411,7 @@ describe("DefaultWebhookHealthTracker", () => {
     const linearClient = {
       runGraphQL: vi.fn().mockResolvedValue({
         webhooks: {
-          nodes: [{ url: "https://symphony.example.com/webhooks/linear", enabled: false }],
+          nodes: [{ url: "https://risoluto.example.com/webhooks/linear", enabled: false }],
         },
       }),
     };

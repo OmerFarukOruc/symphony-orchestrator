@@ -4,7 +4,7 @@ import { buildSidebarBadgeCounts } from "./sidebar-badges.js";
 import { createIcon, createIconSlot, type IconName } from "./icons";
 import { navGroups, navItems } from "./nav-items";
 
-const STORAGE_KEY = "symphony-sidebar-expanded";
+const STORAGE_KEY = "risoluto-sidebar-expanded";
 const MOBILE_BREAKPOINT = "(max-width: 760px)";
 
 let _navHandler: (() => void) | null = null;
@@ -120,7 +120,7 @@ function buildGroupHeader(groupName: string, groupEl: HTMLElement): HTMLButtonEl
   header.className = "sidebar-group-header";
   header.type = "button";
   header.setAttribute("aria-expanded", "true");
-  header.setAttribute("aria-controls", `sidebar-group-${groupName.toLowerCase().replace(/\s+/g, "-")}`);
+  header.setAttribute("aria-controls", `sidebar-group-${groupName.toLowerCase().replaceAll(/\s+/g, "-")}`);
 
   const groupLabel = document.createElement("span");
   groupLabel.className = "sidebar-group-label";
@@ -340,7 +340,7 @@ export function initSidebar(sidebarEl: HTMLElement): void {
   for (const groupName of navGroups) {
     const group = document.createElement("section");
     group.className = "sidebar-group";
-    group.id = `sidebar-group-${groupName.toLowerCase().replace(/\s+/g, "-")}`;
+    group.id = `sidebar-group-${groupName.toLowerCase().replaceAll(/\s+/g, "-")}`;
 
     const header = buildGroupHeader(groupName, group);
     group.append(header);

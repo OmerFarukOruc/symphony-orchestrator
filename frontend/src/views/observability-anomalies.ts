@@ -39,8 +39,8 @@ function detectSpikes(trends: ObservabilityTrendPoint[]): string[] {
 
 function detectFailures(snapshot: RuntimeSnapshot | null, metrics: ParsedPrometheusMetrics): string[] {
   const failureTotal =
-    sumMetric(metrics, "symphony_agent_runs_total", { outcome: "failed" }) ??
-    sumMetric(metrics, "symphony_agent_runs_total", { status: "failed" }) ??
+    sumMetric(metrics, "risoluto_agent_runs_total", { outcome: "failed" }) ??
+    sumMetric(metrics, "risoluto_agent_runs_total", { status: "failed" }) ??
     0;
   const retrySignals =
     snapshot?.recent_events.filter((event) => /retry|failed|timed out|stalled/i.test(event.message)).length ?? 0;
@@ -86,7 +86,7 @@ function averageDelta(values: number[]): number {
 
 function humanizeMetric(name: string): string {
   return name
-    .replace(/^symphony_/, "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (match) => match.toUpperCase());
+    .replace(/^risoluto_/, "")
+    .replaceAll(/_/g, " ")
+    .replaceAll(/\b\w/g, (match) => match.toUpperCase());
 }

@@ -27,7 +27,7 @@ describe("getContainerStats", () => {
   it("parses valid docker stats JSON output", async () => {
     simulateExecFile('{"cpu":"12.50%","mem":"256MiB / 4GiB","memPerc":"6.25%","net":"1.2kB / 0B","pids":"15"}\n');
 
-    const stats = await getContainerStats("symphony-test");
+    const stats = await getContainerStats("risoluto-test");
     expect(stats).not.toBeNull();
     expect(stats!.cpuPercent).toBe("12.50%");
     expect(stats!.memoryUsage).toBe("256MiB");

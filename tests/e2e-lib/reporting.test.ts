@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { diagnoseProblem } from "../../scripts/e2e-lib/reporting.js";
+import { diagnoseProblem, generateJunitXml } from "../../scripts/e2e-lib/reporting.js";
+import type { PhaseResult } from "../../scripts/e2e-lib/types.js";
 
 describe("diagnoseProblem", () => {
   it("classifies AUTH_EXPIRED from 401 in stderr", () => {
@@ -87,5 +88,68 @@ describe("diagnoseProblem", () => {
     expect(typeof result.suggestedFix).toBe("string");
     expect(result.summary.length).toBeGreaterThan(0);
     expect(result.suggestedFix.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateJunitXml
+// ---------------------------------------------------------------------------
+
+describe("generateJunitXml", () => {
+  const passPhase: PhaseResult = { phase: "preflight", status: "pass", durationMs: 1200 };
+  const failPhase: PhaseResult = {
+    phase: "monitor-lifecycle",
+    status: "fail",
+    durationMs: 300000,
+    error: { message: "timeout waiting for completion" },
+  };
+  const skipPhase: PhaseResult = { phase: "verify-pr", status: "skip", durationMs: 0 };
+
+  it("produces valid XML with all phases passing", () => {
+    const xml = generateJunitXml([passPhase]);
+    expect(xml).toContain('<?xml version="1.0"');
+    expect(xml).toContain('tests="1"');
+    expect(xml).toContain('failures="0"');
+    expect(xml).toContain('skipped="0"');
+    expect(xml).not.toContain("<failure");
+    expect(xml).not.toContain("<skipped/>");
+  });
+
+  it("includes failure element for failed phases", () => {
+    const xml = generateJunitXml([passPhase, failPhase]);
+    expect(xml).toContain('tests="2"');
+    expect(xml).toContain('failures="1"');
+    expect(xml).toContain("<failure");
+    expect(xml).toContain("timeout waiting for completion");
+  });
+
+  it("includes skipped element for skipped phases", () => {
+    const xml = generateJunitXml([passPhase, skipPhase]);
+    expect(xml).toContain('tests="2"');
+    expect(xml).toContain('skipped="1"');
+    expect(xml).toContain("<skipped/>");
+    expect(xml).toContain('failures="0"');
+  });
+
+  it("escapes XML special characters in error messages", () => {
+    const phase: PhaseResult = {
+      phase: "test-phase",
+      status: "fail",
+      durationMs: 100,
+      error: { message: 'value <foo> & "bar"' },
+    };
+    const xml = generateJunitXml([phase]);
+    expect(xml).toContain("&lt;foo&gt;");
+    expect(xml).toContain("&amp;");
+    expect(xml).toContain("&quot;bar&quot;");
+    expect(xml).not.toContain("<foo>");
+  });
+
+  it("produces valid XML for zero phases", () => {
+    const xml = generateJunitXml([]);
+    expect(xml).toContain('tests="0"');
+    expect(xml).toContain('failures="0"');
+    expect(xml).toContain('skipped="0"');
+    expect(xml).toContain("</testsuite>");
   });
 });

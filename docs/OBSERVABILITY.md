@@ -1,6 +1,6 @@
-# 📊 Symphony Observability
+# 📊 Risoluto Observability
 
-> How to monitor, trace, and alert on Symphony Orchestrator.
+> How to monitor, trace, and alert on Risoluto.
 
 ---
 
@@ -13,7 +13,7 @@ The currently shipped operator surface includes:
 - `GET /metrics` with Prometheus-format service metrics
 - Request tracing via `X-Request-ID` headers (auto-generated or preserved from client)
 - Error tracking initialized on CLI startup (Sentry-compatible when `SENTRY_DSN` is set)
-- Archived attempt and event history in `.symphony/symphony.db` (SQLite, WAL mode)
+- Archived attempt and event history in `.risoluto/risoluto.db` (SQLite, WAL mode)
 - Structured logger support used throughout the runtime
 
 ## Metrics Helper
@@ -24,10 +24,10 @@ The currently shipped operator surface includes:
 
 | Metric                                   | Type      | Description                              |
 | ---------------------------------------- | --------- | ---------------------------------------- |
-| `symphony_http_requests_total`           | Counter   | Total HTTP requests by method and status |
-| `symphony_http_request_duration_seconds` | Histogram | Request latency distribution             |
-| `symphony_orchestrator_polls_total`      | Counter   | Orchestrator poll cycles by status       |
-| `symphony_agent_runs_total`              | Counter   | Agent run completions by outcome         |
+| `risoluto_http_requests_total`           | Counter   | Total HTTP requests by method and status |
+| `risoluto_http_request_duration_seconds` | Histogram | Request latency distribution             |
+| `risoluto_orchestrator_polls_total`      | Counter   | Orchestrator poll cycles by status       |
+| `risoluto_agent_runs_total`              | Counter   | Agent run completions by outcome         |
 
 These are the metrics the default server now emits.
 
@@ -78,18 +78,18 @@ Feature flags were removed in v0.5.0. The `/api/v1/runtime` endpoint returns an 
 
 ```yaml
 groups:
-  - name: symphony
+  - name: risoluto
     rules:
       - alert: HighErrorRate
-        expr: rate(symphony_http_requests_total{status=~"5.."}[5m]) / rate(symphony_http_requests_total[5m]) > 0.05
+        expr: rate(risoluto_http_requests_total{status=~"5.."}[5m]) / rate(risoluto_http_requests_total[5m]) > 0.05
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Symphony HTTP error rate above 5%"
+          summary: "Risoluto HTTP error rate above 5%"
 
       - alert: AgentRunFailures
-        expr: rate(symphony_agent_runs_total{outcome="failed"}[15m]) > 0
+        expr: rate(risoluto_agent_runs_total{outcome="failed"}[15m]) > 0
         for: 15m
         labels:
           severity: critical
@@ -97,7 +97,7 @@ groups:
           summary: "Agent runs failing consistently"
 
       - alert: PollStalled
-        expr: increase(symphony_orchestrator_polls_total[10m]) == 0
+        expr: increase(risoluto_orchestrator_polls_total[10m]) == 0
         for: 10m
         labels:
           severity: warning

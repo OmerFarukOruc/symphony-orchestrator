@@ -54,7 +54,6 @@ export const validationErrorSchema = z.object({
 /** GET /api/v1/runtime — runtime info response. */
 export const runtimeResponseSchema = z.object({
   version: z.string(),
-  workflow_path: z.string(),
   data_dir: z.string(),
   feature_flags: z.record(z.string(), z.unknown()),
   provider_summary: z.string(),

@@ -88,7 +88,7 @@ describe("POST /api/v1/setup/create-label", () => {
     expect(body.error.code).toBe("missing_project");
   });
 
-  it("creates a symphony label and returns id + name", async () => {
+  it("creates a risoluto label and returns id + name", async () => {
     const { baseUrl, secretsStore, configOverlayStore } = await startSetupApiServer();
     vi.spyOn(secretsStore, "get").mockReturnValue("lin_api_key");
     vi.spyOn(configOverlayStore, "toMap").mockReturnValue({ "tracker.project_slug": "my-proj" });
@@ -99,7 +99,7 @@ describe("POST /api/v1/setup/create-label", () => {
       if (callCount === 1) {
         return projectLookupResponse("team-1");
       }
-      return labelCreateResponse("label-42", "symphony");
+      return labelCreateResponse("label-42", "risoluto");
     });
 
     const response = await postJson(baseUrl, "/api/v1/setup/create-label");
@@ -108,7 +108,7 @@ describe("POST /api/v1/setup/create-label", () => {
     const body = (await response.json()) as { ok: boolean; labelId: string; labelName: string; alreadyExists: boolean };
     expect(body.ok).toBe(true);
     expect(body.labelId).toBe("label-42");
-    expect(body.labelName).toBe("symphony");
+    expect(body.labelName).toBe("risoluto");
     expect(body.alreadyExists).toBe(false);
   });
 

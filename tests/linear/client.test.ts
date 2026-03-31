@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { LinearClient, LinearClientError } from "../../src/linear/client.js";
 import { createLogger } from "../../src/core/logger.js";
 
-import type { ServiceConfig, SymphonyLogger } from "../../src/core/types.js";
+import type { ServiceConfig, RisolutoLogger } from "../../src/core/types.js";
 
 function getRequestBody(fetchMock: ReturnType<typeof vi.fn>, callIndex: number): Record<string, unknown> {
   const calls = fetchMock.mock.calls as Array<[string, { body?: unknown }] | []>;
@@ -22,7 +22,7 @@ function createConfig(): ServiceConfig {
     },
     polling: { intervalMs: 30000 },
     workspace: {
-      root: "/tmp/symphony",
+      root: "/tmp/risoluto",
       hooks: {
         afterCreate: null,
         beforeRun: null,
@@ -142,7 +142,7 @@ function projectLookupPayload(teamId: string): Record<string, unknown> {
   };
 }
 
-function createMockLogger(): SymphonyLogger {
+function createMockLogger(): RisolutoLogger {
   return {
     debug: vi.fn(),
     info: vi.fn(),
@@ -317,8 +317,8 @@ describe("LinearClient", () => {
     expect(issues).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const requestBody = getRequestBody(fetchMock, 0);
-    expect(requestBody.query).toContain("SymphonyCandidateIssues");
-    expect(requestBody.query).not.toContain("SymphonyWorkflowStates");
+    expect(requestBody.query).toContain("RisolutoCandidateIssues");
+    expect(requestBody.query).not.toContain("RisolutoWorkflowStates");
   });
 
   it("retries candidate fetches by resolved workflow state ids after zero name-based results", async () => {
@@ -369,15 +369,15 @@ describe("LinearClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(4);
 
     const projectLookupBody = getRequestBody(fetchMock, 1);
-    expect(projectLookupBody.query).toContain("SymphonyPlanProject");
+    expect(projectLookupBody.query).toContain("RisolutoPlanProject");
     expect(projectLookupBody.variables).toEqual({ projectSlug: "EXAMPLE" });
 
     const workflowStatesBody = getRequestBody(fetchMock, 2);
-    expect(workflowStatesBody.query).toContain("SymphonyWorkflowStates");
+    expect(workflowStatesBody.query).toContain("RisolutoWorkflowStates");
     expect(workflowStatesBody.variables).toEqual({ teamId: "team-1" });
 
     const fallbackBody = getRequestBody(fetchMock, 3);
-    expect(fallbackBody.query).toContain("SymphonyCandidateIssuesByStateIds");
+    expect(fallbackBody.query).toContain("RisolutoCandidateIssuesByStateIds");
     expect(fallbackBody.variables).toEqual({ after: null, stateIds: ["state-1", "state-2"], projectSlug: "EXAMPLE" });
   });
 

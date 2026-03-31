@@ -11,7 +11,7 @@ import type { AttemptEvent, AttemptRecord } from "../../src/core/types.js";
 const tempDirs: string[] = [];
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-attempt-store-test-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-attempt-store-test-"));
   tempDirs.push(dir);
   return dir;
 }
@@ -23,7 +23,7 @@ function createAttempt(overrides: Partial<AttemptRecord> = {}): AttemptRecord {
     issueIdentifier: "MT-42",
     title: "Characterize persistence",
     workspaceKey: "MT-42",
-    workspacePath: "/tmp/symphony/MT-42",
+    workspacePath: "/tmp/risoluto/MT-42",
     status: "running",
     attemptNumber: 1,
     startedAt: "2026-03-16T10:00:00.000Z",

@@ -10,7 +10,7 @@ import {
   type JsonRpcId,
   type JsonRpcRequest,
 } from "../codex/protocol.js";
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 import { toErrorString } from "../utils/type-guards.js";
 
 const MAX_LINE_BYTES = 10 * 1024 * 1024;
@@ -40,7 +40,7 @@ export class JsonRpcConnection {
 
   constructor(
     private readonly child: ChildProcessWithoutNullStreams,
-    private readonly logger: SymphonyLogger,
+    private readonly logger: RisolutoLogger,
     private readonly timeoutMs: number,
     private readonly onRequest: (request: JsonRpcRequest) => Promise<void>,
     private readonly onNotification?: (message: { method: string; params?: unknown }) => void,
@@ -141,7 +141,7 @@ export class JsonRpcConnection {
   }
 
   private onLine(line: string): void {
-    if (line.startsWith("symphony:")) {
+    if (line.startsWith("risoluto:")) {
       this.logger.debug({ line }, "container sentinel");
       return;
     }

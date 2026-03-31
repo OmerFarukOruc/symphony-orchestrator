@@ -1,6 +1,6 @@
-# 🚀 Releasing Symphony
+# 🚀 Releasing Risoluto
 
-> Release preparation checklist for Symphony Orchestrator.
+> Release preparation checklist for Risoluto.
 
 ---
 

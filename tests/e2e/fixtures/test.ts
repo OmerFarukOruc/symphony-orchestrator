@@ -8,7 +8,7 @@ export interface ApiMockFixture {
 }
 
 /**
- * Custom Playwright fixtures for Symphony E2E tests.
+ * Custom Playwright fixtures for Risoluto E2E tests.
  *
  * Provides:
  * - `apiMock`: Auto-installs API mock routes before each test.

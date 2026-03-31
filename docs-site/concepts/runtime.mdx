@@ -1,0 +1,110 @@
+---
+title: Runtime Behavior
+description: "Understand polling, scheduling, timeouts, retries, and agent lifecycle management in Risoluto."
+---
+
+# Runtime Behavior
+
+How Risoluto manages agents from dispatch to completion.
+
+## Polling & Work Selection
+
+Risoluto polls Linear on the configured interval, filters candidates using `tracker.active_states`, and dispatches work based on:
+
+1. **Priority** — higher priority issues first
+2. **Age** — oldest creation time within the same priority
+3. **Identifier** — alphabetical as a final tiebreaker
+
+During startup, active issues emit lifecycle events through the SSE stream so operators can see where time is being spent:
+
+| Event | Description |
+|-------|-------------|
+| `issue_queued` | Issue waiting for an available slot |
+| `workspace_preparing` | Git clone or worktree creation in progress |
+| `workspace_ready` | Workspace available, preparing container |
+| `container_starting` | Docker container being created |
+| `container_running` | Container started, Codex initializing |
+| `codex_initializing` | JSON-RPC handshake in progress |
+| `thread_started` | Agent has begun working |
+
+## Timeouts & Retries
+
+| Setting | Config Key | Default | Purpose |
+|---------|-----------|---------|---------|
+| Poll interval | `tracker.poll_interval_ms` | `30000` | Time between Linear polls |
+| Hook timeout | `hooks.timeout_ms` | `60000` | Max time for lifecycle hooks |
+| Read timeout | `codex.read_timeout_ms` | `5000` | JSON-RPC read timeout |
+| Turn timeout | `codex.turn_timeout_ms` | `3600000` | Max time per agent turn (1h) |
+| Turn stall | `codex.stall_timeout_ms` | `300000` | Detect silent turns (5min) |
+| Agent stall | `agent.stall_timeout_ms` | `1200000` | Kill silent agents (20min) |
+| Max turns | `agent.max_turns` | `20` | Conversation turns per run |
+| Max retries | `agent.max_continuation_attempts` | `5` | Continuation turns per issue |
+| Retry backoff | `agent.max_retry_backoff_ms` | `300000` | Max retry delay (5min) |
+| Startup timeout | `codex.startup_timeout_ms` | `30000` | Container startup limit |
+
+<Tip>
+  For safer live proving, set `codex.turn_timeout_ms` to something short like `120000` (2 minutes).
+</Tip>
+
+## Container Lifecycle
+
+### Startup
+
+Risoluto creates a fresh per-attempt `CODEX_HOME` with generated `config.toml`, injects auth credentials, and launches the container with resource limits.
+
+### Normal Shutdown
+
+```mermaid
+flowchart LR
+    A["✅ Agent Done"] --> B["📤 Drain Events"]
+    B -->|drain_timeout_ms| C["🔌 Close RPC"]
+    C --> D["🗑️ Remove Container"]
+
+    style A fill:#059669,stroke:#047857,color:#fff
+    style D fill:#6b7280,stroke:#4b5563,color:#fff
+```
+
+### Abort / Shutdown
+
+```mermaid
+flowchart LR
+    A["⚡ Abort Signal"] -->|"docker stop --time=5"| B["SIGTERM"]
+    B -->|5s grace| C["SIGKILL"]
+    C --> D["inspect OOMKilled"]
+    D --> E["docker rm"]
+
+    style A fill:#dc2626,stroke:#b91c1c,color:#fff
+    style E fill:#059669,stroke:#047857,color:#fff
+```
+
+### OOM Detection
+
+Exit code 137 with `OOMKilled=true` is surfaced as `container_oom` — a retryable failure. Increase `codex.sandbox.resources.memory` if this occurs frequently.
+
+## Model Overrides
+
+Override the model for any issue via the dashboard or API:
+
+```bash
+curl -s -X POST http://127.0.0.1:4000/api/v1/MT-42/model \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"gpt-5","reasoning_effort":"medium"}'
+```
+
+<Note>
+  Model changes do **not** interrupt the active worker — they apply on the next run.
+</Note>
+
+## State Machine
+
+Risoluto tracks issues through configurable workflow stages:
+
+| Stage Kind | Description |
+|-----------|-------------|
+| `backlog` | Not yet triaged |
+| `todo` | Ready for work |
+| `active` | Being worked on — eligible for dispatch |
+| `gate` | Awaiting review or approval |
+| `terminal` | Done — triggers cleanup |
+
+When `stateMachine.stages` is empty (default), Risoluto derives stages from Linear's workflow configuration automatically.

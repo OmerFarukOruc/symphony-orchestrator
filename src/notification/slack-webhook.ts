@@ -1,4 +1,4 @@
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 import {
   type NotificationChannel,
   type NotificationEvent,
@@ -48,7 +48,7 @@ function buildSlackPayload(event: NotificationEvent): Record<string, unknown> {
       type: "header",
       text: {
         type: "plain_text",
-        text: `Symphony ${slackSeverityTag(event.severity)} ${event.type}`,
+        text: `Risoluto ${slackSeverityTag(event.severity)} ${event.type}`,
       },
     },
     {
@@ -91,7 +91,7 @@ function buildSlackPayload(event: NotificationEvent): Record<string, unknown> {
   }
 
   return {
-    text: `[Symphony ${slackSeverityTag(event.severity)}] ${event.issue.identifier}: ${event.message}`,
+    text: `[Risoluto ${slackSeverityTag(event.severity)}] ${event.issue.identifier}: ${event.message}`,
     attachments: [
       {
         color: slackColorForSeverity(event.severity),
@@ -106,7 +106,7 @@ interface SlackWebhookChannelOptions {
   verbosity: NotificationVerbosity;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
-  logger?: SymphonyLogger;
+  logger?: RisolutoLogger;
 }
 
 export class SlackWebhookChannel implements NotificationChannel {

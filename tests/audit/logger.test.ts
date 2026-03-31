@@ -1,9 +1,9 @@
 import { describe, expect, it, beforeEach } from "vitest";
 
-import { openDatabase, closeDatabase, type SymphonyDatabase } from "../../src/persistence/sqlite/database.js";
+import { openDatabase, closeDatabase, type RisolutoDatabase } from "../../src/persistence/sqlite/database.js";
 import { AuditLogger } from "../../src/audit/logger.js";
 
-let db: SymphonyDatabase;
+let db: RisolutoDatabase;
 let audit: AuditLogger;
 
 beforeEach(() => {

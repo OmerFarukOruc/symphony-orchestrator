@@ -14,7 +14,7 @@ import type { CodexConfig } from "../../src/core/types.js";
 const tempDirs: string[] = [];
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-runtime-config-test-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-runtime-config-test-"));
   tempDirs.push(dir);
   return dir;
 }
@@ -38,7 +38,7 @@ function baseConfig(overrides?: Partial<CodexConfig>): CodexConfig {
     },
     provider: null,
     sandbox: {
-      image: "symphony-codex:latest",
+      image: "risoluto-codex:latest",
       network: "",
       security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false, seccompProfile: "" },
       resources: {
@@ -65,7 +65,7 @@ describe("buildConfigToml", () => {
   it("generates an env-key based OpenAI provider config by default", () => {
     const configToml = buildConfigToml(baseConfig());
 
-    expect(configToml).toContain('model_provider = "symphony_openai_api"');
+    expect(configToml).toContain('model_provider = "risoluto_openai_api"');
     expect(configToml).toContain('base_url = "https://api.openai.com/v1"');
     expect(configToml).toContain('env_key = "OPENAI_API_KEY"');
   });

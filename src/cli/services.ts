@@ -1,7 +1,7 @@
 import { AuditLogger } from "../audit/logger.js";
 import { TypedEventBus } from "../core/event-bus.js";
-import type { SymphonyEventMap } from "../core/symphony-events.js";
-import type { SymphonyLogger, WebhookConfig } from "../core/types.js";
+import type { RisolutoEventMap } from "../core/risoluto-events.js";
+import type { RisolutoLogger, WebhookConfig } from "../core/types.js";
 import { PromptTemplateStore } from "../prompt/store.js";
 import { createGitHubToolProvider, createRepoRouterProvider } from "./runtime-providers.js";
 import type { ConfigOverlayPort } from "../config/overlay.js";
@@ -13,10 +13,12 @@ import { NotificationManager } from "../notification/manager.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { DefaultWebhookHealthTracker, type WebhookHealthTracker } from "../webhook/health-tracker.js";
 import { WebhookRegistrar } from "../webhook/registrar.js";
-import { initPersistenceRuntime } from "../persistence/sqlite/runtime.js";
+import { initPersistenceRuntime, type PersistenceRuntime } from "../persistence/sqlite/runtime.js";
+import { IssueConfigStore } from "../persistence/sqlite/issue-config-store.js";
 import { PathRegistry } from "../workspace/path-registry.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { createTracker } from "../tracker/factory.js";
+import { isRecord } from "../utils/type-guards.js";
 import { WorkspaceManager } from "../workspace/manager.js";
 
 /**
@@ -28,7 +30,7 @@ import { WorkspaceManager } from "../workspace/manager.js";
  */
 export function evaluateWebhookConfig(
   webhookConfig: WebhookConfig | null | undefined,
-  logger: SymphonyLogger,
+  logger: RisolutoLogger,
 ): boolean {
   if (webhookConfig?.webhookUrl && webhookConfig.webhookSecret) {
     logger.info({ webhookUrl: webhookConfig.webhookUrl }, "webhook mode enabled — waiting for first verified delivery");
@@ -38,7 +40,7 @@ export function evaluateWebhookConfig(
   if (webhookConfig?.webhookUrl && !webhookConfig.webhookSecret) {
     logger.warn(
       { webhookUrl: webhookConfig.webhookUrl },
-      "webhook_url is configured but webhook_secret is missing — set $LINEAR_WEBHOOK_SECRET or add webhook_secret to your workflow file",
+      "webhook_url is configured but webhook_secret is missing — set $LINEAR_WEBHOOK_SECRET or configure webhook_secret in Settings",
     );
   }
 
@@ -51,9 +53,11 @@ export async function createServices(
   secretsStore: SecretsStore,
   archiveDir: string,
   logger: ReturnType<typeof createLogger>,
-  workflowPath?: string,
+  options?: {
+    persistence?: PersistenceRuntime;
+  },
 ) {
-  const persistence = await initPersistenceRuntime({ dataDir: archiveDir, logger, workflowPath });
+  const persistence = options?.persistence ?? (await initPersistenceRuntime({ dataDir: archiveDir, logger }));
 
   const { tracker, linearClient } = createTracker(() => configStore.getConfig(), logger);
 
@@ -91,7 +95,7 @@ export async function createServices(
     logger,
   });
 
-  const eventBus = new TypedEventBus<SymphonyEventMap>();
+  const eventBus = new TypedEventBus<RisolutoEventMap>();
   const notificationManager = new NotificationManager({ logger: logger.child({ component: "notifications" }) });
 
   // --- Webhook integration (manual receive mode) ---
@@ -127,6 +131,36 @@ export async function createServices(
     ? new PromptTemplateStore(persistence.db, logger.child({ component: "templates" }))
     : undefined;
   const auditLogger = persistence.db ? new AuditLogger(persistence.db, eventBus) : undefined;
+  const issueConfigStore = IssueConfigStore.create(persistence.db);
+
+  const readSelectedTemplateId = (): string | null => {
+    const mergedConfigMap = configStore.getMergedConfigMap();
+    const systemConfig = mergedConfigMap.system;
+    if (!isRecord(systemConfig)) {
+      return null;
+    }
+    const selectedTemplateId = systemConfig.selectedTemplateId;
+    return typeof selectedTemplateId === "string" && selectedTemplateId.trim() ? selectedTemplateId : null;
+  };
+
+  const resolveTemplate = async (identifier: string): Promise<string> => {
+    if (templateStore) {
+      const overrideTemplateId = issueConfigStore.getTemplateId(identifier);
+      if (overrideTemplateId) {
+        const tmpl = templateStore.get(overrideTemplateId);
+        if (tmpl) return tmpl.body;
+      }
+      const selectedTemplateId = readSelectedTemplateId();
+      if (selectedTemplateId) {
+        const tmpl = templateStore.get(selectedTemplateId);
+        if (tmpl) return tmpl.body;
+      }
+      const def = templateStore.get("default");
+      if (def) return def.body;
+    }
+    logger.warn({ identifier }, "no prompt template found — using empty string");
+    return "";
+  };
 
   const orchestrator = new Orchestrator({
     attemptStore: persistence.attemptStore,
@@ -134,14 +168,16 @@ export async function createServices(
     tracker,
     workspaceManager,
     agentRunner,
+    issueConfigStore,
+    templateStore,
     eventBus,
     notificationManager,
     repoRouter,
     gitManager,
     webhookHealthTracker,
     logger: logger.child({ component: "orchestrator" }),
+    resolveTemplate,
   });
-
   const httpServer = new HttpServer({
     orchestrator,
     logger: logger.child({ component: "http" }),

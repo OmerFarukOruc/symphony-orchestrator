@@ -1,4 +1,4 @@
-import type { ServiceConfig, SymphonyLogger } from "../core/types.js";
+import type { ServiceConfig, RisolutoLogger } from "../core/types.js";
 import { GitHubIssuesClient } from "../github/issues-client.js";
 import { LinearClient } from "../linear/client.js";
 import { GitHubTrackerAdapter } from "./github-adapter.js";
@@ -21,7 +21,7 @@ export interface TrackerFactoryResult {
  * Encapsulates client instantiation and adapter wrapping so that
  * `services.ts` does not depend on tracker internals.
  */
-export function createTracker(getConfig: () => ServiceConfig, logger: SymphonyLogger): TrackerFactoryResult {
+export function createTracker(getConfig: () => ServiceConfig, logger: RisolutoLogger): TrackerFactoryResult {
   const config = getConfig();
 
   if (config.tracker.kind === "github") {

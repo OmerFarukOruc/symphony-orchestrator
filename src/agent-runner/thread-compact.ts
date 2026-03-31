@@ -1,11 +1,11 @@
 import type { JsonRpcConnection } from "../agent/json-rpc-connection.js";
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 import { toErrorString } from "../utils/type-guards.js";
 
 export async function compactThread(
   connection: JsonRpcConnection,
   threadId: string,
-  logger: SymphonyLogger,
+  logger: RisolutoLogger,
 ): Promise<boolean> {
   try {
     await connection.request("thread/compact/start", { threadId });

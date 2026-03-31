@@ -41,7 +41,7 @@ export async function handleContinuationExhausted(
   attempt: number | null,
 ): Promise<void> {
   const maxContinuations = ctx.getConfig().agent.maxContinuationAttempts;
-  const message = `agent did not emit SYMPHONY_STATUS after ${maxContinuations} continuations`;
+  const message = `agent did not emit RISOLUTO_STATUS after ${maxContinuations} continuations`;
   ctx.notify({
     type: "worker_failed",
     severity: "critical",

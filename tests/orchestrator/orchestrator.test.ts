@@ -7,7 +7,9 @@ import {
   createConfig,
   createConfigStore,
   createAttemptStore,
+  createIssueConfigStore,
   createLogger,
+  createResolveTemplate,
 } from "./orchestrator-fixtures.js";
 
 afterEach(() => {
@@ -56,7 +58,7 @@ describe("Orchestrator", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async (identifier: string) => ({
-        path: `/tmp/symphony/${identifier}`,
+        path: `/tmp/risoluto/${identifier}`,
         workspaceKey: identifier,
         createdNow: true,
       })),
@@ -69,7 +71,9 @@ describe("Orchestrator", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -104,7 +108,7 @@ describe("Orchestrator", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: true,
       })),
@@ -117,7 +121,9 @@ describe("Orchestrator", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -169,7 +175,7 @@ describe("Orchestrator", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async (identifier: string) => ({
-        path: `/tmp/symphony/${identifier}`,
+        path: `/tmp/risoluto/${identifier}`,
         workspaceKey: identifier,
         createdNow: true,
       })),
@@ -186,7 +192,9 @@ describe("Orchestrator", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -224,7 +232,7 @@ describe("Orchestrator", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async (identifier: string) => ({
-        path: `/tmp/symphony/${identifier}`,
+        path: `/tmp/risoluto/${identifier}`,
         workspaceKey: identifier,
         createdNow: true,
       })),
@@ -249,7 +257,9 @@ describe("Orchestrator", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -308,7 +318,7 @@ describe("Orchestrator", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: true,
       })),
@@ -321,7 +331,9 @@ describe("Orchestrator", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -367,7 +379,7 @@ describe("Orchestrator", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: true,
       })),
@@ -380,7 +392,9 @@ describe("Orchestrator", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -424,7 +438,7 @@ describe("Orchestrator", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: true,
       })),
@@ -437,7 +451,9 @@ describe("Orchestrator", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -450,7 +466,7 @@ describe("Orchestrator", () => {
       expect.objectContaining({
         identifier: issue.identifier,
         status: "stopping",
-        message: "stopping in /tmp/symphony/MT-42",
+        message: "stopping in /tmp/risoluto/MT-42",
       }),
     ]);
 
@@ -491,7 +507,7 @@ describe("Orchestrator", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: true,
       })),
@@ -504,7 +520,9 @@ describe("Orchestrator", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();
@@ -554,7 +572,7 @@ describe("Orchestrator", () => {
     } as unknown as TrackerPort;
     const workspaceManager = {
       ensureWorkspace: vi.fn(async () => ({
-        path: "/tmp/symphony/MT-42",
+        path: "/tmp/risoluto/MT-42",
         workspaceKey: "MT-42",
         createdNow: true,
       })),
@@ -567,7 +585,9 @@ describe("Orchestrator", () => {
       tracker,
       workspaceManager,
       agentRunner,
+      issueConfigStore: createIssueConfigStore(),
       logger: createLogger(),
+      resolveTemplate: createResolveTemplate(),
     });
 
     await orchestrator.start();

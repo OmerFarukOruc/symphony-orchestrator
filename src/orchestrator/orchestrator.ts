@@ -108,6 +108,7 @@ export class Orchestrator implements OrchestratorPort {
       recentEvents: [],
       rateLimits: null,
       issueModelOverrides: new DirtyTrackingMap(markDirty),
+      issueTemplateOverrides: new DirtyTrackingMap(markDirty),
       operatorAbortSuppressions: new Map(),
       sessionUsageTotals: new DirtyTrackingMap(markDirty),
       codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0 },
@@ -143,6 +144,18 @@ export class Orchestrator implements OrchestratorPort {
       completedViews: this._state.completedViews,
       deps: { attemptStore: this.deps.attemptStore, logger: this.deps.logger },
     });
+    const configRows = this.deps.issueConfigStore.loadAll();
+    for (const row of configRows) {
+      if (row.model !== null) {
+        this._state.issueModelOverrides.set(row.identifier, {
+          model: row.model,
+          reasoningEffort: (row.reasoningEffort as ReasoningEffort) ?? undefined,
+        });
+      }
+      if (row.templateId !== null) {
+        this._state.issueTemplateOverrides.set(row.identifier, row.templateId);
+      }
+    }
     this.scheduleTick(0);
   }
 
@@ -186,7 +199,7 @@ export class Orchestrator implements OrchestratorPort {
     snapshot: RuntimeSnapshot;
     serializedState: Record<string, unknown>;
   } {
-    if (this.cachedSnapshot && this.cachedSnapshot.revision === this.stateRevision) {
+    if (this.cachedSnapshot?.revision === this.stateRevision) {
       return this.cachedSnapshot;
     }
 
@@ -260,6 +273,7 @@ export class Orchestrator implements OrchestratorPort {
         retryEntries: this._state.retryEntries,
         pushEvent: (event) => this.ctx().pushEvent(event),
         requestRefresh: (r) => this.requestRefresh(r),
+        issueConfigStore: this.deps.issueConfigStore,
       },
       input,
     );
@@ -271,6 +285,26 @@ export class Orchestrator implements OrchestratorPort {
       });
     }
     return result;
+  }
+
+  getTemplateOverride(identifier: string): string | null {
+    return this._state.issueTemplateOverrides.get(identifier) ?? null;
+  }
+
+  updateIssueTemplateOverride(identifier: string, templateId: string): boolean {
+    const detail = this.getIssueDetail(identifier);
+    if (!detail) return false;
+    this._state.issueTemplateOverrides.set(identifier, templateId);
+    this.deps.issueConfigStore.upsertTemplateId(identifier, templateId);
+    return true;
+  }
+
+  clearIssueTemplateOverride(identifier: string): boolean {
+    const detail = this.getIssueDetail(identifier);
+    if (!detail) return false;
+    this._state.issueTemplateOverrides.delete(identifier);
+    this.deps.issueConfigStore.clearTemplateId(identifier);
+    return true;
   }
 
   async steerIssue(identifier: string, message: string): Promise<{ ok: boolean } | null> {
@@ -305,7 +339,7 @@ export class Orchestrator implements OrchestratorPort {
     if (!this._state.running || this.tickInFlight) return;
     this.tickInFlight = true;
     try {
-      if (this.ctx().detectAndKillStalled() > 0) {
+      if (this.ctx().detectAndKillStalled().killed > 0) {
         this.markStateDirty();
       }
       if (await reconcileRunningAndRetryingState(this.ctx())) {
@@ -344,6 +378,8 @@ export class Orchestrator implements OrchestratorPort {
       getRateLimits: () => this._state.rateLimits,
       getCodexTotals: () => this._state.codexTotals,
       getStallEvents: () => this._state.stallEvents,
+      getTemplateOverride: (identifier: string) => this._state.issueTemplateOverrides.get(identifier) ?? null,
+      getTemplateName: (templateId: string) => this.deps.templateStore?.get(templateId)?.name ?? null,
       getSystemHealth: () => {
         const h = this.watchdog.getHealth();
         return { status: h.status, checkedAt: h.checkedAt, runningCount: h.runningCount, message: h.message };

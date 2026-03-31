@@ -18,8 +18,8 @@ const workspaceHooksSchema = z.object({
 const workspaceStrategySchema = z.enum(["directory", "worktree"]).catch("directory");
 
 export const workspaceConfigSchema = z.object({
-  root: z.string().default("../symphony-workspaces"),
+  root: z.string().default("../risoluto-workspaces"),
   hooks: workspaceHooksSchema.default(() => workspaceHooksSchema.parse({})),
   strategy: workspaceStrategySchema.default("directory"),
-  branchPrefix: z.string().default("symphony/"),
+  branchPrefix: z.string().default("risoluto/"),
 });

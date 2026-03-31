@@ -10,7 +10,7 @@ import { createLogger } from "../../src/core/logger.js";
 const tempDirs: string[] = [];
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-config-overlay-test-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-config-overlay-test-"));
   tempDirs.push(dir);
   return dir;
 }

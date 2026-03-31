@@ -114,8 +114,9 @@ describe("detectAndKillStalledWorkers", () => {
   it("returns 0 and does nothing when stallTimeoutMs is 0 (disabled)", () => {
     const entry = makeEntry({ lastEventAtMs: Date.now() - 9999999 });
     const ctx = makeCtx([entry], 0);
-    const killed = detectAndKillStalledWorkers(ctx);
-    expect(killed).toBe(0);
+    const result = detectAndKillStalledWorkers(ctx);
+    expect(result.killed).toBe(0);
+    expect(result.updatedStallEvents).toBeNull();
     expect(entry.abortController.signal.aborted).toBe(false);
     expect(ctx.pushedEvents).toHaveLength(0);
   });
@@ -123,26 +124,26 @@ describe("detectAndKillStalledWorkers", () => {
   it("returns 0 when no entries exceed the timeout", () => {
     const entry = makeEntry({ lastEventAtMs: Date.now() - 5000 });
     const ctx = makeCtx([entry], 60000);
-    const killed = detectAndKillStalledWorkers(ctx);
-    expect(killed).toBe(0);
+    const result = detectAndKillStalledWorkers(ctx);
+    expect(result.killed).toBe(0);
+    expect(result.updatedStallEvents).toBeNull();
     expect(entry.abortController.signal.aborted).toBe(false);
   });
 
   it("aborts and records stall event for a timed-out entry", () => {
     const entry = makeEntry({ lastEventAtMs: Date.now() - 120000, id: "issue-42", identifier: "MT-42" });
-    const stallEvents: StallEvent[] = [];
-    const ctx = makeCtx([entry], 60000, stallEvents);
+    const ctx = makeCtx([entry], 60000);
 
-    const killed = detectAndKillStalledWorkers(ctx);
+    const result = detectAndKillStalledWorkers(ctx);
 
-    expect(killed).toBe(1);
+    expect(result.killed).toBe(1);
     expect(entry.abortController.signal.aborted).toBe(true);
     expect(entry.status).toBe("stopping");
-    expect(stallEvents).toHaveLength(1);
-    expect(stallEvents[0].issueId).toBe("issue-42");
-    expect(stallEvents[0].issueIdentifier).toBe("MT-42");
-    expect(stallEvents[0].silentMs).toBeGreaterThanOrEqual(120000);
-    expect(stallEvents[0].timeoutMs).toBe(60000);
+    expect(result.updatedStallEvents).toHaveLength(1);
+    expect(result.updatedStallEvents![0].issueId).toBe("issue-42");
+    expect(result.updatedStallEvents![0].issueIdentifier).toBe("MT-42");
+    expect(result.updatedStallEvents![0].silentMs).toBeGreaterThanOrEqual(120000);
+    expect(result.updatedStallEvents![0].timeoutMs).toBe(60000);
   });
 
   it("pushes a worker_stalled event for each stalled entry", () => {
@@ -172,9 +173,9 @@ describe("detectAndKillStalledWorkers", () => {
     const entry = makeEntry({ lastEventAtMs: Date.now() - 999999, abortController: ac });
     const ctx = makeCtx([entry], 60000);
 
-    const killed = detectAndKillStalledWorkers(ctx);
+    const result = detectAndKillStalledWorkers(ctx);
 
-    expect(killed).toBe(0);
+    expect(result.killed).toBe(0);
     expect(ctx.pushedEvents).toHaveLength(0);
   });
 
@@ -197,9 +198,9 @@ describe("detectAndKillStalledWorkers", () => {
       pushedEvents,
     };
 
-    const killed = detectAndKillStalledWorkers(ctx);
+    const result = detectAndKillStalledWorkers(ctx);
 
-    expect(killed).toBe(1);
+    expect(result.killed).toBe(1);
     expect(fresh.abortController.signal.aborted).toBe(false);
     expect(stalled.abortController.signal.aborted).toBe(true);
   });
@@ -217,38 +218,53 @@ describe("detectAndKillStalledWorkers", () => {
     const entry = makeEntry({ lastEventAtMs: Date.now() - 120000 });
     const ctx = makeCtx([entry], 60000, existing);
 
-    detectAndKillStalledWorkers(ctx);
+    const result = detectAndKillStalledWorkers(ctx);
 
-    expect(ctx.stallEvents).toHaveLength(100);
+    expect(result.updatedStallEvents).toHaveLength(100);
     // The new entry was appended and the oldest was shifted out
-    expect(ctx.stallEvents.at(-1)?.issueIdentifier).toBe("MT-1");
+    expect(result.updatedStallEvents!.at(-1)?.issueIdentifier).toBe("MT-1");
   });
 
   it("returns 0 when stallTimeoutMs is negative (disabled)", () => {
     const entry = makeEntry({ lastEventAtMs: Date.now() - 9999999 });
     const ctx = makeCtx([entry], -1);
-    const killed = detectAndKillStalledWorkers(ctx);
-    expect(killed).toBe(0);
+    const result = detectAndKillStalledWorkers(ctx);
+    expect(result.killed).toBe(0);
+    expect(result.updatedStallEvents).toBeNull();
     expect(entry.abortController.signal.aborted).toBe(false);
   });
 
   it("does NOT abort entry at exactly the timeout boundary", () => {
     // silentMs === stallTimeoutMs should NOT trigger abort (uses <=)
-    const now = Date.now();
-    const entry = makeEntry({ lastEventAtMs: now - 60000 });
-    const ctx = makeCtx([entry], 60000);
-    // At exactly 60000ms, silentMs <= stallTimeoutMs -> continue (not killed)
-    const killed = detectAndKillStalledWorkers(ctx);
-    expect(killed).toBe(0);
-    expect(entry.abortController.signal.aborted).toBe(false);
+    // Freeze time so both makeEntry and detectAndKillStalledWorkers see the same Date.now()
+    vi.useFakeTimers();
+    try {
+      const now = Date.now();
+      vi.setSystemTime(now);
+      const entry = makeEntry({ lastEventAtMs: now - 60000 });
+      const ctx = makeCtx([entry], 60000);
+      // At exactly 60000ms, silentMs <= stallTimeoutMs -> continue (not killed)
+      const result = detectAndKillStalledWorkers(ctx);
+      expect(result.killed).toBe(0);
+      expect(entry.abortController.signal.aborted).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("aborts entry one ms past the timeout boundary", () => {
-    const entry = makeEntry({ lastEventAtMs: Date.now() - 60001 });
-    const ctx = makeCtx([entry], 60000);
-    const killed = detectAndKillStalledWorkers(ctx);
-    expect(killed).toBe(1);
-    expect(entry.abortController.signal.aborted).toBe(true);
+    vi.useFakeTimers();
+    try {
+      const now = Date.now();
+      vi.setSystemTime(now);
+      const entry = makeEntry({ lastEventAtMs: now - 60001 });
+      const ctx = makeCtx([entry], 60000);
+      const result = detectAndKillStalledWorkers(ctx);
+      expect(result.killed).toBe(1);
+      expect(entry.abortController.signal.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("aborts with 'stalled' reason string", () => {
@@ -291,10 +307,10 @@ describe("detectAndKillStalledWorkers", () => {
     }));
     const entry = makeEntry({ lastEventAtMs: Date.now() - 120000 });
     const ctx = makeCtx([entry], 60000, existing);
-    detectAndKillStalledWorkers(ctx);
+    const result = detectAndKillStalledWorkers(ctx);
     // 99 existing + 1 new = 100, exactly at cap, no shift
-    expect(ctx.stallEvents).toHaveLength(100);
+    expect(result.updatedStallEvents).toHaveLength(100);
     // First element is still the original first
-    expect(ctx.stallEvents[0].issueId).toBe("issue-0");
+    expect(result.updatedStallEvents![0].issueId).toBe("issue-0");
   });
 });

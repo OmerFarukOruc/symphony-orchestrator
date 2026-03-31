@@ -59,13 +59,13 @@ function deriveWorkspaceConfig(
   hooks: Record<string, unknown>,
   secretResolver?: (name: string) => string | undefined,
 ): ServiceConfig["workspace"] {
-  const workspaceRoot = resolvePathConfigString(asString(workspace.root, "../symphony-workspaces"), secretResolver);
+  const workspaceRoot = resolvePathConfigString(asString(workspace.root, "../risoluto-workspaces"), secretResolver);
   const rawHookTimeoutMs = asNumber(hooks.timeout_ms, 60000);
   const hookTimeoutMs = rawHookTimeoutMs > 0 ? rawHookTimeoutMs : 60000;
 
   const rawStrategy = asString(workspace.strategy, "directory");
   const strategy: ServiceConfig["workspace"]["strategy"] = rawStrategy === "worktree" ? "worktree" : "directory";
-  const branchPrefix = asString(workspace.branch_prefix, "symphony/");
+  const branchPrefix = asString(workspace.branch_prefix, "risoluto/");
 
   return {
     root: path.resolve(workspaceRoot),
@@ -150,7 +150,7 @@ function deriveSandboxConfig(sandbox: Record<string, unknown>): ServiceConfig["c
   const sandboxLogs = asRecord(sandbox.logs);
 
   return {
-    image: asString(sandbox.image, "symphony-codex:latest"),
+    image: asString(sandbox.image, "risoluto-codex:latest"),
     network: asString(sandbox.network, ""),
     security: deriveSandboxSecurityConfig(sandboxSecurity),
     resources: deriveSandboxResourcesConfig(sandboxResources),

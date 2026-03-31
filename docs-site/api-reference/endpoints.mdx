@@ -1,0 +1,104 @@
+---
+title: Endpoints
+description: "Complete list of all Risoluto API endpoints with methods, paths, and descriptions."
+---
+
+# API Endpoints
+
+## Runtime & State
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/metrics` | Prometheus-format service metrics |
+| `GET` | `/api/v1/runtime` | Runtime metadata — version, data dir, provider |
+| `GET` | `/api/v1/state` | Full snapshot — queued, running, completed, token totals |
+| `POST` | `/api/v1/refresh` | Trigger immediate reconciliation pass |
+| `GET` | `/api/v1/transitions` | Available workflow transitions per issue |
+| `GET` | `/api/v1/models` | List available Codex models from provider |
+
+## Issues
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/:identifier` | Issue detail with recent events and attempts |
+| `GET` | `/api/v1/:identifier/attempts` | Archived attempts + current live attempt ID |
+| `GET` | `/api/v1/attempts/:attempt_id` | Per-attempt event timeline |
+| `POST` | `/api/v1/:identifier/model` | Save per-issue model override |
+| `POST` | `/api/v1/:identifier/transition` | Transition issue to another workflow state |
+| `POST` | `/api/v1/:identifier/abort` | Abort a running issue |
+| `POST` | `/api/v1/:identifier/steer` | Inject steering message into running agent |
+
+## Configuration
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/config` | Effective merged operator config |
+| `GET` | `/api/v1/config/schema` | Config schema and example payloads |
+| `GET` | `/api/v1/config/overlay` | Persistent overlay values only |
+| `PUT` | `/api/v1/config/overlay` | Apply an overlay patch |
+| `PATCH` | `/api/v1/config/overlay/:path` | Set one overlay path |
+| `DELETE` | `/api/v1/config/overlay/:path` | Remove one overlay path |
+
+## Secrets
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/secrets` | List configured secret keys |
+| `POST` | `/api/v1/secrets/:key` | Store one secret |
+| `DELETE` | `/api/v1/secrets/:key` | Delete one secret |
+
+## Setup Wizard
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/setup/status` | Wizard completion status per step |
+| `POST` | `/api/v1/setup/master-key` | Generate encryption master key |
+| `GET` | `/api/v1/setup/linear-projects` | List Linear projects |
+| `POST` | `/api/v1/setup/linear-project` | Save selected Linear project |
+| `POST` | `/api/v1/setup/openai-key` | Validate and store OpenAI key |
+| `POST` | `/api/v1/setup/codex-auth` | Upload `auth.json` |
+| `POST` | `/api/v1/setup/pkce-auth/start` | Start browser PKCE login |
+| `GET` | `/api/v1/setup/pkce-auth/status` | Poll PKCE auth status |
+| `POST` | `/api/v1/setup/pkce-auth/cancel` | Cancel active PKCE flow |
+| `POST` | `/api/v1/setup/github-token` | Validate and store GitHub PAT |
+| `POST` | `/api/v1/setup/create-test-issue` | Create a smoke test issue |
+| `POST` | `/api/v1/setup/create-label` | Create a workflow label |
+| `POST` | `/api/v1/setup/create-project` | Create a new tracker project |
+| `GET` | `/api/v1/setup/repo-routes` | List repo routing rules |
+| `POST` | `/api/v1/setup/repo-route` | Add a repo routing rule |
+| `DELETE` | `/api/v1/setup/repo-route/:index` | Remove a repo routing rule |
+| `POST` | `/api/v1/setup/detect-default-branch` | Detect repo default branch |
+| `POST` | `/api/v1/setup/reset` | Clear secrets and restart setup |
+
+## Templates
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/templates` | List prompt templates |
+| `POST` | `/api/v1/templates` | Create a template |
+| `GET` | `/api/v1/templates/:id` | Get template by ID |
+| `PUT` | `/api/v1/templates/:id` | Update a template |
+| `DELETE` | `/api/v1/templates/:id` | Delete a template |
+| `POST` | `/api/v1/templates/:id/preview` | Preview rendered template |
+
+## Events & Audit
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/events` | SSE stream of real-time events |
+| `GET` | `/api/v1/audit` | Query audit log entries |
+
+## Git & Workspaces
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/git/context` | Git repo context and routes |
+| `GET` | `/api/v1/workspaces` | Workspace inventory with disk usage |
+| `DELETE` | `/api/v1/workspaces/:key` | Remove a workspace |
+
+## OpenAPI
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/openapi.json` | OpenAPI 3.0 specification |
+| `GET` | `/api/docs` | Swagger UI |

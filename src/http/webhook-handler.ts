@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import type { Response } from "express";
 
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 import type { ApiErrorResponse } from "./service-errors.js";
 import type { LinearWebhookPayload, WebhookRequest } from "./webhook-types.js";
 
@@ -16,7 +16,7 @@ export interface WebhookHandlerDeps {
   requestRefresh: (reason: string) => void;
   /** Record a verified delivery in the health tracker. */
   recordVerifiedDelivery: (eventType: string) => void;
-  logger: SymphonyLogger;
+  logger: RisolutoLogger;
 }
 
 /**

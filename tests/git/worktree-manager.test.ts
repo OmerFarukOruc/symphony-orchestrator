@@ -92,11 +92,11 @@ describe("worktree-manager", () => {
       createContext(runGit),
       "/tmp/base/backend.git",
       "/tmp/worktrees/NIN-42",
-      "symphony/nin-42",
+      "risoluto/nin-42",
       "main",
     );
 
-    expect(calls).toEqual([["worktree", "add", "-b", "symphony/nin-42", "/tmp/worktrees/NIN-42", "main"]]);
+    expect(calls).toEqual([["worktree", "add", "-b", "risoluto/nin-42", "/tmp/worktrees/NIN-42", "main"]]);
   });
 
   it("attaches an existing branch as a worktree", async () => {
@@ -106,9 +106,9 @@ describe("worktree-manager", () => {
       return { stdout: "", stderr: "" };
     };
 
-    await attachWorktree(createContext(runGit), "/tmp/base/backend.git", "/tmp/worktrees/NIN-42", "symphony/nin-42");
+    await attachWorktree(createContext(runGit), "/tmp/base/backend.git", "/tmp/worktrees/NIN-42", "risoluto/nin-42");
 
-    expect(calls).toEqual([["worktree", "add", "/tmp/worktrees/NIN-42", "symphony/nin-42"]]);
+    expect(calls).toEqual([["worktree", "add", "/tmp/worktrees/NIN-42", "risoluto/nin-42"]]);
   });
 
   it("removes a worktree and prunes metadata", async () => {
@@ -176,9 +176,9 @@ describe("worktree-manager", () => {
   });
 
   it("detects when a branch exists", async () => {
-    const runGit = vi.fn<GitRunner>(async () => ({ stdout: "refs/heads/symphony/nin-42\n", stderr: "" }));
+    const runGit = vi.fn<GitRunner>(async () => ({ stdout: "refs/heads/risoluto/nin-42\n", stderr: "" }));
 
-    await expect(branchExists(createContext(runGit), "/tmp/base/backend.git", "symphony/nin-42")).resolves.toBe(true);
+    await expect(branchExists(createContext(runGit), "/tmp/base/backend.git", "risoluto/nin-42")).resolves.toBe(true);
   });
 
   it("detects when a branch is missing", async () => {
@@ -186,6 +186,6 @@ describe("worktree-manager", () => {
       throw new Error("missing branch");
     });
 
-    await expect(branchExists(createContext(runGit), "/tmp/base/backend.git", "symphony/nin-42")).resolves.toBe(false);
+    await expect(branchExists(createContext(runGit), "/tmp/base/backend.git", "risoluto/nin-42")).resolves.toBe(false);
   });
 });

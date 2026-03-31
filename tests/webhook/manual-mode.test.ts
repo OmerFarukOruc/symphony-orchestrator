@@ -1,21 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { evaluateWebhookConfig } from "../../src/cli/services.js";
-import type { SymphonyLogger, WebhookConfig } from "../../src/core/types.js";
+import type { RisolutoLogger, WebhookConfig } from "../../src/core/types.js";
 
-function makeLogger(): SymphonyLogger {
+function makeLogger(): RisolutoLogger {
   return {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn().mockReturnThis(),
-  } as unknown as SymphonyLogger;
+  } as unknown as RisolutoLogger;
 }
 
 function makeWebhookConfig(overrides: Partial<WebhookConfig> = {}): WebhookConfig {
   return {
-    webhookUrl: "https://symphony.example.com/webhooks/linear",
+    webhookUrl: "https://risoluto.example.com/webhooks/linear",
     webhookSecret: "whsec_test_secret_value",
     pollingStretchMs: 120000,
     pollingBaseMs: 15000,
@@ -95,7 +95,7 @@ describe("webhook config integration", () => {
         codex: { command: "codex", auth: { mode: "api_key", source_home: "/tmp" } },
         agent: {},
         webhook: {
-          webhook_url: "https://symphony.example.com/webhooks/linear",
+          webhook_url: "https://risoluto.example.com/webhooks/linear",
           webhook_secret: "whsec_test",
         },
       },
@@ -103,7 +103,7 @@ describe("webhook config integration", () => {
     });
 
     expect(config.webhook).not.toBeNull();
-    expect(config.webhook?.webhookUrl).toBe("https://symphony.example.com/webhooks/linear");
+    expect(config.webhook?.webhookUrl).toBe("https://risoluto.example.com/webhooks/linear");
     expect(config.webhook?.webhookSecret).toBe("whsec_test");
     expect(config.webhook?.pollingStretchMs).toBe(120000);
     expect(config.webhook?.pollingBaseMs).toBe(15000);
@@ -147,14 +147,14 @@ describe("webhook config integration", () => {
         codex: { command: "codex", auth: { mode: "api_key", source_home: "/tmp" } },
         agent: {},
         webhook: {
-          webhook_url: "https://symphony.example.com/webhooks/linear",
+          webhook_url: "https://risoluto.example.com/webhooks/linear",
         },
       },
       promptTemplate: "Work on the issue.",
     });
 
     expect(config.webhook).not.toBeNull();
-    expect(config.webhook?.webhookUrl).toBe("https://symphony.example.com/webhooks/linear");
+    expect(config.webhook?.webhookUrl).toBe("https://risoluto.example.com/webhooks/linear");
     expect(config.webhook?.webhookSecret).toBe("");
   });
 });

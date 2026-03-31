@@ -1,5 +1,5 @@
 import type { JsonRpcConnection } from "../agent/json-rpc-connection.js";
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 import { asRecord, asString } from "./helpers.js";
 import { toErrorString } from "../utils/type-guards.js";
 
@@ -11,7 +11,7 @@ export interface SelfReviewResult {
 export async function runSelfReview(
   connection: JsonRpcConnection,
   threadId: string,
-  logger: SymphonyLogger,
+  logger: RisolutoLogger,
 ): Promise<SelfReviewResult | null> {
   try {
     const result = await connection.request("review/start", {

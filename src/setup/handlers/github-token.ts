@@ -15,7 +15,7 @@ export function handlePostGithubToken(deps: SetupApiDeps) {
     let valid: boolean;
     try {
       const ghResponse = await fetch("https://api.github.com/user", {
-        headers: { authorization: `token ${token}`, "user-agent": "Symphony-Orchestrator" },
+        headers: { authorization: `token ${token}`, "user-agent": "Risoluto" },
       });
       valid = ghResponse.ok;
     } catch {

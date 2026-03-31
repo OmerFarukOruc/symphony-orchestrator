@@ -196,7 +196,7 @@ describe("worker-outcome branch invariants", () => {
     // Test A: DONE keeps the claim
     const ctxDone = makeCtx();
     const entryDone = makeEntry({
-      lastAgentMessageContent: "SYMPHONY_STATUS: DONE",
+      lastAgentMessageContent: "RISOLUTO_STATUS: DONE",
     });
     ctxDone.runningEntries.set("issue-1", entryDone);
 
@@ -207,7 +207,7 @@ describe("worker-outcome branch invariants", () => {
     // Test B: BLOCKED releases the claim
     const ctxBlocked = makeCtx();
     const entryBlocked = makeEntry({
-      lastAgentMessageContent: "SYMPHONY_STATUS: BLOCKED",
+      lastAgentMessageContent: "RISOLUTO_STATUS: BLOCKED",
     });
     ctxBlocked.runningEntries.set("issue-1", entryBlocked);
 
@@ -244,7 +244,7 @@ describe("worker-outcome branch invariants", () => {
   it("fire-and-forget writeback ordering: completedView set synchronously before writeLinearCompletion", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
-      lastAgentMessageContent: "SYMPHONY_STATUS: DONE",
+      lastAgentMessageContent: "RISOLUTO_STATUS: DONE",
     });
     ctx.runningEntries.set("issue-1", entry);
 

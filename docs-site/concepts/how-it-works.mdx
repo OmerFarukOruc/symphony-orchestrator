@@ -1,0 +1,135 @@
+---
+title: How It Works
+description: "Understand Risoluto's architecture — from issue polling to sandboxed agent execution to PR delivery."
+---
+
+# How It Works
+
+Risoluto is a **local orchestration engine** that connects your issue tracker to AI coding agents. Here's the full pipeline:
+
+```mermaid
+flowchart LR
+    A["🗂️ Linear\nIssue Tracker"] -->|poll| B["🎵 Risoluto\nOrchestrator"]
+    B -->|create| C["📁 Workspace\nPer-Issue Dir"]
+    C -->|mount| D["🐳 Docker\nSandbox"]
+    D -->|run| E["🤖 Codex\nAI Agent"]
+    E -->|commit| F["🔀 GitHub\nPull Request"]
+
+    style B fill:#6366f1,stroke:#4f46e5,color:#fff
+    style D fill:#d97706,stroke:#b45309,color:#fff
+    style F fill:#059669,stroke:#047857,color:#fff
+```
+
+## The Pipeline
+
+### 1. Polling
+
+Risoluto polls Linear on a configurable interval (default: 30 seconds) looking for issues in active states (typically "In Progress"). Issues are sorted by priority, then by age.
+
+### 2. Workspace Creation
+
+Each issue gets its own isolated directory under `workspace.root`. Two strategies are available:
+
+| Strategy | How it works | Disk usage |
+|----------|-------------|------------|
+| **`directory`** (default) | Full `git clone` per issue | Higher — full repo each time |
+| **`worktree`** | Git worktree from a shared bare clone | Lower — shares object store |
+
+### 3. Sandbox Execution
+
+Risoluto launches a Docker container for each issue:
+
+- **Image**: `risoluto-codex:latest` (Node 22 + Codex CLI)
+- **Isolation**: Workspace bind-mounted at its original path
+- **Permissions**: Runs as your UID/GID — no ownership drift
+- **Resources**: Configurable memory, CPU, and tmpfs limits
+- **Security**: `--cap-drop=ALL`, `--security-opt=no-new-privileges`, optional egress allowlist
+
+### 4. Agent Execution
+
+Inside the container, the Codex agent:
+
+- Reads the issue description as its task
+- Has access to the full repository in its workspace
+- Executes tools (file edits, shell commands, etc.) per the configured approval policy
+- Reports progress via JSON-RPC events streamed back to Risoluto
+
+### 5. Delivery
+
+When the agent completes successfully:
+
+1. Risoluto commits changes to a feature branch
+2. Opens a GitHub pull request
+3. Transitions the Linear issue to the configured success state
+4. Sends a Slack notification (if configured)
+
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+    subgraph Host ["🖥️ Host Machine"]
+        SYM["🎵 Risoluto\nport 4000"]
+        LINEAR["🗂️ Linear API"]
+    end
+
+    subgraph Docker ["🐳 Docker Containers"]
+        CX1["🤖 Worker 1"]
+        CX2["🤖 Worker 2"]
+        CXN["🤖 Worker N"]
+    end
+
+    SYM -->|poll| LINEAR
+    SYM -->|spawn| CX1
+    SYM -->|spawn| CX2
+    SYM -->|spawn| CXN
+
+    style SYM fill:#6366f1,stroke:#4f46e5,color:#fff
+    style CX1 fill:#d97706,stroke:#b45309,color:#fff
+    style CX2 fill:#d97706,stroke:#b45309,color:#fff
+    style CXN fill:#d97706,stroke:#b45309,color:#fff
+```
+
+## Lifecycle Hooks
+
+Workspaces support lifecycle hooks at each stage:
+
+```mermaid
+flowchart LR
+    A["📁 Created"] -->|after_create| B["🔧 Before Run"]
+    B -->|before_run| C["🤖 Worker Active"]
+    C -->|after_run| D["🧹 Before Removal"]
+    D -->|before_remove| E["🗑️ Cleaned Up"]
+
+    style A fill:#059669,stroke:#047857,color:#fff
+    style C fill:#6366f1,stroke:#4f46e5,color:#fff
+    style E fill:#6b7280,stroke:#4b5563,color:#fff
+```
+
+Use hooks to run linters, install dependencies, or clean up artifacts at each stage.
+
+## Concurrency & Scheduling
+
+- **Global limit**: `agent.maxConcurrentAgents` (default: 10)
+- **Per-state limits**: `agent.maxConcurrentAgentsByState` (e.g., `{"In Progress": 5}`)
+- **Priority sorting**: Higher priority issues are dispatched first
+- **Blocked suppression**: Issues in blocked states are skipped automatically
+
+## Retry & Recovery
+
+When an agent fails, Risoluto applies exponential backoff:
+
+- Retries up to `agent.maxContinuationAttempts` times (default: 5)
+- Backoff capped at `agent.maxRetryBackoffMs` (default: 5 minutes)
+- OOM kills (exit code 137) are detected and surfaced as `container_oom`
+- Stalled agents (no events for `agent.stallTimeoutMs`) are killed
+
+## Data Storage
+
+All runtime state lives in a single directory (default: `~/.risoluto/`):
+
+| Path | Purpose |
+|------|---------|
+| `risoluto.db` | SQLite database — attempts, events, issue index |
+| `config/overlay.yaml` | Persistent operator config |
+| `master.key` | AES encryption key |
+| `secrets.enc` | Encrypted credential store |

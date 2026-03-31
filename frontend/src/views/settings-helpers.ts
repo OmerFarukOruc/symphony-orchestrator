@@ -242,7 +242,7 @@ function buildSchemaSections(schema: Record<string, unknown> | null): SettingsSe
     parsedSections.push({
       id: String(record.id ?? record.title ?? "section")
         .toLowerCase()
-        .replace(/\s+/g, "-"),
+        .replaceAll(/\s+/g, "-"),
       title: String(record.title ?? "Section"),
       description: String(record.description ?? "Schema-defined settings section."),
       badge: String(record.badge ?? "schema"),

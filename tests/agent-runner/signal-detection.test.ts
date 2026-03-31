@@ -2,15 +2,23 @@ import { describe, expect, it } from "vitest";
 import { detectStopSignal } from "../../src/core/signal-detection.js";
 
 describe("detectStopSignal", () => {
-  it("returns 'done' for SYMPHONY_STATUS: DONE", () => {
+  it("returns 'done' for RISOLUTO_STATUS: DONE", () => {
+    expect(detectStopSignal("Task complete.\n\nRISOLUTO_STATUS: DONE")).toBe("done");
+  });
+
+  it("returns 'done' for RISOLUTO STATUS: DONE (without underscore)", () => {
+    expect(detectStopSignal("RISOLUTO STATUS: DONE")).toBe("done");
+  });
+
+  it("returns 'blocked' for RISOLUTO_STATUS: BLOCKED", () => {
+    expect(detectStopSignal("I am stuck.\n\nRISOLUTO_STATUS: BLOCKED")).toBe("blocked");
+  });
+
+  it("returns 'done' for legacy SYMPHONY_STATUS: DONE", () => {
     expect(detectStopSignal("Task complete.\n\nSYMPHONY_STATUS: DONE")).toBe("done");
   });
 
-  it("returns 'done' for SYMPHONY STATUS: DONE (without underscore)", () => {
-    expect(detectStopSignal("SYMPHONY STATUS: DONE")).toBe("done");
-  });
-
-  it("returns 'blocked' for SYMPHONY_STATUS: BLOCKED", () => {
+  it("returns 'blocked' for legacy SYMPHONY_STATUS: BLOCKED", () => {
     expect(detectStopSignal("I am stuck.\n\nSYMPHONY_STATUS: BLOCKED")).toBe("blocked");
   });
 
@@ -23,19 +31,19 @@ describe("detectStopSignal", () => {
   });
 
   it("is case-insensitive", () => {
-    expect(detectStopSignal("symphony_status: done")).toBe("done");
-    expect(detectStopSignal("Symphony_Status: Done")).toBe("done");
+    expect(detectStopSignal("risoluto_status: done")).toBe("done");
+    expect(detectStopSignal("Risoluto_Status: Done")).toBe("done");
   });
 
   it("handles extra whitespace", () => {
-    expect(detectStopSignal("SYMPHONY_STATUS:   DONE")).toBe("done");
+    expect(detectStopSignal("RISOLUTO_STATUS:   DONE")).toBe("done");
   });
 
   it("detects DONE embedded in longer message", () => {
     const longMessage =
       "NIN-10 is complete. CHANGELOG.md has been added.\n\n" +
       "There is no further in-scope work.\n\n" +
-      "SYMPHONY_STATUS: DONE";
+      "RISOLUTO_STATUS: DONE";
     expect(detectStopSignal(longMessage)).toBe("done");
   });
 
@@ -59,11 +67,11 @@ describe("detectStopSignal", () => {
     });
 
     it("falls through to text matching for malformed JSON", () => {
-      expect(detectStopSignal("{bad json SYMPHONY_STATUS: DONE")).toBe("done");
+      expect(detectStopSignal("{bad json RISOLUTO_STATUS: DONE")).toBe("done");
     });
 
     it("falls through to text matching for JSON without status field", () => {
-      expect(detectStopSignal('{"result":"ok"}\nSYMPHONY_STATUS: BLOCKED')).toBe("blocked");
+      expect(detectStopSignal('{"result":"ok"}\nRISOLUTO_STATUS: BLOCKED')).toBe("blocked");
     });
   });
 });

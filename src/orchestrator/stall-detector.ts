@@ -22,7 +22,7 @@ export interface StallEvent {
 
 export interface StallDetectorContext {
   runningEntries: Map<string, RunningEntry>;
-  stallEvents: StallEvent[];
+  stallEvents: readonly StallEvent[];
   getConfig: () => ServiceConfig;
   pushEvent: RuntimeEventSink;
   logger: {
@@ -31,21 +31,27 @@ export interface StallDetectorContext {
 }
 
 /** Maximum stall events kept in memory for the dashboard timeline. */
-const MAX_STALL_EVENTS = 100;
+export const MAX_STALL_EVENTS = 100;
+
+export interface StallDetectorResult {
+  killed: number;
+  /** New stall events array (capped at MAX_STALL_EVENTS), or null if unchanged. */
+  updatedStallEvents: StallEvent[] | null;
+}
 
 /**
  * Scan running entries for stalled agents and abort them.
- * Records a `StallEvent` for each stalled agent, capped at `MAX_STALL_EVENTS`.
- *
- * @returns Number of agents that were aborted.
+ * Returns the kill count and a new stall events array (immutable — never mutates
+ * the input `ctx.stallEvents`).
  */
-export function detectAndKillStalledWorkers(ctx: StallDetectorContext): number {
+export function detectAndKillStalledWorkers(ctx: StallDetectorContext): StallDetectorResult {
   const config = ctx.getConfig();
   const stallTimeoutMs = config.codex.stallTimeoutMs;
-  if (stallTimeoutMs <= 0) return 0;
+  if (stallTimeoutMs <= 0) return { killed: 0, updatedStallEvents: null };
 
   const now = Date.now();
   let killed = 0;
+  const newEvents: StallEvent[] = [];
 
   for (const entry of ctx.runningEntries.values()) {
     if (entry.abortController.signal.aborted) continue;
@@ -63,11 +69,7 @@ export function detectAndKillStalledWorkers(ctx: StallDetectorContext): number {
       silentMs,
       timeoutMs: stallTimeoutMs,
     };
-
-    ctx.stallEvents.push(stallEvent);
-    if (ctx.stallEvents.length > MAX_STALL_EVENTS) {
-      ctx.stallEvents.shift();
-    }
+    newEvents.push(stallEvent);
 
     ctx.logger.warn(
       {
@@ -88,5 +90,13 @@ export function detectAndKillStalledWorkers(ctx: StallDetectorContext): number {
     });
   }
 
-  return killed;
+  if (newEvents.length === 0) {
+    return { killed: 0, updatedStallEvents: null };
+  }
+
+  const combined = [...ctx.stallEvents, ...newEvents];
+  const updatedStallEvents =
+    combined.length > MAX_STALL_EVENTS ? combined.slice(combined.length - MAX_STALL_EVENTS) : combined;
+
+  return { killed, updatedStallEvents };
 }

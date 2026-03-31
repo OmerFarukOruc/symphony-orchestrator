@@ -47,16 +47,16 @@ function createLogfmtTestLogger(level = "info"): { logger: pino.Logger; lines: s
 }
 
 describe("logger", () => {
-  const savedLogFormat = process.env.SYMPHONY_LOG_FORMAT;
+  const savedLogFormat = process.env.RISOLUTO_LOG_FORMAT;
   const savedLogLevel = process.env.LOG_LEVEL;
 
   beforeEach(() => {
-    delete process.env.SYMPHONY_LOG_FORMAT;
+    delete process.env.RISOLUTO_LOG_FORMAT;
     delete process.env.LOG_LEVEL;
   });
 
   afterEach(() => {
-    process.env.SYMPHONY_LOG_FORMAT = savedLogFormat;
+    process.env.RISOLUTO_LOG_FORMAT = savedLogFormat;
     process.env.LOG_LEVEL = savedLogLevel;
   });
 
@@ -65,13 +65,13 @@ describe("logger", () => {
       expect(resolveLogFormat()).toBe("logfmt");
     });
 
-    it('returns "json" when SYMPHONY_LOG_FORMAT=json', () => {
-      process.env.SYMPHONY_LOG_FORMAT = "json";
+    it('returns "json" when RISOLUTO_LOG_FORMAT=json', () => {
+      process.env.RISOLUTO_LOG_FORMAT = "json";
       expect(resolveLogFormat()).toBe("json");
     });
 
-    it("returns logfmt for unknown SYMPHONY_LOG_FORMAT values", () => {
-      process.env.SYMPHONY_LOG_FORMAT = "unknown";
+    it("returns logfmt for unknown RISOLUTO_LOG_FORMAT values", () => {
+      process.env.RISOLUTO_LOG_FORMAT = "unknown";
       expect(resolveLogFormat()).toBe("logfmt");
     });
   });
@@ -162,19 +162,17 @@ describe("logger", () => {
   describe("createLogger integration", () => {
     it("creates a logger with default format", () => {
       const logger = createLogger();
-      expect(logger).toBeDefined();
       expect(logger.info).toBeTypeOf("function");
       expect(logger.child).toBeTypeOf("function");
     });
 
     it("creates a logger with JSON format", () => {
-      process.env.SYMPHONY_LOG_FORMAT = "json";
+      process.env.RISOLUTO_LOG_FORMAT = "json";
       const logger = createLogger();
-      expect(logger).toBeDefined();
       expect(logger.info).toBeTypeOf("function");
     });
 
-    it("child logger inherits the SymphonyLogger interface", () => {
+    it("child logger inherits the RisolutoLogger interface", () => {
       const logger = createLogger();
       const child = logger.child({ component: "test" });
       expect(child.debug).toBeTypeOf("function");

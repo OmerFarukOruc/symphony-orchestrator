@@ -62,7 +62,7 @@ function makeEntry(overrides: Partial<RunningEntry> = {}): RunningEntry {
     sessionId: "sess-1",
     tokenUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
     modelSelection: { model: "gpt-4o", reasoningEffort: "high", source: "default" },
-    lastAgentMessageContent: "SYMPHONY_STATUS: DONE",
+    lastAgentMessageContent: "RISOLUTO_STATUS: DONE",
     repoMatch: null,
     queuePersistence: () => undefined,
     flushPersistence: vi.fn().mockResolvedValue(undefined),
@@ -138,10 +138,10 @@ function makeCtx(
   };
 }
 
-describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: DONE", () => {
+describe("writeLinearCompletion — via handleWorkerOutcome + RISOLUTO_STATUS: DONE", () => {
   it("transitions issue state when successState is configured and stateId is found", async () => {
     const ctx = makeCtx({ successState: "Done", resolveStateIdResult: "state-done-id" });
-    const entry = makeEntry({ lastAgentMessageContent: "SYMPHONY_STATUS: DONE" });
+    const entry = makeEntry({ lastAgentMessageContent: "RISOLUTO_STATUS: DONE" });
     ctx.runningEntries.set("issue-1", entry);
 
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
@@ -151,13 +151,13 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: D
     expect(ctx.deps.tracker.updateIssueState).toHaveBeenCalledWith("issue-1", "state-done-id");
     expect(ctx.deps.tracker.createComment).toHaveBeenCalledWith(
       "issue-1",
-      expect.stringContaining("Symphony agent completed"),
+      expect.stringContaining("Risoluto agent completed"),
     );
   });
 
   it("skips state transition but still posts comment when successState resolves to null", async () => {
     const ctx = makeCtx({ successState: "Done", resolveStateIdResult: null });
-    const entry = makeEntry({ lastAgentMessageContent: "SYMPHONY_STATUS: DONE" });
+    const entry = makeEntry({ lastAgentMessageContent: "RISOLUTO_STATUS: DONE" });
     ctx.runningEntries.set("issue-1", entry);
 
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
@@ -170,7 +170,7 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: D
 
   it("skips state transition when successState is null", async () => {
     const ctx = makeCtx({ successState: null });
-    const entry = makeEntry({ lastAgentMessageContent: "SYMPHONY_STATUS: DONE" });
+    const entry = makeEntry({ lastAgentMessageContent: "RISOLUTO_STATUS: DONE" });
     ctx.runningEntries.set("issue-1", entry);
 
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
@@ -183,7 +183,7 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: D
 
   it("swallows resolveStateId error and still posts comment", async () => {
     const ctx = makeCtx({ successState: "Done", resolveStateIdError: new Error("Linear API down") });
-    const entry = makeEntry({ lastAgentMessageContent: "SYMPHONY_STATUS: DONE" });
+    const entry = makeEntry({ lastAgentMessageContent: "RISOLUTO_STATUS: DONE" });
     ctx.runningEntries.set("issue-1", entry);
 
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
@@ -200,7 +200,7 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: D
   it("includes token usage in the comment body", async () => {
     const ctx = makeCtx({ successState: null });
     const entry = makeEntry({
-      lastAgentMessageContent: "SYMPHONY_STATUS: DONE",
+      lastAgentMessageContent: "RISOLUTO_STATUS: DONE",
       tokenUsage: { inputTokens: 1000, outputTokens: 500, totalTokens: 1500 },
     });
     ctx.runningEntries.set("issue-1", entry);
@@ -215,10 +215,10 @@ describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: D
   });
 });
 
-describe("writeLinearCompletion — via handleWorkerOutcome + SYMPHONY_STATUS: BLOCKED", () => {
+describe("writeLinearCompletion — via handleWorkerOutcome + RISOLUTO_STATUS: BLOCKED", () => {
   it("posts comment for BLOCKED but does NOT transition state even with successState configured", async () => {
     const ctx = makeCtx({ successState: "Done", resolveStateIdResult: "state-done-id" });
-    const entry = makeEntry({ lastAgentMessageContent: "SYMPHONY_STATUS: BLOCKED" });
+    const entry = makeEntry({ lastAgentMessageContent: "RISOLUTO_STATUS: BLOCKED" });
     ctx.runningEntries.set("issue-1", entry);
 
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);

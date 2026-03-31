@@ -1,0 +1,162 @@
+---
+title: Configuration Reference
+description: "Complete reference for all Risoluto configuration options — codex settings, agent behavior, workspace isolation, and more."
+---
+
+# Configuration Reference
+
+Risoluto's configuration is layered with this merge order:
+
+1. **Built-in defaults**
+2. **WORKFLOW.md** (front-matter YAML)
+3. **Persistent overlay** (`~/.risoluto/config/overlay.yaml`)
+4. **Environment variables** and `$SECRET:name` resolution
+
+## Managing Configuration
+
+<Tabs>
+  <Tab title="API">
+    ```bash
+    # View effective config
+    curl -s http://127.0.0.1:4000/api/v1/config
+
+    # View overlay only
+    curl -s http://127.0.0.1:4000/api/v1/config/overlay
+
+    # Update overlay
+    curl -s -X PUT http://127.0.0.1:4000/api/v1/config/overlay \
+      -H 'Content-Type: application/json' \
+      -d '{"codex":{"model":"gpt-5.4"}}'
+
+    # View config schema
+    curl -s http://127.0.0.1:4000/api/v1/config/schema
+    ```
+  </Tab>
+  <Tab title="Dashboard">
+    Use the **System → Configuration** page in the dashboard to edit the overlay visually.
+  </Tab>
+</Tabs>
+
+## Codex — Agent Provider
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `codex.command` | string | `"codex app-server"` | Command to start the Codex agent |
+| `codex.model` | string | `"gpt-5.4"` | Model identifier |
+| `codex.reasoningEffort` | enum | `"high"` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh` |
+| `codex.personality` | string | `"friendly"` | Agent personality/tone |
+| `codex.selfReview` | boolean | `false` | Enable agent self-review |
+| `codex.structuredOutput` | boolean | `false` | Enable structured output mode |
+| `codex.approvalPolicy` | string\|object | reject all | Tool call approval policy |
+| `codex.threadSandbox` | string | `"workspace-write"` | Thread sandbox level |
+| `codex.turnSandboxPolicy` | object | `{type: "workspaceWrite"}` | Per-turn sandbox policy |
+
+### Timeouts
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `codex.readTimeoutMs` | number | `5000` | JSON-RPC read timeout |
+| `codex.turnTimeoutMs` | number | `3600000` | Max duration per turn (1h) |
+| `codex.drainTimeoutMs` | number | `2000` | Drain timeout on shutdown |
+| `codex.startupTimeoutMs` | number | `30000` | Container startup timeout |
+| `codex.stallTimeoutMs` | number | `300000` | Per-turn stall detection (5min) |
+
+### Authentication
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `codex.auth.mode` | enum | `"api_key"` | `api_key` or `openai_login` |
+| `codex.auth.sourceHome` | string | `"~/.codex"` | Path to Codex auth credentials |
+
+### Sandbox — Container Settings
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `codex.sandbox.image` | string | `"risoluto-codex:latest"` | Docker image |
+| `codex.sandbox.network` | string | `""` | Docker network name |
+| `codex.sandbox.extraMounts` | string[] | `[]` | Extra bind mounts |
+| `codex.sandbox.envPassthrough` | string[] | `[]` | Forwarded env vars |
+| `codex.sandbox.egressAllowlist` | string[] | `[]` | Allowed egress domains |
+
+### Sandbox Resources
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `codex.sandbox.resources.memory` | string | `"4g"` | Memory limit |
+| `codex.sandbox.resources.memoryReservation` | string | `"1g"` | Guaranteed memory |
+| `codex.sandbox.resources.memorySwap` | string | `"4g"` | Swap limit |
+| `codex.sandbox.resources.cpus` | string | `"2.0"` | CPU limit |
+| `codex.sandbox.resources.tmpfsSize` | string | `"512m"` | tmpfs mount size |
+
+### Sandbox Security
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `codex.sandbox.security.noNewPrivileges` | boolean | `true` | `--security-opt=no-new-privileges` |
+| `codex.sandbox.security.dropCapabilities` | boolean | `true` | Drop all Linux capabilities |
+| `codex.sandbox.security.gvisor` | boolean | `false` | Enable gVisor runtime |
+| `codex.sandbox.security.seccompProfile` | string | `""` | Custom seccomp profile path |
+
+## Agent — Orchestrator Settings
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `agent.maxConcurrentAgents` | number | `10` | Max simultaneous agents |
+| `agent.maxConcurrentAgentsByState` | object | `{}` | Per-state concurrency limits |
+| `agent.maxTurns` | number | `20` | Max conversation turns per run |
+| `agent.maxRetryBackoffMs` | number | `300000` | Max retry backoff (5min) |
+| `agent.maxContinuationAttempts` | number | `5` | Max continuation turns |
+| `agent.successState` | string | `null` | Linear state on success |
+| `agent.stallTimeoutMs` | number | `1200000` | Agent stall timeout (20min) |
+| `agent.preflightCommands` | string[] | `[]` | Pre-turn shell commands |
+
+## Workspace — Isolation
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `workspace.root` | string | `"../risoluto-workspaces"` | Root directory |
+| `workspace.strategy` | enum | `"directory"` | `directory` or `worktree` |
+| `workspace.branchPrefix` | string | `"risoluto/"` | Branch name prefix |
+
+### Workspace Hooks
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `workspace.hooks.afterCreate` | string | `null` | After workspace creation |
+| `workspace.hooks.beforeRun` | string | `null` | Before each agent run |
+| `workspace.hooks.afterRun` | string | `null` | After each agent run |
+| `workspace.hooks.beforeRemove` | string | `null` | Before workspace removal |
+| `workspace.hooks.timeoutMs` | number | `60000` | Hook execution timeout |
+
+## GitHub Integration
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `github.token` | string | — | GitHub Personal Access Token |
+| `github.apiBaseUrl` | string | `"https://api.github.com"` | GitHub API endpoint |
+
+## Notifications
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `notifications.slack.webhookUrl` | string | — | Slack webhook URL |
+| `notifications.slack.verbosity` | enum | `"critical"` | `off`, `critical`, `verbose` |
+
+## Secrets Management
+
+```bash
+# Store a secret
+curl -s -X POST http://127.0.0.1:4000/api/v1/secrets/SLACK_WEBHOOK_URL \
+  -H 'Content-Type: application/json' \
+  -d '{"value":"https://hooks.slack.com/services/..."}'
+
+# List configured secrets
+curl -s http://127.0.0.1:4000/api/v1/secrets
+
+# Delete a secret
+curl -s -X DELETE http://127.0.0.1:4000/api/v1/secrets/SLACK_WEBHOOK_URL
+```
+
+<Tip>
+  Keep secrets out of committed workflow files. Use `$SECRET:name` references or environment variable expansion like `$LINEAR_API_KEY`.
+</Tip>

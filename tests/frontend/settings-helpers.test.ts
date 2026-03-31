@@ -38,7 +38,7 @@ describe("buildSettingsSections", () => {
   it("includes a credentials section", () => {
     const sections = buildSettingsSections(null, {});
     const cred = sections.find((s) => s.id === "credentials");
-    expect(cred).toBeDefined();
+    expect(cred).toMatchObject({ id: "credentials" });
     expect(cred!.fields[0].kind).toBe("credential");
   });
 
@@ -58,7 +58,7 @@ describe("sectionGroups", () => {
     const sections = buildSettingsSections(null, {});
     const tracker = sections.find((section) => section.id === "tracker");
 
-    expect(tracker).toBeDefined();
+    expect(tracker).toMatchObject({ id: "tracker" });
     const groups = sectionGroups(tracker!);
 
     expect(groups.map((group) => ({ title: group.title, advanced: group.advanced }))).toEqual([
@@ -74,7 +74,7 @@ describe("sectionGroups", () => {
     const sections = buildSettingsSections(null, {});
     const provider = sections.find((section) => section.id === "model-provider-auth");
 
-    expect(provider).toBeDefined();
+    expect(provider).toMatchObject({ id: "model-provider-auth" });
     const groups = sectionGroups(provider!);
 
     expect(groups.map((group) => ({ title: group.title, advanced: group.advanced }))).toEqual([

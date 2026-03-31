@@ -3,16 +3,16 @@ import { describe, expect, it, vi } from "vitest";
 import { wireNotifications, watchConfigChanges } from "../../src/cli/notifications.js";
 import { NotificationManager } from "../../src/notification/manager.js";
 import type { ConfigStore } from "../../src/config/store.js";
-import type { SymphonyLogger } from "../../src/core/types.js";
+import type { RisolutoLogger } from "../../src/core/types.js";
 
-function makeLogger(): SymphonyLogger {
+function makeLogger(): RisolutoLogger {
   return {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn().mockReturnThis(),
-  } as unknown as SymphonyLogger;
+  } as unknown as RisolutoLogger;
 }
 
 function makeConfigStore(slackConfig?: { webhookUrl?: string; verbosity?: string }): ConfigStore {

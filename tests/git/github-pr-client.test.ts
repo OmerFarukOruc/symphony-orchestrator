@@ -248,7 +248,7 @@ describe("GitHubPrClient", () => {
           headers: {
             "content-type": "application/json",
             authorization: "Bearer ghp_test123",
-            "user-agent": "symphony-orchestrator",
+            "user-agent": "risoluto",
           },
         }),
       );

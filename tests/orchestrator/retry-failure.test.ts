@@ -102,10 +102,7 @@ describe("handleRetryLaunchFailure", () => {
     await handleRetryLaunchFailure(ctx, makeIssue(), 2, new Error("bad failure"));
     const detail = ctx.detailViews.get("MT-1") as Record<string, unknown>;
     const completed = ctx.completedViews.get("MT-1") as Record<string, unknown>;
-    expect(detail).toBeDefined();
-    expect(detail.status).toBe("failed");
-    expect(detail.attempt).toBe(2);
-    expect(completed).toBeDefined();
+    expect(detail).toMatchObject({ status: "failed", attempt: 2 });
     expect(completed).toEqual(detail);
   });
 

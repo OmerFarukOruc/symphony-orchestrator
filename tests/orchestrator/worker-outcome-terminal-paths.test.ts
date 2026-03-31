@@ -197,9 +197,10 @@ describe("handleTerminalCleanup", () => {
     await handleTerminalCleanup(ctx, outcome, entry, issue, workspace, modelSelection, 1);
 
     const view = ctx.completedViews.get(issue.identifier);
-    expect(view).toBeDefined();
-    expect(view!.status).toBe("cancelled");
-    expect(view!.message).toBe("workspace cleaned after terminal state");
+    expect(view).toMatchObject({
+      status: "cancelled",
+      message: "workspace cleaned after terminal state",
+    });
   });
 
   it("maps failed outcome kind to failed status", async () => {
@@ -259,9 +260,10 @@ describe("handleInactiveIssue", () => {
     handleInactiveIssue(ctx, makeOutcome(), entry, issue, workspace, modelSelection, null);
 
     const view = ctx.completedViews.get(issue.identifier);
-    expect(view).toBeDefined();
-    expect(view!.status).toBe("paused");
-    expect(view!.message).toBe("issue is no longer active");
+    expect(view).toMatchObject({
+      status: "paused",
+      message: "issue is no longer active",
+    });
   });
 
   it("emits issue.completed event with paused outcome", () => {

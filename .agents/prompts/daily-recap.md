@@ -1,6 +1,6 @@
 # Context
 
-I maintain **Symphony Orchestrator** — an autonomous AI agent orchestration platform
+I maintain **Risoluto** — an autonomous AI agent orchestration platform
 that dispatches coding agents (Codex CLI workers) against Linear issues, manages
 retries/timeouts, persists attempt history, and serves a real-time dashboard.
 

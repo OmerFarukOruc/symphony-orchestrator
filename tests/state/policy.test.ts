@@ -24,7 +24,7 @@ function createConfig(overrides: Partial<ServiceConfig["tracker"]> = {}): Servic
     },
     polling: { intervalMs: 30000 },
     workspace: {
-      root: "/tmp/symphony",
+      root: "/tmp/risoluto",
       hooks: {
         afterCreate: null,
         beforeRun: null,
@@ -57,7 +57,7 @@ function createConfig(overrides: Partial<ServiceConfig["tracker"]> = {}): Servic
       },
       provider: null,
       sandbox: {
-        image: "symphony-codex:latest",
+        image: "risoluto-codex:latest",
         network: "",
         security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false, seccompProfile: "" },
         resources: { memory: "4g", memoryReservation: "1g", memorySwap: "4g", cpus: "2.0", tmpfsSize: "512m" },

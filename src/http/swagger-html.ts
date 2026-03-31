@@ -17,7 +17,7 @@ export function getSwaggerHtml(): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Symphony API Docs</title>
+  <title>Risoluto API Docs</title>
   <link rel="stylesheet" href="${SWAGGER_CDN}/swagger-ui.css" />
 </head>
 <body>

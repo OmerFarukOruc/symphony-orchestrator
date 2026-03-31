@@ -13,9 +13,9 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 
 import { eq } from "drizzle-orm";
 
-import type { SymphonyDatabase } from "../persistence/sqlite/database.js";
+import type { RisolutoDatabase } from "../persistence/sqlite/database.js";
 import { encryptedSecrets } from "../persistence/sqlite/schema.js";
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 
 const ENCRYPTION_ALGORITHM = "aes-256-gcm";
 const IV_BYTE_LENGTH = 12;
@@ -47,8 +47,8 @@ export class DbSecretsStore {
   private readonly listeners = new Set<() => void>();
 
   constructor(
-    private readonly db: SymphonyDatabase,
-    private readonly logger: SymphonyLogger,
+    private readonly db: RisolutoDatabase,
+    private readonly logger: RisolutoLogger,
     private readonly options?: { masterKey?: string },
   ) {}
 

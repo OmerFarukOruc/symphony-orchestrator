@@ -34,34 +34,34 @@ describe("buildStateAndMetricsPaths", () => {
 
   it("includes GET /api/v1/state with expected structure", () => {
     const item = paths["/api/v1/state"] as PathItem;
-    expect(item.get).toBeDefined();
-    expect(item.get.summary).toBeDefined();
+    expect(item).toHaveProperty("get");
+    expect(item.get).toHaveProperty("summary");
     expect(item.get.operationId).toBe("getState");
-    expect(item.get.responses).toBeDefined();
+    expect(item.get).toHaveProperty("responses");
   });
 
   it("includes GET /api/v1/runtime", () => {
     const item = paths["/api/v1/runtime"] as PathItem;
-    expect(item.get).toBeDefined();
+    expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("getRuntime");
   });
 
   it("includes POST /api/v1/refresh", () => {
     const item = paths["/api/v1/refresh"] as PathItem;
-    expect(item.post).toBeDefined();
+    expect(item).toHaveProperty("post");
     expect(item.post.operationId).toBe("postRefresh");
     expect(item.post.responses).toHaveProperty("202");
   });
 
   it("includes GET /api/v1/transitions", () => {
     const item = paths["/api/v1/transitions"] as PathItem;
-    expect(item.get).toBeDefined();
+    expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("getTransitions");
   });
 
   it("includes GET /metrics with text/plain content type", () => {
     const item = paths["/metrics"] as PathItem;
-    expect(item.get).toBeDefined();
+    expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("getMetrics");
     const resp200 = item.get.responses as Record<string, Record<string, Record<string, unknown>>>;
     expect(resp200["200"].content).toHaveProperty("text/plain");
@@ -91,7 +91,7 @@ describe("buildIssuePaths", () => {
 
   it("includes GET /api/v1/{issue_identifier} with parameters", () => {
     const item = paths["/api/v1/{issue_identifier}"] as PathItem;
-    expect(item.get).toBeDefined();
+    expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("getIssueDetail");
     expect(item.get.parameters).toBeInstanceOf(Array);
     expect((item.get.parameters as Array<Record<string, unknown>>).at(0)).toMatchObject({
@@ -103,7 +103,7 @@ describe("buildIssuePaths", () => {
 
   it("includes POST /api/v1/{issue_identifier}/abort with multiple response codes", () => {
     const item = paths["/api/v1/{issue_identifier}/abort"] as PathItem;
-    expect(item.post).toBeDefined();
+    expect(item).toHaveProperty("post");
     expect(item.post.operationId).toBe("abortIssue");
     const responses = item.post.responses as Record<string, unknown>;
     expect(responses).toHaveProperty("202");
@@ -114,29 +114,29 @@ describe("buildIssuePaths", () => {
 
   it("includes POST /api/v1/{issue_identifier}/model with requestBody", () => {
     const item = paths["/api/v1/{issue_identifier}/model"] as PathItem;
-    expect(item.post).toBeDefined();
+    expect(item).toHaveProperty("post");
     expect(item.post.operationId).toBe("updateModel");
-    expect(item.post.requestBody).toBeDefined();
+    expect(item.post).toHaveProperty("requestBody");
     const reqBody = item.post.requestBody as Record<string, unknown>;
     expect(reqBody.required).toBe(true);
   });
 
   it("includes POST /api/v1/{issue_identifier}/transition with requestBody", () => {
     const item = paths["/api/v1/{issue_identifier}/transition"] as PathItem;
-    expect(item.post).toBeDefined();
+    expect(item).toHaveProperty("post");
     expect(item.post.operationId).toBe("transitionIssue");
-    expect(item.post.requestBody).toBeDefined();
+    expect(item.post).toHaveProperty("requestBody");
   });
 
   it("includes GET /api/v1/{issue_identifier}/attempts", () => {
     const item = paths["/api/v1/{issue_identifier}/attempts"] as PathItem;
-    expect(item.get).toBeDefined();
+    expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("listAttempts");
   });
 
   it("includes GET /api/v1/attempts/{attempt_id}", () => {
     const item = paths["/api/v1/attempts/{attempt_id}"] as PathItem;
-    expect(item.get).toBeDefined();
+    expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("getAttemptDetail");
   });
 });
@@ -155,54 +155,54 @@ describe("buildInfrastructurePaths", () => {
   });
 
   it("includes workspace paths", () => {
-    expect(paths["/api/v1/workspaces"]).toBeDefined();
-    expect(paths["/api/v1/workspaces/{workspace_key}"]).toBeDefined();
+    expect(paths).toHaveProperty("/api/v1/workspaces");
+    expect(paths).toHaveProperty("/api/v1/workspaces/{workspace_key}");
 
     const listItem = paths["/api/v1/workspaces"] as PathItem;
-    expect(listItem.get).toBeDefined();
+    expect(listItem).toHaveProperty("get");
     expect(listItem.get.operationId).toBe("listWorkspaces");
 
     const deleteItem = paths["/api/v1/workspaces/{workspace_key}"] as PathItem;
-    expect(deleteItem.delete).toBeDefined();
+    expect(deleteItem).toHaveProperty("delete");
     expect(deleteItem.delete.operationId).toBe("removeWorkspace");
   });
 
   it("includes git context path", () => {
     const item = paths["/api/v1/git/context"] as PathItem;
-    expect(item.get).toBeDefined();
+    expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("getGitContext");
   });
 
   it("includes config paths with multiple methods on overlay", () => {
-    expect(paths["/api/v1/config"]).toBeDefined();
-    expect(paths["/api/v1/config/schema"]).toBeDefined();
-    expect(paths["/api/v1/config/overlay"]).toBeDefined();
-    expect(paths["/api/v1/config/overlay/{path}"]).toBeDefined();
+    expect(paths).toHaveProperty("/api/v1/config");
+    expect(paths).toHaveProperty("/api/v1/config/schema");
+    expect(paths).toHaveProperty("/api/v1/config/overlay");
+    expect(paths).toHaveProperty("/api/v1/config/overlay/{path}");
 
     const overlay = paths["/api/v1/config/overlay"] as PathItem;
-    expect(overlay.get).toBeDefined();
-    expect(overlay.put).toBeDefined();
+    expect(overlay).toHaveProperty("get");
+    expect(overlay).toHaveProperty("put");
     expect(overlay.get.operationId).toBe("getConfigOverlay");
     expect(overlay.put.operationId).toBe("putConfigOverlay");
 
     const overlayPath = paths["/api/v1/config/overlay/{path}"] as PathItem;
-    expect(overlayPath.patch).toBeDefined();
-    expect(overlayPath.delete).toBeDefined();
+    expect(overlayPath).toHaveProperty("patch");
+    expect(overlayPath).toHaveProperty("delete");
     expect(overlayPath.patch.operationId).toBe("patchConfigOverlayPath");
     expect(overlayPath.delete.operationId).toBe("deleteConfigOverlayPath");
   });
 
   it("includes secrets paths", () => {
-    expect(paths["/api/v1/secrets"]).toBeDefined();
-    expect(paths["/api/v1/secrets/{key}"]).toBeDefined();
+    expect(paths).toHaveProperty("/api/v1/secrets");
+    expect(paths).toHaveProperty("/api/v1/secrets/{key}");
 
     const list = paths["/api/v1/secrets"] as PathItem;
-    expect(list.get).toBeDefined();
+    expect(list).toHaveProperty("get");
     expect(list.get.operationId).toBe("listSecrets");
 
     const keyItem = paths["/api/v1/secrets/{key}"] as PathItem;
-    expect(keyItem.post).toBeDefined();
-    expect(keyItem.delete).toBeDefined();
+    expect(keyItem).toHaveProperty("post");
+    expect(keyItem).toHaveProperty("delete");
     expect(keyItem.post.operationId).toBe("setSecret");
     expect(keyItem.delete.operationId).toBe("deleteSecret");
   });
@@ -234,9 +234,9 @@ describe("cross-builder invariants", () => {
     for (const [path, methods] of Object.entries(allPaths)) {
       for (const [method, op] of Object.entries(methods as PathItem)) {
         const operation = op as Record<string, unknown>;
-        expect(operation.summary, `${method.toUpperCase()} ${path} missing summary`).toBeDefined();
-        expect(operation.operationId, `${method.toUpperCase()} ${path} missing operationId`).toBeDefined();
-        expect(operation.responses, `${method.toUpperCase()} ${path} missing responses`).toBeDefined();
+        expect(operation.summary, `${method.toUpperCase()} ${path} missing summary`).toBeTypeOf("string");
+        expect(operation.operationId, `${method.toUpperCase()} ${path} missing operationId`).toBeTypeOf("string");
+        expect(operation.responses, `${method.toUpperCase()} ${path} missing responses`).toBeTypeOf("object");
       }
     }
   });

@@ -3,17 +3,17 @@
  * constructs all stores that share it. Provides graceful close for
  * shutdown lifecycle.
  *
- * All SQLite-backed stores receive an injected `SymphonyDatabase` rather
+ * All SQLite-backed stores receive an injected `RisolutoDatabase` rather
  * than opening their own connection, ensuring one DB file, one WAL, and
  * one shutdown path.
  */
 
 import path from "node:path";
 
-import type { SymphonyLogger } from "../../core/types.js";
+import type { RisolutoLogger } from "../../core/types.js";
 import type { AttemptStorePort } from "../../core/attempt-store-port.js";
 import { AttemptStore } from "../../core/attempt-store.js";
-import { closeDatabase, openDatabase, type SymphonyDatabase } from "./database.js";
+import { closeDatabase, openDatabase, type RisolutoDatabase } from "./database.js";
 import { SqliteAttemptStore } from "./attempt-store-sqlite.js";
 import { migrateFromJsonl } from "./migrator.js";
 import { attempts } from "./schema.js";
@@ -21,7 +21,7 @@ import { seedDefaults, importLegacyFiles } from "../../config/legacy-import.js";
 
 export interface PersistenceRuntime {
   /** The shared Drizzle database instance. Null in JSONL mode. */
-  db: SymphonyDatabase | null;
+  db: RisolutoDatabase | null;
   /** Attempt store — backed by SQLite or JSONL depending on mode. */
   attemptStore: AttemptStorePort;
   /** Gracefully close the database connection (WAL checkpoint + release locks). */
@@ -29,14 +29,12 @@ export interface PersistenceRuntime {
 }
 
 export interface PersistenceRuntimeOptions {
-  /** Data directory where symphony.db lives. */
+  /** Data directory where risoluto.db lives. */
   dataDir: string;
   /** Logger for persistence-level diagnostics. */
-  logger: SymphonyLogger;
+  logger: RisolutoLogger;
   /** Persistence mode — "sqlite" (default) or "jsonl" (legacy). */
   mode?: string;
-  /** Optional WORKFLOW.md path for one-time legacy import. */
-  workflowPath?: string | null;
 }
 
 /**
@@ -46,7 +44,7 @@ export interface PersistenceRuntimeOptions {
  * and constructs the attempt store with the shared connection.
  */
 export async function initPersistenceRuntime(options: PersistenceRuntimeOptions): Promise<PersistenceRuntime> {
-  const { dataDir, logger, mode = process.env.SYMPHONY_PERSISTENCE ?? "sqlite", workflowPath } = options;
+  const { dataDir, logger, mode = process.env.RISOLUTO_PERSISTENCE ?? "sqlite" } = options;
   const storeLogger = logger.child({ component: "attempt-store" });
 
   if (mode === "jsonl") {
@@ -62,7 +60,7 @@ export async function initPersistenceRuntime(options: PersistenceRuntimeOptions)
     };
   }
 
-  const dbPath = path.join(dataDir, "symphony.db");
+  const dbPath = path.join(dataDir, "risoluto.db");
   const db = openDatabase(dbPath);
   logger.info({ dbPath }, "shared persistence runtime opened");
 
@@ -80,7 +78,7 @@ export async function initPersistenceRuntime(options: PersistenceRuntimeOptions)
 
   // Seed config defaults + import legacy files (idempotent).
   seedDefaults(db);
-  await importLegacyFiles(db, dataDir, logger, workflowPath);
+  await importLegacyFiles(db, dataDir, logger);
 
   const attemptStore = new SqliteAttemptStore(db, storeLogger);
 

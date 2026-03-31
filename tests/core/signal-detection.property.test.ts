@@ -7,8 +7,18 @@ import { detectStopSignal } from "../../src/core/signal-detection.js";
  * Known text markers that the detector normalizes and matches.
  * Each pair maps a marker variant to the expected stop signal.
  */
-const doneMarkers = ["symphony_status: done", "symphony status: done"] as const;
-const blockedMarkers = ["symphony_status: blocked", "symphony status: blocked"] as const;
+const doneMarkers = [
+  "risoluto_status: done",
+  "risoluto status: done",
+  "symphony_status: done",
+  "symphony status: done",
+] as const;
+const blockedMarkers = [
+  "risoluto_status: blocked",
+  "risoluto status: blocked",
+  "symphony_status: blocked",
+  "symphony status: blocked",
+] as const;
 
 /** Arbitrary that produces random surrounding noise around a marker. */
 function withNoise(marker: string): fc.Arbitrary<string> {

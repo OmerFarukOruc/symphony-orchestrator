@@ -7,6 +7,7 @@ import type { TrackerPort } from "../../src/tracker/port.js";
 import { WorkspaceManager } from "../../src/workspace/manager.js";
 import { AgentRunner } from "../../src/agent-runner/index.js";
 import { AttemptStore } from "../../src/core/attempt-store.js";
+import type { IssueConfigStore } from "../../src/persistence/sqlite/issue-config-store.js";
 
 export function createIssue(state = "In Progress"): Issue {
   return {
@@ -37,9 +38,9 @@ export function createConfig(): ServiceConfig {
     },
     polling: { intervalMs: 30000 },
     workspace: {
-      root: "/tmp/symphony",
+      root: "/tmp/risoluto",
       strategy: "directory",
-      branchPrefix: "symphony/",
+      branchPrefix: "risoluto/",
       hooks: {
         afterCreate: null,
         beforeRun: null,
@@ -75,7 +76,7 @@ export function createConfig(): ServiceConfig {
       },
       provider: null,
       sandbox: {
-        image: "symphony-codex:latest",
+        image: "risoluto-codex:latest",
         network: "",
         security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false, seccompProfile: "" },
         resources: { memory: "4g", memoryReservation: "1g", memorySwap: "4g", cpus: "2.0", tmpfsSize: "512m" },
@@ -98,6 +99,10 @@ export function createConfigStore(config: ServiceConfig): ConfigStore {
   } as unknown as ConfigStore;
 }
 
+export function createResolveTemplate(): (identifier: string) => Promise<string> {
+  return async (_identifier: string) => "Prompt";
+}
+
 export function createAttemptStore(): AttemptStore {
   return {
     createAttempt: vi.fn(async () => undefined),
@@ -111,6 +116,15 @@ export function createAttemptStore(): AttemptStore {
     sumCostUsd: vi.fn(() => 0),
     sumArchivedTokens: vi.fn(() => ({ inputTokens: 0, outputTokens: 0, totalTokens: 0 })),
   } as unknown as AttemptStore;
+}
+
+export function createIssueConfigStore(): IssueConfigStore {
+  return {
+    loadAll: vi.fn(() => []),
+    upsertModel: vi.fn(),
+    upsertTemplateId: vi.fn(),
+    clearTemplateId: vi.fn(),
+  } as unknown as IssueConfigStore;
 }
 
 export { createLogger };

@@ -3,7 +3,7 @@ import path from "node:path";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 import { asStringRecord, isRecord, toErrorString } from "../utils/type-guards.js";
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 
 const ENCRYPTION_ALGORITHM = "aes-256-gcm";
 const IV_BYTE_LENGTH = 12;
@@ -91,7 +91,7 @@ export class SecretsStore {
 
   constructor(
     private readonly baseDir: string,
-    private readonly logger: SymphonyLogger,
+    private readonly logger: RisolutoLogger,
     private readonly options?: { masterKey?: string },
   ) {}
 

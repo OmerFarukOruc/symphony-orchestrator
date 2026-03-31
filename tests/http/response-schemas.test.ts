@@ -202,14 +202,12 @@ describe("runtimeResponseSchema", () => {
   it("parses a valid runtime response", () => {
     const result = runtimeResponseSchema.parse({
       version: "0.5.0",
-      workflow_path: "/home/user/WORKFLOW.md",
-      data_dir: "/tmp/.symphony",
+      data_dir: "/tmp/.risoluto",
       feature_flags: { sse: true },
       provider_summary: "linear",
     });
     expect(result.version).toBe("0.5.0");
-    expect(result.workflow_path).toBe("/home/user/WORKFLOW.md");
-    expect(result.data_dir).toBe("/tmp/.symphony");
+    expect(result.data_dir).toBe("/tmp/.risoluto");
     expect(result.feature_flags).toEqual({ sse: true });
     expect(result.provider_summary).toBe("linear");
   });
@@ -217,7 +215,6 @@ describe("runtimeResponseSchema", () => {
   it("accepts empty feature_flags record", () => {
     const result = runtimeResponseSchema.parse({
       version: "1.0.0",
-      workflow_path: "./w.md",
       data_dir: "./data",
       feature_flags: {},
       provider_summary: "github",
@@ -233,7 +230,6 @@ describe("runtimeResponseSchema", () => {
   it("rejects non-string version", () => {
     const result = runtimeResponseSchema.safeParse({
       version: 1,
-      workflow_path: "./w.md",
       data_dir: "./data",
       feature_flags: {},
       provider_summary: "linear",

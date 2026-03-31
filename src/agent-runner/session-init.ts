@@ -7,10 +7,10 @@ import type { DockerSession } from "./docker-session.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import { createLifecycleEvent } from "../core/lifecycle-events.js";
 import { toErrorString } from "../utils/type-guards.js";
-import type { Issue, ModelSelection, RunOutcome, ServiceConfig, SymphonyLogger, Workspace } from "../core/types.js";
+import type { Issue, ModelSelection, RunOutcome, ServiceConfig, RisolutoLogger, Workspace } from "../core/types.js";
 
 interface SessionInitDeps {
-  logger: SymphonyLogger;
+  logger: RisolutoLogger;
 }
 
 interface SessionInitInput {
@@ -108,7 +108,7 @@ async function initCodexProtocol(
   deps: SessionInitDeps,
 ): Promise<{ kind: "failed"; errorCode: string; errorMessage: string } | null> {
   await session.connection.request("initialize", {
-    clientInfo: { name: "symphony", version: "0.2.0" },
+    clientInfo: { name: "risoluto", version: "0.2.0" },
     capabilities: {
       experimentalApi: true,
       optOutNotificationMethods: [
@@ -188,7 +188,7 @@ async function startThread(
     approvalPolicy: config.codex.approvalPolicy,
     sandbox: config.codex.threadSandbox,
     personality: config.codex.personality,
-    serviceName: "symphony",
+    serviceName: "risoluto",
     dynamicTools: buildDynamicTools(),
   });
 

@@ -1,7 +1,7 @@
 import type { JsonRpcConnection } from "../agent/json-rpc-connection.js";
 import type { TrackerPort } from "../tracker/port.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
-import type { ModelSelection, RunOutcome, ServiceConfig, SymphonyLogger, Workspace, Issue } from "../core/types.js";
+import type { ModelSelection, RunOutcome, ServiceConfig, RisolutoLogger, Workspace, Issue } from "../core/types.js";
 import type { StopSignal } from "../core/signal-detection.js";
 import type { TurnState } from "./turn-state.js";
 
@@ -34,7 +34,7 @@ export interface AgentRunnerTurnExecutionInput {
   /** Returns the stop signal detected from raw (pre-truncation) agent message content. */
   getLastStopSignal?: () => StopSignal | null;
   /** Logger for turn-level diagnostics (e.g. thread compaction). */
-  logger?: SymphonyLogger;
+  logger?: RisolutoLogger;
 }
 
 export interface AgentRunnerTurnExecutionState {

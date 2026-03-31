@@ -6,7 +6,7 @@ This document must be maintained in accordance with [.agents/PLANS.md](./.agents
 
 ## Purpose / Big Picture
 
-Operators should be able to trust Symphony’s running state: aborted issues must become dispatchable again, stall handling must be consistent, SSE streams must stay quiet after disconnects, and the most-polled dashboard endpoint must stop rebuilding the entire world on every request. After this change, the orchestrator will fetch candidate issues once per tick, build `/api/v1/state` from a cached revision-aware snapshot, and keep internal state maps and aggregates tight over long runs. The user-visible proof is that the existing test suite stays green while new regression tests cover operator aborts, stall handling, CLI port validation, and snapshot caching behavior.
+Operators should be able to trust Risoluto’s running state: aborted issues must become dispatchable again, stall handling must be consistent, SSE streams must stay quiet after disconnects, and the most-polled dashboard endpoint must stop rebuilding the entire world on every request. After this change, the orchestrator will fetch candidate issues once per tick, build `/api/v1/state` from a cached revision-aware snapshot, and keep internal state maps and aggregates tight over long runs. The user-visible proof is that the existing test suite stays green while new regression tests cover operator aborts, stall handling, CLI port validation, and snapshot caching behavior.
 
 ## Progress
 
@@ -64,11 +64,11 @@ Next, remove duplicate polling work and cache the most expensive read path. `src
 
 Then tighten the hot-path data structures. `src/state/policy.ts` will cache normalized state lookups and reuse the state machine cache for transition reads. `src/orchestrator/worker-launcher.ts` will stop rescanning all running entries for each candidate issue by precomputing running counts per state. `src/orchestrator/issue-locator.ts` and the model-selection flow will use identifier indices instead of repeated linear scans. `src/core/attempt-store.ts` will batch startup loading and keep archived aggregates in memory so snapshot reads do not rescan all attempts repeatedly.
 
-Finally, clean up verified dead code and duplicated helpers. The feature-flag runtime in `src/core/feature-flags.ts` and its tests will be removed if no production code depends on it. The duplicated config helper functions in `src/config/overlay.ts` and `src/config/db-store.ts` will move into a shared internal helper module. Verified dead frontend helpers and stale `knip.json` ignores will be removed. Because frontend files are part of Symphony’s web UI, a visual verification pass must run before the task is considered done.
+Finally, clean up verified dead code and duplicated helpers. The feature-flag runtime in `src/core/feature-flags.ts` and its tests will be removed if no production code depends on it. The duplicated config helper functions in `src/config/overlay.ts` and `src/config/db-store.ts` will move into a shared internal helper module. Verified dead frontend helpers and stale `knip.json` ignores will be removed. Because frontend files are part of Risoluto’s web UI, a visual verification pass must run before the task is considered done.
 
 ## Concrete Steps
 
-All commands are run from `/home/oruc/Desktop/workspace/symphony-orchestrator`.
+All commands are run from `/home/oruc/Desktop/workspace/risoluto`.
 
 Start from the baseline:
 

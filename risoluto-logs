@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# symphony-logs — Query Symphony attempt logs by issue identifier.
+# risoluto-logs — Query Risoluto attempt logs by issue identifier.
 # Output is structured JSON, optimised for LLM consumption.
 
 set -euo pipefail
 
-SYMPHONY_DIR="${SYMPHONY_DIR:-.symphony}"
+RISOLUTO_DIR="${RISOLUTO_DIR:-.risoluto}"
 LIMIT=50
 MODE="events"
 ISSUE=""
@@ -14,12 +14,12 @@ ERRORS_ONLY=false
 usage() {
   cat <<'EOF'
 Usage:
-  symphony-logs <ISSUE>                   Show latest attempt events for an issue
-  symphony-logs <ISSUE> --errors          Show only error/failure events
-  symphony-logs <ISSUE> --attempts        List all attempts for an issue
-  symphony-logs <ISSUE> -n <N>            Limit to last N events (default: 50)
-  symphony-logs --attempt <ATTEMPT_ID>    Show events for a specific attempt
-  symphony-logs --dir <PATH>              Override .symphony directory
+  risoluto-logs <ISSUE>                   Show latest attempt events for an issue
+  risoluto-logs <ISSUE> --errors          Show only error/failure events
+  risoluto-logs <ISSUE> --attempts        List all attempts for an issue
+  risoluto-logs <ISSUE> -n <N>            Limit to last N events (default: 50)
+  risoluto-logs --attempt <ATTEMPT_ID>    Show events for a specific attempt
+  risoluto-logs --dir <PATH>              Override .risoluto directory
 
 Output is always JSON. Designed for LLM consumption, not human reading.
 EOF
@@ -29,7 +29,7 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h) usage ;;
-    --dir) SYMPHONY_DIR="$2"; shift 2 ;;
+    --dir) RISOLUTO_DIR="$2"; shift 2 ;;
     --attempts) MODE="attempts"; shift ;;
     --attempt) MODE="single-attempt"; ATTEMPT_ID="$2"; shift 2 ;;
     --errors) ERRORS_ONLY=true; shift ;;
@@ -40,8 +40,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$MODE" == "single-attempt" && -n "$ATTEMPT_ID" ]]; then
-  ATTEMPT_FILE="$SYMPHONY_DIR/attempts/$ATTEMPT_ID.json"
-  EVENTS_FILE="$SYMPHONY_DIR/events/$ATTEMPT_ID.jsonl"
+  ATTEMPT_FILE="$RISOLUTO_DIR/attempts/$ATTEMPT_ID.json"
+  EVENTS_FILE="$RISOLUTO_DIR/events/$ATTEMPT_ID.jsonl"
 
   if [[ ! -f "$ATTEMPT_FILE" ]]; then
     echo "{\"error\":\"attempt not found\",\"attemptId\":\"$ATTEMPT_ID\"}"
@@ -61,23 +61,23 @@ if [[ "$MODE" == "single-attempt" && -n "$ATTEMPT_ID" ]]; then
 fi
 
 if [[ -z "$ISSUE" ]]; then
-  echo "{\"error\":\"issue identifier required. Usage: symphony-logs <ISSUE>\"}"
+  echo "{\"error\":\"issue identifier required. Usage: risoluto-logs <ISSUE>\"}"
   exit 1
 fi
 
 # Resolve issue -> attempt IDs via the index file
-INDEX_FILE="$SYMPHONY_DIR/issue-index.json"
+INDEX_FILE="$RISOLUTO_DIR/issue-index.json"
 if [[ -f "$INDEX_FILE" ]]; then
   ATTEMPT_IDS=$(jq -r --arg issue "$ISSUE" '.[$issue] // empty | .[]' "$INDEX_FILE" 2>/dev/null)
 else
   # Fallback: scan attempt files
-  ATTEMPT_IDS=$(grep -rl "\"issueIdentifier\"" "$SYMPHONY_DIR/attempts/" 2>/dev/null \
+  ATTEMPT_IDS=$(grep -rl "\"issueIdentifier\"" "$RISOLUTO_DIR/attempts/" 2>/dev/null \
     | xargs grep -l "\"$ISSUE\"" 2>/dev/null \
     | xargs -I{} jq -r '.attemptId' {} 2>/dev/null | sort)
 fi
 
 if [[ -z "$ATTEMPT_IDS" ]]; then
-  echo "{\"error\":\"no attempts found for issue\",\"issue\":\"$ISSUE\",\"symphonyDir\":\"$SYMPHONY_DIR\"}"
+  echo "{\"error\":\"no attempts found for issue\",\"issue\":\"$ISSUE\",\"risolutoDir\":\"$RISOLUTO_DIR\"}"
   exit 1
 fi
 
@@ -87,7 +87,7 @@ if [[ "$MODE" == "attempts" ]]; then
   FIRST=true
   while IFS= read -r aid; do
     [[ -z "$aid" ]] && continue
-    AFILE="$SYMPHONY_DIR/attempts/$aid.json"
+    AFILE="$RISOLUTO_DIR/attempts/$aid.json"
     [[ ! -f "$AFILE" ]] && continue
     if $FIRST; then FIRST=false; else RESULT+=","; fi
     RESULT+=$(cat "$AFILE")
@@ -99,8 +99,8 @@ fi
 
 # MODE=events — show events from the latest attempt
 LATEST_ID=$(echo "$ATTEMPT_IDS" | head -1)
-ATTEMPT_FILE="$SYMPHONY_DIR/attempts/$LATEST_ID.json"
-EVENTS_FILE="$SYMPHONY_DIR/events/$LATEST_ID.jsonl"
+ATTEMPT_FILE="$RISOLUTO_DIR/attempts/$LATEST_ID.json"
+EVENTS_FILE="$RISOLUTO_DIR/events/$LATEST_ID.jsonl"
 
 if [[ ! -f "$ATTEMPT_FILE" ]]; then
   echo "{\"error\":\"attempt file missing\",\"attemptId\":\"$LATEST_ID\"}"

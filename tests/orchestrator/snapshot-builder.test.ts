@@ -35,7 +35,7 @@ function createIssue(overrides?: Partial<RunningEntry["issue"]>): RunningEntry["
 
 function createWorkspace(overrides?: Partial<RunningEntry["workspace"]>): RunningEntry["workspace"] {
   return {
-    path: "/tmp/symphony/MT-42",
+    path: "/tmp/risoluto/MT-42",
     workspaceKey: "MT-42",
     createdNow: true,
     ...overrides,
@@ -101,7 +101,7 @@ function createConfig(): ServiceConfig {
     },
     polling: { intervalMs: 30000 },
     workspace: {
-      root: "/tmp/symphony",
+      root: "/tmp/risoluto",
       hooks: {
         afterCreate: null,
         beforeRun: null,
@@ -134,7 +134,7 @@ function createConfig(): ServiceConfig {
       },
       provider: null,
       sandbox: {
-        image: "symphony-codex:latest",
+        image: "risoluto-codex:latest",
         network: "",
         security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false, seccompProfile: "" },
         resources: { memory: "4g", memoryReservation: "1g", memorySwap: "4g", cpus: "2.0", tmpfsSize: "512m" },
@@ -155,7 +155,7 @@ function createAttemptRecord(overrides?: Partial<AttemptRecord>): AttemptRecord 
     issueIdentifier: "MT-42",
     title: "Test Issue",
     workspaceKey: "MT-42",
-    workspacePath: "/tmp/symphony/MT-42",
+    workspacePath: "/tmp/risoluto/MT-42",
     status: "completed",
     attemptNumber: 1,
     startedAt: "2026-03-15T00:00:00Z",
@@ -259,7 +259,7 @@ describe("snapshot-builder", () => {
       expect(snapshot.retrying).toEqual([]);
       expect(snapshot.queued).toEqual([]);
       expect(snapshot.completed).toEqual([]);
-      expect(snapshot.workflowColumns).toBeDefined();
+      expect(snapshot.workflowColumns).toEqual(expect.any(Array));
       expect(snapshot.codexTotals.secondsRunning).toBe(0);
     });
 
@@ -392,7 +392,6 @@ describe("snapshot-builder", () => {
 
       const snapshot = buildSnapshot(deps, callbacks);
 
-      expect(snapshot.workflowColumns).toBeDefined();
       expect(snapshot.workflowColumns.length).toBeGreaterThan(0);
       expect(snapshot.workflowColumns[0]).toMatchObject({
         key: expect.any(String),
@@ -577,7 +576,7 @@ describe("snapshot-builder", () => {
         status: "running",
         attempt: 1,
         workspaceKey: "MT-42",
-        workspacePath: "/tmp/symphony/MT-42",
+        workspacePath: "/tmp/risoluto/MT-42",
         model: "gpt-5.4",
         reasoningEffort: "high",
       });
@@ -1145,7 +1144,7 @@ describe("snapshot-builder", () => {
       expect(summary.errorMessage).toBe("something broke");
       expect(summary.issueIdentifier).toBe("MT-42");
       expect(summary.title).toBe("Test Issue");
-      expect(summary.workspacePath).toBe("/tmp/symphony/MT-42");
+      expect(summary.workspacePath).toBe("/tmp/risoluto/MT-42");
       expect(summary.workspaceKey).toBe("MT-42");
       expect(summary.modelSource).toBe("default");
     });

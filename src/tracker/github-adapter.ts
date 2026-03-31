@@ -22,7 +22,7 @@ export class GitHubTrackerAdapter implements TrackerPort {
   async fetchIssueStatesByIds(ids: string[]): Promise<Issue[]> {
     const config = this.getConfig();
     const { owner, repo, activeStates, terminalStates } = config.tracker;
-    const numbers = ids.map((id) => Number(id)).filter((n) => !Number.isNaN(n));
+    const numbers = ids.map(Number).filter((n) => !Number.isNaN(n));
     const raw = await this.client.fetchIssuesByNumbers(numbers);
     return raw.map((r) => normalizeGitHubIssue(r, owner ?? "", repo ?? "", activeStates, terminalStates));
   }

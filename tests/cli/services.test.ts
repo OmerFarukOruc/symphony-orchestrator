@@ -63,15 +63,17 @@ const mockHttpServer = vi.hoisted(() =>
   }),
 );
 
-const mockPromptTemplateStore = vi.hoisted(() =>
-  vi.fn().mockImplementation(function () {
-    return { fake: "templateStore" };
-  }),
-);
+const mockPromptTemplateStore = vi.hoisted(() => vi.fn());
 
 const mockAuditLogger = vi.hoisted(() =>
   vi.fn().mockImplementation(function () {
     return { fake: "auditLogger" };
+  }),
+);
+
+const mockIssueConfigStoreCreate = vi.hoisted(() =>
+  vi.fn().mockReturnValue({
+    getTemplateId: vi.fn().mockReturnValue(null),
   }),
 );
 
@@ -124,17 +126,29 @@ vi.mock("../../src/audit/logger.js", () => ({
   AuditLogger: mockAuditLogger,
 }));
 
+vi.mock("../../src/persistence/sqlite/issue-config-store.js", () => ({
+  IssueConfigStore: {
+    create: mockIssueConfigStoreCreate,
+  },
+}));
+
 /* ------------------------------------------------------------------ */
 /*  Import under test (after all mocks registered)                     */
 /* ------------------------------------------------------------------ */
 import { createServices } from "../../src/cli/services.js";
+import type { ConfigStore } from "../../src/config/store.js";
+import type { ConfigOverlayPort } from "../../src/config/overlay.js";
+import type { SecretsStore } from "../../src/secrets/store.js";
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
 function makeConfigStore() {
-  return { getConfig: vi.fn().mockReturnValue({}) };
+  return {
+    getConfig: vi.fn().mockReturnValue({}),
+    getMergedConfigMap: vi.fn().mockReturnValue({}),
+  };
 }
 
 function makeOverlayStore() {
@@ -151,17 +165,30 @@ function makeSecretsStore() {
 
 describe("createServices", () => {
   const logger = createMockLogger();
-  const archiveDir = "/tmp/symphony-test";
+  const archiveDir = "/tmp/risoluto-test";
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPromptTemplateStore.mockImplementation(function () {
+      return {
+        get: vi.fn().mockImplementation((id: string) => {
+          if (id === "default") {
+            return { id, body: "default template body" };
+          }
+          return null;
+        }),
+      };
+    });
+    mockIssueConfigStoreCreate.mockReturnValue({
+      getTemplateId: vi.fn().mockReturnValue(null),
+    });
   });
 
   it("returns an object with all expected service properties", async () => {
     const result = await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
       archiveDir,
       logger,
     );
@@ -176,26 +203,26 @@ describe("createServices", () => {
 
   it("returns no null or undefined services", async () => {
     const result = await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
       archiveDir,
       logger,
     );
 
-    expect(result.orchestrator).toBeDefined();
-    expect(result.httpServer).toBeDefined();
-    expect(result.notificationManager).toBeDefined();
-    expect(result.linearClient).toBeDefined();
-    expect(result.eventBus).toBeDefined();
-    expect(result.persistence).toBeDefined();
+    expect(result).toHaveProperty("orchestrator");
+    expect(result).toHaveProperty("httpServer");
+    expect(result).toHaveProperty("notificationManager");
+    expect(result).toHaveProperty("linearClient");
+    expect(result).toHaveProperty("eventBus");
+    expect(result).toHaveProperty("persistence");
   });
 
   it("initializes persistence with the supplied archiveDir and logger", async () => {
     await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
       archiveDir,
       logger,
     );
@@ -203,40 +230,27 @@ describe("createServices", () => {
     expect(mockInitPersistenceRuntime).toHaveBeenCalledWith(expect.objectContaining({ dataDir: archiveDir, logger }));
   });
 
-  it("passes workflowPath to persistence when provided", async () => {
-    const workflowPath = "/tmp/WORKFLOW.md";
-
+  it("does not pass workflowPath to persistence", async () => {
     await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
-      archiveDir,
-      logger,
-      workflowPath,
-    );
-
-    expect(mockInitPersistenceRuntime).toHaveBeenCalledWith(expect.objectContaining({ workflowPath }));
-  });
-
-  it("passes undefined workflowPath to persistence when omitted", async () => {
-    await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
       archiveDir,
       logger,
     );
 
-    expect(mockInitPersistenceRuntime).toHaveBeenCalledWith(expect.objectContaining({ workflowPath: undefined }));
+    expect(mockInitPersistenceRuntime).toHaveBeenCalledWith(
+      expect.not.objectContaining({ workflowPath: expect.anything() }),
+    );
   });
 
   it("creates tracker using the config getter", async () => {
     const configStore = makeConfigStore();
 
     await createServices(
-      configStore as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
+      configStore as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
       archiveDir,
       logger,
     );
@@ -246,9 +260,9 @@ describe("createServices", () => {
 
   it("constructs Orchestrator with wired dependencies", async () => {
     await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
       archiveDir,
       logger,
     );
@@ -272,7 +286,13 @@ describe("createServices", () => {
     const overlayStore = makeOverlayStore();
     const secretsStore = makeSecretsStore();
 
-    await createServices(configStore as never, overlayStore as never, secretsStore as never, archiveDir, logger);
+    await createServices(
+      configStore as unknown as ConfigStore,
+      overlayStore as unknown as ConfigOverlayPort,
+      secretsStore as unknown as SecretsStore,
+      archiveDir,
+      logger,
+    );
 
     expect(mockHttpServer).toHaveBeenCalledTimes(1);
     const args = mockHttpServer.mock.calls[0][0];
@@ -288,9 +308,9 @@ describe("createServices", () => {
 
   it("creates PromptTemplateStore and AuditLogger when persistence.db is present", async () => {
     await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
       archiveDir,
       logger,
     );
@@ -306,9 +326,9 @@ describe("createServices", () => {
     });
 
     await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
       archiveDir,
       logger,
     );
@@ -319,16 +339,16 @@ describe("createServices", () => {
 
   it("passes templateStore and auditLogger to HttpServer when db is present", async () => {
     await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
       archiveDir,
       logger,
     );
 
     const httpArgs = mockHttpServer.mock.calls[0][0];
-    expect(httpArgs.templateStore).toBeDefined();
-    expect(httpArgs.auditLogger).toBeDefined();
+    expect(httpArgs).toHaveProperty("templateStore");
+    expect(httpArgs).toHaveProperty("auditLogger");
   });
 
   it("passes undefined templateStore and auditLogger to HttpServer when db is null", async () => {
@@ -338,9 +358,9 @@ describe("createServices", () => {
     });
 
     await createServices(
-      makeConfigStore() as never,
-      makeOverlayStore() as never,
-      makeSecretsStore() as never,
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
       archiveDir,
       logger,
     );
@@ -348,5 +368,81 @@ describe("createServices", () => {
     const httpArgs = mockHttpServer.mock.calls[0][0];
     expect(httpArgs.templateStore).toBeUndefined();
     expect(httpArgs.auditLogger).toBeUndefined();
+  });
+
+  it("resolves templates using system.selectedTemplateId before default fallback", async () => {
+    const configStore = makeConfigStore();
+    configStore.getMergedConfigMap.mockReturnValue({
+      system: {
+        selectedTemplateId: "active-template",
+      },
+    });
+    const templateGet = vi.fn().mockImplementation((id: string) => {
+      if (id === "active-template") {
+        return { id, body: "active template body" };
+      }
+      if (id === "default") {
+        return { id, body: "default template body" };
+      }
+      return null;
+    });
+    mockPromptTemplateStore.mockImplementation(function () {
+      return {
+        get: templateGet,
+      };
+    });
+
+    await createServices(
+      configStore as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
+      archiveDir,
+      logger,
+    );
+
+    const orchestratorArgs = mockOrchestrator.mock.calls[0][0];
+    await expect(orchestratorArgs.resolveTemplate("MT-1")).resolves.toBe("active template body");
+    expect(templateGet).toHaveBeenCalledWith("active-template");
+  });
+
+  it("prefers per-issue template overrides over system.selectedTemplateId", async () => {
+    const configStore = makeConfigStore();
+    configStore.getMergedConfigMap.mockReturnValue({
+      system: {
+        selectedTemplateId: "active-template",
+      },
+    });
+    mockIssueConfigStoreCreate.mockReturnValue({
+      getTemplateId: vi.fn().mockReturnValue("issue-template"),
+    });
+    const templateGet = vi.fn().mockImplementation((id: string) => {
+      if (id === "issue-template") {
+        return { id, body: "issue template body" };
+      }
+      if (id === "active-template") {
+        return { id, body: "active template body" };
+      }
+      if (id === "default") {
+        return { id, body: "default template body" };
+      }
+      return null;
+    });
+    mockPromptTemplateStore.mockImplementation(function () {
+      return {
+        get: templateGet,
+      };
+    });
+
+    await createServices(
+      configStore as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
+      archiveDir,
+      logger,
+    );
+
+    const orchestratorArgs = mockOrchestrator.mock.calls[0][0];
+    await expect(orchestratorArgs.resolveTemplate("MT-1")).resolves.toBe("issue template body");
+    expect(templateGet).toHaveBeenCalledWith("issue-template");
   });
 });

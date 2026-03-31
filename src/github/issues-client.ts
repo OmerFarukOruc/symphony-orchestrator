@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import type { Issue, ServiceConfig, SymphonyLogger } from "../core/types.js";
+import type { Issue, ServiceConfig, RisolutoLogger } from "../core/types.js";
 import { toErrorString } from "../utils/type-guards.js";
 
 // ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ export interface RawGitHubIssue {
 // ---------------------------------------------------------------------------
 
 /**
- * Map a raw GitHub API issue to Symphony's canonical {@link Issue} shape.
+ * Map a raw GitHub API issue to Risoluto's canonical {@link Issue} shape.
  * State is determined by the first label that matches an active or terminal
  * state name; falls back to `"open"` when no state label is found.
  */
@@ -77,7 +77,7 @@ export function normalizeGitHubIssue(
 export class GitHubIssuesClient {
   constructor(
     private readonly getConfig: () => ServiceConfig,
-    private readonly logger: SymphonyLogger,
+    private readonly logger: RisolutoLogger,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -113,7 +113,7 @@ export class GitHubIssuesClient {
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
           "Content-Type": "application/json",
-          ...(options?.headers ?? {}),
+          ...options?.headers,
         },
       });
     } catch (error) {

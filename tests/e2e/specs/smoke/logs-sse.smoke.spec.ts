@@ -59,7 +59,7 @@ test.describe("Logs SSE & Sort Smoke", () => {
     // Dispatch synthetic SSE event via CustomEvent
     await page.evaluate(() => {
       window.dispatchEvent(
-        new CustomEvent("symphony:any-event", {
+        new CustomEvent("risoluto:any-event", {
           detail: {
             type: "agent.event",
             payload: {

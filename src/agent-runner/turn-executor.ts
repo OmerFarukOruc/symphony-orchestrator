@@ -22,7 +22,7 @@ import type { RunOutcome } from "../core/types.js";
 import { compactThread } from "./thread-compact.js";
 
 const CONTINUATION_PROMPT =
-  "Continue the current issue, make concrete progress, and stop only when done or blocked. When the issue is complete, end your final message with `SYMPHONY_STATUS: DONE`. If you are blocked and cannot proceed, end your final message with `SYMPHONY_STATUS: BLOCKED`.";
+  "Continue the current issue, make concrete progress, and stop only when done or blocked. When the issue is complete, end your final message with `RISOLUTO_STATUS: DONE`. If you are blocked and cannot proceed, end your final message with `RISOLUTO_STATUS: BLOCKED`.";
 
 const STRUCTURED_OUTPUT_SCHEMA = {
   type: "object",

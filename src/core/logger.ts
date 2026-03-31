@@ -1,7 +1,7 @@
 import pino from "pino";
 import { Writable } from "node:stream";
 
-import type { SymphonyLogger } from "./types.js";
+import type { RisolutoLogger } from "./types.js";
 
 /** Fallback for Pino loggers that lack a custom level formatter. */
 const PINO_LEVEL_LABELS: Record<number, string> = {
@@ -64,7 +64,7 @@ export function buildLogfmtStream(output: NodeJS.WritableStream = process.stdout
 
         // timestamp
         if (obj.timestamp !== undefined) {
-          parts.push(`time=${obj.timestamp}`);
+          parts.push(`time=${String(obj.timestamp)}`);
         }
 
         // remaining key=value pairs
@@ -87,16 +87,16 @@ export function buildLogfmtStream(output: NodeJS.WritableStream = process.stdout
   });
 }
 
-/** Resolve the log format from `SYMPHONY_LOG_FORMAT` env var. */
+/** Resolve the log format from `RISOLUTO_LOG_FORMAT` env var. */
 export function resolveLogFormat(): "json" | "logfmt" {
-  const format = process.env.SYMPHONY_LOG_FORMAT;
+  const format = process.env.RISOLUTO_LOG_FORMAT;
   if (format === "json") {
     return "json";
   }
   return "logfmt";
 }
 
-class PinoSymphonyLogger implements SymphonyLogger {
+class PinoRisolutoLogger implements RisolutoLogger {
   constructor(private readonly logger: pino.Logger) {}
 
   private log(level: "debug" | "info" | "warn" | "error", meta: unknown, message?: string): void {
@@ -124,15 +124,15 @@ class PinoSymphonyLogger implements SymphonyLogger {
     this.log("error", meta, message);
   }
 
-  child(meta: Record<string, unknown>): SymphonyLogger {
-    return new PinoSymphonyLogger(this.logger.child(meta));
+  child(meta: Record<string, unknown>): RisolutoLogger {
+    return new PinoRisolutoLogger(this.logger.child(meta));
   }
 }
 
-export function createLogger(): SymphonyLogger {
+export function createLogger(): RisolutoLogger {
   const opts = basePinoOptions();
 
   const logger = resolveLogFormat() === "json" ? pino(opts) : pino(opts, buildLogfmtStream());
 
-  return new PinoSymphonyLogger(logger);
+  return new PinoRisolutoLogger(logger);
 }

@@ -2,22 +2,24 @@ import type { RunAttemptDispatcher } from "../dispatch/types.js";
 import type { AttemptStorePort } from "../core/attempt-store-port.js";
 import { ConfigStore } from "../config/store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
-import type { SymphonyEventMap } from "../core/symphony-events.js";
+import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { GitIntegrationPort } from "../git/port.js";
 import type { TrackerPort } from "../tracker/port.js";
 import type { NotificationManager } from "../notification/manager.js";
 import type { RepoMatch, RepoRouter } from "../git/repo-router.js";
 import type { WebhookHealthTracker } from "../webhook/health-tracker.js";
+import type { PromptTemplateStore } from "../prompt/store.js";
 import type {
   Issue,
   ModelSelection,
   RetryEntry,
-  SymphonyLogger,
+  RisolutoLogger,
   TokenUsageSnapshot,
   Workspace,
 } from "../core/types.js";
 import type { StopSignal } from "../core/signal-detection.js";
 import { WorkspaceManager } from "../workspace/manager.js";
+import type { IssueConfigStore } from "../persistence/sqlite/issue-config-store.js";
 
 export interface RunningEntry {
   runId: string;
@@ -50,10 +52,13 @@ export interface OrchestratorDeps {
   tracker: TrackerPort;
   workspaceManager: WorkspaceManager;
   agentRunner: RunAttemptDispatcher;
-  eventBus?: TypedEventBus<SymphonyEventMap>;
+  issueConfigStore: IssueConfigStore;
+  eventBus?: TypedEventBus<RisolutoEventMap>;
   notificationManager?: NotificationManager;
   repoRouter?: Pick<RepoRouter, "matchIssue">;
   gitManager?: GitIntegrationPort;
   webhookHealthTracker?: WebhookHealthTracker;
-  logger: SymphonyLogger;
+  templateStore?: PromptTemplateStore;
+  logger: RisolutoLogger;
+  resolveTemplate: (identifier: string) => Promise<string>;
 }

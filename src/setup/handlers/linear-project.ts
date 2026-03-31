@@ -3,6 +3,8 @@ import type { Request, Response } from "express";
 import { isRecord, toErrorString } from "../../utils/type-guards.js";
 import { callLinearGraphQL, getLinearApiKey, type SetupApiDeps } from "./shared.js";
 
+const GRAPHQL_PAGE_SIZE = 50;
+
 export function handleGetLinearProjects(deps: SetupApiDeps) {
   return async (_req: Request, res: Response) => {
     const apiKey = getLinearApiKey(deps);
@@ -11,7 +13,7 @@ export function handleGetLinearProjects(deps: SetupApiDeps) {
       return;
     }
 
-    const query = `{ projects(first: 50) { nodes { id name slugId teams { nodes { key } } } } }`;
+    const query = `{ projects(first: ${GRAPHQL_PAGE_SIZE}) { nodes { id name slugId teams { nodes { key } } } } }`;
     let data: Awaited<ReturnType<typeof callLinearGraphQL>>;
     try {
       data = await callLinearGraphQL(apiKey, query, {});

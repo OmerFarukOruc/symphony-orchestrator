@@ -106,14 +106,14 @@ describe("buildDynamicTools", () => {
   it("includes linear_graphql tool with correct schema", () => {
     const tools = buildDynamicTools() as Array<{ name: string; inputSchema: Record<string, unknown> }>;
     const linearTool = tools.find((t) => t.name === "linear_graphql");
-    expect(linearTool).toBeDefined();
+    expect(linearTool).toMatchObject({ name: "linear_graphql" });
     expect(linearTool!.inputSchema.required).toContain("query");
   });
 
   it("includes github_api tool with correct schema", () => {
     const tools = buildDynamicTools() as Array<{ name: string; inputSchema: Record<string, unknown> }>;
     const githubTool = tools.find((t) => t.name === "github_api");
-    expect(githubTool).toBeDefined();
+    expect(githubTool).toMatchObject({ name: "github_api" });
     expect(githubTool!.inputSchema.required).toContain("action");
   });
 });

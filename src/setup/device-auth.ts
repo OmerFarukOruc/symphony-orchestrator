@@ -184,7 +184,7 @@ function escapeHtml(text: string): string {
 function respondWithHtml(res: ServerResponse, success: boolean, errorMessage: string | null): void {
   const title = success ? "Authentication Successful" : "Authentication Failed";
   const body = success
-    ? "<h2>✓ Signed in successfully!</h2><p>You can close this window and return to the Symphony setup wizard.</p>"
+    ? "<h2>✓ Signed in successfully!</h2><p>You can close this window and return to the Risoluto setup wizard.</p>"
     : `<h2>Authentication Failed</h2><p>${escapeHtml(errorMessage ?? "Unknown error")}</p><p>Close this window and try again.</p>`;
   const color = success ? "#22c55e" : "#ef4444";
 

@@ -1,13 +1,13 @@
 # Repo Research — Agent Work Order Protocol
 
 Research open-source repositories and produce batch-ready agent work orders
-for Symphony Orchestrator's feature roadmap (Epic #9).
+for Risoluto's feature roadmap (Epic #9).
 
 ---
 
 ## 1. Context Import
 
-Before starting research, execute the Self-Discovery protocol in `symphony-context.md`.
+Before starting research, execute the Self-Discovery protocol in `risoluto-context.md`.
 Capture the output — you will use it as ground truth for all module paths, patterns,
 and issue references throughout this session.
 
@@ -91,10 +91,10 @@ gh api repos/{owner}/{repo}/commits?per_page=20 --jq '.[].commit.message'
 
 ### 2.4 Pattern Extraction
 
-Explicitly look for these six Symphony patterns in the target repo. If found,
-document the implementation approach and note how it maps to Symphony's design:
+Explicitly look for these six Risoluto patterns in the target repo. If found,
+document the implementation approach and note how it maps to Risoluto's design:
 
-| # | Pattern | Symphony Module |
+| # | Pattern | Risoluto Module |
 |---|---------|----------------|
 | 1 | Port interfaces (dependency inversion) | `src/core/attempt-store-port.ts`, `src/orchestrator/port.ts`, `src/git/port.ts`, `src/tracker/port.ts` |
 | 2 | Config schemas & validation | `src/config/schemas/*.ts`, `src/config/validators.ts` |
@@ -111,12 +111,12 @@ Before creating any issues, cross-reference against LIVE state:
 
 1. Fetch current epic body:
    ```bash
-   gh issue view 9 --repo OmerFarukOruc/symphony-orchestrator --json body --jq '.body'
+   gh issue view 9 --repo OmerFarukOruc/risoluto --json body --jq '.body'
    ```
 
 2. Fetch ALL open issues (not just 50):
    ```bash
-   gh issue list --repo OmerFarukOruc/symphony-orchestrator --limit 200 --state open --json number,title,labels
+   gh issue list --repo OmerFarukOruc/risoluto --limit 200 --state open --json number,title,labels
    ```
 
 3. For each finding, determine:
@@ -147,7 +147,7 @@ GitHub issue number. Never add unnumbered items.
 **Complexity:** {low | medium | high}
 
 ## What
-{2-4 sentences: what this feature is and why Symphony needs it.
+{2-4 sentences: what this feature is and why Risoluto needs it.
 Frame the value -- what problem does it solve for operators?}
 
 ## Prior Art
@@ -162,8 +162,8 @@ Frame the value -- what problem does it solve for operators?}
 ### {Project Name 2} ([repo-link])
 {Same structure if multiple sources.}
 
-## Symphony Adaptation
-{How this maps to Symphony's current architecture.}
+## Risoluto Adaptation
+{How this maps to Risoluto's current architecture.}
 {Which existing modules are affected, what new modules are needed.}
 {Config surface (new WORKFLOW.md / env vars / CLI flags) if applicable.}
 {API surface (new endpoints, SSE events, CLI commands) if applicable.}
@@ -203,7 +203,7 @@ Frame the value -- what problem does it solve for operators?}
 
 ```bash
 gh issue create \
-  --repo OmerFarukOruc/symphony-orchestrator \
+  --repo OmerFarukOruc/risoluto \
   --title "[T{tier}] {Feature name}" \
   --body-file /tmp/issue_body.md
 ```
@@ -246,7 +246,7 @@ Every issue MUST pass these gates before creation:
 
 1. **Implementable in one agent session**: If the issue would take more than ~2 hours of focused agent work, split it
 2. **Testable acceptance criteria**: Every AC item must be verifiable (run a command, check output, inspect file)
-3. **Valid module paths**: All `src/` paths must match the discovery output from `symphony-context.md` -- never use stale paths
+3. **Valid module paths**: All `src/` paths must match the discovery output from `risoluto-context.md` -- never use stale paths
 4. **File boundary clarity**: List every file the issue will create or modify. Flag overlap with other issues.
 5. **Size estimate**: low (<100 LOC) / medium (100-300 LOC) / high (300+ LOC, consider splitting)
 6. **No orphan items**: Every issue must link to Epic #9. Every item in the Epic must have a GitHub issue number.
@@ -260,7 +260,7 @@ researched repo, **append** a reference section to that issue's body:
 
 ```bash
 # Read current body
-body=$(gh issue view {number} --repo OmerFarukOruc/symphony-orchestrator --json body --jq '.body')
+body=$(gh issue view {number} --repo OmerFarukOruc/risoluto --json body --jq '.body')
 
 # Check for existing reference section from this repo (skip if present)
 echo "$body" | grep -q "{repo-name} Reference" && echo "SKIP: already enriched" && exit 0
@@ -283,10 +283,10 @@ Include short code snippets where they clarify the pattern.}
 ### File References
 - [{filename}]({link}) -- {what it does}
 
-### Symphony Adaptation Notes
-{How this maps to Symphony's modules. Reference specific files from discovery output.}"
+### Risoluto Adaptation Notes
+{How this maps to Risoluto's modules. Reference specific files from discovery output.}"
 
-echo "$new_body" | gh issue edit {number} --repo OmerFarukOruc/symphony-orchestrator --body-file -
+echo "$new_body" | gh issue edit {number} --repo OmerFarukOruc/risoluto --body-file -
 ```
 
 Rules:
@@ -297,7 +297,7 @@ Rules:
   - **Architecture notes**: How the researched repo implements this feature
   - **Code patterns**: Key functions, classes, or design patterns worth emulating
   - **File references**: Links to specific source files in the researched repo
-  - **Symphony adaptation notes**: How this maps to Symphony's modules
+  - **Risoluto adaptation notes**: How this maps to Risoluto's modules
 - Be detailed and actionable -- someone reading the issue should be able to
   start implementing without re-doing the research.
 - Do this for ALL enriched issues, not just the Epic body.
@@ -310,10 +310,10 @@ Edit the Epic issue body directly:
 
 ```bash
 # Read current body, modify, then update:
-gh issue view 9 --repo OmerFarukOruc/symphony-orchestrator \
+gh issue view 9 --repo OmerFarukOruc/risoluto \
   --json body --jq '.body' > /tmp/epic_body.md
 # ... edit /tmp/epic_body.md ...
-gh issue edit 9 --repo OmerFarukOruc/symphony-orchestrator \
+gh issue edit 9 --repo OmerFarukOruc/risoluto \
   --body-file /tmp/epic_body.md
 ```
 
@@ -380,12 +380,12 @@ Research targets (run against each repo, or a subset as directed):
 - **Skipped items go ONLY in the research summary artifact.**
 - Do not alter shipped/completed items in the Epic.
 - Be thorough in research but concise in writing -- no fluff.
-- If unsure whether something fits Symphony's scope, flag it as "Consider"
+- If unsure whether something fits Risoluto's scope, flag it as "Consider"
   in the summary rather than silently adding it.
-- **Respect Symphony's architecture**: strict ESM TypeScript, `.js` import extensions,
+- **Respect Risoluto's architecture**: strict ESM TypeScript, `.js` import extensions,
   small focused modules (<200 LOC), port interfaces for dependency inversion,
   extracted helpers over inheritance, context interfaces for dependency passing.
-- When suggesting implementation, reference specific Symphony modules from the
+- When suggesting implementation, reference specific Risoluto modules from the
   discovery output (e.g., `src/orchestrator/orchestrator.ts`, not the stale
   `src/orchestrator.ts`).
 

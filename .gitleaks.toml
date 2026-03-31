@@ -1,0 +1,8 @@
+title = "Risoluto gitleaks config"
+
+[allowlist]
+  description = "Test fixture suppressions"
+  # Commit e8e785d introduced synthetic base64 test fixtures (e.g. eyJ0b2tlbiI6IngifQ==
+  # which is {"token":"x"}) to verify env var passthrough in spawn.test.ts.
+  # These are not real secrets.
+  commits = ["e8e785de4293b22e838e6ab0946d7ee0df39a8f5"]

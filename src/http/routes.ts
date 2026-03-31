@@ -9,7 +9,7 @@ import type { ConfigOverlayPort } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import { fetchCodexModels } from "../codex/model-list.js";
-import type { SymphonyEventMap } from "../core/symphony-events.js";
+import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import { globalMetrics } from "../observability/metrics.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import { registerSecretsApi } from "../secrets/api.js";
@@ -25,10 +25,11 @@ import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
 import { getOpenApiSpec } from "./openapi.js";
-import { modelUpdateSchema, steerSchema, transitionSchema } from "./request-schemas.js";
-import { methodNotAllowed, refreshReason, sanitizeConfigValue } from "./route-helpers.js";
+import { modelUpdateSchema, steerSchema, templateOverrideSchema, transitionSchema } from "./request-schemas.js";
+import { issueNotFound, methodNotAllowed, refreshReason, sanitizeConfigValue } from "./route-helpers.js";
 import { createSSEHandler } from "./sse.js";
 import { getSwaggerHtml } from "./swagger-html.js";
+import { handleTemplateClear, handleTemplateOverride } from "./template-override-handler.js";
 import { handleTransition } from "./transition-handler.js";
 import { handleGetTransitions } from "./transitions-api.js";
 import { validateBody } from "./validation.js";
@@ -44,7 +45,7 @@ interface HttpRouteDeps {
   configStore?: ConfigStore;
   configOverlayStore?: ConfigOverlayPort;
   secretsStore?: SecretsStore;
-  eventBus?: TypedEventBus<SymphonyEventMap>;
+  eventBus?: TypedEventBus<RisolutoEventMap>;
 
   templateStore?: PromptTemplateStore;
   auditLogger?: AuditLogger;
@@ -97,8 +98,7 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
     .get((_req, res) => {
       res.json({
         version: process.env.npm_package_version ?? "unknown",
-        workflow_path: process.env.SYMPHONY_WORKFLOW_PATH ?? "",
-        data_dir: process.env.SYMPHONY_DATA_DIR ?? "",
+        data_dir: process.env.RISOLUTO_DATA_DIR ?? "",
         feature_flags: {},
         provider_summary: "Codex",
       });
@@ -208,11 +208,27 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
     });
 
   app
+    .route("/api/v1/:issue_identifier/template")
+    .post(validateBody(templateOverrideSchema), (req, res) => {
+      if (!deps.templateStore) {
+        res.status(503).json({ error: { code: "not_configured", message: "template store not available" } });
+        return;
+      }
+      handleTemplateOverride(deps.orchestrator, deps.templateStore, req, res);
+    })
+    .delete((req, res) => {
+      handleTemplateClear(deps.orchestrator, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
     .route("/api/v1/:issue_identifier/attempts")
     .get((req, res) => {
       const detail = deps.orchestrator.getIssueDetail(req.params.issue_identifier);
       if (!detail) {
-        res.status(404).json({ error: { code: "not_found", message: "Unknown issue identifier" } });
+        issueNotFound(res);
         return;
       }
       res.json({ attempts: detail.attempts ?? [], current_attempt_id: detail.currentAttemptId ?? null });
@@ -262,7 +278,7 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
     .get((req, res) => {
       const detail = deps.orchestrator.getIssueDetail(req.params.issue_identifier);
       if (!detail) {
-        res.status(404).json({ error: { code: "not_found", message: "Unknown issue identifier" } });
+        issueNotFound(res);
         return;
       }
       res.json(detail);

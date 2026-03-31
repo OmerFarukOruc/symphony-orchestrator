@@ -13,7 +13,7 @@ import { createLogger } from "../../src/core/logger.js";
 const tempDirs: string[] = [];
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-config-api-test-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-config-api-test-"));
   tempDirs.push(dir);
   return dir;
 }

@@ -7,15 +7,15 @@
 
 import { desc, eq, isNotNull, sql } from "drizzle-orm";
 import { lookupModelPrice } from "../../core/model-pricing.js";
-import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "../../core/types.js";
-import type { SymphonyDatabase } from "./database.js";
+import type { AttemptEvent, AttemptRecord, RisolutoLogger } from "../../core/types.js";
+import type { RisolutoDatabase } from "./database.js";
 import { attemptEvents, attempts } from "./schema.js";
 import { rowToAttemptRecord, attemptRecordToRow, rowToAttemptEvent, attemptEventToRow } from "./mappers.js";
 
 export class SqliteAttemptStore {
-  private readonly db: SymphonyDatabase;
+  private readonly db: RisolutoDatabase;
 
-  constructor(db: SymphonyDatabase, logger: SymphonyLogger) {
+  constructor(db: RisolutoDatabase, logger: RisolutoLogger) {
     this.db = db;
     logger.info("SQLite attempt store initialized (shared connection)");
   }
@@ -121,7 +121,7 @@ export class SqliteAttemptStore {
     };
   }
 
-  private getDb(): SymphonyDatabase {
+  private getDb(): RisolutoDatabase {
     return this.db;
   }
 }

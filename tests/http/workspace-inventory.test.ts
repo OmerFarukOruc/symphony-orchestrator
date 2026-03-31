@@ -12,7 +12,7 @@ import {
 } from "../../src/http/workspace-inventory.js";
 
 function createTestDir(suffix: string): string {
-  return path.join(tmpdir(), `symphony-test-${suffix}-${Date.now()}`);
+  return path.join(tmpdir(), `risoluto-test-${suffix}-${Date.now()}`);
 }
 
 function makeOrchestrator(running: unknown[] = [], retrying: unknown[] = [], completed: unknown[] = []) {
@@ -38,7 +38,7 @@ function makeConfigStore(root: string) {
       workspace: {
         root,
         strategy: "directory",
-        branchPrefix: "symphony/",
+        branchPrefix: "risoluto/",
         hooks: { beforeRun: null, afterRun: null, beforeRemove: null, afterCreate: null, timeoutMs: 10_000 },
       },
       repos: [],

@@ -32,7 +32,7 @@ test.describe("Setup Wizard Walkthrough", () => {
     await setup.navigate();
 
     await expect(setup.welcomeHeading).toBeVisible({ timeout: 5000 });
-    await expect(setup.welcomeHeading).toContainText("Welcome to Symphony");
+    await expect(setup.welcomeHeading).toContainText("Welcome to Risoluto");
   });
 
   test("generates and displays master key", async () => {
@@ -143,7 +143,7 @@ test.describe("Setup Wizard Walkthrough", () => {
     await expect(setup.stepIndicatorRow).toHaveCount(0);
     await expect(setup.goToDashboardButton).toBeVisible();
     await expect(page.getByText("Create a test issue")).toBeVisible();
-    await expect(page.getByText("Create Symphony label")).toBeVisible();
+    await expect(page.getByText("Create Risoluto label")).toBeVisible();
   });
 
   // ── Full walkthrough ────────────────────────────────────────────

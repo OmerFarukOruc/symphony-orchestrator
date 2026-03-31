@@ -1,7 +1,7 @@
 /**
  * Exempt: pure OpenAPI path builders kept together for spec discoverability.
  *
- * OpenAPI path definitions for all Symphony API routes.
+ * OpenAPI path definitions for all Risoluto API routes.
  *
  * Each builder function returns a group of path items keyed by route path.
  * Used by `openapi.ts` to assemble the full spec.

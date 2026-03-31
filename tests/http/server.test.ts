@@ -9,7 +9,7 @@ import { HttpServer } from "../../src/http/server.js";
 import { createLogger } from "../../src/core/logger.js";
 import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
 
-const SPA_HTML = `<!doctype html><html><head><title>Symphony</title></head><body><div id="app"></div></body></html>`;
+const SPA_HTML = `<!doctype html><html><head><title>Risoluto</title></head><body><div id="app"></div></body></html>`;
 
 describe("HttpServer", () => {
   let server: HttpServer | null = null;
@@ -22,7 +22,7 @@ describe("HttpServer", () => {
   });
 
   async function createTempDir(): Promise<string> {
-    const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-http-server-test-"));
+    const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-http-server-test-"));
     tempDirs.push(dir);
     return dir;
   }
@@ -145,7 +145,7 @@ describe("HttpServer", () => {
     expect(rootResponse.headers.get("x-request-id")).toBeTruthy();
     const rootHtml = await rootResponse.text();
     expect(rootHtml).toContain('<div id="app">');
-    expect(rootHtml).toContain("<title>Symphony</title>");
+    expect(rootHtml).toContain("<title>Risoluto</title>");
 
     const stateResponse = await fetch(`${baseUrl}/api/v1/state`);
     expect(stateResponse.status).toBe(200);
@@ -167,8 +167,8 @@ describe("HttpServer", () => {
     expect(metricsResponse.status).toBe(200);
     expect(metricsResponse.headers.get("content-type")).toContain("text/plain");
     const metricsBody = await metricsResponse.text();
-    expect(metricsBody).toContain("# TYPE symphony_http_requests_total counter");
-    expect(metricsBody).toContain('symphony_http_requests_total{method="GET",status="200"}');
+    expect(metricsBody).toContain("# TYPE risoluto_http_requests_total counter");
+    expect(metricsBody).toContain('risoluto_http_requests_total{method="GET",status="200"}');
 
     const methodResponse = await fetch(`${baseUrl}/api/v1/state`, { method: "POST" });
     expect(methodResponse.status).toBe(405);
@@ -236,7 +236,6 @@ describe("HttpServer", () => {
     const body = (await response.json()) as Record<string, unknown>;
     expect(body).toMatchObject({
       version: expect.any(String),
-      workflow_path: expect.any(String),
       data_dir: expect.any(String),
       feature_flags: expect.any(Object),
       provider_summary: expect.any(String),

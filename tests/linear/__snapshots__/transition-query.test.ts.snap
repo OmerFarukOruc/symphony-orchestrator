@@ -2,7 +2,7 @@
 
 exports[`buildIssueCommentMutation > matches snapshot 1`] = `
 "
-    mutation SymphonyIssueCommentCreate($issueId: String!, $body: String!) {
+    mutation RisolutoIssueCommentCreate($issueId: String!, $body: String!) {
       commentCreate(input: { issueId: $issueId, body: $body }) {
         success
         comment {
@@ -15,7 +15,7 @@ exports[`buildIssueCommentMutation > matches snapshot 1`] = `
 
 exports[`buildIssueTransitionMutation > matches snapshot 1`] = `
 "
-    mutation SymphonyIssueTransition($issueId: String!, $stateId: String) {
+    mutation RisolutoIssueTransition($issueId: String!, $stateId: String) {
       issueUpdate(id: $issueId, input: { stateId: $stateId }) {
         success
         issue {

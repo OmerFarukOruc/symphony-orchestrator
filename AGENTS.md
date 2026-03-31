@@ -1,10 +1,10 @@
-# Symphony Orchestrator
+# Risoluto
 
 ## Project Structure & Module Organization
 
 Core source lives in `src/`. Start with `src/cli/index.ts` for process startup and archive directory setup, `src/orchestrator/orchestrator.ts` for polling, retries, runtime state, and model overrides, and `src/agent-runner/index.ts` for Codex worker execution. HTTP and dashboard behavior live in `src/http/server.ts` and `src/http/routes.ts`. Archived run persistence lives in `src/core/attempt-store.ts`, workspace lifecycle in `src/workspace/manager.ts`, and Linear transport in `src/linear/client.ts`.
 
-Tests live in `tests/` and use fixture data from `tests/fixtures/`. Built artifacts are emitted to `dist/`; treat that directory as generated output, not hand-edited source. Runtime docs and operator guidance live in `README.md`, `WORKFLOW.example.md`, `WORKFLOW.md`, `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/CONFORMANCE_AUDIT.md`, `docs/RELEASING.md`, and `docs/TRUST_AND_AUTH.md`. `EXECPLAN.md` is the implementation log and should stay factual when behavior changes.
+Tests live in `tests/` and use fixture data from `tests/fixtures/`. Built artifacts are emitted to `dist/`; treat that directory as generated output, not hand-edited source. Runtime docs and operator guidance live in `README.md`, `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/CONFORMANCE_AUDIT.md`, `docs/RELEASING.md`, and `docs/TRUST_AND_AUTH.md`. `EXECPLAN.md` is the implementation log and should stay factual when behavior changes.
 
 ## Build, Test, and Development Commands
 
@@ -16,8 +16,8 @@ Use Node.js 22 or newer.
 - `pnpm run test:integration` runs the opt-in integration config; set `LINEAR_API_KEY` first when you want real credential coverage.
 - `pnpm exec playwright test --project=smoke` runs the Playwright E2E smoke tests (114 tests across 16 spec files) against a Vite dev server with mocked API routes.
 - `pnpm exec playwright test --project=visual` runs visual regression tests (4 visual specs with 4 baselines). Use `--update-snapshots` to regenerate reference screenshots.
-- `pnpm run dev -- ./WORKFLOW.example.md` runs the CLI directly through `tsx`.
-- `node dist/cli/index.js ./WORKFLOW.example.md --port 4000` runs the built service.
+- `pnpm run dev` runs the CLI directly through `tsx`.
+- `node dist/cli/index.js --port 4000` runs the built service.
 - `./scripts/run-e2e.sh` runs the full E2E lifecycle test against real Linear + GitHub APIs (requires credentials + Docker). See `docs/E2E_TESTING.md` for config and usage.
 
 ## Pre-commit & Pre-push Checks — MANDATORY
@@ -66,7 +66,7 @@ Match the current import pattern by using `.js` extensions in local TypeScript i
 
 Add or update Vitest coverage for every behavior change. Prefer deterministic unit tests in `tests/*.test.ts`; use fixtures in `tests/fixtures/` instead of live services where possible. Reserve `tests/live.integration.test.ts` for environment-dependent checks that should skip cleanly when credentials are absent.
 
-**MANDATORY after UI changes:** You MUST invoke `/visual-verify` after editing `dashboard-template.ts`, `logs-template.ts`, any CSS, or any file that affects the Symphony web UI. Visual verification is part of the definition of done for UI work — do not mark a UI task complete without it.
+**MANDATORY after UI changes:** You MUST invoke `/visual-verify` after editing `dashboard-template.ts`, `logs-template.ts`, any CSS, or any file that affects the Risoluto web UI. Visual verification is part of the definition of done for UI work — do not mark a UI task complete without it.
 
 ### Playwright E2E Tests
 
@@ -79,14 +79,14 @@ Dashboard UI changes must be validated with the Playwright E2E suite in `tests/e
 - **Clock freezing**: Use `freezeClock(page)` from `tests/e2e/support/clock.ts` before visual tests for deterministic timestamps.
 - **Unhandled API guard**: `installUnhandledApiGuard(page)` aborts any unmocked API calls — installed automatically by the fixture.
 
-When behavior changes affect the operator surface, verify both code and docs together. At minimum, keep `README.md`, workflow examples, and the relevant `docs/*.md` files aligned with the actual API, trust posture, and runtime behavior.
+When behavior changes affect the operator surface, verify both code and docs together. At minimum, keep `README.md` and the relevant `docs/*.md` files aligned with the actual API, trust posture, and runtime behavior.
 
 
 ## Documentation Expectations
 
 Keep the doc set role-oriented:
 
-- `README.md` explains what Symphony is, what ships now, and how to get started.
+- `README.md` explains what Risoluto is, what ships now, and how to get started.
 - `docs/OPERATOR_GUIDE.md` covers setup, runtime behavior, and common operating tasks.
 - `docs/ROADMAP_AND_STATUS.md` is the issue-linked feature roadmap with all planned work across 4 tiers.
 - `docs/CONFORMANCE_AUDIT.md` records shipped capabilities, spec conformance, and verified remaining gaps.
@@ -96,7 +96,7 @@ Keep the doc set role-oriented:
 
 ## Security & Configuration Tips
 
-Keep secrets out of committed workflow files; prefer env expansion such as `$LINEAR_API_KEY`. When changing auth, trust, workflow examples, or sandbox behavior, update `docs/TRUST_AND_AUTH.md` and any affected operator docs in the same PR.
+Keep secrets out of committed config files; prefer env expansion such as `$LINEAR_API_KEY`. When changing auth, trust, or sandbox behavior, update `docs/TRUST_AND_AUTH.md` and any affected operator docs in the same PR.
 
 ## SonarCloud Prevention Rules
 

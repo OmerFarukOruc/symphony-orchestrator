@@ -10,7 +10,7 @@ const tempDirs: string[] = [];
 const baseTmpDir = os.tmpdir();
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(baseTmpDir, "symphony-loader-test-"));
+  const dir = await mkdtemp(path.join(baseTmpDir, "risoluto-loader-test-"));
   tempDirs.push(dir);
   return dir;
 }

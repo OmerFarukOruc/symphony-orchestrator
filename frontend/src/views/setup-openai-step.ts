@@ -153,7 +153,7 @@ function buildApiKeyField(
   const hint = document.createElement("div");
   hint.id = hintId;
   hint.className = "setup-hint";
-  hint.textContent = "Paste a key that begins with sk-. Symphony stores it encrypted before saving.";
+  hint.textContent = "Paste a key that begins with sk-. Risoluto stores it encrypted before saving.";
 
   field.append(label, input, hint);
   return field;

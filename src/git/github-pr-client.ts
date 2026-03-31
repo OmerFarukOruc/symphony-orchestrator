@@ -133,7 +133,7 @@ export class GitHubPrClient implements GithubApiToolClient {
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
-        "user-agent": "symphony-orchestrator",
+        "user-agent": "risoluto",
       },
       body: init.body,
     });

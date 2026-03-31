@@ -1,5 +1,5 @@
 /**
- * Drizzle ORM schema for Symphony's SQLite persistence layer.
+ * Drizzle ORM schema for Risoluto's SQLite persistence layer.
  *
  * Tables mirror the in-memory `AttemptRecord` and `AttemptEvent` types
  * from `src/core/types.ts`, providing queryable, durable storage for
@@ -119,6 +119,20 @@ export const promptTemplates = sqliteTable("prompt_templates", {
   body: text("body").notNull(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+});
+
+/**
+ * Per-issue model and template overrides.
+ * One row per issue identifier; all override columns are nullable so
+ * the orchestrator falls back to global defaults when they are absent.
+ */
+export const issueConfig = sqliteTable("issue_config", {
+  identifier: text("identifier").primaryKey(),
+  templateId: text("template_id"),
+  model: text("model"),
+  reasoningEffort: text("reasoning_effort", {
+    enum: ["none", "minimal", "low", "medium", "high", "xhigh"],
+  }),
 });
 
 /**

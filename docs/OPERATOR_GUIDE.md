@@ -1,33 +1,31 @@
 # 🛠️ Operator Guide
 
-> Day-to-day setup and operations reference for Symphony Orchestrator.
+> Day-to-day setup and operations reference for Risoluto.
 
 ---
 
-## 🎵 What Symphony Does
+## 🎵 What Risoluto Does
 
-Symphony polls Linear for candidate issues, creates a workspace per issue, launches `codex app-server` inside that workspace, and keeps a local dashboard plus JSON API up to date with live and archived attempt state.
+Risoluto polls Linear for candidate issues, creates a workspace per issue, launches `codex app-server` inside that workspace, and keeps a local dashboard plus JSON API up to date with live and archived attempt state.
 
 ---
 
 ## Quick start (5 minutes)
 
-> Already familiar with Symphony? Skip to [Prerequisites](#-prerequisites) for the full setup reference.
+> Already familiar with Risoluto? Skip to [Prerequisites](#-prerequisites) for the full setup reference.
 
 **1. Install and build**
 
 ```bash
-git clone <repo-url> && cd symphony-orchestrator
+git clone <repo-url> && cd risoluto
 pnpm install && pnpm run build
 bash bin/build-sandbox.sh
 ```
 
-**2. Start Symphony**
+**2. Start Risoluto**
 
 ```bash
-export LINEAR_API_KEY="lin_api_..."
-export LINEAR_PROJECT_SLUG="your-linear-project-slug"
-node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+node dist/cli/index.js --port 4000
 ```
 
 Open http://127.0.0.1:4000 — the **setup wizard** opens automatically and walks you through:
@@ -38,21 +36,22 @@ Open http://127.0.0.1:4000 — the **setup wizard** opens automatically and walk
 4. **Add GitHub** — paste a GitHub PAT (optional)
 
 **3. Verify it works**
-Set a Linear issue to "In Progress". Within one poll cycle (default: 30s), Symphony picks it up and the dashboard shows it running.
+Set a Linear issue to "In Progress". Within one poll cycle (default: 30s), Risoluto picks it up and the dashboard shows it running.
 
 ---
 
 ## 📋 Prerequisites
 
-Make sure the following are in place before running Symphony:
+Make sure the following are in place before running Risoluto:
 
-| Requirement             | Details                                                            |
-| ----------------------- | ------------------------------------------------------------------ |
-| **Node.js**             | v22 or newer                                                       |
-| **Docker**              | Docker Engine installed and running (`docker info` should succeed) |
-| **Linear API key**      | `LINEAR_API_KEY` in your environment                               |
-| **Linear project slug** | `LINEAR_PROJECT_SLUG` for the project Symphony should poll         |
-| **Codex auth**          | Working auth setup for your `codex app-server` command             |
+| Requirement        | Details                                                                     |
+| ------------------ | --------------------------------------------------------------------------- |
+| **Node.js**        | v22 or newer                                                                |
+| **Docker**         | Docker Engine installed and running (`docker info` should succeed)          |
+| **Codex auth**     | Working auth for `codex app-server` (API key or `codex login`)              |
+
+> [!TIP]
+> Credentials (Linear API key, OpenAI key, GitHub PAT) are entered through the setup wizard — no environment variables needed upfront when using Docker or the WebUI bootstrap flow.
 
 ---
 
@@ -60,19 +59,19 @@ Make sure the following are in place before running Symphony:
 
 ## 🌐 Deployment Architecture
 
-Symphony always launches workers in Docker, but the model-routing/auth layer is now generic. You can use:
+Risoluto always launches workers in Docker, but the model-routing/auth layer is now generic. You can use:
 
 - direct OpenAI API auth with `OPENAI_API_KEY`
 - a custom OpenAI-compatible provider via `codex.provider`
 - ChatGPT/Codex login via `codex login` and `codex.auth.mode: openai_login`
 
-Optional host-side proxies such as [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) still work; Symphony rewrites host-bound URLs so Docker workers can reach them.
+Optional host-side proxies such as [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) still work; Risoluto rewrites host-bound URLs so Docker workers can reach them.
 
 ```mermaid
 flowchart TD
     subgraph Host ["🖥️ Host (local machine or VDS)"]
         CLIP["🔑 CLIProxyAPI\n127.0.0.1:8317"]
-        SYM["🎵 Symphony Orchestrator\nport 4000"]
+        SYM["🎵 Risoluto\nport 4000"]
         LINEAR["🗂️ Linear API"]
     end
 
@@ -102,19 +101,19 @@ flowchart TD
 
 ### 🐳 How Docker Networking Works
 
-Containers cannot reach the host's `127.0.0.1`. Symphony automatically:
+Containers cannot reach the host's `127.0.0.1`. Risoluto automatically:
 
 1. Adds `--add-host=host.docker.internal:host-gateway` to every container
 2. Rewrites `127.0.0.1` → `host.docker.internal` in the Codex `config.toml` when running inside Docker
 
-This is transparent — Symphony rewrites host-bound provider URLs in the generated runtime config at container startup.
+This is transparent — Risoluto rewrites host-bound provider URLs in the generated runtime config at container startup.
 
 ### 🖥️ VDS / Server Deployment
 
 ```bash
 # 1. Install Node.js 22+ and Docker
 # 2. Clone the repo and install
-git clone <repo-url> && cd symphony-orchestrator
+git clone <repo-url> && cd risoluto
 pnpm install && pnpm run build
 
 # 3. Build the sandbox image
@@ -131,46 +130,39 @@ export OPENAI_API_KEY="sk-..."
 # 5. Optional: configure a host-side OpenAI-compatible proxy
 #    Example: CLIProxyAPI listening on 127.0.0.1:8317
 
-# 6. Export credentials and start
-export LINEAR_API_KEY="lin_api_..."
-export LINEAR_PROJECT_SLUG="your-linear-project-slug"
-node dist/cli/index.js ./WORKFLOW.md --port 4000
+# 6. Start Risoluto — complete setup via the wizard at http://server:4000
+node dist/cli/index.js --data-dir /var/lib/risoluto --port 4000
 ```
 
 > [!TIP]
-> For persistent operation, run Symphony and CLIProxyAPI under `systemd`, `tmux`, or `screen`.
+> For persistent operation, run Risoluto and CLIProxyAPI under `systemd`, `tmux`, or `screen`.
 
 ---
 
-## 📄 Choose the Right Workflow File
+## 📁 Data Directory
 
-| File                  | When to use                                              |
-| --------------------- | -------------------------------------------------------- |
-| `WORKFLOW.example.md` | Portable example setup (recommended for getting started) |
-| `WORKFLOW.md`         | Repository's checked-in live smoke path                  |
+Risoluto stores all runtime state in a single directory (default: `~/.risoluto`):
 
-> [!TIP]
-> `WORKFLOW.example.md` is the API-key/custom-provider example. `WORKFLOW.md` is the local `codex login` smoke path. Both create a fresh temporary container-local runtime `CODEX_HOME` for each attempt instead of relying on a checked-in fixture home.
+| Path inside `--data-dir` | Purpose |
+| ----------------------- | ------- |
+| `config/overlay.yaml`   | Persistent operator config (written by setup wizard and config API) |
+| `master.key`            | Encryption key for the secrets store |
+| `secrets.enc`           | AES-256-GCM encrypted credentials |
+| `risoluto.db`           | SQLite database for attempt history and issue state |
+| `archives/`             | Per-attempt event archives |
 
-Both checked-in workflows resolve `tracker.project_slug` from `LINEAR_PROJECT_SLUG`, so you can reuse the same files across different Linear projects without editing tracked config.
-
-To find that value, open the Linear project in your browser and copy the segment after `/project/` from the URL:
-
-```text
-https://linear.app/<workspace>/project/<project-slug>/overview
-```
-
-Example:
-
-```text
-https://linear.app/ninetech/project/symphony-test-e1e26e4576d1/overview
-```
-
-uses:
+Override the default with `--data-dir`:
 
 ```bash
-export LINEAR_PROJECT_SLUG="symphony-test-e1e26e4576d1"
+node dist/cli/index.js --data-dir /var/lib/risoluto --port 4000
 ```
+
+> [!TIP]
+> In Docker deployments the data directory maps to a named volume (`risoluto-archives`). The `DATA_DIR` env var is an alternative way to set it: Risoluto resolves `$DATA_DIR/archives` as the archive root.
+
+### Legacy auto-import
+
+On the first boot of a fresh data directory, Risoluto checks for a `WORKFLOW.md` file in the current working directory (or the parent of the data directory). If found, it imports the front-matter as the initial overlay config and the prompt body as the prompt template. This is a one-time migration path — subsequent boots use the data directory exclusively.
 
 ---
 
@@ -189,28 +181,17 @@ pnpm run build
 # Build the Docker sandbox image
 bash bin/build-sandbox.sh
 
-# Point Symphony at the Linear project it should dispatch from
-export LINEAR_PROJECT_SLUG="your-linear-project-slug"
-
-# Dry-start the portable workflow
-node dist/cli/index.js ./WORKFLOW.example.md
+# Start Risoluto — setup wizard runs on first boot
+node dist/cli/index.js --port 4000
 ```
 
-If `LINEAR_PROJECT_SLUG` is missing, Symphony exits with:
+Risoluto stores all runtime config in `~/.risoluto/` by default (override with `--data-dir <path>`). On first boot with no config seeded, Risoluto enters **setup mode** and the wizard at http://127.0.0.1:4000/setup guides you through credentials.
+
+If credentials are missing after setup, Risoluto logs a warning and stays in setup mode. Common startup errors when starting without the wizard (e.g. with a pre-seeded overlay):
 
 ```text
 error code=missing_tracker_project_slug msg="tracker.project_slug is required when tracker.kind is linear"
-```
-
-If `LINEAR_API_KEY` is missing, Symphony exits with:
-
-```text
 error code=missing_tracker_api_key msg="tracker.api_key is required after env resolution"
-```
-
-If `WORKFLOW.example.md` is using the default API-key mode and `OPENAI_API_KEY` is missing, Symphony exits with:
-
-```text
 error code=missing_codex_provider_env msg="codex runtime requires OPENAI_API_KEY in the host environment"
 ```
 
@@ -219,17 +200,26 @@ error code=missing_codex_provider_env msg="codex runtime requires OPENAI_API_KEY
 ## ▶️ Start the Service
 
 ```bash
-node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+node dist/cli/index.js --port 4000
+# Override the data directory:
+node dist/cli/index.js --data-dir /var/lib/risoluto --port 4000
 ```
 
 - 🖥️ **Dashboard**: [http://127.0.0.1:4000/](http://127.0.0.1:4000/)
 - 📡 **API**: `curl -s http://127.0.0.1:4000/api/v1/state`
 
+### CLI flags
+
+| Flag | Default | Purpose |
+| ---- | ------- | ------- |
+| `--port <n>` | `4000` (or `server.port` from config) | HTTP listen port |
+| `--data-dir <path>` | `~/.risoluto` | Data directory for DB, secrets, config overlay, and archives |
+
 ## 🐳 Run the Service in Docker
 
 ### Zero-Environment Docker Compose
 
-Symphony supports a zero-configuration Docker start — no environment variables needed upfront:
+Risoluto supports a zero-configuration Docker start — no environment variables needed upfront:
 
 ```bash
 docker compose up --build
@@ -239,8 +229,8 @@ Open http://localhost:4000 and the **setup wizard** guides you through all crede
 
 | Volume                | Purpose                                                      |
 | --------------------- | ------------------------------------------------------------ |
-| `symphony-archives`   | Encrypted secrets, config overlay, auth tokens, run archives |
-| `symphony-workspaces` | Cloned repositories for each issue                           |
+| `risoluto-archives`   | Encrypted secrets, config overlay, auth tokens, run archives |
+| `risoluto-workspaces` | Cloned repositories for each issue                           |
 | `codex-auth`          | OpenAI Codex login tokens                                    |
 
 ### Traditional Docker Compose
@@ -253,14 +243,14 @@ docker compose up --build
 
 Container-specific notes:
 
-- The service image boots with `WORKFLOW.docker.md` copied into `/app/WORKFLOW.md`.
-- `DATA_DIR=/data` makes the archive root `/data/archives`.
+- `DATA_DIR=/data` makes the archive root `/data/archives` — the same directory serves as `--data-dir`.
 - `workspace.root` resolves to `/data/workspaces` inside the service container.
 - `PathRegistry` translates those container paths back to the host bind-mount sources before worker containers are launched.
+- The setup wizard stores credentials in the `risoluto-archives` volume — no workflow file is needed in the image.
 
 ### Control/Data Plane Architecture (Remote Dispatch Mode)
 
-By default, Symphony runs in **local mode** — all orchestration and agent execution happen in a single process. For scale-out scenarios (remote SSH workers, hot upgrades, multi-host distribution), enable **remote dispatch mode**:
+By default, Risoluto runs in **local mode** — all orchestration and agent execution happen in a single process. For scale-out scenarios (remote SSH workers, hot upgrades, multi-host distribution), enable **remote dispatch mode**:
 
 ```bash
 # .env
@@ -269,7 +259,7 @@ DISPATCH_URL=http://data-plane:9100/dispatch
 DISPATCH_SHARED_SECRET=your-secure-secret-here
 ```
 
-This splits Symphony into two containers:
+This splits Risoluto into two containers:
 
 ```mermaid
 flowchart TD
@@ -301,7 +291,7 @@ flowchart TD
 - Streams events back to control plane via SSE
 - Returns final `RunOutcome` for each dispatch
 
-The data plane is **not exposed to the host** — it only listens on the private `symphony-internal` Docker bridge network. The `DISPATCH_SHARED_SECRET` authenticates inter-container communication.
+The data plane is **not exposed to the host** — it only listens on the private `risoluto-internal` Docker bridge network. The `DISPATCH_SHARED_SECRET` authenticates inter-container communication.
 
 **When to use remote dispatch mode:**
 
@@ -319,7 +309,7 @@ The data plane is **not exposed to the host** — it only listens on the private
 
 ## 🧙 Setup Wizard
 
-When Symphony starts without a master key configured, it enters **setup mode** and serves a step-by-step wizard at `/setup`. The wizard enforces a navigation guard — all routes redirect to `/setup` until configuration is complete.
+When Risoluto starts without a master key configured, it enters **setup mode** and serves a step-by-step wizard at `/setup`. The wizard enforces a navigation guard — all routes redirect to `/setup` until configuration is complete.
 
 ### Wizard Steps
 
@@ -346,7 +336,7 @@ After completing all steps, click **"Go to Dashboard"** to unlock normal navigat
 
 #### API Key Mode
 
-Paste an `sk-...` API key directly. Symphony validates it and stores it in the encrypted secrets store.
+Paste an `sk-...` API key directly. Risoluto validates it and stores it in the encrypted secrets store.
 
 #### Codex Login Mode (Browser Sign-In)
 
@@ -355,7 +345,7 @@ Authenticate with your ChatGPT/Codex subscription directly in the browser:
 1. In the setup wizard (Step 3), select **"Codex Login"**
 2. Click **"Sign in with OpenAI"** — a new browser tab opens to `auth.openai.com`
 3. Log in with your OpenAI account and approve the authorization
-4. The browser redirects to `localhost:1455/auth/callback` — Symphony exchanges the code for tokens automatically
+4. The browser redirects to `localhost:1455/auth/callback` — Risoluto exchanges the code for tokens automatically
 5. The wizard detects success and advances to the next step
 
 > [!TIP]
@@ -400,17 +390,17 @@ What you keep: source code, Docker images, external services (Linear issues, Git
 
 ## ⚙️ Persistent Overlay and Secrets
 
-`WORKFLOW.md` is still the primary config source and still live-reloads on file change. Symphony now adds two operator-only persistent layers on top:
+The persistent overlay and encrypted secrets store are the primary config sources. Both live under the data directory (`--data-dir`, default `~/.risoluto`):
 
-- Config overlay: stored as YAML under the archive data root and exposed through `/api/v1/config*` (including `/api/v1/config/schema`)
-- Secrets store: stored encrypted at rest under the archive data root and exposed through `/api/v1/secrets*`
+- **Config overlay**: stored as YAML at `<data-dir>/config/overlay.yaml` and exposed through `/api/v1/config*` (including `/api/v1/config/schema`). Written by the setup wizard and the config API.
+- **Secrets store**: stored encrypted at rest at `<data-dir>/secrets.enc` and exposed through `/api/v1/secrets*`.
 
-If Symphony finds an existing `secrets.enc` that cannot be decrypted with the current `MASTER_KEY`, startup now fails fast and leaves the encrypted file untouched. Fix the key mismatch before retrying.
+If Risoluto finds an existing `secrets.enc` that cannot be decrypted with the current `MASTER_KEY`, startup fails fast and leaves the encrypted file untouched. Fix the key mismatch before retrying.
 
 Merge order:
 
 1. built-in defaults
-2. `WORKFLOW.md`
+2. legacy auto-imported config (if migrated from a `WORKFLOW.md` on first boot)
 3. persistent overlay
 4. environment and `$SECRET:name` resolution
 
@@ -436,9 +426,9 @@ The workflow can now configure:
 - `notifications.slack.verbosity`
 - `repos[]` routing entries for identifier-prefix or label-based repository selection
 
-Routing precedence is now explicit: Symphony checks label routes first, then falls back to identifier-prefix routes. Use labels for per-issue overrides and prefixes for the default team-to-repo mapping.
+Routing precedence is now explicit: Risoluto checks label routes first, then falls back to identifier-prefix routes. Use labels for per-issue overrides and prefixes for the default team-to-repo mapping.
 
-When a routed issue reports `SYMPHONY_STATUS: DONE`, Symphony can now:
+When a routed issue reports `RISOLUTO_STATUS: DONE`, Risoluto can now:
 
 1. commit and push the workspace branch
 2. open a GitHub pull request
@@ -463,11 +453,11 @@ SMOKE: create workspace proof file
 **Description**
 
 ```md
-Goal: prove Symphony can pick up a live issue, launch Codex, write a file in the issue workspace, and archive the attempt.
+Goal: prove Risoluto can pick up a live issue, launch Codex, write a file in the issue workspace, and archive the attempt.
 
 Steps:
 
-1. Create `SYMPHONY_SMOKE_RESULT.md` in the workspace for this issue.
+1. Create `RISOLUTO_SMOKE_RESULT.md` in the workspace for this issue.
 2. Include:
    - the issue identifier
    - the current UTC timestamp
@@ -481,13 +471,13 @@ Steps:
 
 ### Verify the Run
 
-1. Start Symphony and open the dashboard or poll `GET /api/v1/state`.
+1. Start Risoluto and open the dashboard or poll `GET /api/v1/state`.
 2. Confirm the issue appears under `running`.
 3. Check `GET /api/v1/<ISSUE_IDENTIFIER>` or `GET /api/v1/<ISSUE_IDENTIFIER>/attempts` for a recorded attempt.
-4. Inspect `workspace.root/<ISSUE_IDENTIFIER>/SYMPHONY_SMOKE_RESULT.md`. With the checked-in workflows, the default root is `../symphony-workspaces` (a sibling directory of the project repo).
-5. After the first successful attempt lands, move the issue to `Done` or another terminal state so Symphony stops scheduling continuation turns for the still-active issue.
+4. Inspect `workspace.root/<ISSUE_IDENTIFIER>/RISOLUTO_SMOKE_RESULT.md`. The default root is `../risoluto-workspaces` (a sibling directory of the project repo).
+5. After the first successful attempt lands, move the issue to `Done` or another terminal state so Risoluto stops scheduling continuation turns for the still-active issue.
 
-The checked-in workflows also instruct the agent to finish with `SYMPHONY_STATUS: DONE` on success or `SYMPHONY_STATUS: BLOCKED` when it cannot proceed. Symphony uses that explicit signal to stop local continuation turns for one-shot issues.
+The checked-in workflows also instruct the agent to finish with `RISOLUTO_STATUS: DONE` on success or `RISOLUTO_STATUS: BLOCKED` when it cannot proceed. Risoluto uses that explicit signal to stop local continuation turns for one-shot issues.
 
 ### Automated E2E Lifecycle Test
 
@@ -499,7 +489,7 @@ cp scripts/e2e-config.example.yaml scripts/e2e-config.yaml
 ./scripts/run-e2e.sh
 ```
 
-This creates a real Linear issue, waits for Symphony to pick it up and complete it, verifies the PR, checks Linear state, tests restart resilience, and cleans up — all in one command. See **[E2E Testing Guide](E2E_TESTING.md)** for full configuration and phase details.
+This creates a real Linear issue, waits for Risoluto to pick it up and complete it, verifies the PR, checks Linear state, tests restart resilience, and cleans up — all in one command. See **[E2E Testing Guide](E2E_TESTING.md)** for full configuration and phase details.
 
 ---
 
@@ -507,7 +497,7 @@ This creates a real Linear issue, waits for Symphony to pick it up and complete 
 
 ### 🔄 Polling and Work Selection
 
-Symphony polls Linear on the configured interval, filters candidates using `tracker.active_states`, sorts dispatches by priority then oldest creation time then identifier, suppresses blocked `Todo` issues, and enforces both the global concurrency limit and any per-state caps from `agent.max_concurrent_agents_by_state`.
+Risoluto polls Linear on the configured interval, filters candidates using `tracker.active_states`, sorts dispatches by priority then oldest creation time then identifier, suppresses blocked `Todo` issues, and enforces both the global concurrency limit and any per-state caps from `agent.max_concurrent_agents_by_state`.
 
 During startup, active issues now emit lifecycle events through the same recent-events stream used by the rest of the dashboard. The queue UI surfaces `issue_queued`, `workspace_preparing`, `workspace_ready`, `container_starting`, `container_running`, `codex_initializing`, and `thread_started` so operators can see where time is being spent before the first agent response.
 
@@ -531,7 +521,7 @@ Hook execution is bounded by `hooks.timeout_ms`.
 
 ### 🌳 Workspace Strategies
 
-Symphony supports two workspace strategies controlled by `workspace.strategy`:
+Risoluto supports two workspace strategies controlled by `workspace.strategy`:
 
 | Strategy    | Description                                     | Disk Usage                  | Default |
 | ----------- | ----------------------------------------------- | --------------------------- | ------- |
@@ -540,7 +530,7 @@ Symphony supports two workspace strategies controlled by `workspace.strategy`:
 
 **Worktree strategy:**
 
-When `workspace.strategy: worktree`, Symphony creates a single bare clone under `workspace.root/.base/<repo-key>.git` and issues get lightweight worktrees that share the same object store.
+When `workspace.strategy: worktree`, Risoluto creates a single bare clone under `workspace.root/.base/<repo-key>.git` and issues get lightweight worktrees that share the same object store.
 
 - Base clone is created automatically on first issue for a given repo route
 - `git fetch` syncs refs before worktree creation — existing worktrees are never reset or rebased
@@ -548,15 +538,15 @@ When `workspace.strategy: worktree`, Symphony creates a single bare clone under 
 - Successful terminal runs clean up the worktree; hard failures can be preserved for debugging
 - The `.base` directory is excluded from startup transient cleanup
 - Fail-fast: worktree mode requires a matching repo route for every issue
-- Symphony warns when a configured repo route points back to `symphony-orchestrator` itself; keep that only for deliberate self-test traffic
+- Risoluto warns when a configured repo route points back to `risoluto` itself; keep that only for deliberate self-test traffic
 
 **Configuration:**
 
 ```yaml
 workspace:
-  root: ../symphony-workspaces
+  root: ../risoluto-workspaces
   strategy: worktree # "directory" or "worktree"
-  branch_prefix: "symphony/" # prefix for symphony-created branches
+  branch_prefix: "risoluto/" # prefix for risoluto-created branches
 ```
 
 ### ⏱️ Timeouts and Retries
@@ -578,7 +568,7 @@ workspace:
 
 ### 🐳 Docker Sandbox
 
-Symphony runs the Codex agent inside a Docker container by default using a `node:22-bookworm` base image with the Codex CLI installed globally. This provides process isolation, resource limits, and security hardening.
+Risoluto runs the Codex agent inside a Docker container by default using a `node:22-bookworm` base image with the Codex CLI installed globally. This provides process isolation, resource limits, and security hardening.
 
 **Key runtime behavior:**
 
@@ -587,7 +577,7 @@ Symphony runs the Codex agent inside a Docker container by default using a `node
 | **Path identity**          | All host paths are bind-mounted at their same absolute path inside the container                             |
 | **Host permissions**       | Container runs as your UID/GID — no ownership drift                                                          |
 | **Writable HOME**          | A persistent named volume is mounted at `/home/agent` for npm/pip/git caches                                 |
-| **Generated runtime home** | Symphony materializes a temporary container-local `CODEX_HOME` per attempt and removes it with the container |
+| **Generated runtime home** | Risoluto materializes a temporary container-local `CODEX_HOME` per attempt and removes it with the container |
 | **Resource limits**        | Memory, CPU, and tmpfs are configurable via `codex.sandbox.resources`                                        |
 | **OOM detection**          | Exit code 137 with `OOMKilled=true` is surfaced as `container_oom` (retryable)                               |
 
@@ -604,10 +594,10 @@ flowchart LR
     style E fill:#059669,stroke:#047857,color:#fff
 ```
 
-**Configuration:** See `codex.sandbox` in `WORKFLOW.example.md` for all available settings.
+**Configuration:** See the `codex.sandbox` section in the [Advanced Configuration Reference](#-advanced-configuration-reference) below for all available settings.
 
 > [!WARNING]
-> Named Docker volumes (build caches) survive container/image replacement, but **not** `docker system prune --volumes`. Do not prune volumes prefixed with `symphony-`.
+> Named Docker volumes (build caches) survive container/image replacement, but **not** `docker system prune --volumes`. Do not prune volumes prefixed with `risoluto-`.
 
 > [!TIP]
 > For restricted network egress, pre-provision a custom Docker network with `DOCKER-USER` iptables rules and set `codex.sandbox.network` to that network name.
@@ -629,18 +619,18 @@ curl -s -X POST http://127.0.0.1:4000/api/v1/MT-42/model \
 
 ## 📂 Filesystem Paths Reference
 
-Symphony creates and reads several directories at runtime. This section documents every path so you know what is safe to keep, move, or delete.
+Risoluto creates and reads several directories at runtime. This section documents every path so you know what is safe to keep, move, or delete.
 
 ### Host-Side Paths
 
 | Path                                        | Source                                                     | Purpose                                                                                    | Safe to delete?                                     |
 | ------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| `.symphony/` (next to workflow file)        | `src/cli/index.ts` — default `archiveDir`                  | SQLite database (`symphony.db`) with attempts, events, and issue index; config overlay; encrypted secrets store | ⚠️ You lose all historical attempt data             |
-| `../symphony-workspaces/` (sibling of repo) | `src/config/builders.ts` — default `workspace.root`        | Per-issue workspace directories (one subdirectory per issue identifier)                    | ✅ Yes — workspaces are re-created on next dispatch |
+| `~/.risoluto/` (default data directory)     | `src/cli/index.ts` — default `archiveDir`                  | SQLite database (`risoluto.db`) with attempts, events, and issue index; config overlay; encrypted secrets store | ⚠️ You lose all historical attempt data             |
+| `../risoluto-workspaces/` (sibling of repo) | `src/config/builders.ts` — default `workspace.root`        | Per-issue workspace directories (one subdirectory per issue identifier)                    | ✅ Yes — workspaces are re-created on next dispatch |
 | `~/.codex/`                                 | `src/config/builders.ts` — default `codex.auth.sourceHome` | Codex CLI auth credentials (`auth.json`) read for `openai_login` mode                      | ⚠️ You'll need to re-run `codex login`              |
 
 > [!NOTE]
-> The archive directory can be overridden with `--log-dir` or the `DATA_DIR` environment variable. The workspace root can be overridden via `workspace.root` in the workflow file. The auth source home can be overridden via `codex.auth.source_home`.
+> The archive directory can be overridden with `--data-dir` or the `DATA_DIR` environment variable. The workspace root can be overridden via `workspace.root` in the config overlay. The auth source home can be overridden via `codex.auth.source_home`.
 
 ### Inside Docker Containers
 
@@ -649,16 +639,16 @@ These paths exist only inside worker containers and are **not** on the host file
 | Path                         | Source                                         | Purpose                                                                                                                                                                         |
 | ---------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/home/agent/.codex-runtime` | `src/docker/spawn.ts` — `CONTAINER_CODEX_HOME` | Ephemeral per-attempt `CODEX_HOME` with generated `config.toml`, trusted-project entries, and optional `auth.json` — created at container startup, destroyed with the container |
-| `/home/agent`                | `src/docker/spawn.ts` — `CONTAINER_HOME`       | Container `HOME` backed by a named Docker volume (`symphony-cache-<runId>`) for npm/pip/git caches                                                                              |
+| `/home/agent`                | `src/docker/spawn.ts` — `CONTAINER_HOME`       | Container `HOME` backed by a named Docker volume (`risoluto-cache-<runId>`) for npm/pip/git caches                                                                              |
 
 ### Named Docker Volumes
 
 | Volume                   | Purpose                                                                                                                           |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `symphony-cache-<runId>` | Persistent build caches for each worker (npm, pip, git) — survives container restarts but **not** `docker system prune --volumes` |
+| `risoluto-cache-<runId>` | Persistent build caches for each worker (npm, pip, git) — survives container restarts but **not** `docker system prune --volumes` |
 
 > [!TIP]
-> Directories like `~/.symphony-codex` or `~/.symphony-codex-home` are **not** created or used by Symphony. If you find them on your host, they are leftover Codex CLI application data and can safely be deleted.
+> Directories like `~/.risoluto-codex` or `~/.risoluto-codex-home` are **not** created or used by Risoluto. If you find them on your host, they are leftover Codex CLI application data and can safely be deleted.
 
 ---
 
@@ -666,10 +656,10 @@ These paths exist only inside worker containers and are **not** on the host file
 
 ### Bind Address
 
-By default, Symphony binds to `127.0.0.1` (loopback only). Override with:
+By default, Risoluto binds to `127.0.0.1` (loopback only). Override with:
 
 ```bash
-export SYMPHONY_BIND="0.0.0.0"   # Listen on all interfaces
+export RISOLUTO_BIND="0.0.0.0"   # Listen on all interfaces
 ```
 
 ### Write Guard
@@ -679,15 +669,15 @@ All mutating API requests (POST, PUT, PATCH, DELETE) are protected by a write gu
 | Scenario | Behavior |
 |----------|----------|
 | Request from loopback (`127.0.0.1`, `::1`) | Allowed — no token required |
-| Request from non-loopback, no `SYMPHONY_WRITE_TOKEN` set | **403 `write_forbidden`** |
-| `SYMPHONY_WRITE_TOKEN` set, valid `Authorization: Bearer <token>` | Allowed from any address |
-| `SYMPHONY_WRITE_TOKEN` set, missing or invalid token | **401 `write_unauthorized`** |
+| Request from non-loopback, no `RISOLUTO_WRITE_TOKEN` set | **403 `write_forbidden`** |
+| `RISOLUTO_WRITE_TOKEN` set, valid `Authorization: Bearer <token>` | Allowed from any address |
+| `RISOLUTO_WRITE_TOKEN` set, missing or invalid token | **401 `write_unauthorized`** |
 
 To enable remote write access:
 
 ```bash
-export SYMPHONY_BIND="0.0.0.0"
-export SYMPHONY_WRITE_TOKEN="your-secret-token"
+export RISOLUTO_BIND="0.0.0.0"
+export RISOLUTO_WRITE_TOKEN="your-secret-token"
 ```
 
 All mutating requests then require:
@@ -697,7 +687,7 @@ Authorization: Bearer your-secret-token
 ```
 
 > [!CAUTION]
-> Exposing Symphony on a non-loopback address without `SYMPHONY_WRITE_TOKEN` blocks all mutations from remote clients. Always set both when binding to `0.0.0.0`.
+> Exposing Risoluto on a non-loopback address without `RISOLUTO_WRITE_TOKEN` blocks all mutations from remote clients. Always set both when binding to `0.0.0.0`.
 
 ### Rate Limiting
 
@@ -718,15 +708,15 @@ All `/api/*` and `/metrics` endpoints are rate-limited to **300 requests per 60 
 | `OPENAI_API_KEY` | — | OpenAI API key (for `api_key` auth mode) |
 | `GITHUB_TOKEN` | — | GitHub Personal Access Token for git automation |
 | `MASTER_KEY` | — | AES encryption key for the secrets store |
-| `SYMPHONY_BIND` | `127.0.0.1` | Address to bind the HTTP server |
-| `SYMPHONY_WRITE_TOKEN` | — | Bearer token for remote write access (see [Network Security](#-network-security)) |
-| `SYMPHONY_LOG_FORMAT` | — | Logger output format (`logfmt` or JSON when unset) |
-| `SYMPHONY_PERSISTENCE` | `sqlite` | Persistence backend |
-| `SYMPHONY_HOST_WORKSPACE_ROOT` | — | Host-side workspace root for Docker volume mapping |
-| `SYMPHONY_HOST_ARCHIVE_DIR` | — | Host-side archive directory for Docker volume mapping |
-| `SYMPHONY_CONTAINER_WORKSPACE_ROOT` | — | Container-side workspace path |
-| `SYMPHONY_CONTAINER_ARCHIVE_DIR` | — | Container-side archive path |
-| `DATA_DIR` | `.symphony/` | Archive and workspace base directory |
+| `RISOLUTO_BIND` | `127.0.0.1` | Address to bind the HTTP server |
+| `RISOLUTO_WRITE_TOKEN` | — | Bearer token for remote write access (see [Network Security](#-network-security)) |
+| `RISOLUTO_LOG_FORMAT` | — | Logger output format (`logfmt` or JSON when unset) |
+| `RISOLUTO_PERSISTENCE` | `sqlite` | Persistence backend |
+| `RISOLUTO_HOST_WORKSPACE_ROOT` | — | Host-side workspace root for Docker volume mapping |
+| `RISOLUTO_HOST_ARCHIVE_DIR` | — | Host-side archive directory for Docker volume mapping |
+| `RISOLUTO_CONTAINER_WORKSPACE_ROOT` | — | Container-side workspace path |
+| `RISOLUTO_CONTAINER_ARCHIVE_DIR` | — | Container-side archive path |
+| `DATA_DIR` | `.risoluto/` | Archive and workspace base directory |
 | `DISPATCH_MODE` | `local` | `local` for single-process, `remote` for control/data plane split |
 | `DISPATCH_URL` | — | Data plane URL when `DISPATCH_MODE=remote` |
 | `DISPATCH_PORT` | `9100` | Data plane listen port (in remote dispatch mode) |
@@ -739,7 +729,7 @@ All `/api/*` and `/metrics` endpoints are rate-limited to **300 requests per 60 
 
 ## 🔧 Advanced Configuration Reference
 
-The workflow YAML file supports the following configuration sections. Options not set in your workflow file use the defaults shown below.
+The config overlay supports the following configuration sections. Options not set in your overlay use the defaults shown below.
 
 ### `codex` — Agent Provider Settings
 
@@ -771,7 +761,7 @@ The workflow YAML file supports the following configuration sections. Options no
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `image` | string | `"symphony-codex:latest"` | Docker image for sandboxed agents |
+| `image` | string | `"risoluto-codex:latest"` | Docker image for sandboxed agents |
 | `network` | string | `""` | Docker network name (empty = default) |
 | `extraMounts` | string[] | `[]` | Extra host→container bind mounts (identity-mapped paths) |
 | `envPassthrough` | string[] | `[]` | Environment variables forwarded into the container |
@@ -821,9 +811,9 @@ The workflow YAML file supports the following configuration sections. Options no
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `root` | string | `"../symphony-workspaces"` | Root directory for per-issue workspaces |
+| `root` | string | `"../risoluto-workspaces"` | Root directory for per-issue workspaces |
 | `strategy` | enum | `"directory"` | `directory` (clone) or `worktree` (git worktree) |
-| `branchPrefix` | string | `"symphony/"` | Branch name prefix for worktree strategy |
+| `branchPrefix` | string | `"risoluto/"` | Branch name prefix for worktree strategy |
 
 ### `workspace.hooks`
 
@@ -842,7 +832,7 @@ The workflow YAML file supports the following configuration sections. Options no
 | `stages` | array | `[]` | Workflow stage definitions, each with `name` (string) and `kind` (`backlog`, `todo`, `active`, `gate`, `terminal`) |
 | `transitions` | object | `{}` | State transition map — keys are state names, values are arrays of allowed target states |
 
-When `stages` is empty, Symphony derives stages from the tracker's workflow configuration.
+When `stages` is empty, Risoluto derives stages from the tracker's workflow configuration.
 
 ### `github` — GitHub Integration
 
@@ -988,17 +978,17 @@ Requires `gh` CLI authenticated with repo access.
 
 ## 🗂️ Archived Attempts and Logs
 
-By default, the data directory is `.symphony/` next to the workflow file (override with `--log-dir` or `DATA_DIR`).
+By default, the data directory is `~/.risoluto/` (override with `--data-dir` or `DATA_DIR`).
 
 ### Storage: SQLite
 
-All attempt and event data is persisted in a **SQLite database** (`symphony.db`) using Drizzle ORM with WAL mode:
+All attempt and event data is persisted in a **SQLite database** (`risoluto.db`) using Drizzle ORM with WAL mode:
 
 ```
-.symphony/
-├── symphony.db           # SQLite database (attempts, events, issue index)
-├── symphony.db-shm       # WAL shared-memory file (normal, do not delete)
-├── symphony.db-wal       # Write-ahead log (normal, do not delete)
+.risoluto/
+├── risoluto.db           # SQLite database (attempts, events, issue index)
+├── risoluto.db-shm       # WAL shared-memory file (normal, do not delete)
+├── risoluto.db-wal       # Write-ahead log (normal, do not delete)
 ├── config/               # Operator config overlay (YAML)
 ├── secrets.enc           # AES-encrypted credential store
 ├── secrets.audit.log     # Secret access audit trail
@@ -1031,19 +1021,19 @@ curl -s http://127.0.0.1:4000/api/v1/attempts/<attempt-id>         # single atte
 curl -N  http://127.0.0.1:4000/api/v1/events                       # SSE real-time event stream
 ```
 
-**Direct SQLite queries** (when Symphony is stopped, or read-only via WAL mode):
+**Direct SQLite queries** (when Risoluto is stopped, or read-only via WAL mode):
 
 ```bash
-sqlite3 .symphony/symphony.db "SELECT attempt_id, issue_identifier, status, model, started_at FROM attempts ORDER BY started_at DESC LIMIT 10;"
-sqlite3 .symphony/symphony.db "SELECT type, message, timestamp FROM attempt_events WHERE attempt_id = '...' ORDER BY timestamp;"
+sqlite3 .risoluto/risoluto.db "SELECT attempt_id, issue_identifier, status, model, started_at FROM attempts ORDER BY started_at DESC LIMIT 10;"
+sqlite3 .risoluto/risoluto.db "SELECT type, message, timestamp FROM attempt_events WHERE attempt_id = '...' ORDER BY timestamp;"
 ```
 
 **CLI helper** for archive-first inspection:
 
 ```bash
-./symphony-logs MT-42
-./symphony-logs NIN-3 --attempts --dir tests/fixtures/symphony-archive-sandbox/.symphony
-./symphony-logs --attempt 00000000-0000-4000-8000-000000000422 --dir tests/fixtures/symphony-archive-sandbox/.symphony
+./risoluto-logs MT-42
+./risoluto-logs NIN-3 --attempts --dir tests/fixtures/risoluto-archive-sandbox/.risoluto
+./risoluto-logs --attempt 00000000-0000-4000-8000-000000000422 --dir tests/fixtures/risoluto-archive-sandbox/.risoluto
 ```
 
 The helper emits JSON and works with both the SQLite database and legacy JSONL archives.
@@ -1054,13 +1044,13 @@ Runtime process logs are emitted to **stdout** via Pino (not written to files). 
 
 | Variable | Values | Default |
 | -------- | ------ | ------- |
-| `SYMPHONY_LOG_FORMAT` | `logfmt`, `json` | `logfmt` |
+| `RISOLUTO_LOG_FORMAT` | `logfmt`, `json` | `logfmt` |
 | `LOG_LEVEL` | `trace`, `debug`, `info`, `warn`, `error`, `fatal` | `info` |
 
 To persist process logs, pipe stdout to a file:
 
 ```bash
-node dist/cli/index.js ./WORKFLOW.md --port 4000 2>&1 | tee symphony.log
+node dist/cli/index.js --port 4000 2>&1 | tee risoluto.log
 ```
 
 ---
@@ -1083,7 +1073,7 @@ node dist/cli/index.js ./WORKFLOW.md --port 4000 2>&1 | tee symphony.log
 >
 > ### Required MCP Startup Failure
 >
-> This is a **Codex runtime** problem, not a Symphony bug:
+> This is a **Codex runtime** problem, not a Risoluto bug:
 >
 > ```text
 > error code=startup_failed msg="thread/start failed because a required MCP server did not initialize"
@@ -1093,13 +1083,13 @@ node dist/cli/index.js ./WORKFLOW.md --port 4000 2>&1 | tee symphony.log
 >
 > ### Invalid External Credentials
 >
-> If the Linear token or provider credentials are invalid, Symphony surfaces the upstream failure rather than crashing.
+> If the Linear token or provider credentials are invalid, Risoluto surfaces the upstream failure rather than crashing.
 
 ---
 
 ## 🔭 Visual Verification of Dashboard UI
 
-Symphony includes a `visual-verify` skill and project-level `agent-browser` configuration for visually verifying dashboard UI changes using bundled Chromium in headed mode.
+Risoluto includes a `visual-verify` skill and project-level `agent-browser` configuration for visually verifying dashboard UI changes using bundled Chromium in headed mode.
 
 ### Prerequisites
 
@@ -1128,7 +1118,7 @@ Use after a targeted UI change to confirm the edit visually:
 
 ```bash
 # 1. Start the dashboard
-node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+node dist/cli/index.js --port 4000
 
 # 2. Baseline screenshot
 agent-browser open http://127.0.0.1:4000
@@ -1158,6 +1148,6 @@ For comprehensive testing (before releases, after major UI changes), the `visual
 
 ## 🔐 Trust and Auth
 
-Symphony is designed for a local, operator-controlled, high-trust environment.
+Risoluto is designed for a local, operator-controlled, high-trust environment.
 
 → See **[`docs/TRUST_AND_AUTH.md`](TRUST_AND_AUTH.md)** for the full trust boundary and auth model.

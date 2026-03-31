@@ -9,7 +9,7 @@ import { pruneDanglingWorkspaceSkillLinks } from "../../src/orchestrator/workspa
 const tempDirs: string[] = [];
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-workspace-prep-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-workspace-prep-"));
   tempDirs.push(dir);
   return dir;
 }
@@ -28,7 +28,7 @@ describe("pruneDanglingWorkspaceSkillLinks", () => {
     await mkdir(validTarget, { recursive: true });
     await writeFile(path.join(validTarget, "SKILL.md"), "---\nname: visual-verify\n---\n", "utf8");
     await symlink("../../skills/visual-verify", path.join(skillsDir, "valid"));
-    await symlink("../../skills/symphony-plan-review", path.join(skillsDir, "broken"));
+    await symlink("../../skills/risoluto-plan-review", path.join(skillsDir, "broken"));
 
     pruneDanglingWorkspaceSkillLinks(workspaceDir);
 

@@ -13,6 +13,8 @@ import type { NotificationEvent } from "../notification/channel.js";
 import type { OrchestratorDeps, RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
 
 import { usageDelta } from "./views.js";
+
+const MAX_RECENT_EVENTS = 250;
 import { resolveModelSelection as resolveModelSelectionFromConfig } from "./model-selection.js";
 import {
   clearRetryEntry as clearRetryEntryState,
@@ -57,7 +59,7 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
     claimIssue: (issueId) => state.claimedIssueIds.add(issueId),
     notify: (event) => notifyChannel(deps, event),
     pushEvent: (event) => {
-      pushRecentEvent(state.recentEvents, event);
+      pushRecentEvent(state, event);
       state.markDirty();
       forwardToEventBus(deps, event);
     },
@@ -95,17 +97,22 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
       state.markDirty();
     },
     getStallEvents: () => state.stallEvents,
-    detectAndKillStalled: () =>
-      detectAndKillStalledWorkers({
+    detectAndKillStalled: () => {
+      const result = detectAndKillStalledWorkers({
         runningEntries: state.runningEntries,
         stallEvents: state.stallEvents,
         getConfig: () => deps.configStore.getConfig(),
         pushEvent: (event) => {
-          pushRecentEvent(state.recentEvents, event);
+          pushRecentEvent(state, event);
           forwardToEventBus(deps, event);
         },
         logger: { warn: (...args) => deps.logger.warn(...args) },
-      }),
+      });
+      if (result.updatedStallEvents) {
+        state.stallEvents = result.updatedStallEvents;
+      }
+      return { killed: result.killed };
+    },
     eventBus: deps.eventBus,
   };
 }
@@ -121,6 +128,7 @@ export interface OrchestratorState {
   recentEvents: RecentEvent[];
   rateLimits: unknown;
   issueModelOverrides: Map<string, Omit<ModelSelection, "source">>;
+  issueTemplateOverrides: Map<string, string>;
   operatorAbortSuppressions?: Map<string, string>;
   sessionUsageTotals: Map<string, TokenUsageSnapshot>;
   codexTotals: { inputTokens: number; outputTokens: number; totalTokens: number; secondsRunning: number };
@@ -133,8 +141,8 @@ function notifyChannel(deps: OrchestratorDeps, event: NotificationEvent): void {
   void deps.notificationManager.notify(event);
 }
 
-function pushRecentEvent(recentEvents: RecentEvent[], event: RuntimeEventRecord): void {
-  recentEvents.push({
+function pushRecentEvent(state: OrchestratorState, event: RuntimeEventRecord): void {
+  const newEvent: RecentEvent = {
     at: event.at,
     issueId: event.issueId,
     issueIdentifier: event.issueIdentifier,
@@ -143,10 +151,9 @@ function pushRecentEvent(recentEvents: RecentEvent[], event: RuntimeEventRecord)
     message: event.message,
     content: event.content ?? null,
     metadata: event.metadata ?? null,
-  });
-  if (recentEvents.length > 250) {
-    recentEvents.shift();
-  }
+  };
+  const events = [...state.recentEvents, newEvent];
+  state.recentEvents = events.length > MAX_RECENT_EVENTS ? events.slice(events.length - MAX_RECENT_EVENTS) : events;
 }
 
 function emitLifecycleEvent(deps: OrchestratorDeps, event: RuntimeEventRecord): void {
@@ -193,9 +200,12 @@ function applyUsageEvent(
   if (usageMode === "absolute_total") {
     const previous = entry.sessionId ? (state.sessionUsageTotals.get(entry.sessionId) ?? null) : null;
     const delta = usageDelta(previous, usage);
-    state.codexTotals.inputTokens += delta.inputTokens;
-    state.codexTotals.outputTokens += delta.outputTokens;
-    state.codexTotals.totalTokens += delta.totalTokens;
+    state.codexTotals = {
+      ...state.codexTotals,
+      inputTokens: state.codexTotals.inputTokens + delta.inputTokens,
+      outputTokens: state.codexTotals.outputTokens + delta.outputTokens,
+      totalTokens: state.codexTotals.totalTokens + delta.totalTokens,
+    };
     entry.tokenUsage = usage;
     if (entry.sessionId) {
       state.sessionUsageTotals.set(entry.sessionId, usage);
@@ -204,9 +214,12 @@ function applyUsageEvent(
     return;
   }
 
-  state.codexTotals.inputTokens += usage.inputTokens;
-  state.codexTotals.outputTokens += usage.outputTokens;
-  state.codexTotals.totalTokens += usage.totalTokens;
+  state.codexTotals = {
+    ...state.codexTotals,
+    inputTokens: state.codexTotals.inputTokens + usage.inputTokens,
+    outputTokens: state.codexTotals.outputTokens + usage.outputTokens,
+    totalTokens: state.codexTotals.totalTokens + usage.totalTokens,
+  };
   entry.tokenUsage = {
     inputTokens: (entry.tokenUsage?.inputTokens ?? 0) + usage.inputTokens,
     outputTokens: (entry.tokenUsage?.outputTokens ?? 0) + usage.outputTokens,

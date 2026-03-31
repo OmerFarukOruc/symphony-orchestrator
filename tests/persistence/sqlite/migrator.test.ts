@@ -8,13 +8,13 @@ import type { AttemptEvent, AttemptRecord } from "../../../src/core/types.js";
 import { closeDatabase, openDatabase } from "../../../src/persistence/sqlite/database.js";
 import { migrateFromJsonl } from "../../../src/persistence/sqlite/migrator.js";
 import { attempts, attemptEvents } from "../../../src/persistence/sqlite/schema.js";
-import type { SymphonyDatabase } from "../../../src/persistence/sqlite/database.js";
+import type { RisolutoDatabase } from "../../../src/persistence/sqlite/database.js";
 import { createMockLogger } from "../../helpers.js";
 
 const tempDirs: string[] = [];
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-migrator-test-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-migrator-test-"));
   tempDirs.push(dir);
   return dir;
 }
@@ -26,7 +26,7 @@ function createAttemptRecord(overrides: Partial<AttemptRecord> = {}): AttemptRec
     issueIdentifier: "MT-42",
     title: "Test issue",
     workspaceKey: "MT-42",
-    workspacePath: "/tmp/symphony/MT-42",
+    workspacePath: "/tmp/risoluto/MT-42",
     status: "completed",
     attemptNumber: 1,
     startedAt: "2026-03-16T10:00:00.000Z",
@@ -65,7 +65,7 @@ afterEach(async () => {
 });
 
 describe("migrateFromJsonl", () => {
-  let db: SymphonyDatabase;
+  let db: RisolutoDatabase;
 
   afterEach(() => {
     try {
@@ -100,7 +100,7 @@ describe("migrateFromJsonl", () => {
   });
 
   it("handles missing archive directory gracefully (no attempts/ or events/)", async () => {
-    const archiveDir = path.join(os.tmpdir(), "symphony-migrator-nonexistent-" + Date.now());
+    const archiveDir = path.join(os.tmpdir(), "risoluto-migrator-nonexistent-" + Date.now());
     db = openDatabase(":memory:");
     const logger = createMockLogger();
 

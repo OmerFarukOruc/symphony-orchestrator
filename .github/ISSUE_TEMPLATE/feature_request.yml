@@ -18,7 +18,7 @@ body:
     id: solution
     attributes:
       label: Proposed Solution
-      description: How should Symphony address this?
+      description: How should Risoluto address this?
     validations:
       required: true
   - type: textarea

@@ -2,7 +2,7 @@
 
 exports[`buildCandidateIssuesByStateIdsQuery > matches snapshot with project filter 1`] = `
 "
-    query SymphonyCandidateIssuesByStateIds($after: String, $stateIds: [ID!], $projectSlug: String!) {
+    query RisolutoCandidateIssuesByStateIds($after: String, $stateIds: [ID!], $projectSlug: String!) {
       issues(first: 50, after: $after, filter: {
         state: { id: { in: $stateIds } }
         project: { slugId: { eq: $projectSlug } }
@@ -59,7 +59,7 @@ exports[`buildCandidateIssuesByStateIdsQuery > matches snapshot with project fil
 
 exports[`buildCandidateIssuesByStateIdsQuery > matches snapshot without project filter 1`] = `
 "
-    query SymphonyCandidateIssuesByStateIds($after: String, $stateIds: [ID!]) {
+    query RisolutoCandidateIssuesByStateIds($after: String, $stateIds: [ID!]) {
       issues(first: 50, after: $after, filter: {
         state: { id: { in: $stateIds } }
         
@@ -116,7 +116,7 @@ exports[`buildCandidateIssuesByStateIdsQuery > matches snapshot without project 
 
 exports[`buildCandidateIssuesQuery > matches snapshot with project filter 1`] = `
 "
-    query SymphonyCandidateIssues($after: String, $activeStates: [String!], $projectSlug: String!) {
+    query RisolutoCandidateIssues($after: String, $activeStates: [String!], $projectSlug: String!) {
       issues(first: 50, after: $after, filter: {
         state: { name: { in: $activeStates } }
         project: { slugId: { eq: $projectSlug } }
@@ -173,7 +173,7 @@ exports[`buildCandidateIssuesQuery > matches snapshot with project filter 1`] = 
 
 exports[`buildCandidateIssuesQuery > matches snapshot without project filter 1`] = `
 "
-    query SymphonyCandidateIssues($after: String, $activeStates: [String!]) {
+    query RisolutoCandidateIssues($after: String, $activeStates: [String!]) {
       issues(first: 50, after: $after, filter: {
         state: { name: { in: $activeStates } }
         
@@ -230,7 +230,7 @@ exports[`buildCandidateIssuesQuery > matches snapshot without project filter 1`]
 
 exports[`buildCreateIssueMutation > matches snapshot 1`] = `
 "
-    mutation SymphonyCreateIssue($teamId: String!, $projectId: String, $title: String!, $description: String, $stateId: String) {
+    mutation RisolutoCreateIssue($teamId: String!, $projectId: String, $title: String!, $description: String, $stateId: String) {
       issueCreate(input: { teamId: $teamId, projectId: $projectId, title: $title, description: $description, stateId: $stateId }) {
         success
         issue {
@@ -245,7 +245,7 @@ exports[`buildCreateIssueMutation > matches snapshot 1`] = `
 
 exports[`buildCreateLabelMutation > matches snapshot 1`] = `
 "
-    mutation SymphonyCreateLabel($teamId: String, $name: String!, $color: String) {
+    mutation RisolutoCreateLabel($teamId: String, $name: String!, $color: String) {
       issueLabelCreate(input: { teamId: $teamId, name: $name, color: $color }) {
         success
         issueLabel {
@@ -259,7 +259,7 @@ exports[`buildCreateLabelMutation > matches snapshot 1`] = `
 
 exports[`buildCreateProjectMutation > matches snapshot 1`] = `
 "
-    mutation SymphonyCreateProject($name: String!, $teamIds: [String!]!) {
+    mutation RisolutoCreateProject($name: String!, $teamIds: [String!]!) {
       projectCreate(input: { name: $name, teamIds: $teamIds }) {
         success
         project {
@@ -280,7 +280,7 @@ exports[`buildCreateProjectMutation > matches snapshot 1`] = `
 
 exports[`buildIssuesByIdsQuery > matches snapshot 1`] = `
 "
-    query SymphonyIssuesByIds($ids: [ID!], $after: String) {
+    query RisolutoIssuesByIds($ids: [ID!], $after: String) {
       issues(first: 50, after: $after, filter: { id: { in: $ids } }) {
         nodes {
           
@@ -334,7 +334,7 @@ exports[`buildIssuesByIdsQuery > matches snapshot 1`] = `
 
 exports[`buildIssuesByStatesQuery > matches snapshot 1`] = `
 "
-    query SymphonyIssuesByStates($states: [String!], $after: String) {
+    query RisolutoIssuesByStates($states: [String!], $after: String) {
       issues(first: 50, after: $after, filter: { state: { name: { in: $states } } }) {
         nodes {
           
@@ -388,7 +388,7 @@ exports[`buildIssuesByStatesQuery > matches snapshot 1`] = `
 
 exports[`buildProjectLookupQuery > matches snapshot 1`] = `
 "
-    query SymphonyPlanProject($projectSlug: String!) {
+    query RisolutoPlanProject($projectSlug: String!) {
       projects(first: 1, filter: { slugId: { eq: $projectSlug } }) {
         nodes {
           id
@@ -409,7 +409,7 @@ exports[`buildProjectLookupQuery > matches snapshot 1`] = `
 
 exports[`buildTeamStatesQuery > matches snapshot 1`] = `
 "
-    query SymphonyTeamStates($teamId: String!) {
+    query RisolutoTeamStates($teamId: String!) {
       team(id: $teamId) {
         id
         name
@@ -427,7 +427,7 @@ exports[`buildTeamStatesQuery > matches snapshot 1`] = `
 
 exports[`buildTeamsQuery > matches snapshot 1`] = `
 "
-    query SymphonyTeams {
+    query RisolutoTeams {
       teams(first: 50) {
         nodes {
           id

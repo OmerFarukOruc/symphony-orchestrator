@@ -28,10 +28,10 @@ async function createTestIssue(apiKey: string, projectSlug: string): Promise<{ i
   const data = await callLinearGraphQL(apiKey, buildCreateIssueMutation(), {
     teamId,
     projectId: project.id,
-    title: "Symphony smoke test",
+    title: "Risoluto smoke test",
     description:
-      "This issue was created automatically to verify your Symphony setup. " +
-      "Symphony should pick it up within one poll cycle and run a sandboxed agent.",
+      "This issue was created automatically to verify your Risoluto setup. " +
+      "Risoluto should pick it up within one poll cycle and run a sandboxed agent.",
     stateId,
   });
 

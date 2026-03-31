@@ -301,7 +301,7 @@ export function renderDiffPanel(container: HTMLElement, state: ConfigState): voi
     emptyText.textContent = "No overrides configured";
     const emptyHint = document.createElement("span");
     emptyHint.className = "text-secondary";
-    emptyHint.textContent = "Using default settings from workflow file";
+    emptyHint.textContent = "Using default settings";
     emptyChanges.append(emptyIcon, emptyText, emptyHint);
     content.append(emptyChanges);
   } else {
@@ -347,7 +347,7 @@ export function renderEmptyState(onCreate: () => void): HTMLElement {
   const description = document.createElement("p");
   description.className = "text-secondary";
   description.textContent =
-    "Configuration overrides let you customize Symphony behavior without changing your workflow file.";
+    "Configuration overrides let you customize Risoluto behavior. Changes persist across restarts.";
   container.append(iconDiv, heading, description);
 
   const cta = createButton("Create First Override", "primary");

@@ -1,6 +1,6 @@
 import { getRequiredProviderEnvNames, prepareCodexRuntimeConfig } from "../codex/runtime-config.js";
 import { outcomeForAbort } from "../agent-runner/abort-outcomes.js";
-import type { ServiceConfig, SymphonyLogger, Issue, ModelSelection, Workspace, RunOutcome } from "../core/types.js";
+import type { ServiceConfig, RisolutoLogger, Issue, ModelSelection, Workspace, RunOutcome } from "../core/types.js";
 import type { AgentRunnerEventHandler } from "../agent-runner/contracts.js";
 import type { DispatchRequest, DispatchStreamMessage, RunAttemptDispatcher } from "./types.js";
 import { toErrorString } from "../utils/type-guards.js";
@@ -9,7 +9,7 @@ interface DispatchClientDeps {
   dispatchUrl: string;
   secret: string;
   getConfig: () => ServiceConfig;
-  logger: SymphonyLogger;
+  logger: RisolutoLogger;
 }
 
 /**
@@ -67,7 +67,7 @@ export class DispatchClient implements RunAttemptDispatcher {
     } catch (error) {
       if (input.signal.aborted) {
         if (abortForwarding) {
-          await Promise.allSettled([abortForwarding]);
+          await abortForwarding;
         }
         logger.info({ runId: input.issue.id, reason: String(input.signal.reason ?? "aborted") }, "Dispatch aborted");
         return outcomeForAbort(input.signal, null, null, 0);

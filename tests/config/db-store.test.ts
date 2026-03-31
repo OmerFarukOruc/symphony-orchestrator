@@ -1,12 +1,12 @@
 import { describe, expect, it, beforeEach } from "vitest";
 
-import { openDatabase, closeDatabase, type SymphonyDatabase } from "../../src/persistence/sqlite/database.js";
+import { openDatabase, closeDatabase, type RisolutoDatabase } from "../../src/persistence/sqlite/database.js";
 import { promptTemplates } from "../../src/persistence/sqlite/schema.js";
 import { DbConfigStore } from "../../src/config/db-store.js";
 import { seedDefaults } from "../../src/config/legacy-import.js";
 import { createLogger } from "../../src/core/logger.js";
 
-let db: SymphonyDatabase;
+let db: RisolutoDatabase;
 let store: DbConfigStore;
 
 beforeEach(() => {
@@ -112,7 +112,7 @@ describe("DbConfigStore — ConfigStore surface", () => {
   it("getWorkflow() returns WorkflowDefinition with prompt template", () => {
     const workflow = store.getWorkflow();
     expect(workflow.config).toBeDefined();
-    expect(workflow.promptTemplate).toContain("SYMPHONY_STATUS");
+    expect(workflow.promptTemplate).toContain("RISOLUTO_STATUS");
   });
 
   it("getConfig() returns derived ServiceConfig", () => {

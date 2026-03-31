@@ -7,8 +7,8 @@
  */
 
 import type { TypedEventBus } from "../core/event-bus.js";
-import type { SymphonyEventMap } from "../core/symphony-events.js";
-import type { SymphonyDatabase } from "../persistence/sqlite/database.js";
+import type { RisolutoEventMap } from "../core/risoluto-events.js";
+import type { RisolutoDatabase } from "../persistence/sqlite/database.js";
 import { configHistory } from "../persistence/sqlite/schema.js";
 
 const REDACTED = "[REDACTED]";
@@ -61,9 +61,12 @@ const FILTER_MAP: Array<{
   { key: "key", condition: "key = ?" },
   {
     key: "pathPrefix",
-    condition: "(path LIKE ? ESCAPE '\\' OR key LIKE ? ESCAPE '\\')",
+    condition: String.raw`(path LIKE ? ESCAPE '\' OR key LIKE ? ESCAPE '\')`,
     transform: (value) => {
-      const escaped = value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+      const escaped = value
+        .replaceAll("\\", String.raw`\\`)
+        .replaceAll("%", String.raw`\%`)
+        .replaceAll("_", String.raw`\_`);
       return [`${escaped}%`, `${escaped}%`];
     },
   },
@@ -90,8 +93,8 @@ function buildWhereClause(options?: AuditQueryOptions): WhereResult {
 
 export class AuditLogger {
   constructor(
-    private readonly db: SymphonyDatabase,
-    private readonly eventBus?: TypedEventBus<SymphonyEventMap>,
+    private readonly db: RisolutoDatabase,
+    private readonly eventBus?: TypedEventBus<RisolutoEventMap>,
   ) {}
 
   log(entry: AuditEntry): void {

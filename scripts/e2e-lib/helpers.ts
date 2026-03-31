@@ -1,8 +1,8 @@
 /**
- * Utility helpers for the Symphony E2E lifecycle test.
+ * Utility helpers for the Risoluto E2E lifecycle test.
  *
  * Every function is a pure building block — no phase logic lives here.
- * Phase orchestration uses these to interact with Linear, Symphony, and
+ * Phase orchestration uses these to interact with Linear, Risoluto, and
  * the local filesystem.
  */
 
@@ -165,66 +165,62 @@ export async function callLinearGraphQL(
 }
 
 // ---------------------------------------------------------------------------
-// Workflow scaffold
+// Overlay payload
 // ---------------------------------------------------------------------------
 
 /**
- * Generate the YAML content for WORKFLOW.e2e.md with all values pre-filled.
+ * Build the config overlay map that pre-seeds Risoluto with all values needed
+ * to bypass setup mode and dispatch immediately.
  *
  * Key design choices:
- * - `project_slug` is the real slug from config — bypasses setup mode.
- * - `api_key: $LINEAR_API_KEY` — env-var expansion, never a literal secret.
- * - `repos` is pre-populated from the test_repo config so the orchestrator
- *   can route issues immediately without the setup wizard.
+ * - `tracker.project_slug` is the real slug — bypasses setup mode validation.
+ * - `tracker.api_key` is stored as a literal resolved value at runtime.
+ * - `repos` is pre-populated so the orchestrator routes issues without the wizard.
+ * - Secrets (LINEAR_API_KEY, GITHUB_TOKEN) are resolved from env and written to
+ *   the overlay; the master.key file and secrets store are seeded separately.
  */
-export function generateWorkflowScaffold(config: E2EConfig): string {
+export function buildOverlayPayload(config: E2EConfig): Record<string, unknown> {
   const { test_repo: repo } = config.github;
-  const lines = [
-    "---",
-    "tracker:",
-    "  kind: linear",
-    "  api_key: $LINEAR_API_KEY",
-    `  project_slug: "${config.linear.project_slug}"`,
-    "",
-    "codex:",
-    '  command: "codex app-server"',
-    `  model: ${config.codex.model}`,
-    `  reasoning_effort: ${config.codex.reasoning_effort}`,
-    '  approval_policy: "never"',
-    '  thread_sandbox: "danger-full-access"',
-    "  turn_sandbox_policy:",
-    '    type: "dangerFullAccess"',
-    "  auth:",
-    `    mode: ${config.codex.auth_mode}`,
-    `    source_home: ${config.codex.source_home}`,
-    "",
-    "polling:",
-    "  interval_ms: 10000",
-    "",
-    "agent:",
-    "  max_concurrent_agents: 1",
-    "  max_turns: 20",
-    '  success_state: "Done"',
-    "",
-    "workspace:",
-    '  root: "../symphony-e2e-workspaces"',
-    '  strategy: "directory"',
-    "",
-    "server:",
-    `  port: ${config.server.port}`,
-    "",
-    "repos:",
-    `  - repo_url: "${repo.url}"`,
-    `    default_branch: "${repo.branch}"`,
-    `    identifier_prefix: "${repo.identifier_prefix}"`,
-    `    github_owner: "${repo.owner}"`,
-    `    github_repo: "${repo.repo}"`,
-    `    github_token_env: "GITHUB_TOKEN"`,
-    "---",
-    "",
-  ];
-
-  return lines.join("\n");
+  return {
+    tracker: {
+      kind: "linear",
+      api_key: "$LINEAR_API_KEY",
+      project_slug: config.linear.project_slug,
+    },
+    codex: {
+      command: "codex app-server",
+      model: config.codex.model,
+      reasoning_effort: config.codex.reasoning_effort,
+      approval_policy: "never",
+      thread_sandbox: "danger-full-access",
+      turn_sandbox_policy: { type: "dangerFullAccess" },
+      auth: {
+        mode: config.codex.auth_mode,
+        source_home: config.codex.source_home,
+      },
+    },
+    polling: { interval_ms: 10000 },
+    agent: {
+      max_concurrent_agents: 1,
+      max_turns: 20,
+      success_state: "Done",
+    },
+    workspace: {
+      root: "../risoluto-e2e-workspaces",
+      strategy: "directory",
+    },
+    server: { port: config.server.port },
+    repos: [
+      {
+        repo_url: repo.url,
+        default_branch: repo.branch,
+        identifier_prefix: repo.identifier_prefix,
+        github_owner: repo.owner,
+        github_repo: repo.repo,
+        github_token_env: "GITHUB_TOKEN",
+      },
+    ],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -232,11 +228,11 @@ export function generateWorkflowScaffold(config: E2EConfig): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Build the extra environment variables needed to spawn Symphony.
+ * Build the extra environment variables needed to spawn Risoluto.
  * Resolves credential references from the E2E config and includes the
  * MASTER_KEY when available. Used by both initial startup and restart.
  */
-export function buildSymphonyEnv(ctx: RunContext): Record<string, string> | undefined {
+export function buildRisolutoEnv(ctx: RunContext): Record<string, string> | undefined {
   const resolvedLinearKey = resolveEnvValue(ctx.config.linear.api_key);
   const resolvedGithubToken = resolveEnvValue(ctx.config.github.token);
   return ctx.masterKey
@@ -245,22 +241,24 @@ export function buildSymphonyEnv(ctx: RunContext): Record<string, string> | unde
 }
 
 /**
- * Spawn the Symphony server process.
+ * Spawn the Risoluto server process.
  *
- * Runs `node dist/cli/index.js {workflowPath} --port {port}` with the
+ * Runs `node dist/cli/index.js --data-dir {dataDir} --port {port}` with the
  * current environment inherited plus any extra env vars (e.g. MASTER_KEY).
+ * Risoluto reads the pre-seeded overlay from `<dataDir>/config/overlay.yaml`
+ * on startup, bypassing setup mode without a positional workflow file arg.
  * Stdout and stderr are piped to log files inside `reportDir`.
  */
-export function spawnSymphony(
+export function spawnRisoluto(
   port: number,
-  workflowPath: string,
+  dataDir: string,
   reportDir: string,
   extraEnv?: Record<string, string>,
 ): ReturnType<typeof spawn> {
-  const stdoutLog = createWriteStream(path.join(reportDir, "symphony-stdout.log"), { flags: "a" });
-  const stderrLog = createWriteStream(path.join(reportDir, "symphony-stderr.log"), { flags: "a" });
+  const stdoutLog = createWriteStream(path.join(reportDir, "risoluto-stdout.log"), { flags: "a" });
+  const stderrLog = createWriteStream(path.join(reportDir, "risoluto-stderr.log"), { flags: "a" });
 
-  const child = spawn("node", ["dist/cli/index.js", workflowPath, "--port", String(port)], {
+  const child = spawn("node", ["dist/cli/index.js", "--data-dir", dataDir, "--port", String(port)], {
     env: { ...process.env, ...extraEnv },
     stdio: ["ignore", "pipe", "pipe"],
   });

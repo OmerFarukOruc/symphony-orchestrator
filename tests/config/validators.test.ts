@@ -43,7 +43,7 @@ function makeConfig(overrides: Partial<ServiceConfig> = {}): ServiceConfig {
     },
     polling: { intervalMs: 30000 },
     workspace: {
-      root: "/tmp/symphony",
+      root: "/tmp/risoluto",
       hooks: { afterCreate: null, beforeRun: null, afterRun: null, beforeRemove: null, timeoutMs: 1000 },
     },
     agent: { maxConcurrentAgents: 1, maxConcurrentAgentsByState: {}, maxTurns: 10, maxRetryBackoffMs: 300000 },

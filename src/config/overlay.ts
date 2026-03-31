@@ -4,7 +4,7 @@ import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import YAML from "yaml";
 
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 import { isRecord, toErrorString } from "../utils/type-guards.js";
 import {
   mergeOverlayMaps,
@@ -37,7 +37,7 @@ export class ConfigOverlayStore implements ConfigOverlayPort {
 
   constructor(
     private readonly overlayPath: string,
-    private readonly logger: SymphonyLogger,
+    private readonly logger: RisolutoLogger,
   ) {}
 
   async start(): Promise<void> {

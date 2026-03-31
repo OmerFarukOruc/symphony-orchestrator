@@ -13,7 +13,7 @@ function methodNotAllowed(response: Response): void {
 }
 
 function isValidSecretKey(value: string): boolean {
-  return /^[A-Za-z0-9._:-]+$/.test(value);
+  return /^[\w.:-]+$/.test(value);
 }
 
 /** Returns false and sends a 400 response when the key param is invalid. */

@@ -5,7 +5,7 @@ import type { RuntimeEventRecord } from "../core/lifecycle-events.js";
 import type { GitPostRunPort } from "../git/port.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type { TypedEventBus } from "../core/event-bus.js";
-import type { SymphonyEventMap } from "../core/symphony-events.js";
+import type { RisolutoEventMap } from "../core/risoluto-events.js";
 
 /** Shared context type for outcome handlers. Used internally by worker-outcome.ts. */
 export interface OutcomeContext {
@@ -22,7 +22,7 @@ export interface OutcomeContext {
     attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
     workspaceManager: { removeWorkspace: (identifier: string, issue?: Issue) => Promise<void> };
     gitManager?: GitPostRunPort;
-    eventBus?: TypedEventBus<SymphonyEventMap>;
+    eventBus?: TypedEventBus<RisolutoEventMap>;
     logger: {
       info: (meta: Record<string, unknown>, message: string) => void;
       warn: (meta: Record<string, unknown>, message: string) => void;
@@ -86,6 +86,6 @@ export interface OrchestratorContext {
   applyUsageEvent: (entry: RunningEntry, usage: TokenUsageSnapshot, usageMode: "absolute_total" | "delta") => void;
   setRateLimits: (rateLimits: unknown) => void;
   getStallEvents: () => StallEvent[];
-  detectAndKillStalled: () => number;
-  eventBus?: TypedEventBus<SymphonyEventMap>;
+  detectAndKillStalled: () => { killed: number };
+  eventBus?: TypedEventBus<RisolutoEventMap>;
 }

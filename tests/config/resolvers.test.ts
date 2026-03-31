@@ -30,18 +30,18 @@ describe("resolveConfigString", () => {
 
   describe("$VAR expansion", () => {
     it("resolves a $VAR reference from process.env", () => {
-      process.env.SYMPHONY_TEST_VAR = "resolved-value";
-      expect(resolveConfigString("$SYMPHONY_TEST_VAR")).toBe("resolved-value");
+      process.env.RISOLUTO_TEST_VAR = "resolved-value";
+      expect(resolveConfigString("$RISOLUTO_TEST_VAR")).toBe("resolved-value");
     });
 
     it("returns empty string when the env var is missing", () => {
-      delete process.env.SYMPHONY_MISSING_VAR;
-      expect(resolveConfigString("$SYMPHONY_MISSING_VAR")).toBe("");
+      delete process.env.RISOLUTO_MISSING_VAR;
+      expect(resolveConfigString("$RISOLUTO_MISSING_VAR")).toBe("");
     });
 
     it("does not expand vars embedded in longer strings", () => {
-      process.env.SYMPHONY_TEST_VAR = "val";
-      expect(resolveConfigString("prefix-$SYMPHONY_TEST_VAR")).toBe("prefix-$SYMPHONY_TEST_VAR");
+      process.env.RISOLUTO_TEST_VAR = "val";
+      expect(resolveConfigString("prefix-$RISOLUTO_TEST_VAR")).toBe("prefix-$RISOLUTO_TEST_VAR");
     });
 
     it("does not expand invalid var names", () => {
@@ -102,9 +102,9 @@ describe("resolveConfigString", () => {
 
   describe("chained resolution", () => {
     it("resolves env var then applies tmpdir expansion on the result", () => {
-      process.env.SYMPHONY_PATH = "/base/$TMPDIR/sub";
+      process.env.RISOLUTO_PATH = "/base/$TMPDIR/sub";
       process.env.TMPDIR = "/tmp";
-      expect(resolveConfigString("$SYMPHONY_PATH")).toBe("/base//tmp/sub");
+      expect(resolveConfigString("$RISOLUTO_PATH")).toBe("/base//tmp/sub");
     });
 
     it("resolves home path then tmpdir in a chained value", () => {
@@ -122,9 +122,9 @@ describe("resolvePathConfigString", () => {
   });
 
   it("expands all $VAR references within a path string", () => {
-    process.env.SYMPHONY_BASE = "base";
-    process.env.SYMPHONY_SUB = "sub";
-    expect(resolvePathConfigString("/root/$SYMPHONY_BASE/$SYMPHONY_SUB/file")).toBe("/root/base/sub/file");
+    process.env.RISOLUTO_BASE = "base";
+    process.env.RISOLUTO_SUB = "sub";
+    expect(resolvePathConfigString("/root/$RISOLUTO_BASE/$RISOLUTO_SUB/file")).toBe("/root/base/sub/file");
   });
 
   it("expands $TMPDIR inline within a path", () => {
@@ -134,18 +134,18 @@ describe("resolvePathConfigString", () => {
 
   it("expands ~ and then remaining env vars in a path", () => {
     process.env.HOME = "/home/user";
-    process.env.SYMPHONY_DIR = "proj";
-    expect(resolvePathConfigString("~/$SYMPHONY_DIR/src")).toBe(path.join("/home/user", "proj/src"));
+    process.env.RISOLUTO_DIR = "proj";
+    expect(resolvePathConfigString("~/$RISOLUTO_DIR/src")).toBe(path.join("/home/user", "proj/src"));
   });
 
   it("resolves secrets before path expansion", () => {
-    const resolver = (name: string) => (name === "path-secret" ? "/secret/base/$SYMPHONY_EXTRA" : undefined);
-    process.env.SYMPHONY_EXTRA = "extra";
+    const resolver = (name: string) => (name === "path-secret" ? "/secret/base/$RISOLUTO_EXTRA" : undefined);
+    process.env.RISOLUTO_EXTRA = "extra";
     expect(resolvePathConfigString("$SECRET:path-secret", resolver)).toBe("/secret/base/extra");
   });
 
   it("replaces missing env vars with empty string in paths", () => {
-    delete process.env.SYMPHONY_NOPE;
-    expect(resolvePathConfigString("/a/$SYMPHONY_NOPE/b")).toBe("/a//b");
+    delete process.env.RISOLUTO_NOPE;
+    expect(resolvePathConfigString("/a/$RISOLUTO_NOPE/b")).toBe("/a//b");
   });
 });

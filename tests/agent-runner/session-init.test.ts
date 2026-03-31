@@ -147,7 +147,7 @@ describe("initializeSession", () => {
       await expect(promise).rejects.toThrow(StartupTimeoutError);
 
       const timeoutEvent = events.find((e) => e.event === "container_startup_timeout");
-      expect(timeoutEvent).toBeDefined();
+      expect(timeoutEvent).toMatchObject({ event: "container_startup_timeout" });
       expect(timeoutEvent!.message).toContain("100ms");
 
       vi.useRealTimers();
@@ -354,7 +354,7 @@ describe("initializeSession", () => {
   });
 
   describe("thread/start protocol params", () => {
-    it("sends serviceName: symphony", async () => {
+    it("sends serviceName: risoluto", async () => {
       const session = makeMockSession();
       session.connection.request
         .mockResolvedValueOnce({}) // initialize
@@ -371,7 +371,7 @@ describe("initializeSession", () => {
 
       const threadCall = session.connection.request.mock.calls[5];
       expect(threadCall[0]).toBe("thread/start");
-      expect(threadCall[1]).toMatchObject({ serviceName: "symphony" });
+      expect(threadCall[1]).toMatchObject({ serviceName: "risoluto" });
     });
 
     it("uses personality from config instead of hardcoded value", async () => {

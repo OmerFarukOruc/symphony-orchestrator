@@ -14,7 +14,7 @@ import type { DiagnosisResult, PhaseResult, RunContext } from "./types.js";
 
 /** Append-only JSONL event logger. Auto-adds an ISO timestamp to every line. */
 export class JsonlWriter {
-  private stream: WriteStream;
+  private readonly stream: WriteStream;
 
   constructor(filePath: string) {
     this.stream = createWriteStream(filePath, { flags: "a" });
@@ -268,4 +268,56 @@ export function printFinalReport(ctx: RunContext, phases: PhaseResult[], diagnos
 export function writeSummaryFile(reportDir: string, summary: Record<string, unknown>): void {
   mkdirSync(reportDir, { recursive: true });
   writeFileSync(join(reportDir, "e2e-summary.json"), JSON.stringify(summary, null, 2) + "\n", "utf-8");
+}
+
+// ── JUnit XML Output ──────────────────────────────────────────────────────
+
+/** Escape XML special characters in a string. */
+function escapeXml(text: string): string {
+  return text.replaceAll(/&/g, "&amp;").replaceAll(/</g, "&lt;").replaceAll(/>/g, "&gt;").replaceAll(/"/g, "&quot;");
+}
+
+/**
+ * Generate a JUnit XML string from phase results.
+ *
+ * Produces one `<testsuite>` with one `<testcase>` per phase.
+ * Failed phases include a `<failure>` element, skipped phases
+ * include a `<skipped/>` element.
+ */
+export function generateJunitXml(phases: PhaseResult[]): string {
+  const failures = phases.filter((p) => p.status === "fail").length;
+  const skipped = phases.filter((p) => p.status === "skip").length;
+  const totalTimeSec = phases.reduce((sum, p) => sum + p.durationMs / 1000, 0).toFixed(3);
+
+  const lines: string[] = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<testsuite name="risoluto-e2e" tests="${String(phases.length)}" failures="${String(failures)}" skipped="${String(skipped)}" time="${totalTimeSec}">`,
+  ];
+
+  for (const phase of phases) {
+    const timeSec = (phase.durationMs / 1000).toFixed(3);
+    const name = escapeXml(phase.phase);
+
+    if (phase.status === "fail") {
+      const message = escapeXml(phase.error?.message ?? "unknown error");
+      lines.push(`  <testcase name="${name}" classname="risoluto-e2e" time="${timeSec}">`);
+      lines.push(`    <failure message="${message}">${message}</failure>`);
+      lines.push(`  </testcase>`);
+    } else if (phase.status === "skip") {
+      lines.push(`  <testcase name="${name}" classname="risoluto-e2e" time="${timeSec}">`);
+      lines.push(`    <skipped/>`);
+      lines.push(`  </testcase>`);
+    } else {
+      lines.push(`  <testcase name="${name}" classname="risoluto-e2e" time="${timeSec}"/>`);
+    }
+  }
+
+  lines.push(`</testsuite>`);
+  return lines.join("\n") + "\n";
+}
+
+/** Write JUnit XML to the report directory alongside e2e-summary.json. */
+export function writeJunitXml(reportDir: string, phases: PhaseResult[]): void {
+  mkdirSync(reportDir, { recursive: true });
+  writeFileSync(join(reportDir, "e2e-junit.xml"), generateJunitXml(phases), "utf-8");
 }

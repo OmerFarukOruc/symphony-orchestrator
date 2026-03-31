@@ -7,12 +7,12 @@
  */
 
 import type { GitRunner } from "./git-types.js";
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 
 export interface WorktreeContext {
   runGit: GitRunner;
   env: NodeJS.ProcessEnv;
-  logger: SymphonyLogger;
+  logger: RisolutoLogger;
 }
 
 export interface WorktreeEntry {

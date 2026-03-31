@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { buildIssueCommentMutation, buildIssueTransitionMutation } from "../../src/linear/transition-query.js";
 
 describe("buildIssueCommentMutation", () => {
-  it("is a mutation named SymphonyIssueCommentCreate", () => {
+  it("is a mutation named RisolutoIssueCommentCreate", () => {
     const query = buildIssueCommentMutation();
-    expect(query).toContain("mutation SymphonyIssueCommentCreate");
+    expect(query).toContain("mutation RisolutoIssueCommentCreate");
   });
 
   it("declares $issueId and $body variables", () => {
@@ -32,9 +32,9 @@ describe("buildIssueCommentMutation", () => {
 });
 
 describe("buildIssueTransitionMutation", () => {
-  it("is a mutation named SymphonyIssueTransition", () => {
+  it("is a mutation named RisolutoIssueTransition", () => {
     const query = buildIssueTransitionMutation();
-    expect(query).toContain("mutation SymphonyIssueTransition");
+    expect(query).toContain("mutation RisolutoIssueTransition");
   });
 
   it("declares $issueId and optional $stateId variables", () => {

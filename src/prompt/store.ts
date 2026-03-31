@@ -9,9 +9,9 @@
 import { eq } from "drizzle-orm";
 import { Liquid } from "liquidjs";
 
-import type { SymphonyDatabase } from "../persistence/sqlite/database.js";
+import type { RisolutoDatabase } from "../persistence/sqlite/database.js";
 import { config, promptTemplates } from "../persistence/sqlite/schema.js";
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 
 export interface PromptTemplate {
   id: string;
@@ -52,8 +52,8 @@ export class PromptTemplateStore {
   private readonly liquid = new Liquid({ strictVariables: false, strictFilters: false });
 
   constructor(
-    private readonly db: SymphonyDatabase,
-    private readonly logger: SymphonyLogger,
+    private readonly db: RisolutoDatabase,
+    private readonly logger: RisolutoLogger,
   ) {}
 
   list(): PromptTemplate[] {

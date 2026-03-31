@@ -1,8 +1,8 @@
-# 🚀 Getting Started with Symphony
+# 🚀 Getting Started with Risoluto
 
 > **Time to first run: ~10 minutes**
 
-Symphony watches your Linear project for issues, launches sandboxed AI agents to solve them, and delivers the results as GitHub pull requests — all running locally on your machine.
+Risoluto watches your Linear project for issues, launches sandboxed AI agents to solve them, and delivers the results as GitHub pull requests — all running locally on your machine.
 
 ---
 
@@ -12,9 +12,9 @@ Before you begin, make sure you have:
 
 | What | Why |
 |------|-----|
-| **Node.js 22+** | Runtime for Symphony |
+| **Node.js 22+** | Runtime for Risoluto |
 | **Docker** (optional) | For sandboxed agent execution — required for production use |
-| **Linear account** | Issue tracker that Symphony polls for work |
+| **Linear account** | Issue tracker that Risoluto polls for work |
 | **OpenAI API key** _or_ **Codex subscription** | Powers the AI agents |
 | **GitHub PAT** _(optional)_ | Enables automatic branch creation and PRs |
 
@@ -23,8 +23,8 @@ Before you begin, make sure you have:
 ## 1. Install & Build
 
 ```bash
-git clone https://github.com/OmerFarukOruc/symphony-orchestrator.git
-cd symphony-orchestrator
+git clone https://github.com/OmerFarukOruc/risoluto.git
+cd risoluto
 pnpm install && pnpm run build
 ```
 
@@ -38,7 +38,7 @@ bash bin/build-sandbox.sh
 
 ## 2. Set Environment Variables
 
-Symphony needs at minimum your Linear API key and project slug:
+Risoluto needs at minimum your Linear API key and project slug:
 
 ```bash
 export LINEAR_API_KEY="lin_api_..."
@@ -65,18 +65,18 @@ codex login
 
 ---
 
-## 3. Start Symphony
+## 3. Start Risoluto
 
 **Development mode** (with auto-reload):
 
 ```bash
-pnpm run dev -- ./WORKFLOW.example.md --port 4000
+pnpm run dev -- --port 4000
 ```
 
 **Production mode** (from built output):
 
 ```bash
-node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+node dist/cli/index.js --port 4000
 ```
 
 **Docker mode** (zero-config):
@@ -114,9 +114,9 @@ The fastest way to verify everything works:
 
 1. **Create a Linear issue** with title: `SMOKE: create workspace proof file`
 2. **Move it to "In Progress"** (or another active state)
-3. **Watch the dashboard** — within ~30 seconds, Symphony picks it up
+3. **Watch the dashboard** — within ~30 seconds, Risoluto picks it up
 
-You'll see the issue appear under "Running" on the Overview page. The agent creates a `SYMPHONY_SMOKE_RESULT.md` file in the workspace and finishes.
+You'll see the issue appear under "Running" on the Overview page. The agent creates a `RISOLUTO_SMOKE_RESULT.md` file in the workspace and finishes.
 
 Alternatively, use the **"Create Test Issue"** button on the setup completion page — it creates and moves a smoke issue automatically.
 
@@ -195,7 +195,7 @@ The dashboard supports **light and dark modes**. Toggle from the sidebar.
 error code=missing_tracker_project_slug
 ```
 
-**Fix:** Make sure `LINEAR_PROJECT_SLUG` is exported in your terminal _before_ starting Symphony.
+**Fix:** Make sure `LINEAR_PROJECT_SLUG` is exported in your terminal _before_ starting Risoluto.
 
 ### Issue not being picked up
 

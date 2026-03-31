@@ -10,8 +10,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "../../core/types.js";
-import type { SymphonyDatabase } from "./database.js";
+import type { AttemptEvent, AttemptRecord, RisolutoLogger } from "../../core/types.js";
+import type { RisolutoDatabase } from "./database.js";
 import { attempts, attemptEvents } from "./schema.js";
 import { attemptRecordToRow, attemptEventToRow } from "./mappers.js";
 import { toErrorString } from "../../utils/type-guards.js";
@@ -27,9 +27,9 @@ export interface MigrationResult {
  * @returns Count of migrated attempt records and events.
  */
 export async function migrateFromJsonl(
-  db: SymphonyDatabase,
+  db: RisolutoDatabase,
   archiveDir: string,
-  logger: SymphonyLogger,
+  logger: RisolutoLogger,
 ): Promise<MigrationResult> {
   const attemptsDir = path.join(archiveDir, "attempts");
   const eventsDir = path.join(archiveDir, "events");
@@ -54,12 +54,12 @@ export async function migrateFromJsonl(
 }
 
 async function loadArchiveFiles(
-  db: SymphonyDatabase,
+  db: RisolutoDatabase,
   attemptsDir: string,
   attemptFiles: string[],
   eventsDir: string,
   eventFiles: string[],
-  logger: SymphonyLogger,
+  logger: RisolutoLogger,
 ): Promise<{ ac: number; ec: number }> {
   let ac = 0;
   let ec = 0;

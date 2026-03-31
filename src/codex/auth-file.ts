@@ -55,7 +55,7 @@ export function buildCodexAuthRecord(
   options: BuildCodexAuthRecordOptions = {},
 ): Record<string, unknown> {
   return {
-    ...(options.extraTopLevel ?? {}),
+    ...options.extraTopLevel,
     auth_mode: options.authMode ?? DEFAULT_AUTH_MODE,
     last_refresh: options.lastRefresh ?? new Date().toISOString(),
     tokens,

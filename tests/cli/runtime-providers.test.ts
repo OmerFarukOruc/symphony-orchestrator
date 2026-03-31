@@ -16,9 +16,9 @@ function createConfig(): ServiceConfig {
     },
     polling: { intervalMs: 1000 },
     workspace: {
-      root: "/tmp/symphony",
+      root: "/tmp/risoluto",
       strategy: "directory",
-      branchPrefix: "symphony/",
+      branchPrefix: "risoluto/",
       hooks: {
         afterCreate: null,
         beforeRun: null,
@@ -54,7 +54,7 @@ function createConfig(): ServiceConfig {
       },
       provider: null,
       sandbox: {
-        image: "symphony-codex:latest",
+        image: "risoluto-codex:latest",
         network: "",
         security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false, seccompProfile: "" },
         resources: { memory: "4g", memoryReservation: "1g", memorySwap: "4g", cpus: "2.0", tmpfsSize: "512m" },
@@ -134,7 +134,7 @@ describe("runtime providers", () => {
         setupWorktree: vi.fn(async () => undefined),
         syncWorktree: vi.fn(async () => undefined),
         removeWorktree: vi.fn(async () => undefined),
-        deriveBaseCloneDir: vi.fn(() => "/tmp/symphony/.base/repo.git"),
+        deriveBaseCloneDir: vi.fn(() => "/tmp/risoluto/.base/repo.git"),
         getPrStatus: vi.fn(async () => ({ apiBaseUrl: deps.apiBaseUrl ?? null })),
       };
     });
@@ -194,7 +194,7 @@ describe("runtime providers", () => {
         setupWorktree: vi.fn(async () => undefined),
         syncWorktree: vi.fn(async () => undefined),
         removeWorktree: vi.fn(async () => undefined),
-        deriveBaseCloneDir: vi.fn(() => "/tmp/symphony/.base/repo.git"),
+        deriveBaseCloneDir: vi.fn(() => "/tmp/risoluto/.base/repo.git"),
         getPrStatus: vi.fn(async () => ({ token: deps.env?.GITHUB_TOKEN ?? null })),
       };
     });

@@ -11,7 +11,7 @@ import type { SandboxConfig } from "../../src/core/types.js";
 
 function baseSandboxConfig(): SandboxConfig {
   return {
-    image: "symphony-codex:latest",
+    image: "risoluto-codex:latest",
     network: "",
     security: { noNewPrivileges: true, dropCapabilities: true, gvisor: false, seccompProfile: "" },
     resources: {
@@ -50,8 +50,8 @@ describe("buildDockerRunArgs", () => {
   it("returns program=docker with a container name", () => {
     const result = buildDockerRunArgs(baseInput());
     expect(result.program).toBe("docker");
-    expect(result.containerName).toBe("symphony-MT-1-1710000000000");
-    expect(result.cacheVolumeName).toBe("symphony-cache-MT-1-1710000000000");
+    expect(result.containerName).toBe("risoluto-MT-1-1710000000000");
+    expect(result.cacheVolumeName).toBe("risoluto-cache-MT-1-1710000000000");
     expect(result.args.slice(0, 3)).toEqual(["run", "-i", "--name"]);
   });
 
@@ -91,8 +91,8 @@ describe("buildDockerRunArgs", () => {
       expect.arrayContaining([
         "HOME=/home/agent",
         "CODEX_HOME=/home/agent/.codex-runtime",
-        'SYMPHONY_CODEX_CONFIG_TOML=model = "gpt-5.4"\n\n[projects."/tmp/workspaces/MT-1"]\ntrust_level = "trusted"\n',
-        "SYMPHONY_CODEX_COMMAND=codex app-server",
+        'RISOLUTO_CODEX_CONFIG_TOML=model = "gpt-5.4"\n\n[projects."/tmp/workspaces/MT-1"]\ntrust_level = "trusted"\n',
+        "RISOLUTO_CODEX_COMMAND=codex app-server",
       ]),
     );
   });
@@ -136,32 +136,32 @@ describe("buildDockerRunArgs", () => {
     expect(result.args).not.toContain("--network");
 
     const cfg = baseSandboxConfig();
-    cfg.network = "symphony-sandbox";
+    cfg.network = "risoluto-sandbox";
     const resultWithNet = buildDockerRunArgs(baseInput({ sandboxConfig: cfg }));
     const netIdx = resultWithNet.args.indexOf("--network");
     expect(netIdx).toBeGreaterThan(-1);
-    expect(resultWithNet.args[netIdx + 1]).toBe("symphony-sandbox");
+    expect(resultWithNet.args[netIdx + 1]).toBe("risoluto-sandbox");
   });
 
   it("places image and command at the end", () => {
     const result = buildDockerRunArgs(baseInput());
-    const imageIdx = result.args.indexOf("symphony-codex:latest");
+    const imageIdx = result.args.indexOf("risoluto-codex:latest");
     expect(imageIdx).toBeGreaterThan(-1);
-    expect(result.args[imageIdx]).toBe("symphony-codex:latest");
+    expect(result.args[imageIdx]).toBe("risoluto-codex:latest");
     expect(result.args[imageIdx + 1]).toBe("bash");
     expect(result.args[imageIdx + 2]).toBe("-lc");
     expect(result.args[imageIdx + 3]).toContain(
-      'printf "%s" "$SYMPHONY_CODEX_CONFIG_TOML" > "$CODEX_HOME/config.toml"',
+      'printf "%s" "$RISOLUTO_CODEX_CONFIG_TOML" > "$CODEX_HOME/config.toml"',
     );
-    expect(result.args[imageIdx + 3]).toContain('echo "symphony:container_ready"');
-    expect(result.args[imageIdx + 3]).toContain('exec bash -lc "$SYMPHONY_CODEX_COMMAND"');
+    expect(result.args[imageIdx + 3]).toContain('echo "risoluto:container_ready"');
+    expect(result.args[imageIdx + 3]).toContain('exec bash -lc "$RISOLUTO_CODEX_COMMAND"');
   });
 
-  it("emits symphony:container_ready marker before exec in entrypoint", () => {
+  it("emits risoluto:container_ready marker before exec in entrypoint", () => {
     const result = buildDockerRunArgs(baseInput());
     const entrypoint = result.args.at(-1)!;
-    const readyIdx = entrypoint.indexOf('echo "symphony:container_ready"');
-    const execIdx = entrypoint.indexOf('exec bash -lc "$SYMPHONY_CODEX_COMMAND"');
+    const readyIdx = entrypoint.indexOf('echo "risoluto:container_ready"');
+    const execIdx = entrypoint.indexOf('exec bash -lc "$RISOLUTO_CODEX_COMMAND"');
     expect(readyIdx).toBeGreaterThan(-1);
     expect(execIdx).toBeGreaterThan(readyIdx);
   });
@@ -186,7 +186,7 @@ describe("buildDockerRunArgs", () => {
   it("passes auth payload into the container when present", () => {
     const result = buildDockerRunArgs(baseInput({ runtimeAuthJsonBase64: "eyJ0b2tlbiI6IngifQ==" }));
     const envArgs = result.args.filter((_, i) => result.args[i - 1] === "-e");
-    expect(envArgs).toContain("SYMPHONY_CODEX_AUTH_JSON_B64=eyJ0b2tlbiI6IngifQ==");
+    expect(envArgs).toContain("RISOLUTO_CODEX_AUTH_JSON_B64=eyJ0b2tlbiI6IngifQ=="); // gitleaks:allow
   });
 
   it("includes extra user-defined mounts", () => {
@@ -256,28 +256,28 @@ describe("buildDockerRunArgs", () => {
     const labelArgs = result.args.filter((_, i) => result.args[i - 1] === "--label");
     expect(labelArgs).toEqual(
       expect.arrayContaining([
-        "symphony.issue=NIN-5",
-        "symphony.model=gpt-5.4",
-        expect.stringContaining("symphony.workspace=/tmp/workspaces/MT-1"),
-        expect.stringMatching(/^symphony\.started-at=\d{4}-/),
+        "risoluto.issue=NIN-5",
+        "risoluto.model=gpt-5.4",
+        expect.stringContaining("risoluto.workspace=/tmp/workspaces/MT-1"),
+        expect.stringMatching(/^risoluto\.started-at=\d{4}-/),
       ]),
     );
     // Labels must appear before the image
     const firstLabelIdx = result.args.indexOf("--label");
-    const imageIdx = result.args.indexOf("symphony-codex:latest");
+    const imageIdx = result.args.indexOf("risoluto-codex:latest");
     expect(firstLabelIdx).toBeLessThan(imageIdx);
   });
 
   it("omits issue and model labels when not provided", () => {
     const result = buildDockerRunArgs(baseInput());
     const labelArgs = result.args.filter((_, i) => result.args[i - 1] === "--label");
-    expect(labelArgs).not.toEqual(expect.arrayContaining([expect.stringContaining("symphony.issue=")]));
-    expect(labelArgs).not.toEqual(expect.arrayContaining([expect.stringContaining("symphony.model=")]));
+    expect(labelArgs).not.toEqual(expect.arrayContaining([expect.stringContaining("risoluto.issue=")]));
+    expect(labelArgs).not.toEqual(expect.arrayContaining([expect.stringContaining("risoluto.model=")]));
     // workspace and started-at are always present
     expect(labelArgs).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("symphony.workspace="),
-        expect.stringMatching(/^symphony\.started-at=/),
+        expect.stringContaining("risoluto.workspace="),
+        expect.stringMatching(/^risoluto\.started-at=/),
       ]),
     );
   });
@@ -301,18 +301,18 @@ describe("buildDockerRunArgs", () => {
     const result = buildDockerRunArgs(baseInput({ sandboxConfig: cfg }));
     expect(result.args).toContain("--cap-add=NET_ADMIN");
     const envArgs = result.args.filter((_, i) => result.args[i - 1] === "-e");
-    expect(envArgs).toContain("SYMPHONY_EGRESS_ALLOWLIST=api.openai.com api.linear.app");
+    expect(envArgs).toContain("RISOLUTO_EGRESS_ALLOWLIST=api.openai.com api.linear.app");
     // Entrypoint should contain iptables rules
     const bashScript = result.args[result.args.length - 1];
     expect(bashScript).toContain("iptables -A OUTPUT");
-    expect(bashScript).toContain("SYMPHONY_EGRESS_ALLOWLIST");
+    expect(bashScript).toContain("RISOLUTO_EGRESS_ALLOWLIST");
   });
 
   it("does not add egress flags when allowlist is empty", () => {
     const result = buildDockerRunArgs(baseInput());
     expect(result.args).not.toContain("--cap-add=NET_ADMIN");
     const envArgs = result.args.filter((_, i) => result.args[i - 1] === "-e");
-    expect(envArgs).not.toEqual(expect.arrayContaining([expect.stringContaining("SYMPHONY_EGRESS_ALLOWLIST")]));
+    expect(envArgs).not.toEqual(expect.arrayContaining([expect.stringContaining("RISOLUTO_EGRESS_ALLOWLIST")]));
     const bashScript = result.args[result.args.length - 1];
     expect(bashScript).not.toContain("iptables");
   });
@@ -320,13 +320,13 @@ describe("buildDockerRunArgs", () => {
 
 describe("_buildInitCacheVolumeArgs", () => {
   it("returns docker run command with chown to initialize volume ownership", () => {
-    const result = _buildInitCacheVolumeArgs({ volumeName: "symphony-cache-test", uid: 1000, gid: 1000 });
+    const result = _buildInitCacheVolumeArgs({ volumeName: "risoluto-cache-test", uid: 1000, gid: 1000 });
     expect(result.program).toBe("docker");
     expect(result.args).toEqual([
       "run",
       "--rm",
       "-v",
-      "symphony-cache-test:/mnt",
+      "risoluto-cache-test:/mnt",
       "alpine:3.21",
       "chown",
       "1000:1000",

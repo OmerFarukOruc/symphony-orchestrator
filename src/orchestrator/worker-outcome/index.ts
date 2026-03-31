@@ -73,7 +73,7 @@ async function dispatchPostReconciliation(
   attempt: number | null,
 ): Promise<void> {
   // Always check for stop signal, even on timeout/error — the agent may have
-  // written SYMPHONY_STATUS: DONE before the turn timer expired.
+  // written RISOLUTO_STATUS: DONE before the turn timer expired.
   // Prefer the pre-truncation signal extracted from raw content by the
   // notification handler; fall back to content-based detection for safety.
   const stopSignal = entry.lastStopSignal ?? detectStopSignal(entry.lastAgentMessageContent);

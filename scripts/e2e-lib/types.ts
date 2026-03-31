@@ -1,5 +1,5 @@
 /**
- * Foundation types and Zod config schema for the Symphony E2E lifecycle test.
+ * Foundation types and Zod config schema for the Risoluto E2E lifecycle test.
  *
  * Defines the validated config shape (loaded from YAML), runtime context
  * carried through every phase, and the phase result contract.
@@ -44,7 +44,7 @@ const serverConfigSchema = z.object({
 });
 
 const timeoutsConfigSchema = z.object({
-  symphony_startup_ms: z.number().default(15_000),
+  risoluto_startup_ms: z.number().default(15_000),
   setup_complete_ms: z.number().default(30_000),
   issue_pickup_ms: z.number().default(60_000),
   lifecycle_complete_ms: z.number().default(1_800_000),
@@ -94,9 +94,9 @@ export interface RunContext {
   runId: string;
   config: E2EConfig;
   startedAt: Date;
-  symphonyProcess: ChildProcess | null;
-  symphonyPort: number;
-  /** Base URL for the local Symphony HTTP server. */
+  risolutoProcess: ChildProcess | null;
+  risolutoPort: number;
+  /** Base URL for the local Risoluto HTTP server. */
   baseUrl: string;
   issueIdentifier: string | null;
   issueId: string | null;
@@ -110,8 +110,8 @@ export interface RunContext {
   keep: boolean;
   /** --skip-build flag: skip pnpm build in preflight. */
   skipBuild: boolean;
-  /** --keep-symphony flag: don't kill Symphony after run. */
-  keepSymphony: boolean;
+  /** --keep-risoluto flag: don't kill Risoluto after run. */
+  keepRisoluto: boolean;
   /** Generated MASTER_KEY hex string — reused across spawns. */
   masterKey: string | null;
 }

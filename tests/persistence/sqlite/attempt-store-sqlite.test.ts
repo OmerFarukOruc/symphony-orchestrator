@@ -13,7 +13,7 @@ import { initPersistenceRuntime } from "../../../src/persistence/sqlite/runtime.
 const tempDirs: string[] = [];
 
 async function createTempDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "symphony-sqlite-store-test-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "risoluto-sqlite-store-test-"));
   tempDirs.push(dir);
   return dir;
 }
@@ -25,7 +25,7 @@ function createAttempt(overrides: Partial<AttemptRecord> = {}): AttemptRecord {
     issueIdentifier: "MT-42",
     title: "Characterize persistence",
     workspaceKey: "MT-42",
-    workspacePath: "/tmp/symphony/MT-42",
+    workspacePath: "/tmp/risoluto/MT-42",
     status: "running",
     attemptNumber: 1,
     startedAt: "2026-03-16T10:00:00.000Z",
@@ -440,7 +440,7 @@ describe("SqliteAttemptStore migration (via PersistenceRuntime)", () => {
     await writeFile(path.join(attemptsDir, "attempt-1.json"), JSON.stringify(createAttempt()), "utf8");
 
     // First: open DB and insert a pre-existing attempt
-    const db = openDatabase(path.join(archiveDir, "symphony.db"));
+    const db = openDatabase(path.join(archiveDir, "risoluto.db"));
     const preStore = new SqliteAttemptStore(db, createLogger());
     await preStore.createAttempt(createAttempt({ attemptId: "pre-existing" }));
     closeDatabase(db);

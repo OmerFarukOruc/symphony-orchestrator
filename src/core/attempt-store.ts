@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { sortAttemptsDesc, sumAttemptDurationSeconds } from "./attempt-store-port.js";
 import { computeAttemptCostUsd } from "./model-pricing.js";
-import type { AttemptEvent, AttemptRecord, SymphonyLogger } from "./types.js";
+import type { AttemptEvent, AttemptRecord, RisolutoLogger } from "./types.js";
 import { toErrorString } from "../utils/type-guards.js";
 
 export class AttemptStore {
@@ -16,7 +16,7 @@ export class AttemptStore {
 
   constructor(
     private readonly baseDir: string,
-    private readonly logger: SymphonyLogger,
+    private readonly logger: RisolutoLogger,
   ) {}
 
   async start(): Promise<void> {
@@ -60,8 +60,7 @@ export class AttemptStore {
         .map((line) => line.trim())
         .filter(Boolean);
       const events = lines.map((line) => JSON.parse(line) as AttemptEvent);
-      this.migrateEventOrder(attemptId, events, eventsPath);
-      return events;
+      return this.migrateEventOrder(attemptId, events, eventsPath);
     } catch (error) {
       if (error instanceof Error && "code" in error && error.code === "ENOENT") {
         return [];
@@ -73,16 +72,19 @@ export class AttemptStore {
 
   /**
    * Legacy migration: reorder events from newest-first to chronological order.
-   * Asynchronously rewrites the archive file without blocking startup.
+   * Returns the corrected array (reversed copy) if migration is needed,
+   * otherwise returns the original. Asynchronously rewrites the archive file.
    */
-  private migrateEventOrder(attemptId: string, events: AttemptEvent[], eventsPath: string): void {
+  private migrateEventOrder(attemptId: string, events: AttemptEvent[], eventsPath: string): AttemptEvent[] {
     if (events.length > 1 && new Date(events[0].at).getTime() > new Date(events.at(-1)!.at).getTime()) {
-      events.reverse();
-      const serialized = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
+      const corrected = [...events].reverse();
+      const serialized = corrected.map((e) => JSON.stringify(e)).join("\n") + "\n";
       writeFile(eventsPath, serialized, "utf8").catch((error: unknown) => {
         this.logger.warn({ attemptId, error: toErrorString(error) }, "failed to migrate legacy archive order");
       });
+      return corrected;
     }
+    return events;
   }
 
   getAttempt(attemptId: string): AttemptRecord | null {
@@ -146,9 +148,8 @@ export class AttemptStore {
   }
 
   async appendEvent(event: AttemptEvent): Promise<void> {
-    const events = this.eventsByAttempt.get(event.attemptId) ?? [];
-    events.push(event);
-    this.eventsByAttempt.set(event.attemptId, events);
+    const existing = this.eventsByAttempt.get(event.attemptId) ?? [];
+    this.eventsByAttempt.set(event.attemptId, [...existing, event]);
     const serialized = `${JSON.stringify(event)}\n`;
     await appendFile(this.eventsPath(event.attemptId), serialized, "utf8");
   }
@@ -188,8 +189,7 @@ export class AttemptStore {
   private indexAttempt(attempt: AttemptRecord): void {
     const existing = this.attemptsByIssue.get(attempt.issueIdentifier) ?? [];
     if (!existing.includes(attempt.attemptId)) {
-      existing.unshift(attempt.attemptId);
-      this.attemptsByIssue.set(attempt.issueIdentifier, existing);
+      this.attemptsByIssue.set(attempt.issueIdentifier, [attempt.attemptId, ...existing]);
     }
   }
 
@@ -227,9 +227,11 @@ export class AttemptStore {
       return;
     }
 
-    this.archivedTokenTotals.inputTokens += direction * attempt.tokenUsage.inputTokens;
-    this.archivedTokenTotals.outputTokens += direction * attempt.tokenUsage.outputTokens;
-    this.archivedTokenTotals.totalTokens += direction * attempt.tokenUsage.totalTokens;
+    this.archivedTokenTotals = {
+      inputTokens: this.archivedTokenTotals.inputTokens + direction * attempt.tokenUsage.inputTokens,
+      outputTokens: this.archivedTokenTotals.outputTokens + direction * attempt.tokenUsage.outputTokens,
+      totalTokens: this.archivedTokenTotals.totalTokens + direction * attempt.tokenUsage.totalTokens,
+    };
 
     const cost = computeAttemptCostUsd(attempt);
     if (cost !== null) {

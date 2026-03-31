@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { SymphonyLogger, WebhookConfig } from "../../src/core/types.js";
+import type { RisolutoLogger, WebhookConfig } from "../../src/core/types.js";
 import { LinearClientError } from "../../src/linear/errors.js";
 import { WebhookRegistrar } from "../../src/webhook/registrar.js";
 import type { WebhookRegistrarDeps } from "../../src/webhook/registrar.js";
@@ -9,19 +9,19 @@ import type { WebhookRegistrarDeps } from "../../src/webhook/registrar.js";
 // Test helpers
 // ---------------------------------------------------------------------------
 
-function makeLogger(): SymphonyLogger {
+function makeLogger(): RisolutoLogger {
   return {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn().mockReturnThis(),
-  } as unknown as SymphonyLogger;
+  } as unknown as RisolutoLogger;
 }
 
 function makeWebhookConfig(overrides: Partial<WebhookConfig> = {}): WebhookConfig {
   return {
-    webhookUrl: "https://symphony.example.com/webhooks/linear",
+    webhookUrl: "https://risoluto.example.com/webhooks/linear",
     webhookSecret: "",
     pollingStretchMs: 120_000,
     pollingBaseMs: 15_000,
@@ -60,7 +60,7 @@ interface TestHarness {
   linearClient: MockLinearClient;
   secretsStore: MockSecretsStore;
   onSecretResolved: ReturnType<typeof vi.fn>;
-  logger: SymphonyLogger;
+  logger: RisolutoLogger;
 }
 
 function makeRegistrar(overrides: Partial<WebhookRegistrarDeps> = {}, config?: WebhookConfig | null): TestHarness {
@@ -187,7 +187,7 @@ describe("WebhookRegistrar", () => {
           id: "wh_existing",
           url: config.webhookUrl,
           enabled: true,
-          label: "Symphony Orchestrator",
+          label: "Risoluto",
           secret: null,
           resourceTypes: ["Issue"],
           teamId: null,
@@ -209,7 +209,7 @@ describe("WebhookRegistrar", () => {
           id: "wh_disabled",
           url: config.webhookUrl,
           enabled: false,
-          label: "Symphony Orchestrator",
+          label: "Risoluto",
           secret: null,
           resourceTypes: ["Issue"],
           teamId: null,
@@ -293,7 +293,7 @@ describe("WebhookRegistrar", () => {
       expect(linearClient.createWebhook).toHaveBeenCalledWith({
         url: config.webhookUrl,
         resourceTypes: ["Issue", "Comment", "Project"],
-        label: "Symphony Orchestrator",
+        label: "Risoluto",
       });
       expect(secretsStore.set).toHaveBeenCalledWith("LINEAR_WEBHOOK_SECRET", "auto_secret");
       expect(onSecretResolved).toHaveBeenCalledWith("auto_secret");

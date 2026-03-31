@@ -11,7 +11,7 @@ import {
   type SetupApiDeps,
 } from "./shared.js";
 
-async function createSymphonyLabel(
+async function createRisolutoLabel(
   apiKey: string,
   projectSlug: string,
 ): Promise<{ id: string; name: string; alreadyExists: boolean }> {
@@ -25,13 +25,13 @@ async function createSymphonyLabel(
   try {
     data = await callLinearGraphQL(apiKey, buildCreateLabelMutation(), {
       teamId,
-      name: "symphony",
+      name: "risoluto",
       color: "#2563eb",
     });
   } catch (error) {
     const message = getErrorMessage(error, "");
     if (message.toLowerCase().includes("duplicate")) {
-      return { id: "", name: "symphony", alreadyExists: true };
+      return { id: "", name: "risoluto", alreadyExists: true };
     }
     throw error;
   }
@@ -63,7 +63,7 @@ export function handlePostCreateLabel(deps: SetupApiDeps) {
     }
 
     try {
-      const { id, name, alreadyExists } = await createSymphonyLabel(apiKey, projectSlug);
+      const { id, name, alreadyExists } = await createRisolutoLabel(apiKey, projectSlug);
       res.json({ ok: true, labelId: id, labelName: name, alreadyExists });
     } catch (error) {
       const message = getErrorMessage(error, "Failed to create label");

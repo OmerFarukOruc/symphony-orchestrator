@@ -1,9 +1,9 @@
 {
-  "skill_name": "symphony-logs",
+  "skill_name": "risoluto-logs",
   "evals": [
     {
       "id": 1,
-      "prompt": "check issue NIN-6 and tell me what happened in the latest Symphony run",
+      "prompt": "check issue NIN-6 and tell me what happened in the latest Risoluto run",
       "expected_output": "Identifies the latest attempt, reports status, timing, and event timeline, and names the exact provenance used such as the helper command, archive file path, or API endpoint rather than referring vaguely to logs or archive files.",
       "files": []
     },

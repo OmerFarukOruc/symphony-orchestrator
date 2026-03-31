@@ -33,7 +33,7 @@ function makePayload(overrides: Partial<AgentEventPayload> = {}): AgentEventPayl
 }
 
 function dispatch(payload: AgentEventPayload): void {
-  fakeTarget.dispatchEvent(new CustomEvent("symphony:agent-event", { detail: payload }));
+  fakeTarget.dispatchEvent(new CustomEvent("risoluto:agent-event", { detail: payload }));
 }
 
 describe("subscribeIssueEvents", () => {
@@ -84,7 +84,7 @@ describe("subscribeAllEvents", () => {
   let unsubscribe: () => void;
 
   function dispatchAnyEvent(type: string, payload: Record<string, unknown>): void {
-    fakeTarget.dispatchEvent(new CustomEvent("symphony:any-event", { detail: { type, payload } }));
+    fakeTarget.dispatchEvent(new CustomEvent("risoluto:any-event", { detail: { type, payload } }));
   }
 
   beforeEach(() => {
@@ -113,7 +113,7 @@ describe("subscribeAllEvents", () => {
 
   it("ignores events without a payload", () => {
     unsubscribe = subscribeAllEvents("ENG-1", handler);
-    fakeTarget.dispatchEvent(new CustomEvent("symphony:any-event", { detail: { type: "agent.event" } }));
+    fakeTarget.dispatchEvent(new CustomEvent("risoluto:any-event", { detail: { type: "agent.event" } }));
     expect(handler).not.toHaveBeenCalled();
   });
 

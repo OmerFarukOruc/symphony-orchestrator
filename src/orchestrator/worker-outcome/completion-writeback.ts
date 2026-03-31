@@ -22,7 +22,7 @@ export async function writeCompletionWriteback(
   const config = ctx.getConfig();
   const successState = config.agent.successState;
 
-  const lines: string[] = ["**Symphony agent completed** ✓"];
+  const lines: string[] = ["**Risoluto agent completed** ✓"];
   if (input.entry.tokenUsage) {
     lines.push(
       `- **Tokens:** ${input.entry.tokenUsage.totalTokens.toLocaleString()} (in: ${input.entry.tokenUsage.inputTokens.toLocaleString()}, out: ${input.entry.tokenUsage.outputTokens.toLocaleString()})`,

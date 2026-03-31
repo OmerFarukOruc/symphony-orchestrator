@@ -1,4 +1,4 @@
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 import type { NotificationChannel, NotificationEvent } from "./channel.js";
 import { toErrorString } from "../utils/type-guards.js";
 
@@ -10,7 +10,7 @@ interface NotificationDeliveryResult {
 
 interface NotificationManagerOptions {
   channels?: NotificationChannel[];
-  logger?: SymphonyLogger;
+  logger?: RisolutoLogger;
   dedupeWindowMs?: number;
 }
 

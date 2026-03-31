@@ -272,10 +272,10 @@ describe("handleWorkerOutcome - model_override_updated path", () => {
 });
 
 describe("handleWorkerOutcome - stop signal detection", () => {
-  it("marks done and triggers git post-run when SYMPHONY_STATUS: DONE detected", async () => {
+  it("marks done and triggers git post-run when RISOLUTO_STATUS: DONE detected", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
-      lastAgentMessageContent: "I have completed the work.\n\nSYMPHONY_STATUS: DONE",
+      lastAgentMessageContent: "I have completed the work.\n\nRISOLUTO_STATUS: DONE",
       repoMatch: {
         repoUrl: "https://github.com/org/repo",
         defaultBranch: "main",
@@ -303,7 +303,7 @@ describe("handleWorkerOutcome - stop signal detection", () => {
     };
     gitMock.commitAndPush.mockResolvedValueOnce({ pushed: true, branchName: "mt-1" });
     const entry = makeEntry({
-      lastAgentMessageContent: "SYMPHONY_STATUS: DONE",
+      lastAgentMessageContent: "RISOLUTO_STATUS: DONE",
       repoMatch: {
         repoUrl: "https://github.com/org/repo",
         defaultBranch: "main",
@@ -323,10 +323,10 @@ describe("handleWorkerOutcome - stop signal detection", () => {
     expect(view.pullRequestUrl).toBe("https://github.com/org/repo/pull/1");
   });
 
-  it("marks paused when SYMPHONY_STATUS: BLOCKED detected", async () => {
+  it("marks paused when RISOLUTO_STATUS: BLOCKED detected", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
-      lastAgentMessageContent: "I cannot proceed.\n\nSYMPHONY_STATUS: BLOCKED",
+      lastAgentMessageContent: "I cannot proceed.\n\nRISOLUTO_STATUS: BLOCKED",
     });
     ctx.runningEntries.set("issue-1", entry);
 
@@ -341,10 +341,10 @@ describe("handleWorkerOutcome - stop signal detection", () => {
     );
   });
 
-  it("handles case-insensitive SYMPHONY_STATUS variations", async () => {
+  it("handles case-insensitive RISOLUTO_STATUS variations", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
-      lastAgentMessageContent: "SYMPHONY STATUS: done",
+      lastAgentMessageContent: "RISOLUTO STATUS: done",
     });
     ctx.runningEntries.set("issue-1", entry);
 
@@ -677,7 +677,7 @@ describe("handleWorkerOutcome - git post-run failure", () => {
     const gitManagerMock = ctx.deps.gitManager as unknown as { commitAndPush: ReturnType<typeof vi.fn> };
     gitManagerMock.commitAndPush.mockRejectedValueOnce(new Error("push rejected"));
     const entry = makeEntry({
-      lastAgentMessageContent: "SYMPHONY_STATUS: DONE",
+      lastAgentMessageContent: "RISOLUTO_STATUS: DONE",
       repoMatch: {
         repoUrl: "https://github.com/org/repo",
         defaultBranch: "main",
@@ -706,10 +706,10 @@ describe("handleWorkerOutcome - git post-run failure", () => {
 });
 
 describe("detectStopSignal edge cases", () => {
-  it("detects SYMPHONY_STATUS: DONE with extra whitespace", async () => {
+  it("detects RISOLUTO_STATUS: DONE with extra whitespace", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
-      lastAgentMessageContent: "  SYMPHONY_STATUS:   DONE  ",
+      lastAgentMessageContent: "  RISOLUTO_STATUS:   DONE  ",
     });
     ctx.runningEntries.set("issue-1", entry);
 
@@ -718,10 +718,10 @@ describe("detectStopSignal edge cases", () => {
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
   });
 
-  it("detects symphony status: done (space instead of underscore)", async () => {
+  it("detects risoluto status: done (space instead of underscore)", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
-      lastAgentMessageContent: "symphony status: done",
+      lastAgentMessageContent: "risoluto status: done",
     });
     ctx.runningEntries.set("issue-1", entry);
 
@@ -730,10 +730,10 @@ describe("detectStopSignal edge cases", () => {
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
   });
 
-  it("detects SYMPHONY STATUS: BLOCKED (space instead of underscore)", async () => {
+  it("detects RISOLUTO STATUS: BLOCKED (space instead of underscore)", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
-      lastAgentMessageContent: "SYMPHONY STATUS: BLOCKED",
+      lastAgentMessageContent: "RISOLUTO STATUS: BLOCKED",
     });
     ctx.runningEntries.set("issue-1", entry);
 
@@ -746,7 +746,7 @@ describe("detectStopSignal edge cases", () => {
   it("detects signal embedded mid-message", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
-      lastAgentMessageContent: "I finished the task.\nSYMPHONY_STATUS: DONE\nClosing now.",
+      lastAgentMessageContent: "I finished the task.\nRISOLUTO_STATUS: DONE\nClosing now.",
     });
     ctx.runningEntries.set("issue-1", entry);
 
@@ -758,7 +758,7 @@ describe("detectStopSignal edge cases", () => {
   it("detects stop signal even from timed-out outcomes", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
-      lastAgentMessageContent: "SYMPHONY_STATUS: DONE",
+      lastAgentMessageContent: "RISOLUTO_STATUS: DONE",
     });
     ctx.runningEntries.set("issue-1", entry);
 
@@ -779,7 +779,7 @@ describe("detectStopSignal edge cases", () => {
   it("detects stop signal even from failed outcomes", async () => {
     const ctx = makeCtx();
     const entry = makeEntry({
-      lastAgentMessageContent: "SYMPHONY_STATUS: DONE",
+      lastAgentMessageContent: "RISOLUTO_STATUS: DONE",
     });
     ctx.runningEntries.set("issue-1", entry);
 

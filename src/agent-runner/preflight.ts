@@ -1,4 +1,4 @@
-import type { SymphonyLogger } from "../core/types.js";
+import type { RisolutoLogger } from "../core/types.js";
 import { asRecord } from "./helpers.js";
 import { toErrorString } from "../utils/type-guards.js";
 
@@ -16,7 +16,7 @@ export interface PreflightResult {
 export async function runPreflight(
   connection: PreflightConnection,
   commands: string[],
-  logger: SymphonyLogger,
+  logger: RisolutoLogger,
 ): Promise<PreflightResult> {
   if (commands.length === 0) {
     return { passed: true };

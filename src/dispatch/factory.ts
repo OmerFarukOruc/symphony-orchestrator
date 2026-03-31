@@ -2,7 +2,7 @@ import { AgentRunner } from "../agent-runner/index.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import type { LinearClient } from "../linear/client.js";
 import type { TrackerPort } from "../tracker/port.js";
-import type { ServiceConfig, SymphonyLogger } from "../core/types.js";
+import type { ServiceConfig, RisolutoLogger } from "../core/types.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
 import type { WorkspaceManager } from "../workspace/manager.js";
 import { DispatchClient } from "./client.js";
@@ -19,7 +19,7 @@ export interface DispatcherFactoryDeps {
   archiveDir: string;
   pathRegistry: PathRegistry;
   githubToolClient: GithubApiToolClient;
-  logger: SymphonyLogger;
+  logger: RisolutoLogger;
 }
 
 /**

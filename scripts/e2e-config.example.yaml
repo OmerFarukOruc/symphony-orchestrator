@@ -1,10 +1,10 @@
-# Symphony E2E Lifecycle Test Configuration
+# Risoluto E2E Lifecycle Test Configuration
 # Copy to e2e-config.yaml and fill in your values.
 # $VAR references are expanded from environment variables.
 
 linear:
   api_key: $LINEAR_API_KEY
-  project_slug: "symphony-test"
+  project_slug: "risoluto-test"
   team_id: "TEAM_UUID_HERE"
 
 codex:
@@ -27,7 +27,7 @@ server:
   port: 4111
 
 timeouts:
-  symphony_startup_ms: 15000
+  risoluto_startup_ms: 15000
   setup_complete_ms: 30000
   issue_pickup_ms: 60000
   lifecycle_complete_ms: 1800000
@@ -38,7 +38,7 @@ test_issue:
   title: "E2E smoke: add hello-world.txt"
   description: |
     Create a file called `hello-world.txt` at the repo root containing
-    "Hello from Symphony E2E test -- run {run_id}".
+    "Hello from Risoluto E2E test -- run {run_id}".
     Automated smoke test -- keep changes minimal.
   priority: 3
 

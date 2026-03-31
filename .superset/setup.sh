@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "🎼 Symphony Orchestrator — workspace setup"
+echo "🎼 Risoluto — workspace setup"
 
 # ── 1. Copy .env from root if the worktree doesn't have one ──
 if [ ! -f .env ]; then

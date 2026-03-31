@@ -14,8 +14,8 @@
  */
 
 import type { TypedEventBus } from "../core/event-bus.js";
-import type { SymphonyEventMap } from "../core/symphony-events.js";
-import type { SymphonyLogger, WebhookConfig } from "../core/types.js";
+import type { RisolutoEventMap } from "../core/risoluto-events.js";
+import type { RisolutoLogger, WebhookConfig } from "../core/types.js";
 import type { WebhookHealthState, WebhookHealthStats, WebhookHealthStatus } from "./types.js";
 
 /** Duration (ms) a degraded tracker must wait after a delivery before promoting to connected. */
@@ -37,8 +37,8 @@ export interface WebhookHealthTracker {
 
 export interface WebhookHealthTrackerDeps {
   config: WebhookConfig;
-  eventBus: TypedEventBus<SymphonyEventMap>;
-  logger: SymphonyLogger;
+  eventBus: TypedEventBus<RisolutoEventMap>;
+  logger: RisolutoLogger;
   /** Optional Linear client for periodic subscription checks (Phase 1: may be omitted). */
   linearClient?: {
     runGraphQL: (query: string, variables?: Record<string, unknown>) => Promise<Record<string, unknown>>;
@@ -56,8 +56,8 @@ export class DefaultWebhookHealthTracker implements WebhookHealthTracker {
   private stopped = false;
 
   private readonly config: WebhookConfig;
-  private readonly eventBus: TypedEventBus<SymphonyEventMap>;
-  private readonly logger: SymphonyLogger;
+  private readonly eventBus: TypedEventBus<RisolutoEventMap>;
+  private readonly logger: RisolutoLogger;
   private readonly linearClient: WebhookHealthTrackerDeps["linearClient"];
 
   constructor(deps: WebhookHealthTrackerDeps) {

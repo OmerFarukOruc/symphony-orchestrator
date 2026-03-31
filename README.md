@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">🎵 Symphony Orchestrator</h1>
+  <h1 align="center">🎵 Risoluto</h1>
   <p align="center">
     <strong>Turn your issue tracker into an autonomous coding pipeline.</strong><br/>
     <em>Linear issues in → sandboxed AI agents out → PRs delivered.</em>
@@ -7,18 +7,19 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/OmerFarukOruc/symphony-orchestrator/releases"><img alt="Version" src="https://img.shields.io/github/v/tag/OmerFarukOruc/symphony-orchestrator?label=version&color=blue&style=flat-square" /></a>
-  <a href="https://github.com/OmerFarukOruc/symphony-orchestrator/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/OmerFarukOruc/symphony-orchestrator?color=green&style=flat-square" /></a>
+  <a href="https://github.com/OmerFarukOruc/risoluto/releases"><img alt="Version" src="https://img.shields.io/github/v/tag/OmerFarukOruc/risoluto?label=version&color=blue&style=flat-square" /></a>
+  <a href="https://github.com/OmerFarukOruc/risoluto/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/OmerFarukOruc/risoluto?color=green&style=flat-square" /></a>
   <img alt="Node.js" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square&logo=node.js" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-blue?style=flat-square&logo=typescript" />
   <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker" />
   <img alt="Status" src="https://img.shields.io/badge/status-v0.6.0-orange?style=flat-square" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-2904%20passing-brightgreen?style=flat-square" />
 </p>
 
 <br/>
 
 <p align="center">
-  <img src="docs/screenshots/overview.png" width="90%" alt="Symphony Dashboard — Overview" />
+  <img src="docs/screenshots/overview.png" width="90%" alt="Risoluto Dashboard — Overview" />
   <br/>
   <sub>Overview — active issues, recent events, and run statistics</sub>
 </p>
@@ -38,15 +39,15 @@
 
 ---
 
-## 🌊 What is Symphony?
+## 🌊 What is Risoluto?
 
-Symphony is a **local orchestration engine** that watches your project tracker for actionable issues, spins up sandboxed AI coding agents to work on each one, and delivers the results — all without you supervising a single prompt.
+Risoluto is a **local orchestration engine** that watches your project tracker for actionable issues, spins up sandboxed AI coding agents to work on each one, and delivers the results — all without you supervising a single prompt.
 
 ```
-You create an issue  →  Symphony picks it up  →  AI agent writes code  →  PR lands on GitHub
+You create an issue  →  Risoluto picks it up  →  AI agent writes code  →  PR lands on GitHub
 ```
 
-**No cloud service. No SaaS. Your code stays on your machine.** Symphony runs on your local machine or a VDS you control, connecting your existing Linear project to AI-powered Codex agents running inside isolated Docker containers. It communicates with configured external services (Linear, model providers) via their APIs, but your source code and workspace data never leave your infrastructure.
+**No cloud service. No SaaS. Your code stays on your machine.** Risoluto runs on your local machine or a VDS you control, connecting your existing Linear project to AI-powered Codex agents running inside isolated Docker containers. It communicates with configured external services (Linear, model providers) via their APIs, but your source code and workspace data never leave your infrastructure.
 
 ---
 
@@ -54,7 +55,7 @@ You create an issue  →  Symphony picks it up  →  AI agent writes code  →  
 
 ```mermaid
 flowchart LR
-    A["🗂️ Linear<br/><sub>Issue Tracker</sub>"] -->|"poll"| B["🎵 Symphony<br/><sub>Orchestrator</sub>"]
+    A["🗂️ Linear / GitHub<br/><sub>Issue Tracker</sub>"] -->|"poll"| B["🎵 Risoluto<br/><sub>Orchestrator</sub>"]
     B -->|"create"| C["📁 Workspace<br/><sub>Per-Issue Isolation</sub>"]
     B -->|"launch"| D["🐳 Docker<br/><sub>Sandboxed Container</sub>"]
     D -->|"contains"| E["🤖 Codex<br/><sub>AI Agent</sub>"]
@@ -84,8 +85,8 @@ The fastest way to get running. **No environment variables needed upfront** — 
 **1. Clone and launch**
 
 ```bash
-git clone https://github.com/OmerFarukOruc/symphony-orchestrator.git
-cd symphony-orchestrator
+git clone https://github.com/OmerFarukOruc/risoluto.git
+cd risoluto
 docker compose up --build
 ```
 
@@ -95,16 +96,16 @@ Navigate to **http://localhost:4000** — the setup wizard starts automatically.
 
 **3. Complete the wizard** (3–5 min)
 
-| Step | What you'll do |
-| ---- | -------------- |
+| Step                   | What you'll do                                     |
+| ---------------------- | -------------------------------------------------- |
 | 🔐 **Protect secrets** | Generates an encryption master key for credentials |
-| 🗂️ **Connect Linear** | Paste your API key and select a project |
-| 🤖 **Add OpenAI** | Paste an API key or use Codex Login |
-| 🐙 **Add GitHub** | Paste a GitHub PAT *(optional)* |
+| 🗂️ **Connect Linear**  | Paste your API key and select a project            |
+| 🤖 **Add OpenAI**      | Paste an API key or use Codex Login                |
+| 🐙 **Add GitHub**      | Paste a GitHub PAT _(optional)_                    |
 
 **4. Create an issue and watch it run**
 
-Set a Linear issue to "In Progress". Within one poll cycle (~30s), Symphony picks it up, launches a sandboxed agent, and shows progress on the dashboard.
+Set a Linear issue to "In Progress". Within one poll cycle (~30s), Risoluto picks it up, launches a sandboxed agent, and shows progress on the dashboard.
 
 > [!TIP]
 > All credentials and configuration are stored in encrypted Docker volumes — nothing is saved to your source tree.
@@ -114,14 +115,12 @@ Set a Linear issue to "In Progress". Within one poll cycle (~30s), Symphony pick
 
 ```bash
 pnpm install && pnpm run build && bash bin/build-sandbox.sh
-export LINEAR_API_KEY="lin_api_..."
-export LINEAR_PROJECT_SLUG="your-linear-project-slug"
-node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+node dist/cli/index.js --port 4000
 ```
 
-Open http://127.0.0.1:4000 and the setup wizard guides you through the rest.
+Open http://127.0.0.1:4000 — the setup wizard guides you through credentials. No workflow file needed; all config is stored in `~/.risoluto/` via the WebUI.
 
-Set your Codex auth:
+Set your Codex auth before or after setup:
 
 ```bash
 export OPENAI_API_KEY="sk-..."   # API key path
@@ -140,11 +139,13 @@ codex login                       # ChatGPT/Codex subscription path
 <td width="50%" valign="top">
 
 ### 🏗️ Core Engine
+
 - **📋 Linear polling** — Automatic issue discovery with priority sorting
-- **🐳 Docker sandbox** — `node:22` containers with resource limits, OOM detection, security hardening
+- **🐳 Docker sandbox** — `node:22` / Ubuntu 24.04 containers with resource limits, OOM detection, security hardening
 - **📁 Workspace isolation** — One directory per issue with lifecycle hooks
 - **🔄 Retry & stall handling** — Configurable backoff, turn/stall timeouts
 - **🎯 Model overrides** — Per-issue model selection from the dashboard
+- **⚡ Per-state concurrency limits** — Cap concurrent agents per workflow column
 - **🩺 Watchdog health monitor** — Periodic background health check with `healthy` / `degraded` / `critical` status exposed on the dashboard
 - **🔍 Orchestrator stall detector** — Kills agents silent for longer than `agent.stall_timeout_ms` (default 20 min) and requeues for retry
 - **✍️ Linear write-back** — Posts a rich completion comment and optionally transitions the issue to `agent.success_state` when an agent finishes
@@ -153,6 +154,7 @@ codex login                       # ChatGPT/Codex subscription path
 <td width="50%" valign="top">
 
 ### 🖥️ Dashboard & API
+
 - **📊 Real-time dashboard** — Board and overview views at `localhost:4000`
 - **📡 Full JSON API** — 50+ endpoints under `/api/v1/*`
 - **💰 Cost tracking** — Per-issue and per-model dollar cost in dashboard and API
@@ -160,6 +162,7 @@ codex login                       # ChatGPT/Codex subscription path
 - **📈 Prometheus metrics** — `GET /metrics` for scrape-friendly monitoring
 - **⚙️ Setup wizard** — Guided credential setup via web UI
 - **🔧 Config overlay** — Persistent operator config with encrypted secrets
+- **🪝 Webhook health panel** — Delivery count, last event type, and polling interval tracking
 
 </td>
 </tr>
@@ -167,18 +170,23 @@ codex login                       # ChatGPT/Codex subscription path
 <td width="50%" valign="top">
 
 ### 🔗 Integrations
+
 - **🐙 Git automation** — Clone, commit, push, and PR creation on completion
 - **🐙 GitHub Issues adapter** — Use GitHub Issues instead of (or alongside) Linear
 - **📬 Slack notifications** — Lifecycle alerts with verbosity controls
 - **🤖 Codex integration** — `codex app-server` via JSON-RPC with dynamic tool handling
+- **🔌 MCP server** — `linear_graphql` dynamic tool for orchestrator introspection
 
 </td>
 <td width="50%" valign="top">
 
 ### 🛡️ Operations
-- **💾 Archived attempts** — SQLite-backed attempt and event history in `.symphony/`
-- **🔎 `symphony-logs` CLI** — Archive-first issue and attempt inspection
+
+- **💾 Archived attempts** — SQLite-backed attempt and event history in `.risoluto/`
+- **🔎 `risoluto-logs` CLI** — Archive-first issue and attempt inspection
 - **🔐 Encrypted secrets** — AES-encrypted credential storage
+- **🔥 Workflow hot-reload** — Chokidar-based config reload without restart
+- **📝 LiquidJS prompt templates** — Strict variable/filter checking with per-issue context
 - **✅ Strict TypeScript** — Full type safety with Vitest unit tests and Playwright E2E coverage
 
 </td>
@@ -189,19 +197,19 @@ codex login                       # ChatGPT/Codex subscription path
 
 ## 🔮 Where It's Heading
 
-Symphony's roadmap ([#9 — Feature Roadmap](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/9)) tracks **89 features** across 4 tiers, with research drawn from 10+ open-source orchestrators.
+Risoluto's roadmap ([#9 — Feature Roadmap](https://github.com/OmerFarukOruc/risoluto/issues/9)) tracks **89 features** across 4 tiers, with research drawn from 10+ open-source orchestrators.
 
 ### 🎯 Tier 1 — Shipping Next
 
-| Feature | What it unlocks |
-| ------- | --------------- |
-| [**⚡ Reactions System**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/10) | CI/review/approval events trigger automatic agent actions |
-| [**📱 Mobile Dashboard**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/12) | Fully responsive UI for monitoring on any device |
-| [**🧹 Auto-squash Commits**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/59) | Conventional commit formatting with execution metrics in PRs |
+| Feature                                                                           | What it unlocks                                              |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| [**⚡ Reactions System**](https://github.com/OmerFarukOruc/risoluto/issues/10)    | CI/review/approval events trigger automatic agent actions    |
+| [**📱 Mobile Dashboard**](https://github.com/OmerFarukOruc/risoluto/issues/12)    | Fully responsive UI for monitoring on any device             |
+| [**🧹 Auto-squash Commits**](https://github.com/OmerFarukOruc/risoluto/issues/59) | Conventional commit formatting with execution metrics in PRs |
 
 ### 🏗️ Tier 2 — High Impact
 
-Multi-agent role pipelines • Agent-agnostic runner (10+ agent backends) • Kanban board with drag-and-drop • Inline diff review with agent feedback loop • MCP server for orchestrator tools • `npx` zero-install distribution • GitLab adapter • Chat integrations (Slack/Discord/Telegram) • and [43 more →](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/9)
+Multi-agent role pipelines • Agent-agnostic runner (10+ agent backends) • Kanban board with drag-and-drop • Inline diff review with agent feedback loop • `npx` zero-install distribution • GitLab adapter • Chat integrations (Slack/Discord/Telegram) • and [43 more →](https://github.com/OmerFarukOruc/risoluto/issues/9)
 
 ### 🔭 Tier 3–4 — Long Horizon
 
@@ -214,7 +222,7 @@ Multi-host SSH workers • Autonomous issue decomposition • Self-healing pipel
 
 ## 🐳 Docker Architecture
 
-Symphony runs in Docker with a zero-configuration start — or scales to a control/data plane split for advanced deployments.
+Risoluto runs in Docker with a zero-configuration start — or scales to a control/data plane split for advanced deployments.
 
 ### Standard Mode — Single Container
 
@@ -224,11 +232,11 @@ docker compose up --build
 
 All data persists in named Docker volumes:
 
-| Volume | Purpose |
-| ------ | ------- |
-| `symphony-archives` | Encrypted secrets, config overlay, run archives |
-| `symphony-workspaces` | Cloned repositories for each issue |
-| `codex-auth` | OpenAI Codex login tokens |
+| Volume                | Purpose                                         |
+| --------------------- | ----------------------------------------------- |
+| `risoluto-archives`   | Encrypted secrets, config overlay, run archives |
+| `risoluto-workspaces` | Cloned repositories for each issue              |
+| `codex-auth`          | OpenAI Codex login tokens                       |
 
 ### Advanced — Control / Data Plane Split
 
@@ -257,98 +265,92 @@ Enable with `DISPATCH_MODE=remote` in your `.env`. See the [Operator Guide](docs
 
 ## 📡 API at a Glance
 
-Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are the key endpoints:
+Risoluto exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are the key endpoints:
 
-| Endpoint | What it does |
-| -------- | ------------ |
-| `GET /api/v1/state` | Runtime snapshot — queued, running, retrying, completed issues |
-| `GET /api/v1/runtime` | Version, workflow path, provider summary |
-| `GET /api/v1/events` | SSE stream of real-time orchestrator events |
-| `GET /api/v1/models` | List available Codex models |
-| `POST /api/v1/:issue/abort` | Abort a running issue |
-| `POST /api/v1/:issue/steer` | Inject steering message into a running agent |
-| `POST /api/v1/refresh` | Trigger immediate orchestration pass |
-| `GET /api/v1/:issue/attempts` | Archived attempts + current live attempt |
-| `POST /api/v1/:issue/model` | Save per-issue model override |
-| `GET /metrics` | Prometheus-format service metrics |
+| Endpoint                      | What it does                                                   |
+| ----------------------------- | -------------------------------------------------------------- |
+| `GET /api/v1/state`           | Runtime snapshot — queued, running, retrying, completed issues |
+| `GET /api/v1/runtime`         | Version, workflow path, provider summary                       |
+| `GET /api/v1/events`          | SSE stream of real-time orchestrator events                    |
+| `GET /api/v1/models`          | List available Codex models                                    |
+| `POST /api/v1/:issue/abort`   | Abort a running issue                                          |
+| `POST /api/v1/:issue/steer`   | Inject steering message into a running agent                   |
+| `POST /api/v1/refresh`        | Trigger immediate orchestration pass                           |
+| `GET /api/v1/:issue/attempts` | Archived attempts + current live attempt                       |
+| `POST /api/v1/:issue/model`   | Save per-issue model override                                  |
+| `GET /metrics`                | Prometheus-format service metrics                              |
 
 <details>
 <summary>📋 <strong>Full API reference</strong> — 50+ endpoints</summary>
 
 ### Core Endpoints
 
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| `GET` | `/` | Local operator dashboard |
-| `GET` | `/metrics` | Prometheus metrics |
-| `GET` | `/api/v1/runtime` | Runtime info — version, workflow path, provider summary |
-| `GET` | `/api/v1/state` | Runtime snapshot — queued, running, retrying, completed, workflow columns, and token totals |
-| `POST` | `/api/v1/refresh` | Trigger immediate orchestration refresh |
-| `GET` | `/api/v1/transitions` | List available Linear workflow transitions |
-| `GET` | `/api/v1/:issue_identifier` | Issue detail, recent events, archived attempts |
-| `GET` | `/api/v1/:issue_identifier/attempts` | Archived attempts + current live attempt id |
-| `GET` | `/api/v1/attempts/:attempt_id` | Archived event stream for a specific attempt |
-| `POST` | `/api/v1/:issue_identifier/model` | Save per-issue model override |
-| `POST` | `/api/v1/:issue_identifier/transition` | Transition a Linear issue to a new state |
-| `POST` | `/api/v1/:issue_identifier/abort` | Abort a running issue |
-| `POST` | `/api/v1/:issue_identifier/steer` | Inject a steering message into a running agent |
-| `GET` | `/api/v1/events` | SSE stream of real-time orchestrator events |
-| `GET` | `/api/v1/models` | List available Codex models from the provider |
-| `GET` | `/api/v1/git/context` | Git repository context and configured repo routes |
-| `GET` | `/api/v1/workspaces` | Workspace inventory with disk usage |
-| `DELETE` | `/api/v1/workspaces/:workspace_key` | Remove a workspace directory |
-| `GET` | `/api/v1/openapi.json` | OpenAPI 3.0 specification |
-| `GET` | `/api/docs` | Swagger UI for interactive API exploration |
+| Method   | Endpoint                               | Description                                                                                 |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `GET`    | `/`                                    | Local operator dashboard                                                                    |
+| `GET`    | `/metrics`                             | Prometheus metrics                                                                          |
+| `GET`    | `/api/v1/runtime`                      | Runtime info — version, workflow path, provider summary                                     |
+| `GET`    | `/api/v1/state`                        | Runtime snapshot — queued, running, retrying, completed, workflow columns, and token totals |
+| `POST`   | `/api/v1/refresh`                      | Trigger immediate orchestration refresh                                                     |
+| `GET`    | `/api/v1/transitions`                  | List available Linear workflow transitions                                                  |
+| `GET`    | `/api/v1/:issue_identifier`            | Issue detail, recent events, archived attempts                                              |
+| `GET`    | `/api/v1/:issue_identifier/attempts`   | Archived attempts + current live attempt id                                                 |
+| `GET`    | `/api/v1/attempts/:attempt_id`         | Archived event stream for a specific attempt                                                |
+| `POST`   | `/api/v1/:issue_identifier/model`      | Save per-issue model override                                                               |
+| `POST`   | `/api/v1/:issue_identifier/transition` | Transition a Linear issue to a new state                                                    |
+| `POST`   | `/api/v1/:issue_identifier/abort`      | Abort a running issue                                                                       |
+| `POST`   | `/api/v1/:issue_identifier/steer`      | Inject a steering message into a running agent                                              |
+| `GET`    | `/api/v1/events`                       | SSE stream of real-time orchestrator events                                                 |
+| `GET`    | `/api/v1/models`                       | List available Codex models from the provider                                               |
+| `GET`    | `/api/v1/git/context`                  | Git repository context and configured repo routes                                           |
+| `GET`    | `/api/v1/workspaces`                   | Workspace inventory with disk usage                                                         |
+| `DELETE` | `/api/v1/workspaces/:workspace_key`    | Remove a workspace directory                                                                |
+| `GET`    | `/api/v1/openapi.json`                 | OpenAPI 3.0 specification                                                                   |
+| `GET`    | `/api/docs`                            | Swagger UI for interactive API exploration                                                  |
 
 ### Config & Secrets Endpoints
 
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| `GET` | `/api/v1/config` | Effective merged operator config |
-| `GET` | `/api/v1/config/overlay` | Persistent overlay values only |
-| `PUT` | `/api/v1/config/overlay` | Update overlay values |
-| `DELETE` | `/api/v1/config/overlay/:path` | Remove one overlay path |
-| `GET` | `/api/v1/secrets` | List configured secret keys |
-| `POST` | `/api/v1/secrets/:key` | Store one secret |
-| `DELETE` | `/api/v1/secrets/:key` | Delete one secret |
+| Method   | Endpoint                       | Description                      |
+| -------- | ------------------------------ | -------------------------------- |
+| `GET`    | `/api/v1/config`               | Effective merged operator config |
+| `GET`    | `/api/v1/config/overlay`       | Persistent overlay values only   |
+| `PUT`    | `/api/v1/config/overlay`       | Update overlay values            |
+| `DELETE` | `/api/v1/config/overlay/:path` | Remove one overlay path          |
+| `GET`    | `/api/v1/secrets`              | List configured secret keys      |
+| `POST`   | `/api/v1/secrets/:key`         | Store one secret                 |
+| `DELETE` | `/api/v1/secrets/:key`         | Delete one secret                |
 
 ### Setup Wizard Endpoints
 
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| `GET` | `/api/v1/setup/status` | Setup wizard progress and step completion |
-| `POST` | `/api/v1/setup/reset` | Reset all configuration |
-| `POST` | `/api/v1/setup/master-key` | Initialize encryption master key |
-| `GET` | `/api/v1/setup/linear-projects` | List available Linear projects |
-| `POST` | `/api/v1/setup/linear-project` | Select a Linear project |
-| `POST` | `/api/v1/setup/openai-key` | Validate and store OpenAI API key |
-| `POST` | `/api/v1/setup/codex-auth` | Store Codex auth.json |
-| `POST` | `/api/v1/setup/pkce-auth/start` | Start browser-based PKCE login flow |
-| `GET` | `/api/v1/setup/pkce-auth/status` | Poll PKCE authorization status |
-| `POST` | `/api/v1/setup/pkce-auth/cancel` | Cancel active PKCE flow |
-| `POST` | `/api/v1/setup/github-token` | Validate and store GitHub token |
+| Method | Endpoint                         | Description                               |
+| ------ | -------------------------------- | ----------------------------------------- |
+| `GET`  | `/api/v1/setup/status`           | Setup wizard progress and step completion |
+| `POST` | `/api/v1/setup/reset`            | Reset all configuration                   |
+| `POST` | `/api/v1/setup/master-key`       | Initialize encryption master key          |
+| `GET`  | `/api/v1/setup/linear-projects`  | List available Linear projects            |
+| `POST` | `/api/v1/setup/linear-project`   | Select a Linear project                   |
+| `POST` | `/api/v1/setup/openai-key`       | Validate and store OpenAI API key         |
+| `POST` | `/api/v1/setup/codex-auth`       | Store Codex auth.json                     |
+| `POST` | `/api/v1/setup/pkce-auth/start`  | Start browser-based PKCE login flow       |
+| `GET`  | `/api/v1/setup/pkce-auth/status` | Poll PKCE authorization status            |
+| `POST` | `/api/v1/setup/pkce-auth/cancel` | Cancel active PKCE flow                   |
+| `POST` | `/api/v1/setup/github-token`     | Validate and store GitHub token           |
 
 </details>
 
 ---
 
-## 📄 Workflow Files
+## ⚙️ Configuration
 
-| File | Purpose |
-| ---- | ------- |
-| `WORKFLOW.example.md` | Portable example for normal local setup |
-| `WORKFLOW.md` | Checked-in live smoke workflow for this repo |
-
-> [!TIP]
-> Both workflows resolve `tracker.project_slug` from `LINEAR_PROJECT_SLUG` env var, so the same repo checkout works across different Linear projects without editing tracked files.
+Risoluto stores all config in `~/.risoluto/` (or the directory passed via `--data-dir`). There is no workflow file to edit — credentials and settings are managed through the WebUI setup wizard or the `/api/v1/config/overlay` API.
 
 ### Auth Modes
 
-| Mode | Config | How it works |
-| ---- | ------ | ------------ |
-| **API Key** | `codex.auth.mode: "api_key"` | Forwards `OPENAI_API_KEY` into the container |
-| **Codex Login** | `codex.auth.mode: "openai_login"` | Injects `auth.json` from `codex.auth.source_home` |
-| **Custom Provider** | `codex.provider` block | OpenAI-compatible endpoints with `base_url`, headers, query params |
+| Mode                | How to configure                        | How it works                                                       |
+| ------------------- | --------------------------------------- | ------------------------------------------------------------------ |
+| **API Key**         | Paste `sk-...` in the setup wizard      | Forwards `OPENAI_API_KEY` into the container                       |
+| **Codex Login**     | Browser PKCE flow or upload `auth.json` | Injects `auth.json` from the encrypted secrets store               |
+| **Custom Provider** | `codex.provider` overlay key            | OpenAI-compatible endpoints with `base_url`, headers, query params |
 
 > [!NOTE]
 > Host-bound provider URLs like `http://127.0.0.1:8317/v1` are automatically rewritten to `host.docker.internal` inside Docker containers.
@@ -358,24 +360,24 @@ Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are th
 ## 🧪 Testing
 
 ```bash
-pnpm test                  # Deterministic unit tests (Vitest, 2630 tests)
+pnpm test                  # Deterministic unit tests (Vitest, 2904 tests)
 pnpm run test:watch        # Watch mode for local iteration
 pnpm run test:integration  # Opt-in live integration (requires credentials)
 ```
 
 ### Playwright E2E Tests
 
-The dashboard has a full Playwright E2E suite with 100+ smoke tests across 16 spec files and 4 visual regression baselines. Tests run against a Vite dev server with fully mocked API routes — no backend needed.
+The dashboard has a full Playwright E2E suite with 119 smoke tests across 17 spec files and 4 visual regression baselines. Tests run against a Vite dev server with fully mocked API routes — no backend needed.
 
 ```bash
-pnpm exec playwright test --project=smoke   # Smoke tests (100+ tests, ~7s)
+pnpm exec playwright test --project=smoke   # Smoke tests (119 tests, ~7s)
 pnpm exec playwright test --project=visual  # Visual regression (4 baselines)
 pnpm exec playwright test --project=visual --update-snapshots  # Regenerate baselines
 ```
 
 ### E2E Lifecycle Test
 
-Full-pipeline integration test that drives the complete Symphony lifecycle against real Linear + GitHub APIs:
+Full-pipeline integration test that drives the complete Risoluto lifecycle against real Linear + GitHub APIs:
 
 ```bash
 cp scripts/e2e-config.example.yaml scripts/e2e-config.yaml
@@ -394,45 +396,44 @@ Runs 12 phases: preflight, start, setup wizard, issue creation, agent monitoring
 
 ### 🏁 Getting Started
 
-| Document | What you'll learn |
-| -------- | ----------------- |
-| **[Getting Started](docs/GETTING_STARTED.md)** | First 10 minutes: install, setup wizard, first issue |
-| **[Operator Guide](docs/OPERATOR_GUIDE.md)** | Full setup walkthrough, deployment options, Docker networking, wizard details |
-| **[Workflow Examples](WORKFLOW.example.md)** | Template workflow file with all config options explained |
+| Document                                       | What you'll learn                                                             |
+| ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| **[Getting Started](docs/GETTING_STARTED.md)** | First 10 minutes: install, setup wizard, first issue                          |
+| **[Operator Guide](docs/OPERATOR_GUIDE.md)**   | Full setup walkthrough, deployment options, Docker networking, wizard details |
 
 ### 🔧 Operating & Monitoring
 
-| Document | What it covers |
-| -------- | -------------- |
-| **[Runbooks](docs/RUNBOOKS.md)** | Troubleshooting playbooks for common failures |
+| Document                                   | What it covers                                                   |
+| ------------------------------------------ | ---------------------------------------------------------------- |
+| **[Runbooks](docs/RUNBOOKS.md)**           | Troubleshooting playbooks for common failures                    |
 | **[Observability](docs/OBSERVABILITY.md)** | Prometheus metrics, request tracing, error tracking, alert rules |
-| **[E2E Testing](docs/E2E_TESTING.md)** | Automated lifecycle test: setup, config, phases, diagnostics |
-| **[Releasing](docs/RELEASING.md)** | Release preparation checklist |
+| **[E2E Testing](docs/E2E_TESTING.md)**     | Automated lifecycle test: setup, config, phases, diagnostics     |
+| **[Releasing](docs/RELEASING.md)**         | Release preparation checklist                                    |
 
 ### 🏛️ Architecture & Security
 
-| Document | What it covers |
-| -------- | -------------- |
-| **[Trust & Auth](docs/TRUST_AND_AUTH.md)** | Trust boundaries, sandbox security, credential chain |
-| **[Conformance Audit](docs/CONFORMANCE_AUDIT.md)** | Per-requirement spec conformance tracking |
-| **[Roadmap](docs/ROADMAP_AND_STATUS.md)** | 89-issue feature roadmap across 4 tiers |
+| Document                                           | What it covers                                       |
+| -------------------------------------------------- | ---------------------------------------------------- |
+| **[Trust & Auth](docs/TRUST_AND_AUTH.md)**         | Trust boundaries, sandbox security, credential chain |
+| **[Conformance Audit](docs/CONFORMANCE_AUDIT.md)** | Per-requirement spec conformance tracking            |
+| **[Roadmap](docs/ROADMAP_AND_STATUS.md)**          | 89-issue feature roadmap across 4 tiers              |
 
 ### 📖 Reference
 
-| Document | What it covers |
-| -------- | -------------- |
-| **[EXECPLAN.md](EXECPLAN.md)** | Internal implementation log |
+| Document                                                 | What it covers                               |
+| -------------------------------------------------------- | -------------------------------------------- |
+| **[EXECPLAN.md](EXECPLAN.md)**                           | Internal implementation log                  |
 | **[Visual Verify Skill](skills/visual-verify/SKILL.md)** | Dashboard screenshot diffing and QA workflow |
 
 ---
 
 ## 🔒 Trust Posture
 
-The v0.3 operating mode is intentionally **high trust** and **local-only**.
+The default operating mode is intentionally **high trust** and **local-only**.
 
 ```mermaid
 flowchart TB
-    S["🎵 Symphony<br/><sub>Decides WHEN to launch<br/>and WHICH workspace</sub>"]
+    S["🎵 Risoluto<br/><sub>Decides WHEN to launch<br/>and WHICH workspace</sub>"]
     C["🤖 Codex<br/><sub>Decides HOW each<br/>turn executes</sub>"]
     P["🌐 Provider / Proxy<br/><sub>Decides HOW the model<br/>call is routed</sub>"]
 
@@ -453,7 +454,7 @@ flowchart TB
 This project draws direct inspiration from **[OpenAI's Symphony](https://github.com/openai/symphony)** — a framework that turns project work into isolated, autonomous implementation runs. We loved the vision and built our own TypeScript implementation tailored for local, single-host operator use.
 
 > [!NOTE]
-> While OpenAI's Symphony provides a [spec](https://github.com/openai/symphony/blob/main/SPEC.md) and an Elixir reference implementation, **Symphony Orchestrator** is an independent TypeScript implementation that follows the same core philosophy: poll tracker → create workspaces → launch agents → report results.
+> While OpenAI's Symphony provides a [spec](https://github.com/openai/symphony/blob/main/SPEC.md) and an Elixir reference implementation, **Risoluto** is an independent TypeScript implementation that follows the same core philosophy: poll tracker → create workspaces → launch agents → report results.
 
 ---
 

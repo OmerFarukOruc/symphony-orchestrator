@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { asArray, asRecord, asStringOrNull, toErrorString } from "../utils/type-guards.js";
 import { normalizeIssue } from "./issue-parser.js";
-import type { Issue, ServiceConfig, SymphonyLogger } from "../core/types.js";
+import type { Issue, ServiceConfig, RisolutoLogger } from "../core/types.js";
 import {
   PAGE_SIZE,
   buildCandidateIssuesQuery,
@@ -33,7 +33,7 @@ interface ResolvedWorkflowStates {
 
 function buildWorkflowStateLookupQuery(includeTeamFilter: boolean): string {
   return `
-    query SymphonyWorkflowStates${includeTeamFilter ? "($teamId: ID)" : ""} {
+    query RisolutoWorkflowStates${includeTeamFilter ? "($teamId: ID)" : ""} {
       workflowStates(first: 250${includeTeamFilter ? ", filter: { team: { id: { eq: $teamId } } }" : ""}) {
         nodes {
           id
@@ -57,7 +57,7 @@ async function readJsonResponse(response: Response): Promise<GraphQLResponse> {
 export class LinearClient {
   constructor(
     private readonly getConfig: () => ServiceConfig,
-    private readonly logger: SymphonyLogger,
+    private readonly logger: RisolutoLogger,
   ) {}
 
   async fetchCandidateIssues(): Promise<Issue[]> {
@@ -218,7 +218,7 @@ export class LinearClient {
         enabled: n.enabled === true,
         label: asStringOrNull(n.label),
         secret: asStringOrNull(n.secret),
-        resourceTypes: asArray(n.resourceTypes).map((rt) => String(rt)),
+        resourceTypes: asArray(n.resourceTypes).map(String),
         teamId: asStringOrNull(n.teamId),
       };
     });

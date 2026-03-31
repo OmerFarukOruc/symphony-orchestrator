@@ -21,7 +21,7 @@ export function createIssue(overrides?: Partial<RunningEntry["issue"]>): Running
 
 export function createWorkspace(overrides?: Partial<RunningEntry["workspace"]>): RunningEntry["workspace"] {
   return {
-    path: "/tmp/symphony/MT-42",
+    path: "/tmp/risoluto/MT-42",
     workspaceKey: "MT-42",
     createdNow: true,
     ...overrides,
