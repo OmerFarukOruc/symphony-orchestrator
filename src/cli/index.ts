@@ -5,12 +5,14 @@ import { parseArgs } from "node:util";
 
 import { ConfigOverlayStore } from "../config/overlay.js";
 import { ConfigStore } from "../config/store.js";
+import { DbConfigStore } from "../config/db-store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import { HttpServer } from "../http/server.js";
 import { createLogger } from "../core/logger.js";
 import { getErrorTracker, initErrorTracking } from "../core/error-tracking.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import type { PersistenceRuntime } from "../persistence/sqlite/runtime.js";
+import { initPersistenceRuntime } from "../persistence/sqlite/runtime.js";
 import { SecretsStore } from "../secrets/store.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { ValidationError } from "../core/types.js";
@@ -43,55 +45,32 @@ async function cleanupTransientWorkspaceDirs(workspaceRoot: string): Promise<voi
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   const { dataDir, archiveDir, selectedPort, logger } = parseCliArgs(argv);
 
-  const overlayStore = new ConfigOverlayStore(
-    path.join(archiveDir, "config", "overlay.yaml"),
-    logger.child({ component: "config-overlay" }),
-  );
-  const fileKey = await readMasterKeyFile(archiveDir);
-  const secretsStore = new SecretsStore(
-    archiveDir,
-    logger.child({ component: "secrets" }),
-    fileKey ? { masterKey: fileKey } : undefined,
-  );
-  await overlayStore.start();
-  let needsSetup = false;
-  try {
-    await secretsStore.start();
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("MASTER_KEY is required")) {
-      logger.warn("MASTER_KEY not configured — starting in setup mode");
-      await secretsStore.startDeferred();
-      needsSetup = true;
-    } else {
-      throw error;
-    }
-  }
-  const configStore = new ConfigStore(logger.child({ component: "config" }), {
+  const {
     overlayStore,
     secretsStore,
-  });
+    configStore,
+    persistence,
+    needsSetup: initialNeedsSetup,
+  } = await initializeConfigStores(archiveDir, logger);
+  let needsSetup = initialNeedsSetup;
 
   const startError = await safeStartConfigStore(configStore);
-  if (startError !== null) return startError;
-
-  const SETUP_MODE_ERRORS = new Set(["missing_tracker_api_key", "missing_tracker_project_slug"]);
-  if (!needsSetup) {
-    const validationError = configStore.validateDispatch();
-    if (validationError) {
-      if (SETUP_MODE_ERRORS.has(validationError.code)) {
-        logger.warn({ code: validationError.code }, "missing credentials — starting in setup mode");
-        needsSetup = true;
-      } else {
-        printValidationError(validationError);
-        await configStore.stop();
-        return 1;
-      }
-    }
+  if (startError !== null) {
+    persistence.close();
+    return startError;
   }
+
+  const validationResult = evaluateSetupMode(configStore, logger, needsSetup);
+  if (validationResult.exitCode !== null) {
+    await configStore.stop();
+    persistence.close();
+    return validationResult.exitCode;
+  }
+  needsSetup = validationResult.needsSetup;
 
   const config = configStore.getConfig();
   const port = selectedPort ?? config.server.port;
-  const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger);
+  const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger, { persistence });
   wireNotifications(services.notificationManager, configStore, logger);
 
   const { orchestrator, httpServer, eventBus } = services;
@@ -120,6 +99,53 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
   await awaitShutdown(logger, shutdown);
   return 0;
+}
+
+async function initializeConfigStores(archiveDir: string, logger: ReturnType<typeof createLogger>) {
+  const overlayStore = new ConfigOverlayStore(
+    path.join(archiveDir, "config", "overlay.yaml"),
+    logger.child({ component: "config-overlay" }),
+  );
+  const fileKey = await readMasterKeyFile(archiveDir);
+  const secretsStore = new SecretsStore(
+    archiveDir,
+    logger.child({ component: "secrets" }),
+    fileKey ? { masterKey: fileKey } : undefined,
+  );
+  await overlayStore.start();
+  let needsSetup = false;
+  try {
+    await secretsStore.start();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("MASTER_KEY is required")) {
+      logger.warn("MASTER_KEY not configured — starting in setup mode");
+      await secretsStore.startDeferred();
+      needsSetup = true;
+    } else {
+      throw error;
+    }
+  }
+  const persistence = await initPersistenceRuntime({ dataDir: archiveDir, logger });
+  const dbConfigStore =
+    persistence.db === null
+      ? null
+      : new DbConfigStore(persistence.db, logger.child({ component: "config-db" }), {
+          secretsStore,
+        });
+  const configStore = new ConfigStore(logger.child({ component: "config" }), {
+    overlayStore,
+    secretsStore,
+    workflowStore:
+      dbConfigStore === null
+        ? undefined
+        : {
+            getWorkflow: () => {
+              dbConfigStore.refresh();
+              return dbConfigStore.getWorkflow();
+            },
+          },
+  });
+  return { overlayStore, secretsStore, configStore, persistence, needsSetup };
 }
 
 function parsePortValue(rawPort: string | undefined): number | undefined {
@@ -176,6 +202,29 @@ async function safeStartConfigStore(configStore: ConfigStore): Promise<number | 
     }
     throw error;
   }
+}
+
+function evaluateSetupMode(
+  configStore: ConfigStore,
+  logger: ReturnType<typeof createLogger>,
+  needsSetup: boolean,
+): { needsSetup: boolean; exitCode: number | null } {
+  const SETUP_MODE_ERRORS = new Set(["missing_tracker_api_key", "missing_tracker_project_slug"]);
+  if (needsSetup) {
+    return { needsSetup, exitCode: null };
+  }
+
+  const validationError = configStore.validateDispatch();
+  if (!validationError) {
+    return { needsSetup: false, exitCode: null };
+  }
+  if (SETUP_MODE_ERRORS.has(validationError.code)) {
+    logger.warn({ code: validationError.code }, "missing credentials — starting in setup mode");
+    return { needsSetup: true, exitCode: null };
+  }
+
+  printValidationError(validationError);
+  return { needsSetup: false, exitCode: 1 };
 }
 
 function buildShutdown({

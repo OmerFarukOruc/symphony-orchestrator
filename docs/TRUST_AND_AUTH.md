@@ -84,7 +84,7 @@ Risoluto runs the Codex agent inside a Docker container using a `node:22-bookwor
 
 ### Sandbox Hardening Options
 
-Risoluto supports several opt-in hardening knobs configured under `codex.sandbox` in the workflow file.
+Risoluto supports several opt-in hardening knobs configured under `codex.sandbox` in the config overlay.
 
 #### Egress Domain Allowlist
 

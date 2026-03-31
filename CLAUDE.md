@@ -14,10 +14,10 @@ Use Node.js 22 or newer.
 - `pnpm test` runs the main Vitest suite.
 - `pnpm run test:watch` starts Vitest in watch mode for local iteration.
 - `pnpm run test:integration` runs the opt-in integration config; set `LINEAR_API_KEY` first when you want real credential coverage.
-- `pnpm exec playwright test --project=smoke` runs the Playwright E2E smoke tests (114 tests across 16 spec files) against a Vite dev server with mocked API routes.
+- `pnpm exec playwright test --project=smoke` runs the Playwright E2E smoke tests (119 tests across 17 spec files) against a Vite dev server with mocked API routes.
 - `pnpm exec playwright test --project=visual` runs visual regression tests (4 visual specs with 4 baselines). Use `--update-snapshots` to regenerate reference screenshots.
-- `pnpm run dev -- ./WORKFLOW.example.md` runs the CLI directly through `tsx`.
-- `node dist/cli/index.js ./WORKFLOW.example.md --port 4000` runs the built service.
+- `pnpm run dev -- --port 4000` runs the CLI directly through `tsx`.
+- `node dist/cli/index.js --port 4000` runs the built service.
 - `./scripts/run-e2e.sh` runs the full E2E lifecycle test against real Linear + GitHub APIs (requires credentials + Docker). See `docs/E2E_TESTING.md` for config and usage.
 
 ## Pre-commit & Pre-push Checks — MANDATORY

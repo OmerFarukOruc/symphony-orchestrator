@@ -63,15 +63,17 @@ const mockHttpServer = vi.hoisted(() =>
   }),
 );
 
-const mockPromptTemplateStore = vi.hoisted(() =>
-  vi.fn().mockImplementation(function () {
-    return { fake: "templateStore" };
-  }),
-);
+const mockPromptTemplateStore = vi.hoisted(() => vi.fn());
 
 const mockAuditLogger = vi.hoisted(() =>
   vi.fn().mockImplementation(function () {
     return { fake: "auditLogger" };
+  }),
+);
+
+const mockIssueConfigStoreCreate = vi.hoisted(() =>
+  vi.fn().mockReturnValue({
+    getTemplateId: vi.fn().mockReturnValue(null),
   }),
 );
 
@@ -124,6 +126,12 @@ vi.mock("../../src/audit/logger.js", () => ({
   AuditLogger: mockAuditLogger,
 }));
 
+vi.mock("../../src/persistence/sqlite/issue-config-store.js", () => ({
+  IssueConfigStore: {
+    create: mockIssueConfigStoreCreate,
+  },
+}));
+
 /* ------------------------------------------------------------------ */
 /*  Import under test (after all mocks registered)                     */
 /* ------------------------------------------------------------------ */
@@ -134,7 +142,10 @@ import { createServices } from "../../src/cli/services.js";
 /* ------------------------------------------------------------------ */
 
 function makeConfigStore() {
-  return { getConfig: vi.fn().mockReturnValue({}) };
+  return {
+    getConfig: vi.fn().mockReturnValue({}),
+    getMergedConfigMap: vi.fn().mockReturnValue({}),
+  };
 }
 
 function makeOverlayStore() {
@@ -155,6 +166,19 @@ describe("createServices", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPromptTemplateStore.mockImplementation(function () {
+      return {
+        get: vi.fn().mockImplementation((id: string) => {
+          if (id === "default") {
+            return { id, body: "default template body" };
+          }
+          return null;
+        }),
+      };
+    });
+    mockIssueConfigStoreCreate.mockReturnValue({
+      getTemplateId: vi.fn().mockReturnValue(null),
+    });
   });
 
   it("returns an object with all expected service properties", async () => {
@@ -335,5 +359,81 @@ describe("createServices", () => {
     const httpArgs = mockHttpServer.mock.calls[0][0];
     expect(httpArgs.templateStore).toBeUndefined();
     expect(httpArgs.auditLogger).toBeUndefined();
+  });
+
+  it("resolves templates using system.selectedTemplateId before default fallback", async () => {
+    const configStore = makeConfigStore();
+    configStore.getMergedConfigMap.mockReturnValue({
+      system: {
+        selectedTemplateId: "active-template",
+      },
+    });
+    const templateGet = vi.fn().mockImplementation((id: string) => {
+      if (id === "active-template") {
+        return { id, body: "active template body" };
+      }
+      if (id === "default") {
+        return { id, body: "default template body" };
+      }
+      return null;
+    });
+    mockPromptTemplateStore.mockImplementation(function () {
+      return {
+        get: templateGet,
+      };
+    });
+
+    await createServices(
+      configStore as never,
+      makeOverlayStore() as never,
+      makeSecretsStore() as never,
+      archiveDir,
+      logger,
+    );
+
+    const orchestratorArgs = mockOrchestrator.mock.calls[0][0];
+    await expect(orchestratorArgs.resolveTemplate("MT-1")).resolves.toBe("active template body");
+    expect(templateGet).toHaveBeenCalledWith("active-template");
+  });
+
+  it("prefers per-issue template overrides over system.selectedTemplateId", async () => {
+    const configStore = makeConfigStore();
+    configStore.getMergedConfigMap.mockReturnValue({
+      system: {
+        selectedTemplateId: "active-template",
+      },
+    });
+    mockIssueConfigStoreCreate.mockReturnValue({
+      getTemplateId: vi.fn().mockReturnValue("issue-template"),
+    });
+    const templateGet = vi.fn().mockImplementation((id: string) => {
+      if (id === "issue-template") {
+        return { id, body: "issue template body" };
+      }
+      if (id === "active-template") {
+        return { id, body: "active template body" };
+      }
+      if (id === "default") {
+        return { id, body: "default template body" };
+      }
+      return null;
+    });
+    mockPromptTemplateStore.mockImplementation(function () {
+      return {
+        get: templateGet,
+      };
+    });
+
+    await createServices(
+      configStore as never,
+      makeOverlayStore() as never,
+      makeSecretsStore() as never,
+      archiveDir,
+      logger,
+    );
+
+    const orchestratorArgs = mockOrchestrator.mock.calls[0][0];
+    await expect(orchestratorArgs.resolveTemplate("MT-1")).resolves.toBe("issue template body");
+    expect(templateGet).toHaveBeenCalledWith("issue-template");
   });
 });

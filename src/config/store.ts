@@ -18,6 +18,7 @@ export class ConfigStore {
     private readonly deps?: {
       overlayStore?: Pick<ConfigOverlayPort, "toMap" | "subscribe">;
       secretsStore?: Pick<SecretsStore, "get" | "subscribe">;
+      workflowStore?: Pick<{ getWorkflow(): WorkflowDefinition }, "getWorkflow">;
     },
   ) {}
 
@@ -42,7 +43,7 @@ export class ConfigStore {
 
   async refresh(reason: string): Promise<void> {
     try {
-      const workflow: WorkflowDefinition = { config: {}, promptTemplate: "" };
+      const workflow = this.deps?.workflowStore?.getWorkflow() ?? { config: {}, promptTemplate: "" };
       const overlay = cloneConfigMap(this.deps?.overlayStore?.toMap() ?? {});
       const mergedConfigMap = deepMerge(workflow.config, overlay) as Record<string, unknown>;
       const config = deriveServiceConfig(workflow, {

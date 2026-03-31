@@ -89,6 +89,42 @@ describe("ConfigStore", () => {
     }
   });
 
+  it("hydrates config from the injected workflow store before applying overlay", async () => {
+    const overlayStore = {
+      toMap: vi.fn().mockReturnValue({
+        tracker: { project_slug: "OVERLAY-PROJECT" },
+      }),
+      subscribe: vi.fn().mockReturnValue(() => undefined),
+    };
+    const workflowStore = {
+      getWorkflow: vi.fn().mockReturnValue({
+        config: {
+          tracker: {
+            project_slug: "DB-PROJECT",
+            api_key: "$LINEAR_API_KEY",
+          },
+          server: {
+            port: 4400,
+          },
+        },
+        promptTemplate: "Template body",
+      }),
+    };
+    const store = new ConfigStore(makeLogger(), { overlayStore, workflowStore });
+
+    await store.start();
+    try {
+      expect(store.getConfig().tracker.projectSlug).toBe("OVERLAY-PROJECT");
+      expect(store.getConfig().server.port).toBe(4400);
+      expect(store.getMergedConfigMap()).toMatchObject({
+        tracker: { project_slug: "OVERLAY-PROJECT", api_key: "$LINEAR_API_KEY" },
+        server: { port: 4400 },
+      });
+    } finally {
+      await store.stop();
+    }
+  });
+
   it("getMergedConfigMap returns a clone (mutations don't affect store)", async () => {
     const store = new ConfigStore(makeLogger());
     await store.start();

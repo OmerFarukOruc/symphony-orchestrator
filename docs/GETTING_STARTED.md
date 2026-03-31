@@ -70,13 +70,13 @@ codex login
 **Development mode** (with auto-reload):
 
 ```bash
-pnpm run dev -- ./WORKFLOW.example.md --port 4000
+pnpm run dev -- --port 4000
 ```
 
 **Production mode** (from built output):
 
 ```bash
-node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+node dist/cli/index.js --port 4000
 ```
 
 **Docker mode** (zero-config):

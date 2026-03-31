@@ -13,11 +13,12 @@ import { NotificationManager } from "../notification/manager.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { DefaultWebhookHealthTracker, type WebhookHealthTracker } from "../webhook/health-tracker.js";
 import { WebhookRegistrar } from "../webhook/registrar.js";
-import { initPersistenceRuntime } from "../persistence/sqlite/runtime.js";
+import { initPersistenceRuntime, type PersistenceRuntime } from "../persistence/sqlite/runtime.js";
 import { IssueConfigStore } from "../persistence/sqlite/issue-config-store.js";
 import { PathRegistry } from "../workspace/path-registry.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { createTracker } from "../tracker/factory.js";
+import { isRecord } from "../utils/type-guards.js";
 import { WorkspaceManager } from "../workspace/manager.js";
 
 /**
@@ -52,8 +53,11 @@ export async function createServices(
   secretsStore: SecretsStore,
   archiveDir: string,
   logger: ReturnType<typeof createLogger>,
+  options?: {
+    persistence?: PersistenceRuntime;
+  },
 ) {
-  const persistence = await initPersistenceRuntime({ dataDir: archiveDir, logger });
+  const persistence = options?.persistence ?? (await initPersistenceRuntime({ dataDir: archiveDir, logger }));
 
   const { tracker, linearClient } = createTracker(() => configStore.getConfig(), logger);
 
@@ -129,11 +133,26 @@ export async function createServices(
   const auditLogger = persistence.db ? new AuditLogger(persistence.db, eventBus) : undefined;
   const issueConfigStore = IssueConfigStore.create(persistence.db);
 
+  const readSelectedTemplateId = (): string | null => {
+    const mergedConfigMap = configStore.getMergedConfigMap();
+    const systemConfig = mergedConfigMap.system;
+    if (!isRecord(systemConfig)) {
+      return null;
+    }
+    const selectedTemplateId = systemConfig.selectedTemplateId;
+    return typeof selectedTemplateId === "string" && selectedTemplateId.trim() ? selectedTemplateId : null;
+  };
+
   const resolveTemplate = async (identifier: string): Promise<string> => {
     if (templateStore) {
       const overrideTemplateId = issueConfigStore.getTemplateId(identifier);
       if (overrideTemplateId) {
         const tmpl = templateStore.get(overrideTemplateId);
+        if (tmpl) return tmpl.body;
+      }
+      const selectedTemplateId = readSelectedTemplateId();
+      if (selectedTemplateId) {
+        const tmpl = templateStore.get(selectedTemplateId);
         if (tmpl) return tmpl.body;
       }
       const def = templateStore.get("default");

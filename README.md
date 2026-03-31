@@ -332,7 +332,7 @@ Risoluto exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are th
 
 ## ⚙️ Configuration
 
-Symphony stores all config in `~/.risoluto/` (or the directory passed via `--log-dir`). There is no workflow file to edit — credentials and settings are managed through the WebUI setup wizard or the `/api/v1/config/overlay` API.
+Risoluto stores all config in `~/.risoluto/` (or the directory passed via `--log-dir`). There is no workflow file to edit — credentials and settings are managed through the WebUI setup wizard or the `/api/v1/config/overlay` API.
 
 ### Auth Modes
 
@@ -350,17 +350,17 @@ Symphony stores all config in `~/.risoluto/` (or the directory passed via `--log
 ## 🧪 Testing
 
 ```bash
-pnpm test                  # Deterministic unit tests (Vitest, 2630 tests)
+pnpm test                  # Deterministic unit tests (Vitest, 2899 tests)
 pnpm run test:watch        # Watch mode for local iteration
 pnpm run test:integration  # Opt-in live integration (requires credentials)
 ```
 
 ### Playwright E2E Tests
 
-The dashboard has a full Playwright E2E suite with 100+ smoke tests across 16 spec files and 4 visual regression baselines. Tests run against a Vite dev server with fully mocked API routes — no backend needed.
+The dashboard has a full Playwright E2E suite with 119 smoke tests across 17 spec files and 4 visual regression baselines. Tests run against a Vite dev server with fully mocked API routes — no backend needed.
 
 ```bash
-pnpm exec playwright test --project=smoke   # Smoke tests (100+ tests, ~7s)
+pnpm exec playwright test --project=smoke   # Smoke tests (119 tests, ~7s)
 pnpm exec playwright test --project=visual  # Visual regression (4 baselines)
 pnpm exec playwright test --project=visual --update-snapshots  # Regenerate baselines
 ```
