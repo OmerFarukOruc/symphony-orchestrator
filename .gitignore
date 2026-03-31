@@ -51,3 +51,4 @@ docs-site/.mintlify/*
 # E2E lifecycle test
 scripts/e2e-config.yaml
 e2e-reports/
+.claude/worktrees/
