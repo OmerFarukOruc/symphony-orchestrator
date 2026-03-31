@@ -1,12 +1,12 @@
 import { sortIssuesForDispatch } from "./dispatch.js";
-
-const VISIBLE_QUEUE_LIMIT = 50;
 import { createLifecycleEvent, type RuntimeEventSink } from "../core/lifecycle-events.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { issueView } from "./views.js";
 import { isActiveState, isTerminalState } from "../state/policy.js";
 import type { AttemptRecord, Issue, ServiceConfig } from "../core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
+
+const VISIBLE_QUEUE_LIMIT = 50;
 
 function reconcileRunning(
   entries: Map<string, RunningEntry>,

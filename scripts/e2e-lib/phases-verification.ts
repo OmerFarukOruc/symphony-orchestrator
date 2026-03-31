@@ -154,45 +154,49 @@ async function checkGitContext(baseUrl: string): Promise<CheckResult> {
 
 async function checkSSE(baseUrl: string): Promise<CheckResult> {
   const endpoint = "/api/v1/events";
-  const controller = new AbortController();
+  // Layer 1: connection timeout (5s)
+  const response = await fetch(`${baseUrl}${endpoint}`, {
+    signal: AbortSignal.timeout(5000),
+    headers: { accept: "text/event-stream" },
+  });
+  if (!response.ok) {
+    return { endpoint, status: "fail", error: `HTTP ${String(response.status)}` };
+  }
+  if (!response.body) {
+    return { endpoint, status: "fail", error: "no response body (SSE stream missing)" };
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  // Layer 2: read timeout (3s) — race reader against a timer.
+  // Cancel the reader in both the timeout and error paths so the stream
+  // is not left open until the fetch signal fires.
+  let readResult: ReadableStreamReadResult<Uint8Array>;
   try {
-    // Layer 1: connection timeout (5s)
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      signal: AbortSignal.timeout(5000),
-      headers: { accept: "text/event-stream" },
-    });
-    if (!response.ok) {
-      return { endpoint, status: "fail", error: `HTTP ${String(response.status)}` };
-    }
-    if (!response.body) {
-      return { endpoint, status: "fail", error: "no response body (SSE stream missing)" };
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    // Layer 2: read timeout (3s) — race reader against a timer
-    const readResult = await Promise.race([
+    readResult = await Promise.race([
       reader.read(),
-      sleep(3000).then(() => {
+      sleep(3000).then((): never => {
         throw new Error("SSE read timeout — no data within 3s");
       }),
     ]);
-
-    if (readResult.done) {
-      return { endpoint, status: "fail", error: "SSE stream closed immediately" };
-    }
-
-    const chunk = decoder.decode(readResult.value);
-    if (!chunk.includes("connected")) {
-      return { endpoint, status: "fail", error: `first SSE frame missing "connected": ${chunk.slice(0, 100)}` };
-    }
-
+  } catch (error_) {
     reader.cancel().catch(() => {});
-    return { endpoint, status: "pass" };
-  } finally {
-    controller.abort();
+    throw error_;
   }
+
+  reader.cancel().catch(() => {});
+
+  if (readResult.done) {
+    return { endpoint, status: "fail", error: "SSE stream closed immediately" };
+  }
+
+  const chunk = decoder.decode(readResult.value);
+  if (!chunk.includes("connected")) {
+    return { endpoint, status: "fail", error: `first SSE frame missing "connected": ${chunk.slice(0, 100)}` };
+  }
+
+  return { endpoint, status: "pass" };
 }
 
 // ---------------------------------------------------------------------------
