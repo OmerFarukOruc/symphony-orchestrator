@@ -1,11 +1,11 @@
 ---
-name: symphony-plan-review
-description: Review Symphony implementation plans for completeness, risks, sequencing, and operator impact before execution.
+name: risoluto-plan-review
+description: Review Risoluto implementation plans for completeness, risks, sequencing, and operator impact before execution.
 ---
 
-# Symphony Plan Review
+# Risoluto Plan Review
 
-Use this skill when reviewing a Symphony-specific implementation plan, rollout plan, or execution checklist.
+Use this skill when reviewing a Risoluto-specific implementation plan, rollout plan, or execution checklist.
 
 ## What to check
 

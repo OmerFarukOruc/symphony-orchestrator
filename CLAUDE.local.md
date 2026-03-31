@@ -1,6 +1,6 @@
 # CLAUDE.local.md
 
-Personal preferences for symphony-orchestrator.
+Personal preferences for risoluto.
 
 ## Role
 

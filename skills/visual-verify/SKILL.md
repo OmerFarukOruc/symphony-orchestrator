@@ -2,25 +2,25 @@
 name: visual-verify
 description: >
   TRIGGER MANDATORILY after ANY edit to dashboard-template.ts, logs-template.ts,
-  or any file that affects Symphony's web UI (CSS, templates, HTML generation,
+  or any file that affects Risoluto's web UI (CSS, templates, HTML generation,
   frontend routes, or static assets). Also trigger when the user mentions UI
   verification, screenshots, dashboard QA, dogfooding, visual regression, layout
   issues, CSS changes, or browser testing — even implicitly (e.g., "check the UI",
   "does it look right", "verify the dashboard"). Do NOT use for generic browser
-  automation, non-Symphony sites, or backend-only debugging without a visual goal.
+  automation, non-Risoluto sites, or backend-only debugging without a visual goal.
   This skill is NOT optional after UI changes — it is part of the definition of done.
 compatibility: >
-  Requires local Symphony UI at http://127.0.0.1:4000, agent-browser
+  Requires local Risoluto UI at http://127.0.0.1:4000, agent-browser
   (with bundled Chrome via `agent-browser install`), MASTER_KEY env var,
   LINEAR_API_KEY env var, and the repo-root agent-browser.json config.
 metadata:
-  author: symphony
+  author: risoluto
   version: 2.1.0
 ---
 
 # Visual Verify
 
-Use this skill for Symphony's current web UI surface only:
+Use this skill for Risoluto's current web UI surface only:
 
 - Dashboard at `/`
 - Logs page at `/logs/:issue_identifier`
@@ -48,7 +48,7 @@ If preflight passes, skip to the workflow. If it fails, fix the reported issues 
    - `MASTER_KEY` — used by SecretsStore for encrypted config (any non-empty value works for local QA, e.g. `MASTER_KEY="local-qa-key"`)
    - `LINEAR_API_KEY` — required for workflow polling
    - `LINEAR_PROJECT_SLUG` — optional but recommended
-5. **Symphony UI is running** at `http://127.0.0.1:4000`
+5. **Risoluto UI is running** at `http://127.0.0.1:4000`
 
 ### Starting the server
 
@@ -144,15 +144,15 @@ Create `docs/archive/dogfood-output/report.md` from the template at `skills/visu
 Open the browser session:
 
 ```bash
-agent-browser --session symphony-qa open http://127.0.0.1:4000
-agent-browser --session symphony-qa wait --load networkidle
+agent-browser --session risoluto-qa open http://127.0.0.1:4000
+agent-browser --session risoluto-qa wait --load networkidle
 ```
 
 Confirm the page loaded by checking for errors immediately:
 
 ```bash
-agent-browser --session symphony-qa errors
-agent-browser --session symphony-qa console
+agent-browser --session risoluto-qa errors
+agent-browser --session risoluto-qa console
 ```
 
 If errors appear at this stage, record them as **infrastructure issues** in the report and decide whether to continue or abort.
@@ -162,10 +162,10 @@ If errors appear at this stage, record them as **infrastructure issues** in the 
 Start from the dashboard. Take a baseline screenshot and interactive snapshot:
 
 ```bash
-agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/dashboard-main.png
-agent-browser --session symphony-qa snapshot -i
-agent-browser --session symphony-qa errors
-agent-browser --session symphony-qa console
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/dashboard-main.png
+agent-browser --session risoluto-qa snapshot -i
+agent-browser --session risoluto-qa errors
+agent-browser --session risoluto-qa console
 ```
 
 Consult `references/dashboard-map.md` for the current selector map.
@@ -179,8 +179,8 @@ Work through each area in order. At each step: screenshot, snapshot, check error
 Verify all four columns render and cards display correctly:
 
 ```bash
-agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/kanban-board.png
-agent-browser --session symphony-qa snapshot -i
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/kanban-board.png
+agent-browser --session risoluto-qa snapshot -i
 ```
 
 Check: `#queuedColumn`, `#runningColumn`, `#retryingColumn`, `#completedColumn` exist and show appropriate content.
@@ -190,13 +190,13 @@ Check: `#queuedColumn`, `#runningColumn`, `#retryingColumn`, `#completedColumn` 
 Click a card to open the detail panel:
 
 ```bash
-agent-browser --session symphony-qa snapshot -i
+agent-browser --session risoluto-qa snapshot -i
 # Use the @ref from snapshot to click a card
-agent-browser --session symphony-qa click @e<N>
-agent-browser --session symphony-qa wait 1000
-agent-browser --session symphony-qa snapshot -i
-agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/detail-panel.png
-agent-browser --session symphony-qa errors
+agent-browser --session risoluto-qa click @e<N>
+agent-browser --session risoluto-qa wait 1000
+agent-browser --session risoluto-qa snapshot -i
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/detail-panel.png
+agent-browser --session risoluto-qa errors
 ```
 
 Check: `#detailPanel` is visible, fields populated (`#detailTitle`, `#detailIdentifier`, `#detailBadges`).
@@ -204,8 +204,8 @@ Check: `#detailPanel` is visible, fields populated (`#detailTitle`, `#detailIden
 Close the panel:
 
 ```bash
-agent-browser --session symphony-qa click "#closeDetailButton"
-agent-browser --session symphony-qa wait 500
+agent-browser --session risoluto-qa click "#closeDetailButton"
+agent-browser --session risoluto-qa wait 500
 ```
 
 #### Step 3c — Filter Navigation
@@ -214,38 +214,38 @@ Test each filter button:
 
 ```bash
 # Test Running filter
-agent-browser --session symphony-qa click ".filter-button[data-filter='running']"
-agent-browser --session symphony-qa wait 500
-agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/filter-running.png
+agent-browser --session risoluto-qa click ".filter-button[data-filter='running']"
+agent-browser --session risoluto-qa wait 500
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/filter-running.png
 
 # Test Retrying filter
-agent-browser --session symphony-qa click ".filter-button[data-filter='retrying']"
-agent-browser --session symphony-qa wait 500
-agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/filter-retrying.png
+agent-browser --session risoluto-qa click ".filter-button[data-filter='retrying']"
+agent-browser --session risoluto-qa wait 500
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/filter-retrying.png
 
 # Test Completed filter
-agent-browser --session symphony-qa click ".filter-button[data-filter='completed']"
-agent-browser --session symphony-qa wait 500
-agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/filter-completed.png
+agent-browser --session risoluto-qa click ".filter-button[data-filter='completed']"
+agent-browser --session risoluto-qa wait 500
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/filter-completed.png
 
 # Reset to All
-agent-browser --session symphony-qa click ".filter-button[data-filter='all']"
-agent-browser --session symphony-qa wait 500
+agent-browser --session risoluto-qa click ".filter-button[data-filter='all']"
+agent-browser --session risoluto-qa wait 500
 ```
 
 #### Step 3d — Search
 
 ```bash
-agent-browser --session symphony-qa fill "#searchInput" "test"
-agent-browser --session symphony-qa wait 500
-agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/search-active.png
-agent-browser --session symphony-qa fill "#searchInput" ""
+agent-browser --session risoluto-qa fill "#searchInput" "test"
+agent-browser --session risoluto-qa wait 500
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/search-active.png
+agent-browser --session risoluto-qa fill "#searchInput" ""
 ```
 
 #### Step 3e — Status Bar
 
 ```bash
-agent-browser --session symphony-qa screenshot --annotate -s "section" docs/archive/dogfood-output/screenshots/status-bar.png
+agent-browser --session risoluto-qa screenshot --annotate -s "section" docs/archive/dogfood-output/screenshots/status-bar.png
 ```
 
 Check: `#queuedCount`, `#runningCount`, `#retryingCount`, `#completedCount`, `#uptimeValue`, `#rateLimitValue` are visible.
@@ -255,14 +255,14 @@ Check: `#queuedCount`, `#runningCount`, `#retryingCount`, `#completedCount`, `#u
 Navigate to a logs page (use an issue identifier from a card, or attempt a known route):
 
 ```bash
-agent-browser --session symphony-qa snapshot -i
+agent-browser --session risoluto-qa snapshot -i
 # Click the logs link in the detail panel, or navigate directly:
-# agent-browser --session symphony-qa open http://127.0.0.1:4000/logs/<issue_identifier>
-agent-browser --session symphony-qa wait --load networkidle
-agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/logs-page.png
-agent-browser --session symphony-qa snapshot -i
-agent-browser --session symphony-qa errors
-agent-browser --session symphony-qa console
+# agent-browser --session risoluto-qa open http://127.0.0.1:4000/logs/<issue_identifier>
+agent-browser --session risoluto-qa wait --load networkidle
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/logs-page.png
+agent-browser --session risoluto-qa snapshot -i
+agent-browser --session risoluto-qa errors
+agent-browser --session risoluto-qa console
 ```
 
 Check: `#issueTitle`, `#statusBadge`, `#eventCount`, `#shownCount`, `.filter-btn`, `#copyLogsBtn`, `#autoScrollToggle`.
@@ -270,31 +270,31 @@ Check: `#issueTitle`, `#statusBadge`, `#eventCount`, `#shownCount`, `.filter-btn
 Navigate back:
 
 ```bash
-agent-browser --session symphony-qa click ".back-link"
-agent-browser --session symphony-qa wait --load networkidle
+agent-browser --session risoluto-qa click ".back-link"
+agent-browser --session risoluto-qa wait --load networkidle
 ```
 
 #### Step 3g — Responsive Testing
 
 ```bash
-agent-browser --session symphony-qa set viewport 1920 1080
-agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/viewport-desktop.png
+agent-browser --session risoluto-qa set viewport 1920 1080
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/viewport-desktop.png
 
-agent-browser --session symphony-qa set viewport 768 1024
-agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/viewport-tablet.png
+agent-browser --session risoluto-qa set viewport 768 1024
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/viewport-tablet.png
 
-agent-browser --session symphony-qa set viewport 375 812
-agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/viewport-mobile.png
+agent-browser --session risoluto-qa set viewport 375 812
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/viewport-mobile.png
 
 # Reset to default
-agent-browser --session symphony-qa set viewport 1280 720
+agent-browser --session risoluto-qa set viewport 1280 720
 ```
 
 #### Step 3h — Final Error Check
 
 ```bash
-agent-browser --session symphony-qa errors
-agent-browser --session symphony-qa console
+agent-browser --session risoluto-qa errors
+agent-browser --session risoluto-qa console
 ```
 
 ### 4. Document issues
@@ -304,21 +304,21 @@ Document issues as you find them — do not batch them for later.
 **For interactive bugs** (require interaction to reproduce):
 
 ```bash
-agent-browser --session symphony-qa record start docs/archive/dogfood-output/videos/issue-NNN-repro.webm
+agent-browser --session risoluto-qa record start docs/archive/dogfood-output/videos/issue-NNN-repro.webm
 # Walk through steps with sleep 1 between actions
-agent-browser --session symphony-qa screenshot docs/archive/dogfood-output/screenshots/issue-NNN-step-1.png
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/issue-NNN-step-1.png
 sleep 1
 # ... perform action ...
 sleep 1
-agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/issue-NNN-result.png
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/issue-NNN-result.png
 sleep 2
-agent-browser --session symphony-qa record stop
+agent-browser --session risoluto-qa record stop
 ```
 
 **For static/visible-on-load bugs** (typos, layout glitches):
 
 ```bash
-agent-browser --session symphony-qa screenshot --annotate docs/archive/dogfood-output/screenshots/issue-NNN.png
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/issue-NNN.png
 ```
 
 Append each issue to `docs/archive/dogfood-output/report.md` immediately with:
@@ -333,7 +333,7 @@ Append each issue to `docs/archive/dogfood-output/report.md` immediately with:
 ### 5. Wrap up
 
 ```bash
-agent-browser --session symphony-qa close
+agent-browser --session risoluto-qa close
 ```
 
 Update the report summary to reflect actual issue counts and severity breakdown. Set the overall verdict: pass (0 critical/high), conditional pass, or fail.
@@ -345,7 +345,7 @@ This project ships with [Agentation](https://www.agentation.com/mcp) (`agentatio
 ### Prerequisites
 
 - `agentation-mcp` is configured as an MCP server (see `opencode.json` or your agent's MCP config)
-- Symphony UI is running at `http://127.0.0.1:4000`
+- Risoluto UI is running at `http://127.0.0.1:4000`
 
 ### Watch Mode (hands-free annotation loop)
 
@@ -429,7 +429,7 @@ Always close sessions when done to avoid leaked daemons:
 
 ```bash
 agent-browser close                         # Default session
-agent-browser --session symphony-qa close   # Named session
+agent-browser --session risoluto-qa close   # Named session
 ```
 
 ## Troubleshooting
@@ -438,7 +438,7 @@ agent-browser --session symphony-qa close   # Named session
 |---|---|---|
 | Server won't start | Missing `MASTER_KEY` | Set `MASTER_KEY="local-qa-key"` in env before starting |
 | Server won't start | Missing `LINEAR_API_KEY` | Ensure `LINEAR_API_KEY` is exported in your shell |
-| Connection refused on :4000 | Server didn't start or crashed | Check `/tmp/symphony-qa-dev.log` or terminal output for errors |
+| Connection refused on :4000 | Server didn't start or crashed | Check `/tmp/risoluto-qa-dev.log` or terminal output for errors |
 | Port already in use | Another instance running | Kill existing: `lsof -ti:4000 \| xargs kill` |
 | agent-browser hangs | Stale session | Run `agent-browser session list` then close stale sessions |
 | Screenshots are empty/blank | Page not loaded | Add `agent-browser wait --load networkidle` before screenshot |

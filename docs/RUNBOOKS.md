@@ -1,4 +1,4 @@
-# 🔧 Symphony Runbooks
+# 🔧 Risoluto Runbooks
 
 > Operational playbooks grounded in actual committed code.
 

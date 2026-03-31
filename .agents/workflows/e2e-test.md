@@ -1,12 +1,12 @@
 ---
-description: Run a full Symphony E2E test — create a Linear issue, start the orchestrator, verify the agent completes, validate persisted attempt data, confirm GitHub PR creation, and prove restart resilience (no re-dispatch on restart).
+description: Run a full Risoluto E2E test — create a Linear issue, start the orchestrator, verify the agent completes, validate persisted attempt data, confirm GitHub PR creation, and prove restart resilience (no re-dispatch on restart).
 ---
 
 // turbo-all
 
-# Symphony E2E Test Playbook
+# Risoluto E2E Test Playbook
 
-Tests the full Symphony lifecycle end-to-end. Follow each phase in order. Every check must pass before proceeding.
+Tests the full Risoluto lifecycle end-to-end. Follow each phase in order. Every check must pass before proceeding.
 
 ---
 
@@ -17,14 +17,14 @@ These IDs are stable and pre-discovered. Use them directly in the steps below. O
 | Name                 | Value                                    |
 | -------------------- | ---------------------------------------- |
 | NIN team ID          | `84f97131-06b9-49e5-a494-66f6e18a383a`   |
-| Project slug         | `symphony-e2e-test-c36e46913595`         |
+| Project slug         | `risoluto-e2e-test-c36e46913595`         |
 | Project ID           | `e0cfcbde-1a95-4726-8161-3eabd289c75a`   |
 | In Progress state ID | `4e9f32d8-a5e6-4f86-9f54-d4cf31aede29`   |
 | Done state ID        | `941e87a9-6bd6-40bd-9ca3-e97fc680b719`   |
-| GitHub repo          | `OmerFarukOruc/symphony-orchestrator`    |
+| GitHub repo          | `OmerFarukOruc/risoluto`    |
 | Codex working dir    | `/home/oruc/Desktop/codex`               |
-| Workspace root       | `/home/oruc/Desktop/symphony-workspaces` |
-| Attempt archive dir  | `/home/oruc/Desktop/codex/.symphony`     |
+| Workspace root       | `/home/oruc/Desktop/risoluto-workspaces` |
+| Attempt archive dir  | `/home/oruc/Desktop/codex/.risoluto`     |
 
 ---
 
@@ -80,7 +80,7 @@ Save these three values from the response — you will use them throughout the p
 
 ---
 
-## Phase 3: Start Symphony
+## Phase 3: Start Risoluto
 
 ### 3.1 Kill stale processes and clean workspace
 
@@ -88,26 +88,26 @@ Save these three values from the response — you will use them throughout the p
 ISSUE_ID="<identifier_from_2.1>"   # e.g. NIN-15
 fuser -k 4000/tcp 2>/dev/null
 sleep 1
-rm -rf "/home/oruc/Desktop/symphony-workspaces/$ISSUE_ID"
-rm -f /home/oruc/Desktop/codex/.symphony/secrets.enc /home/oruc/Desktop/codex/.symphony/secrets.audit.log
+rm -rf "/home/oruc/Desktop/risoluto-workspaces/$ISSUE_ID"
+rm -f /home/oruc/Desktop/codex/.risoluto/secrets.enc /home/oruc/Desktop/codex/.risoluto/secrets.audit.log
 echo "Ready — port 4000 free, workspace clean, secrets cleared"
 ```
 
 ### 3.2 Start the orchestrator (backgrounded)
 
-Start Symphony in the background and capture its PID and log file path. You will use both for monitoring and cleanup.
+Start Risoluto in the background and capture its PID and log file path. You will use both for monitoring and cleanup.
 
 ```bash
 export GITHUB_TOKEN="$(gh auth token)"
-export LINEAR_PROJECT_SLUG="symphony-e2e-test-c36e46913595"
+export LINEAR_PROJECT_SLUG="risoluto-e2e-test-c36e46913595"
 export MASTER_KEY="e2e-test-key"
-export LOG_FILE="/tmp/symphony-e2e-$(date +%s).log"
+export LOG_FILE="/tmp/risoluto-e2e-$(date +%s).log"
 
 cd /home/oruc/Desktop/codex && \
   node dist/cli/index.js ./WORKFLOW.md --port 4000 > "$LOG_FILE" 2>&1 &
-SYMPHONY_PID=$!
+RISOLUTO_PID=$!
 
-echo "Symphony PID=$SYMPHONY_PID  LOG=$LOG_FILE"
+echo "Risoluto PID=$RISOLUTO_PID  LOG=$LOG_FILE"
 sleep 3
 grep -E "service started|error" "$LOG_FILE" | head -5
 ```
@@ -158,7 +158,7 @@ Check the log file for the expected completion signals:
 
 ```bash
 echo "=== DONE signal ==="
-grep -E "stopSignal|stop.signal|SYMPHONY_STATUS" "$LOG_FILE" | tail -5
+grep -E "stopSignal|stop.signal|RISOLUTO_STATUS" "$LOG_FILE" | tail -5
 
 echo "=== PR creation ==="
 grep -E "pull request created|pullRequestUrl|github.com" "$LOG_FILE" | tail -5
@@ -205,11 +205,11 @@ events = d.get('recent_events', [])
 turn_completes = [e for e in events if e.get('event') == 'turn_completed']
 print(f'ℹ️  Turn count: {len(turn_completes)}')
 
-done_events = [e for e in events if 'SYMPHONY_STATUS: DONE' in (e.get('content') or '')]
+done_events = [e for e in events if 'RISOLUTO_STATUS: DONE' in (e.get('content') or '')]
 if done_events:
-    print('✅ SYMPHONY_STATUS: DONE detected in agent output')
+    print('✅ RISOLUTO_STATUS: DONE detected in agent output')
 else:
-    errors.append('❌ No SYMPHONY_STATUS: DONE found in events')
+    errors.append('❌ No RISOLUTO_STATUS: DONE found in events')
 
 for err in errors:
     print(err)
@@ -227,12 +227,12 @@ ISSUE_ID="<identifier_from_2.1>"
 
 ATTEMPT_FILE=$(python3 -c "
 import json, glob, os
-for f in sorted(glob.glob('/home/oruc/Desktop/codex/.symphony/attempts/*.json'), key=lambda x: -os.path.getmtime(x)):
+for f in sorted(glob.glob('/home/oruc/Desktop/codex/.risoluto/attempts/*.json'), key=lambda x: -os.path.getmtime(x)):
     if json.load(open(f)).get('issueIdentifier') == '$ISSUE_ID':
         print(f); break
 ")
 if [ -z "$ATTEMPT_FILE" ]; then
-  echo "❌ No attempt files found in .symphony/attempts/"
+  echo "❌ No attempt files found in .risoluto/attempts/"
 else
   echo "=== Attempt file: $ATTEMPT_FILE ==="
   python3 -c "
@@ -274,7 +274,7 @@ fi
 Use the `pullRequestUrl` from the attempt JSON to confirm the PR is accessible on GitHub.
 
 ```bash
-ATTEMPT_FILE=$(python3 -c "import json, glob, os; [print(f) for f in sorted(glob.glob('/home/oruc/Desktop/codex/.symphony/attempts/*.json'), key=lambda x: -os.path.getmtime(x)) if json.load(open(f)).get('pullRequestUrl')][:1]")
+ATTEMPT_FILE=$(python3 -c "import json, glob, os; [print(f) for f in sorted(glob.glob('/home/oruc/Desktop/codex/.risoluto/attempts/*.json'), key=lambda x: -os.path.getmtime(x)) if json.load(open(f)).get('pullRequestUrl')][:1]")
 PR_URL=$(python3 -c "import json; print(json.load(open('$ATTEMPT_FILE')).get('pullRequestUrl', ''))" 2>/dev/null)
 
 if [ -z "$PR_URL" ]; then
@@ -283,7 +283,7 @@ else
   echo "Checking PR: $PR_URL"
   PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
   RESULT=$(curl -s -H "Authorization: token $(gh auth token)" \
-    "https://api.github.com/repos/OmerFarukOruc/symphony-orchestrator/pulls/$PR_NUMBER")
+    "https://api.github.com/repos/OmerFarukOruc/risoluto/pulls/$PR_NUMBER")
   STATE=$(echo "$RESULT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('state','missing'))" 2>/dev/null)
   TITLE=$(echo "$RESULT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('title','missing')[:80])" 2>/dev/null)
   if [ "$STATE" = "open" ]; then
@@ -298,7 +298,7 @@ fi
 
 ```bash
 ISSUE_ID="<identifier_from_2.1>"
-WS="/home/oruc/Desktop/symphony-workspaces/$ISSUE_ID"
+WS="/home/oruc/Desktop/risoluto-workspaces/$ISSUE_ID"
 
 echo "=== Workspace Check ==="
 if [ -f "$WS/.editorconfig" ]; then
@@ -317,7 +317,7 @@ cd "$WS" && git log --oneline -3 && git status --short
 ### 5.5 Check the event log for agent output
 
 ```bash
-LATEST_LOG=$(ls -t /home/oruc/Desktop/codex/.symphony/events/*.jsonl 2>/dev/null | head -1)
+LATEST_LOG=$(ls -t /home/oruc/Desktop/codex/.risoluto/events/*.jsonl 2>/dev/null | head -1)
 if [ -n "$LATEST_LOG" ]; then
   echo "=== Agent Messages ==="
   python3 -c "
@@ -346,26 +346,26 @@ Open http://127.0.0.1:4000 in a browser and verify:
 
 ## Phase 6: Restart Resilience Test
 
-This phase verifies that Symphony does **not** re-dispatch already-completed issues after a restart. It tests the `seedCompletedClaims` fix.
+This phase verifies that Risoluto does **not** re-dispatch already-completed issues after a restart. It tests the `seedCompletedClaims` fix.
 
-### 6.1 Stop Symphony
+### 6.1 Stop Risoluto
 
 ```bash
-kill $SYMPHONY_PID 2>/dev/null || fuser -k 4000/tcp 2>/dev/null
+kill $RISOLUTO_PID 2>/dev/null || fuser -k 4000/tcp 2>/dev/null
 sleep 2
-echo "Symphony stopped (PID $SYMPHONY_PID)"
+echo "Risoluto stopped (PID $RISOLUTO_PID)"
 ```
 
-### 6.2 Restart Symphony with the same settings
+### 6.2 Restart Risoluto with the same settings
 
 ```bash
-export LOG_FILE_2="/tmp/symphony-e2e-restart-$(date +%s).log"
+export LOG_FILE_2="/tmp/risoluto-e2e-restart-$(date +%s).log"
 
 cd /home/oruc/Desktop/codex && \
   node dist/cli/index.js ./WORKFLOW.md --port 4000 > "$LOG_FILE_2" 2>&1 &
-SYMPHONY_PID_2=$!
+RISOLUTO_PID_2=$!
 
-echo "Restarted Symphony PID=$SYMPHONY_PID_2  LOG=$LOG_FILE_2"
+echo "Restarted Risoluto PID=$RISOLUTO_PID_2  LOG=$LOG_FILE_2"
 sleep 5
 grep -E "service started|seeded|claim" "$LOG_FILE_2" | head -5
 ```
@@ -410,11 +410,11 @@ grep "$ISSUE_ID" "$LOG_FILE_2" | head -10
 
 ## Phase 7: Cleanup
 
-### 7.1 Stop Symphony
+### 7.1 Stop Risoluto
 
 ```bash
-kill $SYMPHONY_PID_2 2>/dev/null || fuser -k 4000/tcp 2>/dev/null
-echo "Symphony stopped"
+kill $RISOLUTO_PID_2 2>/dev/null || fuser -k 4000/tcp 2>/dev/null
+echo "Risoluto stopped"
 ```
 
 ### 7.2 Move issue to Done in Linear
@@ -433,7 +433,7 @@ curl -s -X POST https://api.linear.app/graphql \
 
 ```bash
 ISSUE_ID="<identifier_from_2.1>"
-rm -rf "/home/oruc/Desktop/symphony-workspaces/$ISSUE_ID"
+rm -rf "/home/oruc/Desktop/risoluto-workspaces/$ISSUE_ID"
 echo "Workspace removed"
 ```
 
@@ -451,7 +451,7 @@ After completing all phases, produce a summary:
 | Build & tests                      | ✅ / ❌  |
 | Linear issue created               | NIN-XX  |
 | Agent picked up issue              | ✅ / ❌  |
-| SYMPHONY_STATUS: DONE detected     | ✅ / ❌  |
+| RISOLUTO_STATUS: DONE detected     | ✅ / ❌  |
 | API status = completed             | ✅ / ❌  |
 | pullRequestUrl in attempt JSON     | ✅ / ❌  |
 | stopSignal=done in attempt JSON    | ✅ / ❌  |

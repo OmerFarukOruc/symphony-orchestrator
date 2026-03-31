@@ -32,7 +32,7 @@ codex:
   auth:
     mode: "api_key"
   sandbox:
-    image: "symphony-codex:latest"
+    image: "risoluto-codex:latest"
     network: ""
     security:
       no_new_privileges: true
@@ -60,5 +60,5 @@ You are working on Linear issue {{ issue.identifier }}.
 
 Respect the repository state you find in the workspace, make concrete progress, and stop when the issue is complete or blocked.
 
-End your final message with `SYMPHONY_STATUS: DONE` when the issue is complete.
-End your final message with `SYMPHONY_STATUS: BLOCKED` when progress is not possible.
+End your final message with `RISOLUTO_STATUS: DONE` when the issue is complete.
+End your final message with `RISOLUTO_STATUS: BLOCKED` when progress is not possible.

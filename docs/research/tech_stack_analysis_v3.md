@@ -1,8 +1,8 @@
-# Symphony Orchestrator: Tech Stack Rewrite Analysis (v3)
+# Risoluto: Tech Stack Rewrite Analysis (v3)
 
 ## Executive Answer
 
-If we were rewriting Symphony from scratch today with effectively unlimited resources, I would build it as a **local-first typed control plane**:
+If we were rewriting Risoluto from scratch today with effectively unlimited resources, I would build it as a **local-first typed control plane**:
 
 - **Runtime:** Node.js 24
 - **Backend:** Fastify + TypeBox + generated OpenAPI
@@ -22,15 +22,15 @@ If we were rewriting Symphony from scratch today with effectively unlimited reso
 - **Worker isolation:** Docker
 - **Desktop shell:** Tauri 2
 
-This is not a vote for "more framework because we can." It is a vote for using stronger primitives where Symphony has already grown beyond custom-tooling comfort.
+This is not a vote for "more framework because we can." It is a vote for using stronger primitives where Risoluto has already grown beyond custom-tooling comfort.
 
 Confidence: **9/10**
 
 ---
 
-## What Symphony Actually Is
+## What Risoluto Actually Is
 
-Symphony is not just a small dashboard or a polling script. It is a **local orchestration product** with multiple layers:
+Risoluto is not just a small dashboard or a polling script. It is a **local orchestration product** with multiple layers:
 
 - a Linear-driven orchestration loop
 - Docker sandbox lifecycle and worker isolation
@@ -73,7 +73,7 @@ That matters, because the right rewrite choice is driven more by product scope a
 
 Why:
 
-- Symphony is already deeply coupled to Node strengths: subprocesses, filesystem work, Docker CLI invocation, streaming, and ESM TypeScript.
+- Risoluto is already deeply coupled to Node strengths: subprocesses, filesystem work, Docker CLI invocation, streaming, and ESM TypeScript.
 - A rewrite should target the current LTS track, not preserve the current floor out of inertia.
 - There is no compelling reason here to switch to Bun or Deno.
 
@@ -89,7 +89,7 @@ What we lose:
 
 Why:
 
-- Symphony already has enough API surface that validation, serialization, lifecycle hooks, and contract generation matter more than minimalism.
+- Risoluto already has enough API surface that validation, serialization, lifecycle hooks, and contract generation matter more than minimalism.
 - The current Express setup is thin and clean, but it still spreads request validation and shape handling across hand-written route code.
 - Fastify gives us a better center of gravity for a typed control plane than either current Express or a smaller minimalist framework.
 
@@ -105,7 +105,7 @@ Repo evidence:
 Why not Hono:
 
 - Hono is appealing for small, standards-oriented APIs.
-- Symphony is now big enough that schema-backed route definitions, plugins, and generated docs are more valuable than shaving framework size.
+- Risoluto is now big enough that schema-backed route definitions, plugins, and generated docs are more valuable than shaving framework size.
 
 What we lose:
 
@@ -176,7 +176,7 @@ Why not Preact as the primary recommendation:
 
 - Preact is a valid fallback if minimizing runtime weight is the dominant goal.
 - But with unlimited resources, I would optimize for **ecosystem leverage and maintainability**, not for saving a few tens of kilobytes on a local operator tool.
-- React Router and TanStack Query have stronger defaults, more established patterns, and more operational depth for the kind of UI Symphony is becoming.
+- React Router and TanStack Query have stronger defaults, more established patterns, and more operational depth for the kind of UI Risoluto is becoming.
 
 What we lose:
 
@@ -227,7 +227,7 @@ This is an easy day-one improvement.
 
 Why:
 
-- Symphony already has a thoughtful design language and token-based styling direction.
+- Risoluto already has a thoughtful design language and token-based styling direction.
 - It does not need Tailwind to become maintainable.
 - It does need tighter style ownership and better co-location.
 
@@ -247,7 +247,7 @@ Recommended shape:
 
 Why not Tailwind:
 
-- Symphony already has a concrete visual system.
+- Risoluto already has a concrete visual system.
 - Utility-first styling would not solve the main problems here.
 - It would likely add churn without improving architecture.
 
@@ -260,7 +260,7 @@ Why not Tailwind:
 Why:
 
 - The dashboard is a server-to-client push problem, not a full duplex collaboration problem.
-- SSE is simpler than WebSockets and better aligned with Symphony's current needs.
+- SSE is simpler than WebSockets and better aligned with Risoluto's current needs.
 - The repo already uses SSE patterns in the dispatch plane.
 
 Repo evidence:
@@ -344,9 +344,9 @@ Recommended model:
 
 Why:
 
-- Symphony clearly has both a local desktop-ish mode and a headless/server-capable mode.
+- Risoluto clearly has both a local desktop-ish mode and a headless/server-capable mode.
 - The current encrypted file-store approach fits headless and Docker-centric usage well.
-- But if Symphony becomes a stronger desktop product, not using available OS secret storage leaves UX on the table.
+- But if Risoluto becomes a stronger desktop product, not using available OS secret storage leaves UX on the table.
 
 Repo evidence:
 
@@ -374,7 +374,7 @@ What we gain:
 
 **Migrated:** `Pino` (replaced Winston)
 
-- Migrated from Winston to Pino behind the existing `SymphonyLogger` port interface.
+- Migrated from Winston to Pino behind the existing `RisolutoLogger` port interface.
 - Zero consumer changes required — the port abstraction absorbed the switch entirely.
 
 Implementation:
@@ -439,7 +439,7 @@ Recommended split:
 Why:
 
 - The current desktop layer is already intentionally thin.
-- That is the right shape: Symphony's real product logic should stay in the TypeScript service, not fork into a separate desktop backend.
+- That is the right shape: Risoluto's real product logic should stay in the TypeScript service, not fork into a separate desktop backend.
 
 Repo evidence:
 
@@ -569,7 +569,7 @@ If I had to pick one stack for the rewrite and commit to it, it would be:
 - **Tauri 2**
 - **secret provider abstraction with keychain-or-file backends**
 
-That is the stack I believe gives Symphony the best long-term shape.
+That is the stack I believe gives Risoluto the best long-term shape.
 
 ---
 

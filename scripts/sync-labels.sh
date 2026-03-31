@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Sync GitHub issue labels for symphony-orchestrator.
+# Sync GitHub issue labels for risoluto.
 # Run: bash scripts/sync-labels.sh
 
 set -euo pipefail
 
-REPO="OmerFarukOruc/symphony-orchestrator"
+REPO="OmerFarukOruc/risoluto"
 
 labels=(
   # Priority

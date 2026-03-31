@@ -1,6 +1,6 @@
-# Symphony Dashboard Map
+# Risoluto Dashboard Map
 
-Element reference for visual verification. Use this when you need current routes, selectors, or page structure for the Symphony web UI.
+Element reference for visual verification. Use this when you need current routes, selectors, or page structure for the Risoluto web UI.
 
 ## Required Environment
 

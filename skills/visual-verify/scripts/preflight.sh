@@ -80,7 +80,7 @@ fi
 echo ""
 echo "Server (port ${PORT}):"
 if curl -sf "http://127.0.0.1:${PORT}" > /dev/null 2>&1; then
-  pass "Symphony UI is responding at http://127.0.0.1:${PORT}"
+  pass "Risoluto UI is responding at http://127.0.0.1:${PORT}"
 elif command -v python3 > /dev/null 2>&1 && python3 -c "
 import urllib.request, sys
 try:
@@ -89,9 +89,9 @@ try:
 except Exception:
     sys.exit(1)
 " 2>/dev/null; then
-  pass "Symphony UI is responding at http://127.0.0.1:${PORT}"
+  pass "Risoluto UI is responding at http://127.0.0.1:${PORT}"
 else
-  fail "Symphony UI not responding at http://127.0.0.1:${PORT}"
+  fail "Risoluto UI not responding at http://127.0.0.1:${PORT}"
   echo "       Start with: MASTER_KEY=\"\${MASTER_KEY:-local-qa-key}\" npm run dev -- ./WORKFLOW.example.md --port ${PORT}"
 fi
 

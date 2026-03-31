@@ -19,19 +19,19 @@ polling:
 
 # Workspaces live as sibling directories of the project repo.
 workspace:
-  root: ../symphony-workspaces
+  root: ../risoluto-workspaces
   # Strategy: "directory" (default) or "worktree"
   # - directory: traditional clone-per-issue workspace
   # - worktree: git worktree per issue from a shared bare clone (saves disk, shares object store)
   strategy: worktree
-  # Branch prefix used for symphony-created branches (applies to both strategies).
-  # branch_prefix: "symphony/"
+  # Branch prefix used for risoluto-created branches (applies to both strategies).
+  # branch_prefix: "risoluto/"
 
 # Every hook runs with the issue workspace as cwd.
 hooks:
   timeout_ms: 60000
   after_create: |
-    echo "workspace created for $SYMPHONY_ISSUE_IDENTIFIER"
+    echo "workspace created for $RISOLUTO_ISSUE_IDENTIFIER"
   before_run: |
     echo "about to run in $PWD"
   after_run: |
@@ -94,7 +94,7 @@ codex:
   # Docker sandbox — the agent runs inside a container.
   # Build the image first: bash bin/build-sandbox.sh
   sandbox:
-    image: "symphony-codex:latest"
+    image: "risoluto-codex:latest"
     # Empty = Docker default bridge. Set to a pre-existing network name for egress filtering.
     network: ""
     security:
@@ -142,8 +142,8 @@ server:
 
 You are working on Linear issue {{ issue.identifier }}.
 
-If the issue is a smoke test, healthcheck, or end-to-end verification task, prefer a minimal proof that works even in an otherwise empty workspace. In that case, create a file such as `SYMPHONY_SMOKE_RESULT.md` inside the issue workspace with the issue identifier, UTC timestamp, current working directory, and a short summary of what succeeded.
+If the issue is a smoke test, healthcheck, or end-to-end verification task, prefer a minimal proof that works even in an otherwise empty workspace. In that case, create a file such as `RISOLUTO_SMOKE_RESULT.md` inside the issue workspace with the issue identifier, UTC timestamp, current working directory, and a short summary of what succeeded.
 
-When you have truly finished the issue and should stop, end your final message with `SYMPHONY_STATUS: DONE`. If you are blocked and cannot make further progress, end your final message with `SYMPHONY_STATUS: BLOCKED`.
+When you have truly finished the issue and should stop, end your final message with `RISOLUTO_STATUS: DONE`. If you are blocked and cannot make further progress, end your final message with `RISOLUTO_STATUS: BLOCKED`.
 
 Respect the repository state you find in the workspace, explain what you are doing in short operator-friendly updates, and stop once the issue is either complete or blocked.

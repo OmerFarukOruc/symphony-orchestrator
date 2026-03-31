@@ -11,15 +11,15 @@ deepened: 2026-03-29
 
 ## Overview
 
-Replace Symphony's polling-only Linear integration with an adaptive hybrid model. Inbound Linear webhooks trigger immediate orchestrator refreshes, while polling stretches to a 120-second heartbeat when webhooks are healthy and shrinks back to 15 seconds when they degrade. The result: sub-2-second issue detection latency, 80%+ fewer polling API calls, and a reusable event ingestion pattern for future sources.
+Replace Risoluto's polling-only Linear integration with an adaptive hybrid model. Inbound Linear webhooks trigger immediate orchestrator refreshes, while polling stretches to a 120-second heartbeat when webhooks are healthy and shrinks back to 15 seconds when they degrade. The result: sub-2-second issue detection latency, 80%+ fewer polling API calls, and a reusable event ingestion pattern for future sources.
 
 ## Problem Frame
 
-Symphony detects Linear issue changes by polling the GraphQL API every 15 seconds. This creates up to 15s latency for issue pickup, unnecessary API traffic during quiet periods, and locks the architecture into a request-driven model. Webhooks fix all three while the adaptive polling fallback ensures no events are ever missed. (see origin: docs/brainstorms/2026-03-29-linear-webhook-integration-requirements.md)
+Risoluto detects Linear issue changes by polling the GraphQL API every 15 seconds. This creates up to 15s latency for issue pickup, unnecessary API traffic during quiet periods, and locks the architecture into a request-driven model. Webhooks fix all three while the adaptive polling fallback ensures no events are ever missed. (see origin: docs/brainstorms/2026-03-29-linear-webhook-integration-requirements.md)
 
 ## Requirements Trace
 
-- R1. `POST /webhooks/linear` endpoint on Symphony's HTTP server
+- R1. `POST /webhooks/linear` endpoint on Risoluto's HTTP server
 - R2. HMAC-SHA256 signature verification; reject invalid with 401
 - R3. Accept all Linear issue mutation event types
 - R4. Respond 200 immediately; process asynchronously
@@ -43,20 +43,20 @@ Symphony detects Linear issue changes by polling the GraphQL API every 15 second
 
 - **In scope**: Inbound Linear webhooks, adaptive polling, auto-registration, dashboard observability, HMAC verification
 - **Out of scope**: Generic webhook dispatch API (Issue #32), Cloudflare Tunnel provisioning, webhook replay/retry logic, multi-instance coordination
-- **Out of scope**: `@linear/sdk` dependency — Symphony uses its own Linear GraphQL client; webhook verification uses `node:crypto` directly (see origin: Key Decisions)
+- **Out of scope**: `@linear/sdk` dependency — Risoluto uses its own Linear GraphQL client; webhook verification uses `node:crypto` directly (see origin: Key Decisions)
 
 ## Context & Research
 
 ### Relevant Code and Patterns
 
 - **HTTP server middleware stack** (`src/http/server.ts`): tracing -> metrics -> `express.json()` -> write guard -> routes -> error handler. The webhook endpoint must integrate at two points: raw body capture in the JSON parser, and write guard exemption.
-- **Write guard** (`src/http/write-guard.ts`): Rejects non-GET/HEAD/OPTIONS from non-loopback IPs unless `SYMPHONY_WRITE_TOKEN` is set. Webhook POSTs from Linear will 403 without a path-based exemption.
+- **Write guard** (`src/http/write-guard.ts`): Rejects non-GET/HEAD/OPTIONS from non-loopback IPs unless `RISOLUTO_WRITE_TOKEN` is set. Webhook POSTs from Linear will 403 without a path-based exemption.
 - **`requestRefresh(reason)`** (`src/orchestrator/orchestrator.ts`): Sets `refreshQueued = true` and calls `scheduleTick(0)`. Returns `{ queued, coalesced, requestedAt }`. Multiple calls coalesce into a single immediate tick — this is the exact integration point for webhook-triggered refreshes.
 - **Tick loop finally block** (`src/orchestrator/orchestrator.ts:~317`): `delayMs = this.refreshQueued ? 0 : this.deps.configStore.getConfig().polling.intervalMs`. This is where adaptive polling overrides the static config value.
 - **Config store** (`src/config/store.ts`): Reactive with chokidar file watcher + overlay + secrets store subscriptions. `subscribe(listener)` pattern for change notifications. Polling interval derived from `polling.interval_ms` in workflow YAML.
 - **OrchestratorDeps** (`src/orchestrator/runtime-types.ts`): Interface needs a new optional `webhookHealthTracker` dep.
 - **RuntimeSnapshot** (`src/core/types.ts`): Needs new webhook health fields.
-- **SymphonyEventMap** (`src/core/symphony-events.ts`): 11 channels currently. Needs webhook channels. SSE bridge (`src/http/sse.ts`) auto-streams via `onAny()` — new channels are automatically available to dashboard.
+- **RisolutoEventMap** (`src/core/risoluto-events.ts`): 11 channels currently. Needs webhook channels. SSE bridge (`src/http/sse.ts`) auto-streams via `onAny()` — new channels are automatically available to dashboard.
 - **Notification channel pattern** (`src/notification/`): `NotificationChannel` interface + `NotificationManager` fan-out + deduplication. Reusable for webhook registration failure alerts.
 - **Rate limiter** (`src/http/routes.ts:~57`): `express-rate-limit` at 300/min on `/api/` prefix. Webhook endpoint at `/webhooks/` is outside this prefix — needs its own rate limiter.
 - **Linear client auth** (`src/linear/client.ts`): Bare API key in `authorization` header (no Bearer prefix). GraphQL endpoint at `https://api.linear.app/graphql`.
@@ -79,11 +79,11 @@ Symphony detects Linear issue changes by polling the GraphQL API every 15 second
 
 - **Same server, port 4000**: The webhook endpoint lives on the existing Express server. No separate port. The write guard exemption and raw body capture are solved at the middleware level. Deployment stays simple — one port, one process. (Resolves origin deferred question about port isolation)
 
-- **Manual `node:crypto` verification over `@linear/sdk`**: Symphony has its own Linear GraphQL client. Adding `@linear/sdk` just for webhook verification adds an unnecessary dependency. The verification is ~15 lines with `createHmac` + `timingSafeEqual`. We also get full control over error handling, logging, and the timestamp check.
+- **Manual `node:crypto` verification over `@linear/sdk`**: Risoluto has its own Linear GraphQL client. Adding `@linear/sdk` just for webhook verification adds an unnecessary dependency. The verification is ~15 lines with `createHmac` + `timingSafeEqual`. We also get full control over error handling, logging, and the timestamp check.
 
 - **Receiver-side health model with periodic subscription check**: Since Linear exposes no delivery logs or health endpoints, the health tracker uses: (1) successful delivery counter as a positive signal, (2) signature failure counter as a negative signal, (3) periodic query of webhook subscription `enabled` status (every 5 minutes) as an authoritative external signal. The `enabled: false` flip from Linear (after sustained delivery failures) is the strongest degradation trigger. (Resolves origin deferred question about health signals)
 
-- **`resourceTypes: ["Issue"]` with broad action acceptance**: Subscribe to Issue events only at the Linear webhook level (no Comment, Project, Cycle noise). Within Symphony, accept all actions (create, update, delete) and always trigger `requestRefresh()`. The authoritative state comes from `fetchCandidateIssues()`, so there's no need to filter by action type — every Issue webhook is a signal that something changed.
+- **`resourceTypes: ["Issue"]` with broad action acceptance**: Subscribe to Issue events only at the Linear webhook level (no Comment, Project, Cycle noise). Within Risoluto, accept all actions (create, update, delete) and always trigger `requestRefresh()`. The authoritative state comes from `fetchCandidateIssues()`, so there's no need to filter by action type — every Issue webhook is a signal that something changed.
 
 - **Signing secret stored in SecretsStore**: Auto-registration stores the Linear-generated signing secret in `SecretsStore` (encrypted at rest via `master.key`). Manual registration uses `$LINEAR_WEBHOOK_SECRET` env var or `webhook_secret` config field. Manual config takes precedence over stored auto-generated secret.
 
@@ -95,9 +95,9 @@ Symphony detects Linear issue changes by polling the GraphQL API every 15 second
 
 - **Linear API permissions for webhook CRUD**: Admin scope on personal API key. Standard API key works, no OAuth needed. The existing `tracker.apiKey` may or may not have Admin scope — R7's manual fallback handles the case where it doesn't.
 - **Webhook payload schema**: `action` ("create"/"update"/"delete"), `type` ("Issue"), `data` (full entity mirroring GraphQL shape), headers (`Linear-Delivery`, `Linear-Event`, `Linear-Signature`). `webhookTimestamp` in milliseconds.
-- **Signing secret lifecycle**: Linear auto-generates the secret on `webhookCreate` and returns it once. Stored in SecretsStore. On restart, Symphony queries `webhooks` for matching URL — if found, reuses stored secret. If not found, creates new webhook and gets new secret.
+- **Signing secret lifecycle**: Linear auto-generates the secret on `webhookCreate` and returns it once. Stored in SecretsStore. On restart, Risoluto queries `webhooks` for matching URL — if found, reuses stored secret. If not found, creates new webhook and gets new secret.
 - **Rate limiter placement**: Webhook endpoint at `/webhooks/linear` is outside the `/api/` prefix, so the existing 300/min limiter doesn't apply. A separate rate limiter at 120/min per IP is added specifically for `/webhooks/` to prevent abuse while allowing Linear's burst deliveries.
-- **Event type filtering at subscription level**: `resourceTypes: ["Issue"]` at Linear's end. All issue actions accepted within Symphony. No per-action filtering needed since webhooks are triggers only.
+- **Event type filtering at subscription level**: `resourceTypes: ["Issue"]` at Linear's end. All issue actions accepted within Risoluto. No per-action filtering needed since webhooks are triggers only.
 - **Deregistration on config change**: When `webhook_url` changes, deregister old webhook (if ID is known) before registering new one. If deregistration fails, log and continue — orphaned webhooks on Linear's side are harmless (they deliver to a dead URL until Linear auto-disables them).
 
 ### Deferred to Implementation
@@ -278,7 +278,7 @@ graph TB
 - Happy path: POST to `/webhooks/linear` has `req.rawBody` populated as a Buffer
 - Integration: POST to `/api/v1/refresh` from non-loopback IP still blocked by write guard (unchanged behavior)
 - Integration: GET requests to any path still pass through unchanged
-- Edge case: POST to `/webhooks/linear` with `SYMPHONY_WRITE_TOKEN` set still passes (write guard skipped entirely for webhook paths, token not checked)
+- Edge case: POST to `/webhooks/linear` with `RISOLUTO_WRITE_TOKEN` set still passes (write guard skipped entirely for webhook paths, token not checked)
 - Note: Existing write guard tests mount the guard path-scoped to `/api/`. New tests must mount globally (matching production `server.ts`) to exercise the `/webhooks/` exemption.
 
 **Verification:**
@@ -345,7 +345,7 @@ graph TB
 **Files:**
 - Create: `src/webhook/health-tracker.ts`
 - Create: `src/webhook/types.ts` (health state types, stats interface)
-- Modify: `src/core/symphony-events.ts` (add webhook event channels)
+- Modify: `src/core/risoluto-events.ts` (add webhook event channels)
 - Test: `tests/webhook-health-tracker.test.ts`
 
 **Approach:**
@@ -481,7 +481,7 @@ graph TB
 
 - [ ] **Unit 7: Dashboard observability**
 
-**Goal:** Surface webhook health, delivery stats, and adaptive polling state in the Symphony dashboard.
+**Goal:** Surface webhook health, delivery stats, and adaptive polling state in the Risoluto dashboard.
 
 **Requirements:** R13, R14, R15, R16
 
@@ -538,7 +538,7 @@ graph TB
 |------|------------|
 | Linear API key lacks Admin scope for webhook CRUD | R7 mandates graceful fallback to polling-only with clear manual setup instructions. Operator can always register manually via Linear's UI. |
 | `express.json({ verify })` callback adds overhead to all requests | Conditional path check (`/webhooks/` only) means non-webhook requests just run a string comparison — negligible overhead. |
-| Linear auto-disables webhook after sustained delivery failures (e.g., during Symphony downtime) | Auto-registration re-enables on next startup (R6). Adaptive polling shrinks back to base rate immediately. |
+| Linear auto-disables webhook after sustained delivery failures (e.g., during Risoluto downtime) | Auto-registration re-enables on next startup (R6). Adaptive polling shrinks back to base rate immediately. |
 | Signing secret lost (SecretsStore corruption, master.key rotation) | Re-registration creates a new webhook with a new secret. Old webhook remains on Linear's side delivering to the same URL — once the new secret is active, old deliveries fail HMAC but the new webhook starts delivering with the correct secret. |
 | Webhook endpoint exposed to internet scanners/bots | Rate limiter (120/min per IP) + HMAC rejection means invalid requests are cheap to reject. No sensitive data is returned in 401 responses. |
 | Startup race: Linear delivers before signing secret stored | Registrar completes before `httpServer.start()` in `services.ts`. If signing secret is not yet available, webhook handler returns 503 (not 401) to avoid false degradation signals in health tracker. |

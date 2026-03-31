@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "🧹 Symphony Orchestrator — workspace teardown"
+echo "🧹 Risoluto — workspace teardown"
 
 # ── Stop docker services if running ──
 if [ -f docker-compose.yml ] && command -v docker &>/dev/null; then

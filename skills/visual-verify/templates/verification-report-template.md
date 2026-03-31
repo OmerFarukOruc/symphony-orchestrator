@@ -1,8 +1,8 @@
 # Visual Verification Report
 
-**Target:** Symphony Dashboard (`http://127.0.0.1:4000`)
+**Target:** Risoluto Dashboard (`http://127.0.0.1:4000`)
 **Date:** YYYY-MM-DD
-**Session:** symphony-qa
+**Session:** risoluto-qa
 **Type:** Quick Verify / Full QA (delete one)
 
 ## Prerequisites

@@ -1,6 +1,6 @@
 # 📋 Spec Conformance Audit
 
-> Per-requirement spec conformance audit for Symphony Orchestrator.
+> Per-requirement spec conformance audit for Risoluto.
 
 <p>
   <img alt="Version" src="https://img.shields.io/badge/version-0.6.0-blue?style=flat-square" />
@@ -11,7 +11,7 @@
 
 ## 📌 Current Release Baseline
 
-The repository is at **`v0.6.0`** and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, notifications, and a Docker deployment target. This document tracks every atomic requirement from the Symphony Service Specification against the current codebase.
+The repository is at **`v0.6.0`** and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, notifications, and a Docker deployment target. This document tracks every atomic requirement from the Risoluto Service Specification against the current codebase.
 
 **Legend:** ✅ Implemented · 🟡 Partial / Minor Deviation · ❌ Not Implemented · 🔵 Extension (beyond spec)
 
@@ -60,7 +60,7 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 
 #### §5.3.3 `workspace`
 
-- ✅ `workspace.root` defaults to `../symphony-workspaces` (sibling of repo)
+- ✅ `workspace.root` defaults to `../risoluto-workspaces` (sibling of repo)
 - ✅ `~` home expansion
 - ✅ `$VAR` expansion for path values
 
@@ -388,7 +388,7 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 ### §11.5 Tracker Writes Boundary
 
 - ✅ `linear_graphql` tool available for agent-driven mutations
-- 🔵 Orchestrator-driven write-back (extension): on successful completion, Symphony posts a rich comment and optionally transitions the issue state via `agent.success_state` — non-blocking, all errors are warnings only
+- 🔵 Orchestrator-driven write-back (extension): on successful completion, Risoluto posts a rich comment and optionally transitions the issue state via `agent.success_state` — non-blocking, all errors are warnings only
 
 ---
 
@@ -655,7 +655,7 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 
 | Gap                                  | Spec Reference    | Tracking Issue                                                          |
 | ------------------------------------ | ----------------- | ----------------------------------------------------------------------- |
-| SSH host per-host concurrency limits | §8.3 / Appendix A | [#33](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/33) |
+| SSH host per-host concurrency limits | §8.3 / Appendix A | [#33](https://github.com/OmerFarukOruc/risoluto/issues/33) |
 
 ---
 
@@ -669,10 +669,10 @@ Capabilities shipped that go beyond the spec requirements:
 | ------------------------ | ------------------------------------------------------------------------------------------------- |
 | Per-issue model override | Dashboard/API to change model and reasoning effort per-issue without restarting workers           |
 | Per-issue log viewer     | Full-page event viewer at `/logs/:issue_identifier` with category filtering and copy-to-clipboard |
-| Durable attempt archive  | `.symphony/` directory with persisted attempts and per-attempt event timelines                    |
+| Durable attempt archive  | `.risoluto/` directory with persisted attempts and per-attempt event timelines                    |
 | Attempt detail API       | `GET /api/v1/attempts/:attempt_id` for archived event inspection                                  |
 | Attempt listing API      | `GET /api/v1/:issue_identifier/attempts` for issue run history                                    |
-| Completion-stop signals  | `SYMPHONY_STATUS: DONE` / `BLOCKED` detection stops continuation retries                          |
+| Completion-stop signals  | `RISOLUTO_STATUS: DONE` / `BLOCKED` detection stops continuation retries                          |
 | Docker container sandbox | Full Docker isolation with resource limits, security hardening, OOM detection                     |
 | Content sanitizer        | Secret redaction (API keys, tokens, PATs) in event content before dashboard/logs                  |
 | ~~Feature flag system~~  | Removed in v0.5.0 — `/api/v1/runtime` returns empty `feature_flags` for backward compatibility   |

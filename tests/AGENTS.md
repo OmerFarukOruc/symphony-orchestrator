@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-Symphony uses two test suites:
+Risoluto uses two test suites:
 
 - **Vitest** — 783 unit + integration tests for backend orchestrator modules
 - **Playwright** — 37 E2E smoke tests + 3 visual regression baselines for the dashboard frontend
@@ -17,7 +17,7 @@ tests/
 ├── integration/             # Opt-in integration tests (require credentials)
 ├── fixtures/
 │   ├── mock-codex-server.mjs       # JSON-RPC mock for agent-runner
-│   └── symphony-archive-sandbox/   # Archive fixture data
+│   └── risoluto-archive-sandbox/   # Archive fixture data
 └── e2e/
     ├── fixtures/test.ts             # Custom Playwright fixture (apiMock)
     ├── mocks/

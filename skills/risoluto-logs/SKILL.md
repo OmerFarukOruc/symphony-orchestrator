@@ -1,34 +1,34 @@
 ---
-name: symphony-logs
-description: Investigate Symphony orchestrator runtime history and live local state using the repo-root `./symphony-logs` helper, archived `.symphony/` attempt data, and local `http://127.0.0.1:4000/api/v1/*` endpoints. Use this for Symphony-specific run inspection requests like "check NIN-6", "show retry history", "why did it fail", "inspect attempt abc123", or "is the worker still running", and not for generic repository debugging, generic application logs, or non-Symphony services.
+name: risoluto-logs
+description: Investigate Risoluto orchestrator runtime history and live local state using the repo-root `./risoluto-logs` helper, archived `.risoluto/` attempt data, and local `http://127.0.0.1:4000/api/v1/*` endpoints. Use this for Risoluto-specific run inspection requests like "check NIN-6", "show retry history", "why did it fail", "inspect attempt abc123", or "is the worker still running", and not for generic repository debugging, generic application logs, or non-Risoluto services.
 ---
 
-# Symphony Logs
+# Risoluto Logs
 
-Use this skill to inspect Symphony orchestrator runs from evidence, not guesswork. Stay on Symphony-specific runtime surfaces: the repo-root `./symphony-logs` helper, the `.symphony/` archive, and the local HTTP API when live state matters.
+Use this skill to inspect Risoluto orchestrator runs from evidence, not guesswork. Stay on Risoluto-specific runtime surfaces: the repo-root `./risoluto-logs` helper, the `.risoluto/` archive, and the local HTTP API when live state matters.
 
-This skill is for Symphony run inspection only. Do not use it for generic repo debugging, generic application logs, or unrelated services just because a user mentioned "logs" or "why did it fail?"
+This skill is for Risoluto run inspection only. Do not use it for generic repo debugging, generic application logs, or unrelated services just because a user mentioned "logs" or "why did it fail?"
 
 ## When to use this skill
 
-- The user wants to inspect what Symphony did for a specific issue or attempt.
-- The user asks about retries, failures, stalls, token usage, model selection, or current worker state for Symphony.
-- The user refers to Symphony artifacts such as `.symphony/`, `./symphony-logs`, an attempt ID, or local `/api/v1/*` runtime endpoints.
+- The user wants to inspect what Risoluto did for a specific issue or attempt.
+- The user asks about retries, failures, stalls, token usage, model selection, or current worker state for Risoluto.
+- The user refers to Risoluto artifacts such as `.risoluto/`, `./risoluto-logs`, an attempt ID, or local `/api/v1/*` runtime endpoints.
 
-Do not use this skill when the task is general code debugging, generic server logs, CI failures, or anything outside Symphony's own run history and live local API.
+Do not use this skill when the task is general code debugging, generic server logs, CI failures, or anything outside Risoluto's own run history and live local API.
 
 ## Default workflow
 
 Follow these decision rules unless the user explicitly asks for a different source:
 
-1. **Use `./symphony-logs` first** for historical issue-centric inspection.
+1. **Use `./risoluto-logs` first** for historical issue-centric inspection.
 2. **Use direct archive access only if needed**: when the helper is unavailable, when the index is missing, when you must verify raw files, or when the user explicitly asks for raw files.
 3. **Use the local HTTP API first for live-state questions** such as `now`, `current`, `still running`, `active`, or `stalled again`.
 4. **Report from evidence last** with a concise summary instead of raw dumps.
 
 Keep the source choice aligned to the question:
 
-- For **what happened already**, prefer `./symphony-logs` or archived `.symphony/` files.
+- For **what happened already**, prefer `./risoluto-logs` or archived `.risoluto/` files.
 - For **what is happening now**, prefer the local `/api/v1/*` endpoints, then reconcile with archived history.
 
 Required behavior:
@@ -46,7 +46,7 @@ Deep reference details, including archive layout, field lists, endpoint notes, e
 Start with the helper:
 
 ```bash
-./symphony-logs NIN-6
+./risoluto-logs NIN-6
 ```
 
 This returns JSON for the latest attempt and recent events. From that output:
@@ -59,7 +59,7 @@ This returns JSON for the latest attempt and recent events. From that output:
 ### 2) "Show all attempts" or "show retry history"
 
 ```bash
-./symphony-logs NIN-6 --attempts
+./risoluto-logs NIN-6 --attempts
 ```
 
 Use this to report:
@@ -73,7 +73,7 @@ Use this to report:
 ### 3) "Why did it fail?"
 
 ```bash
-./symphony-logs NIN-6 --errors
+./risoluto-logs NIN-6 --errors
 ```
 
 Then quote the relevant failure evidence:
@@ -88,7 +88,7 @@ Do not speculate from one line alone. Read the attempt metadata and enough surro
 ### 4) "Inspect this attempt"
 
 ```bash
-./symphony-logs --attempt <attemptId>
+./risoluto-logs --attempt <attemptId>
 ```
 
 Use this when the user already knows the attempt ID or when you found it from issue history and need the attempt-specific view.
@@ -98,10 +98,10 @@ Name the exact helper invocation before summarizing the attempt.
 ### 5) Need a different archive directory
 
 ```bash
-./symphony-logs NIN-6 --dir /path/to/.symphony
+./risoluto-logs NIN-6 --dir /path/to/.risoluto
 ```
 
-Use this when Symphony was started with a custom `--log-dir` or the archive is not under the repo-root default.
+Use this when Risoluto was started with a custom `--log-dir` or the archive is not under the repo-root default.
 
 If you use `--dir`, include that exact command in the answer so the user can see which archive you inspected.
 
@@ -118,12 +118,12 @@ If the helper script is unavailable or fails, fall back to the archive files dir
 
 ## Question-to-action mapping
 
-- **"check NIN-6"** → run `./symphony-logs NIN-6`, identify the latest attempt, summarize status and recent events
-- **"show me the logs"** → if the issue is known, start with `./symphony-logs <ISSUE>`; if the issue is ambiguous, identify the target before reading logs
-- **"why did it fail?"** → run `./symphony-logs <ISSUE> --errors`, inspect `errorCode` / `errorMessage`, then quote the relevant failure events
+- **"check NIN-6"** → run `./risoluto-logs NIN-6`, identify the latest attempt, summarize status and recent events
+- **"show me the logs"** → if the issue is known, start with `./risoluto-logs <ISSUE>`; if the issue is ambiguous, identify the target before reading logs
+- **"why did it fail?"** → run `./risoluto-logs <ISSUE> --errors`, inspect `errorCode` / `errorMessage`, then quote the relevant failure events
 - **"what happened with that worker?"** → if it may still be active, check `/api/v1/state` or `/api/v1/<ISSUE>` first; otherwise use the archive/helper path
-- **"show retry history"** → run `./symphony-logs <ISSUE> --attempts`
-- **"inspect attempt abc123"** → run `./symphony-logs --attempt abc123`
+- **"show retry history"** → run `./risoluto-logs <ISSUE> --attempts`
+- **"inspect attempt abc123"** → run `./risoluto-logs --attempt abc123`
 - **"what model did it use?"** → inspect attempt metadata fields `model`, `reasoningEffort`, and `modelSource`, plus `model_selection_updated` events if present
 - **"how many tokens did it burn?"** → inspect `tokenUsage` on the attempt record and any per-turn `usage` fields in events
 
@@ -169,8 +169,8 @@ Use this structure unless the user asked for raw output:
 
 ## Edge cases
 
-- **No `.symphony/` directory** → tell the user Symphony has not created a data directory yet and they may need to run the service first or point you at the correct `--log-dir`.
-- **No `symphony.db`** → check for legacy JSONL archives (`attempts/*.json` + `events/*.jsonl`). If neither exists, tell the user no archive data is available.
+- **No `.risoluto/` directory** → tell the user Risoluto has not created a data directory yet and they may need to run the service first or point you at the correct `--log-dir`.
+- **No `risoluto.db`** → check for legacy JSONL archives (`attempts/*.json` + `events/*.jsonl`). If neither exists, tell the user no archive data is available.
 - **Attempt exists but no events in `attempt_events`** → explain that the worker may have crashed or failed before emitting useful events; then rely on `error_code` and `error_message` from the `attempts` table.
 - **Multiple attempts for one issue** → show the latest first and mention the total number of attempts.
 - **Worker may still be running** → use the HTTP API for live state rather than relying only on archived files. If the API is unavailable, say live state could not be verified.
@@ -182,13 +182,13 @@ Use this structure unless the user asked for raw output:
 
 User: `check issue NIN-6`
 
-Action: run `./symphony-logs NIN-6`, inspect `latestAttempt`, summarize the latest run, and mention if older attempts exist.
+Action: run `./risoluto-logs NIN-6`, inspect `latestAttempt`, summarize the latest run, and mention if older attempts exist.
 
 **Example 2**
 
 User: `why did it fail?`
 
-Action: run `./symphony-logs NIN-6 --errors`, read the latest attempt metadata, quote `errorCode` / `errorMessage`, and connect them to the last meaningful failure events.
+Action: run `./risoluto-logs NIN-6 --errors`, read the latest attempt metadata, quote `errorCode` / `errorMessage`, and connect them to the last meaningful failure events.
 
 **Example 3**
 
@@ -198,6 +198,6 @@ Action: check `curl http://127.0.0.1:4000/api/v1/state` first for live status, t
 
 **Example 4**
 
-User: `the helper script is broken, inspect the raw symphony files for NIN-3`
+User: `the helper script is broken, inspect the raw risoluto files for NIN-3`
 
-Action: query `symphony.db` directly with `sqlite3` — look up the attempt in the `attempts` table, then query `attempt_events` for its event stream. If `symphony.db` is absent, fall back to legacy JSONL files (`attempts/*.json` + `events/*.jsonl`).
+Action: query `risoluto.db` directly with `sqlite3` — look up the attempt in the `attempts` table, then query `attempt_events` for its event stream. If `risoluto.db` is absent, fall back to legacy JSONL files (`attempts/*.json` + `events/*.jsonl`).

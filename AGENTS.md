@@ -1,4 +1,4 @@
-# Symphony Orchestrator
+# Risoluto
 
 ## Project Structure & Module Organization
 
@@ -66,7 +66,7 @@ Match the current import pattern by using `.js` extensions in local TypeScript i
 
 Add or update Vitest coverage for every behavior change. Prefer deterministic unit tests in `tests/*.test.ts`; use fixtures in `tests/fixtures/` instead of live services where possible. Reserve `tests/live.integration.test.ts` for environment-dependent checks that should skip cleanly when credentials are absent.
 
-**MANDATORY after UI changes:** You MUST invoke `/visual-verify` after editing `dashboard-template.ts`, `logs-template.ts`, any CSS, or any file that affects the Symphony web UI. Visual verification is part of the definition of done for UI work — do not mark a UI task complete without it.
+**MANDATORY after UI changes:** You MUST invoke `/visual-verify` after editing `dashboard-template.ts`, `logs-template.ts`, any CSS, or any file that affects the Risoluto web UI. Visual verification is part of the definition of done for UI work — do not mark a UI task complete without it.
 
 ### Playwright E2E Tests
 
@@ -86,7 +86,7 @@ When behavior changes affect the operator surface, verify both code and docs tog
 
 Keep the doc set role-oriented:
 
-- `README.md` explains what Symphony is, what ships now, and how to get started.
+- `README.md` explains what Risoluto is, what ships now, and how to get started.
 - `docs/OPERATOR_GUIDE.md` covers setup, runtime behavior, and common operating tasks.
 - `docs/ROADMAP_AND_STATUS.md` is the issue-linked feature roadmap with all planned work across 4 tiers.
 - `docs/CONFORMANCE_AUDIT.md` records shipped capabilities, spec conformance, and verified remaining gaps.

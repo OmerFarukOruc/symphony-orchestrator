@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">🎵 Symphony Orchestrator</h1>
+  <h1 align="center">🎵 Risoluto</h1>
   <p align="center">
     <strong>Turn your issue tracker into an autonomous coding pipeline.</strong><br/>
     <em>Linear issues in → sandboxed AI agents out → PRs delivered.</em>
@@ -7,8 +7,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/OmerFarukOruc/symphony-orchestrator/releases"><img alt="Version" src="https://img.shields.io/github/v/tag/OmerFarukOruc/symphony-orchestrator?label=version&color=blue&style=flat-square" /></a>
-  <a href="https://github.com/OmerFarukOruc/symphony-orchestrator/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/OmerFarukOruc/symphony-orchestrator?color=green&style=flat-square" /></a>
+  <a href="https://github.com/OmerFarukOruc/risoluto/releases"><img alt="Version" src="https://img.shields.io/github/v/tag/OmerFarukOruc/risoluto?label=version&color=blue&style=flat-square" /></a>
+  <a href="https://github.com/OmerFarukOruc/risoluto/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/OmerFarukOruc/risoluto?color=green&style=flat-square" /></a>
   <img alt="Node.js" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square&logo=node.js" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-blue?style=flat-square&logo=typescript" />
   <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker" />
@@ -18,7 +18,7 @@
 <br/>
 
 <p align="center">
-  <img src="docs/screenshots/overview.png" width="90%" alt="Symphony Dashboard — Overview" />
+  <img src="docs/screenshots/overview.png" width="90%" alt="Risoluto Dashboard — Overview" />
   <br/>
   <sub>Overview — active issues, recent events, and run statistics</sub>
 </p>
@@ -38,15 +38,15 @@
 
 ---
 
-## 🌊 What is Symphony?
+## 🌊 What is Risoluto?
 
-Symphony is a **local orchestration engine** that watches your project tracker for actionable issues, spins up sandboxed AI coding agents to work on each one, and delivers the results — all without you supervising a single prompt.
+Risoluto is a **local orchestration engine** that watches your project tracker for actionable issues, spins up sandboxed AI coding agents to work on each one, and delivers the results — all without you supervising a single prompt.
 
 ```
-You create an issue  →  Symphony picks it up  →  AI agent writes code  →  PR lands on GitHub
+You create an issue  →  Risoluto picks it up  →  AI agent writes code  →  PR lands on GitHub
 ```
 
-**No cloud service. No SaaS. Your code stays on your machine.** Symphony runs on your local machine or a VDS you control, connecting your existing Linear project to AI-powered Codex agents running inside isolated Docker containers. It communicates with configured external services (Linear, model providers) via their APIs, but your source code and workspace data never leave your infrastructure.
+**No cloud service. No SaaS. Your code stays on your machine.** Risoluto runs on your local machine or a VDS you control, connecting your existing Linear project to AI-powered Codex agents running inside isolated Docker containers. It communicates with configured external services (Linear, model providers) via their APIs, but your source code and workspace data never leave your infrastructure.
 
 ---
 
@@ -54,7 +54,7 @@ You create an issue  →  Symphony picks it up  →  AI agent writes code  →  
 
 ```mermaid
 flowchart LR
-    A["🗂️ Linear<br/><sub>Issue Tracker</sub>"] -->|"poll"| B["🎵 Symphony<br/><sub>Orchestrator</sub>"]
+    A["🗂️ Linear<br/><sub>Issue Tracker</sub>"] -->|"poll"| B["🎵 Risoluto<br/><sub>Orchestrator</sub>"]
     B -->|"create"| C["📁 Workspace<br/><sub>Per-Issue Isolation</sub>"]
     B -->|"launch"| D["🐳 Docker<br/><sub>Sandboxed Container</sub>"]
     D -->|"contains"| E["🤖 Codex<br/><sub>AI Agent</sub>"]
@@ -84,8 +84,8 @@ The fastest way to get running. **No environment variables needed upfront** — 
 **1. Clone and launch**
 
 ```bash
-git clone https://github.com/OmerFarukOruc/symphony-orchestrator.git
-cd symphony-orchestrator
+git clone https://github.com/OmerFarukOruc/risoluto.git
+cd risoluto
 docker compose up --build
 ```
 
@@ -104,7 +104,7 @@ Navigate to **http://localhost:4000** — the setup wizard starts automatically.
 
 **4. Create an issue and watch it run**
 
-Set a Linear issue to "In Progress". Within one poll cycle (~30s), Symphony picks it up, launches a sandboxed agent, and shows progress on the dashboard.
+Set a Linear issue to "In Progress". Within one poll cycle (~30s), Risoluto picks it up, launches a sandboxed agent, and shows progress on the dashboard.
 
 > [!TIP]
 > All credentials and configuration are stored in encrypted Docker volumes — nothing is saved to your source tree.
@@ -176,8 +176,8 @@ codex login                       # ChatGPT/Codex subscription path
 <td width="50%" valign="top">
 
 ### 🛡️ Operations
-- **💾 Archived attempts** — SQLite-backed attempt and event history in `.symphony/`
-- **🔎 `symphony-logs` CLI** — Archive-first issue and attempt inspection
+- **💾 Archived attempts** — SQLite-backed attempt and event history in `.risoluto/`
+- **🔎 `risoluto-logs` CLI** — Archive-first issue and attempt inspection
 - **🔐 Encrypted secrets** — AES-encrypted credential storage
 - **✅ Strict TypeScript** — Full type safety with Vitest unit tests and Playwright E2E coverage
 
@@ -189,19 +189,19 @@ codex login                       # ChatGPT/Codex subscription path
 
 ## 🔮 Where It's Heading
 
-Symphony's roadmap ([#9 — Feature Roadmap](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/9)) tracks **89 features** across 4 tiers, with research drawn from 10+ open-source orchestrators.
+Risoluto's roadmap ([#9 — Feature Roadmap](https://github.com/OmerFarukOruc/risoluto/issues/9)) tracks **89 features** across 4 tiers, with research drawn from 10+ open-source orchestrators.
 
 ### 🎯 Tier 1 — Shipping Next
 
 | Feature | What it unlocks |
 | ------- | --------------- |
-| [**⚡ Reactions System**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/10) | CI/review/approval events trigger automatic agent actions |
-| [**📱 Mobile Dashboard**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/12) | Fully responsive UI for monitoring on any device |
-| [**🧹 Auto-squash Commits**](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/59) | Conventional commit formatting with execution metrics in PRs |
+| [**⚡ Reactions System**](https://github.com/OmerFarukOruc/risoluto/issues/10) | CI/review/approval events trigger automatic agent actions |
+| [**📱 Mobile Dashboard**](https://github.com/OmerFarukOruc/risoluto/issues/12) | Fully responsive UI for monitoring on any device |
+| [**🧹 Auto-squash Commits**](https://github.com/OmerFarukOruc/risoluto/issues/59) | Conventional commit formatting with execution metrics in PRs |
 
 ### 🏗️ Tier 2 — High Impact
 
-Multi-agent role pipelines • Agent-agnostic runner (10+ agent backends) • Kanban board with drag-and-drop • Inline diff review with agent feedback loop • MCP server for orchestrator tools • `npx` zero-install distribution • GitLab adapter • Chat integrations (Slack/Discord/Telegram) • and [43 more →](https://github.com/OmerFarukOruc/symphony-orchestrator/issues/9)
+Multi-agent role pipelines • Agent-agnostic runner (10+ agent backends) • Kanban board with drag-and-drop • Inline diff review with agent feedback loop • MCP server for orchestrator tools • `npx` zero-install distribution • GitLab adapter • Chat integrations (Slack/Discord/Telegram) • and [43 more →](https://github.com/OmerFarukOruc/risoluto/issues/9)
 
 ### 🔭 Tier 3–4 — Long Horizon
 
@@ -214,7 +214,7 @@ Multi-host SSH workers • Autonomous issue decomposition • Self-healing pipel
 
 ## 🐳 Docker Architecture
 
-Symphony runs in Docker with a zero-configuration start — or scales to a control/data plane split for advanced deployments.
+Risoluto runs in Docker with a zero-configuration start — or scales to a control/data plane split for advanced deployments.
 
 ### Standard Mode — Single Container
 
@@ -226,8 +226,8 @@ All data persists in named Docker volumes:
 
 | Volume | Purpose |
 | ------ | ------- |
-| `symphony-archives` | Encrypted secrets, config overlay, run archives |
-| `symphony-workspaces` | Cloned repositories for each issue |
+| `risoluto-archives` | Encrypted secrets, config overlay, run archives |
+| `risoluto-workspaces` | Cloned repositories for each issue |
 | `codex-auth` | OpenAI Codex login tokens |
 
 ### Advanced — Control / Data Plane Split
@@ -257,7 +257,7 @@ Enable with `DISPATCH_MODE=remote` in your `.env`. See the [Operator Guide](docs
 
 ## 📡 API at a Glance
 
-Symphony exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are the key endpoints:
+Risoluto exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are the key endpoints:
 
 | Endpoint | What it does |
 | -------- | ------------ |
@@ -375,7 +375,7 @@ pnpm exec playwright test --project=visual --update-snapshots  # Regenerate base
 
 ### E2E Lifecycle Test
 
-Full-pipeline integration test that drives the complete Symphony lifecycle against real Linear + GitHub APIs:
+Full-pipeline integration test that drives the complete Risoluto lifecycle against real Linear + GitHub APIs:
 
 ```bash
 cp scripts/e2e-config.example.yaml scripts/e2e-config.yaml
@@ -432,7 +432,7 @@ The v0.3 operating mode is intentionally **high trust** and **local-only**.
 
 ```mermaid
 flowchart TB
-    S["🎵 Symphony<br/><sub>Decides WHEN to launch<br/>and WHICH workspace</sub>"]
+    S["🎵 Risoluto<br/><sub>Decides WHEN to launch<br/>and WHICH workspace</sub>"]
     C["🤖 Codex<br/><sub>Decides HOW each<br/>turn executes</sub>"]
     P["🌐 Provider / Proxy<br/><sub>Decides HOW the model<br/>call is routed</sub>"]
 
@@ -453,7 +453,7 @@ flowchart TB
 This project draws direct inspiration from **[OpenAI's Symphony](https://github.com/openai/symphony)** — a framework that turns project work into isolated, autonomous implementation runs. We loved the vision and built our own TypeScript implementation tailored for local, single-host operator use.
 
 > [!NOTE]
-> While OpenAI's Symphony provides a [spec](https://github.com/openai/symphony/blob/main/SPEC.md) and an Elixir reference implementation, **Symphony Orchestrator** is an independent TypeScript implementation that follows the same core philosophy: poll tracker → create workspaces → launch agents → report results.
+> While OpenAI's Symphony provides a [spec](https://github.com/openai/symphony/blob/main/SPEC.md) and an Elixir reference implementation, **Risoluto** is an independent TypeScript implementation that follows the same core philosophy: poll tracker → create workspaces → launch agents → report results.
 
 ---
 
