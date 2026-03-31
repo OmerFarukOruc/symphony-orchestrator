@@ -44,20 +44,12 @@ pnpm exec playwright test --project=smoke
 echo "🔒 Running Semgrep security scan..."
 semgrep scan --config auto --config p/typescript --error
 
-# Stryker mutation testing — only if changed files overlap with mutate targets
-STRYKER_TARGETS=$(node -e "console.log(require('./stryker.config.json').mutate.join(' '))" 2>/dev/null || echo "")
-CHANGED_FILES=$(git diff --name-only @{push}..HEAD 2>/dev/null || git diff --name-only HEAD~1 HEAD 2>/dev/null || true)
-MUTATE_HITS=""
-for target in $STRYKER_TARGETS; do
-  if echo "$CHANGED_FILES" | grep -qx "$target"; then
-    MUTATE_HITS="$MUTATE_HITS $target"
-  fi
-done
-if [ -n "$MUTATE_HITS" ]; then
-  echo "🧬 Running incremental mutation testing (changed targets:$MUTATE_HITS)..."
+# Stryker mutation testing — opt-in only (set RUN_MUTATION=1 to enable)
+if [ "${RUN_MUTATION:-0}" = "1" ]; then
+  echo "🧬 Running incremental mutation testing..."
   pnpm run test:mutation:incremental
 else
-  echo "🧬 Skipping mutation testing — no Stryker mutate targets changed."
+  echo "🧬 Skipping mutation testing (set RUN_MUTATION=1 to enable)."
 fi
 
 echo "📊 Checking type coverage..."

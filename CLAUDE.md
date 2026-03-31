@@ -41,7 +41,7 @@ Runs the full CI-mirror gate before any push is allowed:
 7. `pnpm run jscpd` — duplicate code detection
 8. `pnpm exec playwright test --project=smoke` — E2E smoke tests
 9. `semgrep scan --config auto --config p/typescript --error` — security scan
-10. `pnpm run test:mutation:incremental` — mutation testing *(conditional: only runs when changed files overlap Stryker mutate targets)*
+10. `pnpm run test:mutation:incremental` — mutation testing *(opt-in: only runs when `RUN_MUTATION=1` is set; skipped by default)*
 11. `pnpm run typecheck:coverage` — type coverage (95% threshold)
 
 If any step fails, the push is aborted.
