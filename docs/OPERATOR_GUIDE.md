@@ -131,7 +131,7 @@ export OPENAI_API_KEY="sk-..."
 #    Example: CLIProxyAPI listening on 127.0.0.1:8317
 
 # 6. Start Symphony — complete setup via the wizard at http://server:4000
-node dist/cli/index.js --log-dir /var/lib/symphony --port 4000
+node dist/cli/index.js --data-dir /var/lib/symphony --port 4000
 ```
 
 > [!TIP]
@@ -143,7 +143,7 @@ node dist/cli/index.js --log-dir /var/lib/symphony --port 4000
 
 Symphony stores all runtime state in a single directory (default: `~/.symphony`):
 
-| Path inside `--log-dir` | Purpose |
+| Path inside `--data-dir` | Purpose |
 | ----------------------- | ------- |
 | `config/overlay.yaml`   | Persistent operator config (written by setup wizard and config API) |
 | `master.key`            | Encryption key for the secrets store |
@@ -151,10 +151,10 @@ Symphony stores all runtime state in a single directory (default: `~/.symphony`)
 | `symphony.db`           | SQLite database for attempt history and issue state |
 | `archives/`             | Per-attempt event archives |
 
-Override the default with `--log-dir`:
+Override the default with `--data-dir`:
 
 ```bash
-node dist/cli/index.js --log-dir /var/lib/symphony --port 4000
+node dist/cli/index.js --data-dir /var/lib/symphony --port 4000
 ```
 
 > [!TIP]
@@ -185,7 +185,7 @@ bash bin/build-sandbox.sh
 node dist/cli/index.js --port 4000
 ```
 
-Symphony stores all runtime config in `~/.symphony/` by default (override with `--log-dir <path>`). On first boot with no config seeded, Symphony enters **setup mode** and the wizard at http://127.0.0.1:4000/setup guides you through credentials.
+Symphony stores all runtime config in `~/.symphony/` by default (override with `--data-dir <path>`). On first boot with no config seeded, Symphony enters **setup mode** and the wizard at http://127.0.0.1:4000/setup guides you through credentials.
 
 If credentials are missing after setup, Symphony logs a warning and stays in setup mode. Common startup errors when starting without the wizard (e.g. with a pre-seeded overlay):
 
@@ -202,7 +202,7 @@ error code=missing_codex_provider_env msg="codex runtime requires OPENAI_API_KEY
 ```bash
 node dist/cli/index.js --port 4000
 # Override the data directory:
-node dist/cli/index.js --log-dir /var/lib/symphony --port 4000
+node dist/cli/index.js --data-dir /var/lib/symphony --port 4000
 ```
 
 - 🖥️ **Dashboard**: [http://127.0.0.1:4000/](http://127.0.0.1:4000/)
@@ -213,7 +213,7 @@ node dist/cli/index.js --log-dir /var/lib/symphony --port 4000
 | Flag | Default | Purpose |
 | ---- | ------- | ------- |
 | `--port <n>` | `4000` (or `server.port` from config) | HTTP listen port |
-| `--log-dir <path>` | `~/.symphony` | Data directory for DB, secrets, config overlay, and archives |
+| `--data-dir <path>` | `~/.symphony` | Data directory for DB, secrets, config overlay, and archives |
 
 ## 🐳 Run the Service in Docker
 
@@ -243,7 +243,7 @@ docker compose up --build
 
 Container-specific notes:
 
-- `DATA_DIR=/data` makes the archive root `/data/archives` — the same directory serves as `--log-dir`.
+- `DATA_DIR=/data` makes the archive root `/data/archives` — the same directory serves as `--data-dir`.
 - `workspace.root` resolves to `/data/workspaces` inside the service container.
 - `PathRegistry` translates those container paths back to the host bind-mount sources before worker containers are launched.
 - The setup wizard stores credentials in the `symphony-archives` volume — no workflow file is needed in the image.
@@ -390,17 +390,17 @@ What you keep: source code, Docker images, external services (Linear issues, Git
 
 ## ⚙️ Persistent Overlay and Secrets
 
-`WORKFLOW.md` is still the primary config source and still live-reloads on file change. Symphony now adds two operator-only persistent layers on top:
+The persistent overlay and encrypted secrets store are the primary config sources. Both live under the data directory (`--data-dir`, default `~/.symphony`):
 
-- Config overlay: stored as YAML under the archive data root and exposed through `/api/v1/config*` (including `/api/v1/config/schema`)
-- Secrets store: stored encrypted at rest under the archive data root and exposed through `/api/v1/secrets*`
+- **Config overlay**: stored as YAML at `<data-dir>/config/overlay.yaml` and exposed through `/api/v1/config*` (including `/api/v1/config/schema`). Written by the setup wizard and the config API.
+- **Secrets store**: stored encrypted at rest at `<data-dir>/secrets.enc` and exposed through `/api/v1/secrets*`.
 
-If Symphony finds an existing `secrets.enc` that cannot be decrypted with the current `MASTER_KEY`, startup now fails fast and leaves the encrypted file untouched. Fix the key mismatch before retrying.
+If Symphony finds an existing `secrets.enc` that cannot be decrypted with the current `MASTER_KEY`, startup fails fast and leaves the encrypted file untouched. Fix the key mismatch before retrying.
 
 Merge order:
 
 1. built-in defaults
-2. `WORKFLOW.md`
+2. legacy auto-imported config (if migrated from a `WORKFLOW.md` on first boot)
 3. persistent overlay
 4. environment and `$SECRET:name` resolution
 
@@ -474,7 +474,7 @@ Steps:
 1. Start Symphony and open the dashboard or poll `GET /api/v1/state`.
 2. Confirm the issue appears under `running`.
 3. Check `GET /api/v1/<ISSUE_IDENTIFIER>` or `GET /api/v1/<ISSUE_IDENTIFIER>/attempts` for a recorded attempt.
-4. Inspect `workspace.root/<ISSUE_IDENTIFIER>/SYMPHONY_SMOKE_RESULT.md`. With the checked-in workflows, the default root is `../symphony-workspaces` (a sibling directory of the project repo).
+4. Inspect `workspace.root/<ISSUE_IDENTIFIER>/SYMPHONY_SMOKE_RESULT.md`. The default root is `../symphony-workspaces` (a sibling directory of the project repo).
 5. After the first successful attempt lands, move the issue to `Done` or another terminal state so Symphony stops scheduling continuation turns for the still-active issue.
 
 The checked-in workflows also instruct the agent to finish with `SYMPHONY_STATUS: DONE` on success or `SYMPHONY_STATUS: BLOCKED` when it cannot proceed. Symphony uses that explicit signal to stop local continuation turns for one-shot issues.
@@ -594,7 +594,7 @@ flowchart LR
     style E fill:#059669,stroke:#047857,color:#fff
 ```
 
-**Configuration:** See `codex.sandbox` in `WORKFLOW.example.md` for all available settings.
+**Configuration:** See the `codex.sandbox` section in the [Advanced Configuration Reference](#-advanced-configuration-reference) below for all available settings.
 
 > [!WARNING]
 > Named Docker volumes (build caches) survive container/image replacement, but **not** `docker system prune --volumes`. Do not prune volumes prefixed with `symphony-`.
@@ -625,12 +625,12 @@ Symphony creates and reads several directories at runtime. This section document
 
 | Path                                        | Source                                                     | Purpose                                                                                    | Safe to delete?                                     |
 | ------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| `.symphony/` (next to workflow file)        | `src/cli/index.ts` — default `archiveDir`                  | SQLite database (`symphony.db`) with attempts, events, and issue index; config overlay; encrypted secrets store | ⚠️ You lose all historical attempt data             |
+| `~/.symphony/` (default data directory)     | `src/cli/index.ts` — default `archiveDir`                  | SQLite database (`symphony.db`) with attempts, events, and issue index; config overlay; encrypted secrets store | ⚠️ You lose all historical attempt data             |
 | `../symphony-workspaces/` (sibling of repo) | `src/config/builders.ts` — default `workspace.root`        | Per-issue workspace directories (one subdirectory per issue identifier)                    | ✅ Yes — workspaces are re-created on next dispatch |
 | `~/.codex/`                                 | `src/config/builders.ts` — default `codex.auth.sourceHome` | Codex CLI auth credentials (`auth.json`) read for `openai_login` mode                      | ⚠️ You'll need to re-run `codex login`              |
 
 > [!NOTE]
-> The archive directory can be overridden with `--log-dir` or the `DATA_DIR` environment variable. The workspace root can be overridden via `workspace.root` in the workflow file. The auth source home can be overridden via `codex.auth.source_home`.
+> The archive directory can be overridden with `--data-dir` or the `DATA_DIR` environment variable. The workspace root can be overridden via `workspace.root` in the config overlay. The auth source home can be overridden via `codex.auth.source_home`.
 
 ### Inside Docker Containers
 
@@ -729,7 +729,7 @@ All `/api/*` and `/metrics` endpoints are rate-limited to **300 requests per 60 
 
 ## 🔧 Advanced Configuration Reference
 
-The workflow YAML file supports the following configuration sections. Options not set in your workflow file use the defaults shown below.
+The config overlay supports the following configuration sections. Options not set in your overlay use the defaults shown below.
 
 ### `codex` — Agent Provider Settings
 
@@ -978,7 +978,7 @@ Requires `gh` CLI authenticated with repo access.
 
 ## 🗂️ Archived Attempts and Logs
 
-By default, the data directory is `.symphony/` next to the workflow file (override with `--log-dir` or `DATA_DIR`).
+By default, the data directory is `~/.symphony/` (override with `--data-dir` or `DATA_DIR`).
 
 ### Storage: SQLite
 
@@ -1050,7 +1050,7 @@ Runtime process logs are emitted to **stdout** via Pino (not written to files). 
 To persist process logs, pipe stdout to a file:
 
 ```bash
-node dist/cli/index.js ./WORKFLOW.md --port 4000 2>&1 | tee symphony.log
+node dist/cli/index.js --port 4000 2>&1 | tee symphony.log
 ```
 
 ---
@@ -1118,7 +1118,7 @@ Use after a targeted UI change to confirm the edit visually:
 
 ```bash
 # 1. Start the dashboard
-node dist/cli/index.js ./WORKFLOW.example.md --port 4000
+node dist/cli/index.js --port 4000
 
 # 2. Baseline screenshot
 agent-browser open http://127.0.0.1:4000
