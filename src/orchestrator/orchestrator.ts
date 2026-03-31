@@ -199,7 +199,7 @@ export class Orchestrator implements OrchestratorPort {
     snapshot: RuntimeSnapshot;
     serializedState: Record<string, unknown>;
   } {
-    if (this.cachedSnapshot && this.cachedSnapshot.revision === this.stateRevision) {
+    if (this.cachedSnapshot?.revision === this.stateRevision) {
       return this.cachedSnapshot;
     }
 

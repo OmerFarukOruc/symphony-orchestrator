@@ -12,21 +12,19 @@ let cachedSpec: Record<string, unknown> | undefined;
 
 /** Returns the OpenAPI 3.1 spec as a plain JSON-serializable object. */
 export function getOpenApiSpec(): Record<string, unknown> {
-  if (!cachedSpec) {
-    cachedSpec = {
-      openapi: "3.1.0",
-      info: {
-        title: "Risoluto API",
-        version: "0.4.0",
-        description: "REST API for Risoluto — manages issues, workspaces, config, and agent lifecycle.",
-      },
-      servers: [{ url: "http://localhost:4000", description: "Local Risoluto instance" }],
-      paths: {
-        ...buildStateAndMetricsPaths(),
-        ...buildIssuePaths(),
-        ...buildInfrastructurePaths(),
-      },
-    };
-  }
+  cachedSpec ??= {
+    openapi: "3.1.0",
+    info: {
+      title: "Risoluto API",
+      version: "0.4.0",
+      description: "REST API for Risoluto — manages issues, workspaces, config, and agent lifecycle.",
+    },
+    servers: [{ url: "http://localhost:4000", description: "Local Risoluto instance" }],
+    paths: {
+      ...buildStateAndMetricsPaths(),
+      ...buildIssuePaths(),
+      ...buildInfrastructurePaths(),
+    },
+  };
   return cachedSpec;
 }

@@ -67,7 +67,7 @@ export class DispatchClient implements RunAttemptDispatcher {
     } catch (error) {
       if (input.signal.aborted) {
         if (abortForwarding) {
-          await Promise.allSettled([abortForwarding]);
+          await abortForwarding;
         }
         logger.info({ runId: input.issue.id, reason: String(input.signal.reason ?? "aborted") }, "Dispatch aborted");
         return outcomeForAbort(input.signal, null, null, 0);

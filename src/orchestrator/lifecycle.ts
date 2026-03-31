@@ -110,13 +110,11 @@ export async function reconcileRunningAndRetrying(ctx: ReconcileContext): Promis
   await reconcileRetries(ctx, byId, config);
   return runningChanged;
 }
-interface ModelSelectionResolver {
-  (identifier: string): {
-    model: string;
-    reasoningEffort: ServiceConfig["codex"]["reasoningEffort"];
-    source: "default" | "override";
-  };
-}
+type ModelSelectionResolver = (identifier: string) => {
+  model: string;
+  reasoningEffort: ServiceConfig["codex"]["reasoningEffort"];
+  source: "default" | "override";
+};
 
 export async function refreshQueueViews(
   ctx: {

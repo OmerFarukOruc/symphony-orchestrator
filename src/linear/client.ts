@@ -218,7 +218,7 @@ export class LinearClient {
         enabled: n.enabled === true,
         label: asStringOrNull(n.label),
         secret: asStringOrNull(n.secret),
-        resourceTypes: asArray(n.resourceTypes).map((rt) => String(rt)),
+        resourceTypes: asArray(n.resourceTypes).map(String),
         teamId: asStringOrNull(n.teamId),
       };
     });

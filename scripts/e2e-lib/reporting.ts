@@ -14,7 +14,7 @@ import type { DiagnosisResult, PhaseResult, RunContext } from "./types.js";
 
 /** Append-only JSONL event logger. Auto-adds an ISO timestamp to every line. */
 export class JsonlWriter {
-  private stream: WriteStream;
+  private readonly stream: WriteStream;
 
   constructor(filePath: string) {
     this.stream = createWriteStream(filePath, { flags: "a" });
@@ -291,7 +291,7 @@ export function generateJunitXml(phases: PhaseResult[]): string {
 
   const lines: string[] = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<testsuite name="symphony-e2e" tests="${String(phases.length)}" failures="${String(failures)}" skipped="${String(skipped)}" time="${totalTimeSec}">`,
+    `<testsuite name="risoluto-e2e" tests="${String(phases.length)}" failures="${String(failures)}" skipped="${String(skipped)}" time="${totalTimeSec}">`,
   ];
 
   for (const phase of phases) {
@@ -300,15 +300,15 @@ export function generateJunitXml(phases: PhaseResult[]): string {
 
     if (phase.status === "fail") {
       const message = escapeXml(phase.error?.message ?? "unknown error");
-      lines.push(`  <testcase name="${name}" classname="symphony-e2e" time="${timeSec}">`);
+      lines.push(`  <testcase name="${name}" classname="risoluto-e2e" time="${timeSec}">`);
       lines.push(`    <failure message="${message}">${message}</failure>`);
       lines.push(`  </testcase>`);
     } else if (phase.status === "skip") {
-      lines.push(`  <testcase name="${name}" classname="symphony-e2e" time="${timeSec}">`);
+      lines.push(`  <testcase name="${name}" classname="risoluto-e2e" time="${timeSec}">`);
       lines.push(`    <skipped/>`);
       lines.push(`  </testcase>`);
     } else {
-      lines.push(`  <testcase name="${name}" classname="symphony-e2e" time="${timeSec}"/>`);
+      lines.push(`  <testcase name="${name}" classname="risoluto-e2e" time="${timeSec}"/>`);
     }
   }
 

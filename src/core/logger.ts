@@ -64,7 +64,7 @@ export function buildLogfmtStream(output: NodeJS.WritableStream = process.stdout
 
         // timestamp
         if (obj.timestamp !== undefined) {
-          parts.push(`time=${obj.timestamp}`);
+          parts.push(`time=${String(obj.timestamp)}`);
         }
 
         // remaining key=value pairs

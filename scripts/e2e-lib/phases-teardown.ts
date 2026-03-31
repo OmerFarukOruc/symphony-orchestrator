@@ -1,6 +1,6 @@
 /**
  * E2E lifecycle teardown phases: verify-pr, verify-linear, collect-artifacts, cleanup.
- * Also exports shutdownSymphony for graceful Symphony process termination.
+ * Also exports shutdownRisoluto for graceful Risoluto process termination.
  */
 import { execFileSync } from "node:child_process";
 import { cp, mkdir } from "node:fs/promises";
@@ -89,13 +89,12 @@ export async function verifyPr(ctx: RunContext): Promise<PhaseResult> {
     deletions: number;
   };
 
-  const commitCount = Array.isArray(pr.commits)
-    ? pr.commits.length
-    : typeof pr.commits === "number"
-      ? pr.commits
-      : typeof pr.commits === "object" && pr.commits !== null && "totalCount" in pr.commits
-        ? (pr.commits as { totalCount: number }).totalCount
-        : 0;
+  const commitCountFromObject =
+    typeof pr.commits === "object" && pr.commits !== null && "totalCount" in pr.commits
+      ? (pr.commits as { totalCount: number }).totalCount
+      : 0;
+  const commitCountFromScalar = typeof pr.commits === "number" ? pr.commits : commitCountFromObject;
+  const commitCount = Array.isArray(pr.commits) ? pr.commits.length : commitCountFromScalar;
   const state = pr.state.toUpperCase();
 
   const errors: string[] = [];
@@ -234,11 +233,11 @@ export async function collectArtifacts(ctx: RunContext): Promise<PhaseResult> {
   try {
     await mkdir(artifactsDir, { recursive: true });
 
-    const symphonyDir = join(".", ".symphony");
+    const risolutoDir = join(".", ".risoluto");
 
-    await tryCopy(join(symphonyDir, "attempts"), join(artifactsDir, "attempts"), true);
-    await tryCopy(join(symphonyDir, "events"), join(artifactsDir, "events"), true);
-    await tryCopy(join(symphonyDir, "symphony.db"), join(artifactsDir, "symphony.db"));
+    await tryCopy(join(risolutoDir, "attempts"), join(artifactsDir, "attempts"), true);
+    await tryCopy(join(risolutoDir, "events"), join(artifactsDir, "events"), true);
+    await tryCopy(join(risolutoDir, "risoluto.db"), join(artifactsDir, "risoluto.db"));
   } catch (error_) {
     return {
       phase: "collect-artifacts",
@@ -334,13 +333,13 @@ export async function cleanup(ctx: RunContext): Promise<PhaseResult> {
 }
 
 /* ------------------------------------------------------------------ */
-/*  shutdownSymphony — delegates to shared stopProcess from helpers    */
+/*  shutdownRisoluto — delegates to shared stopProcess from helpers    */
 /* ------------------------------------------------------------------ */
 
-export async function shutdownSymphony(ctx: RunContext): Promise<void> {
-  if (!ctx.symphonyProcess || ctx.symphonyProcess.exitCode !== null) {
+export async function shutdownRisoluto(ctx: RunContext): Promise<void> {
+  if (ctx.risolutoProcess?.exitCode !== null) {
     return;
   }
   const gracefulMs = ctx.config.timeouts.graceful_shutdown_ms ?? 10_000;
-  await stopProcess(ctx.symphonyProcess, gracefulMs);
+  await stopProcess(ctx.risolutoProcess, gracefulMs);
 }

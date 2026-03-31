@@ -97,7 +97,8 @@ export function listWorkflowStages(config: ServiceConfig): WorkflowStageDefiniti
 
   for (const state of config.tracker.activeStates) {
     const key = normalizeStateValue(state);
-    const kind: StateStageKind = key === "backlog" ? "backlog" : key === "todo" ? "todo" : "active";
+    const kindIfNotBacklog: StateStageKind = key === "todo" ? "todo" : "active";
+    const kind: StateStageKind = key === "backlog" ? "backlog" : kindIfNotBacklog;
     appendStage(stages, seen, {
       key,
       label: state,

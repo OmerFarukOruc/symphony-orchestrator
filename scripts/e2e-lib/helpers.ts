@@ -1,8 +1,8 @@
 /**
- * Utility helpers for the Symphony E2E lifecycle test.
+ * Utility helpers for the Risoluto E2E lifecycle test.
  *
  * Every function is a pure building block — no phase logic lives here.
- * Phase orchestration uses these to interact with Linear, Symphony, and
+ * Phase orchestration uses these to interact with Linear, Risoluto, and
  * the local filesystem.
  */
 
@@ -169,7 +169,7 @@ export async function callLinearGraphQL(
 // ---------------------------------------------------------------------------
 
 /**
- * Build the config overlay map that pre-seeds Symphony with all values needed
+ * Build the config overlay map that pre-seeds Risoluto with all values needed
  * to bypass setup mode and dispatch immediately.
  *
  * Key design choices:
@@ -206,7 +206,7 @@ export function buildOverlayPayload(config: E2EConfig): Record<string, unknown> 
       success_state: "Done",
     },
     workspace: {
-      root: "../symphony-e2e-workspaces",
+      root: "../risoluto-e2e-workspaces",
       strategy: "directory",
     },
     server: { port: config.server.port },
@@ -228,11 +228,11 @@ export function buildOverlayPayload(config: E2EConfig): Record<string, unknown> 
 // ---------------------------------------------------------------------------
 
 /**
- * Build the extra environment variables needed to spawn Symphony.
+ * Build the extra environment variables needed to spawn Risoluto.
  * Resolves credential references from the E2E config and includes the
  * MASTER_KEY when available. Used by both initial startup and restart.
  */
-export function buildSymphonyEnv(ctx: RunContext): Record<string, string> | undefined {
+export function buildRisolutoEnv(ctx: RunContext): Record<string, string> | undefined {
   const resolvedLinearKey = resolveEnvValue(ctx.config.linear.api_key);
   const resolvedGithubToken = resolveEnvValue(ctx.config.github.token);
   return ctx.masterKey
@@ -241,22 +241,22 @@ export function buildSymphonyEnv(ctx: RunContext): Record<string, string> | unde
 }
 
 /**
- * Spawn the Symphony server process.
+ * Spawn the Risoluto server process.
  *
  * Runs `node dist/cli/index.js --data-dir {dataDir} --port {port}` with the
  * current environment inherited plus any extra env vars (e.g. MASTER_KEY).
- * Symphony reads the pre-seeded overlay from `<dataDir>/config/overlay.yaml`
+ * Risoluto reads the pre-seeded overlay from `<dataDir>/config/overlay.yaml`
  * on startup, bypassing setup mode without a positional workflow file arg.
  * Stdout and stderr are piped to log files inside `reportDir`.
  */
-export function spawnSymphony(
+export function spawnRisoluto(
   port: number,
   dataDir: string,
   reportDir: string,
   extraEnv?: Record<string, string>,
 ): ReturnType<typeof spawn> {
-  const stdoutLog = createWriteStream(path.join(reportDir, "symphony-stdout.log"), { flags: "a" });
-  const stderrLog = createWriteStream(path.join(reportDir, "symphony-stderr.log"), { flags: "a" });
+  const stdoutLog = createWriteStream(path.join(reportDir, "risoluto-stdout.log"), { flags: "a" });
+  const stderrLog = createWriteStream(path.join(reportDir, "risoluto-stderr.log"), { flags: "a" });
 
   const child = spawn("node", ["dist/cli/index.js", "--data-dir", dataDir, "--port", String(port)], {
     env: { ...process.env, ...extraEnv },

@@ -113,7 +113,7 @@ export class GitHubIssuesClient {
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
           "Content-Type": "application/json",
-          ...(options?.headers ?? {}),
+          ...options?.headers,
         },
       });
     } catch (error) {
