@@ -42,7 +42,7 @@ export const DEFAULT_CONFIG_SECTIONS: Record<string, Record<string, unknown>> = 
     model: "gpt-5.4",
     reasoning_effort: "high",
     approval_policy: "never",
-    thread_sandbox: "workspace-write",
+    thread_sandbox: "danger-full-access",
     personality: "friendly",
     self_review: false,
     read_timeout_ms: 5000,
