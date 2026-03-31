@@ -86,7 +86,11 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
 
   const active = document.createElement("div");
   active.className = "issue-summary-strip";
-  active.append(kv("Active model", detail.model ?? "—"), kv("Reasoning", detail.reasoningEffort ?? "—"));
+  active.append(
+    kv("Active model", detail.model ?? "—"),
+    kv("Reasoning", detail.reasoningEffort ?? "—"),
+    kv("Template", detail.configuredTemplateName ?? "Default"),
+  );
 
   const form = document.createElement("form");
   form.className = "issue-form-grid";

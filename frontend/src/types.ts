@@ -54,6 +54,8 @@ export interface RuntimeIssueView {
   configuredReasoningEffort: string | null;
   configuredModelSource: string | null;
   modelChangePending: boolean;
+  configuredTemplateId?: string | null;
+  configuredTemplateName?: string | null;
   url?: string | null;
   description?: string | null;
   blockedBy?: { id: string | null; identifier: string | null; state: string | null }[];
@@ -68,8 +70,6 @@ export interface IssueDetail extends RuntimeIssueView {
   recentEvents: RecentEvent[];
   attempts: AttemptSummary[];
   currentAttemptId: string | null;
-  configuredTemplateId: string | null;
-  configuredTemplateName: string | null;
 }
 
 export interface AbortIssueResponse {
