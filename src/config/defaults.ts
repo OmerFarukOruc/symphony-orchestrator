@@ -41,7 +41,7 @@ export const DEFAULT_CONFIG_SECTIONS: Record<string, Record<string, unknown>> = 
     command: "codex app-server",
     model: "gpt-5.4",
     reasoning_effort: "high",
-    approval_policy: "auto-edit",
+    approval_policy: "never",
     thread_sandbox: "workspace-write",
     personality: "friendly",
     self_review: false,
