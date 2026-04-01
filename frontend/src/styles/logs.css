@@ -112,7 +112,7 @@
 .mc-chip.is-interactive.is-active {
   background: var(--color-copper-400);
   border-color: var(--color-copper-400);
-  color: #fff;
+  color: var(--interactive-primary-text);
 }
 
 .mc-chip.is-interactive.is-active:hover {
@@ -173,7 +173,7 @@
 
 /* Reasoning rows — amber, thinking indicator */
 .mc-log-row.is-reasoning {
-  --log-accent: var(--color-retrying, #d98a1c);
+  --log-accent: var(--status-retrying);
 }
 .mc-log-row.is-reasoning::before {
   opacity: 0.8;
@@ -380,10 +380,10 @@
 
 .mc-log-thinking {
   margin-top: var(--space-2);
-  border: 1px solid color-mix(in srgb, var(--color-retrying, #d98a1c) 30%, var(--border-stitch));
-  border-left: 3px solid var(--color-retrying, #d98a1c);
+  border: 1px solid color-mix(in srgb, var(--status-retrying) 30%, var(--border-stitch));
+  border-left: 3px solid var(--status-retrying);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-retrying, #d98a1c) 5%, var(--bg-elevated));
+  background: color-mix(in srgb, var(--status-retrying) 5%, var(--bg-elevated));
   overflow: hidden;
 }
 
@@ -397,14 +397,14 @@
 }
 
 .mc-log-thinking-header:hover {
-  background: color-mix(in srgb, var(--color-retrying, #d98a1c) 8%, var(--bg-elevated));
+  background: color-mix(in srgb, var(--status-retrying) 8%, var(--bg-elevated));
 }
 
 .mc-log-thinking-label {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
-  color: var(--color-retrying, #d98a1c);
+  color: var(--status-retrying);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
 }
@@ -537,7 +537,7 @@
   transform: translateX(-50%);
   z-index: 20;
   background: var(--color-copper-400);
-  color: #fff;
+  color: var(--interactive-primary-text);
   border-color: var(--color-copper-400);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);

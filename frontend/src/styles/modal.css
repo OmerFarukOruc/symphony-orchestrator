@@ -125,7 +125,7 @@
 .confirm-modal-button--warning {
   background: var(--status-retrying);
   border-color: var(--status-retrying);
-  color: #fff;
+  color: var(--interactive-primary-text);
 }
 
 .confirm-modal-button--warning:hover {
@@ -136,7 +136,7 @@
 .confirm-modal-button--danger {
   background: var(--status-blocked);
   border-color: var(--status-blocked);
-  color: #fff;
+  color: var(--interactive-primary-text);
 }
 
 .confirm-modal-button--danger:hover {
