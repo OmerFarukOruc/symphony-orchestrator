@@ -61,9 +61,17 @@ export async function pollOnce(): Promise<void> {
     return;
   }
   inFlight = true;
+  const wasStale = store.getState().staleCount >= STALE_THRESHOLD;
   try {
     const data = await api.getState();
     store.mergeSnapshot(data, { resetStale: true });
+    // Restore base polling interval after recovery from backoff
+    if (wasStale && intervalId !== null) {
+      window.clearInterval(intervalId);
+      intervalId = window.setInterval(() => {
+        void pollOnce();
+      }, BASE_POLL_MS);
+    }
   } catch {
     store.incrementStale();
     // Apply exponential backoff on consecutive failures

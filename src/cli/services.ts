@@ -64,9 +64,10 @@ function buildWebhookHandlerDeps(input: {
     getWebhookSecret: input.getWebhookSecret,
     getPreviousWebhookSecret: input.getPreviousWebhookSecret,
     requestRefresh: (reason: string) => input.orchestrator.requestRefresh(reason),
-    requestTargetedRefresh: (issueId: string, issueIdentifier: string) =>
-      input.orchestrator.requestTargetedRefresh(issueId, issueIdentifier, "webhook"),
-    stopWorkerForIssue: (issueIdentifier: string) => input.orchestrator.stopWorkerForIssue(issueIdentifier, "webhook"),
+    requestTargetedRefresh: (issueId: string, issueIdentifier: string, reason: string) =>
+      input.orchestrator.requestTargetedRefresh(issueId, issueIdentifier, reason),
+    stopWorkerForIssue: (issueIdentifier: string, reason: string) =>
+      input.orchestrator.stopWorkerForIssue(issueIdentifier, reason),
     recordVerifiedDelivery: (eventType: string) => input.webhookHealthTracker?.recordVerifiedDelivery(eventType),
     webhookInbox: input.webhookInbox,
     logger: input.logger.child({ component: "webhook-handler" }),

@@ -67,12 +67,26 @@ function extractDeliveryId(req: WebhookRequest): string | null {
 
 /**
  * Extract the issue identifier from webhook payload data.
- * Linear sends `identifier` on Issue events, `issue.identifier` on Comment events.
+ * Linear sends `id`/`identifier` on Issue events.
+ * On Comment events, issue info is nested under `data.issue`.
  */
-function extractIssueInfo(data: Record<string, unknown>): { issueId: string | null; issueIdentifier: string | null } {
-  const issueId = typeof data.id === "string" ? data.id : null;
-  const issueIdentifier = typeof data.identifier === "string" ? data.identifier : null;
-  return { issueId, issueIdentifier };
+function extractIssueInfo(
+  data: Record<string, unknown>,
+  type: string,
+): { issueId: string | null; issueIdentifier: string | null } {
+  if (type === "Issue") {
+    const issueId = typeof data.id === "string" ? data.id : null;
+    const issueIdentifier = typeof data.identifier === "string" ? data.identifier : null;
+    return { issueId, issueIdentifier };
+  }
+  // Comment and other types: issue info nested under data.issue
+  const issue = data.issue as Record<string, unknown> | undefined;
+  if (issue && typeof issue === "object") {
+    const issueId = typeof issue.id === "string" ? issue.id : null;
+    const issueIdentifier = typeof issue.identifier === "string" ? issue.identifier : null;
+    return { issueId, issueIdentifier };
+  }
+  return { issueId: null, issueIdentifier: null };
 }
 
 /**
@@ -151,31 +165,29 @@ export function handleWebhookLinear(deps: WebhookHandlerDeps, req: WebhookReques
   const action = body.action;
   const type = body.type;
   const eventType = `${type}:${action}`;
-  const { issueId, issueIdentifier } = extractIssueInfo(body.data);
+  const { issueId, issueIdentifier } = extractIssueInfo(body.data, type);
 
   // 8. Persist to durable inbox (dedup check)
   const inboxResult = deps.webhookInbox
-    ? (() => {
-        try {
-          return deps.webhookInbox!.insertVerified({
-            deliveryId: deliveryId ?? `fallback-${Date.now()}-${randomUUID().slice(0, 8)}`,
-            type,
-            action,
-            entityId: typeof body.data.id === "string" ? body.data.id : null,
-            issueId,
-            issueIdentifier,
-            webhookTimestamp: timestamp,
-            payloadJson: JSON.stringify(body),
-          });
-        } catch (error_) {
+    ? deps.webhookInbox
+        .insertVerified({
+          deliveryId: deliveryId ?? `fallback-${Date.now()}-${randomUUID().slice(0, 8)}`,
+          type,
+          action,
+          entityId: typeof body.data.id === "string" ? body.data.id : null,
+          issueId,
+          issueIdentifier,
+          webhookTimestamp: timestamp,
+          payloadJson: JSON.stringify(body),
+        })
+        .catch((error_: unknown) => {
           deps.logger.error(
             { error: error_ instanceof Error ? error_.message : String(error_) },
             "inbox insert failed",
           );
-          return Promise.resolve({ isNew: true }); // proceed even if inbox fails
-        }
-      })()
-    : Promise.resolve({ isNew: true });
+          return { isNew: true } as const; // proceed even if inbox fails
+        })
+    : Promise.resolve({ isNew: true } as const);
 
   // 9. Accept — respond immediately before side-effects
   res.status(200).json({ ok: true });
@@ -183,7 +195,6 @@ export function handleWebhookLinear(deps: WebhookHandlerDeps, req: WebhookReques
   // 10. Fire-and-forget side-effects (async, after 200)
   void inboxResult.then((result) => {
     if (!result.isNew) {
-      // Duplicate — record metric and do nothing else
       deps.logger.debug({ deliveryId, type, action }, "duplicate webhook delivery — skipped");
       return;
     }
