@@ -106,7 +106,6 @@ function buildWorkspaceSection(data: WorkspaceInventoryResponse, onRemove: (key:
   const section = el("section", "ws-section");
 
   const header = el("div", "ws-section-header");
-  header.append(el("h2", "heading-section", "Workspaces"));
   const count = el("span", "mc-badge is-sm is-status");
   count.textContent = String(data.total);
   header.append(count);

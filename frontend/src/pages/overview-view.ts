@@ -186,6 +186,103 @@ function createSectionHeader(title: string, kicker?: string): HTMLElement {
   return header;
 }
 
+const COLLAPSED_KEY = "risoluto-overview-collapsed";
+
+/**
+ * Reads the set of collapsed section IDs from localStorage.
+ */
+function readCollapsedSections(): Set<string> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_KEY);
+    if (raw) return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    /* ignore corrupted data */
+  }
+  return new Set<string>();
+}
+
+/**
+ * Persists the set of collapsed section IDs to localStorage.
+ */
+function saveCollapsedSections(ids: Set<string>): void {
+  localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...ids]));
+}
+
+/**
+ * Creates a collapsible section wrapper with a summary line.
+ * The section header acts as the disclosure toggle.
+ * `summaryEl` is a lightweight element shown next to the header when collapsed.
+ */
+function createCollapsibleSection(
+  id: string,
+  title: string,
+  kicker: string,
+  collapsed: Set<string>,
+): {
+  section: HTMLElement;
+  body: HTMLElement;
+  summary: HTMLElement;
+  setExpanded: (expanded: boolean) => void;
+} {
+  const section = document.createElement("div");
+  section.className = "overview-collapsible-section";
+  section.dataset.sectionId = id;
+
+  const header = document.createElement("button");
+  header.type = "button";
+  header.className = "overview-collapsible-header";
+  header.setAttribute("aria-expanded", String(!collapsed.has(id)));
+
+  const titleEl = document.createElement("h2");
+  titleEl.className = "overview-section-title";
+  titleEl.textContent = title;
+
+  const kickerEl = document.createElement("span");
+  kickerEl.className = "overview-section-kicker";
+  kickerEl.textContent = kicker;
+
+  const chevron = document.createElement("span");
+  chevron.className = "overview-collapsible-chevron";
+  chevron.setAttribute("aria-hidden", "true");
+  chevron.textContent = "\u25B8"; // right-pointing triangle
+
+  const summary = document.createElement("span");
+  summary.className = "overview-collapsible-summary";
+
+  header.append(chevron, titleEl, kickerEl, summary);
+
+  const body = document.createElement("div");
+  body.className = "overview-collapsible-body";
+
+  section.append(header, body);
+
+  function setExpanded(expanded: boolean): void {
+    header.setAttribute("aria-expanded", String(expanded));
+    section.classList.toggle("is-collapsed", !expanded);
+    body.hidden = !expanded;
+    summary.hidden = expanded;
+    if (expanded) {
+      collapsed.delete(id);
+    } else {
+      collapsed.add(id);
+    }
+    saveCollapsedSections(collapsed);
+  }
+
+  header.addEventListener("click", () => {
+    const isExpanded = header.getAttribute("aria-expanded") === "true";
+    setExpanded(!isExpanded);
+  });
+
+  // Apply initial collapsed state
+  const isCollapsed = collapsed.has(id);
+  section.classList.toggle("is-collapsed", isCollapsed);
+  body.hidden = isCollapsed;
+  summary.hidden = !isCollapsed;
+
+  return { section, body, summary, setExpanded };
+}
+
 /**
  * Creates an issue row for the attention or terminal list.
  */
@@ -361,19 +458,20 @@ export function createOverviewPage(): HTMLElement {
   const secondary = document.createElement("aside");
   secondary.className = "overview-secondary";
 
-  // System health section
-  const healthSection = document.createElement("div");
-  healthSection.className = "overview-health-section";
-  healthSection.append(createSectionHeader("System health", "Watchdog"));
+  // Read persisted collapse state once
+  const collapsedSections = readCollapsedSections();
+
+  // System health section — collapsible
+  const healthCollapsible = createCollapsibleSection("health", "System health", "Watchdog", collapsedSections);
+  healthCollapsible.section.classList.add("overview-health-section");
   const { root: healthBadge, update: updateHealthBadge } = createSystemHealthBadge();
   const { root: webhookPanel, update: updateWebhookPanel } = createWebhookHealthPanel();
-  healthSection.append(healthBadge, webhookPanel);
-  secondary.append(healthSection);
+  healthCollapsible.body.append(healthBadge, webhookPanel);
+  secondary.append(healthCollapsible.section);
 
-  // Token burn section
-  const tokenSection = document.createElement("div");
-  tokenSection.className = "overview-token-section";
-  tokenSection.append(createSectionHeader("Token burn", "This session"));
+  // Token burn section — collapsible
+  const tokenCollapsible = createCollapsibleSection("tokens", "Token burn", "This session", collapsedSections);
+  tokenCollapsible.section.classList.add("overview-token-section");
 
   const tokenGrid = document.createElement("div");
   tokenGrid.className = "overview-token-grid";
@@ -385,34 +483,31 @@ export function createOverviewPage(): HTMLElement {
   const cost = createLiveMetric("Cost");
 
   tokenGrid.append(inputTokens.root, outputTokens.root, totalTokens.root, runtime.root, cost.root);
-  tokenSection.append(tokenGrid);
-  secondary.append(tokenSection);
+  tokenCollapsible.body.append(tokenGrid);
+  secondary.append(tokenCollapsible.section);
 
-  // Stall events section
-  const stallSection = document.createElement("div");
-  stallSection.className = "overview-stall-section";
-  stallSection.append(createSectionHeader("Recovered stalls", "If the watchdog stepped in"));
+  // Stall events section — collapsible
+  const stallCollapsible = createCollapsibleSection("stalls", "Recovered stalls", "Watchdog", collapsedSections);
+  stallCollapsible.section.classList.add("overview-stall-section");
   const { root: stallList, update: updateStallEvents } = createStallEventsTable();
-  stallSection.append(stallList);
-  secondary.append(stallSection);
+  stallCollapsible.body.append(stallList);
+  secondary.append(stallCollapsible.section);
 
-  // Recent events section
-  const recentSection = document.createElement("div");
-  recentSection.className = "overview-recent-section";
-  recentSection.append(createSectionHeader("Latest activity", "What just changed"));
+  // Recent events section — collapsible
+  const recentCollapsible = createCollapsibleSection("recent", "Latest activity", "Events", collapsedSections);
+  recentCollapsible.section.classList.add("overview-recent-section");
 
   const recentList = document.createElement("div");
   recentList.className = "overview-events";
-  recentSection.append(recentList);
+  recentCollapsible.body.append(recentList);
 
-  // Terminal issues section (lower priority)
-  const terminalSection = document.createElement("div");
-  terminalSection.className = "overview-terminal-section";
-  terminalSection.append(createSectionHeader("Recently finished", "Completed or failed"));
+  // Terminal issues section — collapsible
+  const terminalCollapsible = createCollapsibleSection("terminal", "Recently finished", "Outcomes", collapsedSections);
+  terminalCollapsible.section.classList.add("overview-terminal-section");
 
   const terminalList = document.createElement("div");
   terminalList.className = "overview-list";
-  terminalSection.append(terminalList);
+  terminalCollapsible.body.append(terminalList);
 
   // Assemble main grid
   mainGrid.append(attentionZone, secondary);
@@ -420,13 +515,73 @@ export function createOverviewPage(): HTMLElement {
 
   const lowerGrid = document.createElement("section");
   lowerGrid.className = "overview-lower-grid";
-  lowerGrid.append(recentSection, terminalSection);
+  lowerGrid.append(recentCollapsible.section, terminalCollapsible.section);
   page.append(lowerGrid);
 
   // Loading state
-  const loadingSections = [attentionZone, tokenSection, recentSection, terminalSection, healthSection, stallSection];
+  const loadingSections = [
+    attentionZone,
+    tokenCollapsible.section,
+    recentCollapsible.section,
+    terminalCollapsible.section,
+    healthCollapsible.section,
+    stallCollapsible.section,
+  ];
   for (const section of loadingSections) {
     section.setAttribute("aria-busy", "true");
+  }
+
+  /** Updates the one-line summary text on each collapsible section header. */
+  function updateCollapsibleSummaries(snapshot: NonNullable<AppState["snapshot"]>): void {
+    healthCollapsible.summary.textContent = snapshot.system_health ? snapshot.system_health.status : "healthy";
+
+    const totalCost = formatCostUsd(snapshot.codex_totals.cost_usd);
+    const totalRuntime = formatDuration(snapshot.codex_totals.seconds_running);
+    tokenCollapsible.summary.textContent =
+      snapshot.codex_totals.cost_usd > 0 ? `${totalCost} \u00B7 ${totalRuntime}` : "no usage";
+
+    const stallCount = snapshot.stall_events?.length ?? 0;
+    stallCollapsible.summary.textContent =
+      stallCount > 0 ? `${stallCount} event${stallCount === 1 ? "" : "s"}` : "none";
+
+    const eventCount = (snapshot.recent_events ?? []).length;
+    recentCollapsible.summary.textContent = eventCount > 0 ? `${eventCount} recent` : "none";
+
+    const terminalCount = latestTerminalIssues(snapshot.completed ?? []).length;
+    terminalCollapsible.summary.textContent =
+      terminalCount > 0 ? `${terminalCount} issue${terminalCount === 1 ? "" : "s"}` : "none";
+  }
+
+  /** Fills empty list containers with teaching empty-state cards. */
+  function renderEmptyStates(): void {
+    if (attentionList.childElementCount === 0) {
+      attentionList.replaceChildren(
+        createTeachingEmptyState(
+          "Nothing needs intervention",
+          "Blocked, retrying, and queued work will surface here the moment it needs a decision.",
+          "Open queue",
+          () => router.navigate("/queue"),
+        ),
+      );
+    }
+
+    if (recentList.childElementCount === 0) {
+      recentList.replaceChildren(
+        createTeachingEmptyState(
+          "No activity yet",
+          "Workflow events will appear here as Risoluto starts processing work.",
+        ),
+      );
+    }
+
+    if (terminalList.childElementCount === 0) {
+      terminalList.replaceChildren(
+        createTeachingEmptyState(
+          "No finished issues yet",
+          "Completed and failed issues will collect here once the first run lands.",
+        ),
+      );
+    }
   }
 
   function renderSnapshot(state: AppState): void {
@@ -517,34 +672,9 @@ export function createOverviewPage(): HTMLElement {
     // Stall events table
     updateStallEvents(snapshot.stall_events);
 
-    if (attentionList.childElementCount === 0) {
-      attentionList.replaceChildren(
-        createTeachingEmptyState(
-          "Nothing needs intervention",
-          "Blocked, retrying, and queued work will surface here the moment it needs a decision.",
-          "Open queue",
-          () => router.navigate("/queue"),
-        ),
-      );
-    }
-
-    if (recentList.childElementCount === 0) {
-      recentList.replaceChildren(
-        createTeachingEmptyState(
-          "No activity yet",
-          "Workflow events will appear here as Risoluto starts processing work.",
-        ),
-      );
-    }
-
-    if (terminalList.childElementCount === 0) {
-      terminalList.replaceChildren(
-        createTeachingEmptyState(
-          "No finished issues yet",
-          "Completed and failed issues will collect here once the first run lands.",
-        ),
-      );
-    }
+    // Update collapsible summaries and empty states
+    updateCollapsibleSummaries(snapshot);
+    renderEmptyStates();
   }
 
   const handler = (event: Event): void => renderSnapshot((event as CustomEvent<AppState>).detail);
