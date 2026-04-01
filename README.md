@@ -91,6 +91,9 @@ cd risoluto
 docker compose up --build
 ```
 
+> [!TIP]
+> Enable real-time Linear webhooks by starting with the tunnel profile: `docker compose --profile tunnel up -d`. Requires Cloudflare Tunnel configuration — see [Cloudflare Tunnel Guide](docs/CLOUDFLARE_TUNNEL.md).
+
 **2. Open the dashboard**
 
 Navigate to **http://localhost:4000** — the setup wizard starts automatically.
@@ -142,6 +145,7 @@ codex login                       # ChatGPT/Codex subscription path
 ### 🏗️ Core Engine
 
 - **📋 Linear polling** — Automatic issue discovery with priority sorting
+- **🔔 Linear webhooks** — Real-time event delivery via Cloudflare Tunnel (instant reaction to issue changes)
 - **🐳 Docker sandbox** — `node:22` / Ubuntu 24.04 containers with resource limits, OOM detection, security hardening
 - **📁 Workspace isolation** — One directory per issue with lifecycle hooks
 - **🔄 Retry & stall handling** — Configurable backoff, turn/stall timeouts
@@ -404,12 +408,13 @@ Runs 12 phases: preflight, start, setup wizard, issue creation, agent monitoring
 
 ### 🔧 Operating & Monitoring
 
-| Document                                   | What it covers                                                   |
-| ------------------------------------------ | ---------------------------------------------------------------- |
-| **[Runbooks](docs/RUNBOOKS.md)**           | Troubleshooting playbooks for common failures                    |
-| **[Observability](docs/OBSERVABILITY.md)** | Prometheus metrics, request tracing, error tracking, alert rules |
-| **[E2E Testing](docs/E2E_TESTING.md)**     | Automated lifecycle test: setup, config, phases, diagnostics     |
-| **[Releasing](docs/RELEASING.md)**         | Release preparation checklist                                    |
+| Document                                           | What it covers                                                            |
+| -------------------------------------------------- | ------------------------------------------------------------------------- |
+| **[Runbooks](docs/RUNBOOKS.md)**                   | Troubleshooting playbooks for common failures                             |
+| **[Observability](docs/OBSERVABILITY.md)**         | Prometheus metrics, request tracing, error tracking, alert rules          |
+| **[E2E Testing](docs/E2E_TESTING.md)**             | Automated lifecycle test: setup, config, phases, diagnostics              |
+| **[Releasing](docs/RELEASING.md)**                 | Release preparation checklist                                             |
+| **[Cloudflare Tunnel](docs/CLOUDFLARE_TUNNEL.md)** | Expose webhook endpoint via Cloudflare Tunnel for real-time Linear events |
 
 ### 🏛️ Architecture & Security
 

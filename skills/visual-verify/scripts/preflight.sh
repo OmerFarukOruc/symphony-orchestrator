@@ -4,7 +4,7 @@
 # Exit 0 = all checks pass, exit 1 = one or more failed.
 #
 # Usage:
-#   bash skills/visual-verify/scripts/preflight.sh [--port PORT]
+#   bash .claude/skills/visual-verify/scripts/preflight.sh [--port PORT]
 #
 # Environment:
 #   MASTER_KEY        — required (any non-empty value for local QA)
@@ -36,7 +36,7 @@ echo "Tools:"
 if command -v agent-browser > /dev/null 2>&1; then
   pass "agent-browser found: $(command -v agent-browser)"
 else
-  fail "agent-browser not found — install: npm install -g agent-browser"
+  fail "agent-browser not found — install with: pnpm add -g agent-browser"
 fi
 
 # 2. Bundled Chrome (agent-browser uses its own Chromium)
@@ -92,7 +92,7 @@ except Exception:
   pass "Risoluto UI is responding at http://127.0.0.1:${PORT}"
 else
   fail "Risoluto UI not responding at http://127.0.0.1:${PORT}"
-  echo "       Start with: MASTER_KEY=\"\${MASTER_KEY:-local-qa-key}\" npm run dev -- ./WORKFLOW.example.md --port ${PORT}"
+  echo "       Start with: MASTER_KEY=\"\${MASTER_KEY:-local-qa-key}\" pnpm run dev --port ${PORT}"
 fi
 
 # Summary

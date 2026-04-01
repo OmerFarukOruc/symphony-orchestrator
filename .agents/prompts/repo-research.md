@@ -1,144 +1,211 @@
 # Repo Research — Agent Work Order Protocol
 
-Research open-source repositories and produce batch-ready agent work orders
-for Risoluto's feature roadmap (Epic #9).
+You are a technical research agent producing implementation-ready GitHub issues
+for Risoluto's feature roadmap (Epic #9). You research one open-source repository
+per invocation, extract patterns relevant to Risoluto, and output actionable
+work orders — not summaries.
+
+**Success looks like:** Every created issue is self-contained enough that an
+implementation agent can start coding without re-doing any research.
 
 ---
 
-## 1. Context Import
+## 1. Preconditions
 
-Before starting research, execute the Self-Discovery protocol in `risoluto-context.md`.
-Capture the output — you will use it as ground truth for all module paths, patterns,
-and issue references throughout this session.
+These rules govern the entire session. Read them before executing anything.
 
-If the discovery output is unavailable, abort and report the failure. Never guess
-module paths — stale references break agent work orders downstream.
+### Hard constraints
+
+- **Discovery output is ground truth.** All `src/` paths must come from the
+  self-discovery output (§2). Never guess or reuse memorized paths.
+- **Every new item gets a GitHub issue first.** No unnumbered items in Epic #9.
+- **Append-only on existing issues.** Never remove, rewrite, or weaken existing
+  issue content — only add reference sections.
+- **Respect Risoluto's architecture:** strict ESM TypeScript, `.js` import
+  extensions, small focused modules (<200 LOC), port interfaces for dependency
+  inversion, extracted helpers over inheritance, context interfaces for DI.
+- **Skipped items go in the research summary only** — never in the Epic body.
+
+### Session budget
+
+- **One repo per invocation.** The target repo is specified at the bottom of
+  this file. For batch research across multiple repos, run separate sessions.
+- **Prioritize depth over breadth.** It's better to thoroughly document 3 high-value
+  patterns than to skim 8 superficially.
+- **Exit early on dead repos.** If a repo is archived, empty, has <5 commits,
+  or has no meaningful source code — skip it. Note the reason in the summary.
+
+### Error handling
+
+- **`gh api` returns 404/403:** Log the failure, skip that endpoint, continue.
+  Do not retry more than once.
+- **Rate limited (HTTP 429):** Wait 60 seconds, retry once. If still blocked,
+  note the gap in the summary and continue with what you have.
+- **Missing directories** (`docs/`, `src/`, `.github/`): Expected for many repos.
+  Skip silently and adapt your file-reading strategy to whatever structure exists.
+- **Base64 decode produces binary:** Skip that file. It's not source code.
 
 ---
 
-## 2. Research Protocol
+## 2. Session Setup
 
-Use the GitHub CLI (`gh`) to systematically extract ALL available information
-from the target repo. Run these commands (adapt `{owner}/{repo}` as needed):
+### 2.1 Self-Discovery
 
-### 2.1 Repo Overview
+Execute the protocol in `risoluto-context.md`. Capture the output — it is your
+source of truth for all Risoluto module paths, patterns, and issue references.
+
+**If discovery fails, stop.** Report the failure and exit. Do not proceed with
+stale or guessed paths — they break agent work orders downstream.
+
+### 2.2 Live State Snapshot
+
+Fetch Risoluto's current issue state before researching the target repo:
 
 ```bash
-# ── Repo metadata ──
-gh repo view {owner}/{repo}
+# Epic body (your modification target)
+gh issue view 9 --repo OmerFarukOruc/risoluto --json body --jq '.body'
+
+# All open issues (your deduplication reference)
+gh issue list --repo OmerFarukOruc/risoluto --limit 200 --state open \
+  --json number,title,labels
+
+# Recent git history (already-shipped features)
+git log --oneline -50
+```
+
+### 2.3 Validate Epic References
+
+The Epic body may cite issue numbers from previous roadmap generations that have
+since been deleted or renumbered. Spot-check referenced numbers:
+
+```bash
+gh issue view {number} --repo OmerFarukOruc/risoluto \
+  --json title,state 2>/dev/null || echo "GONE: #{number}"
+```
+
+For any missing issues, search by title/keyword in the open issues list to find
+the current equivalent. Build an **old-number -> current-number mapping** before
+proceeding to enrichment (§7).
+
+---
+
+## 3. Research Protocol
+
+### 3.1 Repo Overview
+
+```bash
+# Detect default branch (never assume main)
+DEFAULT_BRANCH=$(gh repo view {owner}/{repo} --json defaultBranchRef \
+  --jq '.defaultBranchRef.name')
+
+# Metadata
 gh repo view {owner}/{repo} --json description,homepageUrl,languages,topics,licenseInfo
 
-# ── README & docs ──
-gh api repos/{owner}/{repo}/readme --jq '.content' | base64 -d
-gh api repos/{owner}/{repo}/contents/docs --jq '.[].name'
-# Fetch each discovered doc:
-gh api repos/{owner}/{repo}/contents/docs/{filename} --jq '.content' | base64 -d
+# README
+gh api repos/{owner}/{repo}/readme --jq '.content' | base64 --decode
 
-# ── Source tree structure ──
-gh api repos/{owner}/{repo}/git/trees/main?recursive=1 \
-  --jq '.tree[] | select(.type=="blob") | .path' | head -200
+# Source tree (use detected branch, cap at 300 entries)
+gh api "repos/{owner}/{repo}/git/trees/${DEFAULT_BRANCH}?recursive=1" \
+  --jq '.tree[] | select(.type=="blob") | .path' | head -300
 ```
 
-### 2.2 Source Reading
+**Triage point:** If the source tree has <10 files or no meaningful code
+directory, flag as low-value and consider skipping (note in summary).
 
-**Go beyond the README.** Read actual implementation files:
+### 3.2 Source Reading
+
+**Go beyond the README.** Read actual implementation files. Prioritize in this order:
+
+1. **Entry points** — CLI main, index files, app bootstrap
+2. **Core business logic** — orchestration, agent execution, task management
+3. **Config and schemas** — validation patterns, defaults, environment handling
+4. **Infrastructure** — Dockerfile, CI workflows, docker-compose
+5. **Tests** — scan structure and patterns, don't read every test file
 
 ```bash
-# ── Key source files ──
-gh api repos/{owner}/{repo}/contents/src/{filename} --jq '.content' | base64 -d
-# Read package.json, tsconfig.json, Dockerfile, docker-compose.yml, etc.
-gh api repos/{owner}/{repo}/contents/package.json --jq '.content' | base64 -d
+# Read a source file via the Contents API
+gh api repos/{owner}/{repo}/contents/{path} --jq '.content' | base64 --decode
 ```
 
-Extract architecture insights from each file:
+Skip: generated files, lock files, vendor directories, `node_modules/`,
+`dist/`, `.next/`, binary assets.
 
-- Module structure and dependency injection patterns
-- CLI ergonomics (argument parsing, help text, interactive prompts, progress output)
-- DevOps practices (CI/CD, Docker, release automation, health checks)
-- Testing patterns (mocking strategies, fixture management, integration test isolation)
-- Agent/LLM integration patterns (prompt management, model switching, context handling)
-- Retry/resilience patterns (backoff strategies, circuit breakers, timeout handling)
-- Dashboard/UI patterns (real-time updates, WebSocket/SSE usage, templating)
-- Observability (logging, metrics, tracing, structured output)
-
-### 2.3 Issues, PRs, Releases, CI
+### 3.3 Issues, PRs, Releases
 
 ```bash
-# ── Issues & discussions ──
 gh issue list --repo {owner}/{repo} --limit 50 --state all \
   --json number,title,labels,state
-gh issue list --repo {owner}/{repo} --label "enhancement" --limit 30 \
-  --json number,title,body
 
-# ── Pull requests (recent patterns & features) ──
 gh pr list --repo {owner}/{repo} --limit 30 --state all \
   --json number,title,labels,state
-# Read notable PRs for implementation details:
-gh pr view {number} --repo {owner}/{repo} --json title,body,files
 
-# ── Releases & changelog ──
 gh release list --repo {owner}/{repo} --limit 10
-gh release view latest --repo {owner}/{repo} --json tagName,body
 
-# ── Actions / CI configuration ──
-gh api repos/{owner}/{repo}/contents/.github/workflows --jq '.[].name'
-# Then read each workflow file
+gh api repos/{owner}/{repo}/contents/.github/workflows --jq '.[].name' 2>/dev/null
 
-# ── Contributors & activity ──
-gh api repos/{owner}/{repo}/stats/contributors --jq '.[].author.login'
 gh api repos/{owner}/{repo}/commits?per_page=20 --jq '.[].commit.message'
 ```
 
-### 2.4 Pattern Extraction
+Read notable PRs and workflow files where they illuminate architecture decisions.
 
-Explicitly look for these six Risoluto patterns in the target repo. If found,
-document the implementation approach and note how it maps to Risoluto's design:
+### 3.4 Pattern Extraction
 
-| # | Pattern | Risoluto Module |
-|---|---------|----------------|
-| 1 | Port interfaces (dependency inversion) | `src/core/attempt-store-port.ts`, `src/orchestrator/port.ts`, `src/git/port.ts`, `src/tracker/port.ts` |
-| 2 | Config schemas & validation | `src/config/schemas/*.ts`, `src/config/validators.ts` |
-| 3 | HTTP routes & OpenAPI | `src/http/routes.ts`, `src/http/openapi.ts` |
-| 4 | EventBus / lifecycle events | `src/core/event-bus.ts`, `src/core/lifecycle-events.ts` |
-| 5 | Module wiring & service init | `src/cli/services.ts`, `src/cli/runtime-providers.ts` |
-| 6 | Test structure & fixtures | `tests/*.test.ts`, `tests/fixtures/` |
+For each finding, document: **what the pattern is**, **how the repo implements it**,
+**key files**, and **how it maps to Risoluto**.
 
----
+#### Required patterns (always check for these)
 
-## 3. Cross-Reference Protocol
+| # | Pattern | Risoluto counterpart |
+|---|---------|---------------------|
+| 1 | Dependency inversion / port interfaces | `src/*/port.ts` files |
+| 2 | Config schemas and validation | `src/config/schemas/*.ts` |
+| 3 | HTTP route registration and API design | `src/http/routes.ts` |
+| 4 | Event system / pub-sub / lifecycle hooks | `src/core/event-bus.ts`, `src/core/risoluto-events.ts` |
+| 5 | Service wiring and bootstrap | `src/cli/services.ts` |
+| 6 | Test organization and fixture patterns | `tests/`, `tests/fixtures/` |
 
-Before creating any issues, cross-reference against LIVE state:
+#### Emergent patterns (document if found)
 
-1. Fetch current epic body:
-   ```bash
-   gh issue view 9 --repo OmerFarukOruc/risoluto --json body --jq '.body'
-   ```
+Don't limit yourself to the table above. If the repo has a compelling pattern
+not listed — plugin system, caching layer, retry/circuit-breaker, workspace
+isolation, prompt management, cost tracking, webhook handling — document it
+with the same rigor.
 
-2. Fetch ALL open issues (not just 50):
-   ```bash
-   gh issue list --repo OmerFarukOruc/risoluto --limit 200 --state open --json number,title,labels
-   ```
+### 3.5 Verification Step
 
-3. For each finding, determine:
-   - **Already covered?** --> Enrich the existing issue (append reference section, don't overwrite)
-   - **Partially covered?** --> Flag for enhancement with specific gaps
-   - **Not covered?** --> Candidate for new issue (must pass quality gates below)
-   - **Duplicate of another finding?** --> Merge into single issue
-
-4. Check recent git history for already-shipped features:
-   ```bash
-   git log --oneline -50
-   ```
+Before documenting any pattern, confirm you actually read the source code that
+implements it. If you inferred a pattern from the README or file names alone,
+say so explicitly. Mark unverified claims with `(inferred, not code-verified)`.
 
 ---
 
-## 4. Issue Creation -- Agent Work Orders
+## 4. Analysis & Triage
 
-For every NEW item that will be added to the Epic, **create a real GitHub issue first**
-using the canonical template below. Every item in the Epic and roadmap MUST have a
-GitHub issue number. Never add unnumbered items.
+For each extracted pattern or feature, classify it:
 
-### Canonical Template
+| Classification | Action |
+|---------------|--------|
+| **Already covered** by an existing Risoluto issue | Enrich that issue (§7) |
+| **Partially covered** | Flag specific gaps, enrich the issue |
+| **New and valuable** | Create a new issue (§5), passes quality gates (§6) |
+| **Duplicate** of another finding this session | Merge into single issue |
+| **Uncertain fit** | Flag as "Consider" in summary only |
+| **Out of scope** | Skip, note reasoning in summary |
+
+---
+
+## 5. Issue Creation — Agent Work Orders
+
+### Quality gates (must pass before creation)
+
+1. **One agent session:** If the issue would take >2h of focused agent work, split it.
+2. **Testable ACs:** Every acceptance criterion is verifiable (run a command, check output, inspect file).
+3. **Valid paths:** All `src/` paths match the discovery output. Zero stale references.
+4. **File boundaries:** List every file created or modified. Flag overlap with other issues.
+5. **Size estimate:** low (<100 LOC) / medium (100-300 LOC) / high (300+ LOC, consider splitting).
+6. **No orphans:** Links to Epic #9. Has a bundle assignment.
+
+### Canonical template
 
 ```markdown
 **Epic:** #9
@@ -147,38 +214,35 @@ GitHub issue number. Never add unnumbered items.
 **Complexity:** {low | medium | high}
 
 ## What
-{2-4 sentences: what this feature is and why Risoluto needs it.
-Frame the value -- what problem does it solve for operators?}
+{What this feature is and why Risoluto needs it.
+Frame the value — what problem does it solve for operators?}
 
 ## Prior Art
 {Which open-source projects implement this, and how.}
 
-### {Project Name 1} ([repo-link])
-{How they implement it -- architecture pattern, key abstractions, flow.}
-{Code snippets from the source repo where they illuminate the pattern.}
+### {Project Name} ([repo-link])
+{Architecture pattern, key abstractions, flow.}
+{Code snippets where they illuminate the pattern.}
 **Key files:**
-- `path/to/file.ts` -- {what it does}
-
-### {Project Name 2} ([repo-link])
-{Same structure if multiple sources.}
+- `path/to/file.ts` — {what it does}
 
 ## Risoluto Adaptation
 {How this maps to Risoluto's current architecture.}
-{Which existing modules are affected, what new modules are needed.}
-{Config surface (new WORKFLOW.md / env vars / CLI flags) if applicable.}
-{API surface (new endpoints, SSE events, CLI commands) if applicable.}
+{Which existing modules change, what new modules are needed.}
+{Config surface (WORKFLOW.md / env vars / CLI flags) if applicable.}
+{API surface (endpoints, SSE events, CLI commands) if applicable.}
 
 ### Affected Modules
-- `src/path/module.ts` -- {what changes and why}
-- `src/path/new-module.ts` -- (new) {purpose}
+- `src/path/module.ts` — {what changes and why}
+- `src/path/new-module.ts` — (new) {purpose}
 
 ### Design Sketch
-{Code interfaces, types, config schema -- the concrete shape of the feature.}
-{Keep these as directional sketches, not final implementations.}
+{Interfaces, types, config schema — the concrete shape of the feature.}
+{Directional sketches, not final implementations.}
 
 ## Dependencies
-- **Requires:** #{issue} -- {why this must ship first}
-- **Unlocks:** #{issue} -- {what this enables}
+- **Requires:** #{issue} — {why this must ship first}
+- **Unlocks:** #{issue} — {what this enables}
 
 ## Acceptance Criteria
 - [ ] {Testable, specific criterion}
@@ -187,21 +251,20 @@ Frame the value -- what problem does it solve for operators?}
 
 ## Open Questions
 - {Unresolved design decisions flagged during research}
-- {Trade-offs to evaluate during implementation}
 ```
 
-### Template Principles
+For **low-complexity** items (config flag, small helper, single-file change):
+omit "Design Sketch" and "Open Questions" sections. Keep Prior Art to one
+subsection. The template should scale with the issue's weight.
 
-1. **Self-contained** -- reader can start implementing without re-doing research
-2. **Prior art is first-class** -- every inspiration repo gets its own subsection
-3. **Drift-aware** -- all `src/` paths verified against discovery output
-4. **Forward-linking** -- dependencies and unlocks create a navigable graph
-5. **Preserve everything** -- all existing research content restructured, never deleted
-6. **Open questions surface uncertainty** -- unresolved decisions are explicit, not hidden
-
-### Issue Creation Command
+### Issue creation
 
 ```bash
+# Write the body to a temp file first (avoids shell quoting hazards)
+cat > /tmp/issue_body.md << 'ISSUE_EOF'
+{rendered template content}
+ISSUE_EOF
+
 gh issue create \
   --repo OmerFarukOruc/risoluto \
   --title "[T{tier}] {Feature name}" \
@@ -210,14 +273,12 @@ gh issue create \
 
 Collect the returned `#number` for each created issue.
 
----
+### Bundle assignment
 
-## 5. Bundle Assignment
+Classify each issue into one of these bundles:
 
-Classify each new issue into one of these bundles (or propose a new bundle if none fits):
-
-| # | Bundle Name | Scope |
-|---|-------------|-------|
+| # | Bundle | Scope |
+|---|--------|-------|
 | 1 | Config & Validation | Config store, schemas, CLI init, validation |
 | 2 | Observability & Logging | Events, alerts, metrics, health monitoring |
 | 3 | Agent Runtime & Execution | Runner, retries, tool control, dry-run |
@@ -231,47 +292,49 @@ Classify each new issue into one of these bundles (or propose a new bundle if no
 | 11 | Developer Experience | CLI ergonomics, docs, debugging tools |
 | 12 | Infrastructure & Deployment | Docker, packaging, CI/CD, scaling |
 
-For each issue, score parallelizability:
-- **Independent**: No file overlap with other issues in the same bundle --> can run in parallel via `/batch`
-- **Sequenced**: Depends on another issue landing first --> must be ordered
-- **Overlapping**: Touches same files as a sibling issue --> needs merge coordination
+Score parallelizability per issue:
+- **Independent** — no file overlap, can run in parallel
+- **Sequenced** — depends on another issue landing first
+- **Overlapping** — touches same files as a sibling, needs merge coordination
 
 Flag cross-bundle dependencies explicitly.
 
 ---
 
-## 6. Quality Gates
+## 6. Principles for Template Usage
 
-Every issue MUST pass these gates before creation:
-
-1. **Implementable in one agent session**: If the issue would take more than ~2 hours of focused agent work, split it
-2. **Testable acceptance criteria**: Every AC item must be verifiable (run a command, check output, inspect file)
-3. **Valid module paths**: All `src/` paths must match the discovery output from `risoluto-context.md` -- never use stale paths
-4. **File boundary clarity**: List every file the issue will create or modify. Flag overlap with other issues.
-5. **Size estimate**: low (<100 LOC) / medium (100-300 LOC) / high (300+ LOC, consider splitting)
-6. **No orphan items**: Every issue must link to Epic #9. Every item in the Epic must have a GitHub issue number.
+1. **Self-contained** — reader starts implementing without re-doing research
+2. **Prior art is first-class** — every inspiration repo gets its own subsection
+3. **Drift-aware** — all paths verified against live discovery output
+4. **Forward-linking** — dependencies and unlocks create a navigable graph
+5. **Preserve everything** — existing content restructured, never deleted
+6. **Open questions surface uncertainty** — unresolved decisions are explicit
 
 ---
 
 ## 7. Enriching Existing Issues
 
-For every **existing** issue that gained new implementation details from the
-researched repo, **append** a reference section to that issue's body:
+For existing issues that gained implementation insights from the researched repo,
+**append** a reference section. Use a heredoc to avoid shell injection:
 
 ```bash
 # Read current body
-body=$(gh issue view {number} --repo OmerFarukOruc/risoluto --json body --jq '.body')
+CURRENT_BODY=$(gh issue view {number} --repo OmerFarukOruc/risoluto \
+  --json body --jq '.body')
 
-# Check for existing reference section from this repo (skip if present)
-echo "$body" | grep -q "{repo-name} Reference" && echo "SKIP: already enriched" && exit 0
+# Skip if already enriched for this repo
+if echo "$CURRENT_BODY" | grep -qF '{repo-name} Reference'; then
+  echo "SKIP: #{number} already has {repo-name} reference"
+  exit 0
+fi
 
-# Append a reference section (do NOT overwrite existing content)
-new_body="${body}
+# Build the enrichment section
+cat > /tmp/enrichment.md << 'ENRICH_EOF'
 
 ---
 
 ## {repo-name} Reference Implementation
-*(added from [{repo-name}]({repo-url}) research -- $(date +%Y-%m-%d))*
+*(added from [{repo-name}]({repo-url}) research)*
 
 ### Architecture Notes
 {How the researched repo implements this feature.}
@@ -281,116 +344,115 @@ new_body="${body}
 Include short code snippets where they clarify the pattern.}
 
 ### File References
-- [{filename}]({link}) -- {what it does}
+- [{filename}]({permalink}) — {what it does}
 
 ### Risoluto Adaptation Notes
-{How this maps to Risoluto's modules. Reference specific files from discovery output.}"
+{How this maps to Risoluto's modules. Reference specific discovery-output paths.}
+ENRICH_EOF
 
-echo "$new_body" | gh issue edit {number} --repo OmerFarukOruc/risoluto --body-file -
+# Append (not overwrite) and update
+{ echo "$CURRENT_BODY"; cat /tmp/enrichment.md; } > /tmp/updated_body.md
+gh issue edit {number} --repo OmerFarukOruc/risoluto --body-file /tmp/updated_body.md
 ```
 
-Rules:
-- **Append only** -- never remove or rewrite the existing issue body.
-- **Check for duplicates** -- skip if the issue already contains a reference
-  section for this repo (grep for `{repo-name} Reference`).
-- Each enrichment section MUST include:
-  - **Architecture notes**: How the researched repo implements this feature
-  - **Code patterns**: Key functions, classes, or design patterns worth emulating
-  - **File references**: Links to specific source files in the researched repo
-  - **Risoluto adaptation notes**: How this maps to Risoluto's modules
-- Be detailed and actionable -- someone reading the issue should be able to
-  start implementing without re-doing the research.
-- Do this for ALL enriched issues, not just the Epic body.
+**Rules:**
+- Append only — never remove or rewrite existing content.
+- If the target issue number is gone (HTTP 410/404), use the mapping from §2.3.
+  If no match exists, skip and note in the research summary.
+- Each enrichment MUST include: architecture notes, code patterns, file references,
+  and Risoluto adaptation notes.
 
 ---
 
 ## 8. Update Epic Body
 
-Edit the Epic issue body directly:
-
 ```bash
-# Read current body, modify, then update:
 gh issue view 9 --repo OmerFarukOruc/risoluto \
   --json body --jq '.body' > /tmp/epic_body.md
-# ... edit /tmp/epic_body.md ...
-gh issue edit 9 --repo OmerFarukOruc/risoluto \
-  --body-file /tmp/epic_body.md
+# Edit /tmp/epic_body.md, then:
+gh issue edit 9 --repo OmerFarukOruc/risoluto --body-file /tmp/epic_body.md
 ```
 
-Rules:
-- Do NOT create new comments beneath the issue.
-- Do NOT remove or weaken existing items -- only enrich or add.
+**Rules:**
+- Edit the body directly — do NOT create comments.
+- Never remove or weaken existing items — only enrich or add.
 - Preserve existing structure, formatting, and tier organization.
-- New items must reference their GitHub issue number (e.g., `#75`).
-- Use format: `(inspired by [{repo-name}]({repo-url}))` for attributions.
-- **Do NOT add skipped/rejected items to the Epic body.**
+- New items must include their GitHub issue number (e.g., `#75`).
+- Attribution format: `(inspired by [{repo-name}]({repo-url}))`
+- Skipped/rejected items do NOT go in the Epic body.
 
 ---
 
-## 9. Research Summary
+## 9. Output Artifact
 
-Produce a research artifact summarizing:
+Write the research summary to `dogfood-output/repo-research/{repo-name}.md`.
 
-- **Repo Overview**: What it does, tech stack, notable design decisions
-- **Key Findings** (bulleted, grouped by theme):
-  - Architecture & patterns
-  - CLI & UX
-  - DevOps & CI/CD
-  - Testing & quality
-  - Agent/LLM-specific patterns
-  - Observability & monitoring
-- **Items Added to Epic** (with issue numbers, links, tier, and bundle assignment)
-- **Items Enriched in Epic** (what was added and why)
-- **Items Deliberately Skipped** (with reasoning)
-- **"Consider" Items** (uncertain fit -- flagged for future discussion)
-- **Bundle Summary**: Count of issues per bundle, parallelizability breakdown
-- **Quality Gate Compliance**: Confirm every created issue passed all 6 gates
+### Required sections
 
----
-
-## 10. Source Repositories
-
-Research targets (run against each repo, or a subset as directed):
-
-| # | Repo | GitHub URL | Focus Area |
-|---|------|-----------|------------|
-| 1 | thepopebot | stephengpope/thepopebot | Agent orchestration, CLI patterns |
-| 2 | hatice | mksglu/hatice | Agent management, Turkish NLP integration |
-| 3 | pilot | crisner1978/pilot | Agent workflows, task automation |
-| 4 | pilot (fork) | alekspetrov/pilot | Fork divergence, additional features |
-| 5 | Eva | vedantb2/eva | Multi-agent coordination |
-| 6 | Orchestra | Traves-Theberge/Orchestra | Orchestration patterns, UI |
-| 7 | vibe-kanban | BloopAI/vibe-kanban | Kanban + AI agent integration |
-| 8 | jinyang | romancircus/jinyang-public | Agent runtime patterns |
-| 9 | symphony-for-github-projects | t0yohei/symphony-for-github-projects | GitHub Projects integration |
-| 10 | mog | bobbyg603/mog | Monitoring, observability |
-| 11 | pi-skills | badlogic/pi-skills | Skill system, plugin architecture |
-| 12 | Eruda | liriliri/eruda | DevTools library (reference, not orchestrator) |
-| 13 | Composio | -- | Composable tool/action framework (no URL found) |
+1. **Repo Overview** — what it does, tech stack, notable design decisions, repo health
+   (activity level, last commit date, star count)
+2. **Key Findings** (grouped by theme):
+   - Architecture & patterns
+   - CLI & UX
+   - DevOps & CI/CD
+   - Testing & quality
+   - Agent/LLM-specific patterns
+   - Observability & monitoring
+3. **Issues Created** — number, title, tier, bundle, parallelizability
+4. **Issues Enriched** — number, what was added, why
+5. **Items Skipped** — with reasoning
+6. **"Consider" Items** — uncertain fit, flagged for discussion
+7. **Bundle Summary** — issue count per bundle, parallelizability breakdown
+8. **Quality Gate Compliance** — confirm every created issue passed all 6 gates
 
 ---
 
-## 11. Constraints
+## 10. Source Registry
 
-- **Every new item MUST have a GitHub issue.** No unnumbered items in Epic or roadmap.
-- **Every issue must follow the canonical template** (Section 4).
-- **Bundle assignment is mandatory** (Section 5).
-- **Quality gates must pass** (Section 6).
-- **Discovery output is the source of truth** for all module paths. Never guess paths.
-- **Skipped items go ONLY in the research summary artifact.**
-- Do not alter shipped/completed items in the Epic.
-- Be thorough in research but concise in writing -- no fluff.
-- If unsure whether something fits Risoluto's scope, flag it as "Consider"
-  in the summary rather than silently adding it.
-- **Respect Risoluto's architecture**: strict ESM TypeScript, `.js` import extensions,
-  small focused modules (<200 LOC), port interfaces for dependency inversion,
-  extracted helpers over inheritance, context interfaces for dependency passing.
-- When suggesting implementation, reference specific Risoluto modules from the
-  discovery output (e.g., `src/orchestrator/orchestrator.ts`, not the stale
-  `src/orchestrator.ts`).
+Previously researched repos and pending targets.
+
+| # | Repo | Owner/Repo | Focus Area | Status |
+|---|------|-----------|------------|--------|
+| 1 | thepopebot | stephengpope/thepopebot | Agent orchestration, CLI patterns | Done |
+| 2 | hatice | mksglu/hatice | Agent management, Turkish NLP | Done |
+| 3 | pilot | crisner1978/pilot | Agent workflows, task automation | Done |
+| 4 | pilot (fork) | alekspetrov/pilot | Fork divergence, additional features | Done |
+| 5 | Eva | vedantb2/eva | Multi-agent coordination | Done |
+| 6 | Orchestra | Traves-Theberge/Orchestra | Orchestration patterns, UI | Done |
+| 7 | vibe-kanban | BloopAI/vibe-kanban | Kanban + AI agent integration | Done |
+| 8 | jinyang | romancircus/jinyang-public | Agent runtime patterns | Done |
+| 9 | symphony | t0yohei/symphony-for-github-projects | GitHub Projects integration | Done |
+| 10 | mog | bobbyg603/mog | Monitoring, observability | Done |
+| 11 | pi-skills | badlogic/pi-skills | Skill system, plugin architecture | Done |
+| 12 | Eruda | liriliri/eruda | DevTools library (reference) | Done |
+| 13 | agentflow | shouc/agentflow | DAG orchestration, fanout/merge, web UI | Done |
 
 ---
 
-## Repository to Research
+## 11. Operational Notes
+
+Lessons from previous research runs.
+
+### Default branch varies
+Not all repos use `main`. Always detect with `gh repo view ... --json defaultBranchRef`
+before reading the source tree. Known exceptions: AgentFlow uses `master`.
+
+### Epic issue numbers drift
+After roadmap refreshes, old issues get deleted and new ones created with different
+numbers. Always validate references against live state (§2.3) before enrichment.
+
+### Large repos (>200 source files)
+Follow the priority order in §3.2. Read entry points and core logic first.
+Skim test structure without reading every test. Skip generated output.
+
+### Parallel execution phases
+- **Phase 1** (parallel): Self-discovery + repo research + live state snapshot
+- **Phase 2** (sequential): Analysis and triage (needs Phase 1 outputs)
+- **Phase 3** (parallel): Issue creation + enrichments + epic update
+- **Phase 4** (sequential): Research summary (needs all issue numbers from Phase 3)
+
+---
+
+## Target Repository
 
 Repo: [PASTE_URL_HERE]

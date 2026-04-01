@@ -1,29 +1,37 @@
 ---
 name: visual-verify
 description: >
-  TRIGGER MANDATORILY after ANY edit to dashboard-template.ts, logs-template.ts,
-  or any file that affects Risoluto's web UI (CSS, templates, HTML generation,
-  frontend routes, or static assets). Also trigger when the user mentions UI
-  verification, screenshots, dashboard QA, dogfooding, visual regression, layout
-  issues, CSS changes, or browser testing — even implicitly (e.g., "check the UI",
-  "does it look right", "verify the dashboard"). Do NOT use for generic browser
-  automation, non-Risoluto sites, or backend-only debugging without a visual goal.
-  This skill is NOT optional after UI changes — it is part of the definition of done.
+  TRIGGER MANDATORILY after ANY edit to files under frontend/src/ that affect
+  the Risoluto web UI (pages, components, styles, templates, router, state),
+  or any backend file that affects HTML/API responses rendered by the UI.
+  Also trigger when the user mentions UI verification, screenshots, dashboard QA,
+  dogfooding, visual regression, layout issues, CSS changes, or browser testing
+  — even implicitly (e.g., "check the UI", "does it look right", "verify the
+  dashboard"). Do NOT use for generic browser automation, non-Risoluto sites,
+  or backend-only debugging without a visual goal. This skill is NOT optional
+  after UI changes — it is part of the definition of done.
 compatibility: >
   Requires local Risoluto UI at http://127.0.0.1:4000, agent-browser
   (with bundled Chrome via `agent-browser install`), MASTER_KEY env var,
   LINEAR_API_KEY env var, and the repo-root agent-browser.json config.
 metadata:
   author: risoluto
-  version: 2.1.0
+  version: 3.0.0
 ---
 
 # Visual Verify
 
-Use this skill for Risoluto's current web UI surface only:
+Use this skill for Risoluto's current web UI surface:
 
-- Dashboard at `/`
-- Logs page at `/logs/:issue_identifier`
+- Overview dashboard at `/`
+- Queue / kanban board at `/queue`
+- Issue inspector at `/queue/:id` or `/issues/:id`
+- Logs page at `/logs/:id` or `/issues/:id/logs`
+- Setup wizard at `/setup`
+- Settings at `/settings`
+- Observability at `/observability`
+- Templates at `/templates`
+- Audit log at `/audit`
 
 Default to **Quick Verify** for a targeted change. Escalate to **Full QA** when the change is broad, release-facing, or the user explicitly wants a dogfood pass.
 
@@ -34,7 +42,7 @@ Default to **Quick Verify** for a targeted change. Escalate to **Full QA** when 
 Run the preflight script first — it checks everything at once:
 
 ```bash
-bash skills/visual-verify/scripts/preflight.sh
+bash .claude/skills/visual-verify/scripts/preflight.sh
 ```
 
 If preflight passes, skip to the workflow. If it fails, fix the reported issues before continuing.
@@ -55,7 +63,7 @@ If preflight passes, skip to the workflow. If it fails, fix the reported issues 
 If the UI is not running, start it with **all required env vars**:
 
 ```bash
-MASTER_KEY="${MASTER_KEY:-local-qa-key}" npm run dev -- ./WORKFLOW.example.md --port 4000
+MASTER_KEY="${MASTER_KEY:-local-qa-key}" pnpm run dev --port 4000
 ```
 
 Wait for the server to respond before proceeding:
@@ -68,13 +76,11 @@ for attempt in $(seq 1 15); do
 done
 ```
 
-> **Note:** Use `WORKFLOW.example.md` for QA runs, not `WORKFLOW.md`, to avoid interfering with real Linear issues.
-
 If the request is not about visual confirmation, screenshots, layout, interaction, or browser-driven QA, do not use this skill.
 
 ## Quick Verify
 
-Use this for a focused change to the dashboard or logs page. This is the default path.
+Use this for a focused change to any page. This is the default path.
 
 ```
 1. Baseline    → Screenshot before changes
@@ -88,7 +94,7 @@ Use this for a focused change to the dashboard or logs page. This is the default
 ### 1. Capture a baseline
 
 ```bash
-mkdir -p archive/screenshots
+mkdir -p docs/archive/screenshots
 agent-browser open http://127.0.0.1:4000
 agent-browser wait --load networkidle
 agent-browser screenshot --annotate docs/archive/screenshots/before.png
@@ -96,7 +102,18 @@ agent-browser screenshot --annotate docs/archive/screenshots/before.png
 
 The `--annotate` flag overlays numbered labels (`[1]`, `[2]`, …) on interactive elements. Each label maps to a ref (`@e1`, `@e2`) for interaction.
 
-For logs-page verification, navigate from the dashboard into a real issue log view before taking the baseline for that page.
+For page-specific verification, navigate to the relevant route:
+
+```bash
+# Queue/kanban
+agent-browser open http://127.0.0.1:4000/queue
+
+# Logs for a specific issue
+agent-browser open http://127.0.0.1:4000/logs/<issue_id>
+
+# Settings
+agent-browser open http://127.0.0.1:4000/settings
+```
 
 ### 2. Reload and capture
 
@@ -139,7 +156,7 @@ Use this after major UI changes, before releases, or when the user asks to "dogf
 mkdir -p docs/archive/dogfood-output/screenshots docs/archive/dogfood-output/videos
 ```
 
-Create `docs/archive/dogfood-output/report.md` from the template at `skills/visual-verify/templates/verification-report-template.md`. Fill in the date, session name, and environment info.
+Create `docs/archive/dogfood-output/report.md` from the template at `.claude/skills/visual-verify/templates/verification-report-template.md`. Fill in the date, session name, and environment info.
 
 Open the browser session:
 
@@ -159,10 +176,10 @@ If errors appear at this stage, record them as **infrastructure issues** in the 
 
 ### 2. Orient
 
-Start from the dashboard. Take a baseline screenshot and interactive snapshot:
+Start from the overview. Take a baseline screenshot and interactive snapshot:
 
 ```bash
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/dashboard-main.png
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/overview-main.png
 agent-browser --session risoluto-qa snapshot -i
 agent-browser --session risoluto-qa errors
 agent-browser --session risoluto-qa console
@@ -174,20 +191,33 @@ Consult `references/dashboard-map.md` for the current selector map.
 
 Work through each area in order. At each step: screenshot, snapshot, check errors.
 
-#### Step 3a — Kanban Board
+#### Step 3a — Overview Page
 
-Verify all four columns render and cards display correctly:
+Verify the hero band, metrics grid, attention zone, and collapsible sections:
 
 ```bash
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/overview-hero.png
+agent-browser --session risoluto-qa snapshot -i
+```
+
+Check: `.overview-hero-band`, `.overview-hero-metrics`, `.overview-attention-zone`, `.overview-collapsible-section` exist and show appropriate content.
+
+#### Step 3b — Queue / Kanban Board
+
+Navigate to the kanban board:
+
+```bash
+agent-browser --session risoluto-qa open http://127.0.0.1:4000/queue
+agent-browser --session risoluto-qa wait --load networkidle
 agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/kanban-board.png
 agent-browser --session risoluto-qa snapshot -i
 ```
 
-Check: `#queuedColumn`, `#runningColumn`, `#retryingColumn`, `#completedColumn` exist and show appropriate content.
+Check: `.kanban-board` renders, `.kanban-column` elements display with colored `.kanban-column-dot` indicators, `.kanban-card` elements show identifiers and titles.
 
-#### Step 3b — Detail Panel
+#### Step 3c — Issue Inspector (Drawer)
 
-Click a card to open the detail panel:
+Click a card to open the inspector drawer:
 
 ```bash
 agent-browser --session risoluto-qa snapshot -i
@@ -195,69 +225,38 @@ agent-browser --session risoluto-qa snapshot -i
 agent-browser --session risoluto-qa click @e<N>
 agent-browser --session risoluto-qa wait 1000
 agent-browser --session risoluto-qa snapshot -i
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/detail-panel.png
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/inspector-drawer.png
 agent-browser --session risoluto-qa errors
 ```
 
-Check: `#detailPanel` is visible, fields populated (`#detailTitle`, `#detailIdentifier`, `#detailBadges`).
+Check: `.issue-inspector.queue-drawer` is visible, `.issue-identifier`, `.issue-title`, `.issue-header-meta`, `.issue-summary-strip` populate correctly.
 
-Close the panel:
+Close the drawer:
 
 ```bash
-agent-browser --session risoluto-qa click "#closeDetailButton"
+# Click the close button (.drawer-close-btn) using its @ref
+agent-browser --session risoluto-qa snapshot -i
+agent-browser --session risoluto-qa click @e<N>  # the ✕ button
 agent-browser --session risoluto-qa wait 500
 ```
 
-#### Step 3c — Filter Navigation
+#### Step 3d — Kanban Toolbar & Filtering
 
-Test each filter button:
-
-```bash
-# Test Running filter
-agent-browser --session risoluto-qa click ".filter-button[data-filter='running']"
-agent-browser --session risoluto-qa wait 500
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/filter-running.png
-
-# Test Retrying filter
-agent-browser --session risoluto-qa click ".filter-button[data-filter='retrying']"
-agent-browser --session risoluto-qa wait 500
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/filter-retrying.png
-
-# Test Completed filter
-agent-browser --session risoluto-qa click ".filter-button[data-filter='completed']"
-agent-browser --session risoluto-qa wait 500
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/filter-completed.png
-
-# Reset to All
-agent-browser --session risoluto-qa click ".filter-button[data-filter='all']"
-agent-browser --session risoluto-qa wait 500
-```
-
-#### Step 3d — Search
-
-```bash
-agent-browser --session risoluto-qa fill "#searchInput" "test"
-agent-browser --session risoluto-qa wait 500
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/search-active.png
-agent-browser --session risoluto-qa fill "#searchInput" ""
-```
-
-#### Step 3e — Status Bar
-
-```bash
-agent-browser --session risoluto-qa screenshot --annotate -s "section" docs/archive/dogfood-output/screenshots/status-bar.png
-```
-
-Check: `#queuedCount`, `#runningCount`, `#retryingCount`, `#completedCount`, `#uptimeValue`, `#rateLimitValue` are visible.
-
-#### Step 3f — Logs Page
-
-Navigate to a logs page (use an issue identifier from a card, or attempt a known route):
+Test toolbar controls on the queue page:
 
 ```bash
 agent-browser --session risoluto-qa snapshot -i
-# Click the logs link in the detail panel, or navigate directly:
-# agent-browser --session risoluto-qa open http://127.0.0.1:4000/logs/<issue_identifier>
+# Use refs to interact with toolbar buttons in .mc-toolbar.queue-toolbar
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/toolbar-active.png
+```
+
+#### Step 3e — Logs Page
+
+Navigate to a logs page:
+
+```bash
+# Navigate via issue inspector "Open logs" button, or directly:
+agent-browser --session risoluto-qa open http://127.0.0.1:4000/logs/<issue_id>
 agent-browser --session risoluto-qa wait --load networkidle
 agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/logs-page.png
 agent-browser --session risoluto-qa snapshot -i
@@ -265,18 +264,66 @@ agent-browser --session risoluto-qa errors
 agent-browser --session risoluto-qa console
 ```
 
-Check: `#issueTitle`, `#statusBadge`, `#eventCount`, `#shownCount`, `.filter-btn`, `#copyLogsBtn`, `#autoScrollToggle`.
+Check: `.logs-header`, `.logs-breadcrumb`, `.logs-toolbar-group` (type filter chips), `.logs-scroll` with `.mc-log-row` entries, `.mc-button-segment` (Live/History tabs).
+
+Test log filtering:
+
+```bash
+# Click a type filter chip (.mc-chip.is-interactive) using @ref
+agent-browser --session risoluto-qa snapshot -i
+agent-browser --session risoluto-qa click @e<N>
+agent-browser --session risoluto-qa wait 500
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/logs-filtered.png
+```
+
+Test search:
+
+```bash
+agent-browser --session risoluto-qa snapshot -i
+# Fill .mc-input.logs-search using @ref
+agent-browser --session risoluto-qa fill @e<N> "test"
+agent-browser --session risoluto-qa wait 500
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/logs-search.png
+agent-browser --session risoluto-qa fill @e<N> ""
+```
 
 Navigate back:
 
 ```bash
-agent-browser --session risoluto-qa click ".back-link"
+# Click breadcrumb link (.logs-breadcrumb) using @ref
+agent-browser --session risoluto-qa snapshot -i
+agent-browser --session risoluto-qa click @e<N>
 agent-browser --session risoluto-qa wait --load networkidle
 ```
 
-#### Step 3g — Responsive Testing
+#### Step 3f — Setup Wizard
 
 ```bash
+agent-browser --session risoluto-qa open http://127.0.0.1:4000/setup
+agent-browser --session risoluto-qa wait --load networkidle
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/setup-wizard.png
+agent-browser --session risoluto-qa snapshot -i
+agent-browser --session risoluto-qa errors
+```
+
+Check: `.setup-steps`, `.setup-step-indicator`, `.setup-title` render correctly.
+
+#### Step 3g — Settings Page
+
+```bash
+agent-browser --session risoluto-qa open http://127.0.0.1:4000/settings
+agent-browser --session risoluto-qa wait --load networkidle
+agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/settings-page.png
+agent-browser --session risoluto-qa snapshot -i
+agent-browser --session risoluto-qa errors
+```
+
+#### Step 3h — Responsive Testing
+
+```bash
+agent-browser --session risoluto-qa open http://127.0.0.1:4000
+agent-browser --session risoluto-qa wait --load networkidle
+
 agent-browser --session risoluto-qa set viewport 1920 1080
 agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/viewport-desktop.png
 
@@ -290,7 +337,20 @@ agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/scree
 agent-browser --session risoluto-qa set viewport 1280 720
 ```
 
-#### Step 3h — Final Error Check
+#### Step 3i — Theme Toggle
+
+```bash
+# Test dark mode
+agent-browser --session risoluto-qa set media dark
+agent-browser --session risoluto-qa wait 500
+agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/theme-dark.png
+
+# Reset to light
+agent-browser --session risoluto-qa set media light
+agent-browser --session risoluto-qa wait 500
+```
+
+#### Step 3j — Final Error Check
 
 ```bash
 agent-browser --session risoluto-qa errors
@@ -324,8 +384,8 @@ agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-o
 Append each issue to `docs/archive/dogfood-output/report.md` immediately with:
 
 - severity (consult `references/issue-taxonomy.md`)
-- page (`/` or `/logs/:issue_identifier`)
-- element (ID or selector)
+- page (route path)
+- element (class or selector)
 - summary
 - expected vs actual behavior
 - screenshot or video evidence filename
@@ -387,7 +447,7 @@ The agent will navigate the page, identify 5-8 design issues (hierarchy, spacing
 
 - Prefer one clear screenshot over many low-signal captures.
 - If the issue is interactive, capture both the triggering step and the result.
-- Name whether the finding is on `/` or `/logs/:issue_identifier`.
+- Name the route path where the finding was observed.
 - If the change is supposed to affect a specific selector or control, name it in the report.
 - Report pass or fail from evidence, not vibes.
 
@@ -411,7 +471,8 @@ agent-browser click @e1              # Now use new refs
 - `snapshot -i` — interactive elements only (buttons, inputs, links)
 - `snapshot -i -C` — include cursor-interactive elements (custom clickable divs)
 - `snapshot -c` — compact (remove empty structural elements)
-- `snapshot -s "#detailPanel"` — scope to a specific element
+- `snapshot -s ".issue-inspector"` — scope to a specific element
+- `snapshot -d 3` — limit depth
 
 ## DOM-Level Diffing
 
@@ -438,12 +499,13 @@ agent-browser --session risoluto-qa close   # Named session
 |---|---|---|
 | Server won't start | Missing `MASTER_KEY` | Set `MASTER_KEY="local-qa-key"` in env before starting |
 | Server won't start | Missing `LINEAR_API_KEY` | Ensure `LINEAR_API_KEY` is exported in your shell |
-| Connection refused on :4000 | Server didn't start or crashed | Check `/tmp/risoluto-qa-dev.log` or terminal output for errors |
+| Connection refused on :4000 | Server didn't start or crashed | Check terminal output for errors |
 | Port already in use | Another instance running | Kill existing: `lsof -ti:4000 \| xargs kill` |
 | agent-browser hangs | Stale session | Run `agent-browser session list` then close stale sessions |
 | Screenshots are empty/blank | Page not loaded | Add `agent-browser wait --load networkidle` before screenshot |
 | `zsh: read-only variable` | Used `status` as var name | Use `rc` or `result` — `status` is reserved in zsh |
 | `snapshot` returns no refs | All elements are non-interactive | Use `snapshot` without `-i`, or use `snapshot -i -C` |
+| Setup guard redirects | Server not configured | Complete `/setup` wizard first, or the guard redirects all routes to `/setup` |
 
 ## Agent Compatibility
 
@@ -459,6 +521,6 @@ This skill uses **`agent-browser` CLI commands** run via bash/shell. All command
 
 | Reference | When to read |
 |---|---|
-| [references/dashboard-map.md](references/dashboard-map.md) | When you need current routes, selectors, or key UI elements for dashboard and logs verification |
+| [references/dashboard-map.md](references/dashboard-map.md) | When you need current routes, selectors, or key UI elements for any page |
 | [references/command-reference.md](references/command-reference.md) | When you need the full agent-browser command catalog |
 | [references/issue-taxonomy.md](references/issue-taxonomy.md) | When categorizing issues found during Full QA |

@@ -1,6 +1,6 @@
 # Issue Taxonomy
 
-Severity levels and exploration checklist for Full QA workflow. Use when categorizing issues found during dashboard testing.
+Severity levels and exploration checklist for Full QA workflow. Use when categorizing issues found during visual verification.
 
 ## Severity Levels
 
@@ -8,11 +8,13 @@ Severity levels and exploration checklist for Full QA workflow. Use when categor
 
 Issues that prevent core functionality from working.
 
-- Dashboard doesn't load / blank page
+- Page doesn't load / blank page / white screen
 - JavaScript exceptions that break rendering
-- Data not displayed (all columns empty when data exists)
-- Detail panel fails to open
+- Data not displayed (board empty when issues exist)
+- Inspector drawer fails to open
 - API responses not rendered
+- Setup guard blocks all routes unexpectedly
+- SSE connection fails (no live updates)
 
 ### High
 
@@ -23,6 +25,9 @@ Issues that significantly degrade usability.
 - Data displayed incorrectly (wrong counts, mismatched issue IDs)
 - Missing content that should be visible
 - Console errors on page load
+- Sidebar navigation broken
+- Kanban drag-and-drop non-functional
+- Theme toggle doesn't apply
 
 ### Medium
 
@@ -31,10 +36,12 @@ Issues that affect polish or secondary functionality.
 - Visual regressions (alignment, spacing, colors off)
 - Responsive layout issues at tablet/mobile sizes
 - Hover/focus states missing or incorrect
-- Animation glitches
+- Animation glitches (`.fade-in`, `.expand-in`, `.stagger-item`)
 - Inconsistent typography or spacing
 - Scrollbar issues
 - Truncation problems
+- Collapsible sections don't expand/collapse
+- Status tint colors incorrect
 
 ### Low
 
@@ -45,6 +52,7 @@ Minor cosmetic issues.
 - Missing hover cursors
 - Inconsistent icon sizing
 - Subtle color inconsistencies
+- Animation timing slightly off
 
 ### Infrastructure
 
@@ -66,65 +74,83 @@ Issues that prevent testing from starting or completing.
 - [ ] Console has no warnings or errors
 - [ ] All expected elements are visible
 - [ ] Content renders within 3 seconds
+- [ ] Setup guard doesn't redirect when server is configured
 
-### Kanban board
+### Overview (`/`)
 
-- [ ] All four columns visible and correctly labeled
-- [ ] Column headings show correct counts
-- [ ] Cards display ID, title, priority, labels
-- [ ] Cards have correct visual treatment per state (running glow, retrying amber)
-- [ ] Empty state cards show placeholder text
+- [ ] Hero band renders with metrics grid (`.overview-hero-band`)
+- [ ] Live metrics show Running, Queue, Rate limit, Attention
+- [ ] Attention zone lists blocking issues (`.overview-attention-zone`)
+- [ ] Collapsible sections toggle (health, tokens, stalls, recent, terminal)
+- [ ] Getting started card shows for empty state
+- [ ] Secondary sidebar renders health and token info
 
-### Interactions
+### Queue / Kanban (`/queue`)
 
-- [ ] Filter buttons switch active state
-- [ ] Filter actually hides/shows correct cards
-- [ ] Search input filters cards by text
-- [ ] Card click opens detail panel
-- [ ] Detail panel close button works
-- [ ] Refresh button updates data
+- [ ] Board renders with kanban columns (`.kanban-board`)
+- [ ] Columns show colored status dots (`.kanban-column-dot`)
+- [ ] Column counts match card counts
+- [ ] Cards display identifier, title, priority, labels (`.kanban-card`)
+- [ ] Card lifecycle steps render correctly
+- [ ] Cards have correct visual treatment per `data-status`
+- [ ] Empty columns show empty state (`.mc-empty-state`)
+- [ ] Toolbar renders (`.mc-toolbar.queue-toolbar`)
+- [ ] Drag-and-drop works between columns
 
-### Detail panel
+### Issue Inspector
 
-- [ ] All fields populate when card is selected
-- [ ] External link opens correct URL
-- [ ] Model input is editable
-- [ ] Reasoning dropdown has all options
-- [ ] Activity log displays events
-- [ ] Retry history section populates when applicable
-- [ ] Save Model and Refresh Detail buttons work
-- [ ] Logs link navigates to correct logs page
+- [ ] Opens as drawer on card click (`.issue-inspector.queue-drawer`)
+- [ ] Identifier and title populate (`.issue-identifier`, `.issue-title`)
+- [ ] Summary strip shows KPIs (`.issue-summary-strip`)
+- [ ] Header actions work (Logs, Tracker, Close)
+- [ ] Collapsible sections expand (description, retry, steer, activity, attempts)
+- [ ] Close button dismisses drawer (`.drawer-close-btn`)
+- [ ] Full issue page also works at `/issues/:id`
 
-### Logs page
+### Logs page (`/logs/:id`)
 
-- [ ] Issue title and status badge populate
-- [ ] Event and shown counts update as filters change
-- [ ] Filter buttons switch active state and narrow the stream correctly
-- [ ] Copy Logs button succeeds without UI breakage
-- [ ] Auto-scroll toggle behaves predictably
-- [ ] Refresh repaints data without console or page errors
+- [ ] Breadcrumb renders (`.logs-breadcrumb`)
+- [ ] Live/History tabs toggle (`.mc-button-segment`)
+- [ ] Type filter chips toggle (`.mc-chip.is-interactive`)
+- [ ] Log rows render with color-coded left stripes (`.mc-log-row`)
+- [ ] Expandable rows show payload on click
+- [ ] Search input filters logs (`.mc-input.logs-search`)
+- [ ] Copy button works (`.logs-icon-btn`)
+- [ ] Auto-scroll follow toggle works
+- [ ] New events indicator appears (`.logs-new-indicator`)
 
-### Status bar
+### Setup wizard (`/setup`)
 
-- [ ] Token counts display and update
-- [ ] Uptime value is sensible
-- [ ] Rate limit indicator shows current state
-- [ ] Timestamp updates on refresh
+- [ ] Step indicators render (`.setup-step-indicator`)
+- [ ] Steps progress correctly
+- [ ] Project grid shows selectable cards (`.setup-project-grid`)
+- [ ] Form inputs are functional
+
+### App shell
+
+- [ ] Sidebar items navigate correctly (`.sidebar-item`)
+- [ ] Active item highlighted (`.sidebar-item.is-active`)
+- [ ] Count badges update (`.sidebar-item-badge`)
+- [ ] Sidebar collapses/expands (`.sidebar-collapse-toggle`)
+- [ ] Header brand renders (`.header-brand`)
+- [ ] Command palette opens with Cmd+K (`.header-command-trigger`)
+- [ ] Theme toggle works
 
 ### Visual design
 
-- [ ] Dot grid background renders cleanly
-- [ ] Header glass effect (backdrop blur) visible
-- [ ] Card shadows appear on hover
-- [ ] Transitions are smooth (detail panel slide-in)
-- [ ] Colors match design tokens (primary: #bb4a31)
-- [ ] Fonts load correctly (system font stack)
+- [ ] Copper brand accent used correctly (`--interactive-primary: #9a472b`)
+- [ ] Status colors match tokens (running=green, retrying=amber, blocked=red)
+- [ ] Card stagger animations play (`.stagger-item`)
+- [ ] Page transitions are smooth (`.fade-in`)
+- [ ] Section expand animations work (`.expand-in`)
+- [ ] Dark mode renders correctly (`data-theme="dark"`)
+- [ ] Fonts load correctly (Space Grotesk headings, Manrope body, IBM Plex Mono code)
 
 ### Responsive
 
 - [ ] Desktop (1920x1080): full layout, all columns visible
 - [ ] Laptop (1280x720): all columns visible, may scroll horizontally
-- [ ] Tablet (768x1024): usable layout
+- [ ] Tablet (768x1024): usable layout, sidebar may collapse
 - [ ] Mobile (375x812): content accessible, may stack
 
 ### Infrastructure
@@ -134,5 +160,4 @@ Issues that prevent testing from starting or completing.
 - [ ] `LINEAR_API_KEY` is set in environment
 - [ ] agent-browser is installed and bundled Chrome is available
 - [ ] `agent-browser.json` config exists at project root
-- [ ] Preflight script (`scripts/preflight.sh`) passes
-
+- [ ] Preflight script passes
