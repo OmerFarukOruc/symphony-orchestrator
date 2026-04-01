@@ -130,6 +130,28 @@ describe("deriveWebhookConfig via deriveServiceConfig", () => {
     });
   });
 
+  it("accepts camelCase webhook keys and numeric strings from API-style payloads", () => {
+    const config = deriveServiceConfig(
+      createWorkflow({
+        webhook: {
+          webhookUrl: "https://hooks.example.com/linear",
+          webhookSecret: "whsec_test",
+          pollingStretchMs: "120000",
+          pollingBaseMs: "15000",
+          healthCheckIntervalMs: "60000",
+        },
+      }),
+    );
+
+    expect(config.webhook).toEqual({
+      webhookUrl: "https://hooks.example.com/linear",
+      webhookSecret: "whsec_test",
+      pollingStretchMs: 120000,
+      pollingBaseMs: 15000,
+      healthCheckIntervalMs: 60000,
+    });
+  });
+
   it("uses defaults for omitted numeric fields when webhook_url is present", () => {
     const config = deriveServiceConfig(
       createWorkflow({

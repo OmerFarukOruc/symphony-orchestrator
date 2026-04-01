@@ -19,13 +19,15 @@ import type { WriteAuditLog } from "./write-audit.js";
  *   did not supply a matching `Authorization: Bearer <token>` header.
  */
 
-// eslint-disable-next-line sonarjs/no-hardcoded-ip -- intentional loopback address check for write authorization
-const LOOPBACK_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-function isLoopback(remoteAddress: string | undefined): boolean {
+/**
+ * Node may surface local clients as any address in 127.0.0.0/8, including
+ * IPv6-mapped variants when the listener is dual-stack.
+ */
+export function isLoopbackAddress(remoteAddress: string | undefined): boolean {
   if (!remoteAddress) return false;
-  return LOOPBACK_ADDRESSES.has(remoteAddress);
+  return remoteAddress === "::1" || remoteAddress.startsWith("127.") || remoteAddress.startsWith("::ffff:127.");
 }
 
 export interface WriteGuardOptions {
@@ -58,7 +60,7 @@ export function createWriteGuard(
     }
 
     const remote = req.socket.remoteAddress;
-    const fromLoopback = isLoopback(remote);
+    const fromLoopback = isLoopbackAddress(remote);
 
     if (writeToken) {
       const authorization = req.get("authorization") ?? "";

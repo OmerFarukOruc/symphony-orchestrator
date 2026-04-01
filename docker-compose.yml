@@ -16,6 +16,7 @@ services:
       MASTER_KEY: ${MASTER_KEY:-}
       DATA_DIR: /data
       RISOLUTO_BIND: "0.0.0.0"
+      RISOLUTO_TRUST_PROXY: "true"
       RISOLUTO_HOST_WORKSPACE_ROOT: ${RISOLUTO_HOST_WORKSPACE_ROOT:-}
       RISOLUTO_HOST_ARCHIVE_DIR: ${RISOLUTO_HOST_ARCHIVE_DIR:-}
       RISOLUTO_CONTAINER_WORKSPACE_ROOT: /data/workspaces
@@ -44,8 +45,7 @@ services:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
     command: tunnel --no-autoupdate run
-    networks:
-      - risoluto-internal
+    network_mode: "service:risoluto"
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
     depends_on:

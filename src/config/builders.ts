@@ -31,6 +31,23 @@ interface DeriveServiceConfigOptions {
   secretResolver?: (name: string) => string | undefined;
 }
 
+function pickConfigValue(record: Record<string, unknown>, snakeCaseKey: string, camelCaseKey: string): unknown {
+  return record[snakeCaseKey] ?? record[camelCaseKey];
+}
+
+function asNumberish(value: unknown, fallback: number): number {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      const parsed = Number(trimmed);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+  return asNumber(value, fallback);
+}
+
 /**
  * Build the tracker configuration subsection.
  */
@@ -212,15 +229,19 @@ function deriveWebhookConfig(
   webhook: Record<string, unknown>,
   secretResolver?: (name: string) => string | undefined,
 ): ServiceConfig["webhook"] | null {
-  const webhookUrl = resolveConfigString(webhook.webhook_url, secretResolver) || null;
+  const webhookUrl = resolveConfigString(pickConfigValue(webhook, "webhook_url", "webhookUrl"), secretResolver) || null;
   if (!webhookUrl) return null;
 
   return {
     webhookUrl,
-    webhookSecret: resolveConfigString(webhook.webhook_secret, secretResolver) || "",
-    pollingStretchMs: asNumber(webhook.polling_stretch_ms, 120000),
-    pollingBaseMs: asNumber(webhook.polling_base_ms, 15000),
-    healthCheckIntervalMs: asNumber(webhook.health_check_interval_ms, 300000),
+    webhookSecret:
+      resolveConfigString(pickConfigValue(webhook, "webhook_secret", "webhookSecret"), secretResolver) || "",
+    pollingStretchMs: asNumberish(pickConfigValue(webhook, "polling_stretch_ms", "pollingStretchMs"), 120000),
+    pollingBaseMs: asNumberish(pickConfigValue(webhook, "polling_base_ms", "pollingBaseMs"), 15000),
+    healthCheckIntervalMs: asNumberish(
+      pickConfigValue(webhook, "health_check_interval_ms", "healthCheckIntervalMs"),
+      300000,
+    ),
   };
 }
 

@@ -132,6 +132,52 @@ describe("registerConfigApi", () => {
     }
   });
 
+  it("expands dotted keys inside the patch envelope into nested overlay objects", async () => {
+    const dir = await createTempDir();
+    const overlayStore = new ConfigOverlayStore(path.join(dir, "config", "overlay.yaml"), createLogger());
+    await overlayStore.start();
+
+    const app = express();
+    app.use(express.json());
+    registerConfigApi(app, {
+      getEffectiveConfig: () => ({}),
+      configOverlayStore: overlayStore,
+    });
+
+    const { server, baseUrl } = await startServer(app);
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/config/overlay`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          patch: {
+            "webhook.webhookUrl": "https://hooks.example.com/linear",
+            "webhook.healthCheckIntervalMs": 60000,
+          },
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect((await response.json()).overlay).toEqual({
+        webhook: {
+          webhookUrl: "https://hooks.example.com/linear",
+          healthCheckIntervalMs: 60000,
+        },
+      });
+    } finally {
+      await overlayStore.stop();
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
+    }
+  });
+
   it("returns validation errors for invalid payloads and method mismatches", async () => {
     const dir = await createTempDir();
     const overlayStore = new ConfigOverlayStore(path.join(dir, "config", "overlay.yaml"), createLogger());

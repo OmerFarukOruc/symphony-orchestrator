@@ -92,7 +92,7 @@ docker compose up --build
 ```
 
 > [!TIP]
-> Enable real-time Linear webhooks by starting with the tunnel profile: `docker compose --profile tunnel up -d`. Requires Cloudflare Tunnel configuration — see [Cloudflare Tunnel Guide](docs/CLOUDFLARE_TUNNEL.md).
+> Enable real-time Linear webhooks by starting with the tunnel profile: `docker compose --profile tunnel up -d`. Webhooks are the fast path; Risoluto still keeps a slower polling sweep as anti-entropy. See the [Cloudflare Tunnel Guide](docs/CLOUDFLARE_TUNNEL.md).
 
 **2. Open the dashboard**
 
@@ -144,7 +144,7 @@ codex login                       # ChatGPT/Codex subscription path
 
 ### 🏗️ Core Engine
 
-- **📋 Linear polling** — Automatic issue discovery with priority sorting
+- **📋 Adaptive polling** — Automatic issue discovery with priority sorting and slow anti-entropy sweeps when webhooks are healthy
 - **🔔 Linear webhooks** — Real-time event delivery via Cloudflare Tunnel (instant reaction to issue changes)
 - **🐳 Docker sandbox** — `node:22` / Ubuntu 24.04 containers with resource limits, OOM detection, security hardening
 - **📁 Workspace isolation** — One directory per issue with lifecycle hooks

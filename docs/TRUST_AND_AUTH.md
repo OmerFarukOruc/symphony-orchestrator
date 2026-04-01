@@ -187,6 +187,8 @@ The local loopback HTTP surface now includes operator-only configuration and sec
 
 These routes are intentionally loopback-local like the rest of the dashboard/API surface. They are suitable for trusted operator environments, not public exposure.
 
+Infrastructure-level tokens such as `CLOUDFLARE_TUNNEL_TOKEN` still belong in `.env` or your deploy-time secret manager. Application credentials and signing secrets are better stored in Risoluto's encrypted secrets store and referenced from overlay config.
+
 ---
 
 ## 🔔 Inbound Webhook Auth
@@ -206,6 +208,16 @@ The webhook secret comes from one of two sources:
 
 The tunnel endpoint (`webhooks.risolu.to`) is the only publicly reachable surface. All other API routes remain loopback-local.
 
+### Reverse Proxy Hop
+
+When Risoluto sits behind Cloudflare Tunnel, requests arrive with `X-Forwarded-For`. In Docker deployments, enable a single trusted proxy hop with:
+
+```bash
+RISOLUTO_TRUST_PROXY=true
+```
+
+This matches the recommended tunnel topology where `cloudflared` is the only reverse proxy in front of Risoluto.
+
 ---
 
 ## 🔑 Required Credentials
@@ -213,6 +225,7 @@ The tunnel endpoint (`webhooks.risolu.to`) is the only publicly reachable surfac
 | Credential        | Source                                                                             | Purpose                                   |
 | ----------------- | ---------------------------------------------------------------------------------- | ----------------------------------------- |
 | **Linear access** | `tracker.api_key` (typically `$LINEAR_API_KEY`)                                    | Polling issues from Linear                |
+| **Webhook secret** | `LINEAR_WEBHOOK_SECRET` in the encrypted secrets store, referenced from overlay   | Verifying inbound Linear webhook payloads |
 | **Codex auth**    | Either provider env vars on the host or `auth.json` under `codex.auth.source_home` | Authenticating model calls                |
 | **GitHub PAT**    | Optional, stored via setup wizard or `$GITHUB_TOKEN`                               | Creating pull requests for completed work |
 

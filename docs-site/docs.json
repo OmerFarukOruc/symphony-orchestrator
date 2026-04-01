@@ -209,7 +209,7 @@
   "integrations": {
     "posthog": {
       "apiKey": "phc_syRRQjw8q6HqFgTPnqwFEMKqJeeJBjLzmX8ysNfmVgyD",
-      "apiHost": "https://us.i.posthog.com"
+      "apiHost": "https://eu.i.posthog.com"
     }
   }
 }

@@ -1,6 +1,7 @@
 import type { Express, Response } from "express";
 
 import type { ConfigOverlayPort } from "./overlay.js";
+import { mergeOverlayMaps, normalizePathExpression, setOverlayPathValue } from "./overlay-helpers.js";
 import { isRecord } from "../utils/type-guards.js";
 
 function methodNotAllowed(response: Response): void {
@@ -44,6 +45,30 @@ interface ConfigApiDeps {
   getEffectiveConfig: () => Record<string, unknown>;
   configOverlayStore: ConfigOverlayPort;
   getConfigSchema?: () => Record<string, unknown>;
+}
+
+function normalizeOverlayPatch(patch: Record<string, unknown>): Record<string, unknown> {
+  let normalized: Record<string, unknown> = {};
+
+  for (const [key, rawValue] of Object.entries(patch)) {
+    const value = isRecord(rawValue) ? normalizeOverlayPatch(rawValue) : structuredClone(rawValue);
+
+    if (!key.includes(".")) {
+      normalized[key] = value;
+      continue;
+    }
+
+    const segments = normalizePathExpression(key);
+    if (segments.length === 0) {
+      continue;
+    }
+
+    const expanded: Record<string, unknown> = {};
+    setOverlayPathValue(expanded, segments, value, { dangerousKeyMode: "throw" });
+    normalized = mergeOverlayMaps(normalized, expanded);
+  }
+
+  return normalized;
 }
 
 export function registerConfigApi(app: Express, deps: ConfigApiDeps): void {
@@ -95,7 +120,7 @@ function registerOverlayRoute(app: Express, deps: ConfigApiDeps): void {
         return;
       }
 
-      const patch = isRecord(body.patch) ? body.patch : body;
+      const patch = isRecord(body.patch) ? normalizeOverlayPatch(body.patch) : body;
       const updated = await deps.configOverlayStore.applyPatch(patch);
       response.json({
         updated,

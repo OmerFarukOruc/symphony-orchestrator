@@ -45,6 +45,7 @@ export class HttpServer {
   ) {
     this.app = express();
     this.app.disable("x-powered-by");
+    this.app.set("trust proxy", process.env.RISOLUTO_TRUST_PROXY === "true" ? 1 : false);
     this.app.use(tracingMiddleware);
     this.app.use((request, response, next) => {
       const startedAt = process.hrtime.bigint();
