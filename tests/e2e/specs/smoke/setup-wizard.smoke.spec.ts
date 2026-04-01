@@ -23,7 +23,7 @@ test.describe("Setup Wizard Walkthrough", () => {
     await setup.navigate();
 
     await expect(setup.activeStepIndicator).toBeVisible({ timeout: 5000 });
-    await expect(setup.activeStepIndicator).toContainText("Protect secrets");
+    await expect(setup.activeStepIndicator).toContainText("Credentials");
   });
 
   // ── Master key step ─────────────────────────────────────────────
@@ -46,14 +46,14 @@ test.describe("Setup Wizard Walkthrough", () => {
     await setup.navigateAndWaitForKey();
     await setup.nextButton.click();
 
-    await expect(setup.activeStepIndicator).toContainText("Connect Linear");
+    await expect(setup.activeStepIndicator).toContainText("Linear");
     await expect(setup.doneStepIndicators).toHaveCount(1);
-    await expect(page.getByText("Connect to Linear")).toBeVisible();
+    await expect(page.getByText("Connect Linear")).toBeVisible();
   });
 
   // ── Linear project step ─────────────────────────────────────────
 
-  test("Linear step shows API key input and verify button", async () => {
+  test("Linear step shows API key input and check key button", async () => {
     await setup.navigateAndWaitForKey();
     await setup.nextButton.click();
 
@@ -96,11 +96,11 @@ test.describe("Setup Wizard Walkthrough", () => {
     await setup.navigateAndWaitForKey();
 
     await setup.stepIndicators.nth(1).click();
-    await expect(setup.activeStepIndicator).toContainText("Connect Linear");
-    await expect(page.getByText("Connect to Linear")).toBeVisible();
+    await expect(setup.activeStepIndicator).toContainText("Linear");
+    await expect(page.getByText("Connect Linear")).toBeVisible();
 
     await setup.stepIndicators.nth(4).click();
-    await expect(setup.activeStepIndicator).toContainText("Add GitHub");
+    await expect(setup.activeStepIndicator).toContainText("GitHub");
     await expect(page.getByText("Add GitHub access")).toBeVisible();
   });
 
@@ -110,10 +110,10 @@ test.describe("Setup Wizard Walkthrough", () => {
     await setup.navigateAndWaitForKey();
     await setup.nextButton.click();
 
-    await expect(page.getByText("Connect to Linear")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Connect Linear")).toBeVisible({ timeout: 5000 });
     await setup.skipButton.click();
 
-    await expect(setup.activeStepIndicator).toContainText("Add GitHub");
+    await expect(setup.activeStepIndicator).toContainText("GitHub");
     await expect(page.getByText("Add GitHub access")).toBeVisible();
   });
 
@@ -125,7 +125,7 @@ test.describe("Setup Wizard Walkthrough", () => {
     await setup.skipButton.click();
 
     await expect(setup.doneContainer).toBeVisible({ timeout: 5000 });
-    await expect(setup.doneTitle).toContainText("You're all set");
+    await expect(setup.doneTitle).toContainText("Setup complete");
   });
 
   // ── Done step ───────────────────────────────────────────────────
@@ -139,11 +139,11 @@ test.describe("Setup Wizard Walkthrough", () => {
     await setup.skipButton.click();
 
     await expect(setup.doneContainer).toBeVisible({ timeout: 5000 });
-    await expect(setup.doneTitle).toContainText("You're all set");
+    await expect(setup.doneTitle).toContainText("Setup complete");
     await expect(setup.stepIndicatorRow).toHaveCount(0);
     await expect(setup.goToDashboardButton).toBeVisible();
-    await expect(page.getByText("Create a test issue")).toBeVisible();
-    await expect(page.getByText("Create Risoluto label")).toBeVisible();
+    await expect(page.getByText("Create a practice issue")).toBeVisible();
+    await expect(page.getByText("Create the Risoluto label")).toBeVisible();
   });
 
   // ── Full walkthrough ────────────────────────────────────────────
@@ -156,7 +156,7 @@ test.describe("Setup Wizard Walkthrough", () => {
     await setup.nextButton.click();
 
     // Step 2: Linear Project -- verify key and select project
-    await expect(page.getByText("Connect to Linear")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Connect Linear")).toBeVisible({ timeout: 5000 });
     await expect(setup.doneStepIndicators).toHaveCount(1);
     await setup.linearApiKeyInput.fill("lin_api_test_key_123");
     await setup.verifyKeyButton.click();
@@ -165,23 +165,23 @@ test.describe("Setup Wizard Walkthrough", () => {
     await setup.nextButton.click();
 
     // Step 3: Repo Config
-    await expect(setup.activeStepIndicator).toContainText("Link repo", { timeout: 5000 });
+    await expect(setup.activeStepIndicator).toContainText("Repository", { timeout: 5000 });
     await expect(setup.doneStepIndicators).toHaveCount(2);
     await setup.skipButton.click();
 
     // Step 4: OpenAI Key
-    await expect(setup.activeStepIndicator).toContainText("Add OpenAI", { timeout: 5000 });
+    await expect(setup.activeStepIndicator).toContainText("OpenAI", { timeout: 5000 });
     await expect(setup.doneStepIndicators).toHaveCount(3);
     await setup.skipButton.click();
 
     // Step 5: GitHub Token
-    await expect(setup.activeStepIndicator).toContainText("Add GitHub", { timeout: 5000 });
+    await expect(setup.activeStepIndicator).toContainText("GitHub", { timeout: 5000 });
     await expect(setup.doneStepIndicators).toHaveCount(4);
     await setup.skipButton.click();
 
     // Done
     await expect(setup.doneContainer).toBeVisible({ timeout: 5000 });
-    await expect(setup.doneTitle).toContainText("You're all set");
+    await expect(setup.doneTitle).toContainText("Setup complete");
     await expect(setup.goToDashboardButton).toBeVisible();
   });
 });

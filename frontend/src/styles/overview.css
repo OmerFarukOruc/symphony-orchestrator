@@ -753,6 +753,12 @@
   flex-shrink: 0;
 }
 
+.overview-getting-started-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
 @media (max-width: 1100px) {
   .overview-hero-band,
   .overview-main-grid,

@@ -48,7 +48,7 @@ export class OverviewPage extends BasePage {
   // ── Recent Events ────────────────────────────────────────────────────
 
   get recentEventsSection(): Locator {
-    return this.page.getByText("Recent events");
+    return this.page.getByText("Latest activity");
   }
 
   get eventRows(): Locator {

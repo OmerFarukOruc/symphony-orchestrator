@@ -23,14 +23,20 @@
   font-family: var(--font-body);
   font-size: var(--text-sm);
   color: var(--text-muted);
+  transition: color var(--motion-fast) var(--ease-out-quart);
 }
 
 .setup-step-indicator.is-active {
   color: var(--text-primary);
+  font-weight: var(--font-semibold);
 }
 
 .setup-step-indicator.is-done {
   color: var(--status-running);
+}
+
+.setup-step-indicator.is-upcoming {
+  color: var(--text-subtle);
 }
 
 .setup-step-indicator.is-clickable {
@@ -59,23 +65,44 @@
   font-weight: var(--font-semibold);
   flex-shrink: 0;
   color: var(--text-muted);
+  transition:
+    border-color var(--motion-fast) var(--ease-out-quart),
+    background-color var(--motion-fast) var(--ease-out-quart),
+    color var(--motion-fast) var(--ease-out-quart);
 }
 
 .setup-step-indicator.is-active .setup-step-dot {
   border-color: var(--text-accent);
-  color: var(--text-accent);
+  background: var(--text-accent);
+  color: var(--bg-surface);
 }
 
 .setup-step-indicator.is-done .setup-step-dot {
   border-color: var(--status-running);
-  color: var(--status-running);
+  background: var(--status-running);
+  color: var(--bg-surface);
+}
+
+.setup-step-indicator.is-upcoming .setup-step-dot {
+  border-color: var(--border-stitch);
+  color: var(--text-subtle);
+}
+
+.setup-step-label {
+  white-space: nowrap;
 }
 
 .setup-step-connector {
   flex: 1;
-  height: 1px;
+  height: 2px;
   background: var(--border-stitch);
   margin: 0 var(--space-2);
+  position: relative;
+  overflow: hidden;
+}
+
+.setup-step-connector.is-filled {
+  background: var(--status-running);
 }
 
 /* Content panel */
@@ -321,11 +348,29 @@
 /* Actions row */
 .setup-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
+  gap: var(--space-3);
   margin-top: var(--space-5);
   padding-top: var(--space-4);
   border-top: var(--stroke-default) solid var(--border-stitch);
+}
+
+/* Left-aligned secondary actions (skip) */
+.setup-actions-secondary {
+  margin-right: auto;
+}
+
+/* Danger-zone reset area — visually separated from primary actions */
+.setup-danger-zone {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: var(--stroke-default) solid var(--border-stitch);
+}
+
+.setup-danger-zone .mc-button {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 
 /* Error message */

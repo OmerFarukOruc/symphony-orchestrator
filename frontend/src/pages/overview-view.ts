@@ -399,7 +399,20 @@ function createGettingStartedCard(onDismiss: () => void): HTMLElement {
     steps.append(step);
   }
 
-  card.append(dismiss, heading, desc, steps);
+  const cta = document.createElement("div");
+  cta.className = "overview-getting-started-actions";
+
+  const setupBtn = document.createElement("button");
+  setupBtn.className = "mc-button is-ghost is-sm";
+  setupBtn.type = "button";
+  setupBtn.textContent = "Review setup";
+  setupBtn.addEventListener("click", () => {
+    router.navigate("/setup");
+  });
+
+  cta.append(setupBtn);
+
+  card.append(dismiss, heading, desc, steps, cta);
   return card;
 }
 

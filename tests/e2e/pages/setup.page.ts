@@ -133,16 +133,16 @@ export class SetupPage extends BasePage {
     return this.page.locator(".setup-done-title");
   }
 
-  /** The "Go to Dashboard" button on the done step. */
+  /** The "Open dashboard" button on the done step. */
   get goToDashboardButton(): Locator {
-    return this.page.getByRole("button", { name: "Go to Dashboard" });
+    return this.page.getByRole("button", { name: /Open dashboard|Go to Dashboard/ });
   }
 
   // ── Shared controls ─────────────────────────────────────────────
 
-  /** Primary "Next" button. */
+  /** Primary "Next" / "Continue" button. */
   get nextButton(): Locator {
-    return this.page.locator("button.mc-button.is-primary", { hasText: /Next|Saving/ });
+    return this.page.locator("button.mc-button.is-primary", { hasText: /Next|Continue|Saving/ });
   }
 
   /** "Skip" button (ghost variant). */
@@ -150,9 +150,11 @@ export class SetupPage extends BasePage {
     return this.page.locator("button.mc-button.is-ghost", { hasText: /Skip/ });
   }
 
-  /** "Verify Key" / "Re-verify" button on the Linear step. */
+  /** "Check key" / "Check again" button on the Linear step. */
   get verifyKeyButton(): Locator {
-    return this.page.locator("button.mc-button.is-primary", { hasText: /Verify|Re-verify|Verifying/ });
+    return this.page.locator("button.mc-button.is-primary", {
+      hasText: /Check key|Check again|Checking|Verify|Re-verify|Verifying/,
+    });
   }
 
   /** Error message display. */

@@ -1,4 +1,5 @@
 import { api } from "../api";
+import { createEmptyState } from "../components/empty-state";
 import { createPageHeader } from "../components/page-header";
 import { createButton } from "../components/forms";
 import { toast } from "../ui/toast";
@@ -133,10 +134,13 @@ export function createAuditPage(): HTMLElement {
   page.append(table);
 
   /* ── Empty state ────────────────────────────── */
-  const emptyEl = document.createElement("div");
-  emptyEl.className = "audit-empty";
-  emptyEl.textContent =
-    "No audit entries match the current filters. Adjust the filters above, or wait for new configuration changes to arrive.";
+  const emptyEl = createEmptyState(
+    "No audit entries yet",
+    "Audit entries appear here when configuration changes are made. Adjust the filters above, or wait for new changes to arrive.",
+    undefined,
+    undefined,
+    "events",
+  );
   emptyEl.hidden = true;
   page.append(emptyEl);
 
