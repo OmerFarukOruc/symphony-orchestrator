@@ -9,7 +9,7 @@
  * - Metrics (backlog size, oldest age, DLQ count)
  */
 
-import { eq, and, isNull, or, lt, desc } from "drizzle-orm";
+import { eq, and, isNull, or, lt, desc, sql } from "drizzle-orm";
 
 import type { RisolutoDatabase } from "./database.js";
 import { webhookInbox } from "./schema.js";
@@ -189,7 +189,7 @@ export class SqliteWebhookInbox implements WebhookInboxStore {
 
   async getStats(): Promise<WebhookInboxStats> {
     const backlogRow = this.db
-      .select({ count: webhookInbox.id })
+      .select({ count: sql<number>`count(*)` })
       .from(webhookInbox)
       .where(
         and(
@@ -197,8 +197,8 @@ export class SqliteWebhookInbox implements WebhookInboxStore {
           or(isNull(webhookInbox.nextAttemptAt), lt(webhookInbox.nextAttemptAt, new Date().toISOString())),
         ),
       )
-      .all();
-    const backlogCount = backlogRow.length;
+      .get();
+    const backlogCount = backlogRow?.count ?? 0;
 
     const oldestRow = this.db
       .select({ receivedAt: webhookInbox.receivedAt })
@@ -206,16 +206,17 @@ export class SqliteWebhookInbox implements WebhookInboxStore {
       .where(eq(webhookInbox.status, "received"))
       .orderBy(webhookInbox.receivedAt)
       .limit(1)
-      .all();
-    const oldestBacklogAgeSeconds =
-      oldestRow.length > 0 ? Math.floor((Date.now() - new Date(oldestRow[0].receivedAt).getTime()) / 1000) : null;
+      .get();
+    const oldestBacklogAgeSeconds = oldestRow
+      ? Math.floor((Date.now() - new Date(oldestRow.receivedAt).getTime()) / 1000)
+      : null;
 
     const dlqRow = this.db
-      .select({ count: webhookInbox.id })
+      .select({ count: sql<number>`count(*)` })
       .from(webhookInbox)
       .where(eq(webhookInbox.status, "dead_letter"))
-      .all();
-    const dlqCount = dlqRow.length;
+      .get();
+    const dlqCount = dlqRow?.count ?? 0;
 
     // Count duplicates by checking how many deliveries were attempted but found duplicate
     // This is tracked externally via metrics, not in the DB
@@ -226,11 +227,10 @@ export class SqliteWebhookInbox implements WebhookInboxStore {
       .from(webhookInbox)
       .orderBy(desc(webhookInbox.receivedAt))
       .limit(1)
-      .all();
-    const lastDeliveryAgeSeconds =
-      lastDeliveryRow.length > 0
-        ? Math.floor((Date.now() - new Date(lastDeliveryRow[0].receivedAt).getTime()) / 1000)
-        : null;
+      .get();
+    const lastDeliveryAgeSeconds = lastDeliveryRow
+      ? Math.floor((Date.now() - new Date(lastDeliveryRow.receivedAt).getTime()) / 1000)
+      : null;
 
     return { backlogCount, oldestBacklogAgeSeconds, dlqCount, duplicateCount, lastDeliveryAgeSeconds };
   }

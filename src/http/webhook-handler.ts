@@ -193,18 +193,25 @@ export function handleWebhookLinear(deps: WebhookHandlerDeps, req: WebhookReques
   res.status(200).json({ ok: true });
 
   // 10. Fire-and-forget side-effects (async, after 200)
-  void inboxResult.then((result) => {
-    if (!result.isNew) {
-      deps.logger.debug({ deliveryId, type, action }, "duplicate webhook delivery — skipped");
-      return;
-    }
+  void inboxResult
+    .then((result) => {
+      if (!result.isNew) {
+        deps.logger.debug({ deliveryId, type, action }, "duplicate webhook delivery — skipped");
+        return;
+      }
 
-    // Record in health tracker
-    deps.recordVerifiedDelivery(eventType);
+      // Record in health tracker
+      deps.recordVerifiedDelivery(eventType);
 
-    // Entity-aware processing
-    processWebhookEvent(deps, type, action, body, issueId, issueIdentifier, usedPreviousSecret);
-  });
+      // Entity-aware processing
+      processWebhookEvent(deps, type, action, body, issueId, issueIdentifier, usedPreviousSecret);
+    })
+    .catch((error_: unknown) => {
+      deps.logger.error(
+        { error: error_ instanceof Error ? error_.message : String(error_), deliveryId, type, action },
+        "unhandled error in webhook side-effect processing",
+      );
+    });
 }
 
 /**
