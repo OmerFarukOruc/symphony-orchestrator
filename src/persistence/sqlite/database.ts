@@ -169,7 +169,7 @@ export function openDatabase(dbPath: string): RisolutoDatabase {
     | undefined;
   if (!versionRow || versionRow.version < 3) {
     sqlite
-      .prepare("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (?, ?)")
+      .prepare("INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)")
       .run(3, new Date().toISOString());
   }
 

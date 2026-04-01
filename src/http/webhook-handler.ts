@@ -153,9 +153,9 @@ export function handleWebhookLinear(deps: WebhookHandlerDeps, req: WebhookReques
     return;
   }
 
-  // 6. Replay rejection — webhookTimestamp must be within the allowed window
+  // 6. Replay rejection — webhookTimestamp must be within the allowed window (both directions for clock skew)
   const timestamp = body.webhookTimestamp;
-  if (timestamp > Date.now() || Date.now() - timestamp > REPLAY_WINDOW_MS) {
+  if (Math.abs(Date.now() - timestamp) > REPLAY_WINDOW_MS) {
     sendError(res, 401, "replay_rejected", "Webhook timestamp outside acceptable window");
     return;
   }
