@@ -479,6 +479,49 @@
   }
 }
 
+/* ============================================
+   LONG-CONTENT OVERFLOW GUARDS
+   Prevent layout breakage from long identifiers,
+   URLs, and titles across all pages
+   ============================================ */
+
+/* Mono-spaced identifiers that can get long (thread IDs, workspace keys) */
+.text-mono {
+  word-break: break-all;
+}
+
+/* Log messages with long unbroken strings */
+.mc-log-message {
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Event row message overflow */
+.event-row-message,
+.event-row-identifier {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Sidebar labels should never break layout */
+.sidebar-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Page header eyebrow (issue-identifier) overflow */
+.mc-strip .issue-identifier {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
 /* Touch-friendly tap targets */
 @media (pointer: coarse) {
   .mc-button,

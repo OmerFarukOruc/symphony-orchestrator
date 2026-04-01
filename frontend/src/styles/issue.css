@@ -39,12 +39,24 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.issue-header-title-block {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .issue-title {
   font-family: var(--font-heading);
   font-size: clamp(22px, 2vw, 30px);
   font-weight: var(--font-bold);
   letter-spacing: var(--tracking-tightest);
   line-height: var(--leading-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .issue-identifier {
@@ -54,6 +66,9 @@
   letter-spacing: var(--tracking-widest);
   text-transform: uppercase;
   font-feature-settings: var(--font-features-mono-num);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .issue-form-grid {

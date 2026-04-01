@@ -45,6 +45,15 @@
   padding: var(--space-3);
   border: 1px solid var(--border-stitch);
   background: var(--bg-elevated);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.attempt-meta-item strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .attempt-external-link {

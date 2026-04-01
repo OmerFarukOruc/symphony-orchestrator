@@ -303,7 +303,7 @@ function buildSummaryStrip(data: GitContextResponse): HTMLElement {
 function renderGitContext(page: HTMLElement, data: GitContextResponse): void {
   const body = page.querySelector(".git-page-body");
   if (!body) return;
-  body.innerHTML = "";
+  body.replaceChildren();
 
   // Always show the summary strip, even if there are repos
   body.append(buildSummaryStrip(data));
@@ -364,7 +364,7 @@ export function createGitPage(): HTMLElement {
       currentData = await api.getGitContext();
       renderGitContext(page, currentData);
     } catch {
-      body.innerHTML = "";
+      body.replaceChildren();
       body.append(
         createEmptyState(
           "Could not load git context",

@@ -453,6 +453,38 @@
   color: var(--color-copper-300);
 }
 
+.stale-banner-message {
+  flex: 1;
+  font-size: var(--text-xs);
+}
+
+.stale-banner-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-inline-start: auto;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-copper-200);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+.stale-banner-dismiss:hover {
+  background: color-mix(in srgb, var(--color-copper-500) 30%, transparent);
+  color: var(--color-copper-100);
+}
+
+.stale-banner-dismiss:focus-visible {
+  outline: 2px solid var(--color-copper-300);
+  outline-offset: 1px;
+}
+
 #stale-banner[hidden] {
   display: none;
 }

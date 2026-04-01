@@ -22,7 +22,25 @@ export function initShell(root: HTMLElement): { sidebarEl: HTMLElement; headerEl
   bannerEl.hidden = true;
   bannerEl.setAttribute("role", "alert");
   bannerEl.setAttribute("aria-live", "polite");
-  bannerEl.textContent = "State feed is stale — retrying every 5 seconds.";
+
+  const bannerMsg = document.createElement("span");
+  bannerMsg.className = "stale-banner-message";
+  bannerMsg.textContent = "State feed is stale \u2014 retrying every 5s.";
+
+  const bannerDismiss = document.createElement("button");
+  bannerDismiss.type = "button";
+  bannerDismiss.className = "stale-banner-dismiss";
+  bannerDismiss.textContent = "\u2715";
+  bannerDismiss.setAttribute("aria-label", "Dismiss stale state banner");
+  bannerDismiss.addEventListener("click", () => {
+    import("../state/polling.js")
+      .then((m) => m.dismissStaleBanner())
+      .catch(() => {
+        bannerEl.hidden = true;
+      });
+  });
+
+  bannerEl.append(bannerMsg, bannerDismiss);
 
   const headerEl = document.createElement("header");
   headerEl.className = "shell-header";

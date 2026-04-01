@@ -96,7 +96,7 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   refreshLabels: () => void;
 } {
   const { toolbar, filters, columns, onRefresh, onChange } = options;
-  toolbar.innerHTML = "";
+  toolbar.replaceChildren();
 
   const search = Object.assign(document.createElement("input"), {
     className: "mc-input",

@@ -9,7 +9,8 @@
 import { pollOnce, setPollingInterval } from "./polling";
 
 const SSE_URL = "/api/v1/events";
-const RECONNECT_DELAY_MS = 5_000;
+const BASE_RECONNECT_MS = 5_000;
+const MAX_RECONNECT_MS = 60_000;
 const CONNECTED_POLL_MS = 30_000;
 const DISCONNECTED_POLL_MS = 5_000;
 
@@ -30,6 +31,7 @@ const EVENT_DISPATCH_MAP = new Map<string, string>([
 
 let source: EventSource | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let consecutiveFailures = 0;
 
 export function connectEventSource(): void {
   if (source) return;
@@ -40,11 +42,17 @@ function openConnection(): void {
   const eventSource = new EventSource(SSE_URL);
 
   eventSource.onopen = () => {
+    consecutiveFailures = 0;
     setPollingInterval(CONNECTED_POLL_MS);
   };
 
   eventSource.onmessage = (event: MessageEvent) => {
-    const data = JSON.parse(String(event.data)) as { type: string; payload?: unknown };
+    let data: { type: string; payload?: unknown };
+    try {
+      data = JSON.parse(String(event.data)) as { type: string; payload?: unknown };
+    } catch {
+      return; // Silently ignore malformed SSE payloads
+    }
     if (LIFECYCLE_EVENTS.has(data.type)) {
       pollOnce().catch(() => {});
       const payload = data.payload as { identifier?: string } | undefined;
@@ -70,10 +78,13 @@ function openConnection(): void {
   eventSource.onerror = () => {
     setPollingInterval(DISCONNECTED_POLL_MS);
     cleanup();
+    consecutiveFailures += 1;
+    // Exponential backoff: 5s -> 10s -> 20s -> 40s -> 60s (cap)
+    const delay = Math.min(BASE_RECONNECT_MS * 2 ** (consecutiveFailures - 1), MAX_RECONNECT_MS);
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
       openConnection();
-    }, RECONNECT_DELAY_MS);
+    }, delay);
   };
 
   source = eventSource;

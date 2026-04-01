@@ -8,7 +8,14 @@ export function createRawMetricsDrawer(onClose: () => void): RawMetricsDrawerCon
   root.className = "mc-drawer observability-raw-drawer";
   const header = document.createElement("div");
   header.className = "observability-raw-header";
-  header.innerHTML = `<div><h2>Raw /metrics</h2><p class="text-secondary">Prometheus text payload from the latest fetch. Press x to close.</p></div>`;
+  const headerContent = document.createElement("div");
+  const headerHeading = document.createElement("h2");
+  headerHeading.textContent = "Raw /metrics";
+  const headerDetail = document.createElement("p");
+  headerDetail.className = "text-secondary";
+  headerDetail.textContent = "Prometheus text payload from the latest fetch. Press x to close.";
+  headerContent.append(headerHeading, headerDetail);
+  header.append(headerContent);
   const close = document.createElement("button");
   close.type = "button";
   close.className = "mc-button is-ghost";

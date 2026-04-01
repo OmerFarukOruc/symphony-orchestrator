@@ -47,6 +47,13 @@
   letter-spacing: var(--tracking-tight);
   line-height: var(--leading-tight);
   font-feature-settings: var(--font-features-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .page-subtitle {

@@ -138,7 +138,7 @@ function buildWorkspaceSection(data: WorkspaceInventoryResponse, onRemove: (key:
 function renderWorkspaces(page: HTMLElement, data: WorkspaceInventoryResponse, onRemove: (key: string) => void): void {
   const body = page.querySelector(".ws-page-body");
   if (!body) return;
-  body.innerHTML = "";
+  body.replaceChildren();
 
   body.append(buildStatsRow(data), buildWorkspaceSection(data, onRemove));
 }
@@ -200,7 +200,7 @@ export function createWorkspacesPage(): HTMLElement {
       currentData = await api.getWorkspaces();
       renderWorkspaces(page, currentData, handleRemove);
     } catch {
-      body.innerHTML = "";
+      body.replaceChildren();
       body.append(
         createEmptyState(
           "Could not load workspaces",

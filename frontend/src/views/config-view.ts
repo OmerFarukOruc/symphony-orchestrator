@@ -141,7 +141,7 @@ export function createConfigPage(options: ConfigPageOptions = {}): HTMLElement {
     );
 
     if (entries.length === 0 && state.mode === "tree") {
-      editorPanel.innerHTML = "";
+      editorPanel.replaceChildren();
       editorPanel.append(
         renderEmptyState(() => {
           state.mode = "path";
@@ -172,7 +172,7 @@ export function createConfigPage(options: ConfigPageOptions = {}): HTMLElement {
   }
 
   function renderOverlayEditor(): void {
-    editorPanel.innerHTML = "";
+    editorPanel.replaceChildren();
     editorPanel.append(
       renderOverlayPanel(state, {
         onMode: (mode) => {

@@ -47,7 +47,7 @@ export function createLiveLog(): LiveLog {
   }
 
   function clear(): void {
-    el.innerHTML = "";
+    el.replaceChildren();
     el.appendChild(empty);
     hasEntries = false;
   }

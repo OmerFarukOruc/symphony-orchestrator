@@ -29,6 +29,11 @@ function updateActiveState(sidebarEl: HTMLElement): void {
     const exact = item.dataset.exact === "true";
     const active = exact ? current === path : current === path || (path !== "/" && current.startsWith(`${path}/`));
     item.classList.toggle("is-active", active);
+    if (active) {
+      item.setAttribute("aria-current", "page");
+    } else {
+      item.removeAttribute("aria-current");
+    }
   }
 }
 
@@ -88,6 +93,7 @@ function buildNavItems(groupEl: HTMLElement, groupName: string, onNavigate: () =
     badgeSpan.className = "sidebar-item-badge mc-badge is-sm";
     badgeSpan.dataset.count = "0";
     badgeSpan.hidden = true;
+    badgeSpan.setAttribute("aria-hidden", "true");
 
     const hotkeySpan = document.createElement("span");
     hotkeySpan.className = "sidebar-hotkey";

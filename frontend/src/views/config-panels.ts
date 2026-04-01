@@ -11,7 +11,7 @@ export function renderSchemaPanel(
     onSelectPath: (path: string) => void;
   },
 ): void {
-  container.innerHTML = "";
+  container.replaceChildren();
 
   const header = document.createElement("button");
   header.type = "button";
@@ -270,7 +270,7 @@ function renderPathEditor(
 }
 
 export function renderDiffPanel(container: HTMLElement, state: ConfigState): void {
-  container.innerHTML = "";
+  container.replaceChildren();
 
   const overlayCount = Object.keys(flattenConfig(state.overlay, "overlay")).length;
 
