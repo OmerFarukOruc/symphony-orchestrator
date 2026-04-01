@@ -1,0 +1,294 @@
+/* ============================================
+   POLISH DELIGHT
+   Subtle satisfaction for success states,
+   operator pride moments, and interaction feedback.
+
+   Brand: "Transparent. Calm. Inevitable."
+   Every touch serves the operator mindset.
+   No decorative animation. Delight through precision.
+   ============================================ */
+
+/* ── Success state — completed/terminal items ────────── */
+/* A brief, calm accent flash when a completed item first
+   renders, signaling "this finished cleanly."             */
+
+.overview-terminal-item[data-status="completed"],
+.overview-terminal-item[data-status="closed"] {
+  border-left: 3px solid color-mix(in srgb, var(--status-completed) 50%, var(--border-stitch));
+}
+
+.overview-terminal-item.delight-entered {
+  animation: delightTerminalEnter var(--motion-medium) var(--ease-out-quart) both;
+}
+
+@keyframes delightTerminalEnter {
+  0% {
+    border-left-color: var(--status-running);
+    opacity: 0.7;
+  }
+  60% {
+    border-left-color: color-mix(in srgb, var(--status-running) 40%, var(--status-completed));
+    opacity: 1;
+  }
+  100% {
+    border-left-color: color-mix(in srgb, var(--status-completed) 50%, var(--border-stitch));
+  }
+}
+
+/* ── "All clear" attention zone — calm pride ─────────── */
+/* When nothing needs intervention, shift from neutral to
+   a quiet confidence indicator. Not celebration — poise. */
+
+.overview-attention-zone.is-all-clear .overview-teaching-empty {
+  border-color: color-mix(in srgb, var(--status-running) 25%, var(--border-default));
+  border-style: solid;
+  position: relative;
+}
+
+.overview-attention-zone.is-all-clear .overview-teaching-empty::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--status-running) 40%, transparent) 0%,
+    color-mix(in srgb, var(--status-running) 12%, transparent) 100%
+  );
+  opacity: 0;
+  animation: delightAllClearLine var(--motion-slow) var(--ease-out-quart) 200ms both;
+}
+
+@keyframes delightAllClearLine {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+.overview-attention-zone.is-all-clear .overview-teaching-empty-title {
+  color: var(--status-running);
+}
+
+/* ── Setup wizard done — achievement moment ──────────── */
+/* The "Ready" badge and title enter with a measured reveal
+   that communicates "you've reached the other side."      */
+
+.setup-done.delight-entered .setup-done-icon {
+  animation: delightDoneBadge var(--motion-medium) var(--ease-out-quint) both;
+}
+
+.setup-done.delight-entered .setup-done-title {
+  animation: delightDoneTitle var(--motion-medium) var(--ease-out-quart) 80ms both;
+}
+
+.setup-done.delight-entered .setup-done-desc {
+  animation: delightDoneTitle var(--motion-medium) var(--ease-out-quart) 140ms both;
+}
+
+@keyframes delightDoneBadge {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes delightDoneTitle {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Step connector fill animation — flows left to right
+   as the wizard reaches the final step.                  */
+
+.setup-step-connector.delight-fill {
+  position: relative;
+  background: var(--border-stitch);
+  overflow: hidden;
+}
+
+.setup-step-connector.delight-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--status-running);
+  transform-origin: left;
+  animation: delightConnectorFill var(--motion-slow) var(--ease-out-expo) both;
+}
+
+@keyframes delightConnectorFill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Done step dots finalize with a brief scale-in */
+.setup-step-indicator.is-done .setup-step-dot.delight-check {
+  animation: delightDotCheck var(--motion-fast) var(--ease-out-quint) both;
+}
+
+@keyframes delightDotCheck {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ── Button click satisfaction ───────────────────────── */
+/* Primary buttons get a brief inner flash on click.
+   Communicates "action registered" without delay.        */
+
+.mc-button.is-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.mc-button.is-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg-surface) 20%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 60ms ease-out;
+}
+
+.mc-button.is-primary.delight-click::after {
+  animation: delightClickFlash 300ms var(--ease-out-quart) both;
+}
+
+@keyframes delightClickFlash {
+  0% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── Form submission confirmation ────────────────────── */
+/* Settings save / form submit gets a border-color flash. */
+
+.setup-callout-success.delight-confirmed {
+  animation: delightConfirm var(--motion-medium) var(--ease-out-quart) both;
+}
+
+.setup-quick-start-card.is-success.delight-confirmed {
+  animation: delightConfirm var(--motion-medium) var(--ease-out-quart) both;
+}
+
+@keyframes delightConfirm {
+  0% {
+    border-color: var(--status-running);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-running) 20%, transparent);
+  }
+  100% {
+    border-color: var(--status-running);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* ── Settings mode toggle — satisfying slide ─────────── */
+/* Active indicator transitions smoothly between buttons. */
+
+.settings-mode-btn.is-active {
+  transition:
+    background 200ms var(--ease-out-quart),
+    color 150ms var(--ease-out-quart),
+    box-shadow 200ms var(--ease-out-quart),
+    font-weight 0ms;
+}
+
+.settings-mode-btn:not(.is-active) {
+  transition:
+    background 150ms var(--ease-out-quart),
+    color 150ms var(--ease-out-quart),
+    box-shadow 150ms var(--ease-out-quart);
+}
+
+/* ── Collapsible section chevron — smooth rotate ─────── */
+/* Already transitions in overview.css, enhance the ease. */
+
+.overview-collapsible-chevron {
+  transition: transform var(--motion-fast) var(--ease-out-quint);
+}
+
+/* ── Getting-started step numbers — stagger entrance ─── */
+
+.overview-getting-started-step.delight-stagger {
+  animation: delightStepIn var(--motion-medium) var(--ease-out-quart) both;
+  animation-delay: calc(var(--step-index, 0) * 60ms);
+}
+
+@keyframes delightStepIn {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Reduced motion — respect user preference ────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .overview-terminal-item.delight-entered,
+  .setup-done.delight-entered .setup-done-icon,
+  .setup-done.delight-entered .setup-done-title,
+  .setup-done.delight-entered .setup-done-desc,
+  .setup-step-indicator.is-done .setup-step-dot.delight-check,
+  .mc-button.is-primary.delight-click::after,
+  .setup-callout-success.delight-confirmed,
+  .setup-quick-start-card.is-success.delight-confirmed,
+  .overview-getting-started-step.delight-stagger {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+  }
+
+  .overview-attention-zone.is-all-clear .overview-teaching-empty::before {
+    animation: none !important;
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  .setup-step-connector.delight-fill::after {
+    animation: none !important;
+    transform: scaleX(1);
+  }
+
+  .settings-mode-btn.is-active,
+  .settings-mode-btn:not(.is-active) {
+    transition-duration: 0.01ms;
+  }
+}

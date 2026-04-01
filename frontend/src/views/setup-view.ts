@@ -167,6 +167,11 @@ function buildStepItem(
   dot.className = "setup-step-dot";
   dot.textContent = stepState === "done" ? "\u2713" : stepDef.n;
 
+  /* Delight: pulse the check dot when arriving at the final "done" screen */
+  if (stepState === "done" && state.step === "done") {
+    dot.classList.add("delight-check");
+  }
+
   const label = document.createElement("span");
   label.className = "setup-step-label";
   label.textContent = stepDef.label;
@@ -193,7 +198,13 @@ function buildStepIndicator(): HTMLElement {
 
     if (i < SETUP_STEP_DEFS.length - 1) {
       const connector = document.createElement("div");
-      connector.className = `setup-step-connector${stepState === "done" ? " is-filled" : ""}`;
+      const isFilled = stepState === "done";
+      connector.className = `setup-step-connector${isFilled ? " is-filled" : ""}`;
+      /* Delight: animate the connector fill when all steps complete */
+      if (isFilled && state.step === "done") {
+        connector.classList.add("delight-fill");
+        connector.style.animationDelay = `${i * 80}ms`;
+      }
       row.append(connector);
     }
   }
@@ -1014,7 +1025,7 @@ function buildQuickStartCard(opts: {
   onClick: () => void;
 }): HTMLElement {
   const card = document.createElement("div");
-  card.className = `setup-quick-start-card${opts.loading ? " is-loading" : ""}${opts.created ? " is-success" : ""}`;
+  card.className = `setup-quick-start-card${opts.loading ? " is-loading" : ""}${opts.created ? " is-success delight-confirmed" : ""}`;
 
   const kicker = document.createElement("div");
   kicker.className = "setup-quick-start-kicker";
@@ -1066,7 +1077,7 @@ function buildQuickStartCard(opts: {
 
 function buildDoneStep(): HTMLElement {
   const el = document.createElement("div");
-  el.className = "setup-done";
+  el.className = "setup-done delight-entered";
 
   const icon = document.createElement("div");
   icon.className = "setup-done-icon";

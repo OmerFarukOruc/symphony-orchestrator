@@ -389,7 +389,8 @@ function createGettingStartedCard(onDismiss: () => void): HTMLElement {
 
   for (const s of stepItems) {
     const step = document.createElement("div");
-    step.className = "overview-getting-started-step";
+    step.className = "overview-getting-started-step delight-stagger";
+    step.style.setProperty("--step-index", s.n);
     const dot = document.createElement("span");
     dot.className = "overview-getting-started-step-n";
     dot.textContent = s.n;
@@ -644,6 +645,7 @@ export function createOverviewPage(): HTMLElement {
     setTextWithDiff(cost.value, formatCostUsd(snapshot.codex_totals.cost_usd));
 
     // Attention list - primary zone
+    attentionZone.classList.toggle("is-all-clear", attentionIssues.length === 0);
     fillList(
       attentionList,
       attentionIssues.map((issue) => issueRow(issue, "attention")),
@@ -668,13 +670,17 @@ export function createOverviewPage(): HTMLElement {
       (snapshot.recent_events ?? []).slice(-4).map((event) => createEventRow(event, true)),
     );
 
-    // Terminal issues
-    fillList(
-      terminalList,
-      latestTerminalIssues(snapshot.completed ?? [])
-        .slice(0, 4)
-        .map((issue) => issueRow(issue, "terminal")),
-    );
+    // Terminal issues — add delight entrance for completed items
+    const terminalRows = latestTerminalIssues(snapshot.completed ?? [])
+      .slice(0, 4)
+      .map((issue) => {
+        const row = issueRow(issue, "terminal");
+        if (issue.status === "completed" || issue.status === "closed") {
+          row.classList.add("delight-entered");
+        }
+        return row;
+      });
+    fillList(terminalList, terminalRows);
 
     // System health badge
     updateHealthBadge(snapshot.system_health);

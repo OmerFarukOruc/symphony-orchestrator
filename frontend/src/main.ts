@@ -7,6 +7,7 @@ import "./styles/primitives.css";
 import "./styles/shell.css";
 import "./styles/shell-responsive.css";
 import "./styles/polish-brand.css";
+import "./styles/polish-delight.css";
 import "./styles/palette.css";
 import "./styles/components.css";
 import "./styles/diff.css";
@@ -18,6 +19,7 @@ import "./styles/container-queries.css";
 import "./styles/git.css";
 
 import { api } from "./api";
+import { initDelightClicks } from "./utils/diff";
 import { lazyPage } from "./utils/lazy-page";
 import { router } from "./router";
 import { connectEventSource } from "./state/event-source";
@@ -77,6 +79,7 @@ initSidebar(sidebarEl);
 initHeader(headerEl);
 initKeyboard(router, { resolveRunHistoryPath: currentIssueRunsPath });
 initCommandPalette();
+initDelightClicks();
 globalThis.addEventListener("router:navigate", (event) => {
   const detail = (event as CustomEvent<{ path?: string; title?: string }>).detail;
   if (detail?.path) {

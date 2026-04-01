@@ -1,3 +1,18 @@
+/**
+ * Adds a brief inner flash to primary buttons on click.
+ * Communicates "action registered" — calm, not showy.
+ */
+export function initDelightClicks(): void {
+  document.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest?.(".mc-button.is-primary");
+    if (!button || (button as HTMLButtonElement).disabled) return;
+    button.classList.remove("delight-click");
+    (button as HTMLElement).getBoundingClientRect();
+    button.classList.add("delight-click");
+    globalThis.setTimeout(() => button.classList.remove("delight-click"), 300);
+  });
+}
+
 export function flashDiff(element: Element): void {
   element.classList.remove("diff-flash");
   if (element instanceof HTMLElement) {
