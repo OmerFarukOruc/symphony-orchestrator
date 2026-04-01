@@ -227,7 +227,7 @@ export function buildWebhooksQuery(): string {
           url
           enabled
           label
-          teamId
+          teamIds
           resourceTypes
           secret
           createdAt
@@ -240,8 +240,8 @@ export function buildWebhooksQuery(): string {
 
 export function buildWebhookCreateMutation(): string {
   return `
-    mutation RisolutoWebhookCreate($url: String!, $teamId: String, $resourceTypes: [String!]!, $label: String, $secret: String) {
-      webhookCreate(input: { url: $url, teamId: $teamId, resourceTypes: $resourceTypes, label: $label, secret: $secret }) {
+    mutation RisolutoWebhookCreate($url: String!, $teamIds: [String!], $resourceTypes: [String!]!, $label: String, $secret: String) {
+      webhookCreate(input: { url: $url, teamIds: $teamIds, resourceTypes: $resourceTypes, label: $label, secret: $secret }) {
         success
         webhook {
           id

@@ -16,20 +16,20 @@ You create an issue  →  Risoluto picks it up  →  AI agent writes code  →  
 ```
 
 <Info>
-  **No cloud service. No SaaS. No telemetry.** Your source code stays on your machine. Risoluto runs locally or on a VDS you control, connecting your existing Linear project to AI agents running in isolated Docker containers.
+  **Local-first by default. No telemetry.** Your source code stays on your machine. Risoluto runs locally or on a VDS you control, connecting your existing Linear project to AI agents running in isolated Docker containers. A managed cloud option is on the roadmap for teams that want hosted infrastructure.
 </Info>
 
 ## What Ships Today <Badge>v0.6.0</Badge> <Badge variant="info">Open Source</Badge>
 
 <CardGroup cols={2}>
   <Card title="Orchestration Engine" icon="engine">
-    Linear and GitHub Issues polling, Docker sandbox with resource limits and gVisor, workspace isolation, retry with exponential backoff, stall detection, model overrides, and health monitoring.
+    Linear polling with webhook support for real-time updates, Docker sandbox with resource limits and gVisor, workspace isolation, retry with exponential backoff, stall detection, model overrides, and health monitoring.
   </Card>
   <Card title="Dashboard and API" icon="chart-mixed">
     Real-time Kanban board with issue inspector, 50+ JSON API endpoints, per-issue cost tracking, live agent feed via SSE, Prometheus metrics, and interactive API playground.
   </Card>
   <Card title="Integrations" icon="plug">
-    Git automation (clone, branch, commit, push, PR creation), Linear webhooks for real-time updates, GitHub Issues adapter, Slack notifications, and Codex agent runtime via JSON-RPC.
+    Git automation (clone, branch, commit, push, PR creation), Linear webhooks for real-time updates, GitHub Issues adapter (coming soon), Slack notifications, and Codex agent runtime via JSON-RPC.
   </Card>
   <Card title="Security and Operations" icon="shield-check">
     AES-256 encrypted credential store, setup wizard with PKCE browser sign-in, SQLite-backed attempt history, CLI log inspector, audit trail, and full Playwright E2E test coverage.

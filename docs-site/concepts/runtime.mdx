@@ -9,11 +9,13 @@ icon: "gauge-high"
 
 How Risoluto manages agents from dispatch to completion.
 
-## Polling & Work Selection
+## Detection & Work Selection
 
-Risoluto polls Linear every **15 seconds** by default, filters candidates using `tracker.active_states`, and dispatches work based on:
+Risoluto receives issue changes via **Linear webhooks** in real time. Polling runs as a safety net every **15 seconds** by default (`polling.interval_ms`) — when webhooks are active, polling stretches to **2 minutes** (`webhook.pollingStretchMs`).
 
-1. **Priority** — higher priority issues first
+Candidates are filtered using `tracker.active_states` and dispatched based on:
+
+1. **Priority** — higher priority issues first (lower number = higher priority)
 2. **Age** — oldest creation time within the same priority
 3. **Identifier** — alphabetical as a final tiebreaker
 
@@ -32,10 +34,12 @@ During startup, active issues emit lifecycle events through the SSE stream so op
 ## Timeouts & Retries
 
 <AccordionGroup>
-  <Accordion title="Polling & Hooks">
+  <Accordion title="Polling, Webhooks & Hooks">
     | Setting | Config key | Default | Purpose |
     |---------|-----------|---------|---------|
-    | Poll interval | `polling.interval_ms` | `15000` (15 s) | Time between Linear polls |
+    | Poll interval | `polling.interval_ms` | `15000` (15 s) | Time between Linear polls (no webhook) |
+    | Webhook stretch | `webhook.pollingStretchMs` | `120000` (2 min) | Poll interval when webhooks are active |
+    | Webhook health check | `webhook.healthCheckIntervalMs` | `300000` (5 min) | Interval to verify webhook health |
     | Hook timeout | `hooks.timeout_ms` | `60000` (1 min) | Max time for lifecycle hooks |
   </Accordion>
 
@@ -72,7 +76,7 @@ Risoluto creates a fresh per-attempt `CODEX_HOME` with generated `config.toml`, 
 
 <Frame>
 ```mermaid
-%%{init: {'flowchart': {'defaultRenderer': 'elk'}, 'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
 flowchart LR
     A["Agent Done"] --> B["Drain Events"]
     B -->|drain_timeout_ms| C["Close RPC"]
@@ -84,7 +88,7 @@ flowchart LR
 
 <Frame>
 ```mermaid
-%%{init: {'flowchart': {'defaultRenderer': 'elk'}, 'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
 flowchart LR
     A["Abort Signal"] -->|"docker stop --time=5"| B["SIGTERM"]
     B -->|"5 s grace"| C["SIGKILL"]
@@ -117,7 +121,7 @@ Risoluto tracks issues through configurable workflow stages.
 
 <Frame>
 ```mermaid
-%%{init: {'flowchart': {'defaultRenderer': 'elk'}, 'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
 flowchart LR
     backlog["Backlog"] --> todo["Todo"]
     todo --> active["Active"]

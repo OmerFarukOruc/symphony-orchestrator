@@ -110,7 +110,7 @@ Create `RISOLUTO_SMOKE_RESULT.md` in the workspace with:
 - whether the workspace looks empty or repo-backed
 ```
 
-Set the issue to **In Progress**. Within one poll cycle (default: **15 seconds**), Risoluto picks it up automatically.
+Set the issue to **In Progress**. With webhooks configured, Risoluto picks it up in real time. Otherwise, it detects the issue within one poll cycle (default: **15 seconds**).
 
 <Check>
   **How to confirm it's working:** The issue appears on the dashboard at [http://127.0.0.1:4000](http://127.0.0.1:4000) with real-time progress indicators. You can also check the API directly.

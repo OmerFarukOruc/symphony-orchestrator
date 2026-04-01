@@ -19,7 +19,7 @@ icon: "circle-question"
   </Accordion>
 
   <Accordion title="Does my code leave my machine?">
-    **No.** Risoluto runs entirely on your local machine or a VDS you control. There is no Risoluto cloud service, SaaS backend, or telemetry.
+    **Local-first by default.** Risoluto runs on your local machine or a VDS you control. There is no telemetry, and a managed cloud option is planned for the future.
 
     The only outbound calls are to services *you* configure:
 
@@ -68,7 +68,7 @@ icon: "circle-question"
     | Tracker | Status |
     |---------|--------|
     | **Linear** | Primary adapter — full support for polling, transitions, labels, and webhooks |
-    | **GitHub Issues** | Adapter available — maps issues to the same pipeline |
+    | **GitHub Issues** | Coming soon — adapter in development, maps issues to the same pipeline |
     | **Jira** | On the roadmap — the `TrackerAdapter` interface is designed for extensibility |
 
     See [How It Works](/concepts/how-it-works) for details on the adapter architecture.
@@ -100,7 +100,7 @@ icon: "circle-question"
   </Accordion>
 
   <Accordion title="Is there a cloud/hosted version?">
-    **No.** Risoluto is local-only by design. Your code, credentials, and agent activity stay on hardware you control. There are no plans for a hosted offering — the local-first model is a core design decision, not a temporary limitation.
+    **Not yet.** Risoluto runs locally by default — your code, credentials, and agent activity stay on hardware you control. A managed cloud option is on the roadmap for teams that want hosted infrastructure without self-managing a VDS.
   </Accordion>
 
   <Accordion title="How do I monitor what's happening?">

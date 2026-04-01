@@ -82,9 +82,10 @@ export function handleWebhookLinear(deps: WebhookHandlerDeps, req: WebhookReques
   }
 
   // 5. Replay rejection — webhookTimestamp must be within the allowed window
+  //    and must not be in the future (prevents pre-dated replay attacks).
   const body = req.body as LinearWebhookPayload;
   const timestamp = body.webhookTimestamp;
-  if (typeof timestamp !== "number" || Math.abs(Date.now() - timestamp) > REPLAY_WINDOW_MS) {
+  if (typeof timestamp !== "number" || timestamp > Date.now() || Date.now() - timestamp > REPLAY_WINDOW_MS) {
     sendError(res, 401, "replay_rejected", "Webhook timestamp outside acceptable window");
     return;
   }

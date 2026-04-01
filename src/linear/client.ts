@@ -205,7 +205,7 @@ export class LinearClient {
       label: string | null;
       secret: string | null;
       resourceTypes: string[];
-      teamId: string | null;
+      teamIds: string[];
     }>
   > {
     const payload = await this.runGraphQL(buildWebhooksQuery());
@@ -219,7 +219,7 @@ export class LinearClient {
         label: asStringOrNull(n.label),
         secret: asStringOrNull(n.secret),
         resourceTypes: asArray(n.resourceTypes).map(String),
-        teamId: asStringOrNull(n.teamId),
+        teamIds: asArray(n.teamIds).map(String),
       };
     });
   }
@@ -230,7 +230,7 @@ export class LinearClient {
    */
   async createWebhook(input: {
     url: string;
-    teamId?: string;
+    teamIds?: string[];
     resourceTypes: string[];
     label?: string;
     secret?: string;
@@ -238,7 +238,7 @@ export class LinearClient {
     const payload = await this.withRetryReturn("createWebhook", async () => {
       return this.runGraphQL(buildWebhookCreateMutation(), {
         url: input.url,
-        teamId: input.teamId ?? null,
+        teamIds: input.teamIds ?? null,
         resourceTypes: input.resourceTypes,
         label: input.label ?? null,
         secret: input.secret ?? null,

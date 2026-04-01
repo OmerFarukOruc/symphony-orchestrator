@@ -79,8 +79,8 @@ describe("sectionGroups", () => {
 
     expect(groups.map((group) => ({ title: group.title, advanced: group.advanced }))).toEqual([
       { title: "Default model", advanced: false },
-      { title: "Authentication", advanced: false },
-      { title: "Authentication", advanced: true },
+      { title: "Sign-in", advanced: false },
+      { title: "Sign-in", advanced: true },
       { title: "Provider routing", advanced: true },
     ]);
   });

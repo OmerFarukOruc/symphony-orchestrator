@@ -9,17 +9,17 @@ mode: "wide"
 # How It Works
 
 Risoluto is a **local orchestration engine** that connects your issue tracker to AI coding agents.
-It polls Linear, claims eligible issues, spins up isolated Docker sandboxes, runs an AI agent inside each one, and delivers the result as a GitHub pull request.
+It receives Linear webhooks (or polls as fallback), claims eligible issues, spins up isolated Docker sandboxes, runs an AI agent inside each one, and delivers the result as a GitHub pull request.
 
 <Frame>
 ```mermaid
-%%{init: {'flowchart': {'defaultRenderer': 'elk'}, 'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
 flowchart LR
-    A["Linear\nIssue Tracker"] -->|"poll every 15 s"| B["Risoluto\nOrchestrator"]
-    B -->|create| C["Workspace\nPer-Issue Dir"]
-    C -->|mount into| D["Docker\nSandbox"]
-    D -->|execute| E["Codex\nAI Agent"]
-    E -->|commit & push| F["GitHub\nPull Request"]
+    A["Linear<br/>Issue Tracker"] -->|"webhook + poll fallback"| B["Risoluto<br/>Orchestrator"]
+    B -->|create| C["Workspace<br/>Per-Issue Dir"]
+    C -->|mount into| D["Docker<br/>Sandbox"]
+    D -->|execute| E["Codex<br/>AI Agent"]
+    E -->|commit & push| F["GitHub<br/>Pull Request"]
 ```
 </Frame>
 
@@ -28,8 +28,8 @@ flowchart LR
 Every issue that Risoluto processes follows the same six-stage pipeline.
 
 <Steps>
-  <Step title="Polling" icon="satellite-dish">
-    Risoluto polls Linear every **15 seconds** (configurable via `polling.interval_ms`).
+  <Step title="Detection" icon="satellite-dish">
+    Risoluto receives issue changes via **Linear webhooks** in real time. Polling runs as a fallback every **15 seconds** (configurable via `polling.interval_ms`) — when webhooks are active, polling stretches to **2 minutes**.
     Issues in active states (default: *In Progress*) are sorted by priority, then by age, then by identifier as a tiebreaker.
   </Step>
 
@@ -79,23 +79,23 @@ Every issue that Risoluto processes follows the same six-stage pipeline.
 
 <Frame>
 ```mermaid
-%%{init: {'flowchart': {'defaultRenderer': 'elk'}, 'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
 flowchart TD
     subgraph Host ["Host Machine"]
         direction TB
-        SYM["Risoluto Orchestrator\nport 4000"]
-        DB["SQLite\nAttempts + Events"]
+        SYM["Risoluto Orchestrator<br/>port 4000"]
+        DB["SQLite<br/>Attempts + Events"]
         LINEAR["Linear API"]
     end
 
     subgraph Containers ["Docker Containers"]
         direction TB
-        CX1["Worker 1\nCodex Agent"]
-        CX2["Worker 2\nCodex Agent"]
-        CXN["Worker N\nCodex Agent"]
+        CX1["Worker 1<br/>Codex Agent"]
+        CX2["Worker 2<br/>Codex Agent"]
+        CXN["Worker N<br/>Codex Agent"]
     end
 
-    SYM -->|"poll every 15 s"| LINEAR
+    SYM -->|"webhook + poll"| LINEAR
     SYM -->|spawn + monitor| CX1
     SYM -->|spawn + monitor| CX2
     SYM -->|spawn + monitor| CXN
@@ -112,7 +112,7 @@ Workspaces support lifecycle hooks at each stage, letting you run linters, insta
 
 <Frame>
 ```mermaid
-%%{init: {'flowchart': {'defaultRenderer': 'elk'}, 'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
 flowchart LR
     A["Created"] -->|after_create| B["Before Run"]
     B -->|before_run| C["Worker Active"]

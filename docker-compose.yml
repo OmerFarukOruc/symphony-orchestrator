@@ -39,6 +39,18 @@ services:
       timeout: 10s
       retries: 3
 
+  cloudflared:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    networks:
+      - risoluto-internal
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - risoluto
+
   data-plane:
     profiles: ["full"]
     build:

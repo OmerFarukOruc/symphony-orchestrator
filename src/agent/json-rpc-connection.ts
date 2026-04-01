@@ -122,7 +122,13 @@ export class JsonRpcConnection {
   }
 
   private onChunk(chunk: Buffer): void {
-    this.buffer += chunk.toString("utf8");
+    const chunkStr = chunk.toString("utf8");
+    if (Buffer.byteLength(chunkStr, "utf8") > MAX_LINE_BYTES) {
+      this.logger.error({ maxLineBytes: MAX_LINE_BYTES }, "codex line exceeded maximum size");
+      this.close();
+      return;
+    }
+    this.buffer += chunkStr;
     if (Buffer.byteLength(this.buffer, "utf8") > MAX_LINE_BYTES) {
       this.logger.error({ maxLineBytes: MAX_LINE_BYTES }, "codex line exceeded maximum size");
       this.close();

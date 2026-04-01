@@ -94,7 +94,7 @@ describe("LinearClient.listWebhooks", () => {
               url: "https://example.com/webhook",
               enabled: true,
               label: "Risoluto",
-              teamId: "team-1",
+              teamIds: ["team-1"],
               resourceTypes: ["Issue", "Comment"],
               secret: "sec-abc",
               createdAt: "2026-03-30T00:00:00Z",
@@ -105,7 +105,7 @@ describe("LinearClient.listWebhooks", () => {
               url: "https://example.com/webhook2",
               enabled: false,
               label: null,
-              teamId: null,
+              teamIds: null,
               resourceTypes: ["Issue"],
               secret: null,
               createdAt: "2026-03-29T00:00:00Z",
@@ -124,7 +124,7 @@ describe("LinearClient.listWebhooks", () => {
         url: "https://example.com/webhook",
         enabled: true,
         label: "Risoluto",
-        teamId: "team-1",
+        teamIds: ["team-1"],
         resourceTypes: ["Issue", "Comment"],
         secret: "sec-abc",
       },
@@ -133,7 +133,7 @@ describe("LinearClient.listWebhooks", () => {
         url: "https://example.com/webhook2",
         enabled: false,
         label: null,
-        teamId: null,
+        teamIds: [],
         resourceTypes: ["Issue"],
         secret: null,
       },
@@ -160,7 +160,7 @@ describe("LinearClient.listWebhooks", () => {
               url: null,
               enabled: null,
               label: null,
-              teamId: null,
+              teamIds: null,
               resourceTypes: null,
               secret: null,
             },
@@ -177,7 +177,7 @@ describe("LinearClient.listWebhooks", () => {
         url: "",
         enabled: false,
         label: null,
-        teamId: null,
+        teamIds: [],
         resourceTypes: [],
         secret: null,
       },
@@ -209,7 +209,7 @@ describe("LinearClient.createWebhook", () => {
       resourceTypes: ["Issue"],
       label: "Risoluto",
       secret: "my-secret",
-      teamId: "team-1",
+      teamIds: ["team-1"],
     });
 
     expect(result).toEqual({ id: "wh-new", secret: "generated-secret" });
@@ -218,7 +218,7 @@ describe("LinearClient.createWebhook", () => {
     expect(body.query).toContain("RisolutoWebhookCreate");
     expect(body.variables).toEqual({
       url: "https://example.com/hook",
-      teamId: "team-1",
+      teamIds: ["team-1"],
       resourceTypes: ["Issue"],
       label: "Risoluto",
       secret: "my-secret",
@@ -284,7 +284,7 @@ describe("LinearClient.createWebhook", () => {
     const body = getRequestBody(fetchMock, 0);
     expect(body.variables).toEqual({
       url: "https://example.com/hook",
-      teamId: null,
+      teamIds: null,
       resourceTypes: ["Issue"],
       label: null,
       secret: null,

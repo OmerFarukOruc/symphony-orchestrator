@@ -7,7 +7,7 @@ icon: "shield-halved"
 
 # Trust Model
 
-Risoluto is designed for **local, operator-controlled, high-trust environments**. It runs on your machine or a VDS you control — there is no cloud service, no SaaS, and no shared infrastructure.
+Risoluto is designed for **local-first, operator-controlled, high-trust environments**. It runs on your machine or a VDS you control. A managed cloud option is planned, but the self-hosted model remains the primary deployment path.
 
 ## Trust Layers
 
@@ -15,9 +15,9 @@ Three components form a chain of trust. Each layer controls a different decision
 
 <Frame>
 ```mermaid
-%%{init: {'flowchart': {'defaultRenderer': 'elk'}, 'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#9a472b', 'primaryTextColor': '#fff', 'primaryBorderColor': '#c96e4a', 'lineColor': '#c96e4a', 'secondaryColor': '#0c1016', 'tertiaryColor': '#1a1f2e'}}}%%
 flowchart TD
-    S["Risoluto\nOrchestrator"] -->|"launches + constrains"| C["Codex\nAI Agent"]
+    S["Risoluto<br/>Orchestrator"] -->|"launches + constrains"| C["Codex<br/>AI Agent"]
     C -->|"routes model calls"| P["Provider / Proxy"]
 ```
 </Frame>

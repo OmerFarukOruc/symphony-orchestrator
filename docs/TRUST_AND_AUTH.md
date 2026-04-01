@@ -189,6 +189,25 @@ These routes are intentionally loopback-local like the rest of the dashboard/API
 
 ---
 
+## 🔔 Inbound Webhook Auth
+
+Risoluto accepts inbound Linear webhooks at `/webhooks/linear`. This endpoint is **publicly exposed** via Cloudflare Tunnel and uses HMAC signature verification:
+
+| Mechanism             | Header                 | How it works                                                                              |
+| --------------------- | ---------------------- | ----------------------------------------------------------------------------------------- |
+| **HMAC-SHA256**       | `Linear-Signature`     | Risoluto computes `HMAC-SHA256(webhook_secret, raw_body)` and compares against the header |
+| **Replay protection** | Timestamp in signature | Signatures older than 5 minutes are rejected as `replay_rejected`                         |
+| **Missing signature** | —                      | Returns `401 signature_missing`                                                           |
+
+The webhook secret comes from one of two sources:
+
+1. **Auto-registration**: Risoluto creates the webhook in Linear via GraphQL and stores the returned secret
+2. **Manual mode**: You set `webhook_secret` in the config overlay; Risoluto uses it directly
+
+The tunnel endpoint (`webhooks.risolu.to`) is the only publicly reachable surface. All other API routes remain loopback-local.
+
+---
+
 ## 🔑 Required Credentials
 
 | Credential        | Source                                                                             | Purpose                                   |

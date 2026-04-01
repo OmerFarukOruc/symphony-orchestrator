@@ -59,7 +59,9 @@ function deriveWorkspaceConfig(
   hooks: Record<string, unknown>,
   secretResolver?: (name: string) => string | undefined,
 ): ServiceConfig["workspace"] {
-  const workspaceRoot = resolvePathConfigString(asString(workspace.root, "../risoluto-workspaces"), secretResolver);
+  const containerRoot = process.env.RISOLUTO_CONTAINER_WORKSPACE_ROOT;
+  const defaultWorkspaceRoot = containerRoot || "../risoluto-workspaces";
+  const workspaceRoot = resolvePathConfigString(asString(workspace.root, defaultWorkspaceRoot), secretResolver);
   const rawHookTimeoutMs = asNumber(hooks.timeout_ms, 60000);
   const hookTimeoutMs = rawHookTimeoutMs > 0 ? rawHookTimeoutMs : 60000;
 

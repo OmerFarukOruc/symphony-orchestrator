@@ -55,12 +55,11 @@ pre:hover {
   padding: 0.15em 0.35em;
 }
 
-/* --- 3. Card Hover Effects — Lift & shadow ------------------ */
+/* --- 3. Card Hover Effects — Subtle lift -------------------- */
 [class*="Card"],
 .card,
 a[class*="card"] {
   transition: transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1),
-    box-shadow 0.25s cubic-bezier(0.22, 0.61, 0.36, 1),
     border-color 0.25s ease;
 }
 
@@ -68,7 +67,6 @@ a[class*="card"] {
 .card:hover,
 a[class*="card"]:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px var(--ri-glow), 0 2px 8px rgba(0, 0, 0, 0.04);
   border-color: var(--ri-light);
 }
 

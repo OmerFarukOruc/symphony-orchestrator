@@ -205,6 +205,11 @@ async function parseDispatchStream(
       }
     }
   } finally {
+    try {
+      await reader.cancel();
+    } catch {
+      // Stream may already be closed — ignore cancellation errors
+    }
     reader.releaseLock();
   }
 

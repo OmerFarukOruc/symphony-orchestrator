@@ -231,7 +231,18 @@ export class WebhookRegistrar {
 // ---------------------------------------------------------------------------
 
 function isPermissionError(error: LinearClientError): boolean {
-  return error.code === "linear_http_error" || error.code === "linear_graphql_error";
+  // linear_http_error fires for ANY non-200 status (500, 429, etc.),
+  // so only treat it as a permission error when the status code indicates
+  // authentication or authorization failure.
+  if (error.code === "linear_http_error") {
+    return /\b(401|403)\b/.test(error.message);
+  }
+  // linear_graphql_error fires for any GraphQL error payload, which may
+  // include schema/validation errors unrelated to permissions.
+  if (error.code === "linear_graphql_error") {
+    return /unauthorized|forbidden|permission|not authorized/i.test(error.message);
+  }
+  return false;
 }
 
 function errorMessage(error: unknown): string {
