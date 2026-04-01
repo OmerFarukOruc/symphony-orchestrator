@@ -183,8 +183,8 @@
 .git-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: var(--badge-padding-sm);
+  border-radius: var(--radius-sm);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
   line-height: 1.4;
@@ -315,7 +315,7 @@ a.git-repo-name:hover {
 
 .git-repo-inline-commit-list {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .git-repo-inline-commit {

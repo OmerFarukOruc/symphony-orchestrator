@@ -16,8 +16,8 @@
   border: 1px solid var(--border-accent);
   border-radius: var(--radius-lg);
   transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
+    opacity var(--motion-fast) var(--ease-out-quart),
+    transform var(--motion-fast) var(--ease-out-quart);
 }
 
 .config-help-banner.is-hidden {
@@ -49,7 +49,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   background: var(--bg-surface);
-  padding: 2px 6px;
+  padding: var(--badge-padding-sm);
   border-radius: var(--radius-sm);
 }
 
@@ -77,8 +77,8 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
-    color 0.15s ease,
-    background 0.15s ease;
+    color var(--motion-fast) var(--ease-out-quart),
+    background var(--motion-fast) var(--ease-out-quart);
 }
 
 .config-help-dismiss:hover {
@@ -133,7 +133,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--motion-fast) var(--ease-out-quart);
 }
 
 .config-mode-btn:hover {
@@ -218,7 +218,7 @@
   border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
-  transition: all 0.15s ease;
+  transition: all var(--motion-fast) var(--ease-out-quart);
 }
 
 .config-entry-row:hover {
@@ -277,7 +277,7 @@
   font-family: var(--font-mono);
   color: var(--text-accent);
   background: var(--bg-accent-subtle);
-  padding: 2px 6px;
+  padding: var(--badge-padding-sm);
   border-radius: var(--radius-sm);
 }
 
@@ -352,7 +352,7 @@
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--motion-fast) var(--ease-out-quart);
 }
 
 .config-sidebar-header:hover {
@@ -431,7 +431,7 @@
   font-weight: var(--font-semibold);
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-wider);
   margin-bottom: var(--space-2);
 }
 

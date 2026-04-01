@@ -62,7 +62,7 @@
 .observability-hero-metric.is-danger {
   padding: var(--space-3);
   margin: calc(var(--space-3) * -1);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--status-retrying) 8%, transparent);
 }
 
@@ -176,7 +176,7 @@
 
 .observability-chart-label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-2xs);
   fill: var(--text-muted);
 }
 
@@ -220,7 +220,7 @@
 .observability-source-badge {
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
-  padding: 2px 6px;
+  padding: var(--badge-padding-sm);
   background: var(--bg-muted);
   border: 1px solid var(--border-stitch);
   color: var(--text-muted);

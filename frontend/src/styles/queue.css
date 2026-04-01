@@ -668,7 +668,7 @@
 
 .queue-drawer .attempts-table th,
 .queue-drawer .attempts-table td {
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
   font-size: var(--text-xs);
   white-space: nowrap;
 }

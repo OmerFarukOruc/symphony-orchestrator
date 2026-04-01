@@ -254,7 +254,7 @@
   flex-shrink: 0;
   width: 10px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--text-2xs);
   line-height: 1;
   transition: transform var(--motion-fast) var(--ease-out-quart);
   user-select: none;
@@ -323,15 +323,15 @@
 
 /* Error chip: strong visual signal */
 .mc-log-row.is-error .mc-event-chip {
-  background: rgba(217, 72, 65, 0.12);
-  border-color: rgba(217, 72, 65, 0.25);
+  background: color-mix(in srgb, var(--status-blocked) 12%, transparent);
+  border-color: color-mix(in srgb, var(--status-blocked) 25%, transparent);
   color: var(--status-blocked);
 }
 
 /* Agent chip: action indicator */
 .mc-log-row.is-agent .mc-event-chip {
-  background: rgba(47, 158, 68, 0.1);
-  border-color: rgba(47, 158, 68, 0.2);
+  background: color-mix(in srgb, var(--status-running) 10%, transparent);
+  border-color: color-mix(in srgb, var(--status-running) 20%, transparent);
   color: var(--status-running);
 }
 
@@ -345,8 +345,8 @@
 
 /* Tool chip: copper accent */
 .mc-log-row.is-tool .mc-event-chip {
-  background: rgba(192, 132, 79, 0.1);
-  border-color: rgba(192, 132, 79, 0.2);
+  background: color-mix(in srgb, var(--color-copper-400) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-copper-400) 20%, transparent);
   color: var(--color-copper-400);
 }
 

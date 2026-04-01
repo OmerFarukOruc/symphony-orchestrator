@@ -464,8 +464,8 @@
   background: var(--bg-surface);
   font-size: var(--text-sm);
   transition:
-    background 200ms ease,
-    border-color 200ms ease;
+    background var(--motion-fast) var(--ease-out-quart),
+    border-color var(--motion-fast) var(--ease-out-quart);
 }
 
 .system-health-dot,
@@ -566,8 +566,8 @@
   border: 1px solid transparent;
   background: var(--bg-surface);
   transition:
-    background 200ms ease,
-    border-color 200ms ease;
+    background var(--motion-fast) var(--ease-out-quart),
+    border-color var(--motion-fast) var(--ease-out-quart);
 }
 
 .webhook-health-panel[hidden] {
@@ -618,7 +618,7 @@
 
 .webhook-health-detail {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .webhook-health-detail-label {

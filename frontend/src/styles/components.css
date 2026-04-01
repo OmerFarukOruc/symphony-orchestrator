@@ -458,7 +458,7 @@
 
 .mc-button-hint {
   margin-left: auto;
-  padding: 2px 6px;
+  padding: var(--badge-padding-sm);
   background: var(--bg-muted);
   border: var(--stroke-default) solid var(--border-stitch);
   font-family: var(--font-mono);
@@ -730,7 +730,7 @@
 }
 
 .mc-status-chip {
-  gap: 6px;
+  gap: var(--space-2);
   padding: var(--badge-padding-lg);
 }
 

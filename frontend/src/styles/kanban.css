@@ -176,7 +176,7 @@
 .kanban-column-toggle {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: var(--badge-padding-sm);
   border: var(--stroke-default) solid var(--border-stitch);
   background: var(--bg-elevated);
   color: var(--text-muted);
@@ -363,16 +363,16 @@
 
 .kanban-card-lifecycle {
   display: grid;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: 14px;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-full);
   border: 1px solid color-mix(in srgb, var(--border-stitch) 70%, transparent);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 88%, transparent), var(--bg-muted));
 }
 
 .kanban-card-lifecycle.is-collapsed {
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .kanban-card-lifecycle-summary {
@@ -383,17 +383,17 @@
 
 .kanban-card-lifecycle-step {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr);
-  column-gap: 10px;
-  row-gap: 2px;
+  grid-template-columns: var(--space-3) minmax(0, 1fr);
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
   align-items: start;
 }
 
 .kanban-card-lifecycle-dot {
-  width: 10px;
-  height: 10px;
-  margin-top: 4px;
-  border-radius: 999px;
+  width: var(--space-3);
+  height: var(--space-3);
+  margin-top: var(--space-1);
+  border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--text-muted) 50%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border-stitch) 80%, transparent);
 }
@@ -511,7 +511,7 @@
 }
 
 .kanban-board.is-compact .kanban-card-lifecycle {
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .kanban-board.is-compact .kanban-card-title {

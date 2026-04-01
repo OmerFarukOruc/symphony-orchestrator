@@ -39,7 +39,7 @@
   color: var(--text-secondary);
   text-align: left;
   width: 100%;
-  transition: background 0.15s ease;
+  transition: background var(--motion-fast) var(--ease-out-quart);
 }
 
 .template-item:hover {

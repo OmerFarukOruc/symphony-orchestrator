@@ -225,7 +225,7 @@
 
 .sidebar-item-badge {
   margin-left: auto;
-  padding: 2px 7px;
+  padding: var(--badge-padding-sm);
   border-radius: var(--radius-full);
   line-height: 1;
   color: var(--color-copper-100);
@@ -241,7 +241,7 @@
 
 .sidebar-hotkey {
   margin-left: auto;
-  padding: 1px 5px;
+  padding: var(--badge-padding-sm);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   color: var(--text-muted);
@@ -263,7 +263,7 @@
   left: calc(100% + 10px);
   top: 50%;
   transform: translateY(-50%);
-  padding: 6px 10px;
+  padding: var(--space-2) var(--space-3);
   background: var(--bg-elevated);
   border: 1px solid var(--border-stitch);
   color: var(--text-primary);
@@ -532,7 +532,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px var(--space-2);
+  padding: var(--badge-padding-sm);
   margin-left: var(--space-1);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
@@ -549,7 +549,7 @@
 
 .header-env-badge .status-dot {
   color: var(--status-running);
-  font-size: 8px;
+  font-size: var(--text-2xs);
 }
 
 .header-env-label {

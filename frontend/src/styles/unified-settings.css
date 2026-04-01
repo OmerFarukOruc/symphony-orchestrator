@@ -69,7 +69,7 @@
 .settings-devtools-section summary::before {
   content: "\25B6";
   font-size: var(--text-xs);
-  transition: transform 0.15s ease;
+  transition: transform var(--motion-fast) var(--ease-out-quart);
   color: var(--text-muted);
 }
 
