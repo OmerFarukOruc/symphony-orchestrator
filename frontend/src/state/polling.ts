@@ -1,23 +1,19 @@
 import { api } from "../api";
+import { exponentialBackoff } from "../utils/backoff.js";
 import { store } from "./store";
 
 const STALE_THRESHOLD = 3;
-/** Maximum backoff interval: 60 seconds */
 const MAX_BACKOFF_MS = 60_000;
-/** Base interval for disconnected polling */
 const BASE_POLL_MS = 5_000;
 
 let intervalId: number | null = null;
 let inFlight = false;
 let bannerDismissed = false;
 
-/** Calculate backoff interval based on consecutive stale count. */
 function backoffInterval(): number {
   const staleCount = store.getState().staleCount;
   if (staleCount <= STALE_THRESHOLD) return BASE_POLL_MS;
-  // Exponential backoff: 5s -> 10s -> 20s -> 40s -> 60s (cap)
-  const factor = Math.min(2 ** (staleCount - STALE_THRESHOLD), MAX_BACKOFF_MS / BASE_POLL_MS);
-  return Math.min(BASE_POLL_MS * factor, MAX_BACKOFF_MS);
+  return exponentialBackoff(staleCount - STALE_THRESHOLD, BASE_POLL_MS, MAX_BACKOFF_MS);
 }
 
 /** Dismiss the stale banner until the next successful poll. */

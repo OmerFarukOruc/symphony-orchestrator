@@ -242,7 +242,7 @@
   height: 16px;
   font-size: var(--text-xs);
   color: var(--text-muted);
-  transition: transform var(--motion-fast) var(--ease-out-quart);
+  transition: transform var(--motion-fast) var(--ease-out-quint);
   flex-shrink: 0;
 }
 

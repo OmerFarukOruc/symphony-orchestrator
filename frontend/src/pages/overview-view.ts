@@ -317,7 +317,12 @@ function issueRow(issue: RuntimeIssueView, target: "attention" | "terminal"): HT
 /**
  * Fills a container with new items, applying flash diff animation.
  */
+const listFingerprints = new WeakMap<HTMLElement, string>();
+
 function fillList(container: HTMLElement, items: HTMLElement[]): void {
+  const fingerprint = items.map((el) => el.textContent ?? "").join("\0");
+  if (listFingerprints.get(container) === fingerprint) return;
+  listFingerprints.set(container, fingerprint);
   container.replaceChildren(...items);
   for (const item of items) {
     flashDiff(item);
@@ -546,7 +551,7 @@ export function createOverviewPage(): HTMLElement {
   }
 
   /** Updates the one-line summary text on each collapsible section header. */
-  function updateCollapsibleSummaries(snapshot: NonNullable<AppState["snapshot"]>): void {
+  function updateCollapsibleSummaries(snapshot: NonNullable<AppState["snapshot"]>, terminalCount?: number): void {
     healthCollapsible.summary.textContent = snapshot.system_health ? snapshot.system_health.status : "healthy";
 
     const totalCost = formatCostUsd(snapshot.codex_totals.cost_usd);
@@ -561,9 +566,8 @@ export function createOverviewPage(): HTMLElement {
     const eventCount = (snapshot.recent_events ?? []).length;
     recentCollapsible.summary.textContent = eventCount > 0 ? `${eventCount} recent` : "none";
 
-    const terminalCount = latestTerminalIssues(snapshot.completed ?? []).length;
-    terminalCollapsible.summary.textContent =
-      terminalCount > 0 ? `${terminalCount} issue${terminalCount === 1 ? "" : "s"}` : "none";
+    const tc = terminalCount ?? latestTerminalIssues(snapshot.completed ?? []).length;
+    terminalCollapsible.summary.textContent = tc > 0 ? `${tc} issue${tc === 1 ? "" : "s"}` : "none";
   }
 
   /** Fills empty list containers with teaching empty-state cards. */
@@ -670,16 +674,15 @@ export function createOverviewPage(): HTMLElement {
       (snapshot.recent_events ?? []).slice(-4).map((event) => createEventRow(event, true)),
     );
 
-    // Terminal issues — add delight entrance for completed items
-    const terminalRows = latestTerminalIssues(snapshot.completed ?? [])
-      .slice(0, 4)
-      .map((issue) => {
-        const row = issueRow(issue, "terminal");
-        if (issue.status === "completed" || issue.status === "closed") {
-          row.classList.add("delight-entered");
-        }
-        return row;
-      });
+    // Terminal issues — compute once, reuse for summary + rows
+    const terminalIssues = latestTerminalIssues(snapshot.completed ?? []);
+    const terminalRows = terminalIssues.slice(0, 4).map((issue) => {
+      const row = issueRow(issue, "terminal");
+      if (issue.status === "completed" || issue.status === "closed") {
+        row.classList.add("delight-entered");
+      }
+      return row;
+    });
     fillList(terminalList, terminalRows);
 
     // System health badge
@@ -692,7 +695,7 @@ export function createOverviewPage(): HTMLElement {
     updateStallEvents(snapshot.stall_events);
 
     // Update collapsible summaries and empty states
-    updateCollapsibleSummaries(snapshot);
+    updateCollapsibleSummaries(snapshot, terminalIssues.length);
     renderEmptyStates();
   }
 

@@ -272,12 +272,7 @@
     box-shadow 150ms var(--ease-out-quart);
 }
 
-/* ── Collapsible section chevron — smooth rotate ─────── */
-/* Already transitions in overview.css, enhance the ease. */
-
-.overview-collapsible-chevron {
-  transition: transform var(--motion-fast) var(--ease-out-quint);
-}
+/* Chevron transition defined in overview.css */
 
 /* ── Getting-started step numbers — stagger entrance ─── */
 

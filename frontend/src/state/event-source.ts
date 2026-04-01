@@ -6,6 +6,7 @@
  * On disconnect the interval reverts to 5 s with automatic reconnect.
  */
 
+import { exponentialBackoff } from "../utils/backoff.js";
 import { pollOnce, setPollingInterval } from "./polling";
 
 const SSE_URL = "/api/v1/events";
@@ -79,8 +80,7 @@ function openConnection(): void {
     setPollingInterval(DISCONNECTED_POLL_MS);
     cleanup();
     consecutiveFailures += 1;
-    // Exponential backoff: 5s -> 10s -> 20s -> 40s -> 60s (cap)
-    const delay = Math.min(BASE_RECONNECT_MS * 2 ** (consecutiveFailures - 1), MAX_RECONNECT_MS);
+    const delay = exponentialBackoff(consecutiveFailures, BASE_RECONNECT_MS, MAX_RECONNECT_MS);
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
       openConnection();

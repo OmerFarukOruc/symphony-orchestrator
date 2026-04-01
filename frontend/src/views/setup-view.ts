@@ -123,14 +123,7 @@ const SETUP_STEP_DEFS: ReadonlyArray<{ key: SetupStep; label: string; n: string 
   { key: "github-token", label: "GitHub", n: "5" },
 ];
 
-const SETUP_STEP_ORDER: SetupStep[] = [
-  "master-key",
-  "linear-project",
-  "repo-config",
-  "openai-key",
-  "github-token",
-  "done",
-];
+const SETUP_STEP_ORDER: SetupStep[] = [...SETUP_STEP_DEFS.map((s) => s.key), "done"];
 
 function resolveStepState(stepKey: SetupStep, currentIdx: number): "done" | "active" | "upcoming" {
   const stepIdx = SETUP_STEP_ORDER.indexOf(stepKey);

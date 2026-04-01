@@ -6,11 +6,8 @@
    ============================================ */
 
 /* ── Page transition — cross-fade with slide ──────────── */
-/* filter: blur() is GPU-composited in modern browsers.
-   will-change: filter promotes it to its own layer.       */
-
 .page-enter {
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity;
   animation: polishPageIn var(--motion-slow) var(--ease-out-expo) both;
 }
 

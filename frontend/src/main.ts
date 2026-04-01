@@ -19,7 +19,7 @@ import "./styles/container-queries.css";
 import "./styles/git.css";
 
 import { api } from "./api";
-import { initDelightClicks } from "./utils/diff";
+import { initDelightClicks } from "./ui/delight.js";
 import { lazyPage } from "./utils/lazy-page";
 import { router } from "./router";
 import { connectEventSource } from "./state/event-source";
