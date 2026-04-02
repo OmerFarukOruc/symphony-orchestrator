@@ -23,7 +23,1955 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "generatedAt": {
+                      "type": "string"
+                    },
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "running": {
+                          "type": "number"
+                        },
+                        "retrying": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["running", "retrying"],
+                      "additionalProperties": false
+                    },
+                    "running": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "issueId": {
+                            "type": "string"
+                          },
+                          "identifier": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "workspaceKey": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "workspacePath": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "message": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "attempt": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "error": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "priority": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "labels": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "startedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastEventAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "tokenUsage": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "inputTokens": {
+                                    "type": "number"
+                                  },
+                                  "outputTokens": {
+                                    "type": "number"
+                                  },
+                                  "totalTokens": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": ["inputTokens", "outputTokens", "totalTokens"],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "model": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "reasoningEffort": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "modelSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["default", "override"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredModel": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredReasoningEffort": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredModelSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["default", "override"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "modelChangePending": {
+                            "type": "boolean"
+                          },
+                          "configuredTemplateId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredTemplateName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "url": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "blockedBy": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "identifier": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "state": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": ["id", "identifier", "state"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "branchName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "pullRequestUrl": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "nextRetryDueAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "issueId",
+                          "identifier",
+                          "title",
+                          "state",
+                          "workspaceKey",
+                          "message",
+                          "status",
+                          "updatedAt",
+                          "attempt",
+                          "error"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "retrying": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "issueId": {
+                            "type": "string"
+                          },
+                          "identifier": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "workspaceKey": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "workspacePath": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "message": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "attempt": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "error": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "priority": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "labels": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "startedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastEventAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "tokenUsage": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "inputTokens": {
+                                    "type": "number"
+                                  },
+                                  "outputTokens": {
+                                    "type": "number"
+                                  },
+                                  "totalTokens": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": ["inputTokens", "outputTokens", "totalTokens"],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "model": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "reasoningEffort": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "modelSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["default", "override"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredModel": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredReasoningEffort": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredModelSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["default", "override"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "modelChangePending": {
+                            "type": "boolean"
+                          },
+                          "configuredTemplateId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredTemplateName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "url": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "blockedBy": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "identifier": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "state": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": ["id", "identifier", "state"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "branchName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "pullRequestUrl": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "nextRetryDueAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "issueId",
+                          "identifier",
+                          "title",
+                          "state",
+                          "workspaceKey",
+                          "message",
+                          "status",
+                          "updatedAt",
+                          "attempt",
+                          "error"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "queued": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "issueId": {
+                            "type": "string"
+                          },
+                          "identifier": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "workspaceKey": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "workspacePath": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "message": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "attempt": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "error": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "priority": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "labels": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "startedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastEventAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "tokenUsage": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "inputTokens": {
+                                    "type": "number"
+                                  },
+                                  "outputTokens": {
+                                    "type": "number"
+                                  },
+                                  "totalTokens": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": ["inputTokens", "outputTokens", "totalTokens"],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "model": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "reasoningEffort": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "modelSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["default", "override"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredModel": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredReasoningEffort": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredModelSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["default", "override"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "modelChangePending": {
+                            "type": "boolean"
+                          },
+                          "configuredTemplateId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredTemplateName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "url": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "blockedBy": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "identifier": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "state": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": ["id", "identifier", "state"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "branchName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "pullRequestUrl": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "nextRetryDueAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "issueId",
+                          "identifier",
+                          "title",
+                          "state",
+                          "workspaceKey",
+                          "message",
+                          "status",
+                          "updatedAt",
+                          "attempt",
+                          "error"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "completed": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "issueId": {
+                            "type": "string"
+                          },
+                          "identifier": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "workspaceKey": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "workspacePath": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "message": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "attempt": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "error": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "priority": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "labels": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "startedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastEventAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "tokenUsage": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "inputTokens": {
+                                    "type": "number"
+                                  },
+                                  "outputTokens": {
+                                    "type": "number"
+                                  },
+                                  "totalTokens": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": ["inputTokens", "outputTokens", "totalTokens"],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "model": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "reasoningEffort": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "modelSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["default", "override"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredModel": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredReasoningEffort": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredModelSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["default", "override"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "modelChangePending": {
+                            "type": "boolean"
+                          },
+                          "configuredTemplateId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configuredTemplateName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "url": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "blockedBy": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "identifier": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "state": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": ["id", "identifier", "state"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "branchName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "pullRequestUrl": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "nextRetryDueAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "issueId",
+                          "identifier",
+                          "title",
+                          "state",
+                          "workspaceKey",
+                          "message",
+                          "status",
+                          "updatedAt",
+                          "attempt",
+                          "error"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "workflowColumns": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": ["backlog", "todo", "active", "gate", "terminal", "other"]
+                          },
+                          "terminal": {
+                            "type": "boolean"
+                          },
+                          "count": {
+                            "type": "number"
+                          },
+                          "issues": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "issueId": {
+                                  "type": "string"
+                                },
+                                "identifier": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                },
+                                "state": {
+                                  "type": "string"
+                                },
+                                "workspaceKey": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "workspacePath": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "message": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "status": {
+                                  "type": "string"
+                                },
+                                "updatedAt": {
+                                  "type": "string"
+                                },
+                                "attempt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "error": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "priority": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "labels": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "startedAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "lastEventAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "tokenUsage": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "inputTokens": {
+                                          "type": "number"
+                                        },
+                                        "outputTokens": {
+                                          "type": "number"
+                                        },
+                                        "totalTokens": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": ["inputTokens", "outputTokens", "totalTokens"],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "model": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "reasoningEffort": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "modelSource": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": ["default", "override"]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "configuredModel": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "configuredReasoningEffort": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "configuredModelSource": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": ["default", "override"]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "modelChangePending": {
+                                  "type": "boolean"
+                                },
+                                "configuredTemplateId": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "configuredTemplateName": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "url": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "description": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "blockedBy": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "identifier": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "state": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": ["id", "identifier", "state"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "branchName": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "pullRequestUrl": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "nextRetryDueAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "createdAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "issueId",
+                                "identifier",
+                                "title",
+                                "state",
+                                "workspaceKey",
+                                "message",
+                                "status",
+                                "updatedAt",
+                                "attempt",
+                                "error"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": ["key", "label", "kind", "terminal", "count", "issues"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "codexTotals": {
+                      "type": "object",
+                      "properties": {
+                        "inputTokens": {
+                          "type": "number"
+                        },
+                        "outputTokens": {
+                          "type": "number"
+                        },
+                        "totalTokens": {
+                          "type": "number"
+                        },
+                        "secondsRunning": {
+                          "type": "number"
+                        },
+                        "costUsd": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["inputTokens", "outputTokens", "totalTokens", "secondsRunning", "costUsd"],
+                      "additionalProperties": false
+                    },
+                    "rateLimits": {},
+                    "recentEvents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "issueId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "issueIdentifier": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "sessionId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "event": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "content": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "metadata": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["at", "issueId", "issueIdentifier", "sessionId", "event", "message"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "stallEvents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "issueId": {
+                            "type": "string"
+                          },
+                          "issueIdentifier": {
+                            "type": "string"
+                          },
+                          "silentMs": {
+                            "type": "number"
+                          },
+                          "timeoutMs": {
+                            "type": "number"
+                          }
+                        },
+                        "required": ["at", "issueId", "issueIdentifier", "silentMs", "timeoutMs"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "systemHealth": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": ["healthy", "degraded", "critical"]
+                        },
+                        "checkedAt": {
+                          "type": "string"
+                        },
+                        "runningCount": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["status", "checkedAt", "runningCount", "message"],
+                      "additionalProperties": false
+                    },
+                    "webhookHealth": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string"
+                        },
+                        "effectiveIntervalMs": {
+                          "type": "number"
+                        },
+                        "stats": {
+                          "type": "object",
+                          "properties": {
+                            "deliveriesReceived": {
+                              "type": "number"
+                            },
+                            "lastDeliveryAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastEventType": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": ["deliveriesReceived", "lastDeliveryAt", "lastEventType"],
+                          "additionalProperties": false
+                        },
+                        "lastDeliveryAt": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastEventType": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["status", "effectiveIntervalMs", "stats", "lastDeliveryAt", "lastEventType"],
+                      "additionalProperties": false
+                    },
+                    "availableModels": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "generatedAt",
+                    "counts",
+                    "running",
+                    "retrying",
+                    "workflowColumns",
+                    "codexTotals",
+                    "rateLimits",
+                    "recentEvents"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -115,7 +2063,24 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "transitions": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": ["transitions"],
+                  "additionalProperties": false
                 }
               }
             }
@@ -164,7 +2129,433 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "issueId": {
+                      "type": "string"
+                    },
+                    "identifier": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "workspaceKey": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "workspacePath": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "message": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "attempt": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "error": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "priority": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "labels": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "startedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lastEventAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "tokenUsage": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "inputTokens": {
+                              "type": "number"
+                            },
+                            "outputTokens": {
+                              "type": "number"
+                            },
+                            "totalTokens": {
+                              "type": "number"
+                            }
+                          },
+                          "required": ["inputTokens", "outputTokens", "totalTokens"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "model": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "reasoningEffort": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "modelSource": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["default", "override"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "configuredModel": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "configuredReasoningEffort": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "configuredModelSource": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["default", "override"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "modelChangePending": {
+                      "type": "boolean"
+                    },
+                    "configuredTemplateId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "configuredTemplateName": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "url": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "description": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "blockedBy": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "identifier": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "state": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["id", "identifier", "state"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "branchName": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "pullRequestUrl": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "nextRetryDueAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "createdAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "recentEvents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "issueId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "issueIdentifier": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "sessionId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "event": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "content": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "metadata": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["at", "issueId", "issueIdentifier", "sessionId", "event", "message"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "attempts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      }
+                    },
+                    "currentAttemptId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "issueId",
+                    "identifier",
+                    "title",
+                    "state",
+                    "workspaceKey",
+                    "message",
+                    "status",
+                    "updatedAt",
+                    "attempt",
+                    "error",
+                    "recentEvents",
+                    "attempts",
+                    "currentAttemptId"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -397,7 +2788,46 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "updated": {
+                      "type": "boolean"
+                    },
+                    "restarted": {
+                      "type": "boolean"
+                    },
+                    "applies_next_attempt": {
+                      "type": "boolean"
+                    },
+                    "selection": {
+                      "type": "object",
+                      "properties": {
+                        "model": {
+                          "type": "string"
+                        },
+                        "reasoning_effort": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": ["default", "override"]
+                        }
+                      },
+                      "required": ["model", "reasoning_effort", "source"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["updated", "restarted", "applies_next_attempt", "selection"],
+                  "additionalProperties": false
                 }
               }
             }
@@ -671,7 +3101,247 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "attemptId": {
+                      "type": "string"
+                    },
+                    "attemptNumber": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "startedAt": {
+                      "type": "string"
+                    },
+                    "endedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "model": {
+                      "type": "string"
+                    },
+                    "reasoningEffort": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "tokenUsage": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "inputTokens": {
+                              "type": "number"
+                            },
+                            "outputTokens": {
+                              "type": "number"
+                            },
+                            "totalTokens": {
+                              "type": "number"
+                            }
+                          },
+                          "required": ["inputTokens", "outputTokens", "totalTokens"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "costUsd": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "errorCode": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "errorMessage": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "issueIdentifier": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "workspacePath": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "workspaceKey": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "modelSource": {
+                      "type": "string",
+                      "enum": ["default", "override"]
+                    },
+                    "turnCount": {
+                      "type": "number"
+                    },
+                    "threadId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "turnId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "issueId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "issueIdentifier": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "sessionId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "event": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "content": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "metadata": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["at", "issueId", "issueIdentifier", "sessionId", "event", "message"],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "attemptId",
+                    "attemptNumber",
+                    "startedAt",
+                    "endedAt",
+                    "status",
+                    "model",
+                    "reasoningEffort",
+                    "tokenUsage",
+                    "costUsd",
+                    "errorCode",
+                    "errorMessage",
+                    "events"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -718,7 +3388,98 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "workspaces": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "workspace_key": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["running", "retrying", "completed", "orphaned"]
+                          },
+                          "strategy": {
+                            "type": "string"
+                          },
+                          "issue": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "identifier": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "state": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["identifier", "title", "state"],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "disk_bytes": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "last_modified_at": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "workspace_key",
+                          "path",
+                          "status",
+                          "strategy",
+                          "issue",
+                          "disk_bytes",
+                          "last_modified_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "generated_at": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "active": {
+                      "type": "number"
+                    },
+                    "orphaned": {
+                      "type": "number"
+                    }
+                  },
+                  "required": ["workspaces", "generated_at", "total", "active", "orphaned"],
+                  "additionalProperties": false
                 }
               }
             }
@@ -787,7 +3548,226 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "repos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "repoUrl": {
+                            "type": "string"
+                          },
+                          "defaultBranch": {
+                            "type": "string"
+                          },
+                          "identifierPrefix": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "label": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "githubOwner": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "githubRepo": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "configured": {
+                            "type": "boolean"
+                          },
+                          "github": {
+                            "type": "object",
+                            "properties": {
+                              "description": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "visibility": {
+                                "type": "string"
+                              },
+                              "openPrCount": {
+                                "type": "number"
+                              },
+                              "pulls": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "number": {
+                                      "type": "number"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "author": {
+                                      "type": "string"
+                                    },
+                                    "state": {
+                                      "type": "string"
+                                    },
+                                    "updatedAt": {
+                                      "type": "string"
+                                    },
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "headBranch": {
+                                      "type": "string"
+                                    },
+                                    "checksStatus": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "number",
+                                    "title",
+                                    "author",
+                                    "state",
+                                    "updatedAt",
+                                    "url",
+                                    "headBranch",
+                                    "checksStatus"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "recentCommits": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "sha": {
+                                      "type": "string"
+                                    },
+                                    "message": {
+                                      "type": "string"
+                                    },
+                                    "author": {
+                                      "type": "string"
+                                    },
+                                    "date": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["sha", "message", "author", "date"],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": ["description", "visibility", "openPrCount", "pulls", "recentCommits"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "repoUrl",
+                          "defaultBranch",
+                          "identifierPrefix",
+                          "label",
+                          "githubOwner",
+                          "githubRepo",
+                          "configured"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "activeBranches": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "identifier": {
+                            "type": "string"
+                          },
+                          "branchName": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "workspacePath": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "issueTitle": {
+                            "type": "string"
+                          },
+                          "pullRequestUrl": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "identifier",
+                          "branchName",
+                          "status",
+                          "workspacePath",
+                          "issueTitle",
+                          "pullRequestUrl"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "githubAvailable": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["repos", "activeBranches", "githubAvailable"],
+                  "additionalProperties": false
                 }
               }
             }
@@ -806,7 +3786,12 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
                 }
               }
             }
@@ -825,7 +3810,12 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
                 }
               }
             }
@@ -844,7 +3834,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "overlay": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["overlay"],
+                  "additionalProperties": false
                 }
               }
             }
@@ -860,7 +3862,18 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "patch": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  }
+                },
+                "additionalProperties": {}
               }
             }
           }
@@ -871,7 +3884,22 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "updated": {
+                      "type": "boolean"
+                    },
+                    "overlay": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["updated", "overlay"],
+                  "additionalProperties": false
                 }
               }
             }
@@ -942,7 +3970,22 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "updated": {
+                      "type": "boolean"
+                    },
+                    "overlay": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["updated", "overlay"],
+                  "additionalProperties": false
                 }
               }
             }

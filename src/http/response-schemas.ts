@@ -8,6 +8,77 @@
 
 import { z } from "zod";
 
+/* ------------------------------------------------------------------ */
+/*  Shared sub-schemas                                                  */
+/* ------------------------------------------------------------------ */
+
+const tokenUsageSchema = z.object({
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+  totalTokens: z.number(),
+});
+
+const reasoningEffortSchema = z.enum(["none", "minimal", "low", "medium", "high", "xhigh"]);
+
+const recentEventSchema = z.object({
+  at: z.string(),
+  issueId: z.string().nullable(),
+  issueIdentifier: z.string().nullable(),
+  sessionId: z.string().nullable(),
+  event: z.string(),
+  message: z.string(),
+  content: z.string().nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
+const issueBlockerRefSchema = z.object({
+  id: z.string().nullable(),
+  identifier: z.string().nullable(),
+  state: z.string().nullable(),
+});
+
+const modelSourceSchema = z.enum(["default", "override"]);
+
+/** Shared shape for RuntimeIssueView used in state, issue detail, and snapshots. */
+const runtimeIssueViewSchema = z.object({
+  issueId: z.string(),
+  identifier: z.string(),
+  title: z.string(),
+  state: z.string(),
+  workspaceKey: z.string().nullable(),
+  workspacePath: z.string().nullable().optional(),
+  message: z.string().nullable(),
+  status: z.string(),
+  updatedAt: z.string(),
+  attempt: z.number().nullable(),
+  error: z.string().nullable(),
+  priority: z.number().nullable().optional(),
+  labels: z.array(z.string()).optional(),
+  startedAt: z.string().nullable().optional(),
+  lastEventAt: z.string().nullable().optional(),
+  tokenUsage: tokenUsageSchema.nullable().optional(),
+  model: z.string().nullable().optional(),
+  reasoningEffort: reasoningEffortSchema.nullable().optional(),
+  modelSource: modelSourceSchema.nullable().optional(),
+  configuredModel: z.string().nullable().optional(),
+  configuredReasoningEffort: reasoningEffortSchema.nullable().optional(),
+  configuredModelSource: modelSourceSchema.nullable().optional(),
+  modelChangePending: z.boolean().optional(),
+  configuredTemplateId: z.string().nullable().optional(),
+  configuredTemplateName: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  blockedBy: z.array(issueBlockerRefSchema).optional(),
+  branchName: z.string().nullable().optional(),
+  pullRequestUrl: z.string().nullable().optional(),
+  nextRetryDueAt: z.string().nullable().optional(),
+  createdAt: z.string().nullable().optional(),
+});
+
+/* ------------------------------------------------------------------ */
+/*  Existing schemas                                                    */
+/* ------------------------------------------------------------------ */
+
 /** POST /api/v1/refresh — 202 response. */
 export const refreshResponseSchema = z.object({
   queued: z.boolean(),
@@ -64,3 +135,237 @@ export const attemptsListResponseSchema = z.object({
   attempts: z.array(z.record(z.string(), z.unknown())),
   current_attempt_id: z.string().nullable(),
 });
+
+/* ------------------------------------------------------------------ */
+/*  New schemas — tightened for OpenAPI contract coverage                */
+/* ------------------------------------------------------------------ */
+
+/** GET /api/v1/transitions — available state transitions. */
+export const transitionsListResponseSchema = z.object({
+  transitions: z.record(z.string(), z.array(z.string())),
+});
+
+/** GET /api/v1/state — full runtime snapshot. */
+export const stateResponseSchema = z.object({
+  generatedAt: z.string(),
+  counts: z.object({
+    running: z.number(),
+    retrying: z.number(),
+  }),
+  running: z.array(runtimeIssueViewSchema),
+  retrying: z.array(runtimeIssueViewSchema),
+  queued: z.array(runtimeIssueViewSchema).optional(),
+  completed: z.array(runtimeIssueViewSchema).optional(),
+  workflowColumns: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      kind: z.enum(["backlog", "todo", "active", "gate", "terminal", "other"]),
+      terminal: z.boolean(),
+      count: z.number(),
+      issues: z.array(runtimeIssueViewSchema),
+    }),
+  ),
+  codexTotals: z.object({
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    totalTokens: z.number(),
+    secondsRunning: z.number(),
+    costUsd: z.number(),
+  }),
+  rateLimits: z.unknown(),
+  recentEvents: z.array(recentEventSchema),
+  stallEvents: z
+    .array(
+      z.object({
+        at: z.string(),
+        issueId: z.string(),
+        issueIdentifier: z.string(),
+        silentMs: z.number(),
+        timeoutMs: z.number(),
+      }),
+    )
+    .optional(),
+  systemHealth: z
+    .object({
+      status: z.enum(["healthy", "degraded", "critical"]),
+      checkedAt: z.string(),
+      runningCount: z.number(),
+      message: z.string(),
+    })
+    .optional(),
+  webhookHealth: z
+    .object({
+      status: z.string(),
+      effectiveIntervalMs: z.number(),
+      stats: z.object({
+        deliveriesReceived: z.number(),
+        lastDeliveryAt: z.string().nullable(),
+        lastEventType: z.string().nullable(),
+      }),
+      lastDeliveryAt: z.string().nullable(),
+      lastEventType: z.string().nullable(),
+    })
+    .optional(),
+  availableModels: z.array(z.string()).nullable().optional(),
+});
+
+/** GET /api/v1/{issue_identifier} — issue detail with attempts and events. */
+export const issueDetailResponseSchema = runtimeIssueViewSchema.extend({
+  recentEvents: z.array(recentEventSchema),
+  attempts: z.array(z.record(z.string(), z.unknown())),
+  currentAttemptId: z.string().nullable(),
+});
+
+const attemptSummarySchema = z.object({
+  attemptId: z.string(),
+  attemptNumber: z.number().nullable(),
+  startedAt: z.string(),
+  endedAt: z.string().nullable(),
+  status: z.string(),
+  model: z.string(),
+  reasoningEffort: reasoningEffortSchema.nullable(),
+  tokenUsage: tokenUsageSchema.nullable(),
+  costUsd: z.number().nullable(),
+  errorCode: z.string().nullable(),
+  errorMessage: z.string().nullable(),
+  issueIdentifier: z.string().optional(),
+  title: z.string().optional(),
+  workspacePath: z.string().nullable().optional(),
+  workspaceKey: z.string().nullable().optional(),
+  modelSource: modelSourceSchema.optional(),
+  turnCount: z.number().optional(),
+  threadId: z.string().nullable().optional(),
+  turnId: z.string().nullable().optional(),
+});
+
+/** GET /api/v1/attempts/{attempt_id} — attempt detail with events. */
+export const attemptDetailResponseSchema = attemptSummarySchema.extend({
+  events: z.array(recentEventSchema),
+});
+
+/** POST /api/v1/{issue_identifier}/model — 202 model updated. */
+export const modelUpdateResponseSchema = z.object({
+  updated: z.boolean(),
+  restarted: z.boolean(),
+  applies_next_attempt: z.boolean(),
+  selection: z.object({
+    model: z.string(),
+    reasoning_effort: reasoningEffortSchema.nullable(),
+    source: modelSourceSchema,
+  }),
+});
+
+/* -- Workspace schemas ------------------------------------------------ */
+
+const workspaceIssueSchema = z.object({
+  identifier: z.string(),
+  title: z.string(),
+  state: z.string(),
+});
+
+const workspaceEntrySchema = z.object({
+  workspace_key: z.string(),
+  path: z.string(),
+  status: z.enum(["running", "retrying", "completed", "orphaned"]),
+  strategy: z.string(),
+  issue: workspaceIssueSchema.nullable(),
+  disk_bytes: z.number().nullable(),
+  last_modified_at: z.string().nullable(),
+});
+
+/** GET /api/v1/workspaces — workspace inventory. */
+export const workspaceInventoryResponseSchema = z.object({
+  workspaces: z.array(workspaceEntrySchema),
+  generated_at: z.string(),
+  total: z.number(),
+  active: z.number(),
+  orphaned: z.number(),
+});
+
+/* -- Git context schemas ---------------------------------------------- */
+
+const gitPullViewSchema = z.object({
+  number: z.number(),
+  title: z.string(),
+  author: z.string(),
+  state: z.string(),
+  updatedAt: z.string(),
+  url: z.string(),
+  headBranch: z.string(),
+  checksStatus: z.string().nullable(),
+});
+
+const gitCommitViewSchema = z.object({
+  sha: z.string(),
+  message: z.string(),
+  author: z.string(),
+  date: z.string(),
+});
+
+const gitRepoViewSchema = z.object({
+  repoUrl: z.string(),
+  defaultBranch: z.string(),
+  identifierPrefix: z.string().nullable(),
+  label: z.string().nullable(),
+  githubOwner: z.string().nullable(),
+  githubRepo: z.string().nullable(),
+  configured: z.boolean(),
+  github: z
+    .object({
+      description: z.string().nullable(),
+      visibility: z.string(),
+      openPrCount: z.number(),
+      pulls: z.array(gitPullViewSchema),
+      recentCommits: z.array(gitCommitViewSchema),
+    })
+    .optional(),
+});
+
+const activeBranchViewSchema = z.object({
+  identifier: z.string(),
+  branchName: z.string(),
+  status: z.string(),
+  workspacePath: z.string().nullable(),
+  issueTitle: z.string(),
+  pullRequestUrl: z.string().nullable(),
+});
+
+/** GET /api/v1/git/context — git context response. */
+export const gitContextResponseSchema = z.object({
+  repos: z.array(gitRepoViewSchema),
+  activeBranches: z.array(activeBranchViewSchema),
+  githubAvailable: z.boolean(),
+});
+
+/* -- Config schemas --------------------------------------------------- */
+
+/** GET /api/v1/config — effective configuration (freeform). */
+export const configResponseSchema = z.record(z.string(), z.unknown());
+
+/** GET /api/v1/config/schema — config schema descriptor. */
+export const configSchemaResponseSchema = z.record(z.string(), z.unknown());
+
+/** GET /api/v1/config/overlay — overlay read response. */
+export const configOverlayGetResponseSchema = z.object({
+  overlay: z.record(z.string(), z.unknown()),
+});
+
+/** PUT /api/v1/config/overlay — overlay write response. */
+export const configOverlayPutResponseSchema = z.object({
+  updated: z.boolean(),
+  overlay: z.record(z.string(), z.unknown()),
+});
+
+/** PATCH /api/v1/config/overlay/{path} — overlay path set response. */
+export const configOverlayPatchResponseSchema = z.object({
+  updated: z.boolean(),
+  overlay: z.record(z.string(), z.unknown()),
+});
+
+/** PUT /api/v1/config/overlay — request body. */
+export const configOverlayPutRequestSchema = z
+  .object({
+    patch: z.record(z.string(), z.unknown()).optional(),
+  })
+  .catchall(z.unknown());

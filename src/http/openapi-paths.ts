@@ -12,12 +12,25 @@ import { z } from "zod";
 import { modelUpdateSchema, transitionSchema } from "./request-schemas.js";
 import {
   abortResponseSchema,
+  attemptDetailResponseSchema,
   attemptsListResponseSchema,
+  configOverlayGetResponseSchema,
+  configOverlayPatchResponseSchema,
+  configOverlayPutRequestSchema,
+  configOverlayPutResponseSchema,
+  configResponseSchema,
+  configSchemaResponseSchema,
   errorResponseSchema,
+  gitContextResponseSchema,
+  issueDetailResponseSchema,
+  modelUpdateResponseSchema,
   refreshResponseSchema,
   runtimeResponseSchema,
+  stateResponseSchema,
   transitionResponseSchema,
+  transitionsListResponseSchema,
   validationErrorSchema,
+  workspaceInventoryResponseSchema,
 } from "./response-schemas.js";
 
 type JsonSchema = Record<string, unknown>;
@@ -61,7 +74,7 @@ export function buildStateAndMetricsPaths(): Record<string, PathItem> {
         summary: "Get runtime state snapshot",
         operationId: "getState",
         responses: {
-          "200": jsonResponse("Current runtime snapshot", { type: "object" }),
+          "200": jsonResponse("Current runtime snapshot", toSchema(stateResponseSchema)),
         },
       },
     },
@@ -91,7 +104,7 @@ export function buildStateAndMetricsPaths(): Record<string, PathItem> {
         summary: "Get available state transitions",
         operationId: "getTransitions",
         responses: {
-          "200": jsonResponse("Transitions list", { type: "object" }),
+          "200": jsonResponse("Transitions list", toSchema(transitionsListResponseSchema)),
         },
       },
     },
@@ -120,7 +133,7 @@ export function buildIssuePaths(): Record<string, PathItem> {
         operationId: "getIssueDetail",
         parameters: [pathParam("issue_identifier", "Issue identifier (e.g. ENG-123)")],
         responses: {
-          "200": jsonResponse("Issue detail", { type: "object" }),
+          "200": jsonResponse("Issue detail", toSchema(issueDetailResponseSchema)),
           "404": errorResponse("Issue not found"),
         },
       },
@@ -150,7 +163,7 @@ export function buildIssuePaths(): Record<string, PathItem> {
           content: jsonContent(toSchema(modelUpdateSchema)),
         },
         responses: {
-          "200": jsonResponse("Model updated", { type: "object" }),
+          "200": jsonResponse("Model updated", toSchema(modelUpdateResponseSchema)),
           "400": jsonResponse("Validation error", toSchema(validationErrorSchema)),
         },
       },
@@ -190,7 +203,7 @@ export function buildIssuePaths(): Record<string, PathItem> {
         operationId: "getAttemptDetail",
         parameters: [pathParam("attempt_id")],
         responses: {
-          "200": jsonResponse("Attempt detail", { type: "object" }),
+          "200": jsonResponse("Attempt detail", toSchema(attemptDetailResponseSchema)),
           "404": errorResponse("Attempt not found"),
         },
       },
@@ -215,7 +228,7 @@ function buildWorkspacePaths(): Record<string, PathItem> {
         summary: "List workspaces",
         operationId: "listWorkspaces",
         responses: {
-          "200": jsonResponse("Workspace inventory", { type: "object" }),
+          "200": jsonResponse("Workspace inventory", toSchema(workspaceInventoryResponseSchema)),
         },
       },
     },
@@ -242,7 +255,7 @@ function buildGitPaths(): Record<string, PathItem> {
         summary: "Get git context for the workspace",
         operationId: "getGitContext",
         responses: {
-          "200": jsonResponse("Git context", { type: "object" }),
+          "200": jsonResponse("Git context", toSchema(gitContextResponseSchema)),
         },
       },
     },
@@ -257,7 +270,7 @@ function buildConfigPaths(): Record<string, PathItem> {
         summary: "Get effective configuration",
         operationId: "getConfig",
         responses: {
-          "200": jsonResponse("Effective config", { type: "object" }),
+          "200": jsonResponse("Effective config", toSchema(configResponseSchema)),
         },
       },
     },
@@ -267,7 +280,7 @@ function buildConfigPaths(): Record<string, PathItem> {
         summary: "Get config schema",
         operationId: "getConfigSchema",
         responses: {
-          "200": jsonResponse("Config schema", { type: "object" }),
+          "200": jsonResponse("Config schema", toSchema(configSchemaResponseSchema)),
         },
       },
     },
@@ -277,7 +290,7 @@ function buildConfigPaths(): Record<string, PathItem> {
         summary: "Get config overlay",
         operationId: "getConfigOverlay",
         responses: {
-          "200": jsonResponse("Config overlay", { type: "object" }),
+          "200": jsonResponse("Config overlay", toSchema(configOverlayGetResponseSchema)),
         },
       },
       put: {
@@ -286,10 +299,10 @@ function buildConfigPaths(): Record<string, PathItem> {
         operationId: "putConfigOverlay",
         requestBody: {
           required: true,
-          content: jsonContent({ type: "object" }),
+          content: jsonContent(toSchema(configOverlayPutRequestSchema)),
         },
         responses: {
-          "200": jsonResponse("Overlay updated", { type: "object" }),
+          "200": jsonResponse("Overlay updated", toSchema(configOverlayPutResponseSchema)),
           "400": errorResponse("Invalid overlay payload"),
         },
       },
@@ -309,7 +322,7 @@ function buildConfigPaths(): Record<string, PathItem> {
           }),
         },
         responses: {
-          "200": jsonResponse("Value set", { type: "object" }),
+          "200": jsonResponse("Value set", toSchema(configOverlayPatchResponseSchema)),
           "400": errorResponse("Invalid overlay path or payload"),
         },
       },
