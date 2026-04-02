@@ -281,8 +281,8 @@ jobs:
   mutation-incremental:
     name: Mutation Testing (Incremental)
     needs: build
-    runs-on: self-hosted
-    timeout-minutes: 60
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
     continue-on-error: true
     permissions:
       contents: read
@@ -309,8 +309,8 @@ jobs:
     name: Mutation Testing
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: build
-    runs-on: self-hosted
-    timeout-minutes: 45
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
     permissions:
       contents: read
     steps:
