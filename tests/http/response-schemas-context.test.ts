@@ -1,3 +1,6 @@
+import { describe, it, expect } from "vitest";
+import { gitContextResponseSchema } from "../../src/http/response-schemas";
+
 describe("gitContextResponseSchema", () => {
   const validGitContext = {
     repos: [

@@ -1,3 +1,13 @@
+import { describe, it, expect } from "vitest";
+import {
+  configResponseSchema,
+  configSchemaResponseSchema,
+  configOverlayGetResponseSchema,
+  configOverlayPutResponseSchema,
+  configOverlayPatchResponseSchema,
+  configOverlayPutRequestSchema,
+} from "../../src/http/response-schemas";
+
 describe("configResponseSchema", () => {
   it("parses a freeform config object", () => {
     const result = configResponseSchema.parse({ codex: { model: "gpt-5.4" }, server: { port: 4000 } });
