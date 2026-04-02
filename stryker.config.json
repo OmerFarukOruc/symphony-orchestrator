@@ -101,10 +101,5 @@
   },
   "timeoutMS": 60000,
   "concurrency": 4,
-  "ignorePatterns": [".agents", ".claude", "docs", "skills", "dist", "frontend", "reports"],
-  "vitest": {
-    "config": {
-      "exclude": ["tests/agent-runner/agent-runner.test.ts"]
-    }
-  }
+  "ignorePatterns": [".agents", ".claude", "docs", "skills", "dist", "frontend", "reports"]
 }
