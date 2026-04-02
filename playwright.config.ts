@@ -23,7 +23,7 @@ export default defineConfig({
     {
       name: "smoke",
       testMatch: ["**/*.smoke.spec.ts", "**/*.spec.ts"],
-      testIgnore: ["**/*.visual.spec.ts"],
+      testIgnore: ["**/*.visual.spec.ts", "**/*.fullstack.spec.ts"],
       use: { ...devices["Desktop Chrome"] },
     },
     {

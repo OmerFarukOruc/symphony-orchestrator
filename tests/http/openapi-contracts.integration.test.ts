@@ -24,7 +24,7 @@ import { buildStubOrchestrator, startTestServer, type TestServerResult } from ".
 /*  AJV compiler                                                       */
 /* ------------------------------------------------------------------ */
 
-const ajv = new Ajv({ allErrors: true, strict: false });
+const ajv = new Ajv({ allErrors: false, strict: false });
 
 /**
  * Extract the response schema for a given path, method, and status code
