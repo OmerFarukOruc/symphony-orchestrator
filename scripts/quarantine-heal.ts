@@ -174,11 +174,14 @@ export function healQuarantine(resultsPathArg: string): void {
       continue;
     }
 
-    remaining.push(result.remaining);
-
     if (result.healed) {
       healed.push(result.healed);
-    } else if (result.failedReset) {
+      continue;
+    }
+
+    remaining.push(result.remaining);
+
+    if (result.failedReset) {
       failedReset.push(result.remaining);
     } else {
       stillQuarantined.push(result.remaining);
