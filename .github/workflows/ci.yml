@@ -300,11 +300,48 @@ jobs:
             reports/stryker-incremental.json
           retention-days: 30
 
-  # ── Phase 6: Docker Push to GHCR (main only, after gate) ────────────
+  # ── Phase 6: Semantic Release (main only, after gate) ────────────────
+  release:
+    name: Semantic Release
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')
+    needs: build-and-test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      new_release_published: ${{ steps.release-outputs.outputs.new_release_published }}
+      new_release_version: ${{ steps.release-outputs.outputs.new_release_version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/restore-build
+      - name: Semantic Release
+        id: release
+        run: pnpm exec semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      - name: Export release outputs
+        id: release-outputs
+        if: steps.release.outcome == 'success'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if git tag --list "v${VERSION}" | grep -q .; then
+            echo "new_release_published=true" >> "$GITHUB_OUTPUT"
+            echo "new_release_version=${VERSION}" >> "$GITHUB_OUTPUT"
+          else
+            echo "new_release_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Phase 7: Docker Push to GHCR (after release) ───────────────────
   docker-push:
     name: Push to GHCR
-    if: github.ref == 'refs/heads/main' && github.event_name != 'schedule'
-    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'schedule' && needs.release.outputs.new_release_published == 'true'
+    needs: [build-and-test, release]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -312,6 +349,15 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: v${{ needs.release.outputs.new_release_version }}
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v4
         with:
@@ -323,6 +369,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
+            type=semver,pattern={{version}},value=${{ needs.release.outputs.new_release_version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release.outputs.new_release_version }}
             type=sha
             type=raw,value=latest
       - uses: docker/build-push-action@v7
@@ -333,6 +381,81 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ── Phase 8: VDS Deploy (after Docker push) ─────────────────────────
+  deploy-vds:
+    name: Deploy to VDS
+    needs: [release, docker-push]
+    if: needs.docker-push.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: ${{ secrets.VDS_HOST }}
+          username: ${{ secrets.VDS_USER }}
+          key: ${{ secrets.VDS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            VERSION="${{ needs.release.outputs.new_release_version }}"
+            IMAGE="ghcr.io/omerfarukoruc/risoluto:v${VERSION}"
+
+            cd /opt/risoluto
+
+            # Save previous image for rollback (first-deploy guard)
+            PREV_IMAGE=""
+            if docker compose ps -q risoluto 2>/dev/null | grep -q .; then
+              PREV_IMAGE=$(docker inspect --format='{{.Config.Image}}' "$(docker compose ps -q risoluto)")
+              if echo "$PREV_IMAGE" | grep -q "^ghcr.io/"; then
+                echo "$PREV_IMAGE" > /opt/risoluto/.previous-image
+              else
+                echo "WARN: Previous image '$PREV_IMAGE' is not a GHCR reference, rollback unavailable"
+                rm -f /opt/risoluto/.previous-image
+              fi
+            else
+              echo "First deploy: no running container, rollback unavailable"
+              rm -f /opt/risoluto/.previous-image
+            fi
+
+            # Pull and deploy
+            docker pull "$IMAGE"
+            RISOLUTO_IMAGE="$IMAGE" docker compose up -d
+
+            # Health check with retry (5 attempts, 10s apart)
+            HEALTHY=false
+            for i in 1 2 3 4 5; do
+              echo "Health check attempt $i/5..."
+              if curl -sf http://localhost:4000/api/v1/runtime > /dev/null 2>&1; then
+                echo "Health check passed"
+                HEALTHY=true
+                break
+              fi
+              sleep 10
+            done
+
+            if [ "$HEALTHY" = "false" ]; then
+              echo "::error::Health check failed after 5 attempts"
+
+              # Rollback if previous image is available
+              if [ -f /opt/risoluto/.previous-image ]; then
+                ROLLBACK_IMAGE=$(cat /opt/risoluto/.previous-image)
+                echo "Rolling back to $ROLLBACK_IMAGE"
+                RISOLUTO_IMAGE="$ROLLBACK_IMAGE" docker compose up -d
+                sleep 5
+                if curl -sf http://localhost:4000/api/v1/runtime > /dev/null 2>&1; then
+                  echo "Rollback successful"
+                else
+                  echo "::error::Rollback also failed — manual intervention required"
+                fi
+              else
+                echo "::error::No previous image available for rollback — manual intervention required"
+              fi
+
+              exit 1
+            fi
 
   # ── E2E Lifecycle Test (main only, non-blocking) ─────────────────────
   # Runs the full E2E lifecycle test against real Linear, GitHub, and Codex
