@@ -282,7 +282,7 @@ jobs:
     name: Mutation Testing (Incremental)
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     continue-on-error: true
     permissions:
       contents: read

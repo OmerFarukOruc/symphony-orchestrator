@@ -110,7 +110,7 @@ describe("initializeSession", () => {
       onEvent,
       startupTimeoutMs: 5000,
       ...overrides,
-    };
+    } as unknown as Parameters<typeof initializeSession>[2];
   }
 
   describe("happy path", () => {
