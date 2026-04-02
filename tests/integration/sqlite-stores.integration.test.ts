@@ -254,7 +254,8 @@ describe("SqliteWebhookInbox (file-backed)", () => {
     const inbox = new SqliteWebhookInbox(db, logger);
 
     await inbox.insertVerified(makeDelivery({ deliveryId: "first" }));
-    // Small delay to ensure ordering by receivedAt
+    // Ensure distinct receivedAt (set from Date.now() inside insertVerified)
+    await new Promise((resolve) => setTimeout(resolve, 10));
     await inbox.insertVerified(makeDelivery({ deliveryId: "second" }));
 
     const recent = await inbox.getRecent(10);
