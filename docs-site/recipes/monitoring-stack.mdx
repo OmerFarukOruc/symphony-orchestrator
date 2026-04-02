@@ -1,11 +1,10 @@
 ---
 title: Monitoring Stack
 sidebarTitle: Monitoring stack
-description: "Set up Prometheus and Grafana to monitor Risoluto agent runs, error rates, poll health, and API latency."
+description: "Set up Prometheus and Grafana to monitor Risoluto — includes scrape config, dashboard queries for agent success rates, and alert rules for failures."
 icon: "chart-line"
 ---
 
-# Monitoring Stack
 
 Risoluto exposes Prometheus metrics at `GET /metrics`. This recipe wires up Prometheus + Grafana for dashboards and alerting.
 

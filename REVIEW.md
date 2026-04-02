@@ -18,7 +18,7 @@ verified prefix. Each check must be independently sufficient.
 host.includes(".github.")
 
 // CORRECT — only matches legitimate GHE patterns
-host.endsWith(".github.com") || host.startsWith("github.") || host.startsWith("api.github.")
+host === "github.com" || host === "api.github.com" || host.endsWith(".github.com")
 ```
 
 ### CI release detection: use `git tag --points-at HEAD`, not `package.json` version

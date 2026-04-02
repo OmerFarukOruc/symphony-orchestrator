@@ -997,7 +997,7 @@ function buildFlowDiagram(): HTMLElement {
     if (i < steps.length - 1) {
       const arrow = document.createElement("div");
       arrow.className = "setup-flow-arrow";
-      arrow.textContent = "→";
+      arrow.textContent = "\u2192";
       flow.append(arrow);
     }
   }

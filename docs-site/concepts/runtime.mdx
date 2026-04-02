@@ -1,19 +1,18 @@
 ---
 title: Runtime Behavior
 sidebarTitle: Runtime
-description: "Polling, scheduling, timeouts, retries, and the agent state machine."
+description: "How Risoluto manages agent lifecycle at runtime — polling intervals, webhook scheduling, timeout configuration, retry logic, and the issue state machine."
 icon: "gauge-high"
 ---
 
-# Runtime Behavior
 
 How Risoluto manages agents from dispatch to completion.
 
 ## Detection & Work Selection
 
-Risoluto receives issue changes via **Linear webhooks** in real time. Polling runs as a safety net every **15 seconds** by default (`polling.interval_ms`) — when webhooks are active, polling stretches to **2 minutes** (`webhook.pollingStretchMs`).
+Risoluto receives issue changes via **Linear webhooks** in real time. Polling runs as a safety net every **15 seconds** by default (`polling.intervalMs`) — when webhooks are active, polling stretches to **2 minutes** (`webhook.pollingStretchMs`).
 
-Candidates are filtered using `tracker.active_states` and dispatched based on:
+Candidates are filtered using `tracker.activeStates` and dispatched based on:
 
 1. **Priority** — higher priority issues first (lower number = higher priority)
 2. **Age** — oldest creation time within the same priority
@@ -37,33 +36,33 @@ During startup, active issues emit lifecycle events through the SSE stream so op
   <Accordion title="Polling, Webhooks & Hooks">
     | Setting | Config key | Default | Purpose |
     |---------|-----------|---------|---------|
-    | Poll interval | `polling.interval_ms` | `15000` (15 s) | Time between Linear polls (no webhook) |
+    | Poll interval | `polling.intervalMs` | `15000` (15 s) | Time between Linear polls (no webhook) |
     | Webhook stretch | `webhook.pollingStretchMs` | `120000` (2 min) | Poll interval when webhooks are active |
     | Webhook health check | `webhook.healthCheckIntervalMs` | `300000` (5 min) | Interval to verify webhook health |
-    | Hook timeout | `hooks.timeout_ms` | `60000` (1 min) | Max time for lifecycle hooks |
+    | Hook timeout | `hooks.timeoutMs` | `60000` (1 min) | Max time for lifecycle hooks |
   </Accordion>
 
   <Accordion title="Codex Communication">
     | Setting | Config key | Default | Purpose |
     |---------|-----------|---------|---------|
-    | Read timeout | `codex.read_timeout_ms` | `5000` (5 s) | JSON-RPC read timeout |
-    | Turn timeout | `codex.turn_timeout_ms` | `3600000` (1 h) | Max time per agent turn |
-    | Turn stall | `codex.stall_timeout_ms` | `300000` (5 min) | Detect silent turns |
-    | Startup timeout | `codex.startup_timeout_ms` | `30000` (30 s) | Container startup limit |
+    | Read timeout | `codex.readTimeoutMs` | `5000` (5 s) | JSON-RPC read timeout |
+    | Turn timeout | `codex.turnTimeoutMs` | `3600000` (1 h) | Max time per agent turn |
+    | Turn stall | `codex.stallTimeoutMs` | `300000` (5 min) | Detect silent turns |
+    | Startup timeout | `codex.startupTimeoutMs` | `30000` (30 s) | Container startup limit |
   </Accordion>
 
   <Accordion title="Agent Lifecycle">
     | Setting | Config key | Default | Purpose |
     |---------|-----------|---------|---------|
-    | Agent stall | `agent.stall_timeout_ms` | `1200000` (20 min) | Kill silent agents |
-    | Max turns | `agent.max_turns` | `20` | Conversation turns per run |
-    | Max retries | `agent.max_continuation_attempts` | `5` | Continuation turns per issue |
-    | Retry backoff | `agent.max_retry_backoff_ms` | `300000` (5 min) | Max retry delay |
+    | Agent stall | `agent.stallTimeoutMs` | `1200000` (20 min) | Kill silent agents |
+    | Max turns | `agent.maxTurns` | `20` | Conversation turns per run |
+    | Max retries | `agent.maxContinuationAttempts` | `5` | Continuation turns per issue |
+    | Retry backoff | `agent.maxRetryBackoffMs` | `300000` (5 min) | Max retry delay |
   </Accordion>
 </AccordionGroup>
 
 <Tip>
-  For safer live proving, set `codex.turn_timeout_ms` to something short like `120000` (2 minutes).
+  For safer live proving, set `codex.turnTimeoutMs` to something short like `120000` (2 minutes).
 </Tip>
 
 ## Container Lifecycle

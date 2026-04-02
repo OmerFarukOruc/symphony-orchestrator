@@ -72,5 +72,25 @@ export async function handleStopSignal(
     ctx.releaseIssueClaim(issue.id);
   }
 
-  void writeCompletionWriteback(ctx, { issue, entry, attempt, stopSignal, pullRequestUrl });
+  // Await writeback so we can update the view's state if Linear transition succeeds.
+  const transitionedState = await writeCompletionWriteback(ctx, {
+    issue,
+    entry,
+    attempt,
+    stopSignal,
+    pullRequestUrl,
+  }).catch((error) => {
+    ctx.deps.logger.warn(
+      { issue_identifier: issue.identifier, error: toErrorString(error) },
+      "completion writeback failed (non-fatal)",
+    );
+    return null;
+  });
+
+  if (transitionedState) {
+    const view = ctx.completedViews.get(issue.identifier);
+    if (view) {
+      view.state = transitionedState;
+    }
+  }
 }

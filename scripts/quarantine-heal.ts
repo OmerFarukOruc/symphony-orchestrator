@@ -136,7 +136,11 @@ function logHealingReport(
 
   console.log(`\n  Remaining quarantined: ${remaining.length}`);
 
-  const changed = healed.length > 0 || staleRemoved.length > 0 || failedReset.length > 0;
+  const passCountChanged = stillQuarantined.some((e) => {
+    const original = entries.find((o) => o.testName === e.testName && o.file === e.file);
+    return original !== undefined && e.passCount !== original.passCount;
+  });
+  const changed = healed.length > 0 || staleRemoved.length > 0 || failedReset.length > 0 || passCountChanged;
   console.log(changed ? "\n  quarantine.json was updated." : "\n  No changes to quarantine.json.");
 }
 

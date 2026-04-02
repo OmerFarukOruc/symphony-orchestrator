@@ -18,9 +18,10 @@ export interface CompletionWritebackInput {
 export async function writeCompletionWriteback(
   ctx: CompletionWritebackContext,
   input: CompletionWritebackInput,
-): Promise<void> {
+): Promise<string | null> {
   const config = ctx.getConfig();
   const successState = config.agent.successState;
+  let transitionedState: string | null = null;
 
   const lines: string[] = ["**Risoluto agent completed** ✓"];
   if (input.entry.tokenUsage) {
@@ -43,6 +44,7 @@ export async function writeCompletionWriteback(
       const stateId = await ctx.deps.tracker.resolveStateId(successState);
       if (stateId) {
         await ctx.deps.tracker.updateIssueState(input.issue.id, stateId);
+        transitionedState = successState;
         ctx.deps.logger.info(
           { issue_identifier: input.issue.identifier, successState },
           "linear issue transitioned to success state",
@@ -69,4 +71,6 @@ export async function writeCompletionWriteback(
       "linear completion comment failed (non-fatal)",
     );
   }
+
+  return transitionedState;
 }

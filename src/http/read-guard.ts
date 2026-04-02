@@ -15,7 +15,7 @@ const PROTECTED_READ_PREFIXES = [
   "/api/v1/config",
   "/api/v1/secrets",
   "/api/v1/audit",
-  "/api/v1/attempts/",
+  "/api/v1/attempts",
 ];
 
 const DYNAMIC_ISSUE_ROUTE_PREFIXES = new Set([
@@ -34,14 +34,10 @@ const DYNAMIC_ISSUE_ROUTE_PREFIXES = new Set([
   "openapi.json",
 ]);
 
-function resolveReadHeaderTokens(): string[] {
+function resolveConfiguredReadTokens(): string[] {
   const readToken = process.env.RISOLUTO_READ_TOKEN?.trim() || "";
   const writeToken = process.env.RISOLUTO_WRITE_TOKEN?.trim() || "";
   return [...new Set([readToken, writeToken].filter(Boolean))];
-}
-
-function resolveReadQueryTokens(): string[] {
-  return [];
 }
 
 function extractBearerToken(req: Request): string | null {
@@ -75,7 +71,7 @@ function isProtectedReadPath(pathname: string): boolean {
 }
 
 export function hasConfiguredReadAccessToken(): boolean {
-  return resolveReadHeaderTokens().length > 0 || resolveReadQueryTokens().length > 0;
+  return resolveConfiguredReadTokens().length > 0;
 }
 
 export function createReadGuard(): (req: Request, res: Response, next: NextFunction) => void {
@@ -90,8 +86,9 @@ export function createReadGuard(): (req: Request, res: Response, next: NextFunct
       return;
     }
 
-    const configuredHeaderTokens = resolveReadHeaderTokens();
-    if (configuredHeaderTokens.length === 0) {
+    const configuredHeaderTokens = resolveConfiguredReadTokens();
+    const configuredQueryTokens = configuredHeaderTokens;
+    if (configuredHeaderTokens.length === 0 && configuredQueryTokens.length === 0) {
       res.status(403).json({
         error: {
           code: "read_forbidden",
@@ -103,9 +100,28 @@ export function createReadGuard(): (req: Request, res: Response, next: NextFunct
       return;
     }
 
+    // Bearer token from Authorization header
     const bearerToken = extractBearerToken(req);
     if (bearerToken) {
       if (configuredHeaderTokens.includes(bearerToken)) {
+        next();
+        return;
+      }
+
+      res.status(401).json({
+        error: {
+          code: "read_unauthorized",
+          message: "Sensitive read routes require a valid read token.",
+        },
+      });
+      return;
+    }
+
+    // Query-string token (?read_token=...) — used by browser EventSource which cannot send headers
+    const queryValue = req.query["read_token"];
+    const queryToken = typeof queryValue === "string" ? queryValue : null;
+    if (queryToken) {
+      if (configuredQueryTokens.includes(queryToken)) {
         next();
         return;
       }

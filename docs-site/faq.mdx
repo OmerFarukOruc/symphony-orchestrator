@@ -1,7 +1,6 @@
 ---
 title: FAQ
-sidebarTitle: FAQ
-description: "Frequently asked questions about Risoluto — what it is, privacy, models, Docker, failure handling, and more."
+description: "Frequently asked questions about Risoluto — what it is, data privacy, supported AI models, Docker requirements, failure handling, and costs."
 icon: "circle-question"
 ---
 
@@ -68,7 +67,7 @@ icon: "circle-question"
     | Tracker | Status |
     |---------|--------|
     | **Linear** | Primary adapter — full support for polling, transitions, labels, and webhooks |
-    | **GitHub Issues** | Coming soon — adapter in development, maps issues to the same pipeline |
+    | **GitHub Issues** | Supported since v0.4.0 — maps GitHub issues to the same pipeline |
     | **Jira** | On the roadmap — the `TrackerAdapter` interface is designed for extensibility |
 
     See [How It Works](/concepts/how-it-works) for details on the adapter architecture.
@@ -81,7 +80,8 @@ icon: "circle-question"
     |---------|-----------|----------|
     | Agent error | Non-zero exit code | Retry with backoff |
     | Container OOM | Exit code 137 / `OOMKilled` | Surface as `container_oom`, retry with increased memory hint |
-    | Stalled agent | No events for `agent.stallTimeoutMs` | Kill container, retry |
+    | Stalled turn | No events for `codex.stallTimeoutMs` (5 min) | Kill turn, retry |
+    | Stalled agent | No events for `agent.stallTimeoutMs` (20 min) | Kill container, retry |
     | Exhausted retries | Max attempts reached | Mark issue as failed, notify via Slack |
 
     All failures are logged to the attempt timeline and visible in the dashboard.

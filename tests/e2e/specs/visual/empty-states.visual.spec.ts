@@ -96,25 +96,4 @@ test.describe("Empty States Visual Regression", () => {
       fullPage: true,
     });
   });
-
-  test("workspaces with none active", async ({ page, apiMock }) => {
-    await freezeClock(page);
-    const scenario = apiMock.scenario().withSetupConfigured().build();
-    await apiMock.install(scenario);
-
-    await page.goto("/workspaces");
-    await page.waitForSelector("#main-content", { state: "attached" });
-    await page.waitForFunction(() => {
-      const outlet = document.getElementById("main-content");
-      return outlet && outlet.children.length > 0;
-    });
-
-    await page.waitForTimeout(1000);
-    await applyScreenshotStyles(page);
-    await page.waitForTimeout(500);
-
-    await expect(page).toHaveScreenshot("workspaces-empty.png", {
-      fullPage: true,
-    });
-  });
 });

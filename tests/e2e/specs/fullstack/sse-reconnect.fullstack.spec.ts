@@ -21,11 +21,15 @@ test.describe("SSE reconnect (browser-side)", () => {
       (globalThis as Record<string, unknown>).__sseConnected = false;
       globalThis.addEventListener("risoluto:any-event", () => {
         // Any SSE event means we are connected
+        (globalThis as Record<string, unknown>).__sseConnected = true;
       });
     });
 
     await page.goto(fullstack.fullstackBaseUrl);
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForFunction(() => (globalThis as Record<string, unknown>).__sseConnected === true, {
+      timeout: 5_000,
+    });
 
     // The frontend's EventSource connects to /api/v1/events on load.
     // Verify the page is live and SSE did not crash the page.
@@ -69,6 +73,10 @@ test.describe("SSE reconnect (browser-side)", () => {
     // Give the EventSource time to connect
     await page.waitForTimeout(1000);
 
+    const initialEventCount = await page.evaluate(
+      () => (globalThis as Record<string, unknown>).__sseEventCount as number,
+    );
+
     // Simulate outage: intercept SSE requests and return 503
     await page.route("**/api/v1/events", (route) =>
       route.fulfill({
@@ -105,5 +113,15 @@ test.describe("SSE reconnect (browser-side)", () => {
     // Verify the page is still alive and responsive after the outage cycle
     const pageAlive = await page.evaluate(() => document.readyState === "complete");
     expect(pageAlive).toBe(true);
+
+    // Verify SSE events were received after reconnection
+    await page.waitForFunction(
+      (baseline) => ((globalThis as Record<string, unknown>).__sseEventCount as number) > baseline,
+      initialEventCount,
+      { timeout: 5_000 },
+    );
+
+    const eventCount = await page.evaluate(() => (globalThis as Record<string, unknown>).__sseEventCount as number);
+    expect(eventCount).toBeGreaterThan(0);
   });
 });

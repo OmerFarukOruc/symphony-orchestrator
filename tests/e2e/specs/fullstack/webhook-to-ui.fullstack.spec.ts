@@ -29,6 +29,16 @@ test.describe("Webhook to UI pipeline", () => {
   });
 
   test("browser overview page receives SSE update after webhook POST", async ({ page, fullstack }) => {
+    // Set up SSE event counter before navigation so the listener is in place
+    // before EventSource connects.
+    await page.addInitScript(() => {
+      (globalThis as Record<string, unknown>).__sseEventCount = 0;
+      globalThis.addEventListener("risoluto:any-event", () => {
+        (globalThis as Record<string, unknown>).__sseEventCount =
+          ((globalThis as Record<string, unknown>).__sseEventCount as number) + 1;
+      });
+    });
+
     // Navigate to the dashboard overview.
     // Note: "networkidle" cannot be used because the SSE stream keeps the
     // network perpetually active. Use "domcontentloaded" + explicit waiter.
@@ -42,6 +52,13 @@ test.describe("Webhook to UI pipeline", () => {
         return main !== null;
       },
       { timeout: 10_000 },
+    );
+
+    // Give EventSource time to connect before posting the webhook
+    await page.waitForTimeout(1000);
+
+    const initialEventCount = await page.evaluate(
+      () => (globalThis as Record<string, unknown>).__sseEventCount as number,
     );
 
     // POST a signed webhook — the event bus should emit an event that SSE forwards
@@ -58,11 +75,15 @@ test.describe("Webhook to UI pipeline", () => {
     });
     expect(response.status).toBe(200);
 
-    // The frontend listens for SSE events and dispatches CustomEvents.
-    // We verify that the risoluto:any-event fires within 3 seconds by
-    // checking the page did not crash and remains responsive.
-    const pageStillAlive = await page.evaluate(() => document.readyState === "complete");
-    expect(pageStillAlive).toBe(true);
+    // Wait for the SSE event to propagate to the browser (up to 5 seconds).
+    await page.waitForFunction(
+      (baseline) => ((globalThis as Record<string, unknown>).__sseEventCount as number) > baseline,
+      initialEventCount,
+      { timeout: 5000 },
+    );
+
+    const eventCount = await page.evaluate(() => (globalThis as Record<string, unknown>).__sseEventCount as number);
+    expect(eventCount).toBeGreaterThan(0);
   });
 
   test("webhook for unknown issue does not crash the page", async ({ page, fullstack }) => {

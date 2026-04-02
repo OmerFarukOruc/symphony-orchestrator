@@ -6,12 +6,14 @@
 /* --- CSS Custom Properties ---------------------------------- */
 :root {
   --ri-primary: #9a472b;
+  --ri-primary-rgb: 154, 71, 43;
   --ri-light: #c96e4a;
+  --ri-light-rgb: 201, 110, 74;
   --ri-dark: #7a3520;
-  --ri-glow: rgba(154, 71, 43, 0.15);
-  --ri-glow-strong: rgba(154, 71, 43, 0.25);
-  --ri-border-subtle: rgba(154, 71, 43, 0.12);
-  --ri-surface-warm: rgba(154, 71, 43, 0.04);
+  --ri-glow: rgba(var(--ri-primary-rgb), 0.15);
+  --ri-glow-strong: rgba(var(--ri-primary-rgb), 0.25);
+  --ri-border-subtle: rgba(var(--ri-primary-rgb), 0.12);
+  --ri-surface-warm: rgba(var(--ri-primary-rgb), 0.04);
 }
 
 /* --- 1. Typography ------------------------------------------ */
@@ -44,7 +46,7 @@ pre {
 
 pre:hover {
   box-shadow: 0 0 20px var(--ri-glow), 0 4px 12px rgba(0, 0, 0, 0.06);
-  border-color: rgba(154, 71, 43, 0.2);
+  border-color: rgba(var(--ri-primary-rgb), 0.2);
 }
 
 /* Inline code subtle tint */
@@ -105,8 +107,8 @@ pre.mermaid {
 .dark .mermaid,
 .dark [class*="mermaid"],
 .dark pre.mermaid {
-  background: rgba(154, 71, 43, 0.06);
-  border-color: rgba(154, 71, 43, 0.15);
+  background: rgba(var(--ri-primary-rgb), 0.06);
+  border-color: rgba(var(--ri-primary-rgb), 0.15);
 }
 
 /* --- 6. Smooth Transitions — Accordions & Tabs -------------- */
@@ -158,9 +160,9 @@ details summary:hover {
 }
 
 /* --- 7. Custom Scrollbar ------------------------------------ */
-* {
+body {
   scrollbar-width: thin;
-  scrollbar-color: rgba(154, 71, 43, 0.25) transparent;
+  scrollbar-color: var(--ri-glow-strong) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -173,12 +175,12 @@ details summary:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(154, 71, 43, 0.25);
+  background: var(--ri-glow-strong);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(154, 71, 43, 0.4);
+  background: rgba(var(--ri-primary-rgb), 0.4);
 }
 
 /* --- 8. Navbar — Backdrop blur enhancement ------------------ */
@@ -266,7 +268,7 @@ article::before {
   height: 300px;
   background: radial-gradient(
     ellipse at center,
-    rgba(154, 71, 43, 0.05) 0%,
+    rgba(var(--ri-primary-rgb), 0.05) 0%,
     transparent 70%
   );
   pointer-events: none;
@@ -277,7 +279,7 @@ article::before {
 .dark article::before {
   background: radial-gradient(
     ellipse at center,
-    rgba(201, 110, 74, 0.06) 0%,
+    rgba(var(--ri-light-rgb), 0.06) 0%,
     transparent 70%
   );
 }
@@ -289,21 +291,21 @@ a {
 
 /* --- Dark Mode Refinements ---------------------------------- */
 .dark pre {
-  border-color: rgba(154, 71, 43, 0.1);
+  border-color: rgba(var(--ri-primary-rgb), 0.1);
 }
 
 .dark pre:hover {
-  box-shadow: 0 0 24px rgba(154, 71, 43, 0.12), 0 4px 16px rgba(0, 0, 0, 0.2);
-  border-color: rgba(154, 71, 43, 0.2);
+  box-shadow: 0 0 24px rgba(var(--ri-primary-rgb), 0.12), 0 4px 16px rgba(0, 0, 0, 0.2);
+  border-color: rgba(var(--ri-primary-rgb), 0.2);
 }
 
 .dark :not(pre) > code {
-  background: rgba(154, 71, 43, 0.08);
-  border-color: rgba(154, 71, 43, 0.1);
+  background: rgba(var(--ri-primary-rgb), 0.08);
+  border-color: rgba(var(--ri-primary-rgb), 0.1);
 }
 
 .dark table thead {
-  background: rgba(154, 71, 43, 0.06);
+  background: rgba(var(--ri-primary-rgb), 0.06);
 }
 
 /* --- Steps Component ---------------------------------------- */

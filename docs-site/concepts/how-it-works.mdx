@@ -1,12 +1,11 @@
 ---
 title: How It Works
 sidebarTitle: Architecture
-description: "Understand Risoluto's architecture — from issue polling to sandboxed agent execution to PR delivery."
+description: "Understand Risoluto's architecture — how issues are polled from Linear, dispatched to sandboxed Docker agents, and delivered as GitHub pull requests."
 icon: "diagram-project"
 mode: "wide"
 ---
 
-# How It Works
 
 Risoluto is a **local orchestration engine** that connects your issue tracker to AI coding agents.
 It receives Linear webhooks (or polls as fallback), claims eligible issues, spins up isolated Docker sandboxes, runs an AI agent inside each one, and delivers the result as a GitHub pull request.
@@ -129,8 +128,8 @@ flowchart LR
 
 | Setting | Config key | Default | Description |
 |---------|-----------|---------|-------------|
-| Global limit | `agent.max_concurrent_agents` | `10` | Maximum simultaneous workers |
-| Per-state limits | `agent.max_concurrent_agents_by_state` | — | e.g. `{"In Progress": 5}` |
+| Global limit | `agent.maxConcurrentAgents` | `10` | Maximum simultaneous workers |
+| Per-state limits | `agent.maxConcurrentAgentsByState` | — | e.g. `{"In Progress": 5}` |
 | Priority sorting | — | enabled | Higher priority issues dispatch first |
 | Blocked suppression | — | enabled | Issues in blocked states are skipped |
 
@@ -140,10 +139,10 @@ When an agent fails, Risoluto applies exponential backoff:
 
 | Behavior | Config key | Default |
 |----------|-----------|---------|
-| Max retries | `agent.max_continuation_attempts` | `5` |
-| Backoff cap | `agent.max_retry_backoff_ms` | `300000` (5 min) |
+| Max retries | `agent.maxContinuationAttempts` | `5` |
+| Backoff cap | `agent.maxRetryBackoffMs` | `300000` (5 min) |
 | OOM detection | — | Exit code 137 surfaced as `container_oom` |
-| Stall detection | `agent.stall_timeout_ms` | `1200000` (20 min) |
+| Stall detection | `agent.stallTimeoutMs` | `1200000` (20 min) |
 
 ## Data Storage
 

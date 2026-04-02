@@ -1,14 +1,14 @@
 ---
 title: Configuration Reference
 sidebarTitle: Configuration
-description: "Complete reference for all Risoluto configuration options — server, tracker, agent, codex, workspace, sandbox, and notifications."
+description: "Complete reference for all Risoluto configuration options — server, polling, tracker, agent, codex, workspace, sandbox, secrets, and notification settings."
 icon: "gear"
 mode: "wide"
 ---
 
 Risoluto's configuration is layered with this merge order (last wins):
 
-1. **Built-in defaults** — from Zod schemas in `src/config/schemas/`
+1. **Built-in defaults** — sensible out-of-the-box configuration
 2. **Persistent overlay** — `~/.risoluto/config/overlay.yaml` (or `$DATA_DIR/config/overlay.yaml`)
 3. **Environment variables** and `$SECRET:name` resolution at runtime
 

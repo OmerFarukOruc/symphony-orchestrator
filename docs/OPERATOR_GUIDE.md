@@ -505,14 +505,15 @@ curl -s -X PUT http://127.0.0.1:4000/api/v1/config/overlay \
 
 Go to **Settings → API → Webhooks** and add:
 
-| Setting    | Value                                                                                                                                                 |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **URL**    | `https://webhooks.risolu.to/webhooks/linear`                                                                                                          |
-| **Secret** | The same value stored as `LINEAR_WEBHOOK_SECRET`                                                                                                      |
-| **Events** | At minimum `Issue` and `Comment`. Broader event coverage is fine too.                                                                                 |
+| Setting    | Value                                                                 |
+| ---------- | --------------------------------------------------------------------- |
+| **URL**    | `https://webhooks.risolu.to/webhooks/linear`                          |
+| **Secret** | The same value stored as `LINEAR_WEBHOOK_SECRET`                      |
+| **Events** | At minimum `Issue` and `Comment`. Broader event coverage is fine too. |
 
 > [!TIP]
 > There is not yet a dedicated webhook configuration form in Settings. Today, the practical operator flow is:
+>
 > 1. use the setup wizard for `LINEAR_API_KEY`, `OPENAI_API_KEY`, and `GITHUB_TOKEN`
 > 2. use `POST /api/v1/secrets/:key` for `LINEAR_WEBHOOK_SECRET`
 > 3. use `PUT /api/v1/config/overlay` for the webhook block
@@ -536,10 +537,10 @@ curl -i -X POST https://webhooks.risolu.to/webhooks/linear \
 
 Risoluto supports two webhook registration modes:
 
-| Mode       | How it works                                                                                                 | When to use                                               |
-| ---------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| **Auto**   | Risoluto calls Linear's GraphQL API to create the webhook and stores the returned signing secret             | `LINEAR_API_KEY` is valid and has webhook admin permissions |
-| **Manual** | You register the webhook in Linear UI and provide the signing secret to Risoluto                             | API key is invalid, expired, or lacks webhook admin permissions |
+| Mode       | How it works                                                                                     | When to use                                                     |
+| ---------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| **Auto**   | Risoluto calls Linear's GraphQL API to create the webhook and stores the returned signing secret | `LINEAR_API_KEY` is valid and has webhook admin permissions     |
+| **Manual** | You register the webhook in Linear UI and provide the signing secret to Risoluto                 | API key is invalid, expired, or lacks webhook admin permissions |
 
 **Recommended production mode today: manual mode**
 
@@ -582,13 +583,13 @@ The webhook endpoint validates every request:
 
 ### Troubleshooting
 
-| Symptom                        | Cause                          | Fix                                     |
-| ------------------------------ | ------------------------------ | --------------------------------------- |
-| `401 signature_missing`        | Test request without signature | Expected — Linear sends signed requests |
-| `webhook health: disconnected` | Secret not configured or no verified delivery yet | Check `LINEAR_WEBHOOK_SECRET` and send a real Linear event |
-| `Invalid role: admin required` | API key lacks admin role       | Use manual mode or upgrade API key      |
-| `could not verify webhook URL` | Linear can't reach tunnel      | Check `docker compose logs cloudflared` |
-| Public webhook URL returns `502` or `1033` | Tunnel connector is unhealthy or misconfigured | Recreate `cloudflared`, verify tunnel token, and confirm tunnel logs show registered connections |
+| Symptom                                    | Cause                                             | Fix                                                                                              |
+| ------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `401 signature_missing`                    | Test request without signature                    | Expected — Linear sends signed requests                                                          |
+| `webhook health: disconnected`             | Secret not configured or no verified delivery yet | Check `LINEAR_WEBHOOK_SECRET` and send a real Linear event                                       |
+| `Invalid role: admin required`             | API key lacks admin role                          | Use manual mode or upgrade API key                                                               |
+| `could not verify webhook URL`             | Linear can't reach tunnel                         | Check `docker compose logs cloudflared`                                                          |
+| Public webhook URL returns `502` or `1033` | Tunnel connector is unhealthy or misconfigured    | Recreate `cloudflared`, verify tunnel token, and confirm tunnel logs show registered connections |
 
 → See **[Cloudflare Tunnel Setup](CLOUDFLARE_TUNNEL.md#troubleshooting)** for full troubleshooting guide.
 
@@ -880,35 +881,35 @@ All `/api/*` and `/metrics` endpoints are rate-limited to **300 requests per 60 
 
 ## 🌍 Environment Variables
 
-| Variable                            | Default      | Description                                                                       |
-| ----------------------------------- | ------------ | --------------------------------------------------------------------------------- |
-| `LINEAR_API_KEY`                    | —            | Linear API key (required for Linear tracker)                                      |
-| `LINEAR_PROJECT_SLUG`               | —            | Linear project slug                                                               |
-| `OPENAI_API_KEY`                    | —            | OpenAI API key (for `api_key` auth mode)                                          |
-| `GITHUB_TOKEN`                      | —            | GitHub Personal Access Token for git automation                                   |
-| `MASTER_KEY`                        | —            | AES encryption key for the secrets store                                          |
-| `RISOLUTO_BIND`                     | `127.0.0.1`  | Address to bind the HTTP server                                                   |
-| `RISOLUTO_TRUST_PROXY`              | `false`      | Trust one reverse-proxy hop (recommended `true` behind Cloudflare Tunnel)         |
-| `RISOLUTO_READ_TOKEN`               | —            | Bearer token for protected remote reads and browser/SSE read access               |
-| `RISOLUTO_WRITE_TOKEN`              | —            | Bearer token for remote write access (see [Network Security](#-network-security)) |
-| `RISOLUTO_ALLOWED_TRACKER_HOSTS`    | —            | Extra HTTPS tracker hosts allowed beyond built-in vendor defaults                 |
-| `RISOLUTO_ALLOWED_GITHUB_API_HOSTS` | —            | Extra HTTPS GitHub API hosts allowed beyond `github.com` / `*.github.com`         |
-| `RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS` | —         | Extra HTTPS Slack webhook hosts allowed beyond Slack-owned domains                |
-| `RISOLUTO_LOG_FORMAT`               | —            | Logger output format (`logfmt` or JSON when unset)                                |
-| `RISOLUTO_PERSISTENCE`              | `sqlite`     | Persistence backend                                                               |
-| `RISOLUTO_HOST_WORKSPACE_ROOT`      | —            | Host-side workspace root for Docker volume mapping                                |
-| `RISOLUTO_HOST_ARCHIVE_DIR`         | —            | Host-side archive directory for Docker volume mapping                             |
-| `RISOLUTO_CONTAINER_WORKSPACE_ROOT` | —            | Container-side workspace path                                                     |
-| `RISOLUTO_CONTAINER_ARCHIVE_DIR`    | —            | Container-side archive path                                                       |
-| `DATA_DIR`                          | `.risoluto/` | Archive and workspace base directory                                              |
-| `DISPATCH_MODE`                     | `local`      | `local` for single-process, `remote` for control/data plane split                 |
-| `DISPATCH_URL`                      | —            | Data plane URL when `DISPATCH_MODE=remote`                                        |
-| `DISPATCH_PORT`                     | `9100`       | Data plane listen port (in remote dispatch mode)                                  |
-| `DISPATCH_SHARED_SECRET`            | —            | Shared secret for remote dispatch authentication                                  |
-| `CLOUDFLARE_TUNNEL_TOKEN`           | —            | Cloudflare tunnel connector token for public webhook exposure                      |
-| `SENTRY_DSN`                        | —            | Sentry-compatible error tracking DSN                                              |
-| `CODEX_AUTH_SOURCE_HOME`            | `~/.codex`   | Codex auth credential home directory                                              |
-| `LOG_LEVEL`                         | `info`       | Pino log level (`debug`, `info`, `warn`, `error`)                                 |
+| Variable                               | Default      | Description                                                                       |
+| -------------------------------------- | ------------ | --------------------------------------------------------------------------------- |
+| `LINEAR_API_KEY`                       | —            | Linear API key (required for Linear tracker)                                      |
+| `LINEAR_PROJECT_SLUG`                  | —            | Linear project slug                                                               |
+| `OPENAI_API_KEY`                       | —            | OpenAI API key (for `api_key` auth mode)                                          |
+| `GITHUB_TOKEN`                         | —            | GitHub Personal Access Token for git automation                                   |
+| `MASTER_KEY`                           | —            | AES encryption key for the secrets store                                          |
+| `RISOLUTO_BIND`                        | `127.0.0.1`  | Address to bind the HTTP server                                                   |
+| `RISOLUTO_TRUST_PROXY`                 | `false`      | Trust one reverse-proxy hop (recommended `true` behind Cloudflare Tunnel)         |
+| `RISOLUTO_READ_TOKEN`                  | —            | Bearer token for protected remote reads and browser/SSE read access               |
+| `RISOLUTO_WRITE_TOKEN`                 | —            | Bearer token for remote write access (see [Network Security](#-network-security)) |
+| `RISOLUTO_ALLOWED_TRACKER_HOSTS`       | —            | Extra HTTPS tracker hosts allowed beyond built-in vendor defaults                 |
+| `RISOLUTO_ALLOWED_GITHUB_API_HOSTS`    | —            | Extra HTTPS GitHub API hosts allowed beyond `github.com` / `*.github.com`         |
+| `RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS` | —            | Extra HTTPS Slack webhook hosts allowed beyond Slack-owned domains                |
+| `RISOLUTO_LOG_FORMAT`                  | —            | Logger output format (`logfmt` or JSON when unset)                                |
+| `RISOLUTO_PERSISTENCE`                 | `sqlite`     | Persistence backend                                                               |
+| `RISOLUTO_HOST_WORKSPACE_ROOT`         | —            | Host-side workspace root for Docker volume mapping                                |
+| `RISOLUTO_HOST_ARCHIVE_DIR`            | —            | Host-side archive directory for Docker volume mapping                             |
+| `RISOLUTO_CONTAINER_WORKSPACE_ROOT`    | —            | Container-side workspace path                                                     |
+| `RISOLUTO_CONTAINER_ARCHIVE_DIR`       | —            | Container-side archive path                                                       |
+| `DATA_DIR`                             | `.risoluto/` | Archive and workspace base directory                                              |
+| `DISPATCH_MODE`                        | `local`      | `local` for single-process, `remote` for control/data plane split                 |
+| `DISPATCH_URL`                         | —            | Data plane URL when `DISPATCH_MODE=remote`                                        |
+| `DISPATCH_PORT`                        | `9100`       | Data plane listen port (in remote dispatch mode)                                  |
+| `DISPATCH_SHARED_SECRET`               | —            | Shared secret for remote dispatch authentication                                  |
+| `CLOUDFLARE_TUNNEL_TOKEN`              | —            | Cloudflare tunnel connector token for public webhook exposure                     |
+| `SENTRY_DSN`                           | —            | Sentry-compatible error tracking DSN                                              |
+| `CODEX_AUTH_SOURCE_HOME`               | `~/.codex`   | Codex auth credential home directory                                              |
+| `LOG_LEVEL`                            | `info`       | Pino log level (`debug`, `info`, `warn`, `error`)                                 |
 
 ---
 
@@ -1021,17 +1022,17 @@ When `stages` is empty, Risoluto derives stages from the tracker's workflow conf
 
 ### `github` — GitHub Integration
 
-| Key          | Type   | Default                    | Description                                        |
-| ------------ | ------ | -------------------------- | -------------------------------------------------- |
-| `token`      | string | —                          | GitHub Personal Access Token                       |
+| Key          | Type   | Default                    | Description                                                                                                                          |
+| ------------ | ------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `token`      | string | —                          | GitHub Personal Access Token                                                                                                         |
 | `apiBaseUrl` | string | `"https://api.github.com"` | Custom GitHub API endpoint (for GitHub Enterprise). Custom domains must also be allowlisted via `RISOLUTO_ALLOWED_GITHUB_API_HOSTS`. |
 
 ### `notifications.slack`
 
-| Key          | Type   | Default      | Description                     |
-| ------------ | ------ | ------------ | ------------------------------- |
+| Key          | Type   | Default      | Description                                                                                                     |
+| ------------ | ------ | ------------ | --------------------------------------------------------------------------------------------------------------- |
 | `webhookUrl` | string | —            | Slack incoming webhook URL. Custom domains must also be allowlisted via `RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS`. |
-| `verbosity`  | enum   | `"critical"` | `off`, `critical`, or `verbose` |
+| `verbosity`  | enum   | `"critical"` | `off`, `critical`, or `verbose`                                                                                 |
 
 ---
 
@@ -1334,24 +1335,25 @@ For comprehensive testing (before releases, after major UI changes), the `visual
 
 ## 🚀 Release Pipeline
 
-Risoluto uses [semantic-release](https://semantic-release.gitbook.io/) for automated versioning, changelog generation, and GitHub releases. Releases are triggered on every push to `main` after the `build-and-test` gate passes.
+Risoluto uses [semantic-release](https://semantic-release.gitbook.io/) for automated versioning, changelog generation, and GitHub releases. Releases are triggered on pushes to `main` only after both the `build-and-test` gate and the credential-backed `integration` job pass.
 
 ### How It Works
 
 1. A push to `main` triggers the CI pipeline.
-2. The `build-and-test` gate aggregates all quality checks (lint, test, typecheck, knip, e2e-smoke, integration-pr, docker-build, security scans).
-3. If the gate passes, the `release` job runs `semantic-release`, which:
+2. The `build-and-test` gate aggregates the required PR-safe quality checks (lint, test, typecheck, knip, e2e-smoke, integration-pr, docker-build, security scans).
+3. On `main`, the separate `integration` job runs the credential-backed integration suite with `LINEAR_API_KEY`.
+4. If both `build-and-test` and `integration` pass, the `release` job runs `semantic-release`, which:
    - Analyzes commit messages (conventional commits) to determine the version bump.
    - Generates a changelog from commit messages.
    - Creates a Git tag and GitHub release.
    - Outputs the new version for downstream jobs.
-4. If a new release is published, `docker-push` builds and pushes a Docker image to GHCR with semver tags.
-5. `deploy-vds` deploys the new image to the VDS with automated health checks and rollback.
+5. If a new release is published, `docker-push` builds and pushes a Docker image to GHCR with semver tags.
+6. `deploy-vds` deploys the new image to the VDS with automated health checks and rollback.
 
 ### Required Secrets
 
-| Secret | Purpose |
-| --- | --- |
+| Secret          | Purpose                                                                                                                |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `RELEASE_TOKEN` | GitHub PAT with `contents:write` for semantic-release to push tags and create releases. Must bypass branch protection. |
 
 ### Setup
@@ -1372,10 +1374,14 @@ Runs daily at **02:00 UTC** (`cron: "0 2 * * *"`), plus on `workflow_dispatch` f
 
 ### What Runs
 
-| Job | Description |
-| --- | --- |
-| `mutation` | Full mutation testing with Stryker (all `src/` files, incremental cache). |
-| `quarantine-heal` | Runs quarantined tests with enforcement disabled, updates pass counts, auto-heals tests that pass 5 consecutive nightly runs. |
+| Job                   | Description                                                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `mutation`            | Full mutation testing with Stryker across `src/`.                                                                                 |
+| `fullstack-e2e`       | Runs the fullstack Playwright suite against the real backend started by CI.                                                       |
+| `visual-regression`   | Runs the Playwright visual regression suite and uploads diffs on failure.                                                         |
+| `live-provider-smoke` | Runs credential-backed live-provider smoke coverage using real external integrations.                                             |
+| `quarantine-heal`     | Runs quarantined tests with enforcement disabled, updates pass counts, and auto-heals tests that pass 5 consecutive nightly runs. |
+| `nightly-notify`      | Sends a Slack alert if any nightly-only validation job fails.                                                                     |
 
 > [!NOTE]
 > PR-triggered jobs (`e2e-smoke`, `docker-build`, `integration-pr`) are skipped on schedule runs. Nightly-only jobs (`mutation`, `quarantine-heal`) are skipped on PR runs.
@@ -1430,8 +1436,8 @@ The healing script processes all quarantined tests each nightly run. If the nigh
 
 ### Required Secrets
 
-| Secret | Purpose |
-| --- | --- |
+| Secret             | Purpose                                                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | `QUARANTINE_TOKEN` | GitHub PAT with `contents:write` only (no admin bypass). Used by the healing job to commit `quarantine.json` updates. |
 
 ---
@@ -1440,18 +1446,18 @@ The healing script processes all quarantined tests each nightly run. If the nigh
 
 All secrets required by the CI/CD pipeline:
 
-| Secret | Used By | Purpose |
-| --- | --- | --- |
-| `RELEASE_TOKEN` | `release` job | Push tags, create GitHub releases (semantic-release). |
-| `SLACK_WEBHOOK_URL` | Nightly notification | Post failure alerts to Slack. |
-| `QUARANTINE_TOKEN` | `quarantine-heal` job | Commit healing updates to `quarantine.json`. |
-| `VDS_HOST` | `deploy-vds` job | VDS server hostname for SSH deploy. |
-| `VDS_USER` | `deploy-vds` job | SSH username on the VDS. |
-| `VDS_SSH_KEY` | `deploy-vds` job | SSH private key for VDS deploy. |
-| `LINEAR_API_KEY` | `integration` job (main only) | Credential-backed integration tests. |
-| `E2E_GITHUB_TOKEN` | `e2e-lifecycle` job | GitHub API access for E2E lifecycle test. |
-| `OPENAI_API_KEY` | `e2e-lifecycle` job | OpenAI API access for E2E lifecycle test. |
-| `CODEX_AUTH_JSON` | `e2e-lifecycle` job | Base64-encoded Codex auth for E2E lifecycle test. |
+| Secret              | Used By                                               | Purpose                                                                 |
+| ------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| `RELEASE_TOKEN`     | `release` job                                         | Push tags, create GitHub releases (semantic-release).                   |
+| `SLACK_WEBHOOK_URL` | Nightly notification                                  | Post failure alerts to Slack.                                           |
+| `QUARANTINE_TOKEN`  | `quarantine-heal` job                                 | Commit healing updates to `quarantine.json`.                            |
+| `VDS_HOST`          | `deploy-vds` job                                      | VDS server hostname for SSH deploy.                                     |
+| `VDS_USER`          | `deploy-vds` job                                      | SSH username on the VDS.                                                |
+| `VDS_SSH_KEY`       | `deploy-vds` job                                      | SSH private key for VDS deploy.                                         |
+| `LINEAR_API_KEY`    | `integration`, `live-provider-smoke`, `e2e-lifecycle` | Credential-backed integration tests and nightly live-provider coverage. |
+| `E2E_GITHUB_TOKEN`  | `e2e-lifecycle` job                                   | GitHub API access for E2E lifecycle test.                               |
+| `OPENAI_API_KEY`    | `e2e-lifecycle` job                                   | OpenAI API access for E2E lifecycle test.                               |
+| `CODEX_AUTH_JSON`   | `e2e-lifecycle` job                                   | Base64-encoded Codex auth for E2E lifecycle test.                       |
 
 ---
 

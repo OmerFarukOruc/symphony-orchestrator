@@ -90,7 +90,7 @@ describe("createReadGuard", () => {
     expect(response.status).not.toHaveBeenCalled();
   });
 
-  it("rejects query-string auth when only RISOLUTO_WRITE_TOKEN is configured", () => {
+  it("allows SSE reads with valid ?read_token= query param (EventSource cannot send headers)", () => {
     vi.stubEnv("RISOLUTO_WRITE_TOKEN", "write-secret");
     const next = vi.fn();
     const response = createResponse();
@@ -101,6 +101,25 @@ describe("createReadGuard", () => {
       socket: { remoteAddress: "10.0.0.5" },
       get: vi.fn().mockReturnValue(undefined),
       query: { read_token: "write-secret" },
+    };
+
+    createReadGuard()(request as never, response as never, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(response.status).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid ?read_token= query param", () => {
+    vi.stubEnv("RISOLUTO_WRITE_TOKEN", "write-secret");
+    const next = vi.fn();
+    const response = createResponse();
+    const request = {
+      method: "GET",
+      path: "/api/v1/events",
+      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- non-loopback regression coverage
+      socket: { remoteAddress: "10.0.0.5" },
+      get: vi.fn().mockReturnValue(undefined),
+      query: { read_token: "wrong-token" },
     };
 
     createReadGuard()(request as never, response as never, next);

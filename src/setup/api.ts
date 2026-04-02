@@ -1,7 +1,7 @@
-import type { Express, Request, Response } from "express";
+import type { Express } from "express";
 
 import { methodNotAllowed } from "../http/route-helpers.js";
-import { hasLinearCredentials } from "./setup-status.js";
+
 import { handleDetectDefaultBranch } from "./detect-default-branch.js";
 import { handleDeleteRepoRoute, handleGetRepoRoutes, handlePostRepoRoute } from "./repo-route-handlers.js";
 import type { SetupApiDeps } from "./setup-handlers.js";
@@ -24,30 +24,6 @@ import {
 
 export type { SetupApiDeps } from "./setup-handlers.js";
 
-function isBootstrapConfigured(deps: SetupApiDeps): boolean {
-  return deps.secretsStore.isInitialized() && hasLinearCredentials(deps.secretsStore);
-}
-
-function rejectSetupDiscoveryAfterBootstrap(deps: SetupApiDeps, res: Response): boolean {
-  if (!isBootstrapConfigured(deps)) {
-    return false;
-  }
-  res.status(404).json({ error: { code: "not_found", message: "Not found" } });
-  return true;
-}
-
-function withBootstrapDiscoveryGate(
-  deps: SetupApiDeps,
-  handler: (req: Request, res: Response) => void | Promise<void>,
-): (req: Request, res: Response) => void | Promise<void> {
-  return (req, res) => {
-    if (rejectSetupDiscoveryAfterBootstrap(deps, res)) {
-      return;
-    }
-    return handler(req, res);
-  };
-}
-
 export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
   app
     .route("/api/v1/setup/status")
@@ -66,7 +42,7 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
 
   app
     .route("/api/v1/setup/linear-projects")
-    .get(withBootstrapDiscoveryGate(deps, handleGetLinearProjects(deps)))
+    .get(handleGetLinearProjects(deps))
     .all((_req, res) => methodNotAllowed(res));
 
   app
@@ -121,17 +97,17 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
 
   app
     .route("/api/v1/setup/repo-route")
-    .post(handlePostRepoRoute({ configOverlayStore: deps.configOverlayStore }))
+    .post(handlePostRepoRoute({ configOverlayStore: deps.configOverlayStore, secretsStore: deps.secretsStore }))
     .all((_req, res) => methodNotAllowed(res));
 
   app
     .route("/api/v1/setup/repo-route/:index")
-    .delete(handleDeleteRepoRoute({ configOverlayStore: deps.configOverlayStore }))
+    .delete(handleDeleteRepoRoute({ configOverlayStore: deps.configOverlayStore, secretsStore: deps.secretsStore }))
     .all((_req, res) => methodNotAllowed(res));
 
   app
     .route("/api/v1/setup/repo-routes")
-    .get(withBootstrapDiscoveryGate(deps, handleGetRepoRoutes({ configOverlayStore: deps.configOverlayStore })))
+    .get(handleGetRepoRoutes({ configOverlayStore: deps.configOverlayStore, secretsStore: deps.secretsStore }))
     .all((_req, res) => methodNotAllowed(res));
 
   app
