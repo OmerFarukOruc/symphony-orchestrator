@@ -1305,6 +1305,129 @@ For comprehensive testing (before releases, after major UI changes), the `visual
 
 ---
 
+## 🚀 Release Pipeline
+
+Risoluto uses [semantic-release](https://semantic-release.gitbook.io/) for automated versioning, changelog generation, and GitHub releases. Releases are triggered on every push to `main` after the `build-and-test` gate passes.
+
+### How It Works
+
+1. A push to `main` triggers the CI pipeline.
+2. The `build-and-test` gate aggregates all quality checks (lint, test, typecheck, knip, e2e-smoke, integration-pr, docker-build, security scans).
+3. If the gate passes, the `release` job runs `semantic-release`, which:
+   - Analyzes commit messages (conventional commits) to determine the version bump.
+   - Generates a changelog from commit messages.
+   - Creates a Git tag and GitHub release.
+   - Outputs the new version for downstream jobs.
+4. If a new release is published, `docker-push` builds and pushes a Docker image to GHCR with semver tags.
+5. `deploy-vds` deploys the new image to the VDS with automated health checks and rollback.
+
+### Required Secrets
+
+| Secret | Purpose |
+| --- | --- |
+| `RELEASE_TOKEN` | GitHub PAT with `contents:write` for semantic-release to push tags and create releases. Must bypass branch protection. |
+
+### Setup
+
+1. Create a GitHub PAT (classic) with `repo` scope (or fine-grained with `contents:write`).
+2. Add it as `RELEASE_TOKEN` in the repository's Actions secrets.
+3. Ensure `main` branch protection allows the PAT to push tags.
+
+---
+
+## 🌙 Nightly Pipeline
+
+A nightly CI run executes heavier tests that are too slow for every PR.
+
+### Schedule
+
+Runs daily at **02:00 UTC** (`cron: "0 2 * * *"`), plus on `workflow_dispatch` for manual triggers.
+
+### What Runs
+
+| Job | Description |
+| --- | --- |
+| `mutation` | Full mutation testing with Stryker (all `src/` files, incremental cache). |
+| `quarantine-heal` | Runs quarantined tests with enforcement disabled, updates pass counts, auto-heals tests that pass 5 consecutive nightly runs. |
+
+> [!NOTE]
+> PR-triggered jobs (`e2e-smoke`, `docker-build`, `integration-pr`) are skipped on schedule runs. Nightly-only jobs (`mutation`, `quarantine-heal`) are skipped on PR runs.
+
+### Slack Notifications
+
+To receive nightly failure alerts in Slack:
+
+1. Create a Slack incoming webhook at https://api.slack.com/messaging/webhooks.
+2. Add the webhook URL as `SLACK_WEBHOOK_URL` in the repository's Actions secrets.
+3. Nightly pipeline failures will post a summary to the configured Slack channel.
+
+---
+
+## 🩹 Quarantine System
+
+The quarantine system isolates flaky tests so they do not block CI, while tracking them for automatic healing.
+
+### How Quarantine Works
+
+1. A flaky test is added to `quarantine.json` with `"passCount": 0`.
+2. During CI, the test runner reads `quarantine.json` and skips quarantined tests (unless `QUARANTINE_ENFORCE=false`).
+3. Each nightly run executes quarantined tests with enforcement disabled.
+4. The `quarantine-heal` job updates `passCount` for tests that pass.
+5. Tests that reach **5 consecutive passes** are automatically removed from `quarantine.json` (healed).
+
+### Quarantining a Test
+
+Add the test to `quarantine.json`:
+
+```json
+{
+  "quarantined": [
+    {
+      "testFile": "tests/example.test.ts",
+      "testName": "should handle edge case",
+      "reason": "Flaky due to timing — see #123",
+      "addedDate": "2026-04-02",
+      "passCount": 0
+    }
+  ]
+}
+```
+
+### Unquarantining a Test
+
+Remove the entry from `quarantine.json` manually, or wait for automatic healing after 5 consecutive nightly passes.
+
+### Healing Caps
+
+The healing script processes all quarantined tests each nightly run. If the nightly run fails to push directly (branch protection), it opens a PR automatically.
+
+### Required Secrets
+
+| Secret | Purpose |
+| --- | --- |
+| `QUARANTINE_TOKEN` | GitHub PAT with `contents:write` only (no admin bypass). Used by the healing job to commit `quarantine.json` updates. |
+
+---
+
+## 🔑 CI/CD Secrets Reference
+
+All secrets required by the CI/CD pipeline:
+
+| Secret | Used By | Purpose |
+| --- | --- | --- |
+| `RELEASE_TOKEN` | `release` job | Push tags, create GitHub releases (semantic-release). |
+| `SLACK_WEBHOOK_URL` | Nightly notification | Post failure alerts to Slack. |
+| `QUARANTINE_TOKEN` | `quarantine-heal` job | Commit healing updates to `quarantine.json`. |
+| `VDS_HOST` | `deploy-vds` job | VDS server hostname for SSH deploy. |
+| `VDS_USER` | `deploy-vds` job | SSH username on the VDS. |
+| `VDS_SSH_KEY` | `deploy-vds` job | SSH private key for VDS deploy. |
+| `LINEAR_API_KEY` | `integration` job (main only) | Credential-backed integration tests. |
+| `E2E_GITHUB_TOKEN` | `e2e-lifecycle` job | GitHub API access for E2E lifecycle test. |
+| `OPENAI_API_KEY` | `e2e-lifecycle` job | OpenAI API access for E2E lifecycle test. |
+| `CODEX_AUTH_JSON` | `e2e-lifecycle` job | Base64-encoded Codex auth for E2E lifecycle test. |
+
+---
+
 ## 🔐 Trust and Auth
 
 Risoluto is designed for a local, operator-controlled, high-trust environment.

@@ -98,9 +98,9 @@ Keep the doc set role-oriented:
 
 Keep secrets out of committed workflow files; prefer env expansion such as `$LINEAR_API_KEY`. When changing auth, trust, workflow examples, or sandbox behavior, update `docs/TRUST_AND_AUTH.md` and any affected operator docs in the same PR.
 
-## SonarCloud Prevention Rules
+## Code Quality Rules
 
-These rules prevent the recurring code quality issues identified and fixed during the SonarCloud cleanup. Follow them strictly in all new code.
+Follow these rules strictly in all new code to prevent recurring quality issues.
 
 ### String Manipulation
 
@@ -129,7 +129,7 @@ These rules prevent the recurring code quality issues identified and fixed durin
 ### Deprecation & Cleanup
 
 - **Remove deprecated type aliases immediately.** When marking a type as `@deprecated`, migrate all call sites in the same PR — do not leave deprecated references.
-- **Avoid `Todo` in comments/examples.** SonarCloud flags any occurrence of `TODO` (case-insensitive). Use alternative wording in JSDoc examples (e.g. `"Triage"` instead of `"Todo"`).
+- **Avoid `Todo` in comments/examples.** Linters flag any occurrence of `TODO` (case-insensitive). Use alternative wording in JSDoc examples (e.g. `"Triage"` instead of `"Todo"`).
 
 ## Watch Mode
 
