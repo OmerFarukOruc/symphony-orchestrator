@@ -1,0 +1,33 @@
+tests/e2e/specs/fullstack/sse-reconnect.fullstack.spec.ts
+  38140ba4a2c0fb2d 24,116-117,122,125
+REVIEW.md
+  38140ba4a2c0fb2d 21
+tests/http/read-guard.test.ts
+  38140ba4a2c0fb2d 93,108-122
+src/http/read-guard.ts
+  38140ba4a2c0fb2d 18,91,103,120,123-124
+tests/e2e/specs/fullstack/webhook-to-ui.fullstack.spec.ts
+  38140ba4a2c0fb2d 32-41,57-58,78-79,82-84,86
+scripts/quarantine-heal.ts
+  38140ba4a2c0fb2d 139-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "90c94d40f90e8cd6da97ce3730804e60e9ce1314",
+  "prompts": {
+    "38140ba4a2c0fb2d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2b05f1de7ffeD0ZP02z7qnO43e",
+        "model": "claude-cpa/claude-sonnet-4-6"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 90,
+      "total_deletions": 58,
+      "accepted_lines": 73,
+      "overriden_lines": 11
+    }
+  }
+}
