@@ -845,13 +845,36 @@ Authorization: Bearer your-secret-token
 > [!CAUTION]
 > Exposing Risoluto on a non-loopback address without `RISOLUTO_WRITE_TOKEN` blocks all mutations from remote clients. Always set both when binding to `0.0.0.0`.
 
+### Read Guard
+
+Sensitive read routes (`/api/v1/state`, issue detail/attempt history, workspaces, git context, config, secrets, and SSE events) are protected by a read guard middleware (`src/http/read-guard.ts`) when the request comes from a non-loopback address:
+
+| Scenario                                                                 | Behavior                    |
+| ------------------------------------------------------------------------ | --------------------------- |
+| Request from loopback (`127.0.0.1`, `::1`)                               | Allowed — no token required |
+| Request from non-loopback, no read-capable token configured              | **403 `read_forbidden`**    |
+| `RISOLUTO_READ_TOKEN` set, valid `Authorization: Bearer <token>` header  | Allowed from any address    |
+| `RISOLUTO_WRITE_TOKEN` set, valid `Authorization: Bearer <token>` header | Allowed from any address    |
+| `RISOLUTO_READ_TOKEN` set, valid `?read_token=<token>` query             | Allowed for read-only URLs  |
+| Missing or invalid token on a protected remote read                      | **401 `read_unauthorized`** |
+
+To enable remote read + write access:
+
+```bash
+export RISOLUTO_BIND="0.0.0.0"
+export RISOLUTO_READ_TOKEN="your-read-token"
+export RISOLUTO_WRITE_TOKEN="your-write-token"
+```
+
+Use the dedicated read token for browser/SSE access. Risoluto intentionally does **not** reuse the write token as a `read_token` query parameter.
+
 ### Rate Limiting
 
 All `/api/*` and `/metrics` endpoints are rate-limited to **300 requests per 60 seconds** per client. When the limit is exceeded, the server responds with HTTP `429 Too Many Requests`.
 
 ### Read-only methods
 
-`GET`, `HEAD`, and `OPTIONS` requests are exempt from write guard checks and always allowed from any address.
+`GET`, `HEAD`, and `OPTIONS` requests are exempt from the **write** guard, but protected read routes still enforce the read guard for non-loopback clients. Public reads such as `/api/v1/runtime` and `/api/v1/openapi.json` remain readable without a token.
 
 ---
 
@@ -866,7 +889,11 @@ All `/api/*` and `/metrics` endpoints are rate-limited to **300 requests per 60 
 | `MASTER_KEY`                        | —            | AES encryption key for the secrets store                                          |
 | `RISOLUTO_BIND`                     | `127.0.0.1`  | Address to bind the HTTP server                                                   |
 | `RISOLUTO_TRUST_PROXY`              | `false`      | Trust one reverse-proxy hop (recommended `true` behind Cloudflare Tunnel)         |
+| `RISOLUTO_READ_TOKEN`               | —            | Bearer token for protected remote reads and browser/SSE read access               |
 | `RISOLUTO_WRITE_TOKEN`              | —            | Bearer token for remote write access (see [Network Security](#-network-security)) |
+| `RISOLUTO_ALLOWED_TRACKER_HOSTS`    | —            | Extra HTTPS tracker hosts allowed beyond built-in vendor defaults                 |
+| `RISOLUTO_ALLOWED_GITHUB_API_HOSTS` | —            | Extra HTTPS GitHub API hosts allowed beyond `github.com` / `*.github.com`         |
+| `RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS` | —         | Extra HTTPS Slack webhook hosts allowed beyond Slack-owned domains                |
 | `RISOLUTO_LOG_FORMAT`               | —            | Logger output format (`logfmt` or JSON when unset)                                |
 | `RISOLUTO_PERSISTENCE`              | `sqlite`     | Persistence backend                                                               |
 | `RISOLUTO_HOST_WORKSPACE_ROOT`      | —            | Host-side workspace root for Docker volume mapping                                |
@@ -997,13 +1024,13 @@ When `stages` is empty, Risoluto derives stages from the tracker's workflow conf
 | Key          | Type   | Default                    | Description                                        |
 | ------------ | ------ | -------------------------- | -------------------------------------------------- |
 | `token`      | string | —                          | GitHub Personal Access Token                       |
-| `apiBaseUrl` | string | `"https://api.github.com"` | Custom GitHub API endpoint (for GitHub Enterprise) |
+| `apiBaseUrl` | string | `"https://api.github.com"` | Custom GitHub API endpoint (for GitHub Enterprise). Custom domains must also be allowlisted via `RISOLUTO_ALLOWED_GITHUB_API_HOSTS`. |
 
 ### `notifications.slack`
 
 | Key          | Type   | Default      | Description                     |
 | ------------ | ------ | ------------ | ------------------------------- |
-| `webhookUrl` | string | —            | Slack incoming webhook URL      |
+| `webhookUrl` | string | —            | Slack incoming webhook URL. Custom domains must also be allowlisted via `RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS`. |
 | `verbosity`  | enum   | `"critical"` | `off`, `critical`, or `verbose` |
 
 ---
@@ -1063,7 +1090,7 @@ When `stages` is empty, Risoluto derives stages from the tracker's workflow conf
 | `DELETE` | `/api/v1/templates/:id`                | Delete a prompt template                                                              |
 | `POST`   | `/api/v1/templates/:id/preview`        | Preview a rendered template with sample data                                          |
 | `GET`    | `/api/v1/audit`                        | Query audit log entries with optional filters                                         |
-| `GET`    | `/api/v1/openapi.json`                 | OpenAPI 3.0 specification                                                             |
+| `GET`    | `/api/v1/openapi.json`                 | OpenAPI 3.1 specification                                                             |
 | `GET`    | `/api/docs`                            | Swagger UI for interactive API exploration                                            |
 
 ---

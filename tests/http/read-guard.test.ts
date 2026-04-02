@@ -71,7 +71,26 @@ describe("createReadGuard", () => {
     expect(response.status).not.toHaveBeenCalled();
   });
 
-  it("allows protected reads with RISOLUTO_WRITE_TOKEN via query token", () => {
+  it("allows protected reads with RISOLUTO_READ_TOKEN via query token", () => {
+    vi.stubEnv("RISOLUTO_READ_TOKEN", "read-secret");
+    const next = vi.fn();
+    const response = createResponse();
+    const request = {
+      method: "GET",
+      path: "/api/v1/events",
+      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- non-loopback regression coverage
+      socket: { remoteAddress: "10.0.0.5" },
+      get: vi.fn().mockReturnValue(undefined),
+      query: { read_token: "read-secret" },
+    };
+
+    createReadGuard()(request as never, response as never, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(response.status).not.toHaveBeenCalled();
+  });
+
+  it("rejects query-string auth when only RISOLUTO_WRITE_TOKEN is configured", () => {
     vi.stubEnv("RISOLUTO_WRITE_TOKEN", "write-secret");
     const next = vi.fn();
     const response = createResponse();
@@ -86,8 +105,8 @@ describe("createReadGuard", () => {
 
     createReadGuard()(request as never, response as never, next);
 
-    expect(next).toHaveBeenCalledOnce();
-    expect(response.status).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(401);
   });
 
   it("skips public runtime and setup reads", () => {

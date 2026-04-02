@@ -38,12 +38,14 @@ describe("buildStateAndMetricsPaths", () => {
     expect(item.get).toHaveProperty("summary");
     expect(item.get.operationId).toBe("getState");
     expect(item.get).toHaveProperty("responses");
+    expect(item.get).toHaveProperty("security");
   });
 
   it("includes GET /api/v1/runtime", () => {
     const item = paths["/api/v1/runtime"] as PathItem;
     expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("getRuntime");
+    expect(item.get).not.toHaveProperty("security");
   });
 
   it("includes POST /api/v1/refresh", () => {
@@ -94,6 +96,7 @@ describe("buildIssuePaths", () => {
     expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("getIssueDetail");
     expect(item.get.parameters).toBeInstanceOf(Array);
+    expect(item.get).toHaveProperty("security");
     expect((item.get.parameters as Array<Record<string, unknown>>).at(0)).toMatchObject({
       name: "issue_identifier",
       in: "path",
@@ -161,6 +164,7 @@ describe("buildInfrastructurePaths", () => {
     const listItem = paths["/api/v1/workspaces"] as PathItem;
     expect(listItem).toHaveProperty("get");
     expect(listItem.get.operationId).toBe("listWorkspaces");
+    expect(listItem.get).toHaveProperty("security");
 
     const deleteItem = paths["/api/v1/workspaces/{workspace_key}"] as PathItem;
     expect(deleteItem).toHaveProperty("delete");
@@ -171,6 +175,7 @@ describe("buildInfrastructurePaths", () => {
     const item = paths["/api/v1/git/context"] as PathItem;
     expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("getGitContext");
+    expect(item.get).toHaveProperty("security");
   });
 
   it("includes config paths with multiple methods on overlay", () => {

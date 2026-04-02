@@ -35,10 +35,15 @@ const DYNAMIC_ISSUE_ROUTE_PREFIXES = new Set([
   "openapi.json",
 ]);
 
-function resolveReadTokens(): string[] {
+function resolveReadHeaderTokens(): string[] {
   const readToken = process.env.RISOLUTO_READ_TOKEN?.trim() || "";
   const writeToken = process.env.RISOLUTO_WRITE_TOKEN?.trim() || "";
   return [...new Set([readToken, writeToken].filter(Boolean))];
+}
+
+function resolveReadQueryTokens(): string[] {
+  const readToken = process.env.RISOLUTO_READ_TOKEN?.trim() || "";
+  return readToken ? [readToken] : [];
 }
 
 function extractBearerToken(req: Request): string | null {
@@ -80,7 +85,7 @@ function isProtectedReadPath(pathname: string): boolean {
 }
 
 export function hasConfiguredReadAccessToken(): boolean {
-  return resolveReadTokens().length > 0;
+  return resolveReadHeaderTokens().length > 0;
 }
 
 export function createReadGuard(): (req: Request, res: Response, next: NextFunction) => void {
@@ -95,8 +100,8 @@ export function createReadGuard(): (req: Request, res: Response, next: NextFunct
       return;
     }
 
-    const configuredTokens = resolveReadTokens();
-    if (configuredTokens.length === 0) {
+    const configuredHeaderTokens = resolveReadHeaderTokens();
+    if (configuredHeaderTokens.length === 0) {
       res.status(403).json({
         error: {
           code: "read_forbidden",
@@ -108,8 +113,13 @@ export function createReadGuard(): (req: Request, res: Response, next: NextFunct
       return;
     }
 
-    const suppliedToken = extractBearerToken(req) ?? extractReadTokenQuery(req);
-    if (!suppliedToken || !configuredTokens.includes(suppliedToken)) {
+    const bearerToken = extractBearerToken(req);
+    if (bearerToken) {
+      if (configuredHeaderTokens.includes(bearerToken)) {
+        next();
+        return;
+      }
+
       res.status(401).json({
         error: {
           code: "read_unauthorized",
@@ -119,6 +129,17 @@ export function createReadGuard(): (req: Request, res: Response, next: NextFunct
       return;
     }
 
-    next();
+    const queryToken = extractReadTokenQuery(req);
+    if (queryToken && resolveReadQueryTokens().includes(queryToken)) {
+      next();
+      return;
+    }
+
+    res.status(401).json({
+      error: {
+        code: "read_unauthorized",
+        message: "Sensitive read routes require a valid read token.",
+      },
+    });
   };
 }

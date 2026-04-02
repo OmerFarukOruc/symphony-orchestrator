@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   asCodexAuthMode,
@@ -101,12 +101,17 @@ describe("normalizeNotifications", () => {
 });
 
 describe("normalizeGitHub", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("returns null when no token is configured", () => {
     expect(normalizeGitHub({})).toBe(null);
     expect(normalizeGitHub(null)).toBe(null);
   });
 
   it("normalizes github config with token", () => {
+    vi.stubEnv("RISOLUTO_ALLOWED_GITHUB_API_HOSTS", "api.github.enterprise.com");
     const result = normalizeGitHub({ token: "ghp_token123", api_base_url: "https://api.github.enterprise.com" });
     expect(result).not.toBe(null);
     expect(result?.token).toBe("ghp_token123");

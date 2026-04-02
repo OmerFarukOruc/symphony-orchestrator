@@ -78,16 +78,13 @@ test.describe("API error handling", () => {
   });
 
   test("navigating to /issues/NONEXISTENT-999 renders gracefully", async ({ page, fullstack }) => {
-    await page.goto(`${fullstack.fullstackBaseUrl}/issues/NONEXISTENT-999`);
-    await page.waitForLoadState("networkidle");
-
-    // The page should not crash — SPA catch-all serves index.html
-    const pageAlive = await page.evaluate(() => document.readyState === "complete");
-    expect(pageAlive).toBe(true);
-
-    // The page should have some content rendered (not blank)
-    const bodyText = await page.evaluate(() => document.body.textContent ?? "");
-    expect(bodyText.length).toBeGreaterThan(0);
+    await page.goto(`${fullstack.fullstackBaseUrl}/issues/NONEXISTENT-999`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForSelector("#main-content", { state: "attached" });
+    await expect(page.getByRole("heading", { name: "Issue unavailable" })).toBeVisible();
+    await expect(page.getByText("Unknown issue identifier")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
   });
 
   test("PUT on webhook endpoint returns 405 Method Not Allowed", async ({ fullstack }) => {

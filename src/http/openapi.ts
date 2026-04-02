@@ -20,6 +20,20 @@ export function getOpenApiSpec(): Record<string, unknown> {
       description: "REST API for Risoluto — manages issues, workspaces, config, and agent lifecycle.",
     },
     servers: [{ url: "http://localhost:4000", description: "Local Risoluto instance" }],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "token",
+        },
+        readTokenQuery: {
+          type: "apiKey",
+          in: "query",
+          name: "read_token",
+        },
+      },
+    },
     paths: {
       ...buildStateAndMetricsPaths(),
       ...buildIssuePaths(),
