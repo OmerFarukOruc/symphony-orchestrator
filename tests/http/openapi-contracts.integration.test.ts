@@ -68,12 +68,6 @@ function compileResponseSchema(specPath: string, method: string, statusCode: str
 /*  Seeded orchestrator stubs                                          */
 /* ------------------------------------------------------------------ */
 
-/**
- * Build a rich orchestrator that returns data matching the OpenAPI
- * response schemas.  The state endpoint returns `getSerializedState()`
- * which is passed through `res.json()` verbatim, so the stub must
- * match the documented camelCase schema exactly.
- */
 function buildSeededOrchestrator(): OrchestratorPort {
   const issueView = {
     issueId: "issue-1",
@@ -89,7 +83,7 @@ function buildSeededOrchestrator(): OrchestratorPort {
     error: null,
   };
 
-  const stateSnapshot = {
+  const runtimeStateSnapshot = {
     generatedAt: "2026-01-01T00:00:00Z",
     counts: { running: 1, retrying: 0 },
     running: [issueView],
@@ -128,9 +122,48 @@ function buildSeededOrchestrator(): OrchestratorPort {
     ],
   };
 
+  const serializedStateSnapshot = {
+    generated_at: "2026-01-01T00:00:00Z",
+    counts: { running: 1, retrying: 0 },
+    running: [issueView],
+    retrying: [],
+    queued: [],
+    completed: [],
+    workflow_columns: [
+      {
+        key: "in-progress",
+        label: "In Progress",
+        kind: "active",
+        terminal: false,
+        count: 1,
+        issues: [issueView],
+      },
+    ],
+    codex_totals: {
+      input_tokens: 1000,
+      output_tokens: 500,
+      total_tokens: 1500,
+      seconds_running: 60,
+      cost_usd: 0.05,
+    },
+    rate_limits: null,
+    recent_events: [
+      {
+        at: "2026-01-01T00:00:00Z",
+        issue_id: "issue-1",
+        issue_identifier: "ENG-123",
+        session_id: null,
+        event: "attempt.started",
+        message: "Attempt started",
+        content: null,
+        metadata: null,
+      },
+    ],
+  };
+
   const issueDetail = {
     ...issueView,
-    recentEvents: stateSnapshot.recentEvents,
+    recentEvents: runtimeStateSnapshot.recentEvents,
     attempts: [
       {
         attemptId: "att-1",
@@ -176,8 +209,8 @@ function buildSeededOrchestrator(): OrchestratorPort {
   };
 
   return buildStubOrchestrator({
-    getSerializedState: vi.fn().mockReturnValue(stateSnapshot),
-    getSnapshot: vi.fn().mockReturnValue(stateSnapshot),
+    getSerializedState: vi.fn().mockReturnValue(serializedStateSnapshot),
+    getSnapshot: vi.fn().mockReturnValue(runtimeStateSnapshot),
     getIssueDetail: vi.fn().mockImplementation((identifier: string) => {
       if (identifier === "ENG-123") return issueDetail;
       return null;
@@ -456,7 +489,7 @@ describe("OpenAPI Contract Tests", () => {
     });
 
     it("POST /api/v1/{issue_identifier}/model -> 202 with valid body, matches modelUpdateResponseSchema", async () => {
-      const validate = compileResponseSchema("/api/v1/{issue_identifier}/model", "post", "200");
+      const validate = compileResponseSchema("/api/v1/{issue_identifier}/model", "post", "202");
       const response = await fetchApi("/api/v1/ENG-123/model", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

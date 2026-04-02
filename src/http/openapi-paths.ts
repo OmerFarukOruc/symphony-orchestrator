@@ -39,7 +39,7 @@ interface PathItem {
   [method: string]: unknown;
 }
 
-const protectedReadSecurity = [{ bearerAuth: [] }, { readTokenQuery: [] }];
+const protectedReadSecurity = [{ bearerAuth: [] }];
 
 function jsonContent(schema: JsonSchema): Record<string, unknown> {
   return { "application/json": { schema } };
@@ -172,7 +172,7 @@ export function buildIssuePaths(): Record<string, PathItem> {
           content: jsonContent(toSchema(modelUpdateSchema)),
         },
         responses: {
-          "200": jsonResponse("Model updated", toSchema(modelUpdateResponseSchema)),
+          "202": jsonResponse("Model updated", toSchema(modelUpdateResponseSchema)),
           "400": jsonResponse("Validation error", toSchema(validationErrorSchema)),
         },
       },

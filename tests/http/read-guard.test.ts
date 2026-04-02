@@ -71,7 +71,7 @@ describe("createReadGuard", () => {
     expect(response.status).not.toHaveBeenCalled();
   });
 
-  it("allows protected reads with RISOLUTO_READ_TOKEN via query token", () => {
+  it("allows protected reads with RISOLUTO_READ_TOKEN via Authorization header", () => {
     vi.stubEnv("RISOLUTO_READ_TOKEN", "read-secret");
     const next = vi.fn();
     const response = createResponse();
@@ -80,8 +80,8 @@ describe("createReadGuard", () => {
       path: "/api/v1/events",
       // eslint-disable-next-line sonarjs/no-hardcoded-ip -- non-loopback regression coverage
       socket: { remoteAddress: "10.0.0.5" },
-      get: vi.fn().mockReturnValue(undefined),
-      query: { read_token: "read-secret" },
+      get: vi.fn().mockReturnValue("Bearer read-secret"),
+      query: {},
     };
 
     createReadGuard()(request as never, response as never, next);

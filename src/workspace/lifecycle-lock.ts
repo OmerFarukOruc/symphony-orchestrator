@@ -1,20 +1,21 @@
 const workspaceLocks = new Map<string, Promise<void>>();
 
 export async function withWorkspaceLifecycleLock<T>(workspaceKey: string, task: () => Promise<T>): Promise<T> {
-  while (workspaceLocks.has(workspaceKey)) {
-    await workspaceLocks.get(workspaceKey);
-  }
+  const previous = workspaceLocks.get(workspaceKey) ?? Promise.resolve();
 
-  let releaseLock!: () => void;
+  let releaseLock: (() => void) | undefined;
   const lock = new Promise<void>((resolve) => {
     releaseLock = resolve;
   });
   workspaceLocks.set(workspaceKey, lock);
 
   try {
+    await previous;
     return await task();
   } finally {
-    workspaceLocks.delete(workspaceKey);
-    releaseLock();
+    releaseLock?.();
+    if (workspaceLocks.get(workspaceKey) === lock) {
+      workspaceLocks.delete(workspaceKey);
+    }
   }
 }

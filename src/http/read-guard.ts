@@ -4,7 +4,6 @@ import { isLoopbackAddress } from "./write-guard.js";
 
 const SAFE_READ_METHODS = new Set(["GET", "HEAD"]);
 const PUBLIC_READ_PATHS = new Set(["/api/v1/runtime", "/api/v1/openapi.json"]);
-const SETUP_PREFIX = "/api/v1/setup/";
 const PROTECTED_READ_PREFIXES = [
   "/api/v1/state",
   "/api/v1/events",
@@ -42,8 +41,7 @@ function resolveReadHeaderTokens(): string[] {
 }
 
 function resolveReadQueryTokens(): string[] {
-  const readToken = process.env.RISOLUTO_READ_TOKEN?.trim() || "";
-  return readToken ? [readToken] : [];
+  return [];
 }
 
 function extractBearerToken(req: Request): string | null {
@@ -53,11 +51,6 @@ function extractBearerToken(req: Request): string | null {
   }
   const token = authorization.slice(7).trim();
   return token || null;
-}
-
-function extractReadTokenQuery(req: Request): string | null {
-  const value = req.query.read_token;
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
 function isProtectedIssueDetailPath(pathname: string): boolean {
@@ -75,9 +68,6 @@ function isProtectedReadPath(pathname: string): boolean {
   if (PUBLIC_READ_PATHS.has(pathname)) {
     return false;
   }
-  if (pathname.startsWith(SETUP_PREFIX)) {
-    return false;
-  }
   if (PROTECTED_READ_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
     return true;
   }
@@ -85,7 +75,7 @@ function isProtectedReadPath(pathname: string): boolean {
 }
 
 export function hasConfiguredReadAccessToken(): boolean {
-  return resolveReadHeaderTokens().length > 0;
+  return resolveReadHeaderTokens().length > 0 || resolveReadQueryTokens().length > 0;
 }
 
 export function createReadGuard(): (req: Request, res: Response, next: NextFunction) => void {
@@ -126,12 +116,6 @@ export function createReadGuard(): (req: Request, res: Response, next: NextFunct
           message: "Sensitive read routes require a valid read token.",
         },
       });
-      return;
-    }
-
-    const queryToken = extractReadTokenQuery(req);
-    if (queryToken && resolveReadQueryTokens().includes(queryToken)) {
-      next();
       return;
     }
 

@@ -312,7 +312,6 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    continue-on-error: true
     permissions:
       contents: read
     steps:
@@ -381,7 +380,6 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    continue-on-error: true
     permissions:
       contents: read
     steps:
@@ -417,7 +415,6 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    continue-on-error: true
     permissions:
       contents: read
     env:
@@ -523,7 +520,7 @@ jobs:
   release:
     name: Semantic Release
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')
-    needs: build-and-test
+    needs: [build-and-test, integration]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -620,7 +617,7 @@ jobs:
           script: |
             set -euo pipefail
             VERSION="${{ needs.release.outputs.new_release_version }}"
-            IMAGE="ghcr.io/omerfarukoruc/risoluto:v${VERSION}"
+            IMAGE="ghcr.io/omerfarukoruc/risoluto:${VERSION}"
 
             cd /opt/risoluto
 

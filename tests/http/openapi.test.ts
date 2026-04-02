@@ -81,8 +81,8 @@ describe("getOpenApiSpec", () => {
 
   it("marks protected reads with auth requirements", () => {
     const paths = spec.paths as Record<string, Record<string, Record<string, unknown>>>;
-    expect(paths["/api/v1/state"].get.security).toEqual([{ bearerAuth: [] }, { readTokenQuery: [] }]);
-    expect(paths["/api/v1/{issue_identifier}"].get.security).toEqual([{ bearerAuth: [] }, { readTokenQuery: [] }]);
+    expect(paths["/api/v1/state"].get.security).toEqual([{ bearerAuth: [] }]);
+    expect(paths["/api/v1/{issue_identifier}"].get.security).toEqual([{ bearerAuth: [] }]);
     expect(paths["/api/v1/runtime"].get.security).toBeUndefined();
   });
 

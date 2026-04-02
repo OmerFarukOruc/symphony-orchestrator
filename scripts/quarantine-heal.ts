@@ -16,9 +16,10 @@
 
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-import { HEAL_THRESHOLD, loadEntries, QUARANTINE_PATH } from "./quarantine-shared.js";
+import { HEAL_THRESHOLD, loadEntries, QUARANTINE_PATH, type QuarantineEntry } from "./quarantine-shared.js";
 
 interface VitestTestResult {
   name: string;
@@ -34,7 +35,7 @@ interface VitestJsonOutput {
   testResults: VitestTestFile[];
 }
 
-function loadTestResults(resultsPath: string): Map<string, Map<string, string>> {
+export function loadTestResults(resultsPath: string): Map<string, Map<string, string>> {
   const resultMap = new Map<string, Map<string, string>>();
 
   try {
@@ -60,123 +61,151 @@ function loadTestResults(resultsPath: string): Map<string, Map<string, string>> 
   return resultMap;
 }
 
-function saveEntriesAtomically(entries: QuarantineEntry[]): void {
+export function saveEntriesAtomically(entries: QuarantineEntry[]): void {
   const tmpPath = QUARANTINE_PATH + ".tmp";
   writeFileSync(tmpPath, JSON.stringify(entries, null, 2) + "\n", "utf-8");
   renameSync(tmpPath, QUARANTINE_PATH);
 }
 
-/* ── Main ─────────────────────────────────────────────────────────────── */
+function processQuarantineEntry(
+  entry: QuarantineEntry,
+  testResults: Map<string, Map<string, string>>,
+): { remaining: QuarantineEntry; healed?: QuarantineEntry; stale?: boolean; failedReset?: boolean } {
+  const resolvedFile = path.resolve(entry.file);
 
-const { values } = parseArgs({
-  options: {
-    results: { type: "string" },
-  },
-});
+  if (!existsSync(resolvedFile)) {
+    return { remaining: entry, stale: true };
+  }
 
-if (!values.results) {
-  console.error("Usage: npx tsx scripts/quarantine-heal.ts --results <path-to-vitest-json>");
-  process.exitCode = 1;
-} else {
+  const fileResults = testResults.get(resolvedFile);
+  const testStatus = fileResults?.get(entry.testName);
+
+  if (testStatus === "passed") {
+    const updatedEntry = { ...entry, passCount: entry.passCount + 1 };
+    if (updatedEntry.passCount >= HEAL_THRESHOLD) {
+      return { remaining: updatedEntry, healed: updatedEntry };
+    }
+    return { remaining: updatedEntry };
+  }
+
+  if (testStatus === "failed") {
+    return { remaining: { ...entry, passCount: 0 }, failedReset: true };
+  }
+
+  return { remaining: entry };
+}
+
+function logHealingReport(
+  entries: QuarantineEntry[],
+  healed: QuarantineEntry[],
+  staleRemoved: QuarantineEntry[],
+  failedReset: QuarantineEntry[],
+  stillQuarantined: QuarantineEntry[],
+  remaining: QuarantineEntry[],
+): void {
+  console.log("Quarantine healing report:");
+  console.log(`  Total entries processed: ${entries.length}`);
+
+  if (healed.length > 0) {
+    console.log(`\n  Healed (auto-removed after ${HEAL_THRESHOLD} consecutive passes):`);
+    for (const entry of healed) {
+      console.log(`    - "${entry.testName}" (${entry.file})`);
+    }
+  }
+
+  if (staleRemoved.length > 0) {
+    console.log("\n  Stale (file no longer exists, auto-removed):");
+    for (const entry of staleRemoved) {
+      console.log(`    - "${entry.testName}" (${entry.file})`);
+    }
+  }
+
+  if (failedReset.length > 0) {
+    console.log("\n  Failed (passCount reset to 0):");
+    for (const entry of failedReset) {
+      console.log(`    - "${entry.testName}" (${entry.file})`);
+    }
+  }
+
+  if (stillQuarantined.length > 0) {
+    console.log("\n  Still quarantined:");
+    for (const entry of stillQuarantined) {
+      console.log(`    - "${entry.testName}" (${entry.file}) — passCount: ${entry.passCount}/${HEAL_THRESHOLD}`);
+    }
+  }
+
+  console.log(`\n  Remaining quarantined: ${remaining.length}`);
+
+  const changed = healed.length > 0 || staleRemoved.length > 0 || failedReset.length > 0;
+  console.log(changed ? "\n  quarantine.json was updated." : "\n  No changes to quarantine.json.");
+}
+
+export function healQuarantine(resultsPathArg: string): void {
   const entries = loadEntries();
 
   if (entries.length === 0) {
     console.log("Quarantine is empty — nothing to heal.");
-    process.exit(0);
+    return;
   }
 
-  const resultsPath = path.resolve(values.results);
+  const resultsPath = path.resolve(resultsPathArg);
   if (!existsSync(resultsPath)) {
-    console.error(`Error: Results file does not exist: ${values.results}`);
+    console.error(`Error: Results file does not exist: ${resultsPathArg}`);
     process.exitCode = 1;
-  } else {
-    const testResults = loadTestResults(resultsPath);
+    return;
+  }
 
-    if (process.exitCode === 1) {
-      // loadTestResults already set exitCode on error
-      process.exit(1);
+  const testResults = loadTestResults(resultsPath);
+  if (process.exitCode === 1) {
+    return;
+  }
+
+  const healed: QuarantineEntry[] = [];
+  const staleRemoved: QuarantineEntry[] = [];
+  const stillQuarantined: QuarantineEntry[] = [];
+  const failedReset: QuarantineEntry[] = [];
+  const remaining: QuarantineEntry[] = [];
+
+  for (const entry of entries) {
+    const result = processQuarantineEntry(entry, testResults);
+
+    if (result.stale) {
+      staleRemoved.push(entry);
+      continue;
     }
 
-    const healed: QuarantineEntry[] = [];
-    const staleRemoved: QuarantineEntry[] = [];
-    const stillQuarantined: QuarantineEntry[] = [];
-    const failedReset: QuarantineEntry[] = [];
+    remaining.push(result.remaining);
 
-    const remaining: QuarantineEntry[] = [];
-
-    for (const entry of entries) {
-      const resolvedFile = path.resolve(entry.file);
-
-      // Auto-remove entries whose file no longer exists
-      if (!existsSync(resolvedFile)) {
-        staleRemoved.push(entry);
-        continue;
-      }
-
-      const fileResults = testResults.get(resolvedFile);
-      const testStatus = fileResults?.get(entry.testName);
-
-      if (testStatus === "passed") {
-        const updatedEntry = { ...entry, passCount: entry.passCount + 1 };
-
-        if (updatedEntry.passCount >= HEAL_THRESHOLD) {
-          healed.push(updatedEntry);
-        } else {
-          remaining.push(updatedEntry);
-          stillQuarantined.push(updatedEntry);
-        }
-      } else if (testStatus === "failed") {
-        const resetEntry = { ...entry, passCount: 0 };
-        remaining.push(resetEntry);
-        failedReset.push(resetEntry);
-      } else {
-        // Test was skipped, not found in results, or had another status — keep as-is
-        remaining.push(entry);
-        stillQuarantined.push(entry);
-      }
-    }
-
-    saveEntriesAtomically(remaining);
-
-    // Report
-    console.log("Quarantine healing report:");
-    console.log(`  Total entries processed: ${entries.length}`);
-
-    if (healed.length > 0) {
-      console.log(`\n  Healed (auto-removed after ${HEAL_THRESHOLD} consecutive passes):`);
-      for (const entry of healed) {
-        console.log(`    - "${entry.testName}" (${entry.file})`);
-      }
-    }
-
-    if (staleRemoved.length > 0) {
-      console.log("\n  Stale (file no longer exists, auto-removed):");
-      for (const entry of staleRemoved) {
-        console.log(`    - "${entry.testName}" (${entry.file})`);
-      }
-    }
-
-    if (failedReset.length > 0) {
-      console.log("\n  Failed (passCount reset to 0):");
-      for (const entry of failedReset) {
-        console.log(`    - "${entry.testName}" (${entry.file})`);
-      }
-    }
-
-    if (stillQuarantined.length > 0) {
-      console.log("\n  Still quarantined:");
-      for (const entry of stillQuarantined) {
-        console.log(`    - "${entry.testName}" (${entry.file}) — passCount: ${entry.passCount}/5`);
-      }
-    }
-
-    console.log(`\n  Remaining quarantined: ${remaining.length}`);
-
-    const changed = healed.length > 0 || staleRemoved.length > 0 || failedReset.length > 0;
-    if (changed) {
-      console.log("\n  quarantine.json was updated.");
+    if (result.healed) {
+      healed.push(result.healed);
+    } else if (result.failedReset) {
+      failedReset.push(result.remaining);
     } else {
-      console.log("\n  No changes to quarantine.json.");
+      stillQuarantined.push(result.remaining);
     }
   }
+
+  saveEntriesAtomically(remaining);
+  logHealingReport(entries, healed, staleRemoved, failedReset, stillQuarantined, remaining);
+}
+
+export function runCli(args: string[] = process.argv.slice(2)): void {
+  const { values } = parseArgs({
+    args,
+    options: {
+      results: { type: "string" },
+    },
+  });
+
+  if (!values.results) {
+    console.error("Usage: npx tsx scripts/quarantine-heal.ts --results <path-to-vitest-json>");
+    process.exitCode = 1;
+    return;
+  }
+
+  healQuarantine(values.results);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  runCli();
 }

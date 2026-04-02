@@ -39,6 +39,52 @@ const issueBlockerRefSchema = z.object({
 
 const modelSourceSchema = z.enum(["default", "override"]);
 
+const serializedStateRecentEventSchema = z.object({
+  at: z.string(),
+  issue_id: z.string().nullable(),
+  issue_identifier: z.string().nullable(),
+  session_id: z.string().nullable(),
+  event: z.string(),
+  message: z.string(),
+  content: z.string().nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
+const serializedStateCodexTotalsSchema = z.object({
+  input_tokens: z.number(),
+  output_tokens: z.number(),
+  total_tokens: z.number(),
+  seconds_running: z.number(),
+  cost_usd: z.number(),
+});
+
+const serializedStateStallEventSchema = z.object({
+  at: z.string(),
+  issue_id: z.string(),
+  issue_identifier: z.string(),
+  silent_ms: z.number(),
+  timeout_ms: z.number(),
+});
+
+const serializedStateSystemHealthSchema = z.object({
+  status: z.enum(["healthy", "degraded", "critical"]),
+  checked_at: z.string(),
+  running_count: z.number(),
+  message: z.string(),
+});
+
+const serializedStateWebhookHealthSchema = z.object({
+  status: z.string(),
+  effective_interval_ms: z.number(),
+  stats: z.object({
+    deliveries_received: z.number(),
+    last_delivery_at: z.string().nullable(),
+    last_event_type: z.string().nullable(),
+  }),
+  last_delivery_at: z.string().nullable(),
+  last_event_type: z.string().nullable(),
+});
+
 /** Shared shape for RuntimeIssueView used in state, issue detail, and snapshots. */
 const runtimeIssueViewSchema = z.object({
   issueId: z.string(),
@@ -147,7 +193,7 @@ export const transitionsListResponseSchema = z.object({
 
 /** GET /api/v1/state — full runtime snapshot. */
 export const stateResponseSchema = z.object({
-  generatedAt: z.string(),
+  generated_at: z.string(),
   counts: z.object({
     running: z.number(),
     retrying: z.number(),
@@ -156,7 +202,7 @@ export const stateResponseSchema = z.object({
   retrying: z.array(runtimeIssueViewSchema),
   queued: z.array(runtimeIssueViewSchema).optional(),
   completed: z.array(runtimeIssueViewSchema).optional(),
-  workflowColumns: z.array(
+  workflow_columns: z.array(
     z.object({
       key: z.string(),
       label: z.string(),
@@ -166,48 +212,13 @@ export const stateResponseSchema = z.object({
       issues: z.array(runtimeIssueViewSchema),
     }),
   ),
-  codexTotals: z.object({
-    inputTokens: z.number(),
-    outputTokens: z.number(),
-    totalTokens: z.number(),
-    secondsRunning: z.number(),
-    costUsd: z.number(),
-  }),
-  rateLimits: z.unknown(),
-  recentEvents: z.array(recentEventSchema),
-  stallEvents: z
-    .array(
-      z.object({
-        at: z.string(),
-        issueId: z.string(),
-        issueIdentifier: z.string(),
-        silentMs: z.number(),
-        timeoutMs: z.number(),
-      }),
-    )
-    .optional(),
-  systemHealth: z
-    .object({
-      status: z.enum(["healthy", "degraded", "critical"]),
-      checkedAt: z.string(),
-      runningCount: z.number(),
-      message: z.string(),
-    })
-    .optional(),
-  webhookHealth: z
-    .object({
-      status: z.string(),
-      effectiveIntervalMs: z.number(),
-      stats: z.object({
-        deliveriesReceived: z.number(),
-        lastDeliveryAt: z.string().nullable(),
-        lastEventType: z.string().nullable(),
-      }),
-      lastDeliveryAt: z.string().nullable(),
-      lastEventType: z.string().nullable(),
-    })
-    .optional(),
-  availableModels: z.array(z.string()).nullable().optional(),
+  codex_totals: serializedStateCodexTotalsSchema,
+  rate_limits: z.unknown(),
+  recent_events: z.array(serializedStateRecentEventSchema),
+  stall_events: z.array(serializedStateStallEventSchema).optional(),
+  system_health: serializedStateSystemHealthSchema.optional(),
+  webhook_health: serializedStateWebhookHealthSchema.optional(),
+  available_models: z.array(z.string()).nullable().optional(),
 });
 
 /** GET /api/v1/{issue_identifier} — issue detail with attempts and events. */

@@ -4,14 +4,7 @@ import {
   abortResponseSchema,
   attemptDetailResponseSchema,
   attemptsListResponseSchema,
-  configOverlayGetResponseSchema,
-  configOverlayPatchResponseSchema,
-  configOverlayPutRequestSchema,
-  configOverlayPutResponseSchema,
-  configResponseSchema,
-  configSchemaResponseSchema,
   errorResponseSchema,
-  gitContextResponseSchema,
   issueDetailResponseSchema,
   modelUpdateResponseSchema,
   refreshResponseSchema,
@@ -321,19 +314,19 @@ describe("transitionsListResponseSchema", () => {
 
 describe("stateResponseSchema", () => {
   const minimalState = {
-    generatedAt: "2026-04-01T00:00:00Z",
+    generated_at: "2026-04-01T00:00:00Z",
     counts: { running: 0, retrying: 0 },
     running: [],
     retrying: [],
-    workflowColumns: [],
-    codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0, costUsd: 0 },
-    rateLimits: null,
-    recentEvents: [],
+    workflow_columns: [],
+    codex_totals: { input_tokens: 0, output_tokens: 0, total_tokens: 0, seconds_running: 0, cost_usd: 0 },
+    rate_limits: null,
+    recent_events: [],
   };
 
   it("parses a minimal valid state snapshot", () => {
     const result = stateResponseSchema.parse(minimalState);
-    expect(result.generatedAt).toBe("2026-04-01T00:00:00Z");
+    expect(result.generated_at).toBe("2026-04-01T00:00:00Z");
     expect(result.counts.running).toBe(0);
     expect(result.running).toEqual([]);
   });
@@ -343,19 +336,19 @@ describe("stateResponseSchema", () => {
       ...minimalState,
       queued: [],
       completed: [],
-      stallEvents: [],
-      systemHealth: { status: "healthy", checkedAt: "2026-04-01T00:00:00Z", runningCount: 0, message: "ok" },
-      webhookHealth: {
+      stall_events: [],
+      system_health: { status: "healthy", checked_at: "2026-04-01T00:00:00Z", running_count: 0, message: "ok" },
+      webhook_health: {
         status: "active",
-        effectiveIntervalMs: 60000,
-        stats: { deliveriesReceived: 5, lastDeliveryAt: null, lastEventType: null },
-        lastDeliveryAt: null,
-        lastEventType: null,
+        effective_interval_ms: 60000,
+        stats: { deliveries_received: 5, last_delivery_at: null, last_event_type: null },
+        last_delivery_at: null,
+        last_event_type: null,
       },
-      availableModels: ["gpt-5.4"],
+      available_models: ["gpt-5.4"],
     });
-    expect(result.systemHealth?.status).toBe("healthy");
-    expect(result.availableModels).toEqual(["gpt-5.4"]);
+    expect(result.system_health?.status).toBe("healthy");
+    expect(result.available_models).toEqual(["gpt-5.4"]);
   });
 
   it("parses state with running issues", () => {
@@ -382,7 +375,7 @@ describe("stateResponseSchema", () => {
 
   it("rejects missing required fields", () => {
     expect(stateResponseSchema.safeParse({}).success).toBe(false);
-    expect(stateResponseSchema.safeParse({ generatedAt: "x" }).success).toBe(false);
+    expect(stateResponseSchema.safeParse({ generated_at: "x" }).success).toBe(false);
   });
 });
 
@@ -608,193 +601,5 @@ describe("workspaceInventoryResponseSchema", () => {
   it("rejects missing generated_at", () => {
     const { generated_at: _, ...incomplete } = validInventory;
     expect(workspaceInventoryResponseSchema.safeParse(incomplete).success).toBe(false);
-  });
-});
-
-describe("gitContextResponseSchema", () => {
-  const validGitContext = {
-    repos: [
-      {
-        repoUrl: "https://github.com/org/repo",
-        defaultBranch: "main",
-        identifierPrefix: "ENG",
-        label: null,
-        githubOwner: "org",
-        githubRepo: "repo",
-        configured: true,
-      },
-    ],
-    activeBranches: [],
-    githubAvailable: true,
-  };
-
-  it("parses a valid git context response", () => {
-    const result = gitContextResponseSchema.parse(validGitContext);
-    expect(result.repos).toHaveLength(1);
-    expect(result.githubAvailable).toBe(true);
-  });
-
-  it("parses with github enrichment", () => {
-    const result = gitContextResponseSchema.parse({
-      ...validGitContext,
-      repos: [
-        {
-          ...validGitContext.repos[0],
-          github: {
-            description: "A test repo",
-            visibility: "private",
-            openPrCount: 2,
-            pulls: [
-              {
-                number: 1,
-                title: "PR 1",
-                author: "dev",
-                state: "open",
-                updatedAt: "2026-04-01T00:00:00Z",
-                url: "https://github.com/org/repo/pull/1",
-                headBranch: "feature/1",
-                checksStatus: null,
-              },
-            ],
-            recentCommits: [{ sha: "abc1234", message: "fix: something", author: "dev", date: "2026-04-01T00:00:00Z" }],
-          },
-        },
-      ],
-    });
-    expect(result.repos[0].github?.openPrCount).toBe(2);
-  });
-
-  it("parses with active branches", () => {
-    const result = gitContextResponseSchema.parse({
-      ...validGitContext,
-      activeBranches: [
-        {
-          identifier: "ENG-1",
-          branchName: "fix/bug-1",
-          status: "running",
-          workspacePath: "/tmp/ws-1",
-          issueTitle: "Fix bug",
-          pullRequestUrl: null,
-        },
-      ],
-    });
-    expect(result.activeBranches).toHaveLength(1);
-    expect(result.activeBranches[0].branchName).toBe("fix/bug-1");
-  });
-
-  it("rejects missing repos", () => {
-    const { repos: _, ...incomplete } = validGitContext;
-    expect(gitContextResponseSchema.safeParse(incomplete).success).toBe(false);
-  });
-
-  it("rejects missing githubAvailable", () => {
-    const { githubAvailable: _, ...incomplete } = validGitContext;
-    expect(gitContextResponseSchema.safeParse(incomplete).success).toBe(false);
-  });
-});
-
-describe("configResponseSchema", () => {
-  it("parses a freeform config object", () => {
-    const result = configResponseSchema.parse({ codex: { model: "gpt-5.4" }, server: { port: 4000 } });
-    expect(result.codex).toEqual({ model: "gpt-5.4" });
-  });
-
-  it("parses empty config", () => {
-    const result = configResponseSchema.parse({});
-    expect(result).toEqual({});
-  });
-
-  it("rejects non-object values", () => {
-    expect(configResponseSchema.safeParse("string").success).toBe(false);
-    expect(configResponseSchema.safeParse(123).success).toBe(false);
-  });
-});
-
-describe("configSchemaResponseSchema", () => {
-  it("parses a freeform schema object", () => {
-    const result = configSchemaResponseSchema.parse({
-      overlay_put_body_examples: [],
-      routes: { get_config: "GET /api/v1/config" },
-    });
-    expect(result.routes).toEqual({ get_config: "GET /api/v1/config" });
-  });
-
-  it("rejects non-object values", () => {
-    expect(configSchemaResponseSchema.safeParse(42).success).toBe(false);
-  });
-});
-
-describe("configOverlayGetResponseSchema", () => {
-  it("parses a valid overlay get response", () => {
-    const result = configOverlayGetResponseSchema.parse({
-      overlay: { codex: { model: "gpt-5.4" } },
-    });
-    expect(result.overlay.codex).toEqual({ model: "gpt-5.4" });
-  });
-
-  it("accepts empty overlay", () => {
-    const result = configOverlayGetResponseSchema.parse({ overlay: {} });
-    expect(result.overlay).toEqual({});
-  });
-
-  it("rejects missing overlay key", () => {
-    expect(configOverlayGetResponseSchema.safeParse({}).success).toBe(false);
-  });
-});
-
-describe("configOverlayPutResponseSchema", () => {
-  it("parses a valid overlay put response", () => {
-    const result = configOverlayPutResponseSchema.parse({
-      updated: true,
-      overlay: { codex: { model: "gpt-5.4" } },
-    });
-    expect(result.updated).toBe(true);
-  });
-
-  it("rejects missing updated field", () => {
-    expect(configOverlayPutResponseSchema.safeParse({ overlay: {} }).success).toBe(false);
-  });
-
-  it("rejects missing overlay field", () => {
-    expect(configOverlayPutResponseSchema.safeParse({ updated: true }).success).toBe(false);
-  });
-});
-
-describe("configOverlayPatchResponseSchema", () => {
-  it("parses a valid overlay patch response", () => {
-    const result = configOverlayPatchResponseSchema.parse({
-      updated: true,
-      overlay: { server: { port: 4001 } },
-    });
-    expect(result.updated).toBe(true);
-  });
-
-  it("rejects non-boolean updated", () => {
-    expect(configOverlayPatchResponseSchema.safeParse({ updated: "yes", overlay: {} }).success).toBe(false);
-  });
-});
-
-describe("configOverlayPutRequestSchema", () => {
-  it("parses a request with patch field", () => {
-    const result = configOverlayPutRequestSchema.parse({
-      patch: { codex: { model: "gpt-5.4" } },
-    });
-    expect(result.patch).toEqual({ codex: { model: "gpt-5.4" } });
-  });
-
-  it("parses a request without patch field (direct overlay)", () => {
-    const result = configOverlayPutRequestSchema.parse({
-      codex: { model: "gpt-5.4" },
-    });
-    expect(result.codex).toEqual({ model: "gpt-5.4" });
-  });
-
-  it("accepts empty object", () => {
-    const result = configOverlayPutRequestSchema.parse({});
-    expect(result).toEqual({});
-  });
-
-  it("rejects non-object values", () => {
-    expect(configOverlayPutRequestSchema.safeParse("string").success).toBe(false);
   });
 });
