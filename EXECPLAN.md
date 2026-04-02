@@ -18,6 +18,7 @@ Operators should be able to trust Risoluto’s running state: aborted issues mus
 - [x] (2026-03-28 17:31Z) Removed verified dead code and stale `knip` ignores, including the unused feature-flag runtime, dead frontend stub page, and test-only SSE subscriber wrappers.
 - [x] (2026-03-28 17:33Z) Ran repo validation: `pnpm run build`, `pnpm run lint`, `pnpm run format:check`, `pnpm test`, and `pnpm run knip` all completed successfully on the final tree.
 - [x] (2026-03-28 17:35Z) Ran the required visual verification workflow against `http://127.0.0.1:4000`, captured before/after screenshots plus a diff, and checked browser errors/console output.
+- [x] (2026-04-02) CI/CD release pipeline (25-unit plan): added `integration-pr` credentialless gate and `mutation-incremental` advisory job to `ci.yml`; updated `build-and-test` aggregator to require `integration-pr`; removed SonarCloud references from `CLAUDE.md`; added release pipeline, nightly pipeline, quarantine system, and secrets reference sections to `docs/OPERATOR_GUIDE.md`; marked CI/CD items as shipped in `docs/ROADMAP_AND_STATUS.md`.
 
 ## Surprises & Discoveries
 

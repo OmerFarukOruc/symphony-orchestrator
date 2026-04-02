@@ -1,7 +1,6 @@
 ---
 title: "All Endpoints"
-sidebarTitle: "All Endpoints"
-description: "Complete reference of all Risoluto API endpoints grouped by category, with request/response examples."
+description: "Complete reference of all Risoluto REST API endpoints — state, issues, attempts, config, secrets, templates, workspaces, audit, and webhooks."
 icon: "list"
 mode: "wide"
 ---
@@ -137,6 +136,7 @@ Read the effective merged config, inspect the schema, and manage runtime overlay
 | `GET` | `/api/v1/config/schema` | Config JSON schema with example payloads |
 | `GET` | `/api/v1/config/overlay` | Current overlay values only |
 | `PUT` | `/api/v1/config/overlay` | Replace the entire overlay |
+| `PATCH` | `/api/v1/config/overlay/:path` | Patch a single config path |
 | `DELETE` | `/api/v1/config/overlay/:path` | Delete a specific overlay path |
 
 <Tip>
@@ -306,7 +306,7 @@ curl http://127.0.0.1:4000/api/v1/openapi.json | jq .info
 
 ---
 
-## Related
+## What's Next
 
 - [API Overview](/api-reference/overview) — authentication, rate limits, and quick-start examples
 - [Configuration Guide](/guides/configuration) — config file format and environment variables

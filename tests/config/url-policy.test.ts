@@ -31,11 +31,17 @@ describe("config URL policy", () => {
     );
   });
 
-  it("allows GitHub-style enterprise hosts for GitHub endpoints", () => {
+  it("allows explicitly allowlisted enterprise hosts for GitHub endpoints", () => {
+    vi.stubEnv("RISOLUTO_ALLOWED_GITHUB_API_HOSTS", "github.example.test");
+    vi.stubEnv("RISOLUTO_ALLOWED_TRACKER_HOSTS", "api.github.enterprise.com");
     expect(normalizeGitHubApiBaseUrl("https://github.example.test/api")).toBe("https://github.example.test/api");
     expect(normalizeTrackerEndpoint("github", "https://api.github.enterprise.com")).toBe(
       "https://api.github.enterprise.com",
     );
+  });
+
+  it("rejects lookalike GitHub hosts unless explicitly allowlisted", () => {
+    expect(() => normalizeGitHubApiBaseUrl("https://github.example.test/api")).toThrow(/not allowlisted/);
   });
 
   it("allows env-configured custom tracker hosts", () => {

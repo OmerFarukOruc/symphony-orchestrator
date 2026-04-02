@@ -187,6 +187,34 @@ The local loopback HTTP surface now includes operator-only configuration and sec
 
 These routes are intentionally loopback-local like the rest of the dashboard/API surface. They are suitable for trusted operator environments, not public exposure.
 
+### Remote Read / Write Guards
+
+When Risoluto binds to a non-loopback address, it now enforces separate trust boundaries for read and write traffic:
+
+- **Write guard** protects mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`) and accepts `Authorization: Bearer <RISOLUTO_WRITE_TOKEN>` from remote clients.
+- **Read guard** protects sensitive read routes (`/api/v1/state`, issue detail/attempt history, workspaces, git context, config, secrets, and `/api/v1/events`) and accepts:
+  - `Authorization: Bearer <RISOLUTO_READ_TOKEN>`
+  - `Authorization: Bearer <RISOLUTO_WRITE_TOKEN>`
+  - `?read_token=<RISOLUTO_READ_TOKEN>` for browser/SSE-only read access
+
+Important boundary: Risoluto intentionally does **not** accept `RISOLUTO_WRITE_TOKEN` as a `read_token` query parameter. Query-string auth is reserved for the dedicated read token so privileged write credentials do not leak via URLs, logs, or SSE reconnects.
+
+If `RISOLUTO_BIND` is non-loopback and neither `RISOLUTO_READ_TOKEN` nor `RISOLUTO_WRITE_TOKEN` is configured, the server refuses to start.
+
+### Outbound Service Endpoint Allowlists
+
+Risoluto now validates externally configured tracker / GitHub / Slack endpoints against HTTPS allowlists before it will use them:
+
+- Linear tracker default: `https://api.linear.app/graphql`
+- GitHub defaults: `github.com`, `api.github.com`, and `*.github.com`
+- Slack webhook defaults: `hooks.slack.com`, `hooks.slack-gov.com`
+
+Any custom domain outside those defaults must be explicitly allowlisted with one of:
+
+- `RISOLUTO_ALLOWED_TRACKER_HOSTS`
+- `RISOLUTO_ALLOWED_GITHUB_API_HOSTS`
+- `RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS`
+
 Infrastructure-level tokens such as `CLOUDFLARE_TUNNEL_TOKEN` still belong in `.env` or your deploy-time secret manager. Application credentials and signing secrets are better stored in Risoluto's encrypted secrets store and referenced from overlay config.
 
 ---

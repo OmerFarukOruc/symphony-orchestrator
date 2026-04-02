@@ -3,7 +3,7 @@
    ============================================ */
 
 .setup-page {
-  max-width: 560px;
+  max-width: 680px;
   margin: 0 auto;
   padding-top: var(--space-10);
 }
@@ -736,11 +736,12 @@
 
 .setup-flow {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: stretch;
+  gap: 0;
   margin-top: var(--space-5);
-  padding: var(--space-4);
-  background: color-mix(in srgb, var(--bg-muted) 78%, var(--bg-surface));
+  padding: var(--space-5);
+  background: color-mix(in srgb, var(--bg-muted) 60%, var(--bg-surface));
   border: var(--stroke-default) solid var(--border-stitch);
 }
 
@@ -748,10 +749,20 @@
   display: grid;
   gap: var(--space-2);
   align-content: start;
-  min-height: 132px;
-  padding: var(--space-3);
+  padding: var(--space-4);
   background: var(--bg-surface);
   border: var(--stroke-default) solid var(--border-stitch);
+}
+
+/* Arrow connector between flow steps (pure CSS) */
+.setup-flow-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-md);
+  user-select: none;
 }
 
 .setup-flow-marker {

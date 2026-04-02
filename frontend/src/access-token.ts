@@ -49,6 +49,11 @@ function readStoredToken(key: string): string | null {
   return token && token.trim().length > 0 ? token.trim() : null;
 }
 
+function getDedicatedReadToken(): string | null {
+  bootstrapAccessTokensFromUrl();
+  return readStoredToken(READ_TOKEN_STORAGE_KEY);
+}
+
 export function getReadAccessToken(): string | null {
   bootstrapAccessTokensFromUrl();
   return (
@@ -64,6 +69,6 @@ export function getWriteAccessToken(): string | null {
 }
 
 export function buildReadTokenQueryParam(): string {
-  const token = getReadAccessToken();
+  const token = getDedicatedReadToken();
   return token ? `read_token=${encodeURIComponent(token)}` : "";
 }

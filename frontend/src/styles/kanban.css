@@ -279,17 +279,9 @@
   border-color: color-mix(in srgb, var(--color-copper-500) 38%, var(--border-stitch));
 }
 
-/* Running card pulse */
-.kanban-card[data-status="running"]::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2px;
-  height: 60%;
-  background: var(--status-running);
-  animation: kanban-pulse 2s ease-in-out infinite;
+/* Running card pulse — animate the border, not a second bar */
+.kanban-card[data-status="running"] {
+  animation: kanban-border-pulse 2s ease-in-out infinite;
 }
 
 .kanban-card {
@@ -473,6 +465,16 @@
   }
   50% {
     opacity: 0.5;
+  }
+}
+
+@keyframes kanban-border-pulse {
+  0%,
+  100% {
+    box-shadow: var(--shadow-sm), inset 3px 0 8px -4px var(--status-running);
+  }
+  50% {
+    box-shadow: var(--shadow-sm), inset 3px 0 2px -2px transparent;
   }
 }
 

@@ -1,12 +1,14 @@
 import type { Request, Response } from "express";
 
 import type { ConfigOverlayPort } from "../config/overlay.js";
+import type { SecretsStore } from "../secrets/store.js";
 import { isRecord } from "../utils/type-guards.js";
 
 const GITHUB_URL_RE = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(?:\.git)?$/u;
 
 export interface RepoRouteApiDeps {
   configOverlayStore: ConfigOverlayPort;
+  secretsStore: SecretsStore;
 }
 
 interface RepoEntry {
@@ -104,6 +106,11 @@ export function handlePostRepoRoute(deps: RepoRouteApiDeps) {
 
 export function handleGetRepoRoutes(deps: RepoRouteApiDeps) {
   return (_req: Request, res: Response) => {
+    if (deps.secretsStore.isInitialized()) {
+      res.status(404).json({ error: { code: "not_found", message: "Not found" } });
+      return;
+    }
+
     const overlay = deps.configOverlayStore.toMap();
     const routes = readRepos(overlay);
     res.json({ routes });

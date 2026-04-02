@@ -169,7 +169,7 @@ describe("executeTurns", () => {
     vi.mocked(isActiveState).mockReturnValueOnce(false); // stop after first turn
     await executeTurns(input, state);
 
-    const requestCall = (input.connection as { request: ReturnType<typeof vi.fn> }).request.mock.calls[0];
+    const requestCall = (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request.mock.calls[0];
     expect(requestCall[1].input[0].text).toBe("Please fix the login bug.");
   });
 
@@ -182,7 +182,7 @@ describe("executeTurns", () => {
 
     await executeTurns(input, state);
 
-    const requestMock = (input.connection as { request: ReturnType<typeof vi.fn> }).request;
+    const requestMock = (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request;
     expect(requestMock).toHaveBeenCalledTimes(2);
     const secondCall = requestMock.mock.calls[1];
     expect(secondCall[1].input[0].text).toContain("Continue the current issue");
@@ -423,7 +423,7 @@ describe("executeTurns", () => {
 
     await executeTurns(input, state);
 
-    const requestMock = (input.connection as { request: ReturnType<typeof vi.fn> }).request;
+    const requestMock = (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request;
     const params = requestMock.mock.calls[0][1];
     expect(params.summary).toBe("detailed");
   });
@@ -437,7 +437,7 @@ describe("executeTurns", () => {
 
     await executeTurns(input, state);
 
-    const requestMock = (input.connection as { request: ReturnType<typeof vi.fn> }).request;
+    const requestMock = (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request;
     const params = requestMock.mock.calls[0][1];
     expect(params.outputSchema).toEqual({
       type: "object",
@@ -457,7 +457,7 @@ describe("executeTurns", () => {
 
     await executeTurns(input, state);
 
-    const requestMock = (input.connection as { request: ReturnType<typeof vi.fn> }).request;
+    const requestMock = (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request;
     const params = requestMock.mock.calls[0][1];
     expect(params.outputSchema).toBeUndefined();
   });
@@ -488,7 +488,7 @@ describe("executeTurns", () => {
 
     const input = makeInput();
     // No getLastStopSignal — should fall through to getLastAgentMessageContent
-    delete (input as Record<string, unknown>).getLastStopSignal;
+    delete (input as unknown as Record<string, unknown>).getLastStopSignal;
     (input as { getLastAgentMessageContent: () => string | null }).getLastAgentMessageContent = vi
       .fn()
       .mockReturnValue("All done.\nRISOLUTO_STATUS: DONE");
@@ -614,7 +614,9 @@ describe("executeTurns", () => {
     vi.mocked(isActiveState).mockReturnValue(true);
 
     const input = makeInput();
-    (input.tracker as { fetchIssueStatesByIds: ReturnType<typeof vi.fn> }).fetchIssueStatesByIds.mockResolvedValue([]);
+    (
+      input.tracker as unknown as { fetchIssueStatesByIds: ReturnType<typeof vi.fn> }
+    ).fetchIssueStatesByIds.mockResolvedValue([]);
 
     const state = makeState();
     const result = await executeTurns(input, state);
@@ -632,7 +634,7 @@ describe("executeTurns", () => {
 
     await executeTurns(input, state);
 
-    const requestMock = (input.connection as { request: ReturnType<typeof vi.fn> }).request;
+    const requestMock = (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request;
     const params = requestMock.mock.calls[0][1];
     expect(params.model).toBe("o3-mini");
     expect(params.effort).toBe("low");
@@ -646,7 +648,7 @@ describe("executeTurns", () => {
 
     await executeTurns(input, state);
 
-    const requestMock = (input.connection as { request: ReturnType<typeof vi.fn> }).request;
+    const requestMock = (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request;
     const params = requestMock.mock.calls[0][1];
     expect(params.title).toBe("MT-1: Test");
   });

@@ -18,6 +18,18 @@ describe("getOpenApiSpec", () => {
     expect(servers[0].url).toBe("http://localhost:4000");
   });
 
+  it("declares read auth security schemes", () => {
+    const components = spec.components as {
+      securitySchemes: Record<string, { type: string; name?: string; in?: string; scheme?: string }>;
+    };
+    expect(components.securitySchemes.bearerAuth).toMatchObject({ type: "http", scheme: "bearer" });
+    expect(components.securitySchemes.readTokenQuery).toMatchObject({
+      type: "apiKey",
+      in: "query",
+      name: "read_token",
+    });
+  });
+
   it("includes core state routes", () => {
     const paths = spec.paths as Record<string, unknown>;
     expect(paths).toHaveProperty("/api/v1/state");
@@ -65,6 +77,13 @@ describe("getOpenApiSpec", () => {
     expect(paths["/api/v1/git/context"].get.tags).toContain("Git");
     expect(paths["/api/v1/config"].get.tags).toContain("Config");
     expect(paths["/api/v1/secrets"].get.tags).toContain("Secrets");
+  });
+
+  it("marks protected reads with auth requirements", () => {
+    const paths = spec.paths as Record<string, Record<string, Record<string, unknown>>>;
+    expect(paths["/api/v1/state"].get.security).toEqual([{ bearerAuth: [] }]);
+    expect(paths["/api/v1/{issue_identifier}"].get.security).toEqual([{ bearerAuth: [] }]);
+    expect(paths["/api/v1/runtime"].get.security).toBeUndefined();
   });
 
   it("produces JSON-serializable output", () => {

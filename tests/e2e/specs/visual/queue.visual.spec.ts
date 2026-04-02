@@ -1,6 +1,6 @@
 import { test, expect } from "../../fixtures/test";
 import { freezeClock } from "../../support/clock";
-import { screenshotCss } from "../../support/screenshot-css";
+import { applyScreenshotStyles } from "../../support/screenshot-css";
 
 test.describe("Queue Visual Regression", () => {
   test("queue board with populated columns", async ({ page, apiMock }) => {
@@ -16,7 +16,7 @@ test.describe("Queue Visual Regression", () => {
     });
 
     await page.waitForTimeout(1000);
-    await page.addStyleTag({ content: screenshotCss });
+    await applyScreenshotStyles(page);
     await page.waitForTimeout(500);
 
     await expect(page).toHaveScreenshot("queue-board.png", {

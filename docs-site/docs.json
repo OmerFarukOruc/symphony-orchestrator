@@ -177,6 +177,23 @@
             "pages": ["GET /api/v1/workspaces", "DELETE /api/v1/workspaces/{workspace_key}", "GET /api/v1/git/context"]
           },
           {
+            "group": "Templates",
+            "openapi": "openapi.json",
+            "pages": [
+              "GET /api/v1/templates",
+              "GET /api/v1/templates/{template_id}",
+              "POST /api/v1/templates",
+              "PUT /api/v1/templates/{template_id}",
+              "DELETE /api/v1/templates/{template_id}",
+              "POST /api/v1/templates/{template_id}/preview"
+            ]
+          },
+          {
+            "group": "Audit & Webhooks",
+            "openapi": "openapi.json",
+            "pages": ["GET /api/v1/audit", "POST /webhooks/linear"]
+          },
+          {
             "group": "All Endpoints",
             "pages": ["api-reference/endpoints"]
           }

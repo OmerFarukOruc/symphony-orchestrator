@@ -22,3 +22,12 @@
 * {
   scrollbar-width: none !important;
 }
+
+/* Hide browser extension overlays injected into the page (e.g. Agentation) */
+body > [data-agentation],
+body > agentation-widget,
+body > #agentation-root,
+body > iframe[src*="agentation"],
+body > button:has(a[href*="agentation.com"]) {
+  display: none !important;
+}

@@ -71,7 +71,26 @@ describe("createReadGuard", () => {
     expect(response.status).not.toHaveBeenCalled();
   });
 
-  it("allows protected reads with RISOLUTO_WRITE_TOKEN via query token", () => {
+  it("allows protected reads with RISOLUTO_READ_TOKEN via Authorization header", () => {
+    vi.stubEnv("RISOLUTO_READ_TOKEN", "read-secret");
+    const next = vi.fn();
+    const response = createResponse();
+    const request = {
+      method: "GET",
+      path: "/api/v1/events",
+      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- non-loopback regression coverage
+      socket: { remoteAddress: "10.0.0.5" },
+      get: vi.fn().mockReturnValue("Bearer read-secret"),
+      query: {},
+    };
+
+    createReadGuard()(request as never, response as never, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(response.status).not.toHaveBeenCalled();
+  });
+
+  it("allows SSE reads with valid ?read_token= query param (EventSource cannot send headers)", () => {
     vi.stubEnv("RISOLUTO_WRITE_TOKEN", "write-secret");
     const next = vi.fn();
     const response = createResponse();
@@ -88,6 +107,25 @@ describe("createReadGuard", () => {
 
     expect(next).toHaveBeenCalledOnce();
     expect(response.status).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid ?read_token= query param", () => {
+    vi.stubEnv("RISOLUTO_WRITE_TOKEN", "write-secret");
+    const next = vi.fn();
+    const response = createResponse();
+    const request = {
+      method: "GET",
+      path: "/api/v1/events",
+      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- non-loopback regression coverage
+      socket: { remoteAddress: "10.0.0.5" },
+      get: vi.fn().mockReturnValue(undefined),
+      query: { read_token: "wrong-token" },
+    };
+
+    createReadGuard()(request as never, response as never, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(401);
   });
 
   it("skips public runtime and setup reads", () => {

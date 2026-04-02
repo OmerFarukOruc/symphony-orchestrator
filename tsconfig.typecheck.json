@@ -9,8 +9,9 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "lib": ["ES2022"]
+    "lib": ["ES2022"],
+    "types": ["node", "vitest"]
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*", "scripts/**/*", "tests/**/*"],
   "exclude": ["tests/e2e/**/*"]
 }

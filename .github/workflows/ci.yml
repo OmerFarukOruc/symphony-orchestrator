@@ -8,7 +8,7 @@ on:
     # No paths-ignore on PRs — every PR gets full CI regardless of file types.
     branches: [main]
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -248,7 +248,21 @@ jobs:
             echo 'Container structure verified'
           "
 
-  # ── Phase 4: Integration (main only) ────────────────────────────────
+  # ── Phase 4: Integration (credentialless, all PRs) ──────────────────
+  integration-pr:
+    name: Integration Tests (PR)
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/restore-build
+      - run: pnpm run test:integration
+
+  # ── Phase 4: Integration (main only, with credentials) ─────────────
   integration:
     name: Integration Tests
     if: github.ref == 'refs/heads/main'
@@ -264,13 +278,13 @@ jobs:
       - uses: ./.github/actions/restore-build
       - run: pnpm run test:integration
 
-  # ── Phase 5: Mutation Testing (weekly + manual only) ─────────────────
-  mutation:
-    name: Mutation Testing
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+  # ── Phase 5: Mutation Testing (incremental, all PRs — advisory) ────
+  mutation-incremental:
+    name: Mutation Testing (Incremental)
+    if: github.event_name == 'pull_request'
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 120
     continue-on-error: true
     permissions:
       contents: read
@@ -279,6 +293,33 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/restore-build
+      - name: Restore pnpm virtual store symlinks
+        run: pnpm install --frozen-lockfile
+      - name: Restore Stryker incremental cache
+        uses: actions/cache@v5
+        with:
+          path: reports/stryker-incremental.json
+          key: stryker-incremental-${{ github.sha }}
+          restore-keys: |
+            stryker-incremental-
+      - name: Run mutation on changed files
+        run: |
+          CHANGED=$(git diff --name-only origin/main...HEAD | grep -E '^src/' | paste -sd,)
+          [ -n "$CHANGED" ] && pnpm exec stryker run --mutate "$CHANGED" || echo "No src files changed"
+
+  # ── Phase 5: Mutation Testing (nightly + manual only) ─────────────────
+  mutation:
+    name: Mutation Testing
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Restore pnpm virtual store symlinks
         run: pnpm install --frozen-lockfile
       - name: Restore Stryker incremental cache
@@ -300,11 +341,224 @@ jobs:
             reports/stryker-incremental.json
           retention-days: 30
 
-  # ── Phase 6: Docker Push to GHCR (main only, after gate) ────────────
+  # ── Phase 5: Nightly-Only Jobs (schedule + workflow_dispatch) ─────────
+  fullstack-e2e:
+    name: Fullstack E2E
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/restore-build
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Install Playwright system deps (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+      - name: Run fullstack E2E tests
+        run: pnpm exec playwright test --config playwright.fullstack.config.ts
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fullstack-e2e-report-${{ github.sha }}
+          path: playwright-report/
+          retention-days: 14
+
+  visual-regression:
+    name: Visual Regression
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/restore-build
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Install Playwright system deps (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+      - name: Run visual regression tests
+        run: pnpm exec playwright test --project=visual
+      - name: Upload visual diffs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-regression-diffs-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  live-provider-smoke:
+    name: Live Provider Smoke
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+      E2E_GITHUB_TOKEN: ${{ secrets.E2E_GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/restore-build
+      - name: Run live integration tests
+        run: pnpm run test:integration:live
+
+  # ── Nightly Failure Notifications ────────────────────────────────────
+  nightly-notify:
+    name: Nightly Slack Notification
+    needs: [fullstack-e2e, visual-regression, live-provider-smoke, mutation]
+    if: >-
+      always() &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      (needs.fullstack-e2e.result == 'failure' ||
+       needs.visual-regression.result == 'failure' ||
+       needs.live-provider-smoke.result == 'failure' ||
+       needs.mutation.result == 'failure')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Build failure summary
+        id: summary
+        run: |
+          FAILED=""
+          if [ "${{ needs.fullstack-e2e.result }}" = "failure" ]; then
+            FAILED="${FAILED}fullstack-e2e, "
+          fi
+          if [ "${{ needs.visual-regression.result }}" = "failure" ]; then
+            FAILED="${FAILED}visual-regression, "
+          fi
+          if [ "${{ needs.live-provider-smoke.result }}" = "failure" ]; then
+            FAILED="${FAILED}live-provider-smoke, "
+          fi
+          if [ "${{ needs.mutation.result }}" = "failure" ]; then
+            FAILED="${FAILED}mutation, "
+          fi
+          # Trim trailing comma and space
+          FAILED="${FAILED%, }"
+          echo "failed_jobs=${FAILED}" >> "$GITHUB_OUTPUT"
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ":rotating_light: *Risoluto Nightly Pipeline Failed*\n\n*Failed jobs:* ${{ steps.summary.outputs.failed_jobs }}\n*Run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* `${{ github.ref_name }}`\n*Triggered:* ${{ github.event_name }}"
+            }
+
+  # ── Nightly Quarantine Healing ───────────────────────────────────────
+  # Runs quarantined tests with enforcement disabled, then updates pass
+  # counts. Tests that pass 5 consecutive nightly runs are auto-healed.
+  # Uses a separate QUARANTINE_TOKEN (contents:write only, no admin bypass).
+  quarantine-heal:
+    name: Quarantine Healing
+    needs: build
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.QUARANTINE_TOKEN }}
+      - uses: ./.github/actions/restore-build
+      - name: Run tests with quarantine disabled
+        run: |
+          mkdir -p reports
+          QUARANTINE_ENFORCE=false pnpm exec vitest run --reporter=json --outputFile=reports/vitest-results.json || true
+      - name: Run healing script
+        run: npx tsx scripts/quarantine-heal.ts --results reports/vitest-results.json
+      - name: Commit and push quarantine changes
+        run: |
+          if git diff --quiet quarantine.json; then
+            echo "No quarantine changes to commit."
+          else
+            git config user.email "ci@risoluto.dev"
+            git config user.name "Risoluto CI"
+            git add quarantine.json
+            git commit -m "chore(ci): update quarantine.json via nightly healing [skip ci]"
+            git push || {
+              echo "Direct push blocked by branch protection — opening PR instead."
+              BRANCH="chore/quarantine-heal-$(date +%Y%m%d)"
+              git checkout -b "$BRANCH"
+              git push -u origin "$BRANCH"
+              gh pr create \
+                --title "chore(ci): nightly quarantine healing $(date +%Y-%m-%d)" \
+                --body "Automated quarantine.json update from nightly healing run." \
+                --base main
+            }
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.QUARANTINE_TOKEN }}
+
+  # ── Phase 6: Semantic Release (main only, after gate) ────────────────
+  release:
+    name: Semantic Release
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')
+    needs: [build-and-test, integration]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      new_release_published: ${{ steps.release-outputs.outputs.new_release_published }}
+      new_release_version: ${{ steps.release-outputs.outputs.new_release_version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/restore-build
+      - name: Semantic Release
+        id: release
+        run: pnpm exec semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      - name: Export release outputs
+        id: release-outputs
+        if: steps.release.outcome == 'success'
+        run: |
+          if git tag --points-at HEAD | grep -q '^v'; then
+            VERSION=$(node -p "require('./package.json').version")
+            echo "new_release_published=true" >> "$GITHUB_OUTPUT"
+            echo "new_release_version=${VERSION}" >> "$GITHUB_OUTPUT"
+          else
+            echo "new_release_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Phase 7: Docker Push to GHCR (after release) ───────────────────
   docker-push:
     name: Push to GHCR
-    if: github.ref == 'refs/heads/main' && github.event_name != 'schedule'
-    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'schedule' && needs.release.outputs.new_release_published == 'true'
+    needs: [build-and-test, release]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -312,6 +566,15 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: v${{ needs.release.outputs.new_release_version }}
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v4
         with:
@@ -323,6 +586,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
+            type=semver,pattern={{version}},value=${{ needs.release.outputs.new_release_version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release.outputs.new_release_version }}
             type=sha
             type=raw,value=latest
       - uses: docker/build-push-action@v7
@@ -333,6 +598,81 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ── Phase 8: VDS Deploy (after Docker push) ─────────────────────────
+  deploy-vds:
+    name: Deploy to VDS
+    needs: [release, docker-push]
+    if: needs.docker-push.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: ${{ secrets.VDS_HOST }}
+          username: ${{ secrets.VDS_USER }}
+          key: ${{ secrets.VDS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            VERSION="${{ needs.release.outputs.new_release_version }}"
+            IMAGE="ghcr.io/omerfarukoruc/risoluto:${VERSION}"
+
+            cd /opt/risoluto
+
+            # Save previous image for rollback (first-deploy guard)
+            PREV_IMAGE=""
+            if docker compose ps -q risoluto 2>/dev/null | grep -q .; then
+              PREV_IMAGE=$(docker inspect --format='{{.Config.Image}}' "$(docker compose ps -q risoluto)")
+              if echo "$PREV_IMAGE" | grep -q "^ghcr.io/"; then
+                echo "$PREV_IMAGE" > /opt/risoluto/.previous-image
+              else
+                echo "WARN: Previous image '$PREV_IMAGE' is not a GHCR reference, rollback unavailable"
+                rm -f /opt/risoluto/.previous-image
+              fi
+            else
+              echo "First deploy: no running container, rollback unavailable"
+              rm -f /opt/risoluto/.previous-image
+            fi
+
+            # Pull and deploy
+            docker pull "$IMAGE"
+            RISOLUTO_IMAGE="$IMAGE" docker compose up -d
+
+            # Health check with retry (5 attempts, 10s apart)
+            HEALTHY=false
+            for i in 1 2 3 4 5; do
+              echo "Health check attempt $i/5..."
+              if curl -sf http://localhost:4000/api/v1/runtime > /dev/null 2>&1; then
+                echo "Health check passed"
+                HEALTHY=true
+                break
+              fi
+              sleep 10
+            done
+
+            if [ "$HEALTHY" = "false" ]; then
+              echo "::error::Health check failed after 5 attempts"
+
+              # Rollback if previous image is available
+              if [ -f /opt/risoluto/.previous-image ]; then
+                ROLLBACK_IMAGE=$(cat /opt/risoluto/.previous-image)
+                echo "Rolling back to $ROLLBACK_IMAGE"
+                RISOLUTO_IMAGE="$ROLLBACK_IMAGE" docker compose up -d
+                sleep 5
+                if curl -sf http://localhost:4000/api/v1/runtime > /dev/null 2>&1; then
+                  echo "Rollback successful"
+                else
+                  echo "::error::Rollback also failed — manual intervention required"
+                fi
+              else
+                echo "::error::No previous image available for rollback — manual intervention required"
+              fi
+
+              exit 1
+            fi
 
   # ── E2E Lifecycle Test (main only, non-blocking) ─────────────────────
   # Runs the full E2E lifecycle test against real Linear, GitHub, and Codex
@@ -402,28 +742,31 @@ jobs:
   build-and-test:
     name: build-and-test
     if: always()
-    needs: [build, lint, test, knip, typecheck, gitleaks, semgrep, docker-build, e2e-smoke]
+    needs: [build, lint, test, knip, typecheck, gitleaks, semgrep, docker-build, e2e-smoke, integration-pr]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
     steps:
       - name: Check all required jobs passed
         run: |
-          echo "build        = ${{ needs.build.result }}"
-          echo "lint         = ${{ needs.lint.result }}"
-          echo "test         = ${{ needs.test.result }}"
-          echo "knip         = ${{ needs.knip.result }}"
-          echo "typecheck    = ${{ needs.typecheck.result }}"
-          echo "gitleaks     = ${{ needs.gitleaks.result }}"
-          echo "semgrep      = ${{ needs.semgrep.result }}"
-          echo "docker-build = ${{ needs.docker-build.result }}"
-          echo "e2e-smoke    = ${{ needs.e2e-smoke.result }}"
+          echo "build           = ${{ needs.build.result }}"
+          echo "lint            = ${{ needs.lint.result }}"
+          echo "test            = ${{ needs.test.result }}"
+          echo "knip            = ${{ needs.knip.result }}"
+          echo "typecheck       = ${{ needs.typecheck.result }}"
+          echo "gitleaks        = ${{ needs.gitleaks.result }}"
+          echo "semgrep         = ${{ needs.semgrep.result }}"
+          echo "docker-build    = ${{ needs.docker-build.result }}"
+          echo "e2e-smoke       = ${{ needs.e2e-smoke.result }}"
+          echo "integration-pr  = ${{ needs.integration-pr.result }}"
 
           # Jobs guarded by 'if' are skipped on schedule runs — treat as pass
           DOCKER_RESULT="${{ needs.docker-build.result }}"
           E2E_RESULT="${{ needs.e2e-smoke.result }}"
+          INTEG_PR_RESULT="${{ needs.integration-pr.result }}"
           [ "$DOCKER_RESULT" = "skipped" ] && DOCKER_RESULT="success"
           [ "$E2E_RESULT" = "skipped" ] && E2E_RESULT="success"
+          [ "$INTEG_PR_RESULT" = "skipped" ] && INTEG_PR_RESULT="success"
 
           if [ "${{ needs.build.result }}" != "success" ] ||
              [ "${{ needs.lint.result }}" != "success" ] ||
@@ -433,7 +776,8 @@ jobs:
              [ "${{ needs.gitleaks.result }}" != "success" ] ||
              [ "${{ needs.semgrep.result }}" != "success" ] ||
              [ "$DOCKER_RESULT" != "success" ] ||
-             [ "$E2E_RESULT" != "success" ]; then
+             [ "$E2E_RESULT" != "success" ] ||
+             [ "$INTEG_PR_RESULT" != "success" ]; then
             echo "::error::One or more required jobs failed"
             exit 1
           fi

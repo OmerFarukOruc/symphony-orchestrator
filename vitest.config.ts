@@ -3,8 +3,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
-    exclude: ["tests/**/*.integration.test.ts", "tests/http/load.test.ts"],
+    exclude: ["tests/**/*.integration.test.ts", "tests/http/load.test.ts", "tests/agent-runner/agent-runner.test.ts"],
     environment: "node",
+    setupFiles: ["tests/helpers/quarantine.ts"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],

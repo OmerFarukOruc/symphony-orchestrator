@@ -23,7 +23,7 @@ export default defineConfig({
     {
       name: "smoke",
       testMatch: ["**/*.smoke.spec.ts", "**/*.spec.ts"],
-      testIgnore: ["**/*.visual.spec.ts"],
+      testIgnore: ["**/*.visual.spec.ts", "**/*.fullstack.spec.ts"],
       use: { ...devices["Desktop Chrome"] },
     },
     {
@@ -32,7 +32,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         // Deterministic viewport for visual regression
-        viewport: { width: 1280, height: 720 },
+        viewport: { width: 2560, height: 1440 },
       },
     },
   ],

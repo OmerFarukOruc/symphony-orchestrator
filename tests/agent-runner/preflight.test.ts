@@ -6,7 +6,9 @@ import { createMockLogger } from "../helpers.js";
 function mockConnection(
   impl?: (...args: unknown[]) => Promise<unknown>,
 ): PreflightConnection & { request: ReturnType<typeof vi.fn> } {
-  return { request: impl ? vi.fn().mockImplementation(impl) : vi.fn() };
+  return { request: impl ? vi.fn().mockImplementation(impl) : vi.fn() } as unknown as PreflightConnection & {
+    request: ReturnType<typeof vi.fn>;
+  };
 }
 
 describe("runPreflight", () => {

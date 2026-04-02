@@ -50,14 +50,7 @@ function isAllowedLinearHost(host: string): boolean {
 }
 
 function isAllowedGitHubHost(host: string): boolean {
-  return (
-    host === "api.github.com" ||
-    host === "github.com" ||
-    host.endsWith(".github.com") ||
-    host.startsWith("github.") ||
-    host.startsWith("api.github.") ||
-    host.includes(".github.")
-  );
+  return host === "api.github.com" || host === "github.com" || host.endsWith(".github.com");
 }
 
 function isAllowedSlackWebhookHost(host: string): boolean {

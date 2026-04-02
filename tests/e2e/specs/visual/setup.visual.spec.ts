@@ -1,6 +1,6 @@
 import { test, expect } from "../../fixtures/test";
 import { freezeClock } from "../../support/clock";
-import { screenshotCss } from "../../support/screenshot-css";
+import { applyScreenshotStyles } from "../../support/screenshot-css";
 
 test.describe("Setup Visual Regression", () => {
   test("setup page with unconfigured state", async ({ page, apiMock }) => {
@@ -15,7 +15,7 @@ test.describe("Setup Visual Regression", () => {
       return outlet && outlet.children.length > 0;
     });
 
-    await page.addStyleTag({ content: screenshotCss });
+    await applyScreenshotStyles(page);
     await page.waitForTimeout(500);
 
     await expect(page).toHaveScreenshot("setup-unconfigured.png", {

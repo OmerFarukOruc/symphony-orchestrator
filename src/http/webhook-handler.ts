@@ -180,9 +180,9 @@ export function handleWebhookLinear(deps: WebhookHandlerDeps, req: WebhookReques
           webhookTimestamp: timestamp,
           payloadJson: JSON.stringify(body),
         })
-        .catch((error_: unknown) => {
+        .catch((inboxError: unknown) => {
           deps.logger.error(
-            { error: error_ instanceof Error ? error_.message : String(error_) },
+            { error: inboxError instanceof Error ? inboxError.message : String(inboxError) },
             "inbox insert failed",
           );
           return { isNew: true } as const; // proceed even if inbox fails
@@ -206,9 +206,14 @@ export function handleWebhookLinear(deps: WebhookHandlerDeps, req: WebhookReques
       // Entity-aware processing
       processWebhookEvent(deps, type, action, body, issueId, issueIdentifier, usedPreviousSecret);
     })
-    .catch((error_: unknown) => {
+    .catch((sideEffectError: unknown) => {
       deps.logger.error(
-        { error: error_ instanceof Error ? error_.message : String(error_), deliveryId, type, action },
+        {
+          error: sideEffectError instanceof Error ? sideEffectError.message : String(sideEffectError),
+          deliveryId,
+          type,
+          action,
+        },
         "unhandled error in webhook side-effect processing",
       );
     });

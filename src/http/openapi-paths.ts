@@ -12,12 +12,25 @@ import { z } from "zod";
 import { modelUpdateSchema, transitionSchema } from "./request-schemas.js";
 import {
   abortResponseSchema,
+  attemptDetailResponseSchema,
   attemptsListResponseSchema,
+  configOverlayGetResponseSchema,
+  configOverlayPatchResponseSchema,
+  configOverlayPutRequestSchema,
+  configOverlayPutResponseSchema,
+  configResponseSchema,
+  configSchemaResponseSchema,
   errorResponseSchema,
+  gitContextResponseSchema,
+  issueDetailResponseSchema,
+  modelUpdateResponseSchema,
   refreshResponseSchema,
   runtimeResponseSchema,
+  stateResponseSchema,
   transitionResponseSchema,
+  transitionsListResponseSchema,
   validationErrorSchema,
+  workspaceInventoryResponseSchema,
 } from "./response-schemas.js";
 
 type JsonSchema = Record<string, unknown>;
@@ -25,6 +38,8 @@ type JsonSchema = Record<string, unknown>;
 interface PathItem {
   [method: string]: unknown;
 }
+
+const protectedReadSecurity = [{ bearerAuth: [] }];
 
 function jsonContent(schema: JsonSchema): Record<string, unknown> {
   return { "application/json": { schema } };
@@ -36,6 +51,14 @@ function jsonResponse(description: string, schema: JsonSchema): Record<string, u
 
 function errorResponse(description: string): Record<string, unknown> {
   return jsonResponse(description, toSchema(errorResponseSchema));
+}
+
+function protectedReadResponses(successDescription: string, successSchema: JsonSchema): Record<string, unknown> {
+  return {
+    "200": jsonResponse(successDescription, successSchema),
+    "401": errorResponse("Valid read token required"),
+    "403": errorResponse("Remote read access is not configured"),
+  };
 }
 
 function toSchema(zodSchema: z.ZodType): JsonSchema {
@@ -60,9 +83,8 @@ export function buildStateAndMetricsPaths(): Record<string, PathItem> {
         tags: ["State & Metrics"],
         summary: "Get runtime state snapshot",
         operationId: "getState",
-        responses: {
-          "200": jsonResponse("Current runtime snapshot", { type: "object" }),
-        },
+        security: protectedReadSecurity,
+        responses: protectedReadResponses("Current runtime snapshot", toSchema(stateResponseSchema)),
       },
     },
     "/api/v1/runtime": {
@@ -90,9 +112,8 @@ export function buildStateAndMetricsPaths(): Record<string, PathItem> {
         tags: ["State & Metrics"],
         summary: "Get available state transitions",
         operationId: "getTransitions",
-        responses: {
-          "200": jsonResponse("Transitions list", { type: "object" }),
-        },
+        security: protectedReadSecurity,
+        responses: protectedReadResponses("Transitions list", toSchema(transitionsListResponseSchema)),
       },
     },
     "/metrics": {
@@ -120,9 +141,10 @@ export function buildIssuePaths(): Record<string, PathItem> {
         operationId: "getIssueDetail",
         parameters: [pathParam("issue_identifier", "Issue identifier (e.g. ENG-123)")],
         responses: {
-          "200": jsonResponse("Issue detail", { type: "object" }),
+          ...protectedReadResponses("Issue detail", toSchema(issueDetailResponseSchema)),
           "404": errorResponse("Issue not found"),
         },
+        security: protectedReadSecurity,
       },
     },
     "/api/v1/{issue_identifier}/abort": {
@@ -150,7 +172,7 @@ export function buildIssuePaths(): Record<string, PathItem> {
           content: jsonContent(toSchema(modelUpdateSchema)),
         },
         responses: {
-          "200": jsonResponse("Model updated", { type: "object" }),
+          "202": jsonResponse("Model updated", toSchema(modelUpdateResponseSchema)),
           "400": jsonResponse("Validation error", toSchema(validationErrorSchema)),
         },
       },
@@ -178,9 +200,10 @@ export function buildIssuePaths(): Record<string, PathItem> {
         operationId: "listAttempts",
         parameters: [pathParam("issue_identifier", "Issue identifier (e.g. ENG-123)")],
         responses: {
-          "200": jsonResponse("Attempts list", toSchema(attemptsListResponseSchema)),
+          ...protectedReadResponses("Attempts list", toSchema(attemptsListResponseSchema)),
           "404": errorResponse("Issue not found"),
         },
+        security: protectedReadSecurity,
       },
     },
     "/api/v1/attempts/{attempt_id}": {
@@ -190,9 +213,10 @@ export function buildIssuePaths(): Record<string, PathItem> {
         operationId: "getAttemptDetail",
         parameters: [pathParam("attempt_id")],
         responses: {
-          "200": jsonResponse("Attempt detail", { type: "object" }),
+          ...protectedReadResponses("Attempt detail", toSchema(attemptDetailResponseSchema)),
           "404": errorResponse("Attempt not found"),
         },
+        security: protectedReadSecurity,
       },
     },
   };
@@ -214,9 +238,8 @@ function buildWorkspacePaths(): Record<string, PathItem> {
         tags: ["Workspaces"],
         summary: "List workspaces",
         operationId: "listWorkspaces",
-        responses: {
-          "200": jsonResponse("Workspace inventory", { type: "object" }),
-        },
+        security: protectedReadSecurity,
+        responses: protectedReadResponses("Workspace inventory", toSchema(workspaceInventoryResponseSchema)),
       },
     },
     "/api/v1/workspaces/{workspace_key}": {
@@ -241,9 +264,8 @@ function buildGitPaths(): Record<string, PathItem> {
         tags: ["Git"],
         summary: "Get git context for the workspace",
         operationId: "getGitContext",
-        responses: {
-          "200": jsonResponse("Git context", { type: "object" }),
-        },
+        security: protectedReadSecurity,
+        responses: protectedReadResponses("Git context", toSchema(gitContextResponseSchema)),
       },
     },
   };
@@ -256,9 +278,8 @@ function buildConfigPaths(): Record<string, PathItem> {
         tags: ["Config"],
         summary: "Get effective configuration",
         operationId: "getConfig",
-        responses: {
-          "200": jsonResponse("Effective config", { type: "object" }),
-        },
+        security: protectedReadSecurity,
+        responses: protectedReadResponses("Effective config", toSchema(configResponseSchema)),
       },
     },
     "/api/v1/config/schema": {
@@ -266,9 +287,8 @@ function buildConfigPaths(): Record<string, PathItem> {
         tags: ["Config"],
         summary: "Get config schema",
         operationId: "getConfigSchema",
-        responses: {
-          "200": jsonResponse("Config schema", { type: "object" }),
-        },
+        security: protectedReadSecurity,
+        responses: protectedReadResponses("Config schema", toSchema(configSchemaResponseSchema)),
       },
     },
     "/api/v1/config/overlay": {
@@ -276,9 +296,8 @@ function buildConfigPaths(): Record<string, PathItem> {
         tags: ["Config"],
         summary: "Get config overlay",
         operationId: "getConfigOverlay",
-        responses: {
-          "200": jsonResponse("Config overlay", { type: "object" }),
-        },
+        security: protectedReadSecurity,
+        responses: protectedReadResponses("Config overlay", toSchema(configOverlayGetResponseSchema)),
       },
       put: {
         tags: ["Config"],
@@ -286,10 +305,10 @@ function buildConfigPaths(): Record<string, PathItem> {
         operationId: "putConfigOverlay",
         requestBody: {
           required: true,
-          content: jsonContent({ type: "object" }),
+          content: jsonContent(toSchema(configOverlayPutRequestSchema)),
         },
         responses: {
-          "200": jsonResponse("Overlay updated", { type: "object" }),
+          "200": jsonResponse("Overlay updated", toSchema(configOverlayPutResponseSchema)),
           "400": errorResponse("Invalid overlay payload"),
         },
       },
@@ -309,7 +328,7 @@ function buildConfigPaths(): Record<string, PathItem> {
           }),
         },
         responses: {
-          "200": jsonResponse("Value set", { type: "object" }),
+          "200": jsonResponse("Value set", toSchema(configOverlayPatchResponseSchema)),
           "400": errorResponse("Invalid overlay path or payload"),
         },
       },
@@ -334,12 +353,11 @@ function buildSecretsPaths(): Record<string, PathItem> {
         tags: ["Secrets"],
         summary: "List secret keys",
         operationId: "listSecrets",
-        responses: {
-          "200": jsonResponse("Secret keys", {
-            type: "object",
-            properties: { keys: { type: "array", items: { type: "string" } } },
-          }),
-        },
+        security: protectedReadSecurity,
+        responses: protectedReadResponses("Secret keys", {
+          type: "object",
+          properties: { keys: { type: "array", items: { type: "string" } } },
+        }),
       },
     },
     "/api/v1/secrets/{key}": {
