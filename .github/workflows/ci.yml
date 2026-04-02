@@ -293,6 +293,13 @@ jobs:
       - uses: ./.github/actions/restore-build
       - name: Restore pnpm virtual store symlinks
         run: pnpm install --frozen-lockfile
+      - name: Restore Stryker incremental cache
+        uses: actions/cache@v5
+        with:
+          path: reports/stryker-incremental.json
+          key: stryker-incremental-${{ github.sha }}
+          restore-keys: |
+            stryker-incremental-
       - name: Run mutation on changed files
         run: |
           CHANGED=$(git diff --name-only origin/main...HEAD | grep -E '^src/' | paste -sd,)
