@@ -1,158 +1,140 @@
 ---
 title: FAQ
-description: "Frequently asked questions about Risoluto — what it is, data privacy, supported AI models, Docker requirements, failure handling, and costs."
+description: "Short answers to the questions operators usually ask first: setup path, privacy, Docker, models, cost, monitoring, and failure handling."
 icon: "circle-question"
 ---
 
-# Frequently Asked Questions
+# Frequently asked questions
 
 <AccordionGroup>
   <Accordion title="What is Risoluto?">
-    Risoluto is a **local orchestration engine** that connects your issue tracker to AI coding agents. It watches Linear (or GitHub Issues) for actionable work, dispatches sandboxed AI agents inside Docker containers, and delivers pull requests — all running on your own machine.
+    Risoluto is a local orchestration engine that watches your tracker for eligible issues, launches sandboxed AI coding agents in Docker, and reports the result through pull requests, dashboard state, and API events.
+  </Accordion>
 
-    ```
-    Linear issue → Risoluto picks it up → AI agent writes code → PR lands on GitHub
-    ```
+  <Accordion title="What is the recommended way to start?">
+    Use the [Quickstart](/quickstart): run `docker compose up --build`, open `http://127.0.0.1:4000`, and complete the setup wizard.
 
-    No prompts to write, no tabs to babysit. You triage issues; Risoluto does the rest.
+    That path keeps the onboarding surface small and matches the default deployment model.
+
   </Accordion>
 
   <Accordion title="Does my code leave my machine?">
-    **Local-first by default.** Risoluto runs on your local machine or a VDS you control. There is no telemetry, and a managed cloud option is planned for the future.
-
-    The only outbound calls are to services *you* configure:
+    Your repository data stays in workspaces you control. Risoluto still makes outbound calls to the services you configure, such as:
 
     | Service | Purpose |
     |---------|---------|
-    | **Linear API** | Polling issues and transitioning states |
-    | **OpenAI API** | Model inference (or your custom provider) |
-    | **GitHub API** | PR creation (optional) |
-    | **Slack API** | Notifications (optional) |
+    | **Linear API** | Read issues and update issue state |
+    | **OpenAI-compatible provider** | Model inference for the agent runtime |
+    | **GitHub API** | Pull requests and repository actions |
+    | **Slack API** | Optional notifications |
 
-    Your source code stays on your disk. The AI agent sees only the workspace for the issue it is working on.
-  </Accordion>
+    See the [Trust Model](/concepts/trust-model) for the full boundary breakdown.
 
-  <Accordion title="What AI models are supported?">
-    Risoluto uses the [Codex CLI](https://github.com/openai/codex) as its agent runtime. The default model is **gpt-5.4**, but any OpenAI-compatible model works.
-
-    Override the model globally or per-issue:
-
-    ```bash
-    # Per-issue override
-    curl -s -X POST http://127.0.0.1:4000/api/v1/MT-42/model \
-      -H 'Content-Type: application/json' \
-      -d '{"model":"gpt-5","reasoning_effort":"medium"}'
-
-    # Global override via config
-    curl -s -X PUT http://127.0.0.1:4000/api/v1/config/overlay \
-      -H 'Content-Type: application/json' \
-      -d '{"codex":{"provider":{"model":"gpt-5"}}}'
-    ```
-
-    You can also point at non-OpenAI providers via an OpenAI-compatible proxy (LiteLLM, OpenRouter) by setting `codex.provider.base_url`.
   </Accordion>
 
   <Accordion title="Do I need Docker?">
-    **Yes.** Every AI agent runs inside an isolated Docker container with `--cap-drop=ALL`, resource limits, and an optional gVisor runtime. Docker provides the security boundary between the agent and your host system.
+    Yes. Agent work runs inside Docker sandboxes, and the recommended quickstart also runs the orchestrator in Docker.
 
-    Minimum requirement: **Docker Engine 24+** (or Docker Desktop).
+    If you run the orchestrator on the host for development, Docker is still required for worker isolation.
 
-    ```bash
-    # Verify Docker is available
-    docker info
-    ```
   </Accordion>
 
-  <Accordion title="What issue trackers are supported?">
+  <Accordion title="Which models and providers are supported?">
+    Risoluto uses the Codex runtime and defaults to `gpt-5.4`. You can change the model globally or per issue, and you can point the provider at an OpenAI-compatible endpoint.
+
+    ```bash
+    curl -s -X POST http://127.0.0.1:4000/api/v1/MT-42/model \
+      -H 'Content-Type: application/json' \
+      -d '{"model":"gpt-5","reasoning_effort":"medium"}'
+    ```
+
+  </Accordion>
+
+  <Accordion title="Which issue trackers are supported?">
     | Tracker | Status |
     |---------|--------|
-    | **Linear** | Primary adapter — full support for polling, transitions, labels, and webhooks |
-    | **GitHub Issues** | Supported since v0.4.0 — maps GitHub issues to the same pipeline |
-    | **Jira** | On the roadmap — the `TrackerAdapter` interface is designed for extensibility |
+    | **Linear** | Primary adapter with polling, transitions, labels, and webhooks |
+    | **GitHub Issues** | Supported adapter using the same orchestration pipeline |
 
-    See [How It Works](/concepts/how-it-works) for details on the adapter architecture.
+    See [How It Works](/concepts/how-it-works) for the architecture behind tracker adapters.
+
   </Accordion>
 
   <Accordion title="How does Risoluto handle failures?">
-    Risoluto applies **exponential backoff** retries up to `agent.maxContinuationAttempts` (default: **5**). Specific failure modes:
+    Risoluto retries with exponential backoff until it reaches `agent.maxContinuationAttempts`.
 
     | Failure | Detection | Response |
     |---------|-----------|----------|
     | Agent error | Non-zero exit code | Retry with backoff |
-    | Container OOM | Exit code 137 / `OOMKilled` | Surface as `container_oom`, retry with increased memory hint |
-    | Stalled turn | No events for `codex.stallTimeoutMs` (5 min) | Kill turn, retry |
-    | Stalled agent | No events for `agent.stallTimeoutMs` (20 min) | Kill container, retry |
-    | Exhausted retries | Max attempts reached | Mark issue as failed, notify via Slack |
+    | Container OOM | Exit code 137 / `OOMKilled` | Surface as `container_oom`, then retry |
+    | Stalled turn | No events for `codex.stallTimeoutMs` | Kill the turn, then retry |
+    | Stalled agent | No events for `agent.stallTimeoutMs` | Kill the worker, then retry |
+    | Retries exhausted | Max attempts reached | Mark the issue as failed |
 
-    All failures are logged to the attempt timeline and visible in the dashboard.
+    Attempt history stays visible in the dashboard and API.
+
+  </Accordion>
+
+  <Accordion title="How do I monitor what is happening?">
+    You have three main surfaces:
+
+    | Surface | What it gives you |
+    |---------|-------------------|
+    | **Dashboard** | Live board, issue detail, attempts, logs, and settings |
+    | **API + SSE** | Scriptable state snapshots and live event streams |
+    | **Prometheus** | Service and runtime metrics at `GET /metrics` |
+
+    Start with the [Dashboard guide](/guides/dashboard) and [Observability](/operating/observability).
+
+  </Accordion>
+
+<Accordion title="Can multiple agents run at the same time?">
+  Yes. Use `agent.maxConcurrentAgents` for a global cap and `agent.maxConcurrentAgentsByState` for per-state limits.
+  Each agent gets its own Docker container and workspace.
+</Accordion>
+
+  <Accordion title="What does Risoluto cost?">
+    Risoluto itself is open source. Your direct cost comes from the model provider you configure and the amount of work each run consumes.
+
+    The dashboard tracks issue-level and aggregate usage so you can see where spend is coming from.
+
   </Accordion>
 
   <Accordion title="Can I use my own sandbox image?">
-    Yes. Build a custom Docker image extending `risoluto-codex:latest`, then point Risoluto at it:
+    Yes. Build a custom image and point `codex.sandbox.image` at it through the config overlay API or dashboard.
 
-    ```bash
-    curl -s -X PUT http://127.0.0.1:4000/api/v1/config/overlay \
-      -H 'Content-Type: application/json' \
-      -d '{"codex":{"sandbox":{"image":"my-custom-image:latest"}}}'
-    ```
+    The [Custom Sandbox recipe](/recipes/custom-sandbox) walks through the pattern.
 
-    See the [Custom Sandbox](/recipes/custom-sandbox) recipe for a full walkthrough including Dockerfile examples, dependency pre-installation, and gVisor setup.
   </Accordion>
 
-  <Accordion title="Is there a cloud/hosted version?">
-    **Not yet.** Risoluto runs locally by default — your code, credentials, and agent activity stay on hardware you control. A managed cloud option is on the roadmap for teams that want hosted infrastructure without self-managing a VDS.
-  </Accordion>
-
-  <Accordion title="How do I monitor what's happening?">
-    Three levels of visibility:
-
-    | Channel | What you get |
-    |---------|-------------|
-    | **Dashboard** | Real-time Kanban board at `http://127.0.0.1:4000` with issue inspector, live event stream, and cost tracking |
-    | **Prometheus** | `GET /metrics` exposes HTTP, poll, and agent-run counters for Grafana dashboards and alerting |
-    | **Slack** | Configurable notifications for agent start, completion, failure, and PR delivery |
-
-    See [Observability](/operating/observability) for setup details and [Monitoring Stack](/recipes/monitoring-stack) for a Prometheus + Grafana recipe.
-  </Accordion>
-
-  <Accordion title="What's the cost?">
-    Risoluto itself is **open source and free**. You pay only for your own AI API usage (OpenAI, or whichever provider you configure). Typical costs depend on:
-
-    - **Model choice** — gpt-5.4 vs smaller/cheaper models
-    - **Issue complexity** — simple issues use fewer tokens than large refactors
-    - **Retry count** — failed attempts consume additional tokens
-
-    The dashboard tracks per-issue and aggregate token costs in real time.
-  </Accordion>
-
-  <Accordion title="Can multiple agents run at the same time?">
-    Yes. Configure `agent.maxConcurrentAgents` (default: 10) for a global limit, and `agent.maxConcurrentAgentsByState` for per-state limits. Each agent runs in its own Docker container with its own workspace.
-  </Accordion>
+<Accordion title="Is there a hosted version?">
+  Not today. The default operating model is self-hosted and local-first.
+</Accordion>
 
   <Accordion title="What are the system requirements?">
     | Component | Minimum | Recommended |
     |-----------|---------|-------------|
     | **Node.js** | v22+ | Latest LTS |
     | **Docker** | Engine 24+ | Latest stable |
-    | **RAM** | 4 GB + 4 GB per agent | 16 GB+ |
-    | **Disk** | 10 GB | 50 GB+ (repo clones) |
-    | **CPU** | 2 cores + 2 per agent | 8+ cores |
+    | **RAM** | 4 GB + 4 GB per active agent | 16 GB+ |
+    | **Disk** | 10 GB | 50 GB+ |
+    | **CPU** | 2 cores + 2 per active agent | 8+ cores |
   </Accordion>
 </AccordionGroup>
 
-## What's Next
+## What's next
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Get Risoluto running in under 10 minutes.
+    Start with the recommended first-run path.
   </Card>
-  <Card title="Trust Model" icon="shield" href="/concepts/trust-model">
-    Understand the security boundaries and isolation layers.
+  <Card title="Setup Wizard" icon="wand-magic-sparkles" href="/guides/setup-wizard">
+    See exactly what the wizard stores and validates.
   </Card>
-  <Card title="Configuration" icon="gear" href="/guides/configuration">
-    Customize models, timeouts, retries, and workspace strategies.
+  <Card title="Trust Model" icon="shield-halved" href="/concepts/trust-model">
+    Review the security posture and trust boundaries.
   </Card>
   <Card title="Troubleshooting" icon="wrench" href="/operating/troubleshooting">
-    Diagnose common issues and recovery procedures.
+    Diagnose setup and runtime failures.
   </Card>
 </CardGroup>

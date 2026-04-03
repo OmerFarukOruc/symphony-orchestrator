@@ -1,70 +1,83 @@
 ---
 title: Introduction
-description: "Risoluto turns your issue tracker into an autonomous coding pipeline. Create a Linear issue, and a sandboxed AI agent writes the code and delivers a PR."
+description: "Start with the recommended Risoluto path, understand what the system does, and find the next document you need without wading through the whole site."
 icon: "house"
 ---
 
-# Every issue finds its resolution.
+# Start here
 
-**Your issue tracker becomes an autonomous coding pipeline.**
-
-Risoluto watches your project tracker for actionable issues, spins up sandboxed AI coding agents inside Docker containers, and delivers pull requests — all running on your machine, with zero prompts to write.
+Risoluto is a local orchestration engine that watches your tracker for actionable issues, launches sandboxed AI coding agents inside Docker, and reports the result through pull requests, dashboard state, and API events.
 
 ```
-You create an issue  →  Risoluto picks it up  →  AI agent writes code  →  PR lands on GitHub
+You move an issue into an active state → Risoluto claims it → an agent works in an isolated workspace → you review the result
 ```
+
+<Check>
+  **First time here?** Start with the [Quickstart](/quickstart). The recommended path is **Docker Compose → setup wizard
+  → dashboard**.
+</Check>
 
 <Info>
-  **Local-first by default. No telemetry.** Your source code stays on your machine. Risoluto runs locally or on a VDS you control, connecting your existing Linear project to AI agents running in isolated Docker containers. A managed cloud option is on the roadmap for teams that want hosted infrastructure.
+  **Local-first by default.** Risoluto runs on hardware you control. It still talks to the services you configure — such
+  as Linear, your model provider, GitHub, and Slack — but your repository data stays in your own workspaces.
 </Info>
 
-## What Ships Today <Badge>v0.6.0</Badge> <Badge variant="info">Open Source</Badge>
-
-<CardGroup cols={2}>
-  <Card title="Orchestration Engine" icon="engine">
-    Linear polling with webhook support for real-time updates, Docker sandbox with resource limits and gVisor, workspace isolation, retry with exponential backoff, stall detection, model overrides, and health monitoring.
-  </Card>
-  <Card title="Dashboard and API" icon="chart-mixed">
-    Real-time Kanban board with issue inspector, 50+ JSON API endpoints, per-issue cost tracking, live agent feed via SSE, Prometheus metrics, and interactive API playground.
-  </Card>
-  <Card title="Integrations" icon="plug">
-    Git automation (clone, branch, commit, push, PR creation), Linear webhooks for real-time updates, GitHub Issues adapter (coming soon), Slack notifications, and Codex agent runtime via JSON-RPC.
-  </Card>
-  <Card title="Security and Operations" icon="shield-check">
-    AES-256 encrypted credential store, setup wizard with PKCE browser sign-in, SQLite-backed attempt history, CLI log inspector, audit trail, and full Playwright E2E test coverage.
-  </Card>
-</CardGroup>
-
-## Get Started
-
-<CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Go from zero to your first automated PR in under 10 minutes.
-  </Card>
-  <Card title="How It Works" icon="diagram-project" href="/concepts/how-it-works">
-    Understand the architecture — polling, workspaces, sandboxes, and delivery.
-  </Card>
-</CardGroup>
-
-## Quick Links
+## Follow the shortest path
 
 <CardGroup cols={3}>
-  <Card title="API Reference" icon="code" href="/api-reference/overview">
-    Explore 50+ endpoints for state, config, events, and issue management.
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Use the recommended Docker + setup wizard flow and verify your first issue end to end.
   </Card>
-  <Card title="Configuration" icon="gear" href="/guides/configuration">
-    Customize models, timeouts, retries, and workspace strategies.
-  </Card>
-  <Card title="Docker Deployment" icon="docker" href="/guides/docker">
-    Deploy with Docker Compose for persistent, zero-config operation.
+  <Card title="Setup Wizard" icon="wand-magic-sparkles" href="/guides/setup-wizard">
+    See what each first-run step does before you paste credentials or reset anything.
   </Card>
   <Card title="Dashboard" icon="chart-mixed" href="/guides/dashboard">
-    Board view, issue inspector, live events, and cost tracking.
+    Learn where to watch live runs, inspect attempts, and change settings after setup.
+  </Card>
+</CardGroup>
+
+## Understand the system
+
+<CardGroup cols={2}>
+  <Card title="How It Works" icon="diagram-project" href="/concepts/how-it-works">
+    Follow the lifecycle from tracker detection to workspace creation, sandbox execution, and delivery.
+  </Card>
+  <Card title="Trust Model" icon="shield-halved" href="/concepts/trust-model">
+    Understand what Risoluto controls, what the agent controls, and where the trust boundaries sit.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Use the same HTTP surface the dashboard and setup wizard depend on.
+  </Card>
+  <Card title="Configuration" icon="gear" href="/guides/configuration">
+    Tune concurrency, models, workspace strategy, sandbox settings, and notifications.
+  </Card>
+</CardGroup>
+
+## What to expect from Risoluto
+
+<CardGroup cols={3}>
+  <Card title="Operator-first control" icon="sliders">
+    You keep the orchestrator, credentials, and runtime state under your control instead of routing work through a
+    hosted control plane.
+  </Card>
+  <Card title="Isolated execution" icon="docker">
+    Each issue runs in its own Docker-backed workspace, with retries, stall handling, and archived attempt history.
+  </Card>
+  <Card title="Visible runtime state" icon="gauge-high">
+    The dashboard, SSE feed, metrics endpoint, and API make it clear what is queued, running, blocked, or finished.
+  </Card>
+</CardGroup>
+
+## Keep moving
+
+<CardGroup cols={3}>
+  <Card title="Docker Deployment" icon="docker" href="/guides/docker">
+    Run Risoluto as a persistent service with named volumes and optional remote dispatch.
   </Card>
   <Card title="FAQ" icon="circle-question" href="/faq">
-    Common questions about models, privacy, Docker, and more.
+    Get short answers on privacy, Docker, model support, cost, and failure handling.
   </Card>
   <Card title="Troubleshooting" icon="wrench" href="/operating/troubleshooting">
-    Diagnose common failures and recovery procedures.
+    Recover from common setup, auth, sandbox, webhook, and runtime failures.
   </Card>
 </CardGroup>

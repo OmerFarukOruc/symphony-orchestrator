@@ -71,7 +71,7 @@ async function main(): Promise<void> {
   await fs.writeFile(
     path.join(runDir, "pipeline.log"),
     `# Pipeline Log -- ${title}\n\n**Slug**: ${slug}\n**Started**: ${new Date().toISOString()}\n**Status**: ${dryRun ? "🟡 DRY RUN STARTED" : "🟡 IN PROGRESS"}\n\n---\n\n## Phase 1: Intake\n**Started**: ${new Date().toISOString()}\n**Input**: ${title}\n`,
-    "utf8"
+    "utf8",
   );
 }
 

@@ -1,9 +1,9 @@
 ---
-name: anvil
+name: anvil-risoluto
 description: Stateful factory orchestrator for medium and large Risoluto work. Use when the task comes from bundled roadmap issues, grouped GitHub issues, a substantial plan or requirements doc, or any multi-step change that needs brainstorming, planning, review, execution, verification, docs, tests, and a final single push. This skill is the entrypoint for resumable runs backed by .anvil/<slug>/ state.
 ---
 
-# Anvil
+# Anvil Risoluto
 
 Run the Risoluto factory workflow from intake through final push.
 

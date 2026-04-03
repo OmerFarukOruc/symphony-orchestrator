@@ -1,139 +1,146 @@
 ---
 title: Setup Wizard
-description: "Walk through the interactive setup wizard that generates encryption keys, connects Linear, configures OpenAI auth, and optionally adds GitHub for PR creation."
+description: "Understand the first-run setup wizard: what each step asks for, what it stores, and how to rerun setup safely later."
 icon: "wand-magic-sparkles"
 ---
 
-When Risoluto starts without a master key, it enters **setup mode** and serves a step-by-step wizard at `/setup`. All routes redirect there until configuration is complete.
+Use this page while the setup wizard is on screen at `/setup`, or before you re-run setup from the dashboard.
 
-## Wizard Flow
+When Risoluto starts without a master key, it enters setup mode and redirects normal navigation into the wizard until the required first-run steps are complete.
+
+## What you need before you begin
+
+| Item                   | Required | Why it matters                                          |
+| ---------------------- | -------- | ------------------------------------------------------- |
+| **Linear API key**     | Yes      | Lets Risoluto validate your workspace and list projects |
+| **OpenAI auth method** | Yes      | Needed to run Codex-backed agent workers                |
+| **GitHub token**       | No       | Enables automatic PR creation after successful runs     |
+
+## Wizard flow
 
 <Steps>
   <Step title="Protect Secrets">
-    Generates a master encryption key that protects all stored credentials on disk using **AES-256-GCM** encryption.
+    Generates the master key used to encrypt credentials at rest with AES-256-GCM.
 
-    Calls `POST /api/v1/setup/master-key` to derive and persist the key. All subsequent secrets are encrypted at rest in `secrets.enc`.
+    Under the hood, the wizard calls `POST /api/v1/setup/master-key` and persists the result locally.
 
     <Warning>
-      **Back up your master key immediately.** If lost, all encrypted secrets become unrecoverable. Store it in a password manager or secrets vault — never in source control.
+      Back up the master key. If you lose it, previously encrypted secrets cannot be recovered.
     </Warning>
 
-    Returning to this step after completion shows a confirmation. Click **Reconfigure** to reset all stored secrets and generate a new key.
   </Step>
 
   <Step title="Connect Linear">
-    Links Risoluto to your Linear workspace:
+    Stores your Linear API key, fetches the list of available projects, and saves the project Risoluto should monitor.
 
-    1. Stores `LINEAR_API_KEY` via `POST /api/v1/secrets/:key`
-    2. Fetches available projects with `GET /api/v1/setup/linear-projects`
-    3. Saves the selected `tracker.projectSlug` to the config overlay
+    The wizard uses:
+
+    1. `POST /api/v1/secrets/:key`
+    2. `GET /api/v1/setup/linear-projects`
+    3. Config overlay updates for the selected project slug
 
     <Note>
-      If your Linear workspace has no projects, the wizard displays guidance with a direct link to create one in Linear.
+      If Linear returns no projects, the wizard shows guidance before you can continue.
     </Note>
+
   </Step>
 
   <Step title="Add OpenAI">
-    Risoluto needs OpenAI credentials to run Codex agent workers. Choose one of three authentication methods:
+    Choose one authentication path for Codex-backed workers.
 
     <Tabs>
-      <Tab title="API Key">
-        Paste an `sk-...` key directly. Risoluto validates it against the OpenAI API and stores it in the encrypted secrets store.
+      <Tab title="API key">
+        Paste an `sk-...` key. Risoluto validates it and stores it in the encrypted secret store.
 
-        ```bash
-        # What the wizard calls under the hood
+        ```text
         POST /api/v1/setup/openai-key
-        Content-Type: application/json
-
-        {"key": "sk-..."}
         ```
       </Tab>
-      <Tab title="Browser Sign-In (PKCE)">
-        Click **"Sign in with OpenAI"** to open a browser tab to `auth.openai.com`. After approval, the browser redirects to `localhost:1455/auth/callback` and tokens are exchanged automatically.
+      <Tab title="Browser sign-in">
+        Start the PKCE flow from the wizard and finish sign-in in your browser.
 
-        **Flow:**
-        1. `POST /api/v1/setup/pkce-auth/start` initiates the PKCE challenge
-        2. Browser completes the OAuth flow
-        3. `GET /api/v1/setup/pkce-auth/status` polls for token exchange completion
+        ```text
+        POST /api/v1/setup/pkce-auth/start
+        GET /api/v1/setup/pkce-auth/status
+        ```
 
         <Warning>
-          The PKCE flow requires port **1455** to be free on `localhost`. If another Codex CLI instance is running, close it first.
+          The PKCE flow uses localhost port `1455`. If another process is already using that callback port, the sign-in flow cannot complete.
         </Warning>
       </Tab>
-      <Tab title="Manual Fallback">
-        For headless servers or restricted environments:
+      <Tab title="Manual fallback">
+        Use this when you are on a headless server or need to prepare auth elsewhere.
 
         ```bash
-        # On a machine with a browser
         codex login
-        # or for headless device auth
+        # or
         codex login --device-auth
         ```
 
-        Then paste the contents of `~/.codex/auth.json` into the wizard. The wizard stores it via `POST /api/v1/setup/codex-auth`.
+        Then paste the contents of `~/.codex/auth.json` into the wizard.
       </Tab>
     </Tabs>
+
   </Step>
 
-  <Step title="Add GitHub (Optional)">
-    Validates and stores a GitHub Personal Access Token via `POST /api/v1/setup/github-token`. This enables automatic PR creation when agents complete work.
+  <Step title="Add GitHub (optional)">
+    Stores a GitHub Personal Access Token so successful runs can open or update pull requests automatically.
 
-    This step is **skippable** — you can add a GitHub token later through the dashboard settings.
+    You can skip this step and add the token later from the dashboard.
+
   </Step>
 </Steps>
 
-After completing all steps, click **"Go to Dashboard"** to unlock normal navigation.
+After the final step, choose **Go to Dashboard** to leave setup mode.
 
-## Navigation & Accessibility
-
-- **Clickable stepper** — click any completed step to go back and review or change credentials
-- **Keyboard accessible** — step indicators support `Tab`, `Enter`, and `Space`
-- **Master key reconfigure** — returning to Step 1 shows a "Reconfigure" option to reset encryption
-
-## Reset & Re-run Setup
-
-To re-configure credentials without a full factory reset:
+## Re-run setup later
 
 <Steps>
-  <Step title="Open Setup">
-    Navigate to **System → Setup** in the sidebar (or go directly to `/setup`).
+  <Step title="Open Setup">Navigate to **System → Setup** in the dashboard, or go directly to `/setup`.</Step>
+  <Step title="Reset API credentials from the done screen">
+    Use **Reset & Re-run Setup** on the completed screen to clear the stored Linear, OpenAI, and GitHub credentials. The
+    wizard restarts at **Connect Linear** and keeps the current master key.
   </Step>
-  <Step title="Reset Credentials">
-    Click **"Reset & Re-run Setup"** on the done screen and confirm the dialog. All API keys are cleared from the encrypted store.
-  </Step>
-  <Step title="Reconfigure">
-    The wizard restarts from Step 2 — the master key is preserved, so you only need to re-enter service credentials.
+  <Step title="Regenerate the master key only when you need to">
+    Use **Reconfigure** on **Protect Secrets** when you want a new master key. That restarts the wizard from **Protect
+    Secrets** and generates a new key. Use **Factory reset** below only when you need a full wipe of the master key,
+    encrypted secrets, overlay config, archives, and cached workspaces.
   </Step>
 </Steps>
 
+## Accessibility and navigation behavior
+
+- **Clickable stepper** — return to completed steps to review or change entries
+- **Keyboard support** — step controls work with `Tab`, `Enter`, and `Space`
+- **Reconfigure path** — the first step changes after completion so you can rotate credentials without guessing where to start
+
 <AccordionGroup>
-  <Accordion title="Factory Reset (Nuclear Option)">
-    To start completely fresh, destroy all named volumes:
+  <Accordion title="Factory reset">
+    To start completely fresh, delete the named Docker volumes and boot the stack again:
 
     ```bash
-    docker compose down -v && docker compose up --build -d
+    docker compose down -v
+    docker compose up --build -d
     ```
 
-    The `-v` flag deletes all named volumes. You lose:
+    This removes the master key, encrypted secrets, overlay config, archives, and cached workspaces stored in those volumes.
 
-    | Data | Recoverable? |
-    |------|-------------|
-    | Master key and encrypted secrets | No |
-    | Config overlay and auth tokens | No |
-    | Agent run archives and logs | No |
-    | Cloned workspaces | Yes — re-cloned on next dispatch |
-
-    External services (Linear, GitHub, OpenAI) are unaffected.
   </Accordion>
 </AccordionGroup>
 
-## What's Next
+## What's next
 
 <CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Follow the recommended first-run path from clone to smoke issue.
+  </Card>
+  <Card title="Dashboard" icon="chart-mixed" href="/guides/dashboard">
+    Learn where to confirm setup, inspect runs, and change configuration.
+  </Card>
   <Card title="Configuration" icon="gear" href="/guides/configuration">
-    Fine-tune agent behavior, models, and sandbox settings.
+    Adjust runtime behavior after setup is complete.
   </Card>
   <Card title="Docker Deployment" icon="docker" href="/guides/docker">
-    Deploy Risoluto with Docker Compose for production use.
+    Move from first boot to a persistent deployment layout.
   </Card>
 </CardGroup>

@@ -129,63 +129,6 @@
             "pages": ["api-reference/overview"]
           },
           {
-            "group": "State & Metrics",
-            "pages": [
-              "GET /api/v1/state",
-              "GET /api/v1/runtime",
-              "POST /api/v1/refresh",
-              "GET /api/v1/transitions",
-              "GET /metrics"
-            ]
-          },
-          {
-            "group": "Issues",
-            "pages": [
-              "GET /api/v1/{issue_identifier}",
-              "POST /api/v1/{issue_identifier}/abort",
-              "POST /api/v1/{issue_identifier}/model",
-              "POST /api/v1/{issue_identifier}/transition"
-            ]
-          },
-          {
-            "group": "Attempts",
-            "pages": ["GET /api/v1/{issue_identifier}/attempts", "GET /api/v1/attempts/{attempt_id}"]
-          },
-          {
-            "group": "Configuration",
-            "pages": [
-              "GET /api/v1/config",
-              "GET /api/v1/config/schema",
-              "GET /api/v1/config/overlay",
-              "PUT /api/v1/config/overlay",
-              "PATCH /api/v1/config/overlay/{path}",
-              "DELETE /api/v1/config/overlay/{path}"
-            ]
-          },
-          {
-            "group": "Secrets",
-            "pages": ["GET /api/v1/secrets", "POST /api/v1/secrets/{key}", "DELETE /api/v1/secrets/{key}"]
-          },
-          {
-            "group": "Workspaces & Git",
-            "pages": ["GET /api/v1/workspaces", "DELETE /api/v1/workspaces/{workspace_key}", "GET /api/v1/git/context"]
-          },
-          {
-            "group": "Templates",
-            "pages": [
-              "GET /api/v1/templates",
-              "GET /api/v1/templates/{template_id}",
-              "POST /api/v1/templates",
-              "PUT /api/v1/templates/{template_id}",
-              "DELETE /api/v1/templates/{template_id}",
-              "POST /api/v1/templates/{template_id}/preview"
-            ]
-          },
-          {
-            "group": "Audit & Webhooks",
-            "pages": ["GET /api/v1/audit", "POST /webhooks/linear"]
-          },
-          {
             "group": "All Endpoints",
             "pages": ["api-reference/endpoints"]
           }

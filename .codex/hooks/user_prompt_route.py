@@ -5,7 +5,7 @@ import sys
 
 from anvil_state import load_active_status, repo_root
 
-SKILL_NAME = r"anvil(?:-(?:brainstorm|plan|review|audit|execute|verify))?"
+SKILL_NAME = r"anvil(?:-risoluto|-(?:brainstorm|plan|review|audit|execute|verify))?"
 EXPLICIT_SKILL_PATTERNS = [
     rf"(?<![A-Za-z0-9_-])[/$]{SKILL_NAME}\b",
     rf"\b(?:use|run|invoke|call|trigger|start|resume|continue with)\s+(?:the\s+)?{SKILL_NAME}\b",

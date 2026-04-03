@@ -1,81 +1,49 @@
 ---
 title: "API Reference"
 sidebarTitle: "Overview"
-description: "Overview of the Risoluto REST API covering authentication, write tokens, rate limits, error format, and quick-start examples in curl, JavaScript, and Python."
+description: "Understand the Risoluto API surface before you drill into individual endpoints: base URL, auth rules, response format, and the main endpoint groups."
 icon: "code"
 ---
 
-Risoluto exposes a JSON REST API for orchestrator state, issue management, configuration, secrets, and real-time events. Every endpoint returns JSON unless otherwise noted (SSE, Prometheus text).
+Risoluto exposes a JSON HTTP API for orchestrator state, issue control, configuration, secrets, workspaces, templates, audit data, and real-time events.
+
+Use this page to get oriented before you dive into individual endpoints.
 
 <Info>
-  Interactive docs are available at [/api/docs](http://127.0.0.1:4000/api/docs) (Swagger UI) and the machine-readable spec at [/api/v1/openapi.json](http://127.0.0.1:4000/api/v1/openapi.json).
+  The dashboard and setup wizard both use this same API. Start Risoluto locally, then open the Swagger UI at
+  `http://127.0.0.1:4000/api/docs` or fetch the OpenAPI spec from `http://127.0.0.1:4000/api/v1/openapi.json`.
 </Info>
 
-## Base URL
+## At a glance
 
-```
-http://127.0.0.1:4000
-```
+| Item                   | Value                   |
+| ---------------------- | ----------------------- |
+| **Base URL**           | `http://127.0.0.1:4000` |
+| **Versioned API root** | `/api/v1`               |
+| **Streaming events**   | `GET /api/v1/events`    |
+| **Metrics**            | `GET /metrics`          |
 
-The port is configurable via the `--port` CLI flag:
-
-```bash
-risoluto --port 5000
-```
-
-All versioned endpoints live under `/api/v1/`. Prometheus metrics are at `/metrics`.
+Most local requests on loopback work without extra auth. If you expose Risoluto remotely, mutating requests need a write token.
 
 ## Authentication
 
-| Scenario | Requirement |
-|----------|-------------|
-| Loopback requests (`127.0.0.1`, `::1`) | No auth required |
-| Remote read-only (`GET`, `HEAD`, `OPTIONS`) | No auth required |
+| Scenario                                           | Requirement                              |
+| -------------------------------------------------- | ---------------------------------------- |
+| Loopback requests (`127.0.0.1`, `::1`)             | No auth required                         |
+| Remote read-only (`GET`, `HEAD`, `OPTIONS`)        | No auth required                         |
 | Remote mutating (`POST`, `PUT`, `PATCH`, `DELETE`) | `Authorization: Bearer <token>` required |
 
-Set the token via the `RISOLUTO_WRITE_TOKEN` environment variable:
+Set the token with `RISOLUTO_WRITE_TOKEN` before starting the service:
 
 ```bash
 export RISOLUTO_WRITE_TOKEN="your-secret-token"
 ```
 
 <Tip>
-  Loopback requests skip auth entirely, so local development and the dashboard work without a token.
+  If you are operating locally, you can usually explore the API and dashboard without setting a write token first.
 </Tip>
 
-## Rate Limits
-
-| Scope | Limit |
-|-------|-------|
-| API endpoints (`/api/*`, `/metrics`) | 300 requests / minute per client |
-| Webhooks (`/webhooks/*`) | 600 requests / minute per client |
-
-Exceeding the limit returns `429 Too Many Requests` with a `Retry-After` header.
-
-## Response Format
-
-Successful responses return JSON with the relevant payload directly:
-
-```json
-{
-  "version": "1.2.0",
-  "uptime": 3600,
-  "issues": []
-}
-```
-
-## Error Format
-
-All errors follow a consistent envelope:
-
-```json
-{
-  "error": "Issue not found",
-  "status": 404
-}
-```
-
-## Quick Start
+## Common first requests
 
 <CodeGroup>
 
@@ -98,38 +66,69 @@ print(state)
 
 </CodeGroup>
 
-## Endpoint Groups
+For a mutating request from a remote client, send your bearer token:
+
+```bash
+curl -X POST http://127.0.0.1:4000/api/v1/refresh \
+  -H "Authorization: Bearer $RISOLUTO_WRITE_TOKEN"
+```
+
+## Response and error format
+
+Successful responses return the relevant JSON payload directly:
+
+```json
+{
+  "version": "1.2.0",
+  "uptime": 3600,
+  "issues": []
+}
+```
+
+Errors follow a consistent envelope:
+
+```json
+{
+  "error": "Issue not found",
+  "status": 404
+}
+```
+
+## Rate limits
+
+| Scope                                | Limit                              |
+| ------------------------------------ | ---------------------------------- |
+| API endpoints (`/api/*`, `/metrics`) | 300 requests per minute per client |
+| Webhooks (`/webhooks/*`)             | 600 requests per minute per client |
+
+When a client exceeds the limit, Risoluto returns `429 Too Many Requests` with a `Retry-After` header.
+
+## Endpoint groups
 
 <CardGroup cols={2}>
-
-<Card title="State & Metrics" icon="gauge" href="/api-reference/endpoints#state--metrics">
-  Orchestrator state, runtime info, Prometheus metrics, SSE events, and available models.
-</Card>
-
-<Card title="Issues" icon="circle-dot" href="/api-reference/endpoints#issue-management">
-  Issue detail, abort, model override, mid-turn steering, templates, and state transitions.
-</Card>
-
-<Card title="Attempts" icon="clock-rotate-left" href="/api-reference/endpoints#attempts">
-  List attempts per issue and inspect individual attempt timelines.
-</Card>
-
-<Card title="Configuration" icon="sliders" href="/api-reference/endpoints#configuration">
-  Read effective config, inspect the schema, and manage overlay overrides.
-</Card>
-
-<Card title="Secrets" icon="key" href="/api-reference/endpoints#secrets">
-  List, set, and delete runtime secrets without restarting.
-</Card>
-
-<Card title="Workspaces & Git" icon="code-branch" href="/api-reference/endpoints#workspaces--git">
-  Workspace inventory, cleanup, and git repo context.
-</Card>
-
+  <Card title="State & Metrics" icon="gauge" href="/api-reference/endpoints#state--metrics">
+    Read runtime state, metrics, transitions, models, and the live event stream.
+  </Card>
+  <Card title="Issues" icon="circle-dot" href="/api-reference/endpoints#issue-management">
+    Inspect one issue, abort work, override models, steer a run, or transition tracker state.
+  </Card>
+  <Card title="Attempts" icon="clock-rotate-left" href="/api-reference/endpoints#attempts">
+    Review run history and event timelines for past or current attempts.
+  </Card>
+  <Card title="Configuration" icon="sliders" href="/api-reference/endpoints#configuration">
+    Read the effective config, inspect the schema, and manage overlay values.
+  </Card>
+  <Card title="Secrets" icon="key" href="/api-reference/endpoints#secrets">
+    List, set, and delete encrypted runtime secrets.
+  </Card>
+  <Card title="Workspaces & Git" icon="code-branch" href="/api-reference/endpoints#workspaces--git">
+    Inspect workspaces, clean them up, and read repository context.
+  </Card>
 </CardGroup>
 
-## What's Next
+## What's next
 
-- [All Endpoints](/api-reference/endpoints) — full endpoint table with request/response examples
-- [Operator Guide](/guides/configuration) — configuration reference
-- [Observability](/operating/observability) — Prometheus metrics and alerting
+- [All Endpoints](/api-reference/endpoints) — browse the full surface area
+- [Quickstart](/quickstart) — start the local service before testing endpoints
+- [Configuration Reference](/guides/configuration) — understand the settings exposed through the API
+- [Observability](/operating/observability) — use metrics and runtime signals in production

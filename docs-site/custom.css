@@ -1,342 +1,36 @@
-/* ============================================================
-   Risoluto Documentation — Custom Styles
-   Theme: maple  |  Primary: #9a472b  |  Light: #c96e4a
-   ============================================================ */
-
-/* --- CSS Custom Properties ---------------------------------- */
 :root {
-  --ri-primary: #9a472b;
-  --ri-primary-rgb: 154, 71, 43;
-  --ri-light: #c96e4a;
-  --ri-light-rgb: 201, 110, 74;
-  --ri-dark: #7a3520;
-  --ri-glow: rgba(var(--ri-primary-rgb), 0.15);
-  --ri-glow-strong: rgba(var(--ri-primary-rgb), 0.25);
-  --ri-border-subtle: rgba(var(--ri-primary-rgb), 0.12);
-  --ri-surface-warm: rgba(var(--ri-primary-rgb), 0.04);
+  --ri-accent-border: rgba(154, 71, 43, 0.16);
+  --ri-accent-surface: rgba(154, 71, 43, 0.06);
+  --ri-focus-ring: rgba(201, 110, 74, 0.75);
 }
 
-/* --- 1. Typography ------------------------------------------ */
-h1,
-h2,
-h3,
-h4 {
-  letter-spacing: -0.015em;
+.dark {
+  --ri-accent-border: rgba(201, 110, 74, 0.24);
+  --ri-accent-surface: rgba(201, 110, 74, 0.08);
+  --ri-focus-ring: rgba(201, 110, 74, 0.82);
 }
 
-h1 {
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-h2 {
-  font-weight: 650;
-}
-
-article > p:first-of-type {
-  font-size: 1.05em;
-  line-height: 1.75;
-}
-
-/* --- 2. Code Blocks — Warm copper glow ---------------------- */
-pre {
-  border: 1px solid var(--ri-border-subtle);
-  transition: box-shadow 0.3s ease, border-color 0.3s ease;
-}
-
-pre:hover {
-  box-shadow: 0 0 20px var(--ri-glow), 0 4px 12px rgba(0, 0, 0, 0.06);
-  border-color: rgba(var(--ri-primary-rgb), 0.2);
-}
-
-/* Inline code subtle tint */
 :not(pre) > code {
-  background: var(--ri-surface-warm);
-  border: 1px solid var(--ri-border-subtle);
-  border-radius: 4px;
-  padding: 0.15em 0.35em;
+  background: var(--ri-accent-surface);
+  border: 1px solid var(--ri-accent-border);
+  border-radius: 0.375rem;
+  padding: 0.12em 0.35em;
 }
 
-/* --- 3. Card Hover Effects — Subtle lift -------------------- */
-[class*="Card"],
-.card,
-a[class*="card"] {
-  transition: transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1),
-    border-color 0.25s ease;
-}
-
-[class*="Card"]:hover,
-.card:hover,
-a[class*="card"]:hover {
-  transform: translateY(-2px);
-  border-color: var(--ri-light);
-}
-
-/* --- 4. Callouts / Notes — Left border accent --------------- */
-[class*="callout"],
-[class*="Callout"],
-.callout,
-[data-type="info"],
-[data-type="note"],
-[data-type="warning"],
-[data-type="tip"],
-[data-type="check"] {
-  border-left: 3px solid var(--ri-primary);
-  border-radius: 6px;
-  transition: border-color 0.2s ease;
-}
-
-/* Info-specific callout gets the lighter accent */
-[data-type="info"],
-[data-type="tip"] {
-  border-left-color: var(--ri-light);
-}
-
-/* --- 5. Mermaid Diagram Container --------------------------- */
 .mermaid,
-[class*="mermaid"],
 pre.mermaid {
-  background: var(--ri-surface-warm);
-  border: 1px solid var(--ri-border-subtle);
-  border-radius: 10px;
-  padding: 1.25rem;
   overflow-x: auto;
+  border: 1px solid var(--ri-accent-border);
+  border-radius: 0.75rem;
+  background: var(--ri-accent-surface);
+  padding: 1rem;
 }
 
-/* Dark mode mermaid */
-.dark .mermaid,
-.dark [class*="mermaid"],
-.dark pre.mermaid {
-  background: rgba(var(--ri-primary-rgb), 0.06);
-  border-color: rgba(var(--ri-primary-rgb), 0.15);
-}
-
-/* --- 6. Smooth Transitions — Accordions & Tabs -------------- */
-[class*="Accordion"],
-[class*="accordion"],
-details {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-details[open] {
-  border-color: var(--ri-border-subtle);
-}
-
-details summary {
-  transition: color 0.2s ease;
-}
-
-details summary:hover {
-  color: var(--ri-primary);
-}
-
-/* Tabs */
-[role="tablist"] [role="tab"] {
-  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
-}
-
-[role="tablist"] [role="tab"][aria-selected="true"] {
-  border-bottom-color: var(--ri-primary);
-  color: var(--ri-primary);
-}
-
-[role="tablist"] [role="tab"]:hover {
-  color: var(--ri-light);
-}
-
-[role="tabpanel"] {
-  animation: tabFadeIn 0.25s ease-out;
-}
-
-@keyframes tabFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* --- 7. Custom Scrollbar ------------------------------------ */
-body {
-  scrollbar-width: thin;
-  scrollbar-color: var(--ri-glow-strong) transparent;
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--ri-glow-strong);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--ri-primary-rgb), 0.4);
-}
-
-/* --- 8. Navbar — Backdrop blur enhancement ------------------ */
-#navbar,
-nav[class*="Navbar"],
-header nav {
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-}
-
-/* --- 9. Sidebar — Active item accent ------------------------ */
-#sidebar a[aria-current="page"],
-#sidebar a[data-active="true"],
-nav[class*="Sidebar"] a[aria-current="page"] {
-  border-left: 2px solid var(--ri-primary);
-  padding-left: 0.5rem;
-  color: var(--ri-primary);
-  font-weight: 550;
-  background: var(--ri-surface-warm);
-  border-radius: 0 4px 4px 0;
-  transition: all 0.2s ease;
-}
-
-#sidebar a,
-nav[class*="Sidebar"] a {
-  transition: color 0.15s ease, background-color 0.15s ease,
-    padding-left 0.15s ease;
-  border-radius: 4px;
-}
-
-#sidebar a:hover,
-nav[class*="Sidebar"] a:hover {
-  color: var(--ri-primary);
-  background: var(--ri-surface-warm);
-}
-
-/* --- 10. Table Header Styling ------------------------------- */
-table thead {
-  background: var(--ri-surface-warm);
-}
-
-table thead th {
-  border-bottom: 2px solid var(--ri-primary);
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--ri-dark);
-}
-
-.dark table thead th {
-  color: var(--ri-light);
-}
-
-table tbody tr {
-  transition: background-color 0.15s ease;
-}
-
-table tbody tr:hover {
-  background: var(--ri-surface-warm);
-}
-
-/* --- 11. Hero / Intro Area Gradient Decoration -------------- */
-article > h1:first-of-type {
-  position: relative;
-}
-
-article > h1:first-of-type::after {
-  content: "";
-  position: absolute;
-  bottom: -8px;
-  left: 0;
-  width: 60px;
-  height: 3px;
-  background: linear-gradient(90deg, var(--ri-primary), var(--ri-light));
-  border-radius: 2px;
-}
-
-/* Top-of-page subtle radial glow (light mode) */
-article::before {
-  content: "";
-  position: absolute;
-  top: -80px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 600px;
-  height: 300px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(var(--ri-primary-rgb), 0.05) 0%,
-    transparent 70%
-  );
-  pointer-events: none;
-  z-index: -1;
-}
-
-/* Dark mode: slightly more visible glow */
-.dark article::before {
-  background: radial-gradient(
-    ellipse at center,
-    rgba(var(--ri-light-rgb), 0.06) 0%,
-    transparent 70%
-  );
-}
-
-/* --- Utility — Smooth all link transitions ------------------ */
-a {
-  transition: color 0.15s ease, opacity 0.15s ease;
-}
-
-/* --- Dark Mode Refinements ---------------------------------- */
-.dark pre {
-  border-color: rgba(var(--ri-primary-rgb), 0.1);
-}
-
-.dark pre:hover {
-  box-shadow: 0 0 24px rgba(var(--ri-primary-rgb), 0.12), 0 4px 16px rgba(0, 0, 0, 0.2);
-  border-color: rgba(var(--ri-primary-rgb), 0.2);
-}
-
-.dark :not(pre) > code {
-  background: rgba(var(--ri-primary-rgb), 0.08);
-  border-color: rgba(var(--ri-primary-rgb), 0.1);
-}
-
-.dark table thead {
-  background: rgba(var(--ri-primary-rgb), 0.06);
-}
-
-/* --- Steps Component ---------------------------------------- */
-[class*="Steps"] li::before,
-[class*="steps"] li::before {
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-/* --- Focus States — Accessibility --------------------------- */
 a:focus-visible,
 button:focus-visible,
 [role="tab"]:focus-visible,
 details summary:focus-visible {
-  outline: 2px solid var(--ri-light);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* --- Print — Strip decorative effects ----------------------- */
-@media print {
-  article::before,
-  article > h1:first-of-type::after {
-    display: none;
-  }
-
-  pre:hover {
-    box-shadow: none;
-  }
-
-  [class*="Card"]:hover {
-    transform: none;
-    box-shadow: none;
-  }
+  outline: 2px solid var(--ri-focus-ring);
+  outline-offset: 3px;
+  border-radius: 0.375rem;
 }

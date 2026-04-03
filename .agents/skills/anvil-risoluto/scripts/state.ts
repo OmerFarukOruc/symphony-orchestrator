@@ -116,7 +116,13 @@ function normalizePhaseStatus(value: unknown, fallback: PhaseStatus): PhaseStatu
 }
 
 function normalizeWorkStatus(value: unknown, fallback: WorkStatus): WorkStatus {
-  if (value === "not_started" || value === "pending" || value === "in_progress" || value === "complete" || value === "blocked") {
+  if (
+    value === "not_started" ||
+    value === "pending" ||
+    value === "in_progress" ||
+    value === "complete" ||
+    value === "blocked"
+  ) {
     return value;
   }
   return fallback;
@@ -141,7 +147,10 @@ function parseClaimsMarkdown(content: string): ClaimCounts {
   const pattern = /^\s*-\s*\[(?<status>[^\]]+)\]\s+/gm;
   for (const match of content.matchAll(pattern)) {
     const rawStatus = match.groups?.status ?? "";
-    const status = rawStatus.trim().toLowerCase().replaceAll(/[\s_]+/g, "-");
+    const status = rawStatus
+      .trim()
+      .toLowerCase()
+      .replaceAll(/[\s_]+/g, "-");
     counts.total += 1;
     if (OPEN_CLAIM_STATUSES.has(status)) {
       counts.open += 1;
@@ -179,9 +188,13 @@ function normalizeClaimCounts(rawStatus: JsonRecord, claimCountsFromFile: ClaimC
   const rawCounts = isRecord(rawStatus.claim_counts) ? rawStatus.claim_counts : null;
   const counts: ClaimCounts = {
     total: rawCounts ? toNonNegativeInt(rawCounts.total) : 0,
-    open: rawCounts ? toNonNegativeInt(rawCounts.open, toNonNegativeInt(rawStatus.open_claims)) : toNonNegativeInt(rawStatus.open_claims),
+    open: rawCounts
+      ? toNonNegativeInt(rawCounts.open, toNonNegativeInt(rawStatus.open_claims))
+      : toNonNegativeInt(rawStatus.open_claims),
     passed: rawCounts ? toNonNegativeInt(rawCounts.passed) : 0,
-    failed: rawCounts ? toNonNegativeInt(rawCounts.failed, toNonNegativeInt(rawStatus.failed_claims)) : toNonNegativeInt(rawStatus.failed_claims),
+    failed: rawCounts
+      ? toNonNegativeInt(rawCounts.failed, toNonNegativeInt(rawStatus.failed_claims))
+      : toNonNegativeInt(rawStatus.failed_claims),
     accepted_risk: rawCounts ? toNonNegativeInt(rawCounts.accepted_risk) : 0,
     not_applicable: rawCounts ? toNonNegativeInt(rawCounts.not_applicable) : 0,
   };
@@ -258,7 +271,8 @@ export async function normalizeStatus(input: JsonRecord, fallbackSlug = "example
         ? input.next_required_action.trim()
         : "unspecified",
     dry_run: Boolean(input.dry_run),
-    updated_at: typeof input.updated_at === "string" && input.updated_at.trim() ? input.updated_at : new Date().toISOString(),
+    updated_at:
+      typeof input.updated_at === "string" && input.updated_at.trim() ? input.updated_at : new Date().toISOString(),
   };
 }
 
