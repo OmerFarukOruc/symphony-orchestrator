@@ -258,6 +258,22 @@ describe("createServices", () => {
     expect(mockCreateTracker).toHaveBeenCalledWith(expect.any(Function), logger);
   });
 
+  it("passes the persistence attemptStore into HttpServer", async () => {
+    await createServices(
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
+      archiveDir,
+      logger,
+    );
+
+    expect(mockHttpServer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attemptStore: { fake: "attemptStore" },
+      }),
+    );
+  });
+
   it("constructs Orchestrator with wired dependencies", async () => {
     await createServices(
       makeConfigStore() as unknown as ConfigStore,
