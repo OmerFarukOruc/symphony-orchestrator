@@ -6,9 +6,9 @@ max_threads = 6
 max_depth = 1
 
 [[skills.config]]
-path = "/home/oruc/.agents/skills/anvil/SKILL.md"
+path = "../.agents/skills/anvil/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/home/oruc/.agents/skills/simplify/SKILL.md"
+path = "../.agents/skills/simplify/SKILL.md"
 enabled = false

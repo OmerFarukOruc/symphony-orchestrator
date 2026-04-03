@@ -276,6 +276,7 @@ describe("PrMonitorService", () => {
       const store = makeStore({
         getOpenPrs: vi.fn().mockResolvedValue([pr]),
         getAllAttempts: vi.fn().mockReturnValue([makeAttemptRecord()]),
+        getAttemptsForIssue: vi.fn().mockReturnValue([makeAttemptRecord()]),
         appendCheckpoint: vi.fn().mockResolvedValue(undefined),
       });
       const ghClient = makeGhClient({ state: "closed", merged: true, merge_commit_sha: "sha-abc" });

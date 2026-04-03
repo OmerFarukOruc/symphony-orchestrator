@@ -14,6 +14,7 @@
  */
 
 import type { OpenPrRecord } from "../core/attempt-store-port.js";
+import { sortAttemptsDesc } from "../core/attempt-store-port.js";
 import type { AttemptStorePort } from "../core/attempt-store-port.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
@@ -181,11 +182,7 @@ export class PrMonitorService {
       try {
         const latestAttempt =
           (pr.attemptId ? this.store.getAttempt(pr.attemptId) : null) ??
-          this.store
-            .getAllAttempts()
-            .filter((a) => a.issueId === pr.issueId)
-            .sort((left, right) => right.startedAt.localeCompare(left.startedAt))
-            .at(0);
+          this.store.getAttemptsForIssue(pr.issueId).sort(sortAttemptsDesc).at(0);
 
         if (latestAttempt) {
           await this.store.appendCheckpoint({

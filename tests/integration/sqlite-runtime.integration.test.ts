@@ -9,6 +9,7 @@
 import { mkdtemp, rm, chmod, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import type BetterSqlite3 from "better-sqlite3";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -34,10 +35,7 @@ afterEach(async () => {
 // ---------------------------------------------------------------------------
 // Helper: access the raw better-sqlite3 handle from a Drizzle instance
 // ---------------------------------------------------------------------------
-function getRawClient(db: RisolutoDatabase): ReturnType<typeof openDatabase> & {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  session: any;
-} {
+function getRawClient(db: RisolutoDatabase): InstanceType<typeof BetterSqlite3> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (db as any).session.client;
 }
@@ -117,7 +115,7 @@ describe("fresh database bootstrap", () => {
     }
   });
 
-  it("seeds schema_version to 3", async () => {
+  it("seeds schema_version to 6", async () => {
     const dir = await createTempDir();
     const dbPath = path.join(dir, "version.db");
     const db = openDatabase(dbPath);
@@ -127,7 +125,7 @@ describe("fresh database bootstrap", () => {
       const versionRow = raw.prepare("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1").get() as {
         version: number;
       };
-      expect(versionRow.version).toBe(3);
+      expect(versionRow.version).toBe(6);
     } finally {
       closeDatabase(db);
     }

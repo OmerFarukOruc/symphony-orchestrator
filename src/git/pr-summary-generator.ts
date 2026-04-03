@@ -151,8 +151,12 @@ export async function generatePrSummary(workspaceDir: string, defaultBranch: str
   if (diff === null || diff.trim().length === 0) return null;
   if (Buffer.byteLength(diff, "utf8") > MAX_DIFF_BYTES) return null;
 
+  // Pass the diff content directly so codex doesn't need to re-run git.
   const prompt =
-    `Run \`git diff ${defaultBranch}...HEAD\` and write a concise summary of ALL changes. ` +
+    `Below is the output of \`git diff ${defaultBranch}...HEAD\`. Write a concise summary of ALL changes.\n\n` +
+    "```diff\n" +
+    diff +
+    "\n```\n\n" +
     "RULES: Start immediately with the first bullet. Use flat markdown bullets only. " +
     "Each bullet: what was added/modified/fixed and where. 3-8 bullets max. " +
     "No headings. No intro text. No closing remarks.";

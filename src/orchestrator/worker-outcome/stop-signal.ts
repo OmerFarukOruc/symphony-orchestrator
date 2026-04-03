@@ -120,7 +120,12 @@ async function runWriteback(
  * Register a newly-created PR in the attempt store for monitor polling.
  * All failures are silently skipped — PR registration is best-effort.
  */
-function registerPrForMonitoring(ctx: OutcomeContext, entry: RunningEntry, issue: Issue, pullRequestUrl: string): void {
+async function registerPrForMonitoring(
+  ctx: OutcomeContext,
+  entry: RunningEntry,
+  issue: Issue,
+  pullRequestUrl: string,
+): Promise<void> {
   const repoMatch = entry.repoMatch;
   if (!repoMatch) return;
   const owner = repoMatch.githubOwner ?? null;
@@ -130,16 +135,23 @@ function registerPrForMonitoring(ctx: OutcomeContext, entry: RunningEntry, issue
   const pullNumber = pullNumberMatch ? parseInt(pullNumberMatch[1], 10) : null;
   if (pullNumber === null) return;
   const now = new Date().toISOString();
-  ctx.deps.attemptStore.upsertPr?.({
-    issueId: issue.id,
-    owner,
-    repo: repoName,
-    pullNumber,
-    url: pullRequestUrl,
-    attemptId: entry.runId,
-    status: "open",
-    createdAt: now,
-    updatedAt: now,
-    branchName: issue.branchName ?? "",
-  });
+  await ctx.deps.attemptStore
+    .upsertPr?.({
+      issueId: issue.id,
+      owner,
+      repo: repoName,
+      pullNumber,
+      url: pullRequestUrl,
+      attemptId: entry.runId,
+      status: "open",
+      createdAt: now,
+      updatedAt: now,
+      branchName: issue.branchName ?? "",
+    })
+    .catch((error) => {
+      ctx.deps.logger.warn(
+        { issue_identifier: issue.identifier, error: toErrorString(error) },
+        "PR registration for monitoring failed (non-fatal)",
+      );
+    });
 }

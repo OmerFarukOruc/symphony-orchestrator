@@ -48,13 +48,27 @@ class GitHubApiError extends Error {
 }
 
 function isDuplicatePrError(error: unknown): boolean {
-  return (
-    error instanceof GitHubApiError &&
-    error.status === 422 &&
-    typeof error.payload === "object" &&
-    error.payload !== null &&
-    JSON.stringify(error.payload).includes("already exists")
-  );
+  if (!(error instanceof GitHubApiError) || error.status !== 422) {
+    return false;
+  }
+  if (typeof error.payload !== "object" || error.payload === null) {
+    return false;
+  }
+  const payload = error.payload as Record<string, unknown>;
+
+  // Check top-level message first.
+  const message = typeof payload.message === "string" ? payload.message : "";
+  if (message.includes("already exists")) return true;
+
+  // Check nested error messages (GitHub validation errors array).
+  const errors = payload.errors;
+  if (!Array.isArray(errors)) return false;
+
+  return errors.some((err): boolean => {
+    if (typeof err !== "object" || err === null) return false;
+    const msg = (err as Record<string, unknown>).message;
+    return typeof msg === "string" && msg.includes("already exists");
+  });
 }
 
 /**

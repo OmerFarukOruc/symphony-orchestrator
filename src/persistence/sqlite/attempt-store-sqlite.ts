@@ -137,7 +137,8 @@ export class SqliteAttemptStore {
       const sameThread = (lastRow.threadId ?? null) === checkpoint.threadId;
       const sameTurn = (lastRow.turnId ?? null) === checkpoint.turnId;
       const sameTurnCount = lastRow.turnCount === checkpoint.turnCount;
-      if (sameStatus && sameThread && sameTurn && sameTurnCount) {
+      const sameTrigger = (lastRow.trigger ?? null) === checkpoint.trigger;
+      if (sameStatus && sameThread && sameTurn && sameTurnCount && sameTrigger) {
         return;
       }
     }
