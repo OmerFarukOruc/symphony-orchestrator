@@ -1,0 +1,50 @@
+src/orchestrator/retry-manager.ts
+  40c849ad80a0d5a1 42,66,108,113,147-150,155-159
+src/dispatch/types.ts
+  40c849ad80a0d5a1 36-41
+src/orchestrator/orchestrator-delegates.ts
+  40c849ad80a0d5a1 236
+src/agent-runner/session-init.ts
+  40c849ad80a0d5a1 30-35,283-289
+tests/git/pr-review-ingester.test.ts
+  40c849ad80a0d5a1 1-269
+src/agent-runner/index.ts
+  40c849ad80a0d5a1 55-60,164,176
+src/git/pr-review-ingester.ts
+  40c849ad80a0d5a1 39-206,303,305-306,310-311,315-321
+src/orchestrator/context.ts
+  40c849ad80a0d5a1 42,67,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "a9f58a77a7ce2a5368e18669408b7d982f2017a4",
+  "prompts": {
+    "40c849ad80a0d5a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0065a08e-0e13-41c0-9e05-c35791d17328",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 493,
+      "overriden_lines": 0
+    },
+    "52b50571d24a5809": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d5019-2593-7072-b68f-ef8955d6a000",
+        "model": "gpt-5.4"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
