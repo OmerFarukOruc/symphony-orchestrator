@@ -59,6 +59,30 @@ export async function inspectContainerRunning(name: string): Promise<boolean | n
   }
 }
 
+export async function listContainersByWorkspace(
+  workspacePath: string,
+): Promise<Array<{ name: string; running: boolean }>> {
+  const { stdout } = await execFileAsync("docker", [
+    "ps",
+    "-a",
+    "--filter",
+    `label=risoluto.workspace=${workspacePath}`,
+    "--format",
+    "{{.Names}}",
+  ]);
+  const names = stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const containers = await Promise.all(
+    names.map(async (name) => ({
+      name,
+      running: (await inspectContainerRunning(name)) === true,
+    })),
+  );
+  return containers;
+}
+
 /**
  * Forcefully remove a container. Safe to call even if already removed.
  */

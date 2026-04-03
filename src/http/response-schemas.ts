@@ -176,6 +176,44 @@ export const runtimeResponseSchema = z.object({
   provider_summary: z.string(),
 });
 
+export const recoveryReportResponseSchema = z.object({
+  generatedAt: z.string().nullable(),
+  dryRun: z.boolean(),
+  totalScanned: z.number(),
+  resumed: z.array(z.string()),
+  cleanedUp: z.array(z.string()),
+  escalated: z.array(z.string()),
+  skipped: z.array(z.string()),
+  errors: z.array(
+    z.object({
+      attemptId: z.string(),
+      issueIdentifier: z.string(),
+      error: z.string(),
+    }),
+  ),
+  results: z.array(
+    z.object({
+      attemptId: z.string(),
+      issueId: z.string(),
+      issueIdentifier: z.string(),
+      persistedStatus: z.string(),
+      attemptNumber: z.number().nullable(),
+      threadId: z.string().nullable(),
+      workspacePath: z.string().nullable(),
+      workspaceExists: z.boolean(),
+      workerAlive: z.boolean(),
+      containerNames: z.array(z.string()),
+      action: z.enum(["resume", "cleanup", "escalate", "skip"]),
+      reason: z.string(),
+      success: z.boolean(),
+      autoCommitSha: z.string().nullable(),
+      workspacePreserved: z.boolean(),
+      error: z.string().nullable(),
+    }),
+  ),
+  durationMs: z.number(),
+});
+
 /** GET /api/v1/:issue_identifier/attempts — attempts list response. */
 export const attemptsListResponseSchema = z.object({
   attempts: z.array(z.record(z.string(), z.unknown())),

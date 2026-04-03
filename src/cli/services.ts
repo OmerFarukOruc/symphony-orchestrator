@@ -165,6 +165,8 @@ export async function createServices(
     logger.child({ component: "workspace" }),
     {
       gitManager: {
+        hasUncommittedChanges: (workspaceDir) => gitManager.hasUncommittedChanges(workspaceDir),
+        autoCommit: (workspaceDir, message, options) => gitManager.autoCommit(workspaceDir, message, options),
         setupWorktree: (route, baseCloneDir, worktreePath, issue, branchPrefix) =>
           gitManager.setupWorktree(route, baseCloneDir, worktreePath, issue, branchPrefix),
         removeWorktree: (baseCloneDir, worktreePath, force) =>

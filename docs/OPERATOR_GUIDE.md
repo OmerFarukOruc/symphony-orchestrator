@@ -803,10 +803,20 @@ When `workspace.strategy: worktree`, Risoluto creates a single bare clone under 
 - Base clone is created automatically on first issue for a given repo route
 - `git fetch` syncs refs before worktree creation — existing worktrees are never reset or rebased
 - On retry, existing worktrees are reused as-is (branch attached if worktree dir was deleted)
-- Successful terminal runs clean up the worktree; hard failures can be preserved for debugging
+- Successful terminal runs clean up the worktree; if cleanup sees uncommitted changes, Risoluto stages and auto-commits them before removal, and if that rescue commit fails the workspace is preserved for inspection
 - The `.base` directory is excluded from startup transient cleanup
 - Fail-fast: worktree mode requires a matching repo route for every issue
 - Risoluto warns when a configured repo route points back to `risoluto` itself; keep that only for deliberate self-test traffic
+
+### Startup Recovery
+
+On startup, Risoluto now scans persisted `running` attempts before the normal polling loop continues.
+
+- Attempts with an intact workspace and persisted thread id are resumed onto the same attempt record through Codex `thread/resume`
+- Attempts that are no longer recoverable are marked terminal and cleaned up through the same workspace-protection path
+- Ambiguous cases are escalated into the recovery report instead of being silently discarded
+
+Operators can inspect the latest startup decision set through `GET /api/v1/recovery`.
 
 **Configuration:**
 

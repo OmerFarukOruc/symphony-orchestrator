@@ -50,19 +50,60 @@ export async function handleTerminalCleanup(
   modelSelection: ModelSelection,
   attempt: number | null,
 ): Promise<void> {
-  await ctx.deps.workspaceManager.removeWorkspace(issue.identifier, issue).catch((error) => {
-    ctx.deps.logger.info(
-      { issue_identifier: issue.identifier, error: toErrorString(error) },
-      "workspace cleanup failed (non-fatal)",
-    );
-  });
+  const removalResult = ctx.deps.workspaceManager.removeWorkspaceWithResult
+    ? await ctx.deps.workspaceManager.removeWorkspaceWithResult(issue.identifier, issue).catch((error) => {
+        ctx.deps.logger.info(
+          { issue_identifier: issue.identifier, error: toErrorString(error) },
+          "workspace cleanup failed (non-fatal)",
+        );
+        return null;
+      })
+    : (await ctx.deps.workspaceManager.removeWorkspace(issue.identifier, issue).catch((error) => {
+        ctx.deps.logger.info(
+          { issue_identifier: issue.identifier, error: toErrorString(error) },
+          "workspace cleanup failed (non-fatal)",
+        );
+      }),
+      null);
+
+  if (removalResult?.autoCommitSha && ctx.deps.attemptStore.appendEvent && ctx.deps.attemptStore.appendCheckpoint) {
+    const createdAt = nowIso();
+    await ctx.deps.attemptStore.appendEvent({
+      attemptId: entry.runId,
+      at: createdAt,
+      issueId: issue.id,
+      issueIdentifier: issue.identifier,
+      sessionId: entry.sessionId,
+      event: "workspace_auto_committed",
+      message: "Uncommitted workspace changes were auto-committed before cleanup",
+      metadata: {
+        commitSha: removalResult.autoCommitSha,
+      },
+    });
+    await ctx.deps.attemptStore.appendCheckpoint({
+      attemptId: entry.runId,
+      trigger: "status_transition",
+      eventCursor: null,
+      status: outcomeToStatus(outcome.kind) as import("../../core/types.js").AttemptRecord["status"],
+      threadId: entry.sessionId,
+      turnId: outcome.turnId,
+      turnCount: outcome.turnCount,
+      tokenUsage: entry.tokenUsage,
+      metadata: {
+        autoCommitSha: removalResult.autoCommitSha,
+      },
+      createdAt,
+    });
+  }
   ctx.completedViews.set(
     issue.identifier,
     buildOutcomeView(issue, workspace, entry, modelSelection, {
       status: outcomeToStatus(outcome.kind),
       attempt,
       error: outcome.errorMessage ?? outcome.errorCode,
-      message: "workspace cleaned after terminal state",
+      message: removalResult?.preserved
+        ? "workspace preserved after cleanup protection triggered"
+        : "workspace cleaned after terminal state",
     }),
   );
   ctx.deps.eventBus?.emit("issue.completed", {

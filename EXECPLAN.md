@@ -119,6 +119,12 @@ These changes are safe to re-run because they only mutate source files and test 
 
 Key baseline evidence captured before implementation:
 
+## Persistence Recovery Bundle (2026-04-03)
+
+- Added cleanup-time rescue commits in `src/workspace/manager.ts` and `src/git/manager.ts`. Git-backed workspaces now run a fast porcelain-status check before removal, auto-commit dirty changes with `--no-verify`, and preserve the workspace if the rescue commit fails.
+- Added startup orphan recovery in `src/orchestrator/recovery.ts` and wired it into `src/orchestrator/orchestrator.ts`. Persisted `running` attempts are now classified on startup, resumed onto the same attempt record when possible, or transitioned to explicit cleanup/escalation outcomes with durable attempt events.
+- Added `GET /api/v1/recovery` plus OpenAPI and response-schema coverage so operators can inspect the latest startup recovery report without digging through logs.
+
     pnpm run build
     ✓ tsc -p tsconfig.json && pnpm run build:frontend
 

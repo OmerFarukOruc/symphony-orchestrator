@@ -13,6 +13,8 @@ export interface GitCommitAndPushResult {
 }
 
 export interface GitWorktreePort {
+  hasUncommittedChanges(workspaceDir: string): Promise<boolean>;
+  autoCommit(workspaceDir: string, message: string, options?: { noVerify?: boolean }): Promise<string>;
   deriveBaseCloneDir(workspaceRoot: string, repoUrl: string): string;
   setupWorktree(
     route: RepoMatch,

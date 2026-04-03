@@ -10,6 +10,7 @@ import type { RepoMatch, RepoRouter } from "../git/repo-router.js";
 import type { WebhookHealthTracker } from "../webhook/health-tracker.js";
 import type { PromptTemplateStore } from "../prompt/store.js";
 import type {
+  AttemptRecord,
   Issue,
   ModelSelection,
   RetryEntry,
@@ -42,6 +43,14 @@ export interface RunningEntry {
   queuePersistence: (task: () => Promise<void>) => void;
   flushPersistence: () => Promise<void>;
   steerTurn?: (message: string) => Promise<boolean>;
+}
+
+export interface LaunchWorkerOptions {
+  claimHeld?: boolean;
+  previousThreadId?: string | null;
+  previousPrFeedback?: string | null;
+  recoveredAttempt?: AttemptRecord | null;
+  modelSelectionOverride?: ModelSelection | null;
 }
 
 export type RetryRuntimeEntry = RetryEntry & { issue: Issue; workspaceKey: string | null };

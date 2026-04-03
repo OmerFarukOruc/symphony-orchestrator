@@ -8,6 +8,7 @@ import { withWorkspaceLifecycleLock } from "../workspace/lifecycle-lock.js";
 import { isActiveState, isTodoState, normalizeStateKey } from "../state/policy.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type {
+  AttemptRecord,
   CheckpointTrigger,
   Issue,
   ModelSelection,
@@ -17,7 +18,7 @@ import type {
   TokenUsageSnapshot,
   Workspace,
 } from "../core/types.js";
-import type { OrchestratorDeps, RunningEntry } from "./runtime-types.js";
+import type { LaunchWorkerOptions, OrchestratorDeps, RunningEntry } from "./runtime-types.js";
 import { toErrorString } from "../utils/type-guards.js";
 
 export function buildIssueDispatchFingerprint(issue: Issue): string {
@@ -96,11 +97,7 @@ export async function launchAvailableWorkers(
       pendingStateCounts?: Map<string, number>,
       runningStateCounts?: Map<string, number>,
     ) => boolean;
-    launchWorker: (
-      issue: Issue,
-      attempt: number | null,
-      options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
-    ) => Promise<void>;
+    launchWorker: (issue: Issue, attempt: number | null, options?: LaunchWorkerOptions) => Promise<void>;
   },
   candidateIssues?: Issue[],
 ): Promise<void> {
@@ -171,8 +168,10 @@ function buildRunningEntry(
   workspace: Workspace,
   attempt: number | null,
   modelSelection: ModelSelection,
+  recoveredAttempt?: AttemptRecord | null,
 ): RunningEntry {
-  const runId = randomUUID();
+  const recoveredStartedAt = recoveredAttempt ? Date.parse(recoveredAttempt.startedAt) : Number.NaN;
+  const runId = recoveredAttempt?.attemptId ?? randomUUID();
   let persistenceQueue = Promise.resolve();
   const queuePersistence = (task: () => Promise<void>) => {
     persistenceQueue = persistenceQueue.then(task).catch((error) => {
@@ -191,15 +190,15 @@ function buildRunningEntry(
     runId,
     issue,
     workspace,
-    startedAtMs: Date.now(),
+    startedAtMs: Number.isFinite(recoveredStartedAt) ? recoveredStartedAt : Date.now(),
     lastEventAtMs: Date.now(),
-    attempt,
+    attempt: recoveredAttempt?.attemptNumber ?? attempt,
     abortController: new AbortController(),
     promise: Promise.resolve(),
     cleanupOnExit: false,
     status: "running",
-    sessionId: null,
-    tokenUsage: null,
+    sessionId: recoveredAttempt?.threadId ?? null,
+    tokenUsage: recoveredAttempt?.tokenUsage ?? null,
     modelSelection,
     lastAgentMessageContent: null,
     lastStopSignal: null,
@@ -271,6 +270,59 @@ async function persistInitialAttempt(
     tokenUsage: null,
   });
   await writeCheckpoint(ctx, entry, "attempt_created");
+}
+
+async function persistRecoveredAttempt(
+  ctx: LaunchContext,
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  recoveredAttempt: AttemptRecord,
+  modelSelection: ModelSelection,
+): Promise<void> {
+  await ctx.deps.attemptStore.updateAttempt(recoveredAttempt.attemptId, {
+    workspaceKey: workspace.workspaceKey,
+    workspacePath: workspace.path,
+    status: "running",
+    endedAt: null,
+    model: modelSelection.model,
+    reasoningEffort: modelSelection.reasoningEffort,
+    modelSource: modelSelection.source,
+    threadId: recoveredAttempt.threadId,
+    turnId: recoveredAttempt.turnId,
+    turnCount: recoveredAttempt.turnCount,
+    errorCode: null,
+    errorMessage: null,
+    tokenUsage: recoveredAttempt.tokenUsage,
+  });
+  await ctx.deps.attemptStore.appendEvent({
+    attemptId: recoveredAttempt.attemptId,
+    at: new Date().toISOString(),
+    issueId: issue.id,
+    issueIdentifier: issue.identifier,
+    sessionId: recoveredAttempt.threadId,
+    event: "attempt_recovered",
+    message: "Attempt recovered on orchestrator startup",
+    metadata: {
+      workspacePath: workspace.path,
+      attemptNumber: recoveredAttempt.attemptNumber,
+    },
+  });
+  await ctx.deps.attemptStore.appendCheckpoint({
+    attemptId: recoveredAttempt.attemptId,
+    trigger: "status_transition",
+    eventCursor: null,
+    status: "running",
+    threadId: recoveredAttempt.threadId,
+    turnId: recoveredAttempt.turnId,
+    turnCount: recoveredAttempt.turnCount,
+    tokenUsage: recoveredAttempt.tokenUsage,
+    metadata: {
+      recoveryAction: "resume",
+      workspacePath: workspace.path,
+    },
+    createdAt: new Date().toISOString(),
+  });
 }
 
 function emitLaunchNotifications(
@@ -366,7 +418,7 @@ export async function launchWorker(
   ctx: LaunchContext,
   issue: Issue,
   attempt: number | null,
-  options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
+  options?: LaunchWorkerOptions,
 ): Promise<void> {
   if (!options?.claimHeld) {
     ctx.claimIssue(issue.id);
@@ -374,14 +426,18 @@ export async function launchWorker(
 
   await withWorkspaceLifecycleLock(sanitizeIdentifier(issue.identifier), async () => {
     const workspace = await prepareWorkspace(ctx, issue);
-    const modelSelection = ctx.resolveModelSelection(issue.identifier);
-    const entry = buildRunningEntry(ctx, issue, workspace, attempt, modelSelection);
+    const modelSelection = options?.modelSelectionOverride ?? ctx.resolveModelSelection(issue.identifier);
+    const entry = buildRunningEntry(ctx, issue, workspace, attempt, modelSelection, options?.recoveredAttempt);
 
     ctx.runningEntries.set(issue.id, entry);
     ctx.completedViews.delete(issue.identifier);
     ctx.setQueuedViews(ctx.getQueuedViews().filter((view) => view.issueId !== issue.id));
 
-    await persistInitialAttempt(ctx, entry, issue, workspace, attempt, modelSelection);
+    if (options?.recoveredAttempt) {
+      await persistRecoveredAttempt(ctx, entry, issue, workspace, options.recoveredAttempt, modelSelection);
+    } else {
+      await persistInitialAttempt(ctx, entry, issue, workspace, attempt, modelSelection);
+    }
     ctx.detailViews.set(
       issue.identifier,
       issueView(issue, {
@@ -408,7 +464,7 @@ export async function launchWorker(
       workspace,
       signal: entry.abortController.signal,
       onEvent: buildOnEventHandler(ctx, entry),
-      previousThreadId: options?.previousThreadId ?? null,
+      previousThreadId: options?.previousThreadId ?? options?.recoveredAttempt?.threadId ?? null,
       previousPrFeedback: options?.previousPrFeedback ?? null,
       onSteerReady: (steerFn) => {
         entry.steerTurn = steerFn;

@@ -22,6 +22,8 @@ async function pathIsDirectory(pathname: string): Promise<boolean> {
 
 export interface WorkspaceManagerWorktreeDeps {
   gitManager: {
+    hasUncommittedChanges: (workspaceDir: string) => Promise<boolean>;
+    autoCommit: (workspaceDir: string, message: string, options?: { noVerify?: boolean }) => Promise<string>;
     setupWorktree: (
       route: RepoMatch,
       baseCloneDir: string,
@@ -35,6 +37,15 @@ export interface WorkspaceManagerWorktreeDeps {
   repoRouter: {
     matchIssue: (issue: Issue) => RepoMatch | null;
   };
+}
+
+export interface WorkspaceRemovalResult {
+  removed: boolean;
+  preserved: boolean;
+  hadUncommittedChanges: boolean;
+  autoCommitAttempted: boolean;
+  autoCommitSha: string | null;
+  autoCommitError: string | null;
 }
 
 export class WorkspaceManager {
@@ -82,13 +93,16 @@ export class WorkspaceManager {
   }
 
   async removeWorkspace(issueIdentifier: string, issue?: Issue): Promise<void> {
+    await this.removeWorkspaceWithResult(issueIdentifier, issue);
+  }
+
+  async removeWorkspaceWithResult(issueIdentifier: string, issue?: Issue): Promise<WorkspaceRemovalResult> {
     const config = this.getConfig();
 
     if (config.workspace.strategy === "worktree") {
-      await this.removeWorktreeWorkspace(config, issueIdentifier, issue);
-      return;
+      return this.removeWorktreeWorkspace(config, issueIdentifier, issue);
     }
-    await this.removeDirectoryWorkspace(config, issueIdentifier);
+    return this.removeDirectoryWorkspace(config, issueIdentifier);
   }
 
   private async ensureDirectoryWorkspace(config: ServiceConfig, issueIdentifier: string): Promise<Workspace> {
@@ -167,12 +181,15 @@ export class WorkspaceManager {
     return workspace;
   }
 
-  private async removeDirectoryWorkspace(config: ServiceConfig, issueIdentifier: string): Promise<void> {
+  private async removeDirectoryWorkspace(
+    config: ServiceConfig,
+    issueIdentifier: string,
+  ): Promise<WorkspaceRemovalResult> {
     const { workspaceKey, workspacePath } = resolveWorkspacePath(config.workspace.root, issueIdentifier);
 
     const workspace = { path: workspacePath, workspaceKey, createdNow: false };
     if (!(await pathIsDirectory(workspacePath))) {
-      return;
+      return emptyRemovalResult();
     }
 
     try {
@@ -188,10 +205,19 @@ export class WorkspaceManager {
         "before_remove hook failed; continuing with workspace removal",
       );
     }
+    const protection = await this.enforcePreCleanupCommit(workspace, issueIdentifier);
+    if (protection.preserved) {
+      return protection;
+    }
     await rm(workspacePath, { recursive: true, force: true });
+    return { ...protection, removed: true };
   }
 
-  private async removeWorktreeWorkspace(config: ServiceConfig, issueIdentifier: string, issue?: Issue): Promise<void> {
+  private async removeWorktreeWorkspace(
+    config: ServiceConfig,
+    issueIdentifier: string,
+    issue?: Issue,
+  ): Promise<WorkspaceRemovalResult> {
     if (!this.worktreeDeps) {
       throw new Error("worktree strategy requires gitManager and repoRouter deps");
     }
@@ -199,7 +225,7 @@ export class WorkspaceManager {
     const { workspaceKey, workspacePath } = resolveWorkspacePath(config.workspace.root, issueIdentifier);
 
     if (!(await pathIsDirectory(workspacePath))) {
-      return;
+      return emptyRemovalResult();
     }
 
     const workspace = { path: workspacePath, workspaceKey, createdNow: false };
@@ -215,6 +241,10 @@ export class WorkspaceManager {
         },
         "before_remove hook failed; continuing with workspace removal",
       );
+    }
+    const protection = await this.enforcePreCleanupCommit(workspace, issueIdentifier);
+    if (protection.preserved) {
+      return protection;
     }
 
     if (issue) {
@@ -223,7 +253,7 @@ export class WorkspaceManager {
         const baseCloneDir = this.worktreeDeps.gitManager.deriveBaseCloneDir(config.workspace.root, repoMatch.repoUrl);
         try {
           await this.worktreeDeps.gitManager.removeWorktree(baseCloneDir, workspacePath, true);
-          return;
+          return { ...protection, removed: true };
         } catch (error) {
           this.logger.warn(
             {
@@ -238,6 +268,7 @@ export class WorkspaceManager {
     }
 
     await rm(workspacePath, { recursive: true, force: true });
+    return { ...protection, removed: true };
   }
 
   private assertWorkspaceWithinRoot(workspace: Workspace): void {
@@ -307,5 +338,84 @@ export class WorkspaceManager {
         reject(new Error(`hook exited with code ${code}`));
       });
     });
+  }
+
+  private async enforcePreCleanupCommit(
+    workspace: Workspace,
+    issueIdentifier: string,
+  ): Promise<WorkspaceRemovalResult> {
+    const gitManager = this.worktreeDeps?.gitManager;
+    if (!gitManager) {
+      return emptyRemovalResult();
+    }
+
+    const gitMetadataPath = path.join(workspace.path, ".git");
+    const hasGitMetadata = await pathExists(gitMetadataPath);
+    if (!hasGitMetadata) {
+      return emptyRemovalResult();
+    }
+
+    let hasChanges: boolean;
+    try {
+      hasChanges = await gitManager.hasUncommittedChanges(workspace.path);
+    } catch (error) {
+      return {
+        removed: false,
+        preserved: true,
+        hadUncommittedChanges: true,
+        autoCommitAttempted: false,
+        autoCommitSha: null,
+        autoCommitError: toErrorString(error),
+      };
+    }
+
+    if (!hasChanges) {
+      return emptyRemovalResult();
+    }
+
+    try {
+      const autoCommitSha = await gitManager.autoCommit(
+        workspace.path,
+        `[${issueIdentifier}] auto-commit: workspace cleanup preservation`,
+        { noVerify: true },
+      );
+      return {
+        removed: false,
+        preserved: false,
+        hadUncommittedChanges: true,
+        autoCommitAttempted: true,
+        autoCommitSha,
+        autoCommitError: null,
+      };
+    } catch (error) {
+      return {
+        removed: false,
+        preserved: true,
+        hadUncommittedChanges: true,
+        autoCommitAttempted: true,
+        autoCommitSha: null,
+        autoCommitError: toErrorString(error),
+      };
+    }
+  }
+}
+
+function emptyRemovalResult(): WorkspaceRemovalResult {
+  return {
+    removed: false,
+    preserved: false,
+    hadUncommittedChanges: false,
+    autoCommitAttempted: false,
+    autoCommitSha: null,
+    autoCommitError: null,
+  };
+}
+
+async function pathExists(pathname: string): Promise<boolean> {
+  try {
+    await stat(pathname);
+    return true;
+  } catch {
+    return false;
   }
 }

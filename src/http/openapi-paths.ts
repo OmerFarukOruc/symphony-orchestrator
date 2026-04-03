@@ -26,6 +26,7 @@ import {
   issueDetailResponseSchema,
   modelUpdateResponseSchema,
   prsListResponseSchema,
+  recoveryReportResponseSchema,
   refreshResponseSchema,
   runtimeResponseSchema,
   stateResponseSchema,
@@ -97,6 +98,15 @@ export function buildStateAndMetricsPaths(): Record<string, PathItem> {
         responses: {
           "200": jsonResponse("Runtime information", toSchema(runtimeResponseSchema)),
         },
+      },
+    },
+    "/api/v1/recovery": {
+      get: {
+        tags: ["State & Metrics"],
+        summary: "Get the latest startup recovery report",
+        operationId: "getRecoveryReport",
+        security: protectedReadSecurity,
+        responses: protectedReadResponses("Startup recovery report", toSchema(recoveryReportResponseSchema)),
       },
     },
     "/api/v1/refresh": {

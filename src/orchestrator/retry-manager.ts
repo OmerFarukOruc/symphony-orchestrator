@@ -3,7 +3,7 @@ import { nowIso } from "./views.js";
 import { isActiveState, isTerminalState } from "../state/policy.js";
 import type { Issue, ServiceConfig } from "../core/types.js";
 import { toErrorString } from "../utils/type-guards.js";
-import type { RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
+import type { LaunchWorkerOptions, RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
 
 export { handleRetryLaunchFailure } from "./retry-failure.js";
 
@@ -107,11 +107,7 @@ export async function revalidateAndLaunchRetry(
       error: string | null,
       metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
     ) => void;
-    launchWorker: (
-      issue: Issue,
-      attempt: number,
-      options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
-    ) => Promise<void>;
+    launchWorker: (issue: Issue, attempt: number, options?: LaunchWorkerOptions) => Promise<void>;
   },
   issueId: string,
   attempt: number,

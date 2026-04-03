@@ -2094,6 +2094,278 @@
         }
       }
     },
+    "/api/v1/recovery": {
+      "get": {
+        "tags": ["State & Metrics"],
+        "summary": "Get the latest startup recovery report",
+        "operationId": "getRecoveryReport",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Startup recovery report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "generatedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "dryRun": {
+                      "type": "boolean"
+                    },
+                    "totalScanned": {
+                      "type": "number"
+                    },
+                    "resumed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "cleanedUp": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "escalated": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "attemptId": {
+                            "type": "string"
+                          },
+                          "issueIdentifier": {
+                            "type": "string"
+                          },
+                          "error": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["attemptId", "issueIdentifier", "error"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "attemptId": {
+                            "type": "string"
+                          },
+                          "issueId": {
+                            "type": "string"
+                          },
+                          "issueIdentifier": {
+                            "type": "string"
+                          },
+                          "persistedStatus": {
+                            "type": "string"
+                          },
+                          "attemptNumber": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "threadId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "workspacePath": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "workspaceExists": {
+                            "type": "boolean"
+                          },
+                          "workerAlive": {
+                            "type": "boolean"
+                          },
+                          "containerNames": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "action": {
+                            "type": "string",
+                            "enum": ["resume", "cleanup", "escalate", "skip"]
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "success": {
+                            "type": "boolean"
+                          },
+                          "autoCommitSha": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "workspacePreserved": {
+                            "type": "boolean"
+                          },
+                          "error": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "attemptId",
+                          "issueId",
+                          "issueIdentifier",
+                          "persistedStatus",
+                          "attemptNumber",
+                          "threadId",
+                          "workspacePath",
+                          "workspaceExists",
+                          "workerAlive",
+                          "containerNames",
+                          "action",
+                          "reason",
+                          "success",
+                          "autoCommitSha",
+                          "workspacePreserved",
+                          "error"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "durationMs": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "generatedAt",
+                    "dryRun",
+                    "totalScanned",
+                    "resumed",
+                    "cleanedUp",
+                    "escalated",
+                    "skipped",
+                    "errors",
+                    "results",
+                    "durationMs"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Valid read token required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["code", "message"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Remote read access is not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["code", "message"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/refresh": {
       "post": {
         "tags": ["State & Metrics"],

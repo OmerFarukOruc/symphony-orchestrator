@@ -106,6 +106,22 @@ export class GitManager implements GitIntegrationPort {
     return path.join(workspaceRoot, ".base", `${deriveRepoKey(repoUrl)}.git`);
   }
 
+  async hasUncommittedChanges(workspaceDir: string): Promise<boolean> {
+    const status = await this.runGit(["status", "--porcelain"], { cwd: workspaceDir, env: this.env });
+    return status.stdout.trim().length > 0;
+  }
+
+  async autoCommit(workspaceDir: string, message: string, options?: { noVerify?: boolean }): Promise<string> {
+    await this.runGit(["add", "-A"], { cwd: workspaceDir, env: this.env });
+    const args = ["commit"];
+    if (options?.noVerify) {
+      args.push("--no-verify");
+    }
+    args.push("-m", message);
+    await this.runGit(args, { cwd: workspaceDir, env: this.env });
+    return this.currentCommitSha(workspaceDir);
+  }
+
   async setupWorktree(
     route: RepoMatch,
     baseCloneDir: string,
@@ -158,14 +174,12 @@ export class GitManager implements GitIntegrationPort {
     branchName?: string,
     tokenEnvName?: string,
   ): Promise<CommitAndPushResult> {
-    const status = await this.runGit(["status", "--porcelain"], { cwd: workspaceDir, env: this.env });
     const resolvedBranch = branchName ?? (await this.currentBranch(workspaceDir));
-    if (status.stdout.trim().length === 0) {
+    if (!(await this.hasUncommittedChanges(workspaceDir))) {
       return { committed: false, pushed: false, branchName: resolvedBranch };
     }
 
-    await this.runGit(["add", "-A"], { cwd: workspaceDir, env: this.env });
-    await this.runGit(["commit", "-m", message], { cwd: workspaceDir, env: this.env });
+    await this.autoCommit(workspaceDir, message);
     await this.pushWithToken(workspaceDir, resolvedBranch, tokenEnvName);
     return { committed: true, pushed: true, branchName: resolvedBranch };
   }
@@ -217,5 +231,10 @@ export class GitManager implements GitIntegrationPort {
   private async currentBranch(workspaceDir: string): Promise<string> {
     const result = await this.runGit(["rev-parse", "--abbrev-ref", "HEAD"], { cwd: workspaceDir, env: this.env });
     return result.stdout.trim() || "main";
+  }
+
+  private async currentCommitSha(workspaceDir: string): Promise<string> {
+    const result = await this.runGit(["rev-parse", "HEAD"], { cwd: workspaceDir, env: this.env });
+    return result.stdout.trim();
   }
 }

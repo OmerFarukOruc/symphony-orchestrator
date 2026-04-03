@@ -53,6 +53,8 @@ function createConfig(root: string, overrides: Partial<ServiceConfig["workspace"
 function createWorktreeDeps(root: string, options?: { removeShouldFail?: boolean }): WorkspaceManagerWorktreeDeps {
   return {
     gitManager: {
+      hasUncommittedChanges: async () => false,
+      autoCommit: async () => "auto-commit-sha",
       setupWorktree: async (_route, _baseCloneDir, worktreePath) => {
         await mkdir(worktreePath, { recursive: true });
         await writeFile(path.join(worktreePath, ".git"), "gitdir: /tmp/fake.git\n", "utf8");

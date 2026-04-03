@@ -53,6 +53,8 @@ export function createGitHubToolProvider(
   };
 
   return {
+    hasUncommittedChanges: (workspaceDir) => getManager().hasUncommittedChanges(workspaceDir),
+    autoCommit: (workspaceDir, message, options) => getManager().autoCommit(workspaceDir, message, options),
     cloneInto: (route, workspaceDir, issue, branchPrefix) =>
       getManager().cloneInto(route, workspaceDir, issue, branchPrefix),
     commitAndPush: (workspaceDir, message, branchName) => getManager().commitAndPush(workspaceDir, message, branchName),

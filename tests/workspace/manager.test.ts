@@ -46,6 +46,8 @@ function createConfig(overrides?: Partial<ServiceConfig["workspace"]>): ServiceC
 function createWorktreeDeps(): WorkspaceManagerWorktreeDeps {
   return {
     gitManager: {
+      hasUncommittedChanges: vi.fn().mockResolvedValue(false),
+      autoCommit: vi.fn().mockResolvedValue("auto-commit-sha"),
       setupWorktree: vi.fn().mockResolvedValue({ branchName: "risoluto/NIN-1" }),
       removeWorktree: vi.fn().mockResolvedValue(undefined),
       deriveBaseCloneDir: vi.fn().mockReturnValue("/tmp/workspaces/.bare-clones/repo"),
@@ -227,7 +229,8 @@ describe("WorkspaceManager", () => {
   describe("removeWorkspace (directory strategy)", () => {
     it("removes existing workspace directory", async () => {
       const config = createConfig();
-      const manager = new WorkspaceManager(() => config, logger);
+      const deps = createWorktreeDeps();
+      const manager = new WorkspaceManager(() => config, logger, deps);
 
       // Workspace exists
       statMock.mockResolvedValue({ isDirectory: () => true });
@@ -238,6 +241,52 @@ describe("WorkspaceManager", () => {
         expect.stringContaining("NIN-1"),
         expect.objectContaining({ recursive: true }),
       );
+    });
+
+    it("auto-commits dirty git workspaces before removing them", async () => {
+      const config = createConfig();
+      const deps = createWorktreeDeps();
+      vi.mocked(deps.gitManager.hasUncommittedChanges).mockResolvedValue(true);
+      const manager = new WorkspaceManager(() => config, logger, deps);
+
+      statMock.mockResolvedValue({ isDirectory: () => true });
+
+      const result = await manager.removeWorkspaceWithResult("NIN-1");
+
+      expect(deps.gitManager.autoCommit).toHaveBeenCalledWith(
+        expect.stringContaining("NIN-1"),
+        "[NIN-1] auto-commit: workspace cleanup preservation",
+        { noVerify: true },
+      );
+      expect(result).toMatchObject({
+        removed: true,
+        preserved: false,
+        hadUncommittedChanges: true,
+        autoCommitAttempted: true,
+        autoCommitSha: "auto-commit-sha",
+      });
+    });
+
+    it("preserves dirty git workspaces when rescue commit fails", async () => {
+      const config = createConfig();
+      const deps = createWorktreeDeps();
+      vi.mocked(deps.gitManager.hasUncommittedChanges).mockResolvedValue(true);
+      vi.mocked(deps.gitManager.autoCommit).mockRejectedValue(new Error("commit failed"));
+      const manager = new WorkspaceManager(() => config, logger, deps);
+
+      statMock.mockResolvedValue({ isDirectory: () => true });
+
+      const result = await manager.removeWorkspaceWithResult("NIN-1");
+
+      expect(rmMock).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        removed: false,
+        preserved: true,
+        hadUncommittedChanges: true,
+        autoCommitAttempted: true,
+        autoCommitSha: null,
+        autoCommitError: "commit failed",
+      });
     });
 
     it("is a no-op when workspace does not exist", async () => {
@@ -284,6 +333,26 @@ describe("WorkspaceManager", () => {
         expect.stringContaining("NIN-1"),
         expect.objectContaining({ recursive: true }),
       );
+    });
+
+    it("preserves worktree cleanup when dirty-state detection itself fails", async () => {
+      const config = createConfig({ strategy: "worktree" });
+      const deps = createWorktreeDeps();
+      vi.mocked(deps.gitManager.hasUncommittedChanges).mockRejectedValue(new Error("status failed"));
+      const manager = new WorkspaceManager(() => config, logger, deps);
+
+      statMock.mockResolvedValue({ isDirectory: () => true });
+
+      const result = await manager.removeWorkspaceWithResult("NIN-1", createIssue());
+
+      expect(deps.gitManager.removeWorktree).not.toHaveBeenCalled();
+      expect(rmMock).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        removed: false,
+        preserved: true,
+        autoCommitAttempted: false,
+        autoCommitError: "status failed",
+      });
     });
 
     it("throws when worktree deps are missing", async () => {

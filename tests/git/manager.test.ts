@@ -171,6 +171,45 @@ describe("GitManager", () => {
     });
   });
 
+  it("reports whether a workspace has uncommitted changes", async () => {
+    const manager = new GitManager({
+      runGit: async (args) => {
+        if (args[0] === "status") {
+          return { stdout: " M src/file.ts\n", stderr: "" };
+        }
+        return { stdout: "", stderr: "" };
+      },
+      env: {},
+    });
+
+    await expect(manager.hasUncommittedChanges("/tmp/ws")).resolves.toBe(true);
+  });
+
+  it("creates a no-verify rescue commit and returns the new sha", async () => {
+    const calls: string[][] = [];
+    const manager = new GitManager({
+      runGit: async (args) => {
+        calls.push(args);
+        if (args[0] === "rev-parse" && args[1] === "HEAD") {
+          return { stdout: "abc123\n", stderr: "" };
+        }
+        return { stdout: "", stderr: "" };
+      },
+      env: {},
+    });
+
+    const sha = await manager.autoCommit("/tmp/ws", "[NIN-42] auto-commit: workspace cleanup preservation", {
+      noVerify: true,
+    });
+
+    expect(sha).toBe("abc123");
+    expect(calls).toEqual([
+      ["add", "-A"],
+      ["commit", "--no-verify", "-m", "[NIN-42] auto-commit: workspace cleanup preservation"],
+      ["rev-parse", "HEAD"],
+    ]);
+  });
+
   it("adds, commits, and pushes when changes exist", async () => {
     const calls: string[][] = [];
     const runGit: GitRunner = async (args) => {
@@ -179,7 +218,10 @@ describe("GitManager", () => {
         return { stdout: " M src/file.ts\n", stderr: "" };
       }
       if (args[0] === "rev-parse") {
-        return { stdout: "risoluto/nin-42\n", stderr: "" };
+        if (args[1] === "--abbrev-ref") {
+          return { stdout: "risoluto/nin-42\n", stderr: "" };
+        }
+        return { stdout: "abc123\n", stderr: "" };
       }
       return { stdout: "", stderr: "" };
     };
@@ -193,10 +235,11 @@ describe("GitManager", () => {
       branchName: "risoluto/nin-42",
     });
     expect(calls).toEqual([
-      ["status", "--porcelain"],
       ["rev-parse", "--abbrev-ref", "HEAD"],
+      ["status", "--porcelain"],
       ["add", "-A"],
       ["commit", "-m", "feat: finish issue"],
+      ["rev-parse", "HEAD"],
       ["push", "-u", "origin", "risoluto/nin-42"],
     ]);
   });

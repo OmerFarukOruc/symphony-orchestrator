@@ -5,7 +5,7 @@
 <p>
   <img alt="Version" src="https://img.shields.io/badge/version-0.6.0-blue?style=flat-square" />
   <img alt="Spec Conformance" src="https://img.shields.io/badge/spec-238%2F239-brightgreen?style=flat-square" />
-  <img alt="Open Roadmap Features" src="https://img.shields.io/badge/open_roadmap_features-81-blue?style=flat-square" />
+  <img alt="Open Roadmap Features" src="https://img.shields.io/badge/open_roadmap_features-79-blue?style=flat-square" />
 </p>
 
 > [!NOTE]
@@ -22,9 +22,9 @@
 - **Canonical roadmap epic:** [#354](https://github.com/OmerFarukOruc/risoluto/issues/354)
 - **Historical roadmap snapshot:** [#9](https://github.com/OmerFarukOruc/risoluto/issues/9)
 - **Counting rule:** feature totals exclude the active roadmap epic **#354** and the long-range vision issue **#62**
-- **Current open roadmap count:** **81** features
+- **Current open roadmap count:** **79** features
 
-This `81` count matches the live open roadmap feature inventory in issue [#354](https://github.com/OmerFarukOruc/risoluto/issues/354) on **2026-04-03**, after closing the following shipped issues and excluding the active roadmap epic **#354** plus the long-range vision issue **#62**:
+This `79` count reflects the reconciled post-merge roadmap inventory for **2026-04-03**, after closing the following shipped issues and excluding the active roadmap epic **#354** plus the long-range vision issue **#62**:
 
 - [#258](https://github.com/OmerFarukOruc/risoluto/issues/258)
 - [#275](https://github.com/OmerFarukOruc/risoluto/issues/275)
@@ -34,9 +34,11 @@ This `81` count matches the live open roadmap feature inventory in issue [#354](
 - [#303](https://github.com/OmerFarukOruc/risoluto/issues/303)
 - [#307](https://github.com/OmerFarukOruc/risoluto/issues/307)
 - [#318](https://github.com/OmerFarukOruc/risoluto/issues/318)
+- [#319](https://github.com/OmerFarukOruc/risoluto/issues/319)
 - [#326](https://github.com/OmerFarukOruc/risoluto/issues/326)
 - [#333](https://github.com/OmerFarukOruc/risoluto/issues/333)
 - [#335](https://github.com/OmerFarukOruc/risoluto/issues/335)
+- [#346](https://github.com/OmerFarukOruc/risoluto/issues/346)
 - [#375](https://github.com/OmerFarukOruc/risoluto/issues/375)
 
 The same reconciliation pass also relabeled the strongest partials from `research` to `triage`: [#254](https://github.com/OmerFarukOruc/risoluto/issues/254), [#261](https://github.com/OmerFarukOruc/risoluto/issues/261), [#262](https://github.com/OmerFarukOruc/risoluto/issues/262), [#263](https://github.com/OmerFarukOruc/risoluto/issues/263), [#271](https://github.com/OmerFarukOruc/risoluto/issues/271), [#313](https://github.com/OmerFarukOruc/risoluto/issues/313), [#315](https://github.com/OmerFarukOruc/risoluto/issues/315), [#317](https://github.com/OmerFarukOruc/risoluto/issues/317), [#325](https://github.com/OmerFarukOruc/risoluto/issues/325), [#344](https://github.com/OmerFarukOruc/risoluto/issues/344), [#367](https://github.com/OmerFarukOruc/risoluto/issues/367), and [#373](https://github.com/OmerFarukOruc/risoluto/issues/373).
@@ -51,12 +53,14 @@ The following roadmap issues were completed and should no longer be counted as o
 | --- | --- | --- | --- |
 | [#276](https://github.com/OmerFarukOruc/risoluto/issues/276) | Issue dependency blocker detection in dispatch selection | Multi-Agent / Orchestration | Shipped 2026-04-03 |
 | [#278](https://github.com/OmerFarukOruc/risoluto/issues/278) | Execution replay system with phase-aware event recording | Persistence / State | Shipped 2026-04-03 |
+| [#319](https://github.com/OmerFarukOruc/risoluto/issues/319) | Pre-cleanup commit enforcement to prevent silent work loss | Persistence / State | Shipped 2026-04-03 |
 | [#275](https://github.com/OmerFarukOruc/risoluto/issues/275) | Tracker completion comments with execution metrics write-back | PR / CI | Shipped 2026-04-03 |
 | [#299](https://github.com/OmerFarukOruc/risoluto/issues/299) | Workspace lifecycle hooks — operator-defined scripts at create/run/remove | Sandbox / Security | Shipped 2026-04-03 |
 | [#303](https://github.com/OmerFarukOruc/risoluto/issues/303) | Safe subprocess environment whitelist for agent process isolation | Sandbox / Security | Shipped 2026-04-03 |
 | [#318](https://github.com/OmerFarukOruc/risoluto/issues/318) | SSE stream reconnection with exponential backoff and session awareness | Agent Runtime / Execution | Shipped 2026-04-03 |
 | [#326](https://github.com/OmerFarukOruc/risoluto/issues/326) | Codex app-server v2 JSON-RPC protocol alignment (thread/turn lifecycle) | Agent Runtime / Execution | Shipped 2026-04-03 |
 | [#335](https://github.com/OmerFarukOruc/risoluto/issues/335) | Agent-authored PR summary generation from branch diff | PR / CI | Shipped 2026-04-03 |
+| [#346](https://github.com/OmerFarukOruc/risoluto/issues/346) | Crash recovery system for orphaned sessions and workspaces | Persistence / State | Shipped 2026-04-03 |
 | [#333](https://github.com/OmerFarukOruc/risoluto/issues/333) | PR review feedback ingestion for retry-with-context re-runs | PR / CI | Shipped 2026-04-03 |
 | [#258](https://github.com/OmerFarukOruc/risoluto/issues/258) | Auto-merge policy engine for agent PRs | PR / CI | Shipped 2026-04-03 |
 | [#307](https://github.com/OmerFarukOruc/risoluto/issues/307) | PR lifecycle monitoring with auto-archive on merge | PR / CI | Shipped 2026-04-03 |
@@ -115,9 +119,9 @@ These counts mirror the live open issue inventory in [#354](https://github.com/O
 | Sandbox & Security | 6 | [#299](https://github.com/OmerFarukOruc/risoluto/issues/299) and [#303](https://github.com/OmerFarukOruc/risoluto/issues/303) moved to shipped |
 | Dashboard & UI | 4 | Includes post-reset issue [#368](https://github.com/OmerFarukOruc/risoluto/issues/368) |
 | PR Review & CI Pipeline | 2 | Open backlog is now only [#288](https://github.com/OmerFarukOruc/risoluto/issues/288) and [#347](https://github.com/OmerFarukOruc/risoluto/issues/347) |
-| Persistence & State | 2 | [#278](https://github.com/OmerFarukOruc/risoluto/issues/278) and [#375](https://github.com/OmerFarukOruc/risoluto/issues/375) moved to shipped |
+| Persistence & State | 0 | [#278](https://github.com/OmerFarukOruc/risoluto/issues/278), [#319](https://github.com/OmerFarukOruc/risoluto/issues/319), [#346](https://github.com/OmerFarukOruc/risoluto/issues/346), and [#375](https://github.com/OmerFarukOruc/risoluto/issues/375) moved to shipped |
 | Security & Auth | 1 | Post-reset issue [#373](https://github.com/OmerFarukOruc/risoluto/issues/373) remains open · triage |
-| **Total** | **81** | Matches the live open roadmap count in issue #354 on 2026-04-03 |
+| **Total** | **79** | Reflects the reconciled post-merge roadmap count for 2026-04-03 |
 
 ---
 

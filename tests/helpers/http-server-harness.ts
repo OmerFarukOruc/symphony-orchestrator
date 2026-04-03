@@ -71,6 +71,7 @@ export function buildStubOrchestrator(overrides: Partial<OrchestratorPort> = {})
       rateLimits: null,
       recentEvents: [],
     }),
+    getRecoveryReport: vi.fn().mockReturnValue(null),
     getSerializedState: vi.fn().mockReturnValue({
       generated_at: new Date().toISOString(),
       counts: { running: 0, retrying: 0 },

@@ -1,5 +1,6 @@
 import type { ModelSelection, ReasoningEffort, RuntimeSnapshot } from "../core/types.js";
 import type { AttemptDetailView, IssueDetailView } from "./snapshot-builder.js";
+import type { RecoveryReport } from "./recovery-types.js";
 
 export interface OrchestratorPort {
   start(): Promise<void>;
@@ -10,6 +11,7 @@ export interface OrchestratorPort {
   /** Stop a running worker for an issue (e.g., when webhook shows issue moved to Done). */
   stopWorkerForIssue(issueIdentifier: string, reason: string): void;
   getSnapshot(): RuntimeSnapshot;
+  getRecoveryReport(): RecoveryReport | null;
   getSerializedState(): Record<string, unknown>;
   getIssueDetail(identifier: string): IssueDetailView | null;
   getAttemptDetail(attemptId: string): AttemptDetailView | null;

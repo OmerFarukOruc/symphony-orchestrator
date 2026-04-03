@@ -18,10 +18,12 @@ import {
   buildSnapshot,
 } from "./snapshot-builder.js";
 import { buildCtx, cleanupTerminalWorkspaces, type OrchestratorState } from "./orchestrator-delegates.js";
+import { runStartupRecovery } from "./recovery.js";
 import type { OrchestratorPort } from "./port.js";
 import type { OrchestratorDeps } from "./runtime-types.js";
 import { nowIso } from "./views.js";
 import type { ModelSelection, ReasoningEffort, RuntimeSnapshot } from "../core/types.js";
+import type { RecoveryReport } from "./recovery-types.js";
 import { serializeSnapshot } from "../http/route-helpers.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { globalMetrics } from "../observability/metrics.js";
@@ -88,6 +90,7 @@ export class Orchestrator implements OrchestratorPort {
   private nextTickTimer: NodeJS.Timeout | null = null;
   private refreshQueued = false;
   private readonly watchdog: Watchdog;
+  private lastRecoveryReport: RecoveryReport | null = null;
   private stateRevision = 0;
   private cachedSnapshot: {
     revision: number;
@@ -141,6 +144,14 @@ export class Orchestrator implements OrchestratorPort {
     this._state.running = true;
     this.markStateDirty();
     this.watchdog.start();
+    this.lastRecoveryReport = await runStartupRecovery({
+      attemptStore: this.deps.attemptStore,
+      tracker: this.deps.tracker,
+      workspaceManager: this.deps.workspaceManager,
+      getConfig: () => this.deps.configStore.getConfig(),
+      launchWorker: (issue, attempt, options) => this.ctx().launchWorker(issue, attempt, options),
+      logger: this.deps.logger,
+    });
     await cleanupTerminalWorkspaces(this._state, this.deps);
     seedCompletedClaims({
       claimedIssueIds: this._state.claimedIssueIds,
@@ -225,6 +236,12 @@ export class Orchestrator implements OrchestratorPort {
 
   getSnapshot(): RuntimeSnapshot {
     return this.getCachedSnapshot().snapshot;
+  }
+
+  getRecoveryReport(): RecoveryReport | null {
+    return this.lastRecoveryReport
+      ? { ...this.lastRecoveryReport, results: [...this.lastRecoveryReport.results] }
+      : null;
   }
 
   getSerializedState(): Record<string, unknown> {

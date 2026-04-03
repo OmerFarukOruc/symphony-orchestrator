@@ -176,8 +176,9 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 - ✅ Single orchestrator authority serializes state mutations
 - ✅ `claimed` + `running` checks before any launch
 - ✅ Reconciliation runs before dispatch on every tick
-- ✅ Restart recovery is tracker-driven (no durable DB)
-- ✅ Startup terminal cleanup removes stale workspaces
+- ✅ Startup recovery scans persisted running attempts before polling resumes
+- ✅ Viable orphaned attempts resume on the same attempt record via persisted thread ids
+- ✅ Startup cleanup uses durable DB-backed attempt state plus workspace/container inspection
 
 ---
 
@@ -486,7 +487,7 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 ### §14.3 Partial State Recovery (Restart)
 
 - ✅ In-memory only — no retry timers restored
-- ✅ Startup: terminal workspace cleanup → fresh poll → re-dispatch
+- ✅ Startup: recovery scan → terminal workspace cleanup → fresh poll → dispatch
 
 ### §14.4 Operator Intervention Points
 
@@ -495,6 +496,7 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 - 🔵 Use `PUT /api/v1/config/overlay` → API-driven config change, persisted to overlay file
 - ✅ Change issue state in tracker → reconciliation stops/cleans affected runs
 - ✅ Service restart for process recovery
+- ✅ `GET /api/v1/recovery` exposes the latest startup recovery report
 
 ---
 
@@ -510,6 +512,7 @@ The repository is at **`v0.6.0`** and implements a full local orchestration loop
 - ✅ Workspace path under workspace root (prefix-validated)
 - ✅ Agent cwd == per-issue workspace path
 - ✅ Sanitized workspace directory names
+- ✅ Dirty git-backed workspaces auto-commit before cleanup or remain preserved for manual inspection
 
 ### §15.3 Secret Handling
 

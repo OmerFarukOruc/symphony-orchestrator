@@ -1,11 +1,13 @@
 import type { Issue, ModelSelection, RuntimeIssueView, ServiceConfig, TokenUsageSnapshot } from "../core/types.js";
 import type { OrchestratorDeps, RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
+import type { LaunchWorkerOptions } from "./runtime-types.js";
 import type { StallEvent } from "./stall-detector.js";
 import type { RuntimeEventRecord } from "../core/lifecycle-events.js";
 import type { GitPostRunPort } from "../git/port.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
+import type { WorkspaceRemovalResult } from "../workspace/manager.js";
 
 /** Shared context type for outcome handlers. Used internally by worker-outcome.ts. */
 export interface OutcomeContext {
@@ -21,9 +23,16 @@ export interface OutcomeContext {
     };
     attemptStore: {
       updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void>;
+      appendEvent?: (event: import("../core/types.js").AttemptEvent) => Promise<void>;
+      appendCheckpoint?: (
+        checkpoint: Omit<import("../core/types.js").AttemptCheckpointRecord, "checkpointId" | "ordinal">,
+      ) => Promise<void>;
       upsertPr?: (pr: import("../core/attempt-store-port.js").UpsertPrInput) => Promise<void>;
     };
-    workspaceManager: { removeWorkspace: (identifier: string, issue?: Issue) => Promise<void> };
+    workspaceManager: {
+      removeWorkspace: (identifier: string, issue?: Issue) => Promise<void>;
+      removeWorkspaceWithResult?: (identifier: string, issue?: Issue) => Promise<WorkspaceRemovalResult>;
+    };
     gitManager?: GitPostRunPort;
     eventBus?: TypedEventBus<RisolutoEventMap>;
     logger: {
@@ -70,11 +79,7 @@ export interface OrchestratorContext {
     metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
   ) => void;
   clearRetryEntry: (issueId: string) => void;
-  launchWorker: (
-    issue: Issue,
-    attempt: number | null,
-    options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
-  ) => Promise<void>;
+  launchWorker: (issue: Issue, attempt: number | null, options?: LaunchWorkerOptions) => Promise<void>;
   canDispatchIssue: (issue: Issue) => boolean;
   hasAvailableStateSlot: (
     issue: Issue,

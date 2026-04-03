@@ -7,6 +7,7 @@ import {
   errorResponseSchema,
   issueDetailResponseSchema,
   modelUpdateResponseSchema,
+  recoveryReportResponseSchema,
   refreshResponseSchema,
   runtimeResponseSchema,
   stateResponseSchema,
@@ -241,6 +242,61 @@ describe("runtimeResponseSchema", () => {
       provider_summary: "linear",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("recoveryReportResponseSchema", () => {
+  it("parses a valid recovery report", () => {
+    const result = recoveryReportResponseSchema.parse({
+      generatedAt: "2026-04-03T17:45:00.000Z",
+      dryRun: false,
+      totalScanned: 1,
+      resumed: ["attempt-1"],
+      cleanedUp: [],
+      escalated: [],
+      skipped: [],
+      errors: [],
+      results: [
+        {
+          attemptId: "attempt-1",
+          issueId: "issue-1",
+          issueIdentifier: "NIN-42",
+          persistedStatus: "running",
+          attemptNumber: 2,
+          threadId: "thread-1",
+          workspacePath: "/tmp/ws",
+          workspaceExists: true,
+          workerAlive: false,
+          containerNames: [],
+          action: "resume",
+          reason: "Workspace and thread id are intact; resume is possible",
+          success: true,
+          autoCommitSha: null,
+          workspacePreserved: false,
+          error: null,
+        },
+      ],
+      durationMs: 12,
+    });
+    expect(result.totalScanned).toBe(1);
+    expect(result.resumed).toEqual(["attempt-1"]);
+  });
+
+  it("accepts the empty default report shape", () => {
+    const result = recoveryReportResponseSchema.parse({
+      generatedAt: null,
+      dryRun: false,
+      totalScanned: 0,
+      resumed: [],
+      cleanedUp: [],
+      escalated: [],
+      skipped: [],
+      errors: [],
+      results: [],
+      durationMs: 0,
+    });
+    expect(result.generatedAt).toBeNull();
+    expect(result.results).toEqual([]);
   });
 });
 

@@ -39,6 +39,7 @@ import { validateBody } from "./validation.js";
 import { handleWebhookLinear, type WebhookHandlerDeps } from "./webhook-handler.js";
 import type { WebhookRequest } from "./webhook-types.js";
 import { handleWorkspaceInventory, handleWorkspaceRemove } from "./workspace-inventory.js";
+import type { RecoveryReport } from "../orchestrator/recovery-types.js";
 
 const frontendDist = join(process.cwd(), "dist/frontend");
 
@@ -106,6 +107,30 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
         feature_flags: {},
         provider_summary: "Codex",
       });
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/recovery")
+    .get((_req, res) => {
+      const report = deps.orchestrator.getRecoveryReport();
+      res.json(
+        report ??
+          ({
+            generatedAt: null,
+            dryRun: false,
+            totalScanned: 0,
+            resumed: [],
+            cleanedUp: [],
+            escalated: [],
+            skipped: [],
+            errors: [],
+            results: [],
+            durationMs: 0,
+          } satisfies RecoveryReport | Record<string, unknown>),
+      );
     })
     .all((_req, res) => {
       methodNotAllowed(res);

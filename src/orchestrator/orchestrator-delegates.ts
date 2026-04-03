@@ -11,6 +11,7 @@ import type {
 } from "../core/types.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type { OrchestratorDeps, RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
+import type { LaunchWorkerOptions } from "./runtime-types.js";
 
 import { usageDelta } from "./views.js";
 
@@ -233,7 +234,7 @@ async function launchWorkerDelegate(
   deps: OrchestratorDeps,
   issue: Issue,
   attempt: number | null,
-  options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
+  options?: LaunchWorkerOptions,
 ): Promise<void> {
   const ctx = buildCtx(state, deps);
   await launchWorkerState(
