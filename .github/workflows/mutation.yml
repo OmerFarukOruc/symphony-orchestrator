@@ -44,7 +44,6 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
     continue-on-error: true
     permissions:
       contents: read
@@ -64,15 +63,18 @@ jobs:
             stryker-incremental-
       - name: Run mutation on changed files
         run: |
-          CHANGED=$(git diff --name-only origin/main...HEAD | grep -E '^src/' | paste -sd,)
-          [ -n "$CHANGED" ] && pnpm exec stryker run --mutate "$CHANGED" || echo "No src files changed"
+          CHANGED=$(git diff --name-origin origin/main...HEAD | awk '/^src\// { print }' | paste -sd,)
+          if [ -n "$CHANGED" ]; then
+            pnpm exec stryker run --mutate "$CHANGED"
+          else
+            echo "No src files changed"
+          fi
 
   mutation:
     name: Mutation Testing
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
     permissions:
       contents: read
     steps:

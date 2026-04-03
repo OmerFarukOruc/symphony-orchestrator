@@ -111,7 +111,7 @@ function makeDeps(overrides: Partial<PrMonitorDeps> = {}): PrMonitorDeps {
     ghClient: makeGhClient({ state: "open", merged: false, merge_commit_sha: null }),
     tracker: {} as PrMonitorDeps["tracker"],
     workspaceManager: {} as PrMonitorDeps["workspaceManager"],
-    config: { prMonitorIntervalMs: 60_000 } as PrMonitorDeps["config"],
+    getConfig: () => ({ prMonitorIntervalMs: 60_000 }) as ReturnType<PrMonitorDeps["getConfig"]>,
     logger: makeLogger() as unknown as PrMonitorDeps["logger"],
     events: makeEventBus(),
     orchestrator: makeOrchestrator(),
@@ -166,6 +166,34 @@ describe("PrMonitorService", () => {
 
       // Should only poll once per interval, not twice
       expect(store.getOpenPrs).toHaveBeenCalledTimes(1);
+      monitor.stop();
+    });
+
+    it("reads the latest poll interval after each cycle", async () => {
+      const config = { prMonitorIntervalMs: 60_000 };
+      let resolveFirstPoll: ((value: OpenPrRecord[]) => void) | null = null;
+      const firstPoll = new Promise<OpenPrRecord[]>((resolve) => {
+        resolveFirstPoll = resolve;
+      });
+      const store = makeStore({
+        getOpenPrs: vi.fn().mockReturnValueOnce(firstPoll).mockResolvedValue([]),
+      });
+      const deps = makeDeps({
+        store,
+        getConfig: () => config,
+      });
+      const monitor = new PrMonitorService(deps);
+
+      monitor.start();
+      await vi.advanceTimersByTimeAsync(60_001);
+      expect(store.getOpenPrs).toHaveBeenCalledTimes(1);
+
+      config.prMonitorIntervalMs = 10_000;
+      resolveFirstPoll?.([]);
+      await Promise.resolve();
+
+      await vi.advanceTimersByTimeAsync(10_001);
+      expect(store.getOpenPrs).toHaveBeenCalledTimes(2);
       monitor.stop();
     });
   });
@@ -287,6 +315,41 @@ describe("PrMonitorService", () => {
       await vi.advanceTimersByTimeAsync(60_001);
 
       expect(store.appendCheckpoint).toHaveBeenCalledWith(expect.objectContaining({ trigger: "pr_merged" }));
+      monitor.stop();
+    });
+
+    it("falls back to the latest attempt matched by issueId when PR attemptId is missing", async () => {
+      const pr = makeOpenPr({ attemptId: "" });
+      const latestAttempt = makeAttemptRecord({
+        attemptId: "attempt-latest",
+        issueId: pr.issueId,
+        issueIdentifier: "ENG-999",
+      });
+      const olderAttempt = makeAttemptRecord({
+        attemptId: "attempt-older",
+        issueId: pr.issueId,
+        issueIdentifier: "ENG-111",
+        startedAt: "2025-12-31T00:00:00.000Z",
+      });
+      const store = makeStore({
+        getOpenPrs: vi.fn().mockResolvedValue([pr]),
+        getAllAttempts: vi.fn().mockReturnValue([olderAttempt, latestAttempt]),
+        getAttemptsForIssue: vi.fn().mockReturnValue([]),
+        appendCheckpoint: vi.fn().mockResolvedValue(undefined),
+      });
+      const ghClient = makeGhClient({ state: "closed", merged: true, merge_commit_sha: "sha-fallback" });
+      const deps = makeDeps({ store, ghClient });
+      const monitor = new PrMonitorService(deps);
+
+      monitor.start();
+      await vi.advanceTimersByTimeAsync(60_001);
+
+      expect(store.appendCheckpoint).toHaveBeenCalledWith(
+        expect.objectContaining({
+          attemptId: "attempt-latest",
+          trigger: "pr_merged",
+        }),
+      );
       monitor.stop();
     });
 

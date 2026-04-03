@@ -103,6 +103,26 @@ function parseGithubRepo(repoUrl: string): { owner: string; repo: string } | nul
   return null;
 }
 
+function buildGraphqlEndpoint(apiBaseUrl: string): string {
+  const parsed = new URL(apiBaseUrl);
+  parsed.search = "";
+  parsed.hash = "";
+  const normalizedPath = parsed.pathname.replace(/\/+$/u, ""); // eslint-disable-line sonarjs/slow-regex -- safe: trims trailing slashes only
+
+  if (parsed.hostname === "api.github.com") {
+    parsed.pathname = "/graphql";
+    return parsed.toString();
+  }
+
+  if (normalizedPath === "/api/v3") {
+    parsed.pathname = "/api/graphql";
+    return parsed.toString();
+  }
+
+  parsed.pathname = `${normalizedPath}/graphql`;
+  return parsed.toString();
+}
+
 export class GitHubPrClient implements GithubApiToolClient {
   private readonly fetchImpl: typeof fetch;
   private readonly env: NodeJS.ProcessEnv;
@@ -287,9 +307,7 @@ export class GitHubPrClient implements GithubApiToolClient {
       }
     `;
 
-    const graphqlBase = this.apiBaseUrl === "https://api.github.com" || this.apiBaseUrl.startsWith("https://api.github.com/") ? "https://api.github.com" : this.apiBaseUrl;
-
-    const response = await this.fetchImpl(`${graphqlBase}/graphql`, {
+    const response = await this.fetchImpl(buildGraphqlEndpoint(this.apiBaseUrl), {
       method: "POST",
       headers: {
         "content-type": "application/json",

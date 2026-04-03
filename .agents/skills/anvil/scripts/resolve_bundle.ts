@@ -49,7 +49,7 @@ async function main(): Promise<void> {
   if (!rawSlug || rawSlug.trim().length === 0 || rawSlug.trim() === ".") {
     throw new TypeError("invalid slug: must be a non-empty string that is not '.'");
   }
-  if (/[\/]/.test(rawSlug) || rawSlug.includes("..")) {
+  if (/[\\/]/.test(rawSlug) || rawSlug.includes("..")) {
     throw new TypeError(`invalid slug: must not contain path separators or dots: ${rawSlug}`);
   }
   const slug = rawSlug.trim();
@@ -85,6 +85,12 @@ async function main(): Promise<void> {
   };
 
   const runDir = path.join(root, ".anvil", slug);
+  // Verify the resolved path stays within the .anvil directory.
+  const resolvedRunDir = path.resolve(runDir);
+  const anvilDir = path.resolve(root, ".anvil");
+  if (!resolvedRunDir.startsWith(anvilDir + path.sep)) {
+    throw new TypeError(`slug resolves outside the .anvil directory: ${resolvedRunDir}`);
+  }
   await fs.mkdir(runDir, { recursive: true });
   await fs.writeFile(path.join(runDir, "bundle.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
   const touchSummary = [
@@ -108,7 +114,9 @@ async function main(): Promise<void> {
       bundle.source_items.length > 0 ? bundle.source_items.map(formatSourceItem).join("\n") : "- (none provided)",
       "",
       "## Grouping Rationale",
-      bundle.grouping_rationale ? `- ${bundle.grouping_rationale}` : "- Capture the shared problem before brainstorming.",
+      bundle.grouping_rationale
+        ? `- ${bundle.grouping_rationale}`
+        : "- Capture the shared problem before brainstorming.",
       "",
       "## Architectural Drift",
       bundle.architectural_drift && bundle.architectural_drift.length > 0
@@ -119,7 +127,7 @@ async function main(): Promise<void> {
       bundle.notes && bundle.notes.length > 0 ? bundle.notes.map((entry) => `- ${entry}`).join("\n") : "- (none)",
       "",
     ].join("\n"),
-    "utf8"
+    "utf8",
   );
 }
 

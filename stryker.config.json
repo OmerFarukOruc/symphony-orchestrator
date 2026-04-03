@@ -100,6 +100,6 @@
     "fileName": "reports/stryker-report.html"
   },
   "timeoutMS": 60000,
-  "concurrency": 4,
+  "concurrency": 8,
   "ignorePatterns": [".agents", ".claude", "docs", "skills", "dist", "frontend", "reports"]
 }

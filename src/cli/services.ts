@@ -258,7 +258,7 @@ export async function createServices(
     ghClient: gitManager as unknown as PrMonitorGhClient,
     tracker,
     workspaceManager,
-    config: configStore.getConfig().agent,
+    getConfig: () => configStore.getConfig().agent,
     logger: logger.child({ component: "pr-monitor" }),
     events: eventBus,
     orchestrator,

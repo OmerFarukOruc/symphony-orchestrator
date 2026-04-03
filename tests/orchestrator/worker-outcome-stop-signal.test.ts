@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { handleStopSignal } from "../../src/orchestrator/worker-outcome/stop-signal.js";
+import type { UpsertPrInput } from "../../src/core/attempt-store-port.js";
 import type { Issue, ModelSelection, RuntimeIssueView, ServiceConfig, Workspace } from "../../src/core/types.js";
 import type { OutcomeContext } from "../../src/orchestrator/context.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
@@ -33,9 +34,15 @@ function makeCtx(
   overrides: {
     config?: ServiceConfig;
     gitManager?: OutcomeContext["deps"]["gitManager"];
+    attemptStore?: OutcomeContext["deps"]["attemptStore"];
   } = {},
 ): OutcomeContext {
   const config = overrides.config ?? makeConfig();
+  const attemptStore =
+    overrides.attemptStore ??
+    ({
+      updateAttempt: vi.fn().mockResolvedValue(undefined),
+    } satisfies OutcomeContext["deps"]["attemptStore"]);
   return {
     runningEntries: new Map<string, RunningEntry>(),
     completedViews: new Map<string, RuntimeIssueView>(),
@@ -47,9 +54,7 @@ function makeCtx(
         updateIssueState: vi.fn().mockResolvedValue(undefined),
         createComment: vi.fn().mockResolvedValue(undefined),
       },
-      attemptStore: {
-        updateAttempt: vi.fn().mockResolvedValue(undefined),
-      },
+      attemptStore,
       workspaceManager: {
         removeWorkspace: vi.fn().mockResolvedValue(undefined),
       },
@@ -76,6 +81,19 @@ const repoMatch = {
   matchedBy: "identifier_prefix" as const,
 };
 
+const flushAsyncWork = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+function createGitManagerMock(
+  overrides: Partial<OutcomeContext["deps"]["gitManager"]> = {},
+): NonNullable<OutcomeContext["deps"]["gitManager"]> {
+  return {
+    commitAndPush: vi.fn().mockResolvedValue({ pushed: true, committed: true, branchName: "mt-42" }),
+    createPullRequest: vi.fn().mockResolvedValue({ html_url: "https://github.com/org/repo/pull/99" }),
+    forcePushIfBranchExists: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 describe("handleStopSignal — done signal", () => {
   let ctx: OutcomeContext;
   let issue: Issue;
@@ -89,10 +107,10 @@ describe("handleStopSignal — done signal", () => {
   });
 
   it("triggers git post-run and records PR URL on success", async () => {
-    const gitManager = {
-      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42" }),
+    const gitManager = createGitManagerMock({
+      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, committed: true, branchName: "mt-42" }),
       createPullRequest: vi.fn().mockResolvedValue({ html_url: "https://github.com/org/repo/pull/99" }),
-    };
+    });
     ctx = makeCtx({ gitManager });
     const entry = createRunningEntry({ repoMatch });
 
@@ -110,11 +128,49 @@ describe("handleStopSignal — done signal", () => {
     );
   });
 
+  it("registers PR monitoring through class-based attempt store without losing this binding", async () => {
+    const gitManager = createGitManagerMock({
+      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, committed: true, branchName: "mt-42" }),
+      createPullRequest: vi.fn().mockResolvedValue({ html_url: "https://github.com/org/repo/pull/99" }),
+    });
+
+    class ClassBackedAttemptStore {
+      readonly updateAttempt = vi.fn().mockResolvedValue(undefined);
+      readonly marker = "bound";
+      lastMarker: string | null = null;
+      lastPr: UpsertPrInput | null = null;
+
+      async upsertPr(pr: UpsertPrInput): Promise<void> {
+        this.lastMarker = this.marker;
+        this.lastPr = pr;
+      }
+    }
+
+    const attemptStore = new ClassBackedAttemptStore();
+    ctx = makeCtx({ gitManager, attemptStore });
+    const entry = createRunningEntry({ repoMatch });
+
+    await handleStopSignal(ctx, "done", entry, issue, workspace, modelSelection, 1);
+    await flushAsyncWork();
+
+    expect(attemptStore.lastMarker).toBe("bound");
+    expect(attemptStore.lastPr).toMatchObject({
+      issueId: issue.id,
+      owner: "org",
+      repo: "repo",
+      pullNumber: 99,
+      url: "https://github.com/org/repo/pull/99",
+      attemptId: entry.runId,
+      status: "open",
+      branchName: issue.branchName ?? "",
+    });
+  });
+
   it("completes gracefully when git post-run throws", async () => {
-    const gitManager = {
+    const gitManager = createGitManagerMock({
       commitAndPush: vi.fn().mockRejectedValue(new Error("push rejected")),
       createPullRequest: vi.fn(),
-    };
+    });
     ctx = makeCtx({ gitManager });
     const entry = createRunningEntry({ repoMatch });
 
@@ -137,10 +193,10 @@ describe("handleStopSignal — done signal", () => {
   });
 
   it("skips git post-run when entry has no repoMatch", async () => {
-    const gitManager = {
+    const gitManager = createGitManagerMock({
       commitAndPush: vi.fn(),
       createPullRequest: vi.fn(),
-    };
+    });
     ctx = makeCtx({ gitManager });
     const entry = createRunningEntry({ repoMatch: null });
 
@@ -262,10 +318,10 @@ describe("handleStopSignal — blocked signal", () => {
   });
 
   it("does not trigger git post-run", async () => {
-    const gitManager = {
+    const gitManager = createGitManagerMock({
       commitAndPush: vi.fn(),
       createPullRequest: vi.fn(),
-    };
+    });
     const ctxWithGit = makeCtx({ gitManager });
     const entry = createRunningEntry({ repoMatch });
 
@@ -323,10 +379,10 @@ describe("handleStopSignal — pullRequestUrl logging", () => {
   });
 
   it("logs PR created when pullRequestUrl is present", async () => {
-    const gitManager = {
-      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42" }),
+    const gitManager = createGitManagerMock({
+      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, committed: true, branchName: "mt-42" }),
       createPullRequest: vi.fn().mockResolvedValue({ html_url: "https://github.com/org/repo/pull/1" }),
-    };
+    });
     const ctx = makeCtx({ gitManager });
     const entry = createRunningEntry({ repoMatch });
     const issue = createIssue();
@@ -341,9 +397,6 @@ describe("handleStopSignal — pullRequestUrl logging", () => {
 });
 
 describe("handleStopSignal — writeback integration", () => {
-  /** Flush void-dispatched microtask from writeCompletionWriteback. */
-  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
-
   it("calls writeCompletionWriteback (void-dispatched) on done", async () => {
     const ctx = makeCtx();
     const entry = createRunningEntry({
@@ -352,7 +405,7 @@ describe("handleStopSignal — writeback integration", () => {
     const issue = createIssue();
 
     await handleStopSignal(ctx, "done", entry, issue, createWorkspace(), createModelSelection(), 1);
-    await flush();
+    await flushAsyncWork();
 
     expect(ctx.deps.tracker.createComment).toHaveBeenCalledWith(
       issue.id,
@@ -366,7 +419,7 @@ describe("handleStopSignal — writeback integration", () => {
     const issue = createIssue();
 
     await handleStopSignal(ctx, "blocked", entry, issue, createWorkspace(), createModelSelection(), 1);
-    await flush();
+    await flushAsyncWork();
 
     expect(ctx.deps.tracker.createComment).toHaveBeenCalledWith(
       issue.id,

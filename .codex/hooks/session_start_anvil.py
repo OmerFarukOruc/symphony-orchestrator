@@ -7,9 +7,14 @@ from anvil_state import load_active_status, repo_root
 
 def main() -> int:
     payload = json.load(sys.stdin)
+    if payload.get("source") != "resume":
+        return 0
+
     root = repo_root(payload["cwd"])
     slug, status, status_path = load_active_status(root)
     if slug is None:
+        return 0
+    if status is not None and not status.get("active", True):
         return 0
 
     if status is None:

@@ -409,6 +409,43 @@ describe("GitHubPrClient", () => {
     });
   });
 
+  // ── requestAutoMerge ────────────────────────────────────────────────
+
+  describe("requestAutoMerge", () => {
+    it("uses the public GitHub GraphQL endpoint for github.com", async () => {
+      mockFetch
+        .mockResolvedValueOnce(createJsonResponse(200, { ...makePrStatusData(), node_id: "PR_node_123" }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { enablePullRequestAutoMerge: null } }));
+      const client = new GitHubPrClient(deps);
+
+      await client.requestAutoMerge("acme", "backend", 42, "squash");
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        "https://api.github.com/graphql",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({ authorization: "Bearer ghp_test123" }),
+        }),
+      );
+    });
+
+    it("rewrites GitHub Enterprise /api/v3 REST base URLs to /api/graphql", async () => {
+      mockFetch
+        .mockResolvedValueOnce(createJsonResponse(200, { ...makePrStatusData(), node_id: "PR_node_ghe" }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { enablePullRequestAutoMerge: null } }));
+      const client = new GitHubPrClient({ ...deps, apiBaseUrl: "https://ghe.internal/api/v3" });
+
+      await client.requestAutoMerge("acme", "backend", 42, "merge");
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        "https://ghe.internal/api/graphql",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+  });
+
   // ── githubRequest internals (via public methods) ─────────────────────
   // These tests use addPrComment to exercise raw response parsing since
   // getPrStatus now type-narrows its response via isPrStatusResponse.

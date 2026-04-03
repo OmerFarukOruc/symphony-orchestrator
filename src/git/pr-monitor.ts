@@ -44,7 +44,7 @@ export interface PrMonitorDeps {
   ghClient: PrMonitorGhClient;
   tracker: TrackerPort;
   workspaceManager: WorkspaceManager;
-  config: AgentConfig;
+  getConfig: () => AgentConfig;
   logger: RisolutoLogger;
   /** Typed event bus used for SSE fan-out. */
   events: TypedEventBus<RisolutoEventMap>;
@@ -58,10 +58,11 @@ export interface PrMonitorDeps {
  * Start it alongside the Orchestrator; stop it during shutdown.
  */
 export class PrMonitorService {
-  private intervalHandle: NodeJS.Timeout | null = null;
+  private timerHandle: NodeJS.Timeout | null = null;
+  private running = false;
   private readonly store: AttemptStorePort;
   private readonly ghClient: PrMonitorGhClient;
-  private readonly config: AgentConfig;
+  private readonly getConfig: () => AgentConfig;
   private readonly logger: RisolutoLogger;
   private readonly events: TypedEventBus<RisolutoEventMap>;
   private readonly orchestrator?: PrMonitorOrchestratorPort;
@@ -69,7 +70,7 @@ export class PrMonitorService {
   constructor(private readonly deps: PrMonitorDeps) {
     this.store = deps.store;
     this.ghClient = deps.ghClient;
-    this.config = deps.config;
+    this.getConfig = deps.getConfig;
     this.logger = deps.logger.child({ component: "pr-monitor" });
     this.events = deps.events;
     this.orchestrator = deps.orchestrator;
@@ -77,20 +78,39 @@ export class PrMonitorService {
 
   /** Start the polling loop. Safe to call multiple times — no-op if already running. */
   start(): void {
-    if (this.intervalHandle !== null) return;
-    const intervalMs = this.config.prMonitorIntervalMs;
-    this.intervalHandle = setInterval(() => {
-      void this.checkAllOpenPrs();
-    }, intervalMs);
+    if (this.running) return;
+    this.running = true;
+    const intervalMs = this.getConfig().prMonitorIntervalMs;
+    this.scheduleNextPoll();
     this.logger.info({ intervalMs }, "pr monitor started");
   }
 
   /** Stop the polling loop. Safe to call multiple times — no-op if already stopped. */
   stop(): void {
-    if (this.intervalHandle === null) return;
-    clearInterval(this.intervalHandle);
-    this.intervalHandle = null;
+    if (!this.running) return;
+    this.running = false;
+    if (this.timerHandle !== null) {
+      clearTimeout(this.timerHandle);
+      this.timerHandle = null;
+    }
     this.logger.info("pr monitor stopped");
+  }
+
+  private scheduleNextPoll(): void {
+    if (!this.running) return;
+    const intervalMs = this.getConfig().prMonitorIntervalMs;
+    this.timerHandle = setTimeout(() => {
+      this.timerHandle = null;
+      void this.runScheduledPoll();
+    }, intervalMs);
+  }
+
+  private async runScheduledPoll(): Promise<void> {
+    try {
+      await this.checkAllOpenPrs();
+    } finally {
+      this.scheduleNextPoll();
+    }
   }
 
   /** Fetch all open PRs and check each one against GitHub. */
@@ -182,7 +202,11 @@ export class PrMonitorService {
       try {
         const latestAttempt =
           (pr.attemptId ? this.store.getAttempt(pr.attemptId) : null) ??
-          this.store.getAttemptsForIssue(pr.issueId).sort(sortAttemptsDesc).at(0);
+          this.store
+            .getAllAttempts()
+            .filter((attempt) => attempt.issueId === pr.issueId)
+            .sort(sortAttemptsDesc)
+            .at(0);
 
         if (latestAttempt) {
           await this.store.appendCheckpoint({

@@ -43,7 +43,7 @@ export async function handleStopSignal(
         "PR registration for monitoring failed (non-fatal)",
       );
     });
-}
+  }
 
   const isBlocked = stopSignal === "blocked";
   const statusMessage = isBlocked ? "worker reported issue blocked" : "worker reported issue complete";
@@ -140,13 +140,13 @@ async function registerPrForMonitoring(
   if (!pullNumberMatch) return;
   const pullNumber = parseInt(pullNumberMatch[1], 10);
   const now = new Date().toISOString();
-  const upsertPr = ctx.deps.attemptStore.upsertPr;
-  if (!upsertPr) {
+  const attemptStore = ctx.deps.attemptStore;
+  if (!attemptStore.upsertPr) {
     ctx.deps.logger.warn({ issue_identifier: issue.identifier }, "PR registration skipped: upsertPr not available");
     return;
   }
   try {
-    await upsertPr({
+    await attemptStore.upsertPr({
       issueId: issue.id,
       owner,
       repo: repoName,
