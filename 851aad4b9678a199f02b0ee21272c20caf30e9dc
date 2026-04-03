@@ -1,0 +1,38 @@
+docs-site/AGENTS.md
+  b2a61d34f4a8b7aa 1-50
+docs-site/CLAUDE.md
+  b2a61d34f4a8b7aa 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "851aad4b9678a199f02b0ee21272c20caf30e9dc",
+  "prompts": {
+    "10d6a8868b818632": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d5424-ec99-7ee0-b050-4f32daf2b73a",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "b2a61d34f4a8b7aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d53de-1a67-7cc0-b760-a0a057f1b4f0",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 100,
+      "overriden_lines": 0
+    }
+  }
+}
