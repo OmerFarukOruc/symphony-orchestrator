@@ -5,12 +5,19 @@
  * persists data in a SQLite database for queryable, durable storage.
  */
 
-import { desc, eq, isNotNull, sql } from "drizzle-orm";
+import { asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { lookupModelPrice } from "../../core/model-pricing.js";
-import type { AttemptEvent, AttemptRecord, RisolutoLogger } from "../../core/types.js";
+import type { AttemptCheckpointRecord, AttemptEvent, AttemptRecord, RisolutoLogger } from "../../core/types.js";
 import type { RisolutoDatabase } from "./database.js";
-import { attemptEvents, attempts } from "./schema.js";
-import { rowToAttemptRecord, attemptRecordToRow, rowToAttemptEvent, attemptEventToRow } from "./mappers.js";
+import { attemptCheckpoints, attemptEvents, attempts } from "./schema.js";
+import {
+  rowToAttemptRecord,
+  attemptRecordToRow,
+  rowToAttemptEvent,
+  attemptEventToRow,
+  toAttemptCheckpointRecord,
+  fromAttemptCheckpointRecord,
+} from "./mappers.js";
 
 export class SqliteAttemptStore {
   private readonly db: RisolutoDatabase;
@@ -103,6 +110,43 @@ export class SqliteAttemptStore {
       if (!price) return total;
       return total + (row.inputTokens * price.inputUsd + row.outputTokens * price.outputUsd) / 1_000_000;
     }, 0);
+  }
+
+  async appendCheckpoint(checkpoint: Omit<AttemptCheckpointRecord, "checkpointId" | "ordinal">): Promise<void> {
+    // Get current max ordinal and last checkpoint row in a single query.
+    const lastRow = this.getDb()
+      .select()
+      .from(attemptCheckpoints)
+      .where(eq(attemptCheckpoints.attemptId, checkpoint.attemptId))
+      .orderBy(desc(attemptCheckpoints.ordinal))
+      .limit(1)
+      .get();
+
+    const nextOrdinal = lastRow ? lastRow.ordinal + 1 : 1;
+
+    // Deduplication: skip write when last checkpoint is identical on key fields.
+    if (lastRow) {
+      const sameStatus = lastRow.status === checkpoint.status;
+      const sameThread = (lastRow.threadId ?? null) === checkpoint.threadId;
+      const sameTurn = (lastRow.turnId ?? null) === checkpoint.turnId;
+      const sameTurnCount = lastRow.turnCount === checkpoint.turnCount;
+      if (sameStatus && sameThread && sameTurn && sameTurnCount) {
+        return;
+      }
+    }
+
+    const row = fromAttemptCheckpointRecord({ ...checkpoint, ordinal: nextOrdinal });
+    this.getDb().insert(attemptCheckpoints).values(row).run();
+  }
+
+  async listCheckpoints(attemptId: string): Promise<AttemptCheckpointRecord[]> {
+    const rows = this.getDb()
+      .select()
+      .from(attemptCheckpoints)
+      .where(eq(attemptCheckpoints.attemptId, attemptId))
+      .orderBy(asc(attemptCheckpoints.ordinal))
+      .all();
+    return rows.map(toAttemptCheckpointRecord);
   }
 
   sumArchivedTokens(): { inputTokens: number; outputTokens: number; totalTokens: number } {

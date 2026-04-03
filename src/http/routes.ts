@@ -21,6 +21,7 @@ import type { AuditLogger } from "../audit/logger.js";
 import { registerAuditApi } from "../audit/api.js";
 import type { TrackerPort } from "../tracker/port.js";
 
+import type { AttemptStorePort } from "../core/attempt-store-port.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
@@ -46,7 +47,7 @@ interface HttpRouteDeps {
   configOverlayStore?: ConfigOverlayPort;
   secretsStore?: SecretsStore;
   eventBus?: TypedEventBus<RisolutoEventMap>;
-
+  attemptStore?: Pick<AttemptStorePort, "listCheckpoints">;
   templateStore?: PromptTemplateStore;
   auditLogger?: AuditLogger;
   frontendDir?: string;
@@ -241,6 +242,26 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/attempts/:attempt_id")
     .get((req, res) => {
       handleAttemptDetail(deps.orchestrator, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/attempts/:attempt_id/checkpoints")
+    .get(async (req, res) => {
+      if (!deps.attemptStore) {
+        res.status(503).json({ error: { code: "not_configured", message: "attempt store not available" } });
+        return;
+      }
+      const attemptId = String(req.params.attempt_id);
+      const attempt = deps.orchestrator.getAttemptDetail(attemptId);
+      if (!attempt) {
+        res.status(404).json({ error: { code: "not_found", message: "Unknown attempt identifier" } });
+        return;
+      }
+      const checkpoints = await deps.attemptStore.listCheckpoints(attemptId);
+      res.json({ checkpoints });
     })
     .all((_req, res) => {
       methodNotAllowed(res);

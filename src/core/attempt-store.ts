@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { sortAttemptsDesc, sumAttemptDurationSeconds } from "./attempt-store-port.js";
 import { computeAttemptCostUsd } from "./model-pricing.js";
-import type { AttemptEvent, AttemptRecord, RisolutoLogger } from "./types.js";
+import type { AttemptCheckpointRecord, AttemptEvent, AttemptRecord, RisolutoLogger } from "./types.js";
 import { toErrorString } from "../utils/type-guards.js";
 
 export class AttemptStore {
@@ -152,6 +152,14 @@ export class AttemptStore {
     this.eventsByAttempt.set(event.attemptId, [...existing, event]);
     const serialized = `${JSON.stringify(event)}\n`;
     await appendFile(this.eventsPath(event.attemptId), serialized, "utf8");
+  }
+
+  async appendCheckpoint(_checkpoint: Omit<AttemptCheckpointRecord, "checkpointId" | "ordinal">): Promise<void> {
+    throw new TypeError("appendCheckpoint not supported in JSONL mode");
+  }
+
+  async listCheckpoints(_attemptId: string): Promise<AttemptCheckpointRecord[]> {
+    throw new TypeError("listCheckpoints not supported in JSONL mode");
   }
 
   private async persistAttempt(attempt: AttemptRecord): Promise<void> {

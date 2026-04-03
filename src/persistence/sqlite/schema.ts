@@ -163,6 +163,36 @@ export const configHistory = sqliteTable("config_history", {
  * delivery_id is the unique Linear-Delivery header UUID.
  * status tracks the lifecycle: received → processing → applied | ignored | retry | dead_letter
  */
+/**
+ * Per-attempt checkpoint history — append-only, ordered by `ordinal`.
+ *
+ * Checkpoints are written at key lifecycle boundaries:
+ * - `attempt_created` — when the attempt row is first persisted.
+ * - `cursor_advanced` — when the thread or turn cursor advances.
+ * - `status_transition` — when the attempt status changes.
+ * - `terminal_completion` — when the attempt reaches a terminal state.
+ * - `pr_merged` — when the associated PR is merged.
+ *
+ * `event_cursor` is a loose integer high-water mark into `attempt_events.id`
+ * at the time of the write — not a FK constraint.
+ */
+export const attemptCheckpoints = sqliteTable("attempt_checkpoints", {
+  checkpointId: integer("checkpoint_id").primaryKey({ autoIncrement: true }),
+  attemptId: text("attempt_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  trigger: text("trigger").notNull(),
+  eventCursor: integer("event_cursor"),
+  status: text("status").notNull(),
+  threadId: text("thread_id"),
+  turnId: text("turn_id"),
+  turnCount: integer("turn_count").notNull().default(0),
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  totalTokens: integer("total_tokens"),
+  metadata: text("metadata"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const webhookInbox = sqliteTable("webhook_inbox", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   deliveryId: text("delivery_id").notNull().unique(),

@@ -6,7 +6,7 @@
  * depend on this interface rather than a concrete implementation.
  */
 
-import type { AttemptEvent, AttemptRecord } from "./types.js";
+import type { AttemptCheckpointRecord, AttemptEvent, AttemptRecord } from "./types.js";
 
 export interface AttemptStorePort {
   start(): Promise<void>;
@@ -20,6 +20,8 @@ export interface AttemptStorePort {
   sumArchivedSeconds(): number;
   sumCostUsd(): number;
   sumArchivedTokens(): { inputTokens: number; outputTokens: number; totalTokens: number };
+  appendCheckpoint(checkpoint: Omit<AttemptCheckpointRecord, "checkpointId" | "ordinal">): Promise<void>;
+  listCheckpoints(attemptId: string): Promise<AttemptCheckpointRecord[]>;
 }
 
 /** Sort attempts newest-first by `startedAt`, then `attemptNumber` desc, then `attemptId` desc. */

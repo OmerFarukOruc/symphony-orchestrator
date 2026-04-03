@@ -8,6 +8,7 @@ import { withWorkspaceLifecycleLock } from "../workspace/lifecycle-lock.js";
 import { isActiveState, isTodoState, normalizeStateKey } from "../state/policy.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type {
+  CheckpointTrigger,
   Issue,
   ModelSelection,
   RecentEvent,
@@ -98,7 +99,7 @@ export async function launchAvailableWorkers(
     launchWorker: (
       issue: Issue,
       attempt: number | null,
-      options?: { claimHeld?: boolean; previousThreadId?: string | null },
+      options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
     ) => Promise<void>;
   },
   candidateIssues?: Issue[],
@@ -208,6 +209,38 @@ function buildRunningEntry(
   };
 }
 
+/**
+ * Write a checkpoint for the given attempt entry.
+ * All errors are swallowed — checkpoint failures must never block orchestrator flow.
+ */
+async function writeCheckpoint(ctx: LaunchContext, entry: RunningEntry, trigger: CheckpointTrigger): Promise<void> {
+  try {
+    await ctx.deps.attemptStore.appendCheckpoint({
+      attemptId: entry.runId,
+      trigger,
+      eventCursor: null,
+      // RunningEntry.status includes "stopping" which is not a valid AttemptRecord
+      // status — map it to "running" since the attempt is still in-flight.
+      status: entry.status === "stopping" ? "running" : entry.status,
+      threadId: entry.sessionId,
+      turnId: null,
+      turnCount: 0,
+      tokenUsage: entry.tokenUsage,
+      metadata: null,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    ctx.deps.logger.warn(
+      {
+        attempt_id: entry.runId,
+        trigger,
+        error: toErrorString(error),
+      },
+      "checkpoint write failed (non-fatal)",
+    );
+  }
+}
+
 async function persistInitialAttempt(
   ctx: LaunchContext,
   entry: RunningEntry,
@@ -237,6 +270,7 @@ async function persistInitialAttempt(
     errorMessage: null,
     tokenUsage: null,
   });
+  await writeCheckpoint(ctx, entry, "attempt_created");
 }
 
 function emitLaunchNotifications(
@@ -321,6 +355,8 @@ function buildOnEventHandler(
       });
       if (event.usage) {
         await ctx.deps.attemptStore.updateAttempt(entry.runId, { tokenUsage: entry.tokenUsage });
+        // Write a cursor_advanced checkpoint whenever a usage event signals turn progress.
+        await writeCheckpoint(ctx, entry, "cursor_advanced");
       }
     });
   };
@@ -330,7 +366,7 @@ export async function launchWorker(
   ctx: LaunchContext,
   issue: Issue,
   attempt: number | null,
-  options?: { claimHeld?: boolean; previousThreadId?: string | null },
+  options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
 ): Promise<void> {
   if (!options?.claimHeld) {
     ctx.claimIssue(issue.id);
@@ -373,10 +409,18 @@ export async function launchWorker(
       signal: entry.abortController.signal,
       onEvent: buildOnEventHandler(ctx, entry),
       previousThreadId: options?.previousThreadId ?? null,
+      previousPrFeedback: options?.previousPrFeedback ?? null,
       onSteerReady: (steerFn) => {
         entry.steerTurn = steerFn;
       },
     });
-    entry.promise = ctx.handleWorkerPromise(promise, issue, workspace, entry, attempt);
+    const workerPromise = ctx.handleWorkerPromise(promise, issue, workspace, entry, attempt);
+    // Write a terminal_completion checkpoint once the worker promise settles,
+    // regardless of outcome. Errors are swallowed — this must not block cleanup.
+    entry.promise = workerPromise.finally(() => {
+      writeCheckpoint(ctx, entry, "terminal_completion").catch(() => {
+        /* intentionally ignored */
+      });
+    });
   });
 }

@@ -145,7 +145,95 @@ const CREATE_TABLES_SQL = `
     version    INTEGER PRIMARY KEY,
     applied_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS attempt_checkpoints (
+    checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    attempt_id    TEXT NOT NULL,
+    ordinal       INTEGER NOT NULL,
+    trigger       TEXT NOT NULL,
+    event_cursor  INTEGER,
+    status        TEXT NOT NULL,
+    thread_id     TEXT,
+    turn_id       TEXT,
+    turn_count    INTEGER NOT NULL DEFAULT 0,
+    input_tokens  INTEGER,
+    output_tokens INTEGER,
+    total_tokens  INTEGER,
+    metadata      TEXT,
+    created_at    TEXT NOT NULL,
+    UNIQUE(attempt_id, ordinal)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_attempt_checkpoints_attempt_id ON attempt_checkpoints(attempt_id);
 `;
+
+type SqliteDb = InstanceType<typeof BetterSqlite3>;
+
+/** Idempotent: bump schema_version to `version` if not already at or past it. */
+function bumpSchemaVersion(sqlite: SqliteDb, version: number): void {
+  sqlite
+    .prepare("INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)")
+    .run(version, new Date().toISOString());
+}
+
+/** Check whether a specific schema version row exists. */
+function hasSchemaVersion(sqlite: SqliteDb, version: number): boolean {
+  const row = sqlite.prepare("SELECT version FROM schema_version WHERE version = ?").get(version) as
+    | { version: number }
+    | undefined;
+  return row !== undefined;
+}
+
+/**
+ * v4 migration: add `summary` column to `attempts` table.
+ * Fresh installs already have the column from CREATE_TABLES_SQL.
+ * Existing databases need ALTER TABLE; try/catch suppresses the duplicate-column error.
+ */
+function applyV4Migration(sqlite: SqliteDb): void {
+  if (hasSchemaVersion(sqlite, 4)) return;
+  try {
+    sqlite.exec("ALTER TABLE attempts ADD COLUMN summary TEXT");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("duplicate column name: summary")) throw err;
+  }
+  bumpSchemaVersion(sqlite, 4);
+}
+
+/**
+ * v5 migration: add `attempt_checkpoints` table.
+ * Fresh installs already have the table from CREATE_TABLES_SQL.
+ * Existing databases need the table created; try/catch suppresses "already exists".
+ */
+function applyV5Migration(sqlite: SqliteDb): void {
+  if (hasSchemaVersion(sqlite, 5)) return;
+  try {
+    sqlite.exec(`
+      CREATE TABLE attempt_checkpoints (
+        checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        attempt_id    TEXT NOT NULL,
+        ordinal       INTEGER NOT NULL,
+        trigger       TEXT NOT NULL,
+        event_cursor  INTEGER,
+        status        TEXT NOT NULL,
+        thread_id     TEXT,
+        turn_id       TEXT,
+        turn_count    INTEGER NOT NULL DEFAULT 0,
+        input_tokens  INTEGER,
+        output_tokens INTEGER,
+        total_tokens  INTEGER,
+        metadata      TEXT,
+        created_at    TEXT NOT NULL,
+        UNIQUE(attempt_id, ordinal)
+      )
+    `);
+    sqlite.exec("CREATE INDEX idx_attempt_checkpoints_attempt_id ON attempt_checkpoints(attempt_id)");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("already exists")) throw err;
+  }
+  bumpSchemaVersion(sqlite, 5);
+}
 
 /**
  * Opens (or creates) a SQLite database at the given path,
@@ -164,39 +252,16 @@ export function openDatabase(dbPath: string): RisolutoDatabase {
 
   sqlite.exec(CREATE_TABLES_SQL);
 
-  // Seed schema version if not present (v2 = Phase 1 config tables).
+  // Seed schema version if not present (v3 = Phase 1 config tables).
   const versionRow = sqlite.prepare("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1").get() as
     | { version: number }
     | undefined;
   if (!versionRow || versionRow.version < 3) {
-    sqlite
-      .prepare("INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)")
-      .run(3, new Date().toISOString());
+    bumpSchemaVersion(sqlite, 3);
   }
 
-  // v4 migration: add `summary` column to `attempts` table.
-  // Fresh installs already have the column from CREATE_TABLES_SQL above.
-  // Existing databases need an ALTER TABLE. SQLite does not support
-  // `IF NOT EXISTS` on ALTER TABLE — use try/catch to suppress the
-  // "already has a column named summary" error on re-runs.
-  const v4Row = sqlite.prepare("SELECT version FROM schema_version WHERE version = 4").get() as
-    | { version: number }
-    | undefined;
-  if (!v4Row) {
-    try {
-      sqlite.exec("ALTER TABLE attempts ADD COLUMN summary TEXT");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      // SQLite reports "duplicate column name: summary" when the column already
-      // exists (e.g. fresh-install DB that got the column from CREATE_TABLES_SQL).
-      if (!msg.includes("duplicate column name: summary")) {
-        throw err;
-      }
-    }
-    sqlite
-      .prepare("INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)")
-      .run(4, new Date().toISOString());
-  }
+  applyV4Migration(sqlite);
+  applyV5Migration(sqlite);
 
   return drizzle(sqlite, { schema });
 }
