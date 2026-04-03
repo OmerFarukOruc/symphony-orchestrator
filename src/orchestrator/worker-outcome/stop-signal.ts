@@ -37,6 +37,7 @@ export async function handleStopSignal(
 
   if (pullRequestUrl) {
     ctx.deps.logger.info({ issue_identifier: issue.identifier, url: pullRequestUrl }, "pull request created");
+    registerPrForMonitoring(ctx, entry, issue, pullRequestUrl);
   }
 
   const isBlocked = stopSignal === "blocked";
@@ -112,5 +113,33 @@ async function runWriteback(
       "completion writeback failed (non-fatal)",
     );
     return null;
+  });
+}
+
+/**
+ * Register a newly-created PR in the attempt store for monitor polling.
+ * All failures are silently skipped — PR registration is best-effort.
+ */
+function registerPrForMonitoring(ctx: OutcomeContext, entry: RunningEntry, issue: Issue, pullRequestUrl: string): void {
+  const repoMatch = entry.repoMatch;
+  if (!repoMatch) return;
+  const owner = repoMatch.githubOwner ?? null;
+  const repoName = repoMatch.githubRepo ?? null;
+  if (!owner || !repoName) return;
+  const pullNumberMatch = /\/pull\/(\d+)$/.exec(pullRequestUrl);
+  const pullNumber = pullNumberMatch ? parseInt(pullNumberMatch[1], 10) : null;
+  if (pullNumber === null) return;
+  const now = new Date().toISOString();
+  ctx.deps.attemptStore.upsertPr?.({
+    issueId: issue.id,
+    owner,
+    repo: `${owner}/${repoName}`,
+    pullNumber,
+    url: pullRequestUrl,
+    attemptId: entry.runId,
+    status: "open",
+    createdAt: now,
+    updatedAt: now,
+    branchName: issue.branchName ?? "",
   });
 }

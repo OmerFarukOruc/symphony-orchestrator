@@ -165,6 +165,23 @@ const CREATE_TABLES_SQL = `
   );
 
   CREATE INDEX IF NOT EXISTS idx_attempt_checkpoints_attempt_id ON attempt_checkpoints(attempt_id);
+
+  CREATE TABLE IF NOT EXISTS pull_requests (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    issue_id         TEXT NOT NULL,
+    url              TEXT NOT NULL UNIQUE,
+    number           INTEGER NOT NULL,
+    repo             TEXT NOT NULL,
+    branch_name      TEXT NOT NULL,
+    status           TEXT NOT NULL DEFAULT 'open',
+    merged_at        TEXT,
+    merge_commit_sha TEXT,
+    created_at       TEXT NOT NULL,
+    updated_at       TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_pull_requests_status ON pull_requests(status);
+  CREATE INDEX IF NOT EXISTS idx_pull_requests_issue_id ON pull_requests(issue_id);
 `;
 
 type SqliteDb = InstanceType<typeof BetterSqlite3>;

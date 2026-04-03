@@ -19,7 +19,10 @@ export interface OutcomeContext {
       updateIssueState: (issueId: string, stateId: string) => Promise<void>;
       createComment: (issueId: string, body: string) => Promise<void>;
     };
-    attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
+    attemptStore: {
+      updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void>;
+      upsertPr?: (pr: import("../core/attempt-store-port.js").UpsertPrInput) => Promise<void>;
+    };
     workspaceManager: { removeWorkspace: (identifier: string, issue?: Issue) => Promise<void> };
     gitManager?: GitPostRunPort;
     eventBus?: TypedEventBus<RisolutoEventMap>;

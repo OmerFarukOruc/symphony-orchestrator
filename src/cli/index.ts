@@ -21,6 +21,7 @@ import type { WebhookRegistrar } from "../webhook/registrar.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { createServices } from "./services.js";
 import { wireNotifications, watchConfigChanges } from "./notifications.js";
+import type { PrMonitorService } from "../git/pr-monitor.js";
 
 const SETUP_MODE_ERRORS = new Set(["missing_tracker_api_key", "missing_tracker_project_slug"]);
 
@@ -77,10 +78,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger, { persistence });
   wireNotifications(services.notificationManager, configStore, logger);
 
-  const { orchestrator, httpServer, eventBus } = services;
+  const { orchestrator, httpServer, eventBus, prMonitor } = services;
   await cleanupTransientWorkspaceDirs(config.workspace.root);
   if (!needsSetup) {
     await orchestrator.start();
+    prMonitor.start();
   }
   await httpServer.start(port);
 
@@ -96,6 +98,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     persistence: services.persistence,
     webhookHealthTracker: services.webhookHealthTracker,
     webhookRegistrar: services.webhookRegistrar,
+    prMonitor,
     logger,
   });
   logger.info({ dataDir, port, archiveDir }, "service started");
@@ -261,6 +264,7 @@ function buildShutdown({
   persistence,
   webhookHealthTracker,
   webhookRegistrar,
+  prMonitor,
   logger,
 }: {
   httpServer: HttpServer;
@@ -271,12 +275,14 @@ function buildShutdown({
   persistence: PersistenceRuntime;
   webhookHealthTracker?: WebhookHealthTracker;
   webhookRegistrar?: WebhookRegistrar;
+  prMonitor?: PrMonitorService;
   logger: ReturnType<typeof createLogger>;
 }): () => Promise<void> {
   let shuttingDown = false;
   return async () => {
     if (shuttingDown) return;
     shuttingDown = true;
+    prMonitor?.stop();
     await httpServer.stop().catch((error: unknown) => {
       logger.warn({ error: toErrorString(error) }, "http server shutdown failed");
     });

@@ -6,7 +6,15 @@
  * depend on this interface rather than a concrete implementation.
  */
 
-import type { AttemptCheckpointRecord, AttemptEvent, AttemptRecord } from "./types.js";
+import type { AttemptCheckpointRecord, AttemptEvent, AttemptRecord, PrRecord } from "./types.js";
+
+/** PR data used when upserting a PR for monitoring. */
+export interface UpsertPrInput extends Omit<PrRecord, "prId" | "mergedAt" | "mergeCommitSha"> {
+  branchName: string;
+}
+
+/** Extended PR record as returned by `getOpenPrs()`. */
+export type OpenPrRecord = PrRecord & { branchName: string };
 
 export interface AttemptStorePort {
   start(): Promise<void>;
@@ -22,6 +30,13 @@ export interface AttemptStorePort {
   sumArchivedTokens(): { inputTokens: number; outputTokens: number; totalTokens: number };
   appendCheckpoint(checkpoint: Omit<AttemptCheckpointRecord, "checkpointId" | "ordinal">): Promise<void>;
   listCheckpoints(attemptId: string): Promise<AttemptCheckpointRecord[]>;
+
+  /** Insert or update a PR row keyed by URL. */
+  upsertPr(pr: UpsertPrInput): Promise<void>;
+  /** Return all PRs with status = "open". */
+  getOpenPrs(): Promise<OpenPrRecord[]>;
+  /** Transition a PR to merged or closed. */
+  updatePrStatus(url: string, status: "merged" | "closed", mergedAt?: string, mergeCommitSha?: string): Promise<void>;
 }
 
 /** Sort attempts newest-first by `startedAt`, then `attemptNumber` desc, then `attemptId` desc. */

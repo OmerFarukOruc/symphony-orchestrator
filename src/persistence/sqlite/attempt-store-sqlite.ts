@@ -7,9 +7,16 @@
 
 import { asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { lookupModelPrice } from "../../core/model-pricing.js";
-import type { AttemptCheckpointRecord, AttemptEvent, AttemptRecord, RisolutoLogger } from "../../core/types.js";
+import type { OpenPrRecord, UpsertPrInput } from "../../core/attempt-store-port.js";
+import type {
+  AttemptCheckpointRecord,
+  AttemptEvent,
+  AttemptRecord,
+  PrRecord,
+  RisolutoLogger,
+} from "../../core/types.js";
 import type { RisolutoDatabase } from "./database.js";
-import { attemptCheckpoints, attemptEvents, attempts } from "./schema.js";
+import { attemptCheckpoints, attemptEvents, attempts, pullRequests } from "./schema.js";
 import {
   rowToAttemptRecord,
   attemptRecordToRow,
@@ -165,7 +172,92 @@ export class SqliteAttemptStore {
     };
   }
 
+  async upsertPr(pr: UpsertPrInput): Promise<void> {
+    const now = new Date().toISOString();
+    this.getDb()
+      .insert(pullRequests)
+      .values({
+        issueId: pr.issueId,
+        url: pr.url,
+        number: pr.pullNumber,
+        repo: pr.repo,
+        branchName: pr.branchName,
+        status: pr.status,
+        mergedAt: null,
+        mergeCommitSha: null,
+        createdAt: pr.createdAt,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: pullRequests.url,
+        set: {
+          issueId: pr.issueId,
+          number: pr.pullNumber,
+          repo: pr.repo,
+          branchName: pr.branchName,
+          status: pr.status,
+          updatedAt: now,
+        },
+      })
+      .run();
+  }
+
+  async getOpenPrs(): Promise<OpenPrRecord[]> {
+    const rows = this.getDb().select().from(pullRequests).where(eq(pullRequests.status, "open")).all();
+    return rows.map((row) => rowToPrRecord(row));
+  }
+
+  async updatePrStatus(
+    url: string,
+    status: "merged" | "closed",
+    mergedAt?: string,
+    mergeCommitSha?: string,
+  ): Promise<void> {
+    const now = new Date().toISOString();
+    this.getDb()
+      .update(pullRequests)
+      .set({
+        status,
+        mergedAt: mergedAt ?? null,
+        mergeCommitSha: mergeCommitSha ?? null,
+        updatedAt: now,
+      })
+      .where(eq(pullRequests.url, url))
+      .run();
+  }
+
   private getDb(): RisolutoDatabase {
     return this.db;
   }
+}
+
+/** Map a pull_requests row to the domain OpenPrRecord type. */
+function rowToPrRecord(row: {
+  id: number;
+  issueId: string;
+  url: string;
+  number: number;
+  repo: string;
+  branchName: string;
+  status: string;
+  mergedAt: string | null;
+  mergeCommitSha: string | null;
+  createdAt: string;
+  updatedAt: string;
+}): OpenPrRecord {
+  const prRecord: PrRecord = {
+    prId: String(row.id),
+    attemptId: "",
+    issueId: row.issueId,
+    owner: "",
+    repo: row.repo,
+    pullNumber: row.number,
+    url: row.url,
+    status: row.status as PrRecord["status"],
+    mergedAt: row.mergedAt,
+    mergeCommitSha: row.mergeCommitSha,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+  return { ...prRecord, branchName: row.branchName };
 }

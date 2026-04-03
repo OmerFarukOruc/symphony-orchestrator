@@ -1,7 +1,12 @@
 import { appendFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { sortAttemptsDesc, sumAttemptDurationSeconds } from "./attempt-store-port.js";
+import {
+  sortAttemptsDesc,
+  sumAttemptDurationSeconds,
+  type OpenPrRecord,
+  type UpsertPrInput,
+} from "./attempt-store-port.js";
 import { computeAttemptCostUsd } from "./model-pricing.js";
 import type { AttemptCheckpointRecord, AttemptEvent, AttemptRecord, RisolutoLogger } from "./types.js";
 import { toErrorString } from "../utils/type-guards.js";
@@ -160,6 +165,23 @@ export class AttemptStore {
 
   async listCheckpoints(_attemptId: string): Promise<AttemptCheckpointRecord[]> {
     throw new TypeError("listCheckpoints not supported in JSONL mode");
+  }
+
+  async upsertPr(_pr: UpsertPrInput): Promise<void> {
+    throw new TypeError("upsertPr not supported in JSONL mode");
+  }
+
+  async getOpenPrs(): Promise<OpenPrRecord[]> {
+    throw new TypeError("getOpenPrs not supported in JSONL mode");
+  }
+
+  async updatePrStatus(
+    _url: string,
+    _status: "merged" | "closed",
+    _mergedAt?: string,
+    _mergeCommitSha?: string,
+  ): Promise<void> {
+    throw new TypeError("updatePrStatus not supported in JSONL mode");
   }
 
   private async persistAttempt(attempt: AttemptRecord): Promise<void> {

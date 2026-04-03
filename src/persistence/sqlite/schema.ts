@@ -193,6 +193,24 @@ export const attemptCheckpoints = sqliteTable("attempt_checkpoints", {
   createdAt: text("created_at").notNull(),
 });
 
+/**
+ * Durable store for GitHub pull requests associated with Risoluto attempts.
+ * Polled by `PrMonitorService` to detect merged / closed state changes.
+ */
+export const pullRequests = sqliteTable("pull_requests", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  issueId: text("issue_id").notNull(),
+  url: text("url").notNull().unique(),
+  number: integer("number").notNull(),
+  repo: text("repo").notNull(),
+  branchName: text("branch_name").notNull(),
+  status: text("status").notNull().default("open"), // "open" | "merged" | "closed"
+  mergedAt: text("merged_at"),
+  mergeCommitSha: text("merge_commit_sha"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const webhookInbox = sqliteTable("webhook_inbox", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   deliveryId: text("delivery_id").notNull().unique(),
