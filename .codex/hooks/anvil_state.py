@@ -9,6 +9,7 @@ from typing import Any
 
 
 PHASES = [
+    "preflight",
     "intake",
     "brainstorm",
     "plan",
