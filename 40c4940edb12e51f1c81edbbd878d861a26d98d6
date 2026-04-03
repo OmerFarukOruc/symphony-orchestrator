@@ -1,0 +1,62 @@
+src/orchestrator/git-post-run.ts
+  40c849ad80a0d5a1 1-3,6-77,79-145,152-153,161,163-170,172-173,181-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "40c4940edb12e51f1c81edbbd878d861a26d98d6",
+  "prompts": {
+    "40c849ad80a0d5a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0065a08e-0e13-41c0-9e05-c35791d17328",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 215,
+      "total_deletions": 142,
+      "accepted_lines": 342,
+      "overriden_lines": 2
+    },
+    "52b50571d24a5809": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d5019-2593-7072-b68f-ef8955d6a000",
+        "model": "gpt-5.4"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 1
+    },
+    "56d61f6b1ec38e43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0028769-6980-4666-9737-e1b82b46bc39",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "67376f6f54fc4355": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d5061-af9d-74d1-851c-37f2f3ed053d",
+        "model": "gpt-5.4"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
