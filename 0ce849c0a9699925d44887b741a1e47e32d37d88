@@ -1,0 +1,76 @@
+src/persistence/sqlite/mappers.ts
+  40c849ad80a0d5a1 8-9,23-28,124-164
+src/orchestrator/worker-launcher.ts
+  40c849ad80a0d5a1 11,102,212-243,273,358-359,369,412,417-424
+tests/persistence/attempt-checkpoints.test.ts
+  40c849ad80a0d5a1 1-271
+src/http/routes.ts
+  40c849ad80a0d5a1 24,50,251-269
+src/persistence/sqlite/attempt-store-sqlite.ts
+  40c849ad80a0d5a1 8,10,12-19,115-151
+src/core/attempt-store-port.ts
+  40c849ad80a0d5a1 9,23-24
+src/core/attempt-store.ts
+  40c849ad80a0d5a1 6,157-164
+src/http/server.ts
+  40c849ad80a0d5a1 10,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "0ce849c0a9699925d44887b741a1e47e32d37d88",
+  "prompts": {
+    "40c849ad80a0d5a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0065a08e-0e13-41c0-9e05-c35791d17328",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 968,
+      "total_deletions": 141,
+      "accepted_lines": 944,
+      "overriden_lines": 0
+    },
+    "52b50571d24a5809": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d5019-2593-7072-b68f-ef8955d6a000",
+        "model": "gpt-5.4"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 1
+    },
+    "56d61f6b1ec38e43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0028769-6980-4666-9737-e1b82b46bc39",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "67376f6f54fc4355": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d5061-af9d-74d1-851c-37f2f3ed053d",
+        "model": "gpt-5.4"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
