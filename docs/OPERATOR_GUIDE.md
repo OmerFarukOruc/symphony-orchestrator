@@ -438,6 +438,117 @@ Notifications are best-effort. Delivery failures are logged but do not crash the
 
 ---
 
+## 🔄 PR/CI Automation Pipeline
+
+Risoluto ships a full PR lifecycle automation pipeline. This covers tracker write-back, agent-authored PR summaries, review feedback ingestion, auto-merge policy, and background PR monitoring.
+
+### Tracker Completion Comments
+
+On every agent run completion, Risoluto posts a structured comment to the source issue containing:
+
+- Completion status (success or failure), attempt number, duration, and token usage
+- PR URL when a pull request was opened
+- Failure reason and error code when the run did not complete
+
+Comments are fire-and-forget with a 3-retry backoff. Failures are logged but never crash the orchestrator.
+
+### Agent-Authored PR Summaries
+
+When `agent.prSummary.enabled` is `true` (default: `false`), Risoluto calls the configured OpenAI model after a successful PR creation to generate a structured summary and appends it to the PR body. The summary includes the issue title, key changes, and the attempt cost.
+
+### PR Review Feedback Ingestion
+
+When `agent.autoRetryOnReviewFeedback` is `true` (default: `false`), Risoluto reads PR review comments after a PR is created. If any review requests changes, the reviewer's comments are aggregated and injected into the retry prompt as `previousPrFeedback`. This is the feedback-ingestion path for the retry loop.
+
+### Auto-Merge Policy Engine
+
+When `agent.autoMerge.enabled` is `true` (default: `false`), Risoluto calls the GitHub GraphQL `enablePullRequestAutoMerge` mutation after a PR is created and all merge-policy checks pass. The policy engine evaluates:
+
+| Config key                          | Default | Description                                                         |
+| ----------------------------------- | ------- | ------------------------------------------------------------------- |
+| `agent.autoMerge.enabled`           | `false` | Enable auto-merge for agent-authored PRs                            |
+| `agent.autoMerge.allowedPaths`      | `[]`    | Glob patterns — PR must only change files matching these patterns   |
+| `agent.autoMerge.maxChangedFiles`   | `null`  | Reject if PR changes more than this many files (null = no limit)    |
+| `agent.autoMerge.maxDiffLines`      | `null`  | Reject if PR diff exceeds this many lines (null = no limit)         |
+| `agent.autoMerge.requireLabels`     | `[]`    | PR must have all of these labels                                    |
+| `agent.autoMerge.excludeLabels`     | `[]`    | PR must not have any of these labels                                |
+
+> [!WARNING]
+> Enabling auto-merge requires a GitHub token with `pull_requests: write` scope and the repository must have auto-merge enabled in GitHub settings.
+
+### PR Lifecycle Monitoring
+
+The `PrMonitorService` runs a background polling loop that checks every tracked open PR against GitHub. When a PR transitions to `merged` or `closed`:
+
+1. The store is updated with the new status, `mergedAt` timestamp, and `mergeCommitSha`.
+2. A typed SSE event is emitted (`pr.merged` or `pr.closed`) for dashboard fan-out.
+3. On merge, an `attempt_finished` (`pr_merged`) checkpoint is appended to the latest attempt's checkpoint history.
+4. The orchestrator is asked to refresh so in-memory state is reconciled.
+
+| Config key                  | Default  | Description                                      |
+| --------------------------- | -------- | ------------------------------------------------ |
+| `agent.prMonitorIntervalMs` | `60000`  | How often (ms) to poll open PRs against GitHub   |
+
+### New API Endpoints
+
+| Method | Endpoint                                     | Description                                           |
+| ------ | -------------------------------------------- | ----------------------------------------------------- |
+| `GET`  | `/api/v1/prs`                                | PR status overview — all tracked PRs with status, URL, branch, merge info |
+| `GET`  | `/api/v1/attempts/:attempt_id/checkpoints`   | Ordered checkpoint history for a specific attempt     |
+
+**`GET /api/v1/prs` response shape:**
+```json
+{
+  "prs": [
+    {
+      "issueId": "issue-abc",
+      "url": "https://github.com/owner/repo/pull/42",
+      "number": 42,
+      "repo": "owner/repo",
+      "branchName": "risoluto/eng-42",
+      "status": "merged",
+      "mergedAt": "2026-04-03T10:00:00Z",
+      "mergeCommitSha": "abc123",
+      "createdAt": "2026-04-02T09:00:00Z",
+      "updatedAt": "2026-04-03T10:00:00Z"
+    }
+  ]
+}
+```
+
+**`GET /api/v1/attempts/:attempt_id/checkpoints` response shape:**
+```json
+{
+  "checkpoints": [
+    {
+      "checkpointId": 1,
+      "attemptId": "attempt-xyz",
+      "ordinal": 0,
+      "trigger": "pr_merged",
+      "eventCursor": null,
+      "status": "completed",
+      "threadId": null,
+      "turnId": null,
+      "turnCount": 4,
+      "tokenUsage": { "inputTokens": 1000, "outputTokens": 500, "totalTokens": 1500 },
+      "metadata": { "prUrl": "...", "mergeCommitSha": "abc123" },
+      "createdAt": "2026-04-03T10:00:00Z"
+    }
+  ]
+}
+```
+
+### Troubleshooting
+
+| Problem                                        | Cause / Fix                                                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Auto-merge not triggering                      | Token needs `pull_requests: write` scope; repository must have auto-merge enabled in GitHub settings    |
+| Review feedback not ingested                   | `agent.autoRetryOnReviewFeedback` must be `true`; token needs `pull_requests: read`                     |
+| PR monitor not detecting merges                | Check GitHub token validity; verify `prMonitorIntervalMs` config; check logs for `pr monitor` component |
+| `/api/v1/prs` returns 503                      | SQLite attempt store not configured — only available when running with the SQLite persistence backend    |
+
+---
+
 ## 🔗 Linear Webhook Integration
 
 Risoluto supports real-time issue updates via Linear webhooks. In production, the recommended model is **webhook-first with slow reconciliation polling**:
@@ -1048,6 +1159,8 @@ When `stages` is empty, Risoluto derives stages from the tracker's workflow conf
 | `GET`    | `/api/v1/:issue_identifier`            | Issue detail, recent events, and archived attempts                                    |
 | `GET`    | `/api/v1/:issue_identifier/attempts`   | Archived attempts plus current live attempt id                                        |
 | `GET`    | `/api/v1/attempts/:attempt_id`         | Archived per-attempt event timeline                                                   |
+| `GET`    | `/api/v1/attempts/:attempt_id/checkpoints` | Ordered checkpoint history for a specific attempt                                 |
+| `GET`    | `/api/v1/prs`                          | PR status overview — all tracked PRs with status, URL, branch, and merge info         |
 | `POST`   | `/api/v1/:issue_identifier/model`      | Save per-issue model override                                                         |
 | `POST`   | `/api/v1/:issue_identifier/transition` | Transition an issue to another workflow state                                         |
 | `GET`    | `/api/v1/config`                       | Effective merged operator config                                                      |

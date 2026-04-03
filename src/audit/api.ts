@@ -15,6 +15,7 @@
 
 import type { Express } from "express";
 
+import { methodNotAllowed } from "../http/route-helpers.js";
 import type { AuditLogger } from "./logger.js";
 
 function clampInt(value: number, min: number, max: number, fallback: number): number {
@@ -48,6 +49,6 @@ export function registerAuditApi(app: Express, deps: AuditApiDeps): void {
       response.json({ entries, total });
     })
     .all((_request, response) => {
-      response.status(405).json({ error: { code: "method_not_allowed", message: "Method not allowed" } });
+      methodNotAllowed(response);
     });
 }

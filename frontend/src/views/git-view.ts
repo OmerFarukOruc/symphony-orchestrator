@@ -2,10 +2,22 @@ import { api } from "../api";
 import { createEmptyState } from "../components/empty-state";
 import { createPageHeader } from "../components/page-header";
 import { router } from "../router";
-import type { ActiveBranchView, GitCommitView, GitContextResponse, GitPullView, GitRepoView } from "../types";
+import type {
+  ActiveBranchView,
+  GitCommitView,
+  GitContextResponse,
+  GitPullView,
+  GitRepoView,
+  TrackedPrRecord,
+} from "../types";
 import { el } from "../utils/dom";
 import { registerPageCleanup } from "../utils/page";
-import { formatRelativeTime } from "../utils/format";
+import { formatRelativeTime, formatTimestamp } from "../utils/format";
+
+interface GitPageData {
+  context: GitContextResponse;
+  trackedPrs: TrackedPrRecord[];
+}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -26,6 +38,21 @@ function badge(text: string, variant: string): HTMLSpanElement {
 
 function statusDot(status: string): HTMLSpanElement {
   return el("span", `git-status-dot git-status-dot--${status}`);
+}
+
+function sortTrackedPrs(prs: TrackedPrRecord[]): TrackedPrRecord[] {
+  return [...prs].sort((left, right) => {
+    const leftTime = Date.parse(left.mergedAt ?? left.updatedAt);
+    const rightTime = Date.parse(right.mergedAt ?? right.updatedAt);
+    return rightTime - leftTime;
+  });
+}
+
+function countTrackedPrs(prs: TrackedPrRecord[], status?: TrackedPrRecord["status"]): number {
+  if (!status) {
+    return prs.length;
+  }
+  return prs.filter((pr) => pr.status === status).length;
 }
 
 /* ------------------------------------------------------------------ */
@@ -110,7 +137,9 @@ function buildBranchRow(branch: ActiveBranchView): HTMLElement {
   row.append(el("span", "git-branch-status", branch.status));
 
   if (branch.pullRequestUrl) {
-    row.append(externalLink(branch.pullRequestUrl, "PR ↗", "git-branch-pr-link"));
+    const prLink = externalLink(branch.pullRequestUrl, "PR ↗", "git-branch-pr-link");
+    prLink.setAttribute("aria-label", `Open pull request for ${branch.branchName}`);
+    row.append(prLink);
   }
 
   return row;
@@ -142,6 +171,37 @@ function buildCommitRow(commit: GitCommitView): HTMLElement {
     el("span", "git-commit-author", commit.author),
     el("span", "git-commit-time", formatRelativeTime(commit.date)),
   );
+  return row;
+}
+
+function buildTrackedPrRow(pr: TrackedPrRecord): HTMLElement {
+  const row = el("article", "git-tracked-pr-row");
+  const top = el("div", "git-tracked-pr-top");
+  const identity = el("div", "git-tracked-pr-identity");
+  identity.append(
+    externalLink(pr.url, `#${pr.number}`, "git-pr-number text-mono"),
+    badge(pr.status, pr.status),
+    el("span", "git-tracked-pr-repo", pr.repo),
+  );
+  top.append(identity, el("span", "git-pr-time", formatRelativeTime(pr.mergedAt ?? pr.updatedAt)));
+
+  const meta = el("div", "git-tracked-pr-meta");
+  meta.append(
+    badge(pr.branchName, "branch"),
+    el("span", "git-tracked-pr-issue text-mono", `issue ${pr.issueId}`),
+    el(
+      "span",
+      "git-tracked-pr-updated",
+      pr.status === "merged" && pr.mergedAt
+        ? `Merged ${formatTimestamp(pr.mergedAt)}`
+        : `Updated ${formatTimestamp(pr.updatedAt)}`,
+    ),
+  );
+  if (pr.mergeCommitSha) {
+    meta.append(el("code", "git-tracked-pr-sha", pr.mergeCommitSha.slice(0, 12)));
+  }
+
+  row.append(top, meta);
   return row;
 }
 
@@ -219,6 +279,37 @@ function buildPrSection(pulls: GitPullView[]): HTMLElement | null {
   return section;
 }
 
+function buildTrackedPrSection(trackedPrs: TrackedPrRecord[]): HTMLElement {
+  const section = el("section", "git-section");
+  section.append(sectionHeader("Tracked PR lifecycle", trackedPrs.length));
+
+  const summary = el("div", "git-tracked-pr-summary");
+  summary.append(
+    badge(`${countTrackedPrs(trackedPrs, "open")} open`, "open"),
+    badge(`${countTrackedPrs(trackedPrs, "merged")} merged`, "merged"),
+    badge(`${countTrackedPrs(trackedPrs, "closed")} closed`, "closed"),
+  );
+  section.append(summary);
+
+  if (trackedPrs.length === 0) {
+    section.append(
+      el(
+        "p",
+        "git-empty-hint",
+        "No persisted pull-request lifecycle records yet. Records appear here after Risoluto opens or monitors agent PRs.",
+      ),
+    );
+    return section;
+  }
+
+  const list = el("div", "git-tracked-pr-list");
+  for (const pr of sortTrackedPrs(trackedPrs)) {
+    list.append(buildTrackedPrRow(pr));
+  }
+  section.append(list);
+  return section;
+}
+
 function buildCommitRail(data: GitContextResponse): HTMLElement[] {
   const sections: HTMLElement[] = [];
   for (const repo of data.repos) {
@@ -284,12 +375,14 @@ function countOpenPrs(data: GitContextResponse): number {
   return total;
 }
 
-function buildSummaryStrip(data: GitContextResponse): HTMLElement {
+function buildSummaryStrip(data: GitContextResponse, trackedPrs: TrackedPrRecord[]): HTMLElement {
   const strip = el("div", "summary-strip git-summary-strip");
   const items: Array<{ label: string; value: string }> = [
     { label: "Repos", value: String(data.repos.length) },
     { label: "Active branches", value: String(data.activeBranches.length) },
     { label: "Open PRs", value: String(countOpenPrs(data)) },
+    { label: "Tracked PRs", value: String(trackedPrs.length) },
+    { label: "Merged", value: String(countTrackedPrs(trackedPrs, "merged")) },
     { label: "GitHub", value: data.githubAvailable ? "Connected" : "No token" },
   ];
   for (const { label, value } of items) {
@@ -300,15 +393,15 @@ function buildSummaryStrip(data: GitContextResponse): HTMLElement {
   return strip;
 }
 
-function renderGitContext(page: HTMLElement, data: GitContextResponse): void {
+function renderGitContext(page: HTMLElement, data: GitPageData): void {
   const body = page.querySelector(".git-page-body");
   if (!body) return;
   body.replaceChildren();
 
   // Always show the summary strip, even if there are repos
-  body.append(buildSummaryStrip(data));
+  body.append(buildSummaryStrip(data.context, data.trackedPrs));
 
-  if (data.repos.length === 0) {
+  if (data.context.repos.length === 0 && data.context.activeBranches.length === 0 && data.trackedPrs.length === 0) {
     body.append(
       createEmptyState(
         "No repositories linked yet",
@@ -326,15 +419,18 @@ function renderGitContext(page: HTMLElement, data: GitContextResponse): void {
   const mainPanel = el("div", "git-main-panel");
   const activityRail = el("div", "git-activity-rail");
 
-  mainPanel.append(buildRepoSection(data), buildBranchSection(data));
+  if (data.context.repos.length > 0) {
+    mainPanel.append(buildRepoSection(data.context));
+  }
+  mainPanel.append(buildBranchSection(data.context), buildTrackedPrSection(data.trackedPrs));
 
-  const prSection = buildPrSection(collectPulls(data));
+  const prSection = buildPrSection(collectPulls(data.context));
   if (prSection) mainPanel.append(prSection);
 
-  for (const commitSection of buildCommitRail(data)) {
+  for (const commitSection of buildCommitRail(data.context)) {
     activityRail.append(commitSection);
   }
-  for (const railItem of buildQuickLinksRail(data.githubAvailable)) {
+  for (const railItem of buildQuickLinksRail(data.context.githubAvailable)) {
     activityRail.append(railItem);
   }
 
@@ -357,11 +453,18 @@ export function createGitPage(): HTMLElement {
 
   page.append(header, body);
 
-  let currentData: GitContextResponse | null = null;
+  let currentData: GitPageData | null = null;
 
   async function fetchAndRender(): Promise<void> {
     try {
-      currentData = await api.getGitContext();
+      const [context, trackedPrs] = await Promise.all([
+        api.getGitContext(),
+        api
+          .getTrackedPrs()
+          .then((response) => response.prs)
+          .catch(() => [] as TrackedPrRecord[]),
+      ]);
+      currentData = { context, trackedPrs };
       renderGitContext(page, currentData);
     } catch {
       body.replaceChildren();

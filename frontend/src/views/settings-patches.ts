@@ -18,23 +18,28 @@ export interface SectionPatchPlan {
   errors: SettingsDraftIssue[];
 }
 
-function parseFieldDraft(
-  field: SettingsFieldDefinition,
-  value: string,
-): { ok: true; value: unknown } | { ok: false; message: string } {
+type ParseResult = { ok: true; value: unknown } | { ok: false; message: string };
+
+function parseNumberDraft(field: SettingsFieldDefinition, value: string): ParseResult {
+  const trimmed = value.trim();
+  if (!trimmed) return { ok: false, message: `${field.label} must be a valid number.` };
+  const numeric = Number(trimmed);
+  if (!Number.isFinite(numeric)) return { ok: false, message: `${field.label} must be a valid number.` };
+  if (field.validation?.min !== undefined && numeric < field.validation.min) {
+    return { ok: false, message: `${field.label} must be at least ${field.validation.min}.` };
+  }
+  if (field.validation?.max !== undefined && numeric > field.validation.max) {
+    return { ok: false, message: `${field.label} must be at most ${field.validation.max}.` };
+  }
+  return { ok: true, value: numeric };
+}
+
+function parseFieldDraft(field: SettingsFieldDefinition, value: string): ParseResult {
   if (field.kind === "boolean") {
     return { ok: true, value: value === "true" };
   }
   if (field.kind === "number") {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return { ok: false, message: `${field.label} must be a valid number.` };
-    }
-    const numeric = Number(trimmed);
-    if (!Number.isFinite(numeric)) {
-      return { ok: false, message: `${field.label} must be a valid number.` };
-    }
-    return { ok: true, value: numeric };
+    return parseNumberDraft(field, value);
   }
   if (field.kind === "list") {
     return {
@@ -47,6 +52,9 @@ function parseFieldDraft(
   }
   if (field.kind === "json") {
     return { ok: true, value: parsePathValue(value) };
+  }
+  if (field.validation?.required && !value.trim()) {
+    return { ok: false, message: `${field.label} is required.` };
   }
   return { ok: true, value: field.kind === "readonly" ? value : parsePathValue(value) };
 }

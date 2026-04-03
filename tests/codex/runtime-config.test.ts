@@ -23,7 +23,10 @@ function baseConfig(overrides?: Partial<CodexConfig>): CodexConfig {
   return {
     command: "codex app-server",
     model: "gpt-5.4",
+    personality: "You are Risoluto Codex.",
     reasoningEffort: "high",
+    selfReview: false,
+    structuredOutput: false,
     approvalPolicy: "never",
     threadSandbox: "danger-full-access",
     turnSandboxPolicy: { type: "dangerFullAccess" },

@@ -719,6 +719,25 @@ Capabilities shipped that go beyond the spec requirements:
 | Issue planning skill      |  10   | Goal→issues decomposition via `PlanningSkill`, planning API, Linear issue creation                                        |
 | Visual verification skill |  11   | Merged `agent-browser` + dogfood QA skill for headed Chromium dashboard testing, pixel diffing, and annotated screenshots |
 
+### PR/CI Automation Bundle (2026-04-03)
+
+| Extension                          | Issue | Description                                                                                                                                                          |
+| ---------------------------------- | :---: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tracker completion comments        | #275  | `writeCompletionWriteback()` — posts structured success/failure comment to Linear/GitHub on every agent run end; includes tokens, duration, attempt #, PR URL, and error details |
+| Agent-authored PR summaries        | #335  | `PrSummaryGenerator` — calls the configured model after PR creation to generate a structured summary appended to the PR body                                          |
+| PR review feedback ingestion       | #333  | `PrReviewIngester` — reads PR review comments when `agent.autoRetryOnReviewFeedback: true`; aggregated review text injected into retry prompt as `previousPrFeedback` |
+| Auto-merge policy engine           | #258  | `evaluateMergePolicy()` — evaluates path, file count, diff line, label inclusion/exclusion rules; calls `enablePullRequestAutoMerge` GraphQL mutation when all checks pass |
+| PR lifecycle monitoring            | #307  | `PrMonitorService` — background polling loop (default 60s); detects merge/close transitions, updates store, emits `pr.merged`/`pr.closed` SSE events, writes `pr_merged` checkpoint, triggers orchestrator reconciliation |
+| Attempt checkpoint history API     | #375  | `appendCheckpoint`/`listCheckpoints` on `AttemptStorePort`; `GET /api/v1/attempts/:attempt_id/checkpoints` endpoint; OpenAPI-documented with `checkpointsListResponseSchema` |
+| PR status overview API             | —     | `GET /api/v1/prs` — returns all tracked PRs with status, URL, branch name, and merge info; backed by `getAllPrs()` on the SQLite store                                |
+
+**Known gaps (as of 2026-04-03):**
+
+| Gap                            | Notes                                                                                                                               |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Webhook-based PR monitoring    | Not implemented — monitor uses REST polling only. Webhook delivery for PR events is deferred.                                       |
+| Rewind/fork from checkpoint    | `#375` scope was read-only checkpoint history. Resume-from-checkpoint (rewind/fork) is deferred to a follow-up issue.               |
+
 ---
 
 ## 📝 How to Keep This Document Current

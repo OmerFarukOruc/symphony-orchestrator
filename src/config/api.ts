@@ -1,17 +1,9 @@
-import type { Express, Response } from "express";
+import type { Express } from "express";
 
 import type { ConfigOverlayPort } from "./overlay.js";
 import { mergeOverlayMaps, normalizePathExpression, setOverlayPathValue } from "./overlay-helpers.js";
+import { methodNotAllowed } from "../http/route-helpers.js";
 import { isRecord } from "../utils/type-guards.js";
-
-function methodNotAllowed(response: Response): void {
-  response.status(405).json({
-    error: {
-      code: "method_not_allowed",
-      message: "Method Not Allowed",
-    },
-  });
-}
 
 const DEFAULT_CONFIG_SCHEMA = {
   overlay_put_body_examples: [
@@ -128,7 +120,7 @@ function registerOverlayRoute(app: Express, deps: ConfigApiDeps): void {
       });
     })
     .all((_request, response) => {
-      methodNotAllowed(response);
+      methodNotAllowed(response, ["GET", "PUT"]);
     });
 }
 
@@ -190,6 +182,6 @@ function registerOverlayDeleteRoute(app: Express, deps: ConfigApiDeps): void {
       response.status(204).send();
     })
     .all((_request, response) => {
-      methodNotAllowed(response);
+      methodNotAllowed(response, ["PATCH", "DELETE"]);
     });
 }

@@ -46,6 +46,7 @@ function staticSections(): SettingsSectionDefinition[] {
           hint: "The project Risoluto dispatches from.",
           actionLabel: "Browse",
           actionKind: "browse-linear-projects",
+          validation: { required: true },
         },
         {
           path: "tracker.active_states",
@@ -88,6 +89,7 @@ function staticSections(): SettingsSectionDefinition[] {
           groupDescription: "Set the model Risoluto should use unless an issue override is saved.",
           hint: "Model agents use unless overridden per-issue.",
           defaultValue: "gpt-5.4",
+          validation: { required: true },
         },
         {
           path: "codex.reasoning_effort",
@@ -438,6 +440,7 @@ function staticSections(): SettingsSectionDefinition[] {
           groupDescription: "Control how much work Risoluto runs in parallel.",
           hint: "How many issues to work on at once.",
           defaultValue: "10",
+          validation: { min: 1, max: 50 },
         },
         {
           path: "agent.max_turns",
@@ -447,6 +450,7 @@ function staticSections(): SettingsSectionDefinition[] {
           group: "Throughput",
           hint: "Agent stops after this many conversation turns.",
           defaultValue: "20",
+          validation: { min: 1, max: 500 },
         },
         {
           path: "agent.success_state",
@@ -466,6 +470,7 @@ function staticSections(): SettingsSectionDefinition[] {
           hint: "Stop the agent after this much idle time. 0 disables the timeout.",
           unit: "ms",
           defaultValue: "1200000",
+          validation: { min: 0 },
         },
         {
           path: "agent.max_continuation_attempts",
@@ -475,6 +480,7 @@ function staticSections(): SettingsSectionDefinition[] {
           group: "Continuation",
           hint: "How many extra turns to allow when no stop signal arrives.",
           defaultValue: "5",
+          validation: { min: 0, max: 50 },
         },
         {
           path: "agent.max_concurrent_agents_by_state",
@@ -495,6 +501,7 @@ function staticSections(): SettingsSectionDefinition[] {
           hint: "Longest wait between retries.",
           unit: "ms",
           defaultValue: "300000",
+          validation: { min: 0 },
         },
         {
           path: "system.selectedTemplateId",
@@ -543,6 +550,7 @@ function staticSections(): SettingsSectionDefinition[] {
           hint: "Wait time for agent process to start.",
           unit: "ms",
           defaultValue: "30000",
+          validation: { min: 0 },
         },
         {
           path: "codex.read_timeout_ms",
@@ -552,6 +560,7 @@ function staticSections(): SettingsSectionDefinition[] {
           hint: "Max wait for each response chunk.",
           unit: "ms",
           defaultValue: "5000",
+          validation: { min: 0 },
         },
         {
           path: "codex.turn_timeout_ms",
@@ -561,6 +570,7 @@ function staticSections(): SettingsSectionDefinition[] {
           hint: "Max time for a single agent turn.",
           unit: "ms",
           defaultValue: "3600000",
+          validation: { min: 0 },
         },
         {
           path: "codex.drain_timeout_ms",
@@ -570,6 +580,7 @@ function staticSections(): SettingsSectionDefinition[] {
           hint: "Wait time for graceful shutdown.",
           unit: "ms",
           defaultValue: "2000",
+          validation: { min: 0 },
         },
         {
           path: "codex.stall_timeout_ms",

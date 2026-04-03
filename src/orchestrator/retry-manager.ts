@@ -39,7 +39,7 @@ export function queueRetry(
   attempt: number,
   delayMs: number,
   error: string | null,
-  metadata?: { threadId?: string | null },
+  metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
 ): void {
   if (!ctx.isRunning()) {
     return;
@@ -63,6 +63,7 @@ export function queueRetry(
     error,
     timer,
     threadId: metadata?.threadId ?? null,
+    previousPrFeedback: metadata?.previousPrFeedback ?? null,
     issue,
     workspaceKey: ctx.detailViews.get(issue.identifier)?.workspaceKey ?? null,
   });
@@ -104,12 +105,12 @@ export async function revalidateAndLaunchRetry(
       attempt: number,
       delayMs: number,
       error: string | null,
-      metadata?: { threadId?: string | null },
+      metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
     ) => void;
     launchWorker: (
       issue: Issue,
       attempt: number,
-      options?: { claimHeld?: boolean; previousThreadId?: string | null },
+      options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
     ) => Promise<void>;
   },
   issueId: string,
@@ -143,10 +144,17 @@ export async function revalidateAndLaunchRetry(
     return;
   }
   if (ctx.runningEntries.size >= config.agent.maxConcurrentAgents || !ctx.hasAvailableStateSlot(latestIssue)) {
-    ctx.queueRetry(latestIssue, attempt, 1_000, retryEntry.error, { threadId: retryEntry.threadId });
+    ctx.queueRetry(latestIssue, attempt, 1_000, retryEntry.error, {
+      threadId: retryEntry.threadId,
+      previousPrFeedback: retryEntry.previousPrFeedback,
+    });
     return;
   }
 
   ctx.retryEntries.delete(issueId);
-  await ctx.launchWorker(latestIssue, attempt, { claimHeld: true, previousThreadId: retryEntry.threadId });
+  await ctx.launchWorker(latestIssue, attempt, {
+    claimHeld: true,
+    previousThreadId: retryEntry.threadId,
+    previousPrFeedback: retryEntry.previousPrFeedback,
+  });
 }

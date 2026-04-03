@@ -26,7 +26,11 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
   };
 }
 
-function makeRetryEntry(issueId: string, timer: NodeJS.Timeout | null = null): RetryRuntimeEntry {
+function makeRetryEntry(
+  issueId: string,
+  timer: NodeJS.Timeout | null = null,
+  overrides: Partial<RetryRuntimeEntry> = {},
+): RetryRuntimeEntry {
   return {
     issueId,
     identifier: "MT-1",
@@ -36,6 +40,9 @@ function makeRetryEntry(issueId: string, timer: NodeJS.Timeout | null = null): R
     timer,
     issue: makeIssue({ id: issueId }),
     workspaceKey: null,
+    threadId: null,
+    previousPrFeedback: null,
+    ...overrides,
   };
 }
 
@@ -133,7 +140,7 @@ describe("queueRetry", () => {
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_retry" }));
   });
 
-  it("stores threadId in retry entry when metadata is provided", () => {
+  it("stores retry metadata in the retry entry when metadata is provided", () => {
     vi.useFakeTimers();
     const retryEntries = new Map<string, RetryRuntimeEntry>();
     const ctx = {
@@ -146,10 +153,14 @@ describe("queueRetry", () => {
       handleRetryLaunchFailure: vi.fn().mockResolvedValue(undefined),
     };
 
-    queueRetry(ctx, makeIssue(), 2, 5000, "turn_failed", { threadId: "prev-thread-1" });
+    queueRetry(ctx, makeIssue(), 2, 5000, "turn_failed", {
+      threadId: "prev-thread-1",
+      previousPrFeedback: "Please address CI feedback",
+    });
 
     const entry = retryEntries.get("issue-1")!;
     expect(entry.threadId).toBe("prev-thread-1");
+    expect(entry.previousPrFeedback).toBe("Please address CI feedback");
   });
 
   it("stores null threadId when no metadata is provided", () => {
@@ -285,38 +296,61 @@ describe("revalidateAndLaunchRetry", () => {
     expect(ctx.deps.tracker.fetchIssueStatesByIds).not.toHaveBeenCalled();
   });
 
-  it("clears entry and does not launch when issue not found", async () => {
+  it("clears stale retry state without cleanup or relaunch when the issue fetch returns nothing", async () => {
     const ctx = makeCtx({ latestIssue: null });
     await revalidateAndLaunchRetry(ctx, "issue-1", 1);
-    expect(ctx.clearRetryEntry).toHaveBeenCalledWith("issue-1");
-    expect(ctx.launchWorker).not.toHaveBeenCalled();
-  });
 
-  it("clears entry and removes workspace when issue is in terminal state", async () => {
-    const ctx = makeCtx({ latestIssue: makeIssue({ state: "Done" }) });
-    await revalidateAndLaunchRetry(ctx, "issue-1", 1);
-    expect(ctx.clearRetryEntry).toHaveBeenCalledWith("issue-1");
-    expect(ctx.deps.workspaceManager.removeWorkspace).toHaveBeenCalledWith(
-      "MT-1",
-      expect.objectContaining({ identifier: "MT-1", state: "Done" }),
-    );
-    expect(ctx.launchWorker).not.toHaveBeenCalled();
-  });
-
-  it("clears entry without removing workspace when issue is not active (non-terminal)", async () => {
-    const ctx = makeCtx({ latestIssue: makeIssue({ state: "Backlog" }) });
-    await revalidateAndLaunchRetry(ctx, "issue-1", 1);
     expect(ctx.clearRetryEntry).toHaveBeenCalledWith("issue-1");
     expect(ctx.deps.workspaceManager.removeWorkspace).not.toHaveBeenCalled();
+    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.launchWorker).not.toHaveBeenCalled();
+    expect(ctx.deps.logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("clears retry state and removes the workspace once the issue becomes terminal", async () => {
+    const latestIssue = makeIssue({ state: "Done", identifier: "MT-9", title: "Terminal issue" });
+    const ctx = makeCtx({ latestIssue });
+
+    await revalidateAndLaunchRetry(ctx, "issue-1", 1);
+
+    expect(ctx.clearRetryEntry).toHaveBeenCalledWith("issue-1");
+    expect(ctx.deps.workspaceManager.removeWorkspace).toHaveBeenCalledWith("MT-9", latestIssue);
+    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.launchWorker).not.toHaveBeenCalled();
+    expect(ctx.deps.logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("clears retry state and skips cleanup when the issue is inactive but not terminal", async () => {
+    const ctx = makeCtx({ latestIssue: makeIssue({ state: "Backlog" }) });
+
+    await revalidateAndLaunchRetry(ctx, "issue-1", 1);
+
+    expect(ctx.clearRetryEntry).toHaveBeenCalledWith("issue-1");
+    expect(ctx.deps.workspaceManager.removeWorkspace).not.toHaveBeenCalled();
+    expect(ctx.queueRetry).not.toHaveBeenCalled();
     expect(ctx.launchWorker).not.toHaveBeenCalled();
   });
 
-  it("re-queues at 1s when at max capacity", async () => {
-    const ctx = makeCtx({ runningCount: 5, latestIssue: makeIssue() });
-    // max is 5, running is 5 — at capacity
-    await revalidateAndLaunchRetry(ctx, "issue-1", 1);
-    const [, , delayMs] = ctx.queueRetry.mock.calls[0] as [unknown, unknown, number, unknown];
-    expect(delayMs).toBe(1000);
+  it("re-queues with a 1s delay and preserves retry metadata when capacity is saturated", async () => {
+    const latestIssue = makeIssue({ id: "issue-1", identifier: "MT-7", title: "Refetched issue" });
+    const ctx = makeCtx({ runningCount: 5, latestIssue });
+    ctx.retryEntries.set(
+      "issue-1",
+      makeRetryEntry("issue-1", null, {
+        error: "worker_busy",
+        threadId: "thread-123",
+        previousPrFeedback: "Address requested changes",
+      }),
+    );
+
+    await revalidateAndLaunchRetry(ctx, "issue-1", 2);
+
+    expect(ctx.queueRetry).toHaveBeenCalledWith(latestIssue, 2, 1000, "worker_busy", {
+      threadId: "thread-123",
+      previousPrFeedback: "Address requested changes",
+    });
+    expect(ctx.retryEntries.get("issue-1")?.issue).toBe(latestIssue);
+    expect(ctx.clearRetryEntry).not.toHaveBeenCalled();
     expect(ctx.launchWorker).not.toHaveBeenCalled();
   });
 
@@ -328,12 +362,27 @@ describe("revalidateAndLaunchRetry", () => {
     expect(ctx.launchWorker).not.toHaveBeenCalled();
   });
 
-  it("launches worker and deletes retry entry when ready", async () => {
-    const ctx = makeCtx();
-    await revalidateAndLaunchRetry(ctx, "issue-1", 1);
-    expect(ctx.launchWorker).toHaveBeenCalledWith(expect.any(Object), 1, { claimHeld: true });
+  it("launches the refetched issue and forwards retry metadata when capacity is available", async () => {
+    const latestIssue = makeIssue({ id: "issue-1", identifier: "MT-8", title: "Latest retry issue" });
+    const ctx = makeCtx({ latestIssue });
+    ctx.retryEntries.set(
+      "issue-1",
+      makeRetryEntry("issue-1", null, {
+        threadId: "thread-abc",
+        previousPrFeedback: "Keep the PR summary",
+      }),
+    );
+
+    await revalidateAndLaunchRetry(ctx, "issue-1", 3);
+
+    expect(ctx.launchWorker).toHaveBeenCalledWith(latestIssue, 3, {
+      claimHeld: true,
+      previousThreadId: "thread-abc",
+      previousPrFeedback: "Keep the PR summary",
+    });
     expect(ctx.retryEntries.has("issue-1")).toBe(false);
     expect(ctx.clearRetryEntry).not.toHaveBeenCalled(); // manual delete, not via clearRetryEntry
+    expect(ctx.queueRetry).not.toHaveBeenCalled();
   });
 
   it("passes issueId to fetchIssueStatesByIds", async () => {
@@ -375,26 +424,6 @@ describe("revalidateAndLaunchRetry", () => {
       expect.objectContaining({ error: "cleanup fail" }),
       "workspace cleanup failed during retry launch",
     );
-  });
-
-  it("passes threadId when re-queuing at capacity", async () => {
-    const ctx = makeCtx({ runningCount: 5, latestIssue: makeIssue() });
-    // Set threadId on the retry entry
-    ctx.retryEntries.get("issue-1")!.threadId = "prev-thread";
-    await revalidateAndLaunchRetry(ctx, "issue-1", 2);
-
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 1000, null, { threadId: "prev-thread" });
-  });
-
-  it("passes previousThreadId to launchWorker", async () => {
-    const ctx = makeCtx();
-    ctx.retryEntries.get("issue-1")!.threadId = "thread-abc";
-    await revalidateAndLaunchRetry(ctx, "issue-1", 3);
-
-    expect(ctx.launchWorker).toHaveBeenCalledWith(expect.any(Object), 3, {
-      claimHeld: true,
-      previousThreadId: "thread-abc",
-    });
   });
 
   it("picks up workspaceKey from detailViews when queuing retry", () => {

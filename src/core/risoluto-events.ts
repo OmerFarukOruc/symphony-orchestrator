@@ -45,6 +45,12 @@ export interface RisolutoEventMap {
   /** A system-level error not tied to a specific issue. */
   "system.error": { message: string; context?: Record<string, unknown> };
 
+  /** A tracked pull request was merged on GitHub. */
+  "pr.merged": { issueId: string; url: string; mergedAt: string; mergeCommitSha: string | null };
+
+  /** A tracked pull request was closed without merging. */
+  "pr.closed": { issueId: string; url: string };
+
   /** A config/secret/template mutation was logged. */
   "audit.mutation": {
     tableName: string;

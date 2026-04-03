@@ -1,0 +1,65 @@
+{
+  "slug": "config-validation-bundle",
+  "title": "Config & Validation Bundle",
+  "source_type": "roadmap_bundle_text",
+  "source_items": [
+    {
+      "type": "epic",
+      "issue": 354,
+      "url": "https://github.com/OmerFarukOruc/risoluto/issues/354"
+    },
+    {
+      "type": "issue",
+      "issue": 261,
+      "title": "LLM provider registry with capability flags and credential validation",
+      "tier": "T2",
+      "url": "https://github.com/OmerFarukOruc/risoluto/issues/261"
+    },
+    {
+      "type": "issue",
+      "issue": 263,
+      "title": "Config cache with invalidation for hot-reloadable settings",
+      "tier": "T2",
+      "url": "https://github.com/OmerFarukOruc/risoluto/issues/263"
+    },
+    {
+      "type": "issue",
+      "issue": 309,
+      "title": "Versioned config migration with forward-compatible schema chain",
+      "tier": "T3",
+      "url": "https://github.com/OmerFarukOruc/risoluto/issues/309"
+    },
+    {
+      "type": "issue",
+      "issue": 325,
+      "title": "Config key alias normalization (snake_case/camelCase compatibility)",
+      "tier": "T3",
+      "url": "https://github.com/OmerFarukOruc/risoluto/issues/325"
+    },
+    {
+      "type": "issue",
+      "issue": 330,
+      "title": "Strict WORKFLOW.md validation with unknown key rejection",
+      "tier": "T3",
+      "url": "https://github.com/OmerFarukOruc/risoluto/issues/330"
+    },
+    {
+      "type": "issue",
+      "issue": 336,
+      "title": "Tiered git identity resolution chain for Docker workers",
+      "tier": "T3",
+      "url": "https://github.com/OmerFarukOruc/risoluto/issues/336"
+    }
+  ],
+  "risk_level": "high",
+  "touches_ui": false,
+  "touches_backend": true,
+  "touches_docs": true,
+  "touches_tests": true,
+  "grouping_rationale": "All six issues harden the same raw-config -> validation -> cached service config -> runtime consumer boundary.",
+  "architectural_drift": [
+    "WORKFLOW.md is a legacy import source, not the primary runtime config path.",
+    "ConfigStore already caches resolved config snapshots; missing behavior is explicit invalidation and hot-reload coverage for long-lived consumers.",
+    "Provider support today is Codex-centric and custom-provider-based, so provider registry work must not assume a new dispatcher layer."
+  ]
+}

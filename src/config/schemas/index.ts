@@ -9,6 +9,7 @@ export { trackerConfigSchema } from "./tracker.js";
 export { webhookConfigSchema } from "./webhook.js";
 export { workspaceConfigSchema } from "./workspace.js";
 export { agentConfigSchema } from "./agent.js";
+export { mergePolicyConfigSchema } from "./pr-policy.js";
 export {
   codexAuthModeValues,
   codexConfigSchema,

@@ -11,6 +11,7 @@
 
 import type { Express } from "express";
 
+import { methodNotAllowed } from "../http/route-helpers.js";
 import type { PromptTemplateStore } from "./store.js";
 import { PromptTemplateValidationError } from "./template-policy.js";
 import { isRecord } from "../utils/type-guards.js";
@@ -72,7 +73,7 @@ export function registerTemplateApi(app: Express, deps: TemplateApiDeps): void {
       }
     })
     .all((_request, response) => {
-      response.status(405).json({ error: { code: "method_not_allowed", message: "Method not allowed" } });
+      methodNotAllowed(response, ["GET", "POST"]);
     });
 
   app
@@ -132,7 +133,7 @@ export function registerTemplateApi(app: Express, deps: TemplateApiDeps): void {
       response.json({ deleted: true });
     })
     .all((_request, response) => {
-      response.status(405).json({ error: { code: "method_not_allowed", message: "Method not allowed" } });
+      methodNotAllowed(response, ["GET", "PUT", "DELETE"]);
     });
 
   app
@@ -146,6 +147,6 @@ export function registerTemplateApi(app: Express, deps: TemplateApiDeps): void {
       response.json(result);
     })
     .all((_request, response) => {
-      response.status(405).json({ error: { code: "method_not_allowed", message: "Method not allowed" } });
+      methodNotAllowed(response, ["POST"]);
     });
 }

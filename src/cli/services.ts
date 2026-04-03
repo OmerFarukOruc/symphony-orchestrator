@@ -22,6 +22,7 @@ import type { SecretsStore } from "../secrets/store.js";
 import { createTracker } from "../tracker/factory.js";
 import { isRecord } from "../utils/type-guards.js";
 import { WorkspaceManager } from "../workspace/manager.js";
+import { PrMonitorService, type PrMonitorGhClient } from "../git/pr-monitor.js";
 
 /**
  * Evaluate webhook config and emit the appropriate startup log.
@@ -251,6 +252,17 @@ export async function createServices(
     logger: logger.child({ component: "orchestrator" }),
     resolveTemplate,
   });
+
+  const prMonitor = new PrMonitorService({
+    store: persistence.attemptStore,
+    ghClient: gitManager as unknown as PrMonitorGhClient,
+    tracker,
+    workspaceManager,
+    getConfig: () => configStore.getConfig().agent,
+    logger: logger.child({ component: "pr-monitor" }),
+    events: eventBus,
+    orchestrator,
+  });
   const httpServer = new HttpServer({
     orchestrator,
     logger: logger.child({ component: "http" }),
@@ -259,6 +271,7 @@ export async function createServices(
     configOverlayStore: overlayStore,
     secretsStore,
     eventBus,
+    attemptStore: persistence.attemptStore,
     archiveDir,
     templateStore,
     auditLogger,
@@ -284,5 +297,6 @@ export async function createServices(
     webhookHealthTracker: webhook.webhookHealthTracker,
     webhookRegistrar: webhook.webhookRegistrar,
     webhookInbox: webhook.webhookInbox,
+    prMonitor,
   };
 }

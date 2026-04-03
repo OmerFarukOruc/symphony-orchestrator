@@ -1,5 +1,6 @@
 import type {
   AbortIssueResponse,
+  AttemptCheckpointRecord,
   AttemptRecord,
   AttemptSummary,
   AuditRecord,
@@ -11,6 +12,7 @@ import type {
   RuntimeSnapshot,
   SetupStatus,
   SteerIssueResponse,
+  TrackedPrRecord,
   WorkspaceInventoryResponse,
 } from "./types";
 import { getReadAccessToken, getWriteAccessToken } from "./access-token";
@@ -102,6 +104,8 @@ export const api = {
     );
   },
   getAttemptDetail: (id: string) => get<AttemptRecord>(`/api/v1/attempts/${encodeURIComponent(id)}`),
+  getAttemptCheckpoints: (id: string) =>
+    get<{ checkpoints: AttemptCheckpointRecord[] }>(`/api/v1/attempts/${encodeURIComponent(id)}/checkpoints`),
   postRefresh: () => post<{ queued: boolean }>("/api/v1/refresh", {}),
   getConfig: () => get<Record<string, unknown>>("/api/v1/config"),
   getConfigOverlay: () => get<{ overlay: Record<string, unknown> }>("/api/v1/config/overlay"),
@@ -158,6 +162,15 @@ export const api = {
       ok: boolean;
       project: { id: string; name: string; slugId: string; url: string | null; teamKey: string | null };
     }>("/api/v1/setup/create-project", { name }),
+  getTrackedPrs: (params?: { status?: TrackedPrRecord["status"] }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) {
+      qs.set("status", params.status);
+    }
+    const query = qs.toString();
+    const path = query ? `/api/v1/prs?${query}` : "/api/v1/prs";
+    return get<{ prs: TrackedPrRecord[] }>(path);
+  },
   getGitContext: () => get<GitContextResponse>("/api/v1/git/context"),
   getWorkspaces: () => get<WorkspaceInventoryResponse>("/api/v1/workspaces"),
   removeWorkspace: (workspaceKey: string) => del(`/api/v1/workspaces/${encodeURIComponent(workspaceKey)}`),

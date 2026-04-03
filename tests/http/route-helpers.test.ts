@@ -9,10 +9,11 @@ import {
 } from "../../src/http/route-helpers.js";
 import type { RuntimeSnapshot } from "../../src/core/types.js";
 
-function makeResponse(): Response & { _status: number; _body: unknown } {
+function makeResponse(): Response & { _status: number; _body: unknown; _headers: Record<string, string> } {
   const res = {
     _status: 200,
     _body: null as unknown,
+    _headers: {} as Record<string, string>,
     status(code: number) {
       res._status = code;
       return res;
@@ -21,8 +22,12 @@ function makeResponse(): Response & { _status: number; _body: unknown } {
       res._body = data;
       return res;
     },
+    setHeader(name: string, value: string) {
+      res._headers[name.toLowerCase()] = value;
+      return res;
+    },
   };
-  return res as unknown as Response & { _status: number; _body: unknown };
+  return res as unknown as Response & { _status: number; _body: unknown; _headers: Record<string, string> };
 }
 
 describe("methodNotAllowed", () => {
@@ -31,6 +36,19 @@ describe("methodNotAllowed", () => {
     methodNotAllowed(res);
     expect(res._status).toBe(405);
     expect((res._body as Record<string, { code: string }>).error.code).toBe("method_not_allowed");
+  });
+
+  it("sets Allow header with specified methods", () => {
+    const res = makeResponse();
+    methodNotAllowed(res, ["POST", "DELETE"]);
+    expect(res._headers["allow"]).toBe("POST, DELETE");
+    expect(res._status).toBe(405);
+  });
+
+  it("defaults Allow header to GET", () => {
+    const res = makeResponse();
+    methodNotAllowed(res);
+    expect(res._headers["allow"]).toBe("GET");
   });
 });
 

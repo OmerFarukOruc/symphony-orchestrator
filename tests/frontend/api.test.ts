@@ -61,4 +61,29 @@ describe("frontend api", () => {
     });
     expect(globalThis.window.history.replaceState).toHaveBeenCalled();
   });
+
+  it("fetches attempt checkpoints from the dedicated endpoint", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(createJsonResponse({ checkpoints: [{ checkpointId: 1, attemptId: "att-1", ordinal: 1 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await api.getAttemptCheckpoints("att-1");
+
+    expect(response.checkpoints).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/attempts/att-1/checkpoints", {
+      headers: undefined,
+    });
+  });
+
+  it("applies PR status filters when requesting tracked PRs", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ prs: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.getTrackedPrs({ status: "merged" });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/prs?status=merged", {
+      headers: undefined,
+    });
+  });
 });

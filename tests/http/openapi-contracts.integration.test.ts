@@ -749,6 +749,8 @@ describe("OpenAPI Contract Tests", () => {
           "/api/v1/{issue_identifier}/transition",
           "/api/v1/{issue_identifier}/attempts",
           "/api/v1/attempts/{attempt_id}",
+          "/api/v1/attempts/{attempt_id}/checkpoints",
+          "/api/v1/prs",
           "/api/v1/workspaces",
           "/api/v1/workspaces/{workspace_key}",
           "/api/v1/git/context",

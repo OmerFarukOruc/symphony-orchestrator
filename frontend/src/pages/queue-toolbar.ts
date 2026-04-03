@@ -102,6 +102,7 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
     className: "mc-input",
     placeholder: "Search issues, titles, or IDs\u2026",
   });
+  search.setAttribute("aria-label", "Search issues");
   search.value = filters.search;
 
   const searchRow = document.createElement("div");

@@ -59,6 +59,7 @@ export function createLogsPage(id: string): HTMLElement {
     className: "mc-input logs-search",
     placeholder: "Search logs",
   });
+  search.setAttribute("aria-label", "Search logs");
 
   const autoToggle = makeIconBtn("scrollDown", "Follow live");
   const expandToggle = makeIconBtn("unfold", "Expand payloads");

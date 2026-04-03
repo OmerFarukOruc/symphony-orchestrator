@@ -1,4 +1,5 @@
 // Exempt: shared domain and runtime type definitions kept together for discoverability.
+import type { AgentConfig } from "../config/schemas/agent.js";
 import type { NotificationVerbosity } from "./notification-types.js";
 
 export interface WorkflowDefinition {
@@ -54,6 +55,8 @@ export interface RetryEntry {
   timer: NodeJS.Timeout | null;
   /** Thread ID from the previous attempt — enables thread/resume on retry. */
   threadId?: string | null;
+  /** Aggregated review feedback from the previous PR — injected into the agent prompt on retry. */
+  previousPrFeedback?: string | null;
 }
 
 export interface RecentEvent {
@@ -103,6 +106,8 @@ export interface AttemptRecord {
   tokenUsage: TokenUsageSnapshot | null;
   pullRequestUrl?: string | null;
   stopSignal?: "done" | "blocked" | null;
+  /** Agent-authored markdown summary of PR changes (3–8 bullets). Null when generation failed or skipped. */
+  summary?: string | null;
 }
 
 export interface AttemptEvent extends RecentEvent {
@@ -273,16 +278,85 @@ export interface WorkspaceConfig {
   branchPrefix: string;
 }
 
-export interface AgentConfig {
-  maxConcurrentAgents: number;
-  maxConcurrentAgentsByState: Record<string, number>;
-  maxTurns: number;
-  maxRetryBackoffMs: number;
-  maxContinuationAttempts: number;
-  /** Linear state name to transition to on successful agent completion. Null = no transition. */
-  successState: string | null;
-  /** Stall timeout in ms: if no agent event for this duration, kill and retry. */
-  stallTimeoutMs: number;
+// AgentConfig is defined co-located with its Zod schema; re-exported here for consumers.
+export type { AgentConfig };
+
+// ---------------------------------------------------------------------------
+// PR lifecycle and checkpoint types (PR/CI Automation Pipeline Bundle)
+// ---------------------------------------------------------------------------
+
+/**
+ * The event that triggered a checkpoint write.
+ * - `attempt_created` — first checkpoint: written when the attempt row is persisted.
+ * - `cursor_advanced` — thread or turn cursor advanced (new `attempt_events` rows).
+ * - `status_transition` — attempt status changed (e.g. running → completed).
+ * - `terminal_completion` — attempt reached a terminal state (completed/failed/cancelled).
+ * - `pr_merged` — PR was merged; archive-on-merge triggered.
+ */
+export type CheckpointTrigger =
+  | "attempt_created"
+  | "cursor_advanced"
+  | "status_transition"
+  | "terminal_completion"
+  | "pr_merged";
+
+/**
+ * A durable record of a GitHub pull request associated with an attempt.
+ * The `(owner, repo, pullNumber)` triple is the stable external key.
+ * `attemptId` is a loose reference — no FK constraint — because the
+ * attempt may be archived before the PR is closed.
+ */
+export interface PrRecord {
+  prId: string;
+  attemptId: string;
+  issueId: string;
+  owner: string;
+  repo: string;
+  pullNumber: number;
+  url: string;
+  status: "open" | "merged" | "closed";
+  mergedAt: string | null;
+  mergeCommitSha: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * A single entry in the per-attempt checkpoint history.
+ * Checkpoints are append-only and ordered by `ordinal` (ascending).
+ * `eventCursor` is a loose integer high-water mark referencing
+ * the highest `attempt_events.id` value at the time of the write.
+ */
+export interface AttemptCheckpointRecord {
+  checkpointId: number;
+  attemptId: string;
+  ordinal: number;
+  trigger: CheckpointTrigger;
+  eventCursor: number | null;
+  status: AttemptRecord["status"];
+  threadId: string | null;
+  turnId: string | null;
+  turnCount: number;
+  tokenUsage: TokenUsageSnapshot | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+/**
+ * Merge policy rules evaluated by `evaluateMergePolicy()` before
+ * requesting auto-merge via the GitHub API.
+ *
+ * This interface mirrors the shape of `mergePolicyConfigSchema` in
+ * `src/config/schemas/pr-policy.ts` and is kept here as the canonical
+ * domain type consumed by the policy engine (U5).
+ */
+export interface MergePolicy {
+  enabled: boolean;
+  allowedPaths: string[];
+  maxChangedFiles?: number | null;
+  maxDiffLines?: number | null;
+  requireLabels: string[];
+  excludeLabels: string[];
 }
 
 export interface SandboxSecurityConfig {

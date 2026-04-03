@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "slug": "config-validation-bundle-replay-01",
+  "phase": "audit",
+  "phase_status": "completed",
+  "active": false,
+  "review_round": 1,
+  "audit_round": 1,
+  "verify_cycle": 0,
+  "max_review_rounds": 3,
+  "max_audit_rounds": 2,
+  "max_verify_cycles": 3,
+  "pending_phases": [
+    "finalize",
+    "execute",
+    "verify",
+    "docs-tests-closeout",
+    "final-push"
+  ],
+  "pending_gates": [],
+  "gate_results": {},
+  "claim_counts": {
+    "total": 0,
+    "open": 0,
+    "passed": 0,
+    "failed": 0,
+    "accepted_risk": 0,
+    "not_applicable": 0
+  },
+  "open_claims": 0,
+  "failed_claims": 0,
+  "docs_status": "pending",
+  "tests_status": "pending",
+  "push_status": "not_started",
+  "integration_branch": null,
+  "last_failure_reason": null,
+  "next_required_action": "Dry run paused after audit per user request. Resume at finalize if implementation is approved.",
+  "dry_run": true,
+  "updated_at": "2026-04-03T11:04:23.206Z"
+}

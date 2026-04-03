@@ -181,6 +181,7 @@ codex login                       # ChatGPT/Codex subscription path
 - **📬 Slack notifications** — Lifecycle alerts with verbosity controls
 - **🤖 Codex integration** — `codex app-server` via JSON-RPC with dynamic tool handling
 - **🔌 MCP server** — `linear_graphql` dynamic tool for orchestrator introspection
+- **🔄 PR/CI automation** — Tracker completion comments (success + failure), agent-authored PR summaries, PR review feedback ingestion for retry, auto-merge policy engine, PR lifecycle monitoring (60s polling, merge detection, auto-archive), and attempt checkpoint history
 
 </td>
 <td width="50%" valign="top">
@@ -202,26 +203,14 @@ codex login                       # ChatGPT/Codex subscription path
 
 ## 🔮 Where It's Heading
 
-Risoluto's roadmap ([#9 — Feature Roadmap](https://github.com/OmerFarukOruc/risoluto/issues/9)) tracks **89 features** across 4 tiers, with research drawn from 10+ open-source orchestrators.
+Risoluto's active roadmap is tracked in [#354 — Symphony v2 Feature Roadmap (2026 Research Reset)](https://github.com/OmerFarukOruc/risoluto/issues/354). As of **2026-04-03**, the reconciled local roadmap shows **81 open feature issues across 11 currently named bundle categories**, excluding the active epic **#354** and the long-range vision issue **#62**. The older [#9 roadmap issue](https://github.com/OmerFarukOruc/risoluto/issues/9) is preserved as historical context only.
 
-### 🎯 Tier 1 — Shipping Next
+The latest roadmap reconciliation closed already-implemented issues [#258](https://github.com/OmerFarukOruc/risoluto/issues/258), [#275](https://github.com/OmerFarukOruc/risoluto/issues/275), [#276](https://github.com/OmerFarukOruc/risoluto/issues/276), [#278](https://github.com/OmerFarukOruc/risoluto/issues/278), [#299](https://github.com/OmerFarukOruc/risoluto/issues/299), [#303](https://github.com/OmerFarukOruc/risoluto/issues/303), [#307](https://github.com/OmerFarukOruc/risoluto/issues/307), [#318](https://github.com/OmerFarukOruc/risoluto/issues/318), [#326](https://github.com/OmerFarukOruc/risoluto/issues/326), [#333](https://github.com/OmerFarukOruc/risoluto/issues/333), [#335](https://github.com/OmerFarukOruc/risoluto/issues/335), and [#375](https://github.com/OmerFarukOruc/risoluto/issues/375), while stronger partials were promoted from `research` to `triage`.
 
-| Feature                                                                           | What it unlocks                                              |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| [**⚡ Reactions System**](https://github.com/OmerFarukOruc/risoluto/issues/10)    | CI/review/approval events trigger automatic agent actions    |
-| [**📱 Mobile Dashboard**](https://github.com/OmerFarukOruc/risoluto/issues/12)    | Fully responsive UI for monitoring on any device             |
-| [**🧹 Auto-squash Commits**](https://github.com/OmerFarukOruc/risoluto/issues/59) | Conventional commit formatting with execution metrics in PRs |
-
-### 🏗️ Tier 2 — High Impact
-
-Multi-agent role pipelines • Agent-agnostic runner (10+ agent backends) • Kanban board with drag-and-drop • Inline diff review with agent feedback loop • `npx` zero-install distribution • GitLab adapter • Chat integrations (Slack/Discord/Telegram) • and [43 more →](https://github.com/OmerFarukOruc/risoluto/issues/9)
-
-### 🔭 Tier 3–4 — Long Horizon
-
-Multi-host SSH workers • Autonomous issue decomposition • Self-healing pipelines • Cross-repo orchestration • Vector memory for agents • Continuous codebase improvement
+The newest still-open post-reset additions are [#366](https://github.com/OmerFarukOruc/risoluto/issues/366) fanout/merge execution, [#367](https://github.com/OmerFarukOruc/risoluto/issues/367) `risoluto doctor` (`triage`), [#368](https://github.com/OmerFarukOruc/risoluto/issues/368) dependency graph UI, [#369](https://github.com/OmerFarukOruc/risoluto/issues/369) per-step success criteria, and [#373](https://github.com/OmerFarukOruc/risoluto/issues/373) the Docker Sandboxes executor backend (`triage`).
 
 > [!NOTE]
-> For the full dependency graph, shipped extensions, and spec conformance details, see the [Roadmap](docs/ROADMAP_AND_STATUS.md) and [Conformance Audit](docs/CONFORMANCE_AUDIT.md).
+> For the reconciled roadmap summary, shipped bundle status, and the current v1.0 delivery slice, see the [Roadmap](docs/ROADMAP_AND_STATUS.md) and [Conformance Audit](docs/CONFORMANCE_AUDIT.md).
 
 ---
 
@@ -422,7 +411,7 @@ Runs 12 phases: preflight, start, setup wizard, issue creation, agent monitoring
 | -------------------------------------------------- | ---------------------------------------------------- |
 | **[Trust & Auth](docs/TRUST_AND_AUTH.md)**         | Trust boundaries, sandbox security, credential chain |
 | **[Conformance Audit](docs/CONFORMANCE_AUDIT.md)** | Per-requirement spec conformance tracking            |
-| **[Roadmap](docs/ROADMAP_AND_STATUS.md)**          | 89-issue feature roadmap across 4 tiers              |
+| **[Roadmap](docs/ROADMAP_AND_STATUS.md)**          | Reconciled roadmap summary aligned to epic #354      |
 
 ### 📖 Reference
 

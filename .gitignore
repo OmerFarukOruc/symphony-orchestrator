@@ -66,4 +66,14 @@ screenshots/
 # External tool state
 .omx/
 sast/
-.codex
+.codex/*
+!.codex/config.toml
+!.codex/hooks.json
+!.codex/agents/
+!.codex/agents/*.toml
+!.codex/hooks/
+!.codex/hooks/*.py
+.codex/hooks/__pycache__/
+
+# Claude Code / ui-test artifacts
+.context/

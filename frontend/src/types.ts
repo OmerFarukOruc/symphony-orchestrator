@@ -107,7 +107,36 @@ export interface AttemptRecord extends AttemptSummary {
   turnCount?: number;
   threadId?: string | null;
   turnId?: string | null;
+  summary?: string | null;
   events?: RecentEvent[];
+}
+
+export interface AttemptCheckpointRecord {
+  checkpointId: number;
+  attemptId: string;
+  ordinal: number;
+  trigger: string;
+  eventCursor: number | null;
+  status: string;
+  threadId: string | null;
+  turnId: string | null;
+  turnCount: number;
+  tokenUsage: { inputTokens: number; outputTokens: number; totalTokens: number } | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface TrackedPrRecord {
+  issueId: string;
+  url: string;
+  number: number;
+  repo: string;
+  branchName: string;
+  status: "open" | "merged" | "closed";
+  mergedAt: string | null;
+  mergeCommitSha: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RecentEvent {

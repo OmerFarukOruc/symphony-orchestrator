@@ -41,6 +41,7 @@ function createAttempt(overrides: Partial<AttemptRecord> = {}): AttemptRecord {
     tokenUsage: null,
     pullRequestUrl: null,
     stopSignal: null,
+    summary: null,
     ...overrides,
   };
 }

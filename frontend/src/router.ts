@@ -39,6 +39,7 @@ function compileRoute(path: string): Pick<InternalRoute, "pattern" | "keys"> {
 class Router {
   private readonly routes: InternalRoute[] = [];
   private guard: ((path: string) => string | null) | null = null;
+  private notFoundRender: ((params: Record<string, string>) => HTMLElement) | null = null;
 
   register(path: string, render: (params: Record<string, string>) => HTMLElement): void {
     const compiled = compileRoute(path);
@@ -47,6 +48,10 @@ class Router {
 
   setGuard(fn: (path: string) => string | null): void {
     this.guard = fn;
+  }
+
+  setNotFound(render: (params: Record<string, string>) => HTMLElement): void {
+    this.notFoundRender = render;
   }
 
   navigate(path: string): void {
@@ -85,8 +90,19 @@ class Router {
       globalThis.history.replaceState({}, "", redirect);
     }
     const pathname = redirect ?? globalThis.location.pathname;
-    const matched = this.match(pathname) ?? this.match("/");
-    if (!outlet || !matched) {
+    const matched = this.match(pathname);
+    if (!outlet) {
+      return;
+    }
+    if (!matched) {
+      const fallback =
+        this.notFoundRender ??
+        (() => {
+          const el = document.createElement("div");
+          el.append(Object.assign(document.createElement("p"), { textContent: "Page not found." }));
+          return el;
+        });
+      outlet.replaceChildren(decoratePageRoot(fallback({})));
       return;
     }
     const rendered = decoratePageRoot(matched.route.render(matched.params));

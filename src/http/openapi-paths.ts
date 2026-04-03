@@ -14,6 +14,7 @@ import {
   abortResponseSchema,
   attemptDetailResponseSchema,
   attemptsListResponseSchema,
+  checkpointsListResponseSchema,
   configOverlayGetResponseSchema,
   configOverlayPatchResponseSchema,
   configOverlayPutRequestSchema,
@@ -24,6 +25,7 @@ import {
   gitContextResponseSchema,
   issueDetailResponseSchema,
   modelUpdateResponseSchema,
+  prsListResponseSchema,
   refreshResponseSchema,
   runtimeResponseSchema,
   stateResponseSchema,
@@ -217,6 +219,46 @@ export function buildIssuePaths(): Record<string, PathItem> {
           "404": errorResponse("Attempt not found"),
         },
         security: protectedReadSecurity,
+      },
+    },
+    "/api/v1/attempts/{attempt_id}/checkpoints": {
+      get: {
+        tags: ["Attempts"],
+        summary: "Get checkpoint history for an attempt",
+        operationId: "listAttemptCheckpoints",
+        parameters: [pathParam("attempt_id")],
+        security: protectedReadSecurity,
+        responses: {
+          "200": jsonResponse("Checkpoint list", toSchema(checkpointsListResponseSchema)),
+          "404": errorResponse("Attempt not found"),
+          "503": errorResponse("Attempt store not configured"),
+        },
+      },
+    },
+  };
+}
+
+export function buildPrPaths(): Record<string, PathItem> {
+  return {
+    "/api/v1/prs": {
+      get: {
+        tags: ["Pull Requests"],
+        summary: "Get PR status overview",
+        operationId: "listPrs",
+        security: protectedReadSecurity,
+        parameters: [
+          {
+            name: "status",
+            in: "query",
+            required: false,
+            schema: { type: "string", enum: ["open", "merged", "closed"] },
+          },
+        ],
+        responses: {
+          "200": jsonResponse("PR status overview", toSchema(prsListResponseSchema)),
+          "400": errorResponse("Invalid status filter"),
+          "503": errorResponse("Attempt store not configured"),
+        },
       },
     },
   };

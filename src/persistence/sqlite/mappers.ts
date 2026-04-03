@@ -5,8 +5,8 @@
  * nested objects (e.g. `tokenUsage`) into individual columns.
  */
 
-import type { AttemptEvent, AttemptRecord, TokenUsageSnapshot } from "../../core/types.js";
-import type { attempts, attemptEvents } from "./schema.js";
+import type { AttemptCheckpointRecord, AttemptEvent, AttemptRecord, TokenUsageSnapshot } from "../../core/types.js";
+import type { attempts, attemptEvents, attemptCheckpoints } from "./schema.js";
 
 /** Row shape returned by Drizzle selects on the `attempts` table. */
 type AttemptRow = typeof attempts.$inferSelect;
@@ -19,6 +19,12 @@ type AttemptEventRow = typeof attemptEvents.$inferSelect;
 
 /** Row shape for Drizzle inserts on the `attempt_events` table. */
 type AttemptEventInsertRow = typeof attemptEvents.$inferInsert;
+
+/** Row shape returned by Drizzle selects on the `attempt_checkpoints` table. */
+type CheckpointRow = typeof attemptCheckpoints.$inferSelect;
+
+/** Row shape for Drizzle inserts on the `attempt_checkpoints` table. */
+export type CheckpointInsert = typeof attemptCheckpoints.$inferInsert;
 
 /** Convert a database row to an `AttemptRecord`. */
 export function rowToAttemptRecord(row: AttemptRow): AttemptRecord {
@@ -45,6 +51,7 @@ export function rowToAttemptRecord(row: AttemptRow): AttemptRecord {
     tokenUsage,
     pullRequestUrl: row.pullRequestUrl ?? null,
     stopSignal: (row.stopSignal as AttemptRecord["stopSignal"]) ?? null,
+    summary: row.summary ?? null,
   };
 }
 
@@ -74,6 +81,7 @@ export function attemptRecordToRow(record: AttemptRecord): AttemptInsertRow {
     totalTokens: record.tokenUsage?.totalTokens ?? null,
     pullRequestUrl: record.pullRequestUrl ?? null,
     stopSignal: record.stopSignal ?? null,
+    summary: record.summary ?? null,
   };
 }
 
@@ -110,6 +118,47 @@ export function attemptEventToRow(event: AttemptEvent): AttemptEventInsertRow {
     outputTokens: event.usage?.outputTokens ?? null,
     totalTokens: event.usage?.totalTokens ?? null,
     metadata: event.metadata ? JSON.stringify(event.metadata) : null,
+  };
+}
+
+/** Convert a database row to an `AttemptCheckpointRecord`. */
+export function toAttemptCheckpointRecord(row: CheckpointRow): AttemptCheckpointRecord {
+  const tokenUsage = buildTokenUsage(row.inputTokens, row.outputTokens, row.totalTokens);
+  const metadata = row.metadata ? (JSON.parse(row.metadata) as Record<string, unknown>) : null;
+  return {
+    checkpointId: row.checkpointId,
+    attemptId: row.attemptId,
+    ordinal: row.ordinal,
+    trigger: row.trigger as AttemptCheckpointRecord["trigger"],
+    eventCursor: row.eventCursor ?? null,
+    status: row.status as AttemptCheckpointRecord["status"],
+    threadId: row.threadId ?? null,
+    turnId: row.turnId ?? null,
+    turnCount: row.turnCount,
+    tokenUsage,
+    metadata,
+    createdAt: row.createdAt,
+  };
+}
+
+/** Convert an `AttemptCheckpointRecord` (minus auto-assigned fields) to a database insert row. */
+export function fromAttemptCheckpointRecord(
+  record: Omit<AttemptCheckpointRecord, "checkpointId" | "ordinal"> & { ordinal: number },
+): CheckpointInsert {
+  return {
+    attemptId: record.attemptId,
+    ordinal: record.ordinal,
+    trigger: record.trigger,
+    eventCursor: record.eventCursor ?? null,
+    status: record.status,
+    threadId: record.threadId ?? null,
+    turnId: record.turnId ?? null,
+    turnCount: record.turnCount,
+    inputTokens: record.tokenUsage?.inputTokens ?? null,
+    outputTokens: record.tokenUsage?.outputTokens ?? null,
+    totalTokens: record.tokenUsage?.totalTokens ?? null,
+    metadata: record.metadata ? JSON.stringify(record.metadata) : null,
+    createdAt: record.createdAt,
   };
 }
 

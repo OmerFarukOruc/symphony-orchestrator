@@ -7,6 +7,7 @@ import type { WebhookRequest } from "./webhook-types.js";
 import type { AuditLogger } from "../audit/logger.js";
 import type { ConfigOverlayPort } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
+import type { AttemptStorePort } from "../core/attempt-store-port.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { RisolutoLogger } from "../core/types.js";
@@ -40,7 +41,7 @@ export class HttpServer {
       configOverlayStore?: ConfigOverlayPort;
       secretsStore?: SecretsStore;
       eventBus?: TypedEventBus<RisolutoEventMap>;
-
+      attemptStore?: Pick<AttemptStorePort, "listCheckpoints" | "getAllPrs">;
       frontendDir?: string;
       archiveDir?: string;
       templateStore?: PromptTemplateStore;

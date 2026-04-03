@@ -46,6 +46,8 @@ describe("getOpenApiSpec", () => {
     expect(paths).toHaveProperty("/api/v1/{issue_identifier}/transition");
     expect(paths).toHaveProperty("/api/v1/{issue_identifier}/attempts");
     expect(paths).toHaveProperty("/api/v1/attempts/{attempt_id}");
+    expect(paths).toHaveProperty("/api/v1/attempts/{attempt_id}/checkpoints");
+    expect(paths).toHaveProperty("/api/v1/prs");
   });
 
   it("includes workspace, git, config, and secrets routes", () => {

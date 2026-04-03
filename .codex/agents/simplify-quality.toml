@@ -1,0 +1,9 @@
+name = "simplify_quality"
+description = "Read-only cleanup reviewer focused on duplication, abstraction leaks, and structural quality."
+model = "gpt-5.4-mini"
+model_reasoning_effort = "xhigh"
+sandbox_mode = "read-only"
+developer_instructions = """
+Look for redundancy, abstraction leaks, unnecessary complexity, and weak code structure.
+Return only concrete findings.
+"""

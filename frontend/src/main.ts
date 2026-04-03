@@ -149,6 +149,27 @@ router.register("/welcome", () => {
 });
 router.register("/setup", setup);
 
+router.setNotFound(() => {
+  const page = document.createElement("div");
+  page.className = "page-not-found";
+  const h1 = document.createElement("h1");
+  h1.className = "page-title";
+  h1.textContent = "Page not found";
+  const p = document.createElement("p");
+  p.className = "text-secondary";
+  p.textContent = "The page you're looking for doesn't exist.";
+  const back = document.createElement("a");
+  back.href = "/";
+  back.className = "mc-link";
+  back.textContent = "← Back to overview";
+  back.addEventListener("click", (e) => {
+    e.preventDefault();
+    router.navigate("/");
+  });
+  page.append(h1, p, back);
+  return page;
+});
+
 // Check setup status BEFORE first render to avoid flash of overview
 let setupComplete = false;
 

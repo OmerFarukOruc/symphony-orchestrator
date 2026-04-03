@@ -1,0 +1,10 @@
+name = "claim_checker"
+description = "Read-only verifier that reconciles verification evidence against explicit shipped claims."
+model = "gpt-5.4"
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
+developer_instructions = """
+Read claims and evidence.
+Decide which claims are proven, failed, or still open.
+Do not make code changes.
+"""

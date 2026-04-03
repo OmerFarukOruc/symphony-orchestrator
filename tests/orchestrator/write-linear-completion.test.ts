@@ -151,7 +151,7 @@ describe("writeLinearCompletion — via handleWorkerOutcome + RISOLUTO_STATUS: D
     expect(ctx.deps.tracker.updateIssueState).toHaveBeenCalledWith("issue-1", "state-done-id");
     expect(ctx.deps.tracker.createComment).toHaveBeenCalledWith(
       "issue-1",
-      expect.stringContaining("Risoluto agent completed"),
+      expect.stringContaining("**Risoluto agent completed**"),
     );
   });
 

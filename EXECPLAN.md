@@ -102,6 +102,19 @@ Acceptance means the following are all demonstrably true:
 
 These changes are safe to re-run because they only mutate source files and test expectations in the repository. If a partial implementation leaves tests failing, rerun the focused Vitest commands listed above to isolate the failing subsystem before continuing. The baseline build and test commands provide a safe before/after comparison. The snapshot cache must be implemented so invalidation is explicit and deterministic; if cached output ever looks stale, the safe recovery path is to increment the orchestrator revision on the missed mutation and rerun the affected tests.
 
+## PR/CI Automation Bundle (U8 implementation log, 2026-04-03)
+
+| Unit | Feature                           | Issue | Shipped                                                                                                                                                     | Deviations                                                                                          |
+| ---- | --------------------------------- | :---: | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| U1   | Tracker completion comments       | #275  | `writeCompletionWriteback()` in `src/orchestrator/worker-outcome/`. Posts structured success/failure Linear/GitHub comment with tokens, duration, attempt #, PR URL, error code. | None — matches plan. |
+| U2   | Agent-authored PR summaries       | #335  | `PrSummaryGenerator` in `src/git/pr-summary-generator.ts`. Called after PR creation; appends structured summary to PR body via GitHub API.                  | None.                                                                                               |
+| U3   | PR review feedback ingestion      | #333  | `PrReviewIngester` in `src/git/pr-review-ingester.ts`. Enabled via `agent.autoRetryOnReviewFeedback`. Aggregates reviewer comments into `previousPrFeedback` injected on retry. | None. |
+| U4   | Auto-merge policy engine          | #258  | `evaluateMergePolicy()` in `src/git/merge-policy.ts`. Config under `agent.autoMerge`. Calls `enablePullRequestAutoMerge` GraphQL mutation when policy passes. | None.                                                                                               |
+| U5   | PR lifecycle monitoring           | #307  | `PrMonitorService` in `src/git/pr-monitor.ts`. 60s background polling loop. Detects merge/close, updates store, emits SSE, writes `pr_merged` checkpoint, triggers reconciliation. | None. |
+| U6   | Checkpoint store + API            | #375  | `appendCheckpoint`/`listCheckpoints` on `AttemptStorePort`. SQLite schema (`attempt_checkpoints` table). `GET /api/v1/attempts/:id/checkpoints` endpoint. OpenAPI docs added. | `getAllPrs()` method added to port/SQLite store as prerequisite for `/api/v1/prs` endpoint (U8). |
+| U7   | PR status API                     | —     | `GET /api/v1/prs` endpoint backed by new `getAllPrs()` method on `AttemptStorePort` and `SqliteAttemptStore`. Response schema `prsListResponseSchema` added. OpenAPI path `buildPrPaths()` added. `docs-site/openapi.json` regenerated. | None. |
+| U8   | Docs + test stubs                 | —     | All 6 doc files updated. Integration test stubs created (`pr-status-api`, `checkpoints-api`). E2E mock intercepts added (`/api/v1/prs`, `checkpoints`). Mock data factories added (`prFactory.ts`, `checkpointFactory.ts`). | None. |
+
 ## Artifacts and Notes
 
 Key baseline evidence captured before implementation:

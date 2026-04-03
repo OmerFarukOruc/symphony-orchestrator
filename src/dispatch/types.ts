@@ -33,6 +33,12 @@ export interface RunAttemptDispatcher {
     onEvent: AgentRunnerEventHandler;
     /** Thread ID from a previous attempt — enables thread/resume on retry. */
     previousThreadId?: string | null;
+    /**
+     * Formatted PR review feedback from a previous attempt's open pull request.
+     * When set, this string is appended to the rendered prompt so the agent
+     * can address reviewer comments in the retry run.
+     */
+    previousPrFeedback?: string | null;
     /** Called once the session is ready with a function to steer the active turn. */
     onSteerReady?: (steerTurn: (message: string) => Promise<boolean>) => void;
   }): Promise<RunOutcome>;

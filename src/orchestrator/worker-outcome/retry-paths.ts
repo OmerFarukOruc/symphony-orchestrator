@@ -4,6 +4,7 @@ import type { RunningEntry } from "../runtime-types.js";
 import { buildOutcomeView } from "../outcome-view-builder.js";
 import { nowIso } from "../views.js";
 import { issueRef } from "./types.js";
+import { writeFailureWriteback } from "./completion-writeback.js";
 
 function queueRetryWithLog(
   ctx: OutcomeContext,
@@ -69,6 +70,13 @@ export async function handleContinuationExhausted(
     status: "failed",
     errorCode: "max_continuations_exceeded",
     errorMessage: message,
+  });
+
+  await writeFailureWriteback(ctx, {
+    issue: latestIssue,
+    entry,
+    attemptCount: attempt,
+    errorReason: message,
   });
 }
 

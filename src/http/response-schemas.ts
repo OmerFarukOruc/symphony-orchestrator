@@ -374,6 +374,64 @@ export const configOverlayPatchResponseSchema = z.object({
   overlay: z.record(z.string(), z.unknown()),
 });
 
+/* -- PR schemas ------------------------------------------------------ */
+
+const prStatusSchema = z.enum(["open", "merged", "closed"]);
+
+/** Shape of a single PR entry in the /api/v1/prs response. */
+const prEntrySchema = z.object({
+  issueId: z.string(),
+  url: z.string(),
+  number: z.number(),
+  repo: z.string(),
+  branchName: z.string(),
+  status: prStatusSchema,
+  mergedAt: z.string().nullable(),
+  mergeCommitSha: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+/** GET /api/v1/prs — PR status overview. */
+export const prsListResponseSchema = z.object({
+  prs: z.array(prEntrySchema),
+});
+
+/* -- Checkpoint schemas ---------------------------------------------- */
+
+const checkpointTriggerSchema = z.string();
+
+const checkpointTokenUsageSchema = z
+  .object({
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    totalTokens: z.number(),
+  })
+  .nullable();
+
+/** Shape of a single checkpoint entry. */
+const checkpointEntrySchema = z.object({
+  checkpointId: z.number(),
+  attemptId: z.string(),
+  ordinal: z.number(),
+  trigger: checkpointTriggerSchema,
+  eventCursor: z.number().nullable(),
+  status: z.string(),
+  threadId: z.string().nullable(),
+  turnId: z.string().nullable(),
+  turnCount: z.number(),
+  tokenUsage: checkpointTokenUsageSchema,
+  metadata: z.record(z.string(), z.unknown()).nullable(),
+  createdAt: z.string(),
+});
+
+/** GET /api/v1/attempts/:attempt_id/checkpoints — checkpoint history. */
+export const checkpointsListResponseSchema = z.object({
+  checkpoints: z.array(checkpointEntrySchema),
+});
+
+/* -- Config overlay put request -------------------------------------- */
+
 /** PUT /api/v1/config/overlay — request body. */
 export const configOverlayPutRequestSchema = z
   .object({

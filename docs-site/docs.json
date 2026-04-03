@@ -123,6 +123,7 @@
       },
       {
         "tab": "API Reference",
+        "openapi": "openapi.json",
         "groups": [
           {
             "group": "Overview",
@@ -130,7 +131,6 @@
           },
           {
             "group": "State & Metrics",
-            "openapi": "openapi.json",
             "pages": [
               "GET /api/v1/state",
               "GET /api/v1/runtime",
@@ -141,7 +141,6 @@
           },
           {
             "group": "Issues",
-            "openapi": "openapi.json",
             "pages": [
               "GET /api/v1/{issue_identifier}",
               "POST /api/v1/{issue_identifier}/abort",
@@ -151,12 +150,10 @@
           },
           {
             "group": "Attempts",
-            "openapi": "openapi.json",
             "pages": ["GET /api/v1/{issue_identifier}/attempts", "GET /api/v1/attempts/{attempt_id}"]
           },
           {
             "group": "Configuration",
-            "openapi": "openapi.json",
             "pages": [
               "GET /api/v1/config",
               "GET /api/v1/config/schema",
@@ -168,17 +165,14 @@
           },
           {
             "group": "Secrets",
-            "openapi": "openapi.json",
             "pages": ["GET /api/v1/secrets", "POST /api/v1/secrets/{key}", "DELETE /api/v1/secrets/{key}"]
           },
           {
             "group": "Workspaces & Git",
-            "openapi": "openapi.json",
             "pages": ["GET /api/v1/workspaces", "DELETE /api/v1/workspaces/{workspace_key}", "GET /api/v1/git/context"]
           },
           {
             "group": "Templates",
-            "openapi": "openapi.json",
             "pages": [
               "GET /api/v1/templates",
               "GET /api/v1/templates/{template_id}",
@@ -190,7 +184,6 @@
           },
           {
             "group": "Audit & Webhooks",
-            "openapi": "openapi.json",
             "pages": ["GET /api/v1/audit", "POST /webhooks/linear"]
           },
           {

@@ -1,0 +1,9 @@
+name = "docs_impact_mapper"
+description = "Read-only mapper that determines which docs must be updated to reflect planned or shipped behavior."
+model = "gpt-5.4-mini"
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
+developer_instructions = """
+Map documentation impact only.
+Identify which docs, runbooks, and operator guides are affected and what behavior claims they must reflect.
+"""

@@ -44,7 +44,7 @@ describe("executeGitPostRun", () => {
       createPullRequest: vi.fn(),
     };
     const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toEqual({ pullRequestUrl: null });
+    expect(result).toEqual({ pullRequestUrl: null, summary: null });
     expect(gitManager.createPullRequest).not.toHaveBeenCalled();
   });
 
@@ -54,7 +54,7 @@ describe("executeGitPostRun", () => {
       createPullRequest: vi.fn().mockResolvedValue({ html_url: "https://github.com/org/repo/pull/99" }),
     };
     const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toEqual({ pullRequestUrl: "https://github.com/org/repo/pull/99" });
+    expect(result).toMatchObject({ pullRequestUrl: "https://github.com/org/repo/pull/99" });
   });
 
   it("passes correct commit message to commitAndPush", async () => {
@@ -78,7 +78,7 @@ describe("executeGitPostRun", () => {
       createPullRequest: vi.fn().mockResolvedValue({ number: 99 }), // no html_url
     };
     const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toEqual({ pullRequestUrl: null });
+    expect(result).toMatchObject({ pullRequestUrl: null });
   });
 
   it("returns null pullRequestUrl when PR response html_url is not a string", async () => {
@@ -87,7 +87,7 @@ describe("executeGitPostRun", () => {
       createPullRequest: vi.fn().mockResolvedValue({ html_url: 123 }),
     };
     const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toEqual({ pullRequestUrl: null });
+    expect(result).toMatchObject({ pullRequestUrl: null });
   });
 
   it("propagates errors from commitAndPush", async () => {
@@ -116,7 +116,7 @@ describe("executeGitPostRun", () => {
       createPullRequest: vi.fn().mockResolvedValue(null),
     };
     const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toEqual({ pullRequestUrl: null });
+    expect(result).toMatchObject({ pullRequestUrl: null });
   });
 
   it("returns null pullRequestUrl when PR response is a string", async () => {
@@ -125,7 +125,7 @@ describe("executeGitPostRun", () => {
       createPullRequest: vi.fn().mockResolvedValue("not an object"),
     };
     const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toEqual({ pullRequestUrl: null });
+    expect(result).toMatchObject({ pullRequestUrl: null });
   });
 
   it("returns null pullRequestUrl when PR response is a number", async () => {
@@ -134,6 +134,6 @@ describe("executeGitPostRun", () => {
       createPullRequest: vi.fn().mockResolvedValue(42),
     };
     const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toEqual({ pullRequestUrl: null });
+    expect(result).toMatchObject({ pullRequestUrl: null });
   });
 });

@@ -33,12 +33,12 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
   app
     .route("/api/v1/setup/reset")
     .post(handlePostReset(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/master-key")
     .post(handlePostMasterKey(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/linear-projects")
@@ -48,22 +48,22 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
   app
     .route("/api/v1/setup/linear-project")
     .post(handlePostLinearProject(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/openai-key")
     .post(handlePostOpenaiKey(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/codex-auth")
     .post(handlePostCodexAuth(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/pkce-auth/start")
     .post(handlePostPkceAuthStart(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/pkce-auth/status")
@@ -73,37 +73,37 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
   app
     .route("/api/v1/setup/pkce-auth/cancel")
     .post(handlePostPkceAuthCancel(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/github-token")
     .post(handlePostGithubToken(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/create-test-issue")
     .post(handlePostCreateTestIssue(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/create-label")
     .post(handlePostCreateLabel(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/create-project")
     .post(handlePostCreateProject(deps))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/repo-route")
     .post(handlePostRepoRoute({ configOverlayStore: deps.configOverlayStore, secretsStore: deps.secretsStore }))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 
   app
     .route("/api/v1/setup/repo-route/:index")
     .delete(handleDeleteRepoRoute({ configOverlayStore: deps.configOverlayStore, secretsStore: deps.secretsStore }))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["DELETE"]));
 
   app
     .route("/api/v1/setup/repo-routes")
@@ -113,5 +113,5 @@ export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
   app
     .route("/api/v1/setup/detect-default-branch")
     .post(handleDetectDefaultBranch({ secretsStore: deps.secretsStore }))
-    .all((_req, res) => methodNotAllowed(res));
+    .all((_req, res) => methodNotAllowed(res, ["POST"]));
 }

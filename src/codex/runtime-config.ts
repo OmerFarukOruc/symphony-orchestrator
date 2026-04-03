@@ -18,11 +18,11 @@ function formatTomlString(value: string): string {
   return JSON.stringify(value);
 }
 
-function formatTomlKey(value: string): string {
+export function formatTomlKey(value: string): string {
   return /^[\w-]+$/.test(value) ? value : formatTomlString(value);
 }
 
-function rewriteHostBoundUrl(value: string): string {
+export function rewriteHostBoundUrl(value: string): string {
   try {
     const parsed = new URL(value);
     if (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") {

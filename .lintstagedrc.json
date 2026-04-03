@@ -1,4 +1,7 @@
 {
-  "*.ts": ["eslint --fix --max-warnings 100", "prettier --write"],
+  "*.ts": [
+    "eslint --fix --max-warnings 100 --ignore-pattern '.agents/**' --ignore-pattern '**/resolve_bundle.ts'",
+    "prettier --write"
+  ],
   "*.{json,yml,yaml}": ["prettier --write"]
 }

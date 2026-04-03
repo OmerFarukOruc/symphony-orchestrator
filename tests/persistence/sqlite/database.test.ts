@@ -344,6 +344,79 @@ describe("issue_index table", () => {
   });
 });
 
+describe("v4 schema migration — summary column", () => {
+  it("fresh-install DB has the summary column on the attempts table", async () => {
+    const dir = await createTempDir();
+    const db = openDatabase(path.join(dir, "fresh.db"));
+
+    try {
+      // Writing a row with a summary value should succeed on a fresh DB
+      db.insert(attempts)
+        .values({
+          attemptId: "v4-fresh-1",
+          issueId: "issue-v4",
+          issueIdentifier: "V4-1",
+          title: "Summary column test",
+          status: "completed",
+          startedAt: "2026-04-03T00:00:00.000Z",
+          model: "gpt-5.4",
+          modelSource: "default",
+          turnCount: 1,
+          summary: "- Did the thing\n- Tested the thing",
+        })
+        .run();
+
+      const rows = db.select().from(attempts).where(eq(attempts.attemptId, "v4-fresh-1")).all();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].summary).toBe("- Did the thing\n- Tested the thing");
+    } finally {
+      closeDatabase(db);
+    }
+  });
+
+  it("v4 migration is idempotent — running openDatabase twice produces no error", async () => {
+    const dir = await createTempDir();
+    const dbPath = path.join(dir, "idempotent.db");
+
+    const db1 = openDatabase(dbPath);
+    closeDatabase(db1);
+
+    // Second open should not throw even though v4 migration already ran
+    expect(() => {
+      const db2 = openDatabase(dbPath);
+      closeDatabase(db2);
+    }).not.toThrow();
+  });
+
+  it("summary column accepts null without error", async () => {
+    const dir = await createTempDir();
+    const db = openDatabase(path.join(dir, "null-summary.db"));
+
+    try {
+      db.insert(attempts)
+        .values({
+          attemptId: "v4-null-1",
+          issueId: "issue-v4",
+          issueIdentifier: "V4-2",
+          title: "No summary attempt",
+          status: "running",
+          startedAt: "2026-04-03T00:00:00.000Z",
+          model: "gpt-5.4",
+          modelSource: "default",
+          turnCount: 0,
+          summary: null,
+        })
+        .run();
+
+      const rows = db.select().from(attempts).where(eq(attempts.attemptId, "v4-null-1")).all();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].summary).toBeNull();
+    } finally {
+      closeDatabase(db);
+    }
+  });
+});
+
 describe("closeDatabase", () => {
   it("closes the database cleanly", async () => {
     const dir = await createTempDir();

@@ -177,10 +177,96 @@ function buildCredentialControl(): HTMLElement {
   return container;
 }
 
-function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRenderOptions): HTMLElement {
-  if (field.kind === "credential") {
-    return buildCredentialControl();
+function buildJsonTextareaGroup(textarea: HTMLTextAreaElement): HTMLElement {
+  const errorEl = createInlineError();
+  textarea.addEventListener("blur", () => {
+    const val = textarea.value.trim();
+    if (val === "") {
+      textarea.classList.remove("settings-field-error");
+      errorEl.hidden = true;
+      return;
+    }
+    try {
+      JSON.parse(val);
+      textarea.classList.remove("settings-field-error");
+      errorEl.hidden = true;
+    } catch (error_) {
+      textarea.classList.add("settings-field-error");
+      errorEl.textContent = `Invalid JSON: ${error_ instanceof SyntaxError ? error_.message : "parse error"}`;
+      errorEl.hidden = false;
+    }
+  });
+  textarea.addEventListener("input", () => {
+    textarea.classList.remove("settings-field-error");
+    errorEl.hidden = true;
+  });
+  const group = document.createElement("div");
+  group.append(textarea, errorEl);
+  return group;
+}
+
+function validateNumberInput(
+  input: HTMLInputElement,
+  errorEl: HTMLParagraphElement,
+  validation: import("./settings-types").SettingsFieldValidation | undefined,
+): void {
+  const val = input.value.trim();
+  const numeric = Number(val);
+  let message = "";
+  if (val !== "" && !Number.isFinite(numeric)) {
+    message = "Must be a valid number.";
+  } else if (val !== "" && validation?.min !== undefined && numeric < validation.min) {
+    message = `Must be at least ${validation.min}.`;
+  } else if (val !== "" && validation?.max !== undefined && numeric > validation.max) {
+    message = `Must be at most ${validation.max}.`;
   }
+  if (message) {
+    input.classList.add("settings-field-error");
+    errorEl.textContent = message;
+    errorEl.hidden = false;
+  } else {
+    input.classList.remove("settings-field-error");
+    errorEl.hidden = true;
+  }
+}
+
+function buildActionRow(children: HTMLElement[], actionLabel: string, onAction: () => void): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "settings-field-action-row";
+  const btn = createButton(actionLabel, "ghost");
+  btn.addEventListener("click", onAction);
+  row.append(...children, btn);
+  return row;
+}
+
+function buildNumberControl(field: SettingsFieldDefinition, options: SettingsFieldRenderOptions): HTMLElement {
+  const input = createTextInput({
+    className: "mc-input",
+    type: "number",
+    placeholder: field.placeholder ?? "",
+    value: options.value,
+    readOnly: field.editable === false,
+  });
+  if (field.validation?.min !== undefined) input.min = String(field.validation.min);
+  if (field.validation?.max !== undefined) input.max = String(field.validation.max);
+  input.addEventListener("input", () => options.onInput(input.value));
+  input.addEventListener("focus", options.onFocus);
+  const errorEl = createInlineError();
+  input.addEventListener("blur", () => validateNumberInput(input, errorEl, field.validation));
+  input.addEventListener("input", () => {
+    input.classList.remove("settings-field-error");
+    errorEl.hidden = true;
+  });
+  if (field.actionLabel && options.onAction) {
+    return buildActionRow([input, errorEl], field.actionLabel, options.onAction);
+  }
+  const group = document.createElement("div");
+  group.append(input, errorEl);
+  return group;
+}
+
+function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRenderOptions): HTMLElement {
+  if (field.kind === "credential") return buildCredentialControl();
   if (field.kind === "select") {
     const select = createSelectControl({
       options: field.options ?? [],
@@ -204,9 +290,8 @@ function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRend
     select.addEventListener("focus", options.onFocus);
     return select;
   }
-  if (field.kind === "list") {
-    return buildChipEditor(field, options);
-  }
+  if (field.kind === "list") return buildChipEditor(field, options);
+  if (field.kind === "number") return buildNumberControl(field, options);
   if (field.kind === "textarea" || field.kind === "json") {
     const textarea = createTextareaControl({
       className: "mc-textarea settings-textarea",
@@ -216,88 +301,20 @@ function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRend
     });
     textarea.addEventListener("input", () => options.onInput(textarea.value));
     textarea.addEventListener("focus", options.onFocus);
-
-    if (field.kind === "json") {
-      const errorEl = createInlineError();
-      textarea.addEventListener("blur", () => {
-        const val = textarea.value.trim();
-        if (val === "") {
-          textarea.classList.remove("settings-field-error");
-          errorEl.hidden = true;
-          return;
-        }
-        try {
-          JSON.parse(val);
-          textarea.classList.remove("settings-field-error");
-          errorEl.hidden = true;
-        } catch (error_) {
-          textarea.classList.add("settings-field-error");
-          errorEl.textContent = `Invalid JSON: ${error_ instanceof SyntaxError ? error_.message : "parse error"}`;
-          errorEl.hidden = false;
-        }
-      });
-      textarea.addEventListener("input", () => {
-        textarea.classList.remove("settings-field-error");
-        errorEl.hidden = true;
-      });
-      const group = document.createElement("div");
-      group.append(textarea, errorEl);
-      return group;
-    }
-
-    return textarea;
+    return field.kind === "json" ? buildJsonTextareaGroup(textarea) : textarea;
   }
   const input = createTextInput({
     className: "mc-input",
-    type: field.kind === "number" ? "number" : "text",
+    type: "text",
     placeholder: field.placeholder ?? "",
     value: options.value,
     readOnly: field.editable === false,
   });
   input.addEventListener("input", () => options.onInput(input.value));
   input.addEventListener("focus", options.onFocus);
-
-  if (field.kind === "number") {
-    const errorEl = createInlineError();
-    input.addEventListener("blur", () => {
-      const val = input.value.trim();
-      if (val !== "" && !Number.isFinite(Number(val))) {
-        input.classList.add("settings-field-error");
-        errorEl.textContent = "Must be a valid number.";
-        errorEl.hidden = false;
-      } else {
-        input.classList.remove("settings-field-error");
-        errorEl.hidden = true;
-      }
-    });
-    input.addEventListener("input", () => {
-      input.classList.remove("settings-field-error");
-      errorEl.hidden = true;
-    });
-
-    if (field.actionLabel && options.onAction) {
-      const row = document.createElement("div");
-      row.className = "settings-field-action-row";
-      const btn = createButton(field.actionLabel, "ghost");
-      btn.addEventListener("click", options.onAction);
-      row.append(input, btn, errorEl);
-      return row;
-    }
-
-    const group = document.createElement("div");
-    group.append(input, errorEl);
-    return group;
-  }
-
   if (field.actionLabel && options.onAction) {
-    const row = document.createElement("div");
-    row.className = "settings-field-action-row";
-    const btn = createButton(field.actionLabel, "ghost");
-    btn.addEventListener("click", options.onAction);
-    row.append(input, btn);
-    return row;
+    return buildActionRow([input], field.actionLabel, options.onAction);
   }
-
   return input;
 }
 

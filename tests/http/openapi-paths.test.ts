@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildInfrastructurePaths, buildIssuePaths, buildStateAndMetricsPaths } from "../../src/http/openapi-paths.js";
+import {
+  buildInfrastructurePaths,
+  buildIssuePaths,
+  buildPrPaths,
+  buildStateAndMetricsPaths,
+} from "../../src/http/openapi-paths.js";
 
 type TestPathItem = Record<string, Record<string, unknown>>;
 type TestPaths = Record<string, Record<string, unknown>>;
@@ -146,6 +151,25 @@ describe("buildIssuePaths", () => {
     const item = paths["/api/v1/attempts/{attempt_id}"] as TestPathItem;
     expect(item).toHaveProperty("get");
     expect(item.get.operationId).toBe("getAttemptDetail");
+  });
+
+  it("includes GET /api/v1/attempts/{attempt_id}/checkpoints", () => {
+    const item = paths["/api/v1/attempts/{attempt_id}/checkpoints"] as TestPathItem;
+    expect(item).toHaveProperty("get");
+    expect(item.get.operationId).toBe("listAttemptCheckpoints");
+    expect(item.get).toHaveProperty("security");
+  });
+});
+
+describe("buildPrPaths", () => {
+  const paths = buildPrPaths();
+
+  it("includes GET /api/v1/prs", () => {
+    const item = paths["/api/v1/prs"] as TestPathItem;
+    expect(item).toHaveProperty("get");
+    expect(item.get.operationId).toBe("listPrs");
+    expect(item.get).toHaveProperty("security");
+    expect(item.get).toHaveProperty("parameters");
   });
 });
 

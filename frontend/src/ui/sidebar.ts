@@ -98,10 +98,12 @@ function buildNavItems(groupEl: HTMLElement, groupName: string, onNavigate: () =
     const hotkeySpan = document.createElement("span");
     hotkeySpan.className = "sidebar-hotkey";
     hotkeySpan.textContent = item.hotkey;
+    hotkeySpan.setAttribute("aria-hidden", "true");
 
     const tooltipSpan = document.createElement("span");
     tooltipSpan.className = "sidebar-item-tooltip";
     tooltipSpan.textContent = item.name;
+    tooltipSpan.setAttribute("aria-hidden", "true");
 
     button.append(
       createIconSlot(item.icon, { slotClassName: "sidebar-icon", size: 18 }),
@@ -198,6 +200,7 @@ function buildContextualIssueGroup(issueId: string, onNavigate: () => void): HTM
     const tooltipSpan = document.createElement("span");
     tooltipSpan.className = "sidebar-item-tooltip";
     tooltipSpan.textContent = entry.name;
+    tooltipSpan.setAttribute("aria-hidden", "true");
 
     btn.append(createIconSlot(entry.icon, { slotClassName: "sidebar-icon", size: 18 }), labelSpan, tooltipSpan);
     btn.addEventListener("click", () => {

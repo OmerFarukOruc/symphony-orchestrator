@@ -5,6 +5,7 @@ import { buildOutcomeView } from "../outcome-view-builder.js";
 import { nowIso } from "../views.js";
 import { issueRef, outcomeToStatus } from "./types.js";
 import { toErrorString } from "../../utils/type-guards.js";
+import { writeFailureWriteback } from "./completion-writeback.js";
 
 export function handleServiceStopped(
   ctx: OutcomeContext,
@@ -132,7 +133,7 @@ export function handleOperatorAbort(
   ctx.releaseIssueClaim(issue.id);
 }
 
-export function handleCancelledOrHardFailure(
+export async function handleCancelledOrHardFailure(
   ctx: OutcomeContext,
   outcome: RunOutcome,
   entry: RunningEntry,
@@ -140,12 +141,13 @@ export function handleCancelledOrHardFailure(
   workspace: Workspace,
   modelSelection: ModelSelection,
   attempt: number | null,
-): void {
+): Promise<void> {
+  const errorReason = outcome.errorMessage ?? outcome.errorCode ?? "worker stopped without a retry";
   ctx.notify({
     type: "worker_failed",
     severity: "critical",
     timestamp: nowIso(),
-    message: outcome.errorMessage ?? "worker stopped without a retry",
+    message: errorReason,
     issue: issueRef(issue),
     attempt,
     metadata: { errorCode: outcome.errorCode },
@@ -156,7 +158,7 @@ export function handleCancelledOrHardFailure(
       status: outcome.kind === "cancelled" ? "cancelled" : "failed",
       attempt,
       error: outcome.errorCode,
-      message: outcome.errorMessage ?? "worker stopped without a retry",
+      message: errorReason,
     }),
   );
   ctx.deps.eventBus?.emit("issue.completed", {
@@ -165,4 +167,11 @@ export function handleCancelledOrHardFailure(
     outcome: outcome.kind === "cancelled" ? "cancelled" : "failed",
   });
   ctx.releaseIssueClaim(issue.id);
+
+  await writeFailureWriteback(ctx, {
+    issue,
+    entry,
+    attemptCount: attempt,
+    errorReason,
+  });
 }

@@ -105,6 +105,33 @@ function deriveWorkspaceConfig(
 }
 
 /**
+ * Build the merge policy configuration sub-block from a raw agent config record.
+ *
+ * Always returns a fully-populated object with safe defaults so callers
+ * never need to guard against undefined fields.
+ */
+function deriveMergePolicyConfig(raw: Record<string, unknown>): ServiceConfig["agent"]["autoMerge"] {
+  const allowedPaths = asLooseStringArray(raw.allowed_paths ?? raw.allowedPaths);
+  const requireLabels = asLooseStringArray(raw.require_labels ?? raw.requireLabels);
+  const excludeLabels = asLooseStringArray(raw.exclude_labels ?? raw.excludeLabels);
+
+  const rawMaxFiles = raw.max_changed_files ?? raw.maxChangedFiles;
+  const maxChangedFiles = rawMaxFiles !== undefined && rawMaxFiles !== null ? asNumber(rawMaxFiles, 0) : undefined;
+
+  const rawMaxLines = raw.max_diff_lines ?? raw.maxDiffLines;
+  const maxDiffLines = rawMaxLines !== undefined && rawMaxLines !== null ? asNumber(rawMaxLines, 0) : undefined;
+
+  return {
+    enabled: asBoolean(raw.enabled, false),
+    allowedPaths,
+    maxChangedFiles,
+    maxDiffLines,
+    requireLabels,
+    excludeLabels,
+  };
+}
+
+/**
  * Build the agent configuration subsection.
  */
 function deriveAgentConfig(agent: Record<string, unknown>): ServiceConfig["agent"] {
@@ -121,6 +148,10 @@ function deriveAgentConfig(agent: Record<string, unknown>): ServiceConfig["agent
     maxContinuationAttempts: asNumber(agent.max_continuation_attempts, 5),
     successState: asString(agent.success_state) || null,
     stallTimeoutMs: asNumber(agent.stall_timeout_ms, 1200000),
+    preflightCommands: asLooseStringArray(agent.preflight_commands ?? agent.preflightCommands),
+    autoRetryOnReviewFeedback: asBoolean(agent.auto_retry_on_review_feedback ?? agent.autoRetryOnReviewFeedback, false),
+    prMonitorIntervalMs: asNumber(agent.pr_monitor_interval_ms ?? agent.prMonitorIntervalMs, 60000),
+    autoMerge: deriveMergePolicyConfig(asRecord(agent.auto_merge ?? agent.autoMerge)),
   };
 }
 

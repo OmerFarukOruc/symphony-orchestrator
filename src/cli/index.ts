@@ -21,6 +21,7 @@ import type { WebhookRegistrar } from "../webhook/registrar.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { createServices } from "./services.js";
 import { wireNotifications, watchConfigChanges } from "./notifications.js";
+import type { PrMonitorService } from "../git/pr-monitor.js";
 
 const SETUP_MODE_ERRORS = new Set(["missing_tracker_api_key", "missing_tracker_project_slug"]);
 
@@ -28,7 +29,7 @@ function printValidationError(error: ValidationError): void {
   console.error(`error code=${error.code} msg=${JSON.stringify(error.message)}`);
 }
 
-async function cleanupTransientWorkspaceDirs(workspaceRoot: string): Promise<void> {
+export async function cleanupTransientWorkspaceDirs(workspaceRoot: string): Promise<void> {
   await mkdir(workspaceRoot, { recursive: true });
   const entries = await readdir(workspaceRoot, { withFileTypes: true });
   for (const entry of entries) {
@@ -77,10 +78,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const services = await createServices(configStore, overlayStore, secretsStore, archiveDir, logger, { persistence });
   wireNotifications(services.notificationManager, configStore, logger);
 
-  const { orchestrator, httpServer, eventBus } = services;
+  const { orchestrator, httpServer, eventBus, prMonitor } = services;
   await cleanupTransientWorkspaceDirs(config.workspace.root);
   if (!needsSetup) {
     await orchestrator.start();
+    prMonitor.start();
   }
   await httpServer.start(port);
 
@@ -96,6 +98,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     persistence: services.persistence,
     webhookHealthTracker: services.webhookHealthTracker,
     webhookRegistrar: services.webhookRegistrar,
+    prMonitor,
     logger,
   });
   logger.info({ dataDir, port, archiveDir }, "service started");
@@ -184,7 +187,12 @@ function parsePortValue(rawPort: string | undefined): number | undefined {
   return Number(rawPort);
 }
 
-function parseCliArgs(argv: string[]) {
+export function parseCliArgs(argv: string[]): {
+  dataDir: string;
+  archiveDir: string;
+  selectedPort: number | undefined;
+  logger: ReturnType<typeof createLogger>;
+} {
   const parsed = parseArgs({
     args: argv,
     allowPositionals: false,
@@ -202,7 +210,7 @@ function parseCliArgs(argv: string[]) {
   return { dataDir, archiveDir, selectedPort, logger };
 }
 
-async function readMasterKeyFile(archiveDir: string): Promise<string | null> {
+export async function readMasterKeyFile(archiveDir: string): Promise<string | null> {
   try {
     const content = await readFile(path.join(archiveDir, "master.key"), "utf8");
     return content.trim() || null;
@@ -212,7 +220,7 @@ async function readMasterKeyFile(archiveDir: string): Promise<string | null> {
   }
 }
 
-async function safeStartConfigStore(configStore: ConfigStore): Promise<number | null> {
+export async function safeStartConfigStore(configStore: ConfigStore): Promise<number | null> {
   try {
     await configStore.start();
     return null;
@@ -230,7 +238,7 @@ async function safeStartConfigStore(configStore: ConfigStore): Promise<number | 
   }
 }
 
-function evaluateSetupMode(
+export function evaluateSetupMode(
   configStore: ConfigStore,
   logger: ReturnType<typeof createLogger>,
   needsSetup: boolean,
@@ -261,6 +269,7 @@ function buildShutdown({
   persistence,
   webhookHealthTracker,
   webhookRegistrar,
+  prMonitor,
   logger,
 }: {
   httpServer: HttpServer;
@@ -271,12 +280,14 @@ function buildShutdown({
   persistence: PersistenceRuntime;
   webhookHealthTracker?: WebhookHealthTracker;
   webhookRegistrar?: WebhookRegistrar;
+  prMonitor?: PrMonitorService;
   logger: ReturnType<typeof createLogger>;
 }): () => Promise<void> {
   let shuttingDown = false;
   return async () => {
     if (shuttingDown) return;
     shuttingDown = true;
+    prMonitor?.stop();
     await httpServer.stop().catch((error: unknown) => {
       logger.warn({ error: toErrorString(error) }, "http server shutdown failed");
     });

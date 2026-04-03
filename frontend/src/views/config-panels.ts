@@ -149,6 +149,7 @@ export function renderOverlayPanel(
       placeholder: "Filter overrides…",
       value: state.filter,
     });
+    filterInput.setAttribute("aria-label", "Filter config overrides");
     filterInput.addEventListener("input", () => actions.onFilter(filterInput.value));
     filterRow.append(filterInput);
     listSection.append(filterRow);

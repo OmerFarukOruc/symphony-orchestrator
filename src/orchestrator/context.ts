@@ -19,7 +19,10 @@ export interface OutcomeContext {
       updateIssueState: (issueId: string, stateId: string) => Promise<void>;
       createComment: (issueId: string, body: string) => Promise<void>;
     };
-    attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
+    attemptStore: {
+      updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void>;
+      upsertPr?: (pr: import("../core/attempt-store-port.js").UpsertPrInput) => Promise<void>;
+    };
     workspaceManager: { removeWorkspace: (identifier: string, issue?: Issue) => Promise<void> };
     gitManager?: GitPostRunPort;
     eventBus?: TypedEventBus<RisolutoEventMap>;
@@ -39,7 +42,7 @@ export interface OutcomeContext {
     attempt: number,
     delayMs: number,
     error: string | null,
-    metadata?: { threadId?: string | null },
+    metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
   ) => void;
 }
 
@@ -64,13 +67,13 @@ export interface OrchestratorContext {
     attempt: number,
     delayMs: number,
     error: string | null,
-    metadata?: { threadId?: string | null },
+    metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
   ) => void;
   clearRetryEntry: (issueId: string) => void;
   launchWorker: (
     issue: Issue,
     attempt: number | null,
-    options?: { claimHeld?: boolean; previousThreadId?: string | null },
+    options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
   ) => Promise<void>;
   canDispatchIssue: (issue: Issue) => boolean;
   hasAvailableStateSlot: (

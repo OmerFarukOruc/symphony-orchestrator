@@ -56,9 +56,12 @@ export function createGitHubToolProvider(
     cloneInto: (route, workspaceDir, issue, branchPrefix) =>
       getManager().cloneInto(route, workspaceDir, issue, branchPrefix),
     commitAndPush: (workspaceDir, message, branchName) => getManager().commitAndPush(workspaceDir, message, branchName),
-    createPullRequest: (route, issue, branchName) => getManager().createPullRequest(route, issue, branchName),
+    createPullRequest: (route, issue, branchName, summary) =>
+      getManager().createPullRequest(route, issue, branchName, summary),
     addPrComment: (input) => getManager().addPrComment(input),
     getPrStatus: (input) => getManager().getPrStatus(input),
+    forcePushIfBranchExists: (branchName, workspaceDir) =>
+      getManager().forcePushIfBranchExists(branchName, workspaceDir),
     setupWorktree: (route, baseCloneDir, worktreePath, issue, branchPrefix) =>
       getManager().setupWorktree(route, baseCloneDir, worktreePath, issue, branchPrefix),
     syncWorktree: (baseCloneDir) => getManager().syncWorktree(baseCloneDir),

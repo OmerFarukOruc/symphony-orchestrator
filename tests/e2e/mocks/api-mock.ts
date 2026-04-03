@@ -6,11 +6,15 @@ import { buildConfig, buildConfigOverlay, buildConfigSchema } from "./data/confi
 import { buildSecrets } from "./data/secrets";
 import { buildIssueDetail, type IssueDetail } from "./data/issue-detail";
 import { buildAttemptRecord, type AttemptRecord } from "./data/attempts";
+import { buildPrRecord, type PrRecord } from "./data/pr";
+import { buildCheckpointRecord, type CheckpointRecord } from "./data/checkpoint";
+import { buildGitContext, type GitContextResponse } from "./data/git-context";
 
 export interface ApiMockOverrides {
   setupStatus?: SetupStatus;
   runtimeSnapshot?: RuntimeSnapshot;
   runtimeInfo?: Record<string, unknown>;
+  gitContext?: GitContextResponse;
   config?: Record<string, unknown>;
   configOverlay?: { overlay: Record<string, unknown> };
   configSchema?: unknown;
@@ -18,6 +22,10 @@ export interface ApiMockOverrides {
   transitions?: { transitions: Record<string, string[]> };
   issueDetail?: Record<string, IssueDetail>;
   attemptRecords?: Record<string, AttemptRecord>;
+  /** Override the PR list returned by GET /api/v1/prs. */
+  prRecords?: PrRecord[];
+  /** Override the checkpoints list returned by GET /api/v1/attempts/:id/checkpoints. */
+  checkpointRecords?: Record<string, CheckpointRecord[]>;
 
   /** Override individual route handlers */
   routeOverrides?: Record<string, (route: Route) => Promise<void> | void>;
@@ -39,6 +47,7 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
   const configSchema = overrides.configSchema ?? buildConfigSchema();
   const secrets = overrides.secrets ?? buildSecrets();
   const transitions = overrides.transitions ?? { transitions: {} };
+  const gitContext = overrides.gitContext ?? buildGitContext();
   const runtimeInfo = overrides.runtimeInfo ?? {
     version: "0.3.1",
     workflow_path: "/tmp/WORKFLOW.md",
@@ -87,6 +96,7 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
   // State & Runtime
   await page.route("**/api/v1/state", (route) => json(route, snapshot));
   await page.route("**/api/v1/runtime", (route) => json(route, runtimeInfo));
+  await page.route("**/api/v1/git/context", (route) => json(route, gitContext));
   await page.route("**/api/v1/models", (route) =>
     json(route, {
       models: [
@@ -178,6 +188,16 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
     return json(route, { attempts: detail.attempts, current_attempt_id: detail.currentAttemptId });
   });
 
+  // Attempt checkpoints — must be registered before the more-general attempts/* route
+  await page.route("**/api/v1/attempts/*/checkpoints", (route) => {
+    const url = new URL(route.request().url());
+    const segments = url.pathname.split("/");
+    // pathname: /api/v1/attempts/<id>/checkpoints  →  segments[-2] = id
+    const attemptId = decodeURIComponent(segments.at(-2) ?? "");
+    const checkpoints = overrides.checkpointRecords?.[attemptId] ?? [buildCheckpointRecord({ attemptId })];
+    return json(route, { checkpoints });
+  });
+
   // Single attempt detail
   await page.route("**/api/v1/attempts/*", (route) => {
     const url = new URL(route.request().url());
@@ -186,6 +206,12 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
       return json(route, overrides.attemptRecords[attemptId]);
     }
     return json(route, buildAttemptRecord({ attemptId }));
+  });
+
+  // PR status overview
+  await page.route("**/api/v1/prs", (route) => {
+    const prs = overrides.prRecords ?? [buildPrRecord()];
+    return json(route, { prs });
   });
 
   // Abort

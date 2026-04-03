@@ -27,9 +27,12 @@ import { HttpServer } from "../../src/http/server.js";
 import type { WebhookHandlerDeps } from "../../src/http/webhook-handler.js";
 import type { ConfigOverlayPort } from "../../src/config/overlay.js";
 import type { ConfigStore } from "../../src/config/store.js";
+import type { AttemptStorePort } from "../../src/core/attempt-store-port.js";
 import type { OrchestratorPort } from "../../src/orchestrator/port.js";
 import { closeDatabase, openDatabase, type RisolutoDatabase } from "../../src/persistence/sqlite/database.js";
+import type { PromptTemplateStore } from "../../src/prompt/store.js";
 import type { SecretsStore } from "../../src/secrets/store.js";
+import type { AuditLogger } from "../../src/audit/logger.js";
 
 /* ------------------------------------------------------------------ */
 /*  Stub builders                                                      */
@@ -159,6 +162,10 @@ export interface TestServerOverrides {
   configOverlayStore?: ConfigOverlayPort;
   /** Provide a secrets store for secrets CRUD routes (Tier 2). */
   secretsStore?: SecretsStore;
+  /** Provide an attempt store for checkpoint and PR routes (Tier 2). */
+  attemptStore?: Pick<AttemptStorePort, "listCheckpoints" | "getAllPrs">;
+  templateStore?: PromptTemplateStore;
+  auditLogger?: AuditLogger;
 }
 
 export interface TestServerResult {
@@ -248,6 +255,9 @@ export async function startTestServer(overrides: TestServerOverrides = {}): Prom
     configStore: overrides.configStore,
     configOverlayStore: overrides.configOverlayStore,
     secretsStore: overrides.secretsStore,
+    attemptStore: overrides.attemptStore,
+    templateStore: overrides.templateStore,
+    auditLogger: overrides.auditLogger,
   });
 
   const { port } = await server.start(0);

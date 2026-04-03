@@ -269,6 +269,36 @@ The setup wizard at `/setup` stores all credentials in the encrypted secrets sto
 
 ---
 
+## 🐙 GitHub Token Scopes for PR/CI Automation
+
+Risoluto's PR/CI automation pipeline uses a GitHub Personal Access Token (PAT) stored via the setup wizard or in `$GITHUB_TOKEN`. The required scopes depend on which features are enabled.
+
+### Minimum Token Scopes
+
+| Feature                         | Required scope              | Notes                                                                                 |
+| ------------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
+| **PR creation** (always)        | `repo` or `pull_requests: write` | Required for `createPullRequest()` — classic PAT needs `repo`, fine-grained needs `pull_requests: write` |
+| **PR review ingestion**         | `pull_requests: read`       | `PrReviewIngester` reads PR review comments; fine-grained PAT only                   |
+| **PR lifecycle monitoring**     | `pull_requests: read`       | `PrMonitorService` polls PR status via REST; fine-grained PAT only                   |
+| **Auto-merge**                  | `pull_requests: write`      | Calls `enablePullRequestAutoMerge` GraphQL mutation; also requires repository auto-merge setting to be enabled |
+
+### Auto-merge Prerequisites
+
+Enabling `agent.autoMerge.enabled: true` requires **all** of the following:
+
+1. GitHub token with `pull_requests: write` scope (or classic `repo` scope).
+2. The target repository must have **Allow auto-merge** enabled in repository settings → General.
+3. At least one required status check or review policy must be configured (GitHub auto-merge waits for those to pass before merging).
+
+> [!WARNING]
+> Auto-merge via the GraphQL `enablePullRequestAutoMerge` mutation allows automated code changes to land on your default branch without human review. Use `agent.autoMerge.requireLabels`, `allowedPaths`, `maxChangedFiles`, and `maxDiffLines` to constrain which PRs are eligible.
+
+### PR Monitor Trust Boundary
+
+The PR monitor (`PrMonitorService`) uses the same GitHub token as PR creation. It only performs `GET` operations (checking PR status via REST). No write access is needed for monitoring-only deployments. The `pull_requests: read` fine-grained scope is sufficient.
+
+---
+
 ## 🚨 Required MCP Failure
 
 > [!NOTE]

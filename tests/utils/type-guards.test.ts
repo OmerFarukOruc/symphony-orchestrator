@@ -7,6 +7,8 @@ import {
   asStringOrNull,
   asBooleanOrNull,
   asStringRecord,
+  getErrorMessage,
+  toErrorString,
 } from "../../src/utils/type-guards.js";
 
 describe("isRecord", () => {
@@ -107,5 +109,30 @@ describe("asStringRecord", () => {
 
   it("returns empty object for objects with no string values", () => {
     expect(asStringRecord({ a: 1, b: null })).toEqual({});
+  });
+});
+
+describe("getErrorMessage", () => {
+  it("returns the error message for Error instances", () => {
+    expect(getErrorMessage(new Error("boom"), "fallback")).toBe("boom");
+  });
+
+  it("returns the fallback for non-Error values", () => {
+    expect(getErrorMessage("boom", "fallback")).toBe("fallback");
+    expect(getErrorMessage({ message: "boom" }, "fallback")).toBe("fallback");
+  });
+});
+
+describe("toErrorString", () => {
+  it("returns the message for Error instances", () => {
+    expect(toErrorString(new Error("boom"))).toBe("boom");
+  });
+
+  it("returns strings unchanged", () => {
+    expect(toErrorString("boom")).toBe("boom");
+  });
+
+  it("stringifies objects via String coercion", () => {
+    expect(toErrorString({ code: 500 })).toBe("[object Object]");
   });
 });

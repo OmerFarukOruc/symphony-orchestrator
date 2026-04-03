@@ -21,10 +21,13 @@ import type { AuditLogger } from "../audit/logger.js";
 import { registerAuditApi } from "../audit/api.js";
 import type { TrackerPort } from "../tracker/port.js";
 
+import type { AttemptStorePort } from "../core/attempt-store-port.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
+import { handleAttemptCheckpoints } from "./checkpoint-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
 import { getOpenApiSpec } from "./openapi.js";
+import { handleListPrs } from "./pr-handler.js";
 import { modelUpdateSchema, steerSchema, templateOverrideSchema, transitionSchema } from "./request-schemas.js";
 import { issueNotFound, methodNotAllowed, refreshReason, sanitizeConfigValue } from "./route-helpers.js";
 import { createSSEHandler } from "./sse.js";
@@ -46,7 +49,7 @@ interface HttpRouteDeps {
   configOverlayStore?: ConfigOverlayPort;
   secretsStore?: SecretsStore;
   eventBus?: TypedEventBus<RisolutoEventMap>;
-
+  attemptStore?: Pick<AttemptStorePort, "listCheckpoints" | "getAllPrs">;
   templateStore?: PromptTemplateStore;
   auditLogger?: AuditLogger;
   frontendDir?: string;
@@ -64,6 +67,7 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   registerStateAndMetricsRoutes(app, deps);
   registerDocsRoutes(app);
   registerExtensionApis(app, deps);
+  registerPrRoutes(app, deps);
   registerGitRoutes(app, deps);
   registerWorkspaceRoutes(app, deps);
   registerIssueRoutes(app, deps);
@@ -124,7 +128,7 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
       res.status(202).json({ queued: refresh.queued, coalesced: refresh.coalesced, requested_at: refresh.requestedAt });
     })
     .all((_req, res) => {
-      methodNotAllowed(res);
+      methodNotAllowed(res, ["POST"]);
     });
 
   if (deps.eventBus) {
@@ -195,7 +199,7 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
       });
     })
     .all((_req, res) => {
-      methodNotAllowed(res);
+      methodNotAllowed(res, ["POST"]);
     });
 
   app
@@ -204,7 +208,7 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
       await handleModelUpdate(deps.orchestrator, req, res);
     })
     .all((_req, res) => {
-      methodNotAllowed(res);
+      methodNotAllowed(res, ["POST"]);
     });
 
   app
@@ -220,7 +224,7 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
       handleTemplateClear(deps.orchestrator, req, res);
     })
     .all((_req, res) => {
-      methodNotAllowed(res);
+      methodNotAllowed(res, ["POST", "DELETE"]);
     });
 
   app
@@ -247,6 +251,22 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
     });
 
   app
+    .route("/api/v1/attempts/:attempt_id/checkpoints")
+    .get(async (req, res) => {
+      await handleAttemptCheckpoints(
+        {
+          orchestrator: deps.orchestrator,
+          attemptStore: deps.attemptStore,
+        },
+        req,
+        res,
+      );
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
     .route("/api/v1/:issue_identifier/transition")
     .post(validateBody(transitionSchema), async (req, res) => {
       await handleTransition(
@@ -256,7 +276,7 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
       );
     })
     .all((_req, res) => {
-      methodNotAllowed(res);
+      methodNotAllowed(res, ["POST"]);
     });
 
   app
@@ -270,7 +290,7 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
       res.json({ ok: result.ok, message: result.ok ? "steer sent" : "steer failed" });
     })
     .all((_req, res) => {
-      methodNotAllowed(res);
+      methodNotAllowed(res, ["POST"]);
     });
 
   app
@@ -282,6 +302,17 @@ function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
         return;
       }
       res.json(detail);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+}
+
+function registerPrRoutes(app: Express, deps: HttpRouteDeps): void {
+  app
+    .route("/api/v1/prs")
+    .get(async (req, res) => {
+      await handleListPrs({ attemptStore: deps.attemptStore }, req, res);
     })
     .all((_req, res) => {
       methodNotAllowed(res);
@@ -337,7 +368,7 @@ function registerWorkspaceRoutes(app: Express, deps: HttpRouteDeps): void {
       );
     })
     .all((_req, res) => {
-      methodNotAllowed(res);
+      methodNotAllowed(res, ["DELETE"]);
     });
 }
 
@@ -359,7 +390,7 @@ function registerWebhookRoutes(app: Express, deps: HttpRouteDeps): void {
       handleWebhookLinear(webhookDeps, req as WebhookRequest, res);
     })
     .all((_req, res) => {
-      methodNotAllowed(res);
+      methodNotAllowed(res, ["POST"]);
     });
 }
 

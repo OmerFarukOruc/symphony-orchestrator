@@ -79,6 +79,12 @@ Done.`;
   });
 
   describe("structural JSON redaction", () => {
+    it("passes malformed JSON-like content through without reformatting", () => {
+      const malformed = '{"token":"lin_api_12345ABCDEfghijLMNOP",}';
+
+      expect(sanitizeContent(malformed)).toBe('{"token":"[REDACTED]",}');
+    });
+
     it("redacts secret keys in a flat JSON object", () => {
       const json = JSON.stringify({
         name: "test",
@@ -165,6 +171,36 @@ Done.`;
       expect(sanitizeContent(json)).toBe(expected);
     });
 
+    it("recursively redacts secrets inside nested arrays and objects", () => {
+      const value = {
+        items: [
+          {
+            metadata: {
+              notes: ["keep", "Authorization: Bearer nested-token-123"],
+              apiKey: "sk-1234567890abcdef1234567890abcdef",
+            },
+          },
+          {
+            children: [{ url: "https://user:password@example.com/webhook" }],
+          },
+        ],
+      };
+
+      expect(redactSensitiveValue(value)).toEqual({
+        items: [
+          {
+            metadata: {
+              notes: ["keep", "Authorization: [REDACTED]"],
+              apiKey: "[REDACTED]",
+            },
+          },
+          {
+            children: [{ url: "https://[REDACTED]@example.com/webhook" }],
+          },
+        ],
+      });
+    });
+
     it("redacts non-string secret values as [REDACTED_OBJECT] or [REDACTED]", () => {
       const json = JSON.stringify({
         secretObj: { a: 1 },
@@ -176,6 +212,27 @@ Done.`;
           secretObj: { a: "[REDACTED]" },
           secretNum: "[REDACTED]",
           secretBool: "[REDACTED]",
+        },
+        null,
+        2,
+      );
+
+      expect(sanitizeContent(json)).toBe(expected);
+    });
+
+    it("distinguishes primitive and structured secret values", () => {
+      const json = JSON.stringify({
+        password: "my-super-secret-password",
+        apiKey: { nested: "secret", count: 1 },
+        secretList: ["a", "b"],
+        auth: null,
+      });
+      const expected = JSON.stringify(
+        {
+          password: "[REDACTED]",
+          apiKey: { nested: "[REDACTED]", count: "[REDACTED]" },
+          secretList: "[REDACTED_OBJECT]",
+          auth: "[REDACTED_OBJECT]",
         },
         null,
         2,
@@ -199,6 +256,24 @@ Done.`;
       expect(redactSensitiveValue(value)).toEqual({
         password: "[REDACTED]",
         callback: "[REDACTED_OBJECT]",
+      });
+    });
+
+    it("handles cyclic values when fallback cloning is required", () => {
+      const nested: Record<string, unknown> = {};
+      const value: Record<string, unknown> = {
+        password: "secret",
+        callback: () => "noop",
+        nested,
+      };
+      nested.self = value;
+
+      expect(redactSensitiveValue(value)).toEqual({
+        password: "[REDACTED]",
+        callback: "[REDACTED_OBJECT]",
+        nested: {
+          self: "[REDACTED_OBJECT]",
+        },
       });
     });
   });

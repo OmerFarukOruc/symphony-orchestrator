@@ -56,7 +56,7 @@ export async function handleWorkerOutcome(
     return;
   }
   if (outcome.kind === "cancelled" || isHardFailure(outcome.errorCode)) {
-    handleCancelledOrHardFailure(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
+    await handleCancelledOrHardFailure(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
     return;
   }
 
@@ -89,7 +89,16 @@ async function dispatchPostReconciliation(
     "post-reconciliation stop-signal check",
   );
   if (stopSignal) {
-    await handleStopSignal(ctx, stopSignal, entry, latestIssue, workspace, modelSelection, attempt);
+    await handleStopSignal(
+      ctx,
+      stopSignal,
+      entry,
+      latestIssue,
+      workspace,
+      modelSelection,
+      attempt,
+      outcome.turnCount ?? null,
+    );
     return;
   }
 
@@ -107,7 +116,7 @@ async function dispatchPostReconciliation(
   const strategy = classifyRetryStrategy(outcome.codexErrorInfo ?? null, outcome.errorCode);
   switch (strategy.action) {
     case "hard_fail":
-      handleCancelledOrHardFailure(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
+      await handleCancelledOrHardFailure(ctx, outcome, entry, latestIssue, workspace, modelSelection, attempt);
       return;
     case "retry":
       queueRetryWithDelay(ctx, latestIssue, attempt, strategy.delayMs, strategy.reason);

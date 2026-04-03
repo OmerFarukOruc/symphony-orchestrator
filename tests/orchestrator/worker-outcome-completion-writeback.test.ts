@@ -54,6 +54,7 @@ function makeInput(overrides: Partial<CompletionWritebackInput> = {}): Completio
     attempt: 1,
     stopSignal: "done",
     pullRequestUrl: null,
+    turnCount: 1,
     ...overrides,
   };
 }
@@ -82,6 +83,7 @@ describe("writeCompletionWriteback — comment content", () => {
 
     const createComment = ctx.deps.tracker.createComment as ReturnType<typeof vi.fn>;
     const body = createComment.mock.calls[0][1] as string;
+    expect(body).toContain("**Turns:** 1");
     expect(body).toContain("**Tokens:**");
     expect(body).toContain("1,500");
     expect(body).toContain("1,000");
@@ -134,6 +136,18 @@ describe("writeCompletionWriteback — comment content", () => {
     const createComment = ctx.deps.tracker.createComment as ReturnType<typeof vi.fn>;
     const body = createComment.mock.calls[0][1] as string;
     expect(body).not.toContain("**Attempt:**");
+  });
+
+  it("includes turns even when token usage is null", async () => {
+    const ctx = makeCtx();
+    const input = makeInput({ turnCount: 7, entry: createRunningEntry({ tokenUsage: null }) });
+
+    await writeCompletionWriteback(ctx, input);
+
+    const createComment = ctx.deps.tracker.createComment as ReturnType<typeof vi.fn>;
+    const body = createComment.mock.calls[0][1] as string;
+    expect(body).toContain("**Turns:** 7");
+    expect(body).not.toContain("**Tokens:**");
   });
 
   it("includes PR URL when available", async () => {
