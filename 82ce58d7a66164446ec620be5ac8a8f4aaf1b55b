@@ -1,0 +1,42 @@
+.agents/skills/anvil-review/references/ledger-format.md
+  22c935fe48538275 9,13,17
+.agents/skills/anvil/scripts/resolve_bundle.ts
+  22c935fe48538275 48-52,55-68
+.agents/skills/anvil-verify/scripts/context.ts
+  22c935fe48538275 30-32
+.agents/skills/anvil/scripts/init_anvil_run.ts
+  22c935fe48538275 8-13,17-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "82ce58d7a66164446ec620be5ac8a8f4aaf1b55b",
+  "prompts": {
+    "22c935fe48538275": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2acb00071ffeV9eV7YUemDTd85",
+        "model": "opencode/qwen3.6-plus-free"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 37,
+      "overriden_lines": 0
+    },
+    "52b50571d24a5809": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d5019-2593-7072-b68f-ef8955d6a000",
+        "model": "gpt-5.4"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
