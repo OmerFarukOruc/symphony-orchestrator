@@ -67,3 +67,6 @@ screenshots/
 .omx/
 sast/
 .codex
+
+# Claude Code / ui-test artifacts
+.context/
