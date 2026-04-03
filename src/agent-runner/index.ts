@@ -52,6 +52,12 @@ export class AgentRunner implements RunAttemptDispatcher {
     precomputedRuntimeConfig?: PrecomputedRuntimeConfig;
     /** Thread ID from a previous attempt — enables thread/resume on retry. */
     previousThreadId?: string | null;
+    /**
+     * Formatted PR review feedback from a previous attempt's open pull request.
+     * When set, this string is appended to the rendered prompt so the agent
+     * can address reviewer comments in the retry run.
+     */
+    previousPrFeedback?: string | null;
   }): Promise<RunOutcome> {
     const config = this.deps.getConfig();
     const turnState = createTurnState();
@@ -155,6 +161,7 @@ export class AgentRunner implements RunAttemptDispatcher {
       signal: AbortSignal;
       onEvent: AgentRunnerEventHandler;
       previousThreadId?: string | null;
+      previousPrFeedback?: string | null;
     },
     getLastAgentMessageContent: () => string | null,
     getLastStopSignal?: () => import("../core/signal-detection.js").StopSignal | null,
@@ -166,6 +173,7 @@ export class AgentRunner implements RunAttemptDispatcher {
         ...input,
         startupTimeoutMs: config.codex.startupTimeoutMs,
         rollbackLastTurn: Boolean(input.previousThreadId),
+        previousPrFeedback: input.previousPrFeedback ?? null,
       },
       { logger: this.deps.logger },
       this.liquid,

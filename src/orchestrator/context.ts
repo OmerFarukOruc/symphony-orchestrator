@@ -39,7 +39,7 @@ export interface OutcomeContext {
     attempt: number,
     delayMs: number,
     error: string | null,
-    metadata?: { threadId?: string | null },
+    metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
   ) => void;
 }
 
@@ -64,13 +64,13 @@ export interface OrchestratorContext {
     attempt: number,
     delayMs: number,
     error: string | null,
-    metadata?: { threadId?: string | null },
+    metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
   ) => void;
   clearRetryEntry: (issueId: string) => void;
   launchWorker: (
     issue: Issue,
     attempt: number | null,
-    options?: { claimHeld?: boolean; previousThreadId?: string | null },
+    options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
   ) => Promise<void>;
   canDispatchIssue: (issue: Issue) => boolean;
   hasAvailableStateSlot: (

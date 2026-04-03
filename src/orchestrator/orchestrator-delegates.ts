@@ -233,7 +233,7 @@ async function launchWorkerDelegate(
   deps: OrchestratorDeps,
   issue: Issue,
   attempt: number | null,
-  options?: { claimHeld?: boolean; previousThreadId?: string | null },
+  options?: { claimHeld?: boolean; previousThreadId?: string | null; previousPrFeedback?: string | null },
 ): Promise<void> {
   const ctx = buildCtx(state, deps);
   await launchWorkerState(
