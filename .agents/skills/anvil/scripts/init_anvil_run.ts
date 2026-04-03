@@ -5,10 +5,21 @@ import { writeStatus } from "./state.ts";
 
 async function main(): Promise<void> {
   const root = process.cwd();
-  const slug = process.argv[2] ?? "example-anvil-run";
+  const rawSlug = process.argv[2] ?? "example-anvil-run";
+  // Reject path traversal characters in user-controlled slug.
+  if (/[\\/]/.test(rawSlug) || rawSlug.includes("..")) {
+    throw new TypeError(`invalid slug: must not contain path separators or dots: ${rawSlug}`);
+  }
+  const slug = rawSlug;
   const title = process.argv[3] ?? slug;
   const dryRun = process.argv.includes("--dry-run");
   const runDir = path.join(root, ".anvil", slug);
+  // Verify the resolved path stays within the .anvil directory.
+  const resolvedRunDir = path.resolve(runDir);
+  const anvilDir = path.resolve(root, ".anvil");
+  if (!resolvedRunDir.startsWith(anvilDir + path.sep)) {
+    throw new TypeError(`slug resolves outside the .anvil directory: ${resolvedRunDir}`);
+  }
 
   await fs.mkdir(path.join(runDir, "reviews"), { recursive: true });
   await fs.mkdir(path.join(runDir, "execution"), { recursive: true });

@@ -45,9 +45,27 @@ function formatSourceItem(item: string | Record<string, unknown>): string {
 
 async function main(): Promise<void> {
   const root = process.cwd();
-  const slug = process.argv[2] ?? "example-anvil-run";
+  const rawSlug = process.argv[2] ?? "example-anvil-run";
+  if (/[\\/]/.test(rawSlug) || rawSlug.includes("..")) {
+    throw new TypeError(`invalid slug: must not contain path separators or dots: ${rawSlug}`);
+  }
+  const slug = rawSlug;
   const title = process.argv[3] ?? "Example bundle";
   const bundlePatch = await maybeReadJson(process.argv[4]);
+
+  // Validate array fields in the patch before spreading.
+  if (bundlePatch) {
+    if ("architectural_drift" in bundlePatch && !Array.isArray(bundlePatch.architectural_drift)) {
+      throw new TypeError("architectural_drift must be an array");
+    }
+    if ("notes" in bundlePatch && !Array.isArray(bundlePatch.notes)) {
+      throw new TypeError("notes must be an array");
+    }
+    if ("source_items" in bundlePatch && !Array.isArray(bundlePatch.source_items)) {
+      throw new TypeError("source_items must be an array");
+    }
+  }
+
   const bundle: Bundle = {
     slug,
     title,

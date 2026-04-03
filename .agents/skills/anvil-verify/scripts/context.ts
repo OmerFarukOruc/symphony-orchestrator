@@ -27,7 +27,9 @@ function normalizePathList(items: string[]): string[] {
 }
 
 function isLikelyRepoPath(value: string): boolean {
-  return value.includes("/") || value.endsWith(".md");
+  // Accept paths with directory separators, markdown files, or common root-level repo files.
+  const rootFilePattern = /^[A-Z][A-Za-z0-9]*(?:\.[A-Za-z]+)?$/;
+  return value.includes("/") || value.endsWith(".md") || rootFilePattern.test(value);
 }
 
 export async function loadRunContext(runDirArg: string): Promise<RunContext> {

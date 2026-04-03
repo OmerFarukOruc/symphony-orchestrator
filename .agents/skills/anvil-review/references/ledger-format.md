@@ -6,15 +6,15 @@ Use this shape:
 
 ## Settled
 
-- <point>: settled in round N
+- `[point]`: settled in round N
 
 ## Contested
 
-- <point>: main session says X, reviewer says Y
+- `[point]`: main session says X, reviewer says Y
 
 ## Open
 
-- <point>: unresolved
+- `[point]`: unresolved
 
 ## Score History
 
