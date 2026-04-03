@@ -45,6 +45,7 @@ export function rowToAttemptRecord(row: AttemptRow): AttemptRecord {
     tokenUsage,
     pullRequestUrl: row.pullRequestUrl ?? null,
     stopSignal: (row.stopSignal as AttemptRecord["stopSignal"]) ?? null,
+    summary: row.summary ?? null,
   };
 }
 
@@ -74,6 +75,7 @@ export function attemptRecordToRow(record: AttemptRecord): AttemptInsertRow {
     totalTokens: record.tokenUsage?.totalTokens ?? null,
     pullRequestUrl: record.pullRequestUrl ?? null,
     stopSignal: record.stopSignal ?? null,
+    summary: record.summary ?? null,
   };
 }
 

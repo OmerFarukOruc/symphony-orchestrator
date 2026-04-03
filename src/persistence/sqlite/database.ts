@@ -39,7 +39,8 @@ const CREATE_TABLES_SQL = `
     output_tokens    INTEGER,
     total_tokens     INTEGER,
     pull_request_url TEXT,
-    stop_signal      TEXT CHECK(stop_signal IS NULL OR stop_signal IN ('done','blocked'))
+    stop_signal      TEXT CHECK(stop_signal IS NULL OR stop_signal IN ('done','blocked')),
+    summary          TEXT
   );
 
   CREATE TABLE IF NOT EXISTS attempt_events (
@@ -171,6 +172,30 @@ export function openDatabase(dbPath: string): RisolutoDatabase {
     sqlite
       .prepare("INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)")
       .run(3, new Date().toISOString());
+  }
+
+  // v4 migration: add `summary` column to `attempts` table.
+  // Fresh installs already have the column from CREATE_TABLES_SQL above.
+  // Existing databases need an ALTER TABLE. SQLite does not support
+  // `IF NOT EXISTS` on ALTER TABLE — use try/catch to suppress the
+  // "already has a column named summary" error on re-runs.
+  const v4Row = sqlite.prepare("SELECT version FROM schema_version WHERE version = 4").get() as
+    | { version: number }
+    | undefined;
+  if (!v4Row) {
+    try {
+      sqlite.exec("ALTER TABLE attempts ADD COLUMN summary TEXT");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // SQLite reports "duplicate column name: summary" when the column already
+      // exists (e.g. fresh-install DB that got the column from CREATE_TABLES_SQL).
+      if (!msg.includes("duplicate column name: summary")) {
+        throw err;
+      }
+    }
+    sqlite
+      .prepare("INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)")
+      .run(4, new Date().toISOString());
   }
 
   return drizzle(sqlite, { schema });

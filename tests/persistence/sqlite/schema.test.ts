@@ -99,6 +99,7 @@ describe("attempts table schema", () => {
         "total_tokens",
         "pull_request_url",
         "stop_signal",
+        "summary",
       ].sort(),
     );
   });

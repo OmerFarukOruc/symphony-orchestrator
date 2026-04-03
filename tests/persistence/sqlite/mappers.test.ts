@@ -35,6 +35,7 @@ function createAttemptRecord(overrides: Partial<AttemptRecord> = {}): AttemptRec
     tokenUsage: { inputTokens: 1000, outputTokens: 500, totalTokens: 1500 },
     pullRequestUrl: null,
     stopSignal: null,
+    summary: null,
     ...overrides,
   };
 }

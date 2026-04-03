@@ -27,7 +27,7 @@ describe("Schema v3 — config + webhook inbox tables", () => {
     }
   });
 
-  it("seeds schema_version with v3", () => {
+  it("seeds schema_version to at least v3 (latest version applied)", () => {
     const db = openDatabase(":memory:");
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,7 +35,8 @@ describe("Schema v3 — config + webhook inbox tables", () => {
       const row = raw.prepare("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1").get() as {
         version: number;
       };
-      expect(row.version).toBe(3);
+      // v3 was the baseline; v4 adds the `summary` column. Version only goes up.
+      expect(row.version).toBeGreaterThanOrEqual(3);
     } finally {
       closeDatabase(db);
     }

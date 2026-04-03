@@ -45,6 +45,8 @@ export const attempts = sqliteTable("attempts", {
   stopSignal: text("stop_signal", {
     enum: ["done", "blocked"],
   }),
+  /** Agent-authored markdown summary stored after generation, before PR creation. */
+  summary: text("summary"),
 });
 
 /**
