@@ -21,6 +21,7 @@ export interface AttemptRecord extends AttemptSummary {
   turnCount?: number;
   threadId?: string | null;
   turnId?: string | null;
+  summary?: string | null;
   events?: unknown[];
 }
 
@@ -52,6 +53,7 @@ export function buildAttemptRecord(overrides?: Partial<AttemptRecord>): AttemptR
     turnCount: 5,
     threadId: "thread-001",
     turnId: "turn-005",
+    summary: null,
     events: [
       {
         at: "2026-01-15T11:30:00.000Z",

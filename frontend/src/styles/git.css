@@ -136,6 +136,10 @@
   .git-layout {
     grid-template-columns: 1fr;
   }
+
+  .git-tracked-pr-top {
+    flex-direction: column;
+  }
 }
 
 /* ---- Page body & sections ---- */
@@ -206,6 +210,21 @@
 .git-badge--accent {
   background: color-mix(in srgb, var(--text-accent) 10%, transparent);
   color: var(--text-accent);
+}
+
+.git-badge--open {
+  background: color-mix(in srgb, var(--status-running) 16%, transparent);
+  color: var(--status-running);
+}
+
+.git-badge--merged {
+  background: color-mix(in srgb, var(--status-completed) 16%, transparent);
+  color: var(--status-completed);
+}
+
+.git-badge--closed {
+  background: color-mix(in srgb, var(--status-blocked) 14%, transparent);
+  color: var(--status-blocked);
 }
 
 .git-badge--discovered {
@@ -293,6 +312,56 @@ a.git-repo-name:hover {
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
+}
+
+.git-tracked-pr-summary,
+.git-tracked-pr-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.git-tracked-pr-summary {
+  grid-template-columns: repeat(auto-fit, minmax(120px, max-content));
+}
+
+.git-tracked-pr-row {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-muted);
+  border-left: 3px solid var(--text-accent);
+}
+
+.git-tracked-pr-top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.git-tracked-pr-identity,
+.git-tracked-pr-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.git-tracked-pr-repo {
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+}
+
+.git-tracked-pr-updated,
+.git-tracked-pr-issue {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.git-tracked-pr-sha {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 
 /* ---- Inline commits on cards ---- */
@@ -538,4 +607,3 @@ a.git-repo-name:hover {
   font-size: var(--text-xs);
   text-align: right;
 }
-

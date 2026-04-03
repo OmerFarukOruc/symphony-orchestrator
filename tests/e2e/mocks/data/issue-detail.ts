@@ -27,6 +27,7 @@ export interface IssueDetail {
   url?: string | null;
   description?: string | null;
   branchName?: string | null;
+  pullRequestUrl?: string | null;
   createdAt?: string | null;
   recentEvents: RecentEvent[];
   attempts: AttemptSummary[];
@@ -75,6 +76,7 @@ export function buildIssueDetail(overrides?: Partial<IssueDetail>): IssueDetail 
     url: "https://linear.app/team/SYM-42",
     description: "Users cannot log in after password reset",
     branchName: "sym-42-fix-auth",
+    pullRequestUrl: "https://github.com/owner/repo/pull/42",
     createdAt: "2026-01-15T10:00:00.000Z",
     recentEvents: [
       {

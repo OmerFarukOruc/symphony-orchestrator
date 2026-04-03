@@ -12,7 +12,7 @@ import {
   formatTimestamp,
 } from "../utils/format";
 import { registerPageCleanup } from "../utils/page";
-import type { AttemptRecord, IssueDetail } from "../types";
+import type { AttemptCheckpointRecord, AttemptRecord, IssueDetail } from "../types";
 import { resolveIssueIdentifier } from "./attempt-utils";
 
 function createValueLink(label: string, href: string): HTMLElement {
@@ -53,6 +53,150 @@ function createSection(title: string, className = "attempt-section mc-panel"): H
   return section;
 }
 
+function humanizeTrigger(trigger: string): string {
+  return trigger
+    .split("_")
+    .filter((part) => part.length > 0)
+    .map((part) => (part === "pr" ? "PR" : part[0]?.toUpperCase() + part.slice(1)))
+    .join(" ");
+}
+
+function createSummaryContent(summary: string): HTMLElement {
+  const lines = summary
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const bulletLines = lines.filter((line) => line.startsWith("- ") || line.startsWith("* "));
+  if (lines.length > 0 && bulletLines.length === lines.length) {
+    const list = document.createElement("ul");
+    list.className = "attempt-pr-summary-list";
+    for (const line of bulletLines) {
+      const item = document.createElement("li");
+      item.textContent = line.slice(2).trim();
+      list.append(item);
+    }
+    return list;
+  }
+  const block = document.createElement("pre");
+  block.className = "attempt-pr-summary-markdown";
+  block.textContent = summary;
+  return block;
+}
+
+function buildPrSummarySection(attempt: AttemptRecord): HTMLElement | null {
+  const summary = attempt.summary?.trim();
+  if (!summary) {
+    return null;
+  }
+  const section = createSection("Agent-authored PR summary");
+  section.append(createSummaryContent(summary));
+  return section;
+}
+
+function formatCheckpointMetadataValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (value === null || value === undefined) {
+    return "—";
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function createCheckpointCard(checkpoint: AttemptCheckpointRecord): HTMLElement {
+  const card = document.createElement("article");
+  card.className = "attempt-checkpoint-card";
+
+  const header = document.createElement("div");
+  header.className = "attempt-checkpoint-header";
+  const title = document.createElement("div");
+  title.className = "attempt-checkpoint-title";
+  title.append(
+    Object.assign(document.createElement("strong"), {
+      className: "text-mono",
+      textContent: `#${checkpoint.ordinal}`,
+    }),
+    Object.assign(document.createElement("span"), {
+      className: "attempt-checkpoint-trigger",
+      textContent: humanizeTrigger(checkpoint.trigger),
+    }),
+  );
+  header.append(title, statusChip(checkpoint.status));
+
+  const grid = document.createElement("div");
+  grid.className = "attempt-meta-grid";
+  grid.append(
+    createMetaItem("Created", formatTimestamp(checkpoint.createdAt), true),
+    createMetaItem("Turns", String(checkpoint.turnCount), true),
+    createMetaItem(
+      "Tokens",
+      checkpoint.tokenUsage
+        ? `${formatCompactNumber(checkpoint.tokenUsage.totalTokens)} total · ${formatCompactNumber(checkpoint.tokenUsage.inputTokens)} in · ${formatCompactNumber(checkpoint.tokenUsage.outputTokens)} out`
+        : "—",
+      true,
+    ),
+    createMetaItem("Event cursor", checkpoint.eventCursor === null ? "—" : String(checkpoint.eventCursor), true),
+    createMetaItem("Thread ID", checkpoint.threadId ?? "—", true),
+    createMetaItem("Turn ID", checkpoint.turnId ?? "—", true),
+  );
+  card.append(header, grid);
+
+  const metadataEntries = Object.entries(checkpoint.metadata ?? {});
+  if (metadataEntries.length > 0) {
+    const metadata = document.createElement("dl");
+    metadata.className = "attempt-checkpoint-metadata";
+    for (const [key, value] of metadataEntries) {
+      const term = document.createElement("dt");
+      term.textContent = key;
+      const description = document.createElement("dd");
+      description.textContent = formatCheckpointMetadataValue(value);
+      metadata.append(term, description);
+    }
+    card.append(metadata);
+  }
+
+  return card;
+}
+
+function buildCheckpointHistorySection(checkpoints: AttemptCheckpointRecord[]): HTMLElement {
+  const section = createSection("Checkpoint history");
+  const sorted = [...checkpoints].sort((left, right) => left.ordinal - right.ordinal);
+  if (sorted.length === 0) {
+    section.append(
+      Object.assign(document.createElement("p"), {
+        className: "text-secondary",
+        textContent: "No checkpoint history was recorded for this run.",
+      }),
+    );
+    return section;
+  }
+
+  const latest = sorted.at(-1) ?? null;
+  const strip = document.createElement("div");
+  strip.className = "attempt-summary-strip attempt-checkpoint-strip";
+  strip.append(
+    createMetaItem("Checkpoints", String(sorted.length), true),
+    createMetaItem("Latest trigger", latest ? humanizeTrigger(latest.trigger) : "—"),
+    createMetaItem("Latest write", latest ? formatTimestamp(latest.createdAt) : "—", true),
+  );
+
+  const list = document.createElement("div");
+  list.className = "attempt-checkpoint-list";
+  for (const checkpoint of sorted) {
+    list.append(createCheckpointCard(checkpoint));
+  }
+
+  section.append(strip, list);
+  return section;
+}
+
 function renderLoading(): HTMLElement {
   const shell = document.createElement("div");
   shell.className = "page attempt-page fade-in";
@@ -69,7 +213,11 @@ function createLinkButton(label: string, path: string): HTMLButtonElement {
   return button;
 }
 
-function renderAttemptPage(attempt: AttemptRecord, issue: IssueDetail | null): HTMLElement {
+function renderAttemptPage(
+  attempt: AttemptRecord,
+  issue: IssueDetail | null,
+  checkpoints: AttemptCheckpointRecord[],
+): HTMLElement {
   const issueIdentifier = resolveIssueIdentifier(attempt, issue) ?? "Unknown issue";
   const issueTitle = attempt.title ?? issue?.title ?? "Archived attempt";
   const page = document.createElement("div");
@@ -142,7 +290,12 @@ function renderAttemptPage(attempt: AttemptRecord, issue: IssueDetail | null): H
   );
   ids.append(idsGrid);
 
-  page.append(header, summary, workspace, routing, ids);
+  page.append(header, summary, workspace);
+  const prSummary = buildPrSummarySection(attempt);
+  if (prSummary) {
+    page.append(prSummary);
+  }
+  page.append(buildCheckpointHistorySection(checkpoints), routing, ids);
   if (attempt.errorMessage || attempt.errorCode) {
     const error = createSection("Error");
     const body = document.createElement("p");
@@ -162,11 +315,14 @@ export function createAttemptPage(attemptId: string): HTMLElement {
 
   async function load(): Promise<void> {
     try {
-      const attempt = await api.getAttemptDetail(attemptId);
+      const [attempt, checkpointsResponse] = await Promise.all([
+        api.getAttemptDetail(attemptId),
+        api.getAttemptCheckpoints(attemptId).catch(() => ({ checkpoints: [] as AttemptCheckpointRecord[] })),
+      ]);
       const issueIdentifier = resolveIssueIdentifier(attempt, null);
       const issue = issueIdentifier ? await api.getIssue(issueIdentifier).catch(() => null) : null;
       if (!disposed) {
-        root.replaceChildren(renderAttemptPage(attempt, issue));
+        root.replaceChildren(renderAttemptPage(attempt, issue, checkpointsResponse.checkpoints));
       }
     } catch (error) {
       if (!disposed) {

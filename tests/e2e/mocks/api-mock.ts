@@ -8,11 +8,13 @@ import { buildIssueDetail, type IssueDetail } from "./data/issue-detail";
 import { buildAttemptRecord, type AttemptRecord } from "./data/attempts";
 import { buildPrRecord, type PrRecord } from "./data/pr";
 import { buildCheckpointRecord, type CheckpointRecord } from "./data/checkpoint";
+import { buildGitContext, type GitContextResponse } from "./data/git-context";
 
 export interface ApiMockOverrides {
   setupStatus?: SetupStatus;
   runtimeSnapshot?: RuntimeSnapshot;
   runtimeInfo?: Record<string, unknown>;
+  gitContext?: GitContextResponse;
   config?: Record<string, unknown>;
   configOverlay?: { overlay: Record<string, unknown> };
   configSchema?: unknown;
@@ -45,6 +47,7 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
   const configSchema = overrides.configSchema ?? buildConfigSchema();
   const secrets = overrides.secrets ?? buildSecrets();
   const transitions = overrides.transitions ?? { transitions: {} };
+  const gitContext = overrides.gitContext ?? buildGitContext();
   const runtimeInfo = overrides.runtimeInfo ?? {
     version: "0.3.1",
     workflow_path: "/tmp/WORKFLOW.md",
@@ -93,6 +96,7 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
   // State & Runtime
   await page.route("**/api/v1/state", (route) => json(route, snapshot));
   await page.route("**/api/v1/runtime", (route) => json(route, runtimeInfo));
+  await page.route("**/api/v1/git/context", (route) => json(route, gitContext));
   await page.route("**/api/v1/models", (route) =>
     json(route, {
       models: [
