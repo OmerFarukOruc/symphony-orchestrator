@@ -1,0 +1,88 @@
+src/persistence/sqlite/database.ts
+  40c849ad80a0d5a1 42-43,177-200
+src/config/schemas/index.ts
+  40c849ad80a0d5a1 12-13
+src/config/schemas/pr-policy.ts
+  40c849ad80a0d5a1 1-45
+tests/persistence/sqlite/schema.test.ts
+  40c849ad80a0d5a1 102
+src/config/builders.ts
+  40c849ad80a0d5a1 108-133,151-154
+tests/persistence/sqlite/database.test.ts
+  40c849ad80a0d5a1 347-419
+src/config/schemas/agent.ts
+  40c849ad80a0d5a1 6,17-41
+src/persistence/sqlite/schema.ts
+  40c849ad80a0d5a1 48-49
+tests/persistence/sqlite/schema-v2.test.ts
+  40c849ad80a0d5a1 30,38-39
+tests/persistence/sqlite/mappers.test.ts
+  40c849ad80a0d5a1 38
+src/persistence/sqlite/mappers.ts
+  40c849ad80a0d5a1 48,78
+src/core/types.ts
+  40c849ad80a0d5a1 2-3,59-60,110-111,282-289,291-366
+tests/persistence/sqlite/attempt-store-sqlite.test.ts
+  40c849ad80a0d5a1 44
+tests/config/pr-policy-schema.test.ts
+  40c849ad80a0d5a1 1-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "de1f36cbc75622877a789b57317ee14b90e98a36",
+  "prompts": {
+    "40c849ad80a0d5a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0065a08e-0e13-41c0-9e05-c35791d17328",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 2958,
+      "total_deletions": 116,
+      "accepted_lines": 2853,
+      "overriden_lines": 61
+    },
+    "52b50571d24a5809": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d5019-2593-7072-b68f-ef8955d6a000",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 127,
+      "total_deletions": 34,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    },
+    "56d61f6b1ec38e43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0028769-6980-4666-9737-e1b82b46bc39",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 1613,
+      "total_deletions": 93,
+      "accepted_lines": 1562,
+      "overriden_lines": 0
+    },
+    "67376f6f54fc4355": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d5061-af9d-74d1-851c-37f2f3ed053d",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 22,
+      "total_deletions": 19,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}
