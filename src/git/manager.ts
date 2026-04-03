@@ -173,8 +173,16 @@ export class GitManager implements GitIntegrationPort {
     route: RepoMatch,
     issue: Pick<Issue, "identifier" | "title" | "url">,
     branchName: string,
+    summary?: string | null,
   ): Promise<unknown> {
-    return this.githubPrClient.createPullRequest(route, issue, branchName);
+    return this.githubPrClient.createPullRequest(route, issue, branchName, summary);
+  }
+
+  async forcePushIfBranchExists(branchName: string, workspaceDir: string): Promise<void> {
+    await this.runGit(["push", "--force-with-lease", "origin", branchName], {
+      cwd: workspaceDir,
+      env: this.env,
+    });
   }
   async addPrComment(input: {
     owner: string;
