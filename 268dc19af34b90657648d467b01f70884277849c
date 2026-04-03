@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "268dc19af34b90657648d467b01f70884277849c",
+  "prompts": {
+    "b2a61d34f4a8b7aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d53de-1a67-7cc0-b760-a0a057f1b4f0",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Omer Faruk Oruc",
+      "messages": [],
+      "total_additions": 100,
+      "total_deletions": 0,
+      "accepted_lines": 100,
+      "overriden_lines": 0
+    }
+  }
+}
