@@ -2,6 +2,7 @@
 
 Use this routing table:
 
+- `preflight` -> `intake`
 - `intake` -> `anvil-brainstorm`
 - `brainstorm` -> `anvil-plan`
 - `plan` -> `anvil-review`
@@ -16,6 +17,7 @@ Reopen conditions:
 
 - Major plan weakness -> back to `plan`
 - Audit reopen -> back to `review`
+- Missing required factory skill or conditional verification prerequisite -> stay in `preflight` as blocked
 - Failing quality gate -> stay in `execute`
 - Failed claim -> back to `execute`
 - Missing docs or tests -> `docs-tests-closeout`
@@ -25,6 +27,7 @@ State tracking rules:
 - Put future workflow steps in `pending_phases`, not `pending_gates`.
 - Reserve `pending_gates` for executable quality checks only.
 - Set `active = false` only when the run is intentionally paused or truly complete.
+- If a review, audit, verify, or gate retry cap is exceeded, stop the loop and follow `references/escalation-playbook.md`.
 
 Completion conditions:
 
