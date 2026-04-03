@@ -7,7 +7,7 @@ description: Generate or strengthen the execution plan for an anvil run. Use aft
 
 Read `.agents/PLANS.md` first. The plan output must respect that contract.
 
-Read `references/codex-plan-template.md` and `references/plan-quality-bar.md`.
+Read `references/codex-plan-template.md`, `references/plan-quality-bar.md`, and `../anvil-risoluto/references/output-contract.md`.
 
 ## Purpose
 
@@ -28,6 +28,7 @@ Write both:
 
 - `docs/plans/YYYY-MM-DD-NNN-<type>-<slug>-execplan.md`
 - `.anvil/<slug>/plan.md`
+- `.anvil/<slug>/handoff.md`
 
 ## Requirements
 
@@ -37,3 +38,4 @@ Write both:
 - For each unit, include owned files, dependencies, execution target, tests impact, docs impact, and verification surface.
 - Use repo-relative paths.
 - Keep planning-time unknowns separate from implementation-time unknowns.
+- Refresh `handoff.md` with the planning outcome, the strongest artifacts to open first, any residual planning risk, and whether the next action is review or a planning reopen.

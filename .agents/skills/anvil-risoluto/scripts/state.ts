@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 export const PHASES = [
+  "preflight",
   "intake",
   "brainstorm",
   "plan",
@@ -102,6 +103,9 @@ function toStringList(value: unknown): string[] {
 }
 
 function normalizePhase(value: unknown, fallback: PhaseName): PhaseName {
+  if (value === "complete") {
+    return "final-push";
+  }
   if (typeof value === "string" && PHASE_SET.has(value)) {
     return value as PhaseName;
   }
@@ -109,6 +113,9 @@ function normalizePhase(value: unknown, fallback: PhaseName): PhaseName {
 }
 
 function normalizePhaseStatus(value: unknown, fallback: PhaseStatus): PhaseStatus {
+  if (value === "complete") {
+    return "completed";
+  }
   if (value === "pending" || value === "in_progress" || value === "completed" || value === "blocked") {
     return value;
   }

@@ -14,6 +14,8 @@ async function main(): Promise<void> {
   const title = process.argv[3] ?? slug;
   const dryRun = process.argv.includes("--dry-run");
   const runDir = path.join(root, ".anvil", slug);
+  const startedAt = new Date().toISOString();
+  const nextRequiredAction = "Run preflight checks and write preflight.md before intake.";
   // Verify the resolved path stays within the .anvil directory.
   const resolvedRunDir = path.resolve(runDir);
   const anvilDir = path.resolve(root, ".anvil");
@@ -26,6 +28,7 @@ async function main(): Promise<void> {
   await fs.mkdir(path.join(runDir, "verification"), { recursive: true });
 
   const remainingPhases = [
+    "intake",
     "brainstorm",
     "plan",
     "review",
@@ -38,7 +41,7 @@ async function main(): Promise<void> {
   ];
   const status = {
     slug,
-    phase: "intake",
+    phase: "preflight",
     phase_status: "in_progress",
     active: true,
     review_round: 0,
@@ -60,9 +63,9 @@ async function main(): Promise<void> {
     docs_status: "pending",
     tests_status: "pending",
     push_status: "not_started",
-    integration_branch: `chore/batch-${slug}`,
+    integration_branch: null,
     last_failure_reason: null,
-    next_required_action: "Create intake.md and bundle.json",
+    next_required_action: nextRequiredAction,
     dry_run: dryRun,
   };
 
@@ -70,7 +73,57 @@ async function main(): Promise<void> {
   await writeStatus(path.join(runDir, "status.json"), status);
   await fs.writeFile(
     path.join(runDir, "pipeline.log"),
-    `# Pipeline Log -- ${title}\n\n**Slug**: ${slug}\n**Started**: ${new Date().toISOString()}\n**Status**: ${dryRun ? "🟡 DRY RUN STARTED" : "🟡 IN PROGRESS"}\n\n---\n\n## Phase 1: Intake\n**Started**: ${new Date().toISOString()}\n**Input**: ${title}\n`,
+    `# Pipeline Log -- ${title}\n\n**Slug**: ${slug}\n**Started**: ${startedAt}\n**Status**: ${dryRun ? "DRY RUN STARTED" : "IN PROGRESS"}\n\n---\n\n## Phase 0: Preflight\n**Started**: ${startedAt}\n**Input**: ${title}\n`,
+    "utf8",
+  );
+  await fs.writeFile(
+    path.join(runDir, "preflight.md"),
+    [
+      "# Preflight",
+      "",
+      "## Run State",
+      `- Run: ${slug}`,
+      "- Phase: preflight (in_progress)",
+      "- Status: not run yet",
+      "",
+      "## Ready / Blocked Decision",
+      "- Decision: pending",
+      "",
+      "## Next Action",
+      `- ${nextRequiredAction}`,
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  await fs.writeFile(
+    path.join(runDir, "handoff.md"),
+    [
+      "# Handoff",
+      "",
+      "## Current State",
+      `- Run: ${slug}`,
+      "- Phase: preflight (in_progress)",
+      "- Loop state: active",
+      `- Next required action: ${nextRequiredAction}`,
+      "",
+      "## What Changed",
+      "Initialized the anvil run scaffold and created the machine-readable state, directories, pipeline log, and preflight placeholder.",
+      "",
+      "## Open First",
+      `1. \`.anvil/${slug}/status.json\` - machine-readable run state.`,
+      `2. \`.anvil/${slug}/preflight.md\` - preflight readiness record.`,
+      "",
+      "## Evidence",
+      `- Run scaffold created at ${startedAt}.`,
+      `- Dry run: ${dryRun ? "yes" : "no"}.`,
+      "",
+      "## Open Risk",
+      "- Preflight has not run yet, so the environment may still block the factory before intake begins.",
+      "",
+      "## Resume Here",
+      `- ${nextRequiredAction}`,
+      "",
+    ].join("\n"),
     "utf8",
   );
 }

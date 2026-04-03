@@ -5,7 +5,7 @@ description: Interactive requirements hardening for an anvil run. Use after bund
 
 # Anvil Brainstorm
 
-Read `references/intake-hardening.md` and `references/brainstorm-template.md` before starting.
+Read `references/intake-hardening.md`, `references/brainstorm-template.md`, and `../anvil-risoluto/references/output-contract.md` before starting.
 
 ## Purpose
 
@@ -21,7 +21,10 @@ Turn the current intake into a concrete requirements artifact that planning can 
 
 ## Output
 
-Write `.anvil/<slug>/requirements.md`.
+Write:
+
+- `.anvil/<slug>/requirements.md`
+- `.anvil/<slug>/handoff.md`
 
 At minimum include:
 
@@ -34,3 +37,5 @@ At minimum include:
 - Outstanding questions
 
 If blockers remain, record them explicitly instead of pretending the brainstorm is done.
+
+Refresh `handoff.md` so a fresh session can see whether the run is blocked or planning-ready, what changed in the requirements, which artifacts to open first, and the exact next action.

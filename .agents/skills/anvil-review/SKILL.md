@@ -5,7 +5,7 @@ description: Hostile review phase for an anvil plan. Use after planning to press
 
 # Anvil Review
 
-Read `references/ledger-format.md` and `references/review-rubric.md`.
+Read `references/ledger-format.md`, `references/review-rubric.md`, and `../anvil-risoluto/references/output-contract.md`.
 
 ## Workflow
 
@@ -21,9 +21,12 @@ Write:
 
 - `.anvil/<slug>/ledger.md`
 - `.anvil/<slug>/reviews/review-round-<N>.md`
+- `.anvil/<slug>/handoff.md`
 
 ## Rules
 
 - Prioritize correctness, regression risk, test coverage, blast radius, and rollback safety.
 - Do not weaken the plan just to reach agreement.
 - Reopen planning if the plan is not execution-ready.
+- Refresh `handoff.md` with settled / contested / open counts, the dominant risk signal, the review verdict, and the exact route forward: reopen `plan` or continue to `audit`.
+- Do not collapse the round into `ledger.md` alone. `reviews/review-round-<N>.md` must preserve the actual critique, reasoning, and verdict for that round.

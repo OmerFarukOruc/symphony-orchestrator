@@ -5,7 +5,7 @@ description: Verification and closeout phase for an anvil run. Use after executi
 
 # Anvil Verify
 
-Read `references/claim-types.md`, `references/verify-charter-template.md`, and `references/verification-routing.md`.
+Read `references/claim-types.md`, `references/verify-charter-template.md`, `references/verification-routing.md`, and `../anvil-risoluto/references/output-contract.md`.
 
 ## Workflow
 
@@ -13,6 +13,7 @@ Read `references/claim-types.md`, `references/verify-charter-template.md`, and `
 - Generate `.anvil/<slug>/verify-charter.md`
 - Keep `status.json.claim_counts`, `open_claims`, and `failed_claims` aligned with `claims.md`
 - Route verification based on the charter and the actual diff
+- For runs that touch real lifecycle behavior, orchestration, persistence/recovery, issue pickup, PR creation, restart resilience, or external Linear/GitHub/Codex wiring, include the live lifecycle E2E route via `./scripts/run-e2e.sh` when prerequisites are available.
 - Use existing repo skills instead of rebuilding them:
   - `visual-verify`
   - `ui-test`
@@ -30,6 +31,8 @@ Write:
 - `.anvil/<slug>/docs-impact.md`
 - `.anvil/<slug>/tests-impact.md`
 - `.anvil/<slug>/verification/`
+- `.anvil/<slug>/handoff.md`
+- `.anvil/<slug>/closeout.md` when the run is paused, reopened, or ready for final push
 
 ## Rules
 
@@ -37,3 +40,9 @@ Write:
 - Docs and tests are first-class done criteria.
 - A run is not final-push ready until all claims are `passed` or intentionally `accepted-risk`.
 - `pending_phases` tracks the remaining workflow steps. `pending_gates` tracks executable checks only.
+- If `./scripts/run-e2e.sh` runs and fails, inspect the generated `e2e-reports/<run-id>/e2e-summary.json`, phase results, and stderr / event artifacts, reopen execution, fix the real issue, and rerun until the relevant gates pass or the run is honestly blocked by external prerequisites.
+- If the lifecycle E2E is skipped because credentials, Docker, or external test infrastructure are unavailable, record that explicitly in verification output. Do not pretend it passed.
+- If the lifecycle E2E creates transient external artifacts such as a PR or issue and later cleans them up, say that explicitly in the verification summary. Do not stop at "PR created" if cleanup later closed it or deleted its branch.
+- When lifecycle E2E runs, include the run id or report directory, the final cleanup state, and any still-inspectable URL or local artifact path.
+- Refresh `handoff.md` with claim counts, verification evidence, docs/tests status, and the exact next action.
+- Refresh `closeout.md` when verification creates a meaningful checkpoint so an operator can tell whether the run reopened execution, stopped for follow-up, or is ready for final push.

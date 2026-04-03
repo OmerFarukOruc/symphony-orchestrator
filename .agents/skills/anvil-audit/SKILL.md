@@ -5,7 +5,7 @@ description: Independent synthesis audit for an anvil run. Use after review conv
 
 # Anvil Audit
 
-Read `references/synthesis-audit.md`.
+Read `references/synthesis-audit.md` and `../anvil-risoluto/references/output-contract.md`.
 
 ## Workflow
 
@@ -18,6 +18,8 @@ Read `references/synthesis-audit.md`.
 Write:
 
 - `.anvil/<slug>/reviews/hostile-audit-round-<N>.md`
+- `.anvil/<slug>/handoff.md`
+- `.anvil/<slug>/closeout.md` when the run pauses after audit or reaches an execution-ready checkpoint
 
 Update `status.json` and `pipeline.log` based on the verdict.
 
@@ -26,3 +28,4 @@ Update `status.json` and `pipeline.log` based on the verdict.
 - Reopen only substantive issues.
 - Cap audit reopen rounds at 2.
 - If the audit finds fake compromise, vague decisions, or unowned risk, route back to review.
+- If the run pauses after an audit checkpoint, `closeout.md` must say so explicitly, including that implementation, branch, commit, or PR may still be `none yet`.

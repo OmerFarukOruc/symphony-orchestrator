@@ -22,5 +22,6 @@
 - integration
 - smoke
 - visual
+- live lifecycle E2E
 - manual flow
 - docs diff
