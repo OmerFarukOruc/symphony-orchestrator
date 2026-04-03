@@ -198,11 +198,13 @@ export const attemptCheckpoints = sqliteTable("attempt_checkpoints", {
  * Polled by `PrMonitorService` to detect merged / closed state changes.
  */
 export const pullRequests = sqliteTable("pull_requests", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+  prId: text("pr_id").primaryKey(),
+  attemptId: text("attempt_id"),
   issueId: text("issue_id").notNull(),
-  url: text("url").notNull().unique(),
-  number: integer("number").notNull(),
+  owner: text("owner").notNull(),
   repo: text("repo").notNull(),
+  pullNumber: integer("pull_number").notNull(),
+  url: text("url").notNull().unique(),
   branchName: text("branch_name").notNull(),
   status: text("status").notNull().default("open"), // "open" | "merged" | "closed"
   mergedAt: text("merged_at"),

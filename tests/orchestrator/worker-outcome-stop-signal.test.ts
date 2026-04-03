@@ -356,7 +356,7 @@ describe("handleStopSignal — writeback integration", () => {
 
     expect(ctx.deps.tracker.createComment).toHaveBeenCalledWith(
       issue.id,
-      expect.stringContaining("Risoluto agent completed"),
+      expect.stringContaining("**Risoluto agent completed**"),
     );
   });
 
@@ -370,7 +370,7 @@ describe("handleStopSignal — writeback integration", () => {
 
     expect(ctx.deps.tracker.createComment).toHaveBeenCalledWith(
       issue.id,
-      expect.stringContaining("Risoluto agent completed"),
+      expect.stringContaining("**Risoluto agent blocked**"),
     );
   });
 });

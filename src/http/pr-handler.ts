@@ -31,11 +31,9 @@ export async function handleListPrs(deps: PrHandlerDeps, request: Request, respo
   const filtered = statusFilter === null ? prs : prs.filter((pr) => pr.status === statusFilter);
   response.json({
     prs: filtered.map((pr) => ({
-      attemptId: pr.attemptId,
       issueId: pr.issueId,
       url: pr.url,
       number: pr.pullNumber,
-      owner: pr.owner,
       repo: pr.repo.includes("/") ? pr.repo : `${pr.owner}/${pr.repo}`,
       branchName: pr.branchName,
       status: pr.status,

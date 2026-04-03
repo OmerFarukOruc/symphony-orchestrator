@@ -167,11 +167,13 @@ const CREATE_TABLES_SQL = `
   CREATE INDEX IF NOT EXISTS idx_attempt_checkpoints_attempt_id ON attempt_checkpoints(attempt_id);
 
   CREATE TABLE IF NOT EXISTS pull_requests (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    pr_id            TEXT PRIMARY KEY,
+    attempt_id       TEXT,
     issue_id         TEXT NOT NULL,
-    url              TEXT NOT NULL UNIQUE,
-    number           INTEGER NOT NULL,
+    owner            TEXT NOT NULL,
     repo             TEXT NOT NULL,
+    pull_number      INTEGER NOT NULL,
+    url              TEXT NOT NULL UNIQUE,
     branch_name      TEXT NOT NULL,
     status           TEXT NOT NULL DEFAULT 'open',
     merged_at        TEXT,
@@ -253,6 +255,106 @@ function applyV5Migration(sqlite: SqliteDb): void {
 }
 
 /**
+ * v6 migration: normalize `pull_requests` to the finalized PR record shape.
+ */
+function applyV6Migration(sqlite: SqliteDb): void {
+  if (hasSchemaVersion(sqlite, 6)) return;
+
+  const existingColumns = sqlite.prepare("SELECT name FROM pragma_table_info('pull_requests')").all() as Array<{
+    name: string;
+  }>;
+  const hasTable = existingColumns.length > 0;
+  const hasCanonicalShape =
+    hasTable &&
+    existingColumns.some((column) => column.name === "pr_id") &&
+    existingColumns.some((column) => column.name === "pull_number");
+
+  if (!hasTable) {
+    sqlite.exec(`
+      CREATE TABLE pull_requests (
+        pr_id            TEXT PRIMARY KEY,
+        attempt_id       TEXT,
+        issue_id         TEXT NOT NULL,
+        owner            TEXT NOT NULL,
+        repo             TEXT NOT NULL,
+        pull_number      INTEGER NOT NULL,
+        url              TEXT NOT NULL UNIQUE,
+        branch_name      TEXT NOT NULL,
+        status           TEXT NOT NULL DEFAULT 'open',
+        merged_at        TEXT,
+        merge_commit_sha TEXT,
+        created_at       TEXT NOT NULL,
+        updated_at       TEXT NOT NULL
+      )
+    `);
+  } else if (!hasCanonicalShape) {
+    sqlite.exec(`
+      CREATE TABLE pull_requests_v2 (
+        pr_id            TEXT PRIMARY KEY,
+        attempt_id       TEXT,
+        issue_id         TEXT NOT NULL,
+        owner            TEXT NOT NULL,
+        repo             TEXT NOT NULL,
+        pull_number      INTEGER NOT NULL,
+        url              TEXT NOT NULL UNIQUE,
+        branch_name      TEXT NOT NULL,
+        status           TEXT NOT NULL DEFAULT 'open',
+        merged_at        TEXT,
+        merge_commit_sha TEXT,
+        created_at       TEXT NOT NULL,
+        updated_at       TEXT NOT NULL
+      )
+    `);
+    sqlite.exec(`
+      INSERT INTO pull_requests_v2 (
+        pr_id,
+        attempt_id,
+        issue_id,
+        owner,
+        repo,
+        pull_number,
+        url,
+        branch_name,
+        status,
+        merged_at,
+        merge_commit_sha,
+        created_at,
+        updated_at
+      )
+      SELECT
+        CASE
+          WHEN instr(repo, '/') > 0 THEN repo || '#' || number
+          ELSE 'unknown/' || repo || '#' || number
+        END,
+        attempt_id,
+        issue_id,
+        CASE
+          WHEN instr(repo, '/') > 0 THEN substr(repo, 1, instr(repo, '/') - 1)
+          ELSE owner
+        END,
+        CASE
+          WHEN instr(repo, '/') > 0 THEN substr(repo, instr(repo, '/') + 1)
+          ELSE repo
+        END,
+        number,
+        url,
+        branch_name,
+        status,
+        merged_at,
+        merge_commit_sha,
+        created_at,
+        updated_at
+      FROM pull_requests
+    `);
+    sqlite.exec("DROP TABLE pull_requests");
+    sqlite.exec("ALTER TABLE pull_requests_v2 RENAME TO pull_requests");
+  }
+  sqlite.exec("CREATE INDEX IF NOT EXISTS idx_pull_requests_status ON pull_requests(status)");
+  sqlite.exec("CREATE INDEX IF NOT EXISTS idx_pull_requests_issue_id ON pull_requests(issue_id)");
+  bumpSchemaVersion(sqlite, 6);
+}
+
+/**
  * Opens (or creates) a SQLite database at the given path,
  * enables WAL journal mode, and ensures the schema tables exist.
  *
@@ -279,6 +381,7 @@ export function openDatabase(dbPath: string): RisolutoDatabase {
 
   applyV4Migration(sqlite);
   applyV5Migration(sqlite);
+  applyV6Migration(sqlite);
 
   return drizzle(sqlite, { schema });
 }

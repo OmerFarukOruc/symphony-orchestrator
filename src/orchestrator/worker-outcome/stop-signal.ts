@@ -133,7 +133,7 @@ function registerPrForMonitoring(ctx: OutcomeContext, entry: RunningEntry, issue
   ctx.deps.attemptStore.upsertPr?.({
     issueId: issue.id,
     owner,
-    repo: `${owner}/${repoName}`,
+    repo: repoName,
     pullNumber,
     url: pullRequestUrl,
     attemptId: entry.runId,
