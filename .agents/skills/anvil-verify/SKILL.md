@@ -18,6 +18,11 @@ Read `references/claim-types.md`, `references/verify-charter-template.md`, `refe
   - `visual-verify`
   - `ui-test`
   - Impeccable skills when findings warrant them
+- When delegation is explicitly authorized, use the local agent pool for claim, docs, tests, and UI mapping work where it reduces context load:
+  - `claim_checker`
+  - `docs_impact_mapper`
+  - `tests_impact_mapper`
+  - `ui_probe`
 - Write docs and tests impact summaries
 - Reconcile evidence back into claims
 - Reopen execution if claims fail
@@ -44,5 +49,6 @@ Write:
 - If the lifecycle E2E is skipped because credentials, Docker, or external test infrastructure are unavailable, record that explicitly in verification output. Do not pretend it passed.
 - If the lifecycle E2E creates transient external artifacts such as a PR or issue and later cleans them up, say that explicitly in the verification summary. Do not stop at "PR created" if cleanup later closed it or deleted its branch.
 - When lifecycle E2E runs, include the run id or report directory, the final cleanup state, and any still-inspectable URL or local artifact path.
+- Keep verification artifacts inside `.anvil/<slug>/verification/` by default. Do not scatter screenshots, videos, or reports into repo-global archive folders during an anvil run unless the user explicitly wants a durable cross-run archive copy.
 - Refresh `handoff.md` with claim counts, verification evidence, docs/tests status, and the exact next action.
 - Refresh `closeout.md` when verification creates a meaningful checkpoint so an operator can tell whether the run reopened execution, stopped for follow-up, or is ready for final push.

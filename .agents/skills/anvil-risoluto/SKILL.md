@@ -16,9 +16,10 @@ Read `references/state-contract.md`, `references/output-contract.md`, `reference
 - If `.anvil/<slug>/handoff.md` exists, read it before resuming detailed phase work. Use it as the first human-readable resume artifact.
 - Always append to `.anvil/<slug>/pipeline.log` when phase state changes.
 - Refresh `.anvil/<slug>/handoff.md` after every meaningful phase transition.
-- Refresh `.anvil/<slug>/closeout.md` whenever the run is intentionally paused, externally handed off, ready for review / push, or complete.
+- Refresh `.anvil/<slug>/closeout.md` whenever the run is intentionally paused, externally handed off, ready for review / push, complete, or another phase contract needs a truthful checkpoint artifact while the loop stays active.
 - Keep `pending_phases`, `pending_gates`, and `claim_counts` truthful. Do not overload one field with another concept.
 - `active = true` means keep the factory moving. `active = false` means the run is intentionally paused or complete.
+- Checkpoint artifacts are not pause commands. Writing `handoff.md` or `closeout.md` for a review-ready, audit-ready, or execution-ready checkpoint must not flip the loop to paused by itself.
 - Never push in the middle of the workflow. Only the final phase may push.
 - Never skip docs or tests closeout. They are part of done.
 - Never mark the run complete while claims, gates, docs, tests, or final push remain open.
@@ -26,6 +27,8 @@ Read `references/state-contract.md`, `references/output-contract.md`, `reference
 - Keep `.anvil/ACTIVE_RUN` truthful. Do not delete it just because a run completes; the completion state belongs in the referenced run artifacts.
 - Treat dependency readiness as first-class state. Do not begin execution until preflight has proved the required skill chain and conditional verification prerequisites are actually available.
 - Preflight is mandatory. Do not skip it for fresh runs.
+- Respect the current Codex delegation policy. If the user has not explicitly asked for subagents, delegation, or parallel agent work, do not call `spawn_agent`; run the factory in the main session and say so when it matters.
+- When explicit delegation is authorized, prefer the local `.codex/agents/*.toml` pool for phase-specialized work instead of inventing ad hoc agent roles.
 
 ## Input routing
 
@@ -74,6 +77,22 @@ Nice-to-have / optional:
 
 No ambiguity here: required means block the run if unavailable, conditional means required when the run touches that surface, and optional means do not block on it.
 
+## Local Agent Pool
+
+When the user explicitly authorizes delegation, use the repo-local `.codex/agents/` roster as the default subagent map:
+
+- `bundle_mapper` for intake hardening
+- `repo_mapper` for codebase seam mapping
+- `plan_reviewer` for fresh-eye hostile review
+- `hostile_auditor` for audit
+- `implementer_fast` and `implementer_deep` for execution units
+- `claim_checker` for claim reconciliation
+- `docs_impact_mapper` and `tests_impact_mapper` for closeout mapping
+- `ui_probe` for UI verification planning
+- `simplify_reuse`, `simplify_quality`, and `simplify_efficiency` for cleanup review
+
+If delegation is not authorized in the session, do the equivalent phase work in the main session instead of silently skipping it.
+
 ## Owned artifacts
 
 Own these files:
@@ -85,6 +104,16 @@ Own these files:
 - `.anvil/<slug>/preflight.md`
 - `.anvil/<slug>/handoff.md`
 - `.anvil/<slug>/closeout.md` when the run reaches a pause, checkpoint, or ship-ready state
+
+Standard subfolder layout:
+
+- `.anvil/<slug>/reviews/`
+- `.anvil/<slug>/execution/`
+- `.anvil/<slug>/verification/`
+- `.anvil/<slug>/verification/screenshots/`
+- `.anvil/<slug>/verification/videos/`
+
+Keep anvil-session artifacts inside this tree by default.
 
 Initialize them with `scripts/init_anvil_run.ts`, `scripts/resolve_bundle.ts`, and `scripts/update_status.ts` when helpful.
 
@@ -105,6 +134,8 @@ Drive the run through these phases:
 10. final-push
 
 The factory loops when needed. Verification failures reopen execution. Audit failures reopen review. Review failures reopen planning.
+
+Default behavior is to continue into the next routed phase in the same session until the run is truly blocked, explicitly paused, or complete. Do not stop at plan, review, audit, finalize, execute, or verify checkpoints just because the artifacts are in a clean handoff state.
 
 ## Handoffs
 

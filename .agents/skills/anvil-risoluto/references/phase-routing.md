@@ -26,6 +26,8 @@ State tracking rules:
 
 - Put future workflow steps in `pending_phases`, not `pending_gates`.
 - Reserve `pending_gates` for executable quality checks only.
+- When a phase finishes cleanly and the next route is already known, advance to that next phase in the same turn and keep `active = true`.
+- Terms like review-ready, audit-ready, and execution-ready describe artifact quality, not an implicit pause.
 - Set `active = false` only when the run is intentionally paused or truly complete.
 - If a review, audit, verify, or gate retry cap is exceeded, stop the loop and follow `references/escalation-playbook.md`.
 
