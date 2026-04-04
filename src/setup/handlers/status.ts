@@ -18,7 +18,7 @@ export function handleGetStatus(deps: SetupApiDeps) {
       steps: {
         masterKey: { done: masterKeyDone },
         linearProject: { done: linearProjectDone },
-        repoRoute: { done: hasRepoRoutes(deps.configOverlayStore.toMap()) },
+        repoRoute: { done: hasRepoRoutes(overlay) },
         openaiKey: { done: openaiKeyDone },
         githubToken: { done: githubTokenDone },
       },

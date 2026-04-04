@@ -283,37 +283,37 @@ export const recoveryReportResponseSchema = z.object({
   durationMs: z.number(),
 });
 
+const attemptSummarySchema = z.object({
+  attemptId: z.string(),
+  attemptNumber: z.number().nullable(),
+  startedAt: z.string(),
+  endedAt: z.string().nullable(),
+  status: z.string(),
+  model: z.string(),
+  reasoningEffort: reasoningEffortSchema.nullable(),
+  tokenUsage: tokenUsageSchema.nullable(),
+  costUsd: z.number().nullable(),
+  errorCode: z.string().nullable(),
+  errorMessage: z.string().nullable(),
+  appServerBadge: z
+    .object({
+      effectiveProvider: z.string().nullable(),
+      threadStatus: z.string().nullable(),
+    })
+    .optional(),
+  issueIdentifier: z.string().optional(),
+  title: z.string().optional(),
+  workspacePath: z.string().nullable().optional(),
+  workspaceKey: z.string().nullable().optional(),
+  modelSource: modelSourceSchema.optional(),
+  turnCount: z.number().optional(),
+  threadId: z.string().nullable().optional(),
+  turnId: z.string().nullable().optional(),
+});
+
 /** GET /api/v1/:issue_identifier/attempts — attempts list response. */
 export const attemptsListResponseSchema = z.object({
-  attempts: z.array(
-    z.object({
-      attemptId: z.string(),
-      attemptNumber: z.number().nullable(),
-      startedAt: z.string(),
-      endedAt: z.string().nullable(),
-      status: z.string(),
-      model: z.string(),
-      reasoningEffort: reasoningEffortSchema.nullable(),
-      tokenUsage: tokenUsageSchema.nullable(),
-      costUsd: z.number().nullable(),
-      errorCode: z.string().nullable(),
-      errorMessage: z.string().nullable(),
-      appServerBadge: z
-        .object({
-          effectiveProvider: z.string().nullable(),
-          threadStatus: z.string().nullable(),
-        })
-        .optional(),
-      issueIdentifier: z.string().optional(),
-      title: z.string().optional(),
-      workspacePath: z.string().nullable().optional(),
-      workspaceKey: z.string().nullable().optional(),
-      modelSource: modelSourceSchema.optional(),
-      turnCount: z.number().optional(),
-      threadId: z.string().nullable().optional(),
-      turnId: z.string().nullable().optional(),
-    }),
-  ),
+  attempts: z.array(attemptSummarySchema),
   current_attempt_id: z.string().nullable(),
 });
 
@@ -413,34 +413,6 @@ export const issueDetailResponseSchema = runtimeIssueViewSchema.extend({
   recentEvents: z.array(recentEventSchema),
   attempts: attemptsListResponseSchema.shape.attempts,
   currentAttemptId: z.string().nullable(),
-});
-
-const attemptSummarySchema = z.object({
-  attemptId: z.string(),
-  attemptNumber: z.number().nullable(),
-  startedAt: z.string(),
-  endedAt: z.string().nullable(),
-  status: z.string(),
-  model: z.string(),
-  reasoningEffort: reasoningEffortSchema.nullable(),
-  tokenUsage: tokenUsageSchema.nullable(),
-  costUsd: z.number().nullable(),
-  errorCode: z.string().nullable(),
-  errorMessage: z.string().nullable(),
-  appServerBadge: z
-    .object({
-      effectiveProvider: z.string().nullable(),
-      threadStatus: z.string().nullable(),
-    })
-    .optional(),
-  issueIdentifier: z.string().optional(),
-  title: z.string().optional(),
-  workspacePath: z.string().nullable().optional(),
-  workspaceKey: z.string().nullable().optional(),
-  modelSource: modelSourceSchema.optional(),
-  turnCount: z.number().optional(),
-  threadId: z.string().nullable().optional(),
-  turnId: z.string().nullable().optional(),
 });
 
 const attemptAppServerSchema = z.object({

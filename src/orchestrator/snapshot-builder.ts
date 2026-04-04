@@ -154,12 +154,20 @@ function resolveRelatedEvents(
   retryEntry: RetryRuntimeEntry | null,
   deps: SnapshotBuilderDeps,
   callbacks: SnapshotBuilderCallbacks,
+  eventsCache: Map<string, RecentEvent[]>,
 ): RecentEvent[] {
   if (runningEntry) return deps.attemptStore.getEvents(runningEntry.runId);
   if (retryEntry || archivedAttempts.length === 0) {
     return callbacks.getRecentEvents().filter((event) => event.issueIdentifier === identifier);
   }
-  return archivedAttempts.flatMap((attempt) => deps.attemptStore.getEvents(attempt.attemptId));
+  return archivedAttempts.flatMap((attempt) => {
+    let events = eventsCache.get(attempt.attemptId);
+    if (!events) {
+      events = deps.attemptStore.getEvents(attempt.attemptId);
+      eventsCache.set(attempt.attemptId, events);
+    }
+    return events;
+  });
 }
 
 function enrichFromArchive(detail: RuntimeIssueView, archivedAttempts: AttemptRecord[]): RuntimeIssueView {
@@ -207,7 +215,16 @@ export function buildIssueDetail(
   const retryEntry = location.kind === "retry" ? location.entry : null;
 
   const archivedAttempts = deps.attemptStore.getAttemptsForIssue(identifier);
-  const relatedEvents = resolveRelatedEvents(identifier, archivedAttempts, runningEntry, retryEntry, deps, callbacks);
+  const eventsCache = new Map<string, RecentEvent[]>();
+  const relatedEvents = resolveRelatedEvents(
+    identifier,
+    archivedAttempts,
+    runningEntry,
+    retryEntry,
+    deps,
+    callbacks,
+    eventsCache,
+  );
   const enriched = enrichFromArchive(detail, archivedAttempts);
 
   const templateId = callbacks.getTemplateOverride ? callbacks.getTemplateOverride(identifier) : null;
@@ -218,9 +235,10 @@ export function buildIssueDetail(
     configuredTemplateId: templateId,
     configuredTemplateName: templateName,
     recentEvents: relatedEvents,
-    attempts: archivedAttempts.map((attempt) =>
-      buildAttemptSummary(attempt, deps.attemptStore.getEvents(attempt.attemptId)),
-    ),
+    attempts: archivedAttempts.map((attempt) => {
+      const events = eventsCache.get(attempt.attemptId) ?? deps.attemptStore.getEvents(attempt.attemptId);
+      return buildAttemptSummary(attempt, events);
+    }),
     currentAttemptId: runningEntry?.runId ?? null,
   };
 }
