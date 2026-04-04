@@ -10,8 +10,9 @@ Read `references/execution-contract.md`, `references/merge-order.md`, and `../an
 ## Workflow
 
 - Create one integration branch from `main`
-- Spawn isolated workers for independent implementation units
+- When delegation is explicitly authorized, spawn isolated workers for independent implementation units
 - Use `implementer_fast` for bounded units and `implementer_deep` for risky units
+- When delegation is not explicitly authorized, execute units serially in the main session and say that worker dispatch was unavailable due to session policy
 - Merge worker branches sequentially into the integration branch
 - Run `simplify`
 - Run the full quality gate

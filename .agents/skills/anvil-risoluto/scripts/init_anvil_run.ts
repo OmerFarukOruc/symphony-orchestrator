@@ -26,6 +26,8 @@ async function main(): Promise<void> {
   await fs.mkdir(path.join(runDir, "reviews"), { recursive: true });
   await fs.mkdir(path.join(runDir, "execution"), { recursive: true });
   await fs.mkdir(path.join(runDir, "verification"), { recursive: true });
+  await fs.mkdir(path.join(runDir, "verification", "screenshots"), { recursive: true });
+  await fs.mkdir(path.join(runDir, "verification", "videos"), { recursive: true });
 
   const remainingPhases = [
     "intake",
@@ -107,7 +109,7 @@ async function main(): Promise<void> {
       `- Next required action: ${nextRequiredAction}`,
       "",
       "## What Changed",
-      "Initialized the anvil run scaffold and created the machine-readable state, directories, pipeline log, and preflight placeholder.",
+      "Initialized the anvil run scaffold and created the machine-readable state, standard subdirectories, pipeline log, and preflight placeholder.",
       "",
       "## Open First",
       `1. \`.anvil/${slug}/status.json\` - machine-readable run state.`,
