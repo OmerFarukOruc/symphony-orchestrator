@@ -18,6 +18,17 @@ Whenever the run is intentionally paused, ready for external review / PR / push,
 
 Do not treat `pipeline.log` as a substitute for either artifact. The log is append-only history. `handoff.md` and `closeout.md` are current-state documents.
 
+Writing `closeout.md` does not pause the run by itself. It is valid to refresh `closeout.md` at a clean checkpoint while `status.json.active` stays `true` and the next phase begins immediately.
+
+Artifact placement rule:
+
+- Keep generated run evidence inside `.anvil/<slug>/`.
+- Use `.anvil/<slug>/verification/` for verification summaries and reports.
+- Use `.anvil/<slug>/verification/screenshots/` for screenshots.
+- Use `.anvil/<slug>/verification/videos/` for videos.
+- Use `.anvil/<slug>/execution/` for execution manifests, merge logs, and simplify reports.
+- Do not default to repo-global archive folders during an anvil run unless the user explicitly requests a shared archive copy.
+
 ## `handoff.md` contract
 
 `handoff.md` is the canonical fresh-session resume note. Keep it short, current, and authoritative.
@@ -53,6 +64,8 @@ Recommended `## Current State` bullets:
 ## `closeout.md` contract
 
 `closeout.md` is the operator-grade checkpoint summary. It is not limited to final shipment. Use it whenever the run reaches a meaningful pause, an external handoff point, or a ship-ready / shipped state.
+
+If the loop remains active, the document must say so plainly instead of implying a pause just because the checkpoint is clean or reviewable.
 
 It must include:
 

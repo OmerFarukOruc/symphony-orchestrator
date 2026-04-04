@@ -28,6 +28,19 @@ Supporting directories:
 - `reviews/`
 - `execution/`
 - `verification/`
+- `verification/screenshots/`
+- `verification/videos/`
+
+Standard layout rules:
+
+- Keep run-owned artifacts inside `.anvil/<slug>/` unless the user explicitly asks for a cross-run archive copy.
+- Phase summaries and machine state live at the run root, for example `status.json`, `handoff.md`, `closeout.md`, `claims.md`, and `tests-impact.md`.
+- Review artifacts live under `reviews/`.
+- Execution artifacts live under `execution/`.
+- Verification reports and summaries live under `verification/`.
+- Verification screenshots live under `verification/screenshots/`.
+- Verification videos live under `verification/videos/`.
+- Do not write new anvil-session screenshots or QA reports to repo-global archive folders such as `docs/archive/` by default.
 
 Required statuses in `status.json`:
 

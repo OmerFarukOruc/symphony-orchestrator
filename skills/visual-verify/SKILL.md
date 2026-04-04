@@ -35,6 +35,26 @@ Use this skill for Risoluto's current web UI surface:
 
 Default to **Quick Verify** for a targeted change. Escalate to **Full QA** when the change is broad, release-facing, or the user explicitly wants a dogfood pass.
 
+## Artifact Placement
+
+When this skill runs inside an active anvil run, keep all created artifacts under that run folder:
+
+- screenshots: `.anvil/<slug>/verification/screenshots/`
+- videos: `.anvil/<slug>/verification/videos/`
+- reports: `.anvil/<slug>/verification/`
+
+Do not default to `docs/archive/` during an anvil run. Repo-global archive paths are only for non-anvil ad hoc verification or when the user explicitly asks for a durable shared archive copy.
+
+Recommended shell setup before running commands in an anvil run:
+
+```bash
+slug="$(cat .anvil/ACTIVE_RUN)"
+verify_root=".anvil/$slug/verification"
+screenshots_dir="$verify_root/screenshots"
+videos_dir="$verify_root/videos"
+mkdir -p "$screenshots_dir" "$videos_dir"
+```
+
 ## Prerequisites
 
 ### Automated preflight
@@ -94,10 +114,10 @@ Use this for a focused change to any page. This is the default path.
 ### 1. Capture a baseline
 
 ```bash
-mkdir -p docs/archive/screenshots
+mkdir -p "$screenshots_dir"
 agent-browser open http://127.0.0.1:4000
 agent-browser wait --load networkidle
-agent-browser screenshot --annotate docs/archive/screenshots/before.png
+agent-browser screenshot --annotate "$screenshots_dir/before.png"
 ```
 
 The `--annotate` flag overlays numbered labels (`[1]`, `[2]`, …) on interactive elements. Each label maps to a ref (`@e1`, `@e2`) for interaction.
@@ -120,13 +140,13 @@ agent-browser open http://127.0.0.1:4000/settings
 ```bash
 agent-browser reload
 agent-browser wait --load networkidle
-agent-browser screenshot --annotate docs/archive/screenshots/after.png
+agent-browser screenshot --annotate "$screenshots_dir/after.png"
 ```
 
 ### 3. Run a pixel diff
 
 ```bash
-agent-browser diff screenshot --baseline docs/archive/screenshots/before.png -o docs/archive/screenshots/diff.png
+agent-browser diff screenshot --baseline "$screenshots_dir/before.png" -o "$screenshots_dir/diff.png"
 ```
 
 Output includes a mismatch percentage and a diff image with changed pixels highlighted in red.
@@ -153,10 +173,17 @@ Use this after major UI changes, before releases, or when the user asks to "dogf
 ### 1. Initialize
 
 ```bash
-mkdir -p docs/archive/dogfood-output/screenshots docs/archive/dogfood-output/videos
+mkdir -p "$screenshots_dir" "$videos_dir"
 ```
 
-Create `docs/archive/dogfood-output/report.md` from the template at `.claude/skills/visual-verify/templates/verification-report-template.md`. Fill in the date, session name, and environment info.
+For an anvil run, replace those repo-global paths with:
+
+```bash
+mkdir -p "$screenshots_dir" "$videos_dir"
+report_path="$verify_root/visual-verify-report.md"
+```
+
+Create `"$report_path"` from the template at `skills/visual-verify/templates/verification-report-template.md`. Fill in the date, session name, and environment info.
 
 Open the browser session:
 
@@ -179,7 +206,7 @@ If errors appear at this stage, record them as **infrastructure issues** in the 
 Start from the overview. Take a baseline screenshot and interactive snapshot:
 
 ```bash
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/overview-main.png
+agent-browser --session risoluto-qa screenshot --annotate "$screenshots_dir/overview-main.png"
 agent-browser --session risoluto-qa snapshot -i
 agent-browser --session risoluto-qa errors
 agent-browser --session risoluto-qa console
@@ -196,7 +223,7 @@ Work through each area in order. At each step: screenshot, snapshot, check error
 Verify the hero band, metrics grid, attention zone, and collapsible sections:
 
 ```bash
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/overview-hero.png
+agent-browser --session risoluto-qa screenshot --annotate "$screenshots_dir/overview-hero.png"
 agent-browser --session risoluto-qa snapshot -i
 ```
 
@@ -209,7 +236,7 @@ Navigate to the kanban board:
 ```bash
 agent-browser --session risoluto-qa open http://127.0.0.1:4000/queue
 agent-browser --session risoluto-qa wait --load networkidle
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/kanban-board.png
+agent-browser --session risoluto-qa screenshot --annotate "$screenshots_dir/kanban-board.png"
 agent-browser --session risoluto-qa snapshot -i
 ```
 
@@ -225,7 +252,7 @@ agent-browser --session risoluto-qa snapshot -i
 agent-browser --session risoluto-qa click @e<N>
 agent-browser --session risoluto-qa wait 1000
 agent-browser --session risoluto-qa snapshot -i
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/inspector-drawer.png
+agent-browser --session risoluto-qa screenshot --annotate "$screenshots_dir/inspector-drawer.png"
 agent-browser --session risoluto-qa errors
 ```
 
@@ -247,7 +274,7 @@ Test toolbar controls on the queue page:
 ```bash
 agent-browser --session risoluto-qa snapshot -i
 # Use refs to interact with toolbar buttons in .mc-toolbar.queue-toolbar
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/toolbar-active.png
+agent-browser --session risoluto-qa screenshot "$screenshots_dir/toolbar-active.png"
 ```
 
 #### Step 3e — Logs Page
@@ -258,7 +285,7 @@ Navigate to a logs page:
 # Navigate via issue inspector "Open logs" button, or directly:
 agent-browser --session risoluto-qa open http://127.0.0.1:4000/logs/<issue_id>
 agent-browser --session risoluto-qa wait --load networkidle
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/logs-page.png
+agent-browser --session risoluto-qa screenshot --annotate "$screenshots_dir/logs-page.png"
 agent-browser --session risoluto-qa snapshot -i
 agent-browser --session risoluto-qa errors
 agent-browser --session risoluto-qa console
@@ -273,7 +300,7 @@ Test log filtering:
 agent-browser --session risoluto-qa snapshot -i
 agent-browser --session risoluto-qa click @e<N>
 agent-browser --session risoluto-qa wait 500
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/logs-filtered.png
+agent-browser --session risoluto-qa screenshot "$screenshots_dir/logs-filtered.png"
 ```
 
 Test search:
@@ -283,7 +310,7 @@ agent-browser --session risoluto-qa snapshot -i
 # Fill .mc-input.logs-search using @ref
 agent-browser --session risoluto-qa fill @e<N> "test"
 agent-browser --session risoluto-qa wait 500
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/logs-search.png
+agent-browser --session risoluto-qa screenshot "$screenshots_dir/logs-search.png"
 agent-browser --session risoluto-qa fill @e<N> ""
 ```
 
@@ -301,7 +328,7 @@ agent-browser --session risoluto-qa wait --load networkidle
 ```bash
 agent-browser --session risoluto-qa open http://127.0.0.1:4000/setup
 agent-browser --session risoluto-qa wait --load networkidle
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/setup-wizard.png
+agent-browser --session risoluto-qa screenshot --annotate "$screenshots_dir/setup-wizard.png"
 agent-browser --session risoluto-qa snapshot -i
 agent-browser --session risoluto-qa errors
 ```
@@ -313,7 +340,7 @@ Check: `.setup-steps`, `.setup-step-indicator`, `.setup-title` render correctly.
 ```bash
 agent-browser --session risoluto-qa open http://127.0.0.1:4000/settings
 agent-browser --session risoluto-qa wait --load networkidle
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/settings-page.png
+agent-browser --session risoluto-qa screenshot --annotate "$screenshots_dir/settings-page.png"
 agent-browser --session risoluto-qa snapshot -i
 agent-browser --session risoluto-qa errors
 ```
@@ -325,13 +352,13 @@ agent-browser --session risoluto-qa open http://127.0.0.1:4000
 agent-browser --session risoluto-qa wait --load networkidle
 
 agent-browser --session risoluto-qa set viewport 1920 1080
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/viewport-desktop.png
+agent-browser --session risoluto-qa screenshot "$screenshots_dir/viewport-desktop.png"
 
 agent-browser --session risoluto-qa set viewport 768 1024
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/viewport-tablet.png
+agent-browser --session risoluto-qa screenshot "$screenshots_dir/viewport-tablet.png"
 
 agent-browser --session risoluto-qa set viewport 375 812
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/viewport-mobile.png
+agent-browser --session risoluto-qa screenshot "$screenshots_dir/viewport-mobile.png"
 
 # Reset to default
 agent-browser --session risoluto-qa set viewport 1280 720
@@ -343,7 +370,7 @@ agent-browser --session risoluto-qa set viewport 1280 720
 # Test dark mode
 agent-browser --session risoluto-qa set media dark
 agent-browser --session risoluto-qa wait 500
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/theme-dark.png
+agent-browser --session risoluto-qa screenshot "$screenshots_dir/theme-dark.png"
 
 # Reset to light
 agent-browser --session risoluto-qa set media light
@@ -364,13 +391,13 @@ Document issues as you find them — do not batch them for later.
 **For interactive bugs** (require interaction to reproduce):
 
 ```bash
-agent-browser --session risoluto-qa record start docs/archive/dogfood-output/videos/issue-NNN-repro.webm
+agent-browser --session risoluto-qa record start "$videos_dir/issue-NNN-repro.webm"
 # Walk through steps with sleep 1 between actions
-agent-browser --session risoluto-qa screenshot docs/archive/dogfood-output/screenshots/issue-NNN-step-1.png
+agent-browser --session risoluto-qa screenshot "$screenshots_dir/issue-NNN-step-1.png"
 sleep 1
 # ... perform action ...
 sleep 1
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/issue-NNN-result.png
+agent-browser --session risoluto-qa screenshot --annotate "$screenshots_dir/issue-NNN-result.png"
 sleep 2
 agent-browser --session risoluto-qa record stop
 ```
@@ -378,10 +405,10 @@ agent-browser --session risoluto-qa record stop
 **For static/visible-on-load bugs** (typos, layout glitches):
 
 ```bash
-agent-browser --session risoluto-qa screenshot --annotate docs/archive/dogfood-output/screenshots/issue-NNN.png
+agent-browser --session risoluto-qa screenshot --annotate "$screenshots_dir/issue-NNN.png"
 ```
 
-Append each issue to `docs/archive/dogfood-output/report.md` immediately with:
+Append each issue to `"$report_path"` immediately with:
 
 - severity (consult `references/issue-taxonomy.md`)
 - page (route path)
@@ -515,7 +542,7 @@ This skill uses **`agent-browser` CLI commands** run via bash/shell. All command
 
 **File operations:** When the skill says "create a file from the template", use whatever file-creation tool your agent provides (bash `cp`, `write_to_file`, `apply_patch`, etc.). The important thing is that the file gets created with the template content.
 
-**Screenshot paths:** Quick Verify uses `docs/archive/screenshots/` (matches `agent-browser.json`'s `screenshotDir`). Full QA uses `docs/archive/dogfood-output/screenshots/` (explicitly set in each command).
+**Screenshot paths:** In an anvil run, use `.anvil/<slug>/verification/screenshots/` and sibling verification folders. Reserve `docs/archive/` for non-anvil ad hoc verification or an explicit cross-run archive request.
 
 ## References
 
