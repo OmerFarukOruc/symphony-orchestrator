@@ -29,6 +29,11 @@ function createMockClient(): LinearClient {
     resolveStateId: vi.fn<(name: string) => Promise<string | null>>().mockResolvedValue(null),
     updateIssueState: vi.fn<(id: string, stateId: string) => Promise<void>>().mockResolvedValue(undefined),
     createComment: vi.fn<(id: string, body: string) => Promise<void>>().mockResolvedValue(undefined),
+    createIssue: vi.fn().mockResolvedValue({
+      issueId: "issue-created",
+      identifier: "NIN-77",
+      url: "https://linear.app/team/issue/NIN-77",
+    }),
     runGraphQL: vi.fn().mockResolvedValue({ data: { issueUpdate: { success: true } } }),
   } as unknown as LinearClient;
 }
@@ -113,6 +118,27 @@ describe("LinearTrackerAdapter", () => {
       await adapter.createComment("issue-abc", "Agent completed the task.");
 
       expect(client.createComment).toHaveBeenCalledWith("issue-abc", "Agent completed the task.");
+    });
+  });
+
+  describe("createIssue", () => {
+    it("delegates to client.createIssue with normalized optional fields", async () => {
+      const result = await adapter.createIssue({
+        title: "Investigate scheduler drift",
+        description: "Runs are being skipped",
+        stateName: "Backlog",
+      });
+
+      expect(client.createIssue).toHaveBeenCalledWith({
+        title: "Investigate scheduler drift",
+        description: "Runs are being skipped",
+        stateName: "Backlog",
+      });
+      expect(result).toEqual({
+        issueId: "issue-created",
+        identifier: "NIN-77",
+        url: "https://linear.app/team/issue/NIN-77",
+      });
     });
   });
 

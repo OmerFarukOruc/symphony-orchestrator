@@ -87,7 +87,17 @@ export const DEFAULT_CONFIG_SECTIONS: Record<string, Record<string, unknown>> = 
     interval_ms: 15000,
   },
 
-  notifications: {},
+  notifications: {
+    channels: [],
+  },
+  triggers: {
+    allowed_actions: ["refresh_issue"],
+    rate_limit_per_minute: 30,
+  },
+  automations: {},
+  alerts: {
+    rules: [],
+  },
   github: {},
   repos: {},
   state_machine: {

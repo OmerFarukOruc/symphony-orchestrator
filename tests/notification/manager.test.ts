@@ -169,6 +169,102 @@ describe("NotificationManager", () => {
     });
   });
 
+  it("persists notifications and emits notification timeline events", async () => {
+    const createdRecord = {
+      id: "notif-1",
+      type: "worker_completed",
+      severity: "info" as const,
+      title: "Worker completed",
+      message: "worker finished successfully",
+      source: "MT-42",
+      href: null,
+      read: false,
+      dedupeKey: "notif-key",
+      metadata: { issueIdentifier: "MT-42" },
+      deliverySummary: null,
+      createdAt: "2026-03-17T02:00:00.000Z",
+      updatedAt: "2026-03-17T02:00:00.000Z",
+    };
+    const updatedRecord = {
+      ...createdRecord,
+      deliverySummary: {
+        deliveredChannels: ["ops"],
+        failedChannels: [],
+        skippedDuplicate: false,
+      },
+      updatedAt: "2026-03-17T02:00:01.000Z",
+    };
+    const store = {
+      create: vi.fn().mockResolvedValue(createdRecord),
+      updateDeliverySummary: vi.fn().mockResolvedValue(updatedRecord),
+    };
+    const eventBus = { emit: vi.fn() };
+    const notifySpy = vi.fn(async () => undefined);
+    const manager = new NotificationManager({
+      channels: [createChannel("ops", notifySpy)],
+      store: store as never,
+      eventBus: eventBus as never,
+    });
+
+    const result = await manager.notify(createEvent({ dedupeKey: "notif-key" }));
+
+    expect(store.create).toHaveBeenCalledOnce();
+    expect(store.updateDeliverySummary).toHaveBeenCalledWith(
+      "notif-1",
+      expect.objectContaining({ deliveredChannels: ["ops"], skippedDuplicate: false }),
+    );
+    expect(eventBus.emit).toHaveBeenNthCalledWith(1, "notification.created", { notification: createdRecord });
+    expect(eventBus.emit).toHaveBeenNthCalledWith(2, "notification.updated", { notification: updatedRecord });
+    expect(result.deliveredChannels).toEqual(["ops"]);
+  });
+
+  it("persists duplicate notifications while still suppressing duplicate fanout", async () => {
+    const createdRecord = {
+      id: "notif-dup",
+      type: "worker_retry",
+      severity: "warning" as const,
+      title: "Retry queued",
+      message: "worker finished successfully",
+      source: "MT-42",
+      href: null,
+      read: false,
+      dedupeKey: "dup-key",
+      metadata: null,
+      deliverySummary: null,
+      createdAt: "2026-03-17T02:00:00.000Z",
+      updatedAt: "2026-03-17T02:00:00.000Z",
+    };
+    const store = {
+      create: vi.fn().mockResolvedValue(createdRecord),
+      updateDeliverySummary: vi.fn().mockResolvedValue({
+        ...createdRecord,
+        deliverySummary: {
+          deliveredChannels: [],
+          failedChannels: [],
+          skippedDuplicate: true,
+        },
+      }),
+    };
+    const notifySpy = vi.fn(async () => undefined);
+    const manager = new NotificationManager({
+      channels: [createChannel("ops", notifySpy)],
+      dedupeWindowMs: 60_000,
+      store: store as never,
+    });
+    const event = createEvent({ dedupeKey: "dup-key", severity: "warning", type: "worker_retry" });
+
+    await manager.notify(event);
+    const second = await manager.notify(event);
+
+    expect(store.create).toHaveBeenCalledTimes(2);
+    expect(store.updateDeliverySummary).toHaveBeenLastCalledWith(
+      "notif-dup",
+      expect.objectContaining({ skippedDuplicate: true }),
+    );
+    expect(second.skippedDuplicate).toBe(true);
+    expect(notifySpy).toHaveBeenCalledTimes(1);
+  });
+
   it("removes stale deduplication entries during remember phase", async () => {
     vi.useFakeTimers();
     const notifySpy = vi.fn(async () => undefined);

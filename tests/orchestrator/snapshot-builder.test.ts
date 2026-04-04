@@ -562,6 +562,73 @@ describe("snapshot-builder", () => {
         events: [event],
       });
     });
+
+    it("folds app-server introspection events into a stable detail summary", () => {
+      const attempt = createAttemptRecord();
+      const events = [
+        createEvent({
+          attemptId: "attempt-1",
+          event: "codex_config_loaded",
+          metadata: {
+            model: "gpt-5.4",
+            modelProvider: "cliproxyapi",
+            reasoningEffort: "high",
+            approvalPolicy: "never",
+          },
+        } as Partial<RecentEvent> as RecentEvent),
+        createEvent({
+          attemptId: "attempt-1",
+          event: "codex_requirements_loaded",
+          metadata: {
+            allowedApprovalPolicies: ["never", "onRequest"],
+            allowedSandboxModes: ["workspaceWrite"],
+            network: { enabled: true, allowedDomains: ["api.openai.com"] },
+          },
+        } as Partial<RecentEvent> as RecentEvent),
+        createEvent({
+          attemptId: "attempt-1",
+          event: "thread_loaded",
+          metadata: {
+            threadId: "thread-1",
+            name: "Issue thread",
+            status: { type: "idle" },
+            ephemeral: false,
+          },
+        } as Partial<RecentEvent> as RecentEvent),
+        createEvent({
+          attemptId: "attempt-1",
+          event: "thread_status",
+          metadata: {
+            threadStatus: { type: "active", activeFlags: ["waitingOnApproval"] },
+          },
+        } as Partial<RecentEvent> as RecentEvent),
+      ];
+
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          events,
+        }),
+      };
+
+      const detail = buildAttemptDetail("attempt-1", deps);
+
+      expect(detail).toMatchObject({
+        attemptId: "attempt-1",
+        appServer: {
+          effectiveProvider: "cliproxyapi",
+          effectiveModel: "gpt-5.4",
+          reasoningEffort: "high",
+          approvalPolicy: "never",
+          threadName: "Issue thread",
+          threadStatus: "active",
+          allowedApprovalPolicies: ["never", "onRequest"],
+          allowedSandboxModes: ["workspaceWrite"],
+          networkRequirements: { enabled: true, allowedDomains: ["api.openai.com"] },
+          threadStatusPayload: { type: "active", activeFlags: ["waitingOnApproval"] },
+        },
+      });
+    });
   });
 
   describe("buildRunningIssueView", () => {

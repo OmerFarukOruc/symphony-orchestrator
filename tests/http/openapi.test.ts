@@ -47,6 +47,16 @@ describe("getOpenApiSpec", () => {
     expect(paths).toHaveProperty("/api/v1/{issue_identifier}/attempts");
     expect(paths).toHaveProperty("/api/v1/attempts/{attempt_id}");
     expect(paths).toHaveProperty("/api/v1/attempts/{attempt_id}/checkpoints");
+    expect(paths).toHaveProperty("/api/v1/notifications");
+    expect(paths).toHaveProperty("/api/v1/notifications/{notification_id}/read");
+    expect(paths).toHaveProperty("/api/v1/notifications/read-all");
+    expect(paths).toHaveProperty("/api/v1/automations");
+    expect(paths).toHaveProperty("/api/v1/automations/runs");
+    expect(paths).toHaveProperty("/api/v1/automations/{automation_name}/run");
+    expect(paths).toHaveProperty("/api/v1/alerts/history");
+    expect(paths).toHaveProperty("/api/v1/webhooks/trigger");
+    expect(paths).toHaveProperty("/webhooks/linear");
+    expect(paths).toHaveProperty("/webhooks/github");
     expect(paths).toHaveProperty("/api/v1/prs");
   });
 
@@ -68,6 +78,9 @@ describe("getOpenApiSpec", () => {
 
     const transitionPost = paths["/api/v1/{issue_identifier}/transition"].post;
     expect(transitionPost).toHaveProperty("requestBody");
+
+    const triggerPost = paths["/api/v1/webhooks/trigger"].post;
+    expect(triggerPost).toHaveProperty("requestBody");
   });
 
   it("groups routes by tags", () => {
@@ -75,6 +88,10 @@ describe("getOpenApiSpec", () => {
     expect(paths["/api/v1/state"].get.tags).toContain("State & Metrics");
     expect(paths["/api/v1/{issue_identifier}/abort"].post.tags).toContain("Issues");
     expect(paths["/api/v1/{issue_identifier}/attempts"].get.tags).toContain("Attempts");
+    expect(paths["/api/v1/notifications"].get.tags).toContain("Notifications");
+    expect(paths["/api/v1/automations"].get.tags).toContain("Automations");
+    expect(paths["/api/v1/alerts/history"].get.tags).toContain("Alerts");
+    expect(paths["/api/v1/webhooks/trigger"].post.tags).toContain("Ingress");
     expect(paths["/api/v1/workspaces"].get.tags).toContain("Workspaces");
     expect(paths["/api/v1/git/context"].get.tags).toContain("Git");
     expect(paths["/api/v1/config"].get.tags).toContain("Config");

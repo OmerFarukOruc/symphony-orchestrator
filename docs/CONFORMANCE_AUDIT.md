@@ -11,7 +11,7 @@
 
 ## 📌 Current Release Baseline
 
-The repository is at **`v0.6.0`** and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, notifications, and a Docker deployment target. This document tracks every atomic requirement from the Risoluto Service Specification against the current codebase.
+The repository is at **`v0.6.0`** and implements a full local orchestration loop for Linear-driven Codex work with git automation, secrets management, multi-channel notifications, signed webhook ingress, cron-backed automations, cooldown-aware alerting, and a Docker deployment target. This document tracks every atomic requirement from the Risoluto Service Specification against the current codebase.
 
 **Legend:** ✅ Implemented · 🟡 Partial / Minor Deviation · ❌ Not Implemented · 🔵 Extension (beyond spec)
 

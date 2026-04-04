@@ -56,6 +56,8 @@ Risoluto launches the exact `codex.command` from the workflow, but it now owns t
 - OpenAI-compatible proxy or third-party endpoint: `codex.auth.mode: "api_key"` plus `codex.provider.base_url`, `env_key`, and optional headers/query params
 - ChatGPT/Codex login backed flows: `codex.auth.mode: "openai_login"` with an optional custom provider that sets `requires_openai_auth: true`
 
+In the setup wizard, these appear as three explicit user choices: **API key**, **Browser sign-in**, and **Proxy / compatible provider**.
+
 When running inside Docker, the container cannot reach the host's `127.0.0.1` directly. Risoluto handles that transparently by:
 
 - adding `--add-host=host.docker.internal:host-gateway` to every container
@@ -203,23 +205,33 @@ If `RISOLUTO_BIND` is non-loopback and neither `RISOLUTO_READ_TOKEN` nor `RISOLU
 
 ### Outbound Service Endpoint Allowlists
 
-Risoluto now validates externally configured tracker / GitHub / Slack endpoints against HTTPS allowlists before it will use them:
+Risoluto now validates externally configured tracker / GitHub / Slack / generic notification webhook endpoints against HTTPS allowlists before it will use them:
 
 - Linear tracker default: `https://api.linear.app/graphql`
 - GitHub defaults: `github.com`, `api.github.com`, and `*.github.com`
 - Slack webhook defaults: `hooks.slack.com`, `hooks.slack-gov.com`
+- Generic notification webhooks: no implicit host wildcarding — custom hosts must be explicitly allowlisted
 
 Any custom domain outside those defaults must be explicitly allowlisted with one of:
 
 - `RISOLUTO_ALLOWED_TRACKER_HOSTS`
 - `RISOLUTO_ALLOWED_GITHUB_API_HOSTS`
 - `RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS`
+- `RISOLUTO_ALLOWED_NOTIFICATION_WEBHOOK_HOSTS`
 
 Infrastructure-level tokens such as `CLOUDFLARE_TUNNEL_TOKEN` still belong in `.env` or your deploy-time secret manager. Application credentials and signing secrets are better stored in Risoluto's encrypted secrets store and referenced from overlay config.
 
 ---
 
 ## 🔔 Inbound Webhook Auth
+
+Risoluto now exposes three ingress surfaces with distinct trust boundaries:
+
+- `/webhooks/linear` — signed Linear webhooks
+- `/webhooks/github` — signed GitHub webhooks
+- `/api/v1/webhooks/trigger` — authenticated generic trigger dispatch
+
+### Linear webhooks
 
 Risoluto accepts inbound Linear webhooks at `/webhooks/linear`. This endpoint is **publicly exposed** via Cloudflare Tunnel and uses HMAC signature verification:
 
@@ -234,7 +246,33 @@ The webhook secret comes from one of two sources:
 1. **Auto-registration**: Risoluto creates the webhook in Linear via GraphQL and stores the returned secret
 2. **Manual mode**: You set `webhook_secret` in the config overlay; Risoluto uses it directly
 
-The tunnel endpoint (`webhooks.risolu.to`) is the only publicly reachable surface. All other API routes remain loopback-local.
+### GitHub webhooks
+
+GitHub webhook deliveries arrive at `/webhooks/github` and must include:
+
+- `X-Hub-Signature-256` — HMAC-SHA256 signature of the raw request body using `triggers.github_secret`
+- `X-GitHub-Event` — source event name
+- `X-GitHub-Delivery` — dedupe-friendly delivery id (recommended)
+
+Risoluto only acts on the narrow GitHub issue-event subset needed for push-based issue ingestion and tracker truthfulness. Signature failures return `401`; missing event metadata returns `400`.
+
+### Generic trigger API
+
+The generic trigger endpoint is `POST /api/v1/webhooks/trigger`. It is not signed like a source webhook; instead it requires an explicit API key:
+
+- `X-Risoluto-Trigger-Key: <key>` or `Authorization: Bearer <key>`
+- configured allowlist in `triggers.allowed_actions`
+- per-minute request limiting via `triggers.rate_limit_per_minute`
+
+Currently supported trigger actions are:
+
+- `create_issue`
+- `re_poll`
+- `refresh_issue`
+
+If an `Idempotency-Key` header is provided, Risoluto stores it in the durable webhook inbox and short-circuits duplicate trigger deliveries.
+
+The tunnel endpoint (`webhooks.risolu.to`) should expose only the webhook routes you intend to use. All other operator APIs should remain loopback-local or protected with read/write tokens.
 
 ### Reverse Proxy Hop
 

@@ -1,14 +1,15 @@
-export type { NotificationVerbosity } from "../core/notification-types.js";
-import type { NotificationVerbosity } from "../core/notification-types.js";
-
-export type NotificationSeverity = "info" | "critical";
+export type { NotificationSeverity, NotificationVerbosity } from "../core/notification-types.js";
+import type { NotificationSeverity, NotificationVerbosity } from "../core/notification-types.js";
 
 export type NotificationEventType =
   | "issue_claimed"
   | "worker_launched"
   | "worker_completed"
   | "worker_retry"
-  | "worker_failed";
+  | "worker_failed"
+  | "automation_completed"
+  | "automation_failed"
+  | "alert_fired";
 
 export interface NotificationIssueContext {
   id: string | null;
@@ -22,7 +23,10 @@ export interface NotificationEvent {
   type: NotificationEventType;
   severity: NotificationSeverity;
   timestamp: string;
+  title?: string;
   message: string;
+  href?: string | null;
+  source?: string | null;
   issue: NotificationIssueContext;
   attempt: number | null;
   metadata?: Record<string, unknown>;
@@ -42,4 +46,17 @@ export function shouldDeliverByVerbosity(event: NotificationEvent, verbosity: No
     return event.severity === "critical";
   }
   return true;
+}
+
+const SEVERITY_ORDER: Record<NotificationSeverity, number> = {
+  info: 0,
+  warning: 1,
+  critical: 2,
+};
+
+export function shouldDeliverByMinSeverity(
+  eventSeverity: NotificationSeverity,
+  minimumSeverity: NotificationSeverity,
+): boolean {
+  return SEVERITY_ORDER[eventSeverity] >= SEVERITY_ORDER[minimumSeverity];
 }

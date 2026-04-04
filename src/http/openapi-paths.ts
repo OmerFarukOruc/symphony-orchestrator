@@ -9,9 +9,13 @@
 
 import { z } from "zod";
 
-import { modelUpdateSchema, transitionSchema } from "./request-schemas.js";
+import { modelUpdateSchema, transitionSchema, triggerSchema } from "./request-schemas.js";
 import {
   abortResponseSchema,
+  alertHistoryListResponseSchema,
+  automationRunResponseSchema,
+  automationRunsListResponseSchema,
+  automationsListResponseSchema,
   attemptDetailResponseSchema,
   attemptsListResponseSchema,
   checkpointsListResponseSchema,
@@ -25,14 +29,19 @@ import {
   gitContextResponseSchema,
   issueDetailResponseSchema,
   modelUpdateResponseSchema,
+  notificationReadResponseSchema,
+  notificationsListResponseSchema,
+  notificationsReadAllResponseSchema,
   prsListResponseSchema,
   recoveryReportResponseSchema,
   refreshResponseSchema,
   runtimeResponseSchema,
   stateResponseSchema,
+  triggerResponseSchema,
   transitionResponseSchema,
   transitionsListResponseSchema,
   validationErrorSchema,
+  webhookAcceptedResponseSchema,
   workspaceInventoryResponseSchema,
 } from "./response-schemas.js";
 
@@ -268,6 +277,198 @@ export function buildPrPaths(): Record<string, PathItem> {
           "200": jsonResponse("PR status overview", toSchema(prsListResponseSchema)),
           "400": errorResponse("Invalid status filter"),
           "503": errorResponse("Attempt store not configured"),
+        },
+      },
+    },
+  };
+}
+
+export function buildNotificationPaths(): Record<string, PathItem> {
+  return {
+    "/api/v1/notifications": {
+      get: {
+        tags: ["Notifications"],
+        summary: "List persisted notifications",
+        operationId: "listNotifications",
+        security: protectedReadSecurity,
+        parameters: [
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, maximum: 500 },
+          },
+          {
+            name: "unread",
+            in: "query",
+            required: false,
+            schema: { type: "boolean" },
+          },
+        ],
+        responses: {
+          ...protectedReadResponses("Notification timeline", toSchema(notificationsListResponseSchema)),
+          "400": errorResponse("Validation error"),
+          "503": errorResponse("Notification store not configured"),
+        },
+      },
+    },
+    "/api/v1/notifications/{notification_id}/read": {
+      post: {
+        tags: ["Notifications"],
+        summary: "Mark a notification as read",
+        operationId: "markNotificationRead",
+        parameters: [pathParam("notification_id", "Notification identifier")],
+        responses: {
+          "200": jsonResponse("Notification updated", toSchema(notificationReadResponseSchema)),
+          "404": errorResponse("Notification not found"),
+          "503": errorResponse("Notification store not configured"),
+        },
+      },
+    },
+    "/api/v1/notifications/read-all": {
+      post: {
+        tags: ["Notifications"],
+        summary: "Mark all notifications as read",
+        operationId: "markAllNotificationsRead",
+        responses: {
+          "200": jsonResponse("Notifications updated", toSchema(notificationsReadAllResponseSchema)),
+          "503": errorResponse("Notification store not configured"),
+        },
+      },
+    },
+  };
+}
+
+export function buildAutomationPaths(): Record<string, PathItem> {
+  return {
+    "/api/v1/automations": {
+      get: {
+        tags: ["Automations"],
+        summary: "List configured automations and scheduler state",
+        operationId: "listAutomations",
+        responses: {
+          "200": jsonResponse("Automation definitions", toSchema(automationsListResponseSchema)),
+          "503": errorResponse("Automation scheduler not available"),
+        },
+      },
+    },
+    "/api/v1/automations/runs": {
+      get: {
+        tags: ["Automations"],
+        summary: "List automation run history",
+        operationId: "listAutomationRuns",
+        parameters: [
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, maximum: 500 },
+          },
+          {
+            name: "automation_name",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": jsonResponse("Automation run history", toSchema(automationRunsListResponseSchema)),
+          "400": errorResponse("Validation error"),
+          "503": errorResponse("Automation store not available"),
+        },
+      },
+    },
+    "/api/v1/automations/{automation_name}/run": {
+      post: {
+        tags: ["Automations"],
+        summary: "Run a configured automation immediately",
+        operationId: "runAutomationNow",
+        parameters: [pathParam("automation_name", "Automation name")],
+        responses: {
+          "202": jsonResponse("Automation run accepted", toSchema(automationRunResponseSchema)),
+          "404": errorResponse("Automation not found"),
+          "503": errorResponse("Automation scheduler not available"),
+        },
+      },
+    },
+  };
+}
+
+export function buildAlertPaths(): Record<string, PathItem> {
+  return {
+    "/api/v1/alerts/history": {
+      get: {
+        tags: ["Alerts"],
+        summary: "List alert delivery and cooldown history",
+        operationId: "listAlertHistory",
+        parameters: [
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, maximum: 500 },
+          },
+          {
+            name: "rule_name",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": jsonResponse("Alert history", toSchema(alertHistoryListResponseSchema)),
+          "400": errorResponse("Validation error"),
+          "503": errorResponse("Alert history store not available"),
+        },
+      },
+    },
+  };
+}
+
+export function buildIngressPaths(): Record<string, PathItem> {
+  return {
+    "/api/v1/webhooks/trigger": {
+      post: {
+        tags: ["Ingress"],
+        summary: "Dispatch an authenticated trigger action",
+        operationId: "dispatchTrigger",
+        requestBody: {
+          required: true,
+          content: jsonContent(toSchema(triggerSchema)),
+        },
+        responses: {
+          "202": jsonResponse("Trigger accepted", toSchema(triggerResponseSchema)),
+          "200": jsonResponse("Duplicate trigger accepted without reprocessing", toSchema(triggerResponseSchema)),
+          "400": jsonResponse("Validation error", toSchema(validationErrorSchema)),
+          "401": errorResponse("Invalid trigger credentials"),
+          "403": errorResponse("Trigger action is not allowed"),
+          "503": errorResponse("Trigger endpoint is not configured"),
+        },
+      },
+    },
+    "/webhooks/linear": {
+      post: {
+        tags: ["Ingress"],
+        summary: "Receive a signed Linear webhook delivery",
+        operationId: "receiveLinearWebhook",
+        responses: {
+          "200": jsonResponse("Webhook accepted", toSchema(webhookAcceptedResponseSchema)),
+          "400": errorResponse("Invalid payload"),
+          "401": errorResponse("Invalid or missing Linear signature"),
+          "503": errorResponse("Webhook secret is not configured"),
+        },
+      },
+    },
+    "/webhooks/github": {
+      post: {
+        tags: ["Ingress"],
+        summary: "Receive a signed GitHub webhook delivery",
+        operationId: "receiveGitHubWebhook",
+        responses: {
+          "200": jsonResponse("Webhook accepted", toSchema(webhookAcceptedResponseSchema)),
+          "400": errorResponse("Missing or invalid GitHub event metadata"),
+          "401": errorResponse("Invalid or missing GitHub signature"),
+          "503": errorResponse("GitHub webhook secret is not configured"),
         },
       },
     },

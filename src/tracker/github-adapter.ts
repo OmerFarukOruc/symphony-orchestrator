@@ -1,6 +1,6 @@
 import type { Issue, ServiceConfig } from "../core/types.js";
 import { GitHubIssuesClient, normalizeGitHubIssue } from "../github/issues-client.js";
-import type { TrackerPort } from "./port.js";
+import type { TrackerIssueCreateInput, TrackerIssueCreateResult, TrackerPort } from "./port.js";
 
 /**
  * Thin adapter that implements TrackerPort by delegating to GitHubIssuesClient.
@@ -53,6 +53,31 @@ export class GitHubTrackerAdapter implements TrackerPort {
 
   async createComment(issueId: string, body: string): Promise<void> {
     await this.client.withRetry("createComment", () => this.client.createComment(Number(issueId), body));
+  }
+
+  async createIssue(input: TrackerIssueCreateInput): Promise<TrackerIssueCreateResult> {
+    const config = this.getConfig();
+    const defaultState = config.tracker.activeStates.at(0) ?? null;
+    const labels = [input.stateName ?? defaultState].filter(
+      (label): label is string => typeof label === "string" && label.length > 0,
+    );
+    const raw = await this.client.createIssue({
+      title: input.title,
+      body: input.description ?? null,
+      labels,
+    });
+    const normalized = normalizeGitHubIssue(
+      raw,
+      config.tracker.owner ?? "",
+      config.tracker.repo ?? "",
+      config.tracker.activeStates,
+      config.tracker.terminalStates,
+    );
+    return {
+      issueId: normalized.id,
+      identifier: normalized.identifier,
+      url: normalized.url,
+    };
   }
 
   async transitionIssue(issueId: string, stateId: string): Promise<{ success: boolean }> {

@@ -14,13 +14,29 @@ describe("fetchAvailableModels", () => {
 
   it("returns model ids from a well-formed model/list response", async () => {
     const conn = makeConnection(async () => ({
-      models: [{ id: "gpt-5.4" }, { id: "o3" }],
+      data: [{ id: "gpt-5.4" }, { id: "o3" }],
     }));
 
     const result = await fetchAvailableModels(conn, logger);
 
     expect(result).toEqual(["gpt-5.4", "o3"]);
-    expect(conn.request).toHaveBeenCalledWith("model/list", {});
+    expect(conn.request).toHaveBeenCalledWith("model/list", { limit: 100 });
+  });
+
+  it("follows paginated model/list responses", async () => {
+    const conn = makeConnection(async (_method, params) => {
+      const record = params as { cursor?: string };
+      if (!record.cursor) {
+        return { data: [{ id: "gpt-5.4" }], nextCursor: "page-2" };
+      }
+      return { data: [{ id: "o3" }], nextCursor: null };
+    });
+
+    const result = await fetchAvailableModels(conn, logger);
+
+    expect(result).toEqual(["gpt-5.4", "o3"]);
+    expect(conn.request).toHaveBeenNthCalledWith(1, "model/list", { limit: 100 });
+    expect(conn.request).toHaveBeenNthCalledWith(2, "model/list", { cursor: "page-2", limit: 100 });
   });
 
   it("returns null and logs a warning when connection throws", async () => {

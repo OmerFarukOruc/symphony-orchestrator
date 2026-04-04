@@ -3,9 +3,11 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   appendReasoningText,
   composeSessionId,
+  consumeReviewSummary,
   createTurnState,
   deleteReasoningBuffer,
   recordCompletedTurn,
+  recordReviewSummary,
   waitForTurnCompletion,
 } from "../../src/agent-runner/turn-state.js";
 
@@ -127,6 +129,13 @@ describe("turn state", () => {
     const state = createTurnState();
     recordCompletedTurn(state, null, { something: true });
     expect(state.completedTurnNotifications.size).toBe(0);
+  });
+
+  it("records and consumes review summaries by turn id", () => {
+    const state = createTurnState();
+    recordReviewSummary(state, "turn-review", "Looks solid overall.");
+    expect(consumeReviewSummary(state, "turn-review")).toBe("Looks solid overall.");
+    expect(consumeReviewSummary(state, "turn-review")).toBeNull();
   });
 });
 

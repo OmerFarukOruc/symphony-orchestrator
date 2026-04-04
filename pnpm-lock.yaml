@@ -28,6 +28,9 @@ importers:
       liquidjs:
         specifier: ^10.25.1
         version: 10.25.2
+      node-cron:
+        specifier: ^4.2.1
+        version: 4.2.1
       pino:
         specifier: ^10.3.1
         version: 10.3.1
@@ -3806,6 +3809,11 @@ packages:
     resolution:
       { integrity: sha512-6u9UwL0HlAl21+agMN3YAMXcKByMqwGx+pq+P76vii5f7hTPtKDp08/H9py6DY+cfDw7kQNTGEj/rly3IgbNQA== }
     engines: { node: ">=10" }
+
+  node-cron@4.2.1:
+    resolution:
+      { integrity: sha512-lgimEHPE/QDgFlywTd8yTR61ptugX3Qer29efeyWw2rv259HtGBNn1vZVmp8lB9uo9wC0t/AT4iGqXxia+CJFg== }
+    engines: { node: ">=6.0.0" }
 
   node-emoji@2.2.0:
     resolution:
@@ -8188,6 +8196,8 @@ snapshots:
   node-abi@3.89.0:
     dependencies:
       semver: 7.7.4
+
+  node-cron@4.2.1: {}
 
   node-emoji@2.2.0:
     dependencies:

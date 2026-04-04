@@ -9,6 +9,7 @@ import {
   encryptedSecrets,
   promptTemplates,
   configHistory,
+  notifications,
 } from "../../../src/persistence/sqlite/schema.js";
 
 // ---------------------------------------------------------------------------
@@ -47,7 +48,7 @@ function getColumnNames(table: Parameters<typeof getTableConfig>[0]): string[] {
 // Table exports
 // ---------------------------------------------------------------------------
 describe("schema table exports", () => {
-  it("exports all seven tables", () => {
+  it("exports core persistence tables including notifications", () => {
     expect(getTableConfig(attempts).name).toBe("attempts");
     expect(getTableConfig(attemptEvents).name).toBe("attempt_events");
     expect(getTableConfig(issueIndex).name).toBe("issue_index");
@@ -55,6 +56,7 @@ describe("schema table exports", () => {
     expect(getTableConfig(encryptedSecrets).name).toBe("encrypted_secrets");
     expect(getTableConfig(promptTemplates).name).toBe("prompt_templates");
     expect(getTableConfig(configHistory).name).toBe("config_history");
+    expect(getTableConfig(notifications).name).toBe("notifications");
   });
 
   it("tables have correct SQL names", () => {
@@ -65,6 +67,7 @@ describe("schema table exports", () => {
     expect(getTableConfig(encryptedSecrets).name).toBe("encrypted_secrets");
     expect(getTableConfig(promptTemplates).name).toBe("prompt_templates");
     expect(getTableConfig(configHistory).name).toBe("config_history");
+    expect(getTableConfig(notifications).name).toBe("notifications");
   });
 });
 
@@ -254,6 +257,44 @@ describe("issueIndex table schema", () => {
 
     const fk = fks[0];
     expect(fk.reference().foreignTable).toBe(attempts);
+  });
+});
+
+describe("notifications table schema", () => {
+  it("has the expected columns", () => {
+    const cols = getColumnNames(notifications);
+    expect(cols).toEqual(
+      [
+        "id",
+        "type",
+        "severity",
+        "title",
+        "message",
+        "source",
+        "href",
+        "read",
+        "dedupe_key",
+        "metadata",
+        "delivery_summary",
+        "created_at",
+        "updated_at",
+      ].sort(),
+    );
+  });
+
+  it("uses a text primary key and required core fields", () => {
+    const cols = getColumnMap(notifications);
+    expect(cols.id.primaryKey).toBe(true);
+    for (const name of ["type", "severity", "title", "message", "created_at", "updated_at"]) {
+      expect(cols[name].notNull).toBe(true);
+    }
+  });
+
+  it("stores read state as a defaulted number/boolean column", () => {
+    const col = getColumnMap(notifications).read;
+    expect(col.dataType).toBe("boolean");
+    expect(col.notNull).toBe(true);
+    expect(col.hasDefault).toBe(true);
   });
 });
 

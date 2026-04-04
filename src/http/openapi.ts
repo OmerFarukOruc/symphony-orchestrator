@@ -5,7 +5,16 @@
  * Uses Zod 4's built-in `z.toJSONSchema()` — no external OpenAPI library needed.
  */
 
-import { buildInfrastructurePaths, buildIssuePaths, buildPrPaths, buildStateAndMetricsPaths } from "./openapi-paths.js";
+import {
+  buildAlertPaths,
+  buildAutomationPaths,
+  buildIngressPaths,
+  buildInfrastructurePaths,
+  buildIssuePaths,
+  buildNotificationPaths,
+  buildPrPaths,
+  buildStateAndMetricsPaths,
+} from "./openapi-paths.js";
 
 /** Lazily cached spec — built once on first access, then reused. */
 let cachedSpec: Record<string, unknown> | undefined;
@@ -37,6 +46,10 @@ export function getOpenApiSpec(): Record<string, unknown> {
     paths: {
       ...buildStateAndMetricsPaths(),
       ...buildIssuePaths(),
+      ...buildNotificationPaths(),
+      ...buildAutomationPaths(),
+      ...buildAlertPaths(),
+      ...buildIngressPaths(),
       ...buildPrPaths(),
       ...buildInfrastructurePaths(),
     },

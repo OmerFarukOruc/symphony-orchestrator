@@ -213,6 +213,77 @@ export const pullRequests = sqliteTable("pull_requests", {
   updatedAt: text("updated_at").notNull(),
 });
 
+/**
+ * Durable notification timeline. Each row represents one operator-facing
+ * notification event with read state and optional delivery summary.
+ */
+export const notifications = sqliteTable("notifications", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  severity: text("severity", {
+    enum: ["info", "warning", "critical"],
+  }).notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  source: text("source"),
+  href: text("href"),
+  read: integer("read", { mode: "boolean" }).notNull().default(false),
+  dedupeKey: text("dedupe_key"),
+  metadata: text("metadata"),
+  deliverySummary: text("delivery_summary"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/**
+ * Durable automation run history for scheduled and manual automation
+ * executions. Stores the mode, outcome, optional tracker issue linkage,
+ * and any generated report/findings payload.
+ */
+export const automationRuns = sqliteTable("automation_runs", {
+  id: text("id").primaryKey(),
+  automationName: text("automation_name").notNull(),
+  mode: text("mode", {
+    enum: ["implement", "report", "findings"],
+  }).notNull(),
+  trigger: text("trigger", {
+    enum: ["schedule", "manual"],
+  }).notNull(),
+  repoUrl: text("repo_url"),
+  status: text("status", {
+    enum: ["running", "completed", "failed", "skipped"],
+  }).notNull(),
+  output: text("output"),
+  details: text("details"),
+  issueId: text("issue_id"),
+  issueIdentifier: text("issue_identifier"),
+  issueUrl: text("issue_url"),
+  error: text("error"),
+  startedAt: text("started_at").notNull(),
+  finishedAt: text("finished_at"),
+});
+
+/**
+ * Durable alert firing history including cooldown suppressions and delivery
+ * outcomes for each evaluated rule.
+ */
+export const alertHistory = sqliteTable("alert_history", {
+  id: text("id").primaryKey(),
+  ruleName: text("rule_name").notNull(),
+  eventType: text("event_type").notNull(),
+  severity: text("severity", {
+    enum: ["info", "warning", "critical"],
+  }).notNull(),
+  status: text("status", {
+    enum: ["delivered", "suppressed", "partial_failure", "failed"],
+  }).notNull(),
+  channels: text("channels").notNull(),
+  deliveredChannels: text("delivered_channels").notNull(),
+  failedChannels: text("failed_channels").notNull(),
+  message: text("message").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
 export const webhookInbox = sqliteTable("webhook_inbox", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   deliveryId: text("delivery_id").notNull().unique(),

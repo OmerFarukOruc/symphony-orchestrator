@@ -183,8 +183,8 @@ function buildDockerSessionObject(
       try {
         await session.connection.request("turn/steer", {
           threadId: session.threadId,
-          turnId: session.turnId,
-          message,
+          expectedTurnId: session.turnId,
+          input: [{ type: "text", text: message }],
         });
         return true;
       } catch {

@@ -105,9 +105,18 @@ function extractReasoningContent(
 
 function extractCommandContent(item: Record<string, unknown>, verb: "started" | "completed"): string | null {
   if (verb === "started") {
+    if (Array.isArray(item.command)) {
+      return item.command.map((part) => (typeof part === "string" ? part : JSON.stringify(part))).join(" ");
+    }
     return asString(item.command);
   }
   if (asString(item.output) !== null) return asString(item.output);
+  if (asString(item.aggregatedOutput) !== null) return asString(item.aggregatedOutput);
+  const stdout = asString(item.stdout);
+  const stderr = asString(item.stderr);
+  if (stdout || stderr) {
+    return [stdout, stderr].filter(Boolean).join("\n");
+  }
   if (item.exitCode === undefined) return null;
   const rawCode: unknown = item.exitCode;
   const code = typeof rawCode === "number" ? String(rawCode) : JSON.stringify(rawCode);
@@ -129,7 +138,7 @@ function extractFileChangeContent(
 
 function extractDynamicToolCallContent(item: Record<string, unknown>, verb: "started" | "completed"): string | null {
   if (verb === "started") {
-    const name = asString(item.name) ?? "tool";
+    const name = asString(item.tool) ?? asString(item.name) ?? "tool";
     const args =
       typeof item.arguments === "string"
         ? sanitizeContent(item.arguments)
@@ -175,6 +184,8 @@ function extractItemContent(
     content = extractDynamicToolCallContent(item, verb);
   } else if (type === "webSearch") {
     content = extractWebSearchContent(item, verb);
+  } else if (type === "enteredReviewMode" || type === "exitedReviewMode") {
+    content = asString(item.review);
   }
 
   return sanitizeContent(content, { isDiff });

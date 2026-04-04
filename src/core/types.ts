@@ -1,6 +1,26 @@
 // Exempt: shared domain and runtime type definitions kept together for discoverability.
 import type { AgentConfig } from "../config/schemas/agent.js";
-import type { NotificationVerbosity } from "./notification-types.js";
+import type { AlertConfig, AutomationConfig, NotificationConfig, TriggerConfig } from "./notification-types.js";
+
+export type {
+  AlertConfig,
+  AlertRuleConfig,
+  AutomationConfig,
+  AutomationMode,
+  NotificationConfig,
+  NotificationChannelConfig,
+  NotificationDeliveryFailure,
+  NotificationDeliverySummary,
+  NotificationDesktopChannelConfig,
+  NotificationRecord,
+  NotificationSeverity,
+  NotificationSlackChannelConfig,
+  NotificationSlackConfig,
+  NotificationVerbosity,
+  NotificationWebhookChannelConfig,
+  TriggerAction,
+  TriggerConfig,
+} from "./notification-types.js";
 
 export interface WorkflowDefinition {
   config: Record<string, unknown>;
@@ -223,15 +243,6 @@ export interface TrackerConfig {
   terminalStates: string[];
 }
 
-export interface NotificationSlackConfig {
-  webhookUrl: string;
-  verbosity: NotificationVerbosity;
-}
-
-export interface NotificationConfig {
-  slack: NotificationSlackConfig | null;
-}
-
 export interface GitHubConfig {
   token: string;
   apiBaseUrl: string;
@@ -450,6 +461,9 @@ export interface StateMachineConfig {
 export interface ServiceConfig {
   tracker: TrackerConfig;
   notifications?: NotificationConfig;
+  triggers?: TriggerConfig | null;
+  automations?: AutomationConfig[];
+  alerts?: AlertConfig | null;
   github?: GitHubConfig | null;
   repos?: RepoConfig[];
   polling: PollingConfig;

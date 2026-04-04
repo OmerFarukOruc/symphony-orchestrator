@@ -4,6 +4,7 @@ import { deriveServiceConfig } from "../../src/config/builders.js";
 import { normalizeGitHub, normalizeNotifications } from "../../src/config/normalizers.js";
 import {
   normalizeGitHubApiBaseUrl,
+  normalizeNotificationWebhookUrl,
   normalizeSlackWebhookUrl,
   normalizeTrackerEndpoint,
 } from "../../src/config/url-policy.js";
@@ -58,6 +59,12 @@ describe("config URL policy", () => {
     expect(() => normalizeSlackWebhookUrl("https://notify.example/hook")).toThrow(/not allowlisted/);
     vi.stubEnv("RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS", "notify.example");
     expect(normalizeSlackWebhookUrl("https://notify.example/hook")).toBe("https://notify.example/hook");
+  });
+
+  it("restricts generic notification webhooks to explicit allowlists", () => {
+    expect(() => normalizeNotificationWebhookUrl("https://notify.example/hook")).toThrow(/not allowlisted/);
+    vi.stubEnv("RISOLUTO_ALLOWED_NOTIFICATION_WEBHOOK_HOSTS", "notify.example");
+    expect(normalizeNotificationWebhookUrl("https://notify.example/hook")).toBe("https://notify.example/hook");
   });
 
   it("normalizers apply URL policy checks", () => {

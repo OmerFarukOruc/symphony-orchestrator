@@ -88,6 +88,7 @@ describe("normalizeNotifications", () => {
   it("returns null slack when no webhook_url", () => {
     const result = normalizeNotifications({});
     expect(result.slack).toBe(null);
+    expect(result.channels).toEqual([]);
   });
 
   it("normalizes slack config with webhook url", () => {
@@ -97,6 +98,16 @@ describe("normalizeNotifications", () => {
     expect(result.slack).not.toBe(null);
     expect(result.slack?.webhookUrl).toBe("https://hooks.slack.com/xxx");
     expect(result.slack?.verbosity).toBe("verbose");
+    expect(result.channels).toEqual([
+      {
+        type: "slack",
+        name: "slack",
+        enabled: true,
+        minSeverity: "info",
+        webhookUrl: "https://hooks.slack.com/xxx",
+        verbosity: "verbose",
+      },
+    ]);
   });
 
   it("defaults verbosity to critical for unknown values", () => {

@@ -1,6 +1,6 @@
 import type { Liquid } from "liquidjs";
 
-import { authIsRequired, extractRateLimits, extractThreadId, hasUsableAccount } from "./helpers.js";
+import { asRecord, asString, authIsRequired, extractRateLimits, extractThreadId, hasUsableAccount } from "./helpers.js";
 import { fetchAvailableModels } from "./model-validation.js";
 import { waitForStartup, StartupTimeoutError, buildDynamicTools } from "./session-helpers.js";
 import type { DockerSession } from "./docker-session.js";
@@ -41,6 +41,35 @@ interface SessionInitSuccess {
 }
 
 type EarlyOutcome = RunOutcome & { threadId: string | null; turnId: string | null; turnCount: number };
+
+function summarizeCodexConfig(result: unknown): Record<string, unknown> {
+  const config = asRecord(asRecord(result).config);
+  return {
+    model: config.model ?? null,
+    modelProvider: config.model_provider ?? config.modelProvider ?? null,
+    reasoningEffort: config.model_reasoning_effort ?? config.modelReasoningEffort ?? null,
+    approvalPolicy: config.approval_policy ?? config.approvalPolicy ?? null,
+  };
+}
+
+function summarizeRequirements(result: unknown): Record<string, unknown> {
+  const requirements = asRecord(asRecord(result).requirements);
+  return {
+    allowedApprovalPolicies: requirements.allowedApprovalPolicies ?? null,
+    allowedSandboxModes: requirements.allowedSandboxModes ?? null,
+    network: requirements.network ?? null,
+  };
+}
+
+function summarizeThread(result: unknown): Record<string, unknown> {
+  const thread = asRecord(asRecord(result).thread);
+  return {
+    threadId: asString(thread.id),
+    name: asString(thread.name),
+    status: thread.status ?? null,
+    ephemeral: thread.ephemeral ?? null,
+  };
+}
 
 export async function initializeSession(
   session: DockerSession,
@@ -115,7 +144,11 @@ async function initCodexProtocol(
   deps: SessionInitDeps,
 ): Promise<{ kind: "failed"; errorCode: string; errorMessage: string } | null> {
   await session.connection.request("initialize", {
-    clientInfo: { name: "risoluto", version: "0.2.0" },
+    clientInfo: {
+      name: "risoluto",
+      title: "Risoluto",
+      version: process.env.npm_package_version ?? "unknown",
+    },
     capabilities: {
       experimentalApi: true,
       optOutNotificationMethods: [
@@ -155,9 +188,33 @@ async function initCodexProtocol(
   }
 
   try {
-    await session.connection.request("configRequirements/read", {});
+    const requirementsResult = await session.connection.request("configRequirements/read", {});
+    input.onEvent({
+      at: new Date().toISOString(),
+      issueId: input.issue.id,
+      issueIdentifier: input.issue.identifier,
+      sessionId: null,
+      event: "codex_requirements_loaded",
+      message: "codex runtime requirements loaded",
+      metadata: summarizeRequirements(requirementsResult),
+    });
   } catch {
     // Older Codex versions may not support configRequirements — skip
+  }
+
+  try {
+    const configResult = await session.connection.request("config/read", { includeLayers: false });
+    input.onEvent({
+      at: new Date().toISOString(),
+      issueId: input.issue.id,
+      issueIdentifier: input.issue.identifier,
+      sessionId: null,
+      event: "codex_config_loaded",
+      message: "codex runtime config loaded",
+      metadata: summarizeCodexConfig(configResult),
+    });
+  } catch {
+    // Older Codex versions may not support config/read — skip
   }
 
   return null;
@@ -178,10 +235,11 @@ async function startThread(
       if (resumedId) {
         deps.logger.info({ threadId: resumedId }, "resumed previous thread");
         if (input.rollbackLastTurn) {
-          await session.connection.request("thread/rollback", { threadId: resumedId }).catch(() => {
+          await session.connection.request("thread/rollback", { threadId: resumedId, numTurns: 1 }).catch(() => {
             deps.logger.info({ threadId: resumedId }, "thread/rollback failed — continuing with resumed thread");
           });
         }
+        await emitThreadSnapshot(session, input, resumedId);
         return resumedId;
       }
     } catch {
@@ -203,7 +261,25 @@ async function startThread(
   if (!resolvedThreadId) {
     throw new Error("thread/start did not return a thread identifier");
   }
+  await emitThreadSnapshot(session, input, resolvedThreadId);
   return resolvedThreadId;
+}
+
+async function emitThreadSnapshot(session: DockerSession, input: SessionInitInput, threadId: string): Promise<void> {
+  try {
+    const threadReadResult = await session.connection.request("thread/read", { threadId, includeTurns: false });
+    input.onEvent({
+      at: new Date().toISOString(),
+      issueId: input.issue.id,
+      issueIdentifier: input.issue.identifier,
+      sessionId: threadId,
+      event: "thread_loaded",
+      message: "codex thread snapshot loaded",
+      metadata: summarizeThread(threadReadResult),
+    });
+  } catch {
+    // Older Codex versions may not support thread/read — skip
+  }
 }
 
 async function confirmContainerRunning(

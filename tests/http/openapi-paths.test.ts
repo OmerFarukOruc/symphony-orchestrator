@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildAlertPaths,
+  buildAutomationPaths,
+  buildIngressPaths,
   buildInfrastructurePaths,
   buildIssuePaths,
+  buildNotificationPaths,
   buildPrPaths,
   buildStateAndMetricsPaths,
 } from "../../src/http/openapi-paths.js";
@@ -180,6 +184,82 @@ describe("buildPrPaths", () => {
   });
 });
 
+describe("buildNotificationPaths", () => {
+  const paths = buildNotificationPaths();
+
+  it("includes notification timeline routes", () => {
+    expect(paths).toHaveProperty("/api/v1/notifications");
+    expect(paths).toHaveProperty("/api/v1/notifications/{notification_id}/read");
+    expect(paths).toHaveProperty("/api/v1/notifications/read-all");
+  });
+
+  it("documents GET /api/v1/notifications as a protected read", () => {
+    const item = paths["/api/v1/notifications"] as TestPathItem;
+    expect(item).toHaveProperty("get");
+    expect(item.get.operationId).toBe("listNotifications");
+    expect(item.get).toHaveProperty("security");
+    expect(item.get).toHaveProperty("parameters");
+  });
+
+  it("documents mark-read operations", () => {
+    const markOne = paths["/api/v1/notifications/{notification_id}/read"] as TestPathItem;
+    expect(markOne).toHaveProperty("post");
+    expect(markOne.post.operationId).toBe("markNotificationRead");
+
+    const markAll = paths["/api/v1/notifications/read-all"] as TestPathItem;
+    expect(markAll).toHaveProperty("post");
+    expect(markAll.post.operationId).toBe("markAllNotificationsRead");
+  });
+});
+
+describe("buildIngressPaths", () => {
+  const paths = buildIngressPaths();
+
+  it("includes trigger and source webhook routes", () => {
+    expect(paths).toHaveProperty("/api/v1/webhooks/trigger");
+    expect(paths).toHaveProperty("/webhooks/linear");
+    expect(paths).toHaveProperty("/webhooks/github");
+  });
+
+  it("documents trigger dispatch with a request body", () => {
+    const item = paths["/api/v1/webhooks/trigger"] as TestPathItem;
+    expect(item).toHaveProperty("post");
+    expect(item.post.operationId).toBe("dispatchTrigger");
+    expect(item.post).toHaveProperty("requestBody");
+  });
+
+  it("documents source webhook acceptance", () => {
+    const linear = paths["/webhooks/linear"] as TestPathItem;
+    expect(linear).toHaveProperty("post");
+    expect(linear.post.operationId).toBe("receiveLinearWebhook");
+
+    const github = paths["/webhooks/github"] as TestPathItem;
+    expect(github).toHaveProperty("post");
+    expect(github.post.operationId).toBe("receiveGitHubWebhook");
+  });
+});
+
+describe("buildAutomationPaths", () => {
+  const paths = buildAutomationPaths();
+
+  it("includes automation definition, history, and manual-run routes", () => {
+    expect(paths).toHaveProperty("/api/v1/automations");
+    expect(paths).toHaveProperty("/api/v1/automations/runs");
+    expect(paths).toHaveProperty("/api/v1/automations/{automation_name}/run");
+  });
+});
+
+describe("buildAlertPaths", () => {
+  const paths = buildAlertPaths();
+
+  it("includes alert history route", () => {
+    expect(paths).toHaveProperty("/api/v1/alerts/history");
+    const item = paths["/api/v1/alerts/history"] as TestPathItem;
+    expect(item).toHaveProperty("get");
+    expect(item.get.operationId).toBe("listAlertHistory");
+  });
+});
+
 describe("buildInfrastructurePaths", () => {
   const paths = buildInfrastructurePaths();
 
@@ -252,12 +332,14 @@ describe("buildInfrastructurePaths", () => {
 describe("cross-builder invariants", () => {
   const statePaths = buildStateAndMetricsPaths();
   const issuePaths = buildIssuePaths();
+  const notificationPaths = buildNotificationPaths();
   const infraPaths = buildInfrastructurePaths();
 
   it("no duplicate operationIds across all builders", () => {
     const allIds = [
       ...collectOperationIds(statePaths),
       ...collectOperationIds(issuePaths),
+      ...collectOperationIds(notificationPaths),
       ...collectOperationIds(infraPaths),
     ];
     const unique = new Set(allIds);
@@ -265,13 +347,18 @@ describe("cross-builder invariants", () => {
   });
 
   it("no duplicate paths across builders", () => {
-    const allPaths = [...Object.keys(statePaths), ...Object.keys(issuePaths), ...Object.keys(infraPaths)];
+    const allPaths = [
+      ...Object.keys(statePaths),
+      ...Object.keys(issuePaths),
+      ...Object.keys(notificationPaths),
+      ...Object.keys(infraPaths),
+    ];
     const unique = new Set(allPaths);
     expect(unique.size).toBe(allPaths.length);
   });
 
   it("every operation has summary, operationId, and responses", () => {
-    const allPaths = { ...statePaths, ...issuePaths, ...infraPaths };
+    const allPaths = { ...statePaths, ...issuePaths, ...notificationPaths, ...infraPaths };
     for (const [path, methods] of Object.entries(allPaths)) {
       for (const [method, op] of Object.entries(methods as TestPathItem)) {
         const operation = op as Record<string, unknown>;
@@ -283,7 +370,7 @@ describe("cross-builder invariants", () => {
   });
 
   it("all response objects are JSON-serializable", () => {
-    const allPaths = { ...statePaths, ...issuePaths, ...infraPaths };
+    const allPaths = { ...statePaths, ...issuePaths, ...notificationPaths, ...infraPaths };
     expect(() => JSON.stringify(allPaths)).not.toThrow();
     const roundtripped = JSON.parse(JSON.stringify(allPaths));
     expect(roundtripped).toEqual(allPaths);

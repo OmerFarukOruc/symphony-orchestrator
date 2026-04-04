@@ -1,4 +1,8 @@
 import { AuditLogger } from "../audit/logger.js";
+import { AlertEngine } from "../alerts/engine.js";
+import { AlertHistoryStore } from "../alerts/history-store.js";
+import { AutomationRunner } from "../automation/runner.js";
+import { AutomationScheduler } from "../automation/scheduler.js";
 import { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { RisolutoLogger, WebhookConfig } from "../core/types.js";
@@ -16,6 +20,8 @@ import { DefaultWebhookHealthTracker, type WebhookHealthTracker } from "../webho
 import { WebhookRegistrar } from "../webhook/registrar.js";
 import { initPersistenceRuntime, type PersistenceRuntime } from "../persistence/sqlite/runtime.js";
 import { IssueConfigStore } from "../persistence/sqlite/issue-config-store.js";
+import { AutomationStore } from "../persistence/sqlite/automation-store.js";
+import { NotificationStore } from "../persistence/sqlite/notification-store.js";
 import { SqliteWebhookInbox } from "../persistence/sqlite/webhook-inbox.js";
 import { PathRegistry } from "../workspace/path-registry.js";
 import type { SecretsStore } from "../secrets/store.js";
@@ -191,7 +197,14 @@ export async function createServices(
   });
 
   const eventBus = new TypedEventBus<RisolutoEventMap>();
-  const notificationManager = new NotificationManager({ logger: logger.child({ component: "notifications" }) });
+  const notificationStore = NotificationStore.create(persistence.db);
+  const automationStore = AutomationStore.create(persistence.db);
+  const alertHistoryStore = AlertHistoryStore.create(persistence.db);
+  const notificationManager = new NotificationManager({
+    logger: logger.child({ component: "notifications" }),
+    eventBus,
+    store: notificationStore,
+  });
 
   // --- Webhook integration ---
   const webhook = initWebhookInfrastructure({
@@ -254,6 +267,27 @@ export async function createServices(
     logger: logger.child({ component: "orchestrator" }),
     resolveTemplate,
   });
+  const automationRunner = new AutomationRunner({
+    orchestrator,
+    tracker,
+    notificationManager,
+    eventBus,
+    store: automationStore,
+    logger: logger.child({ component: "automation-runner" }),
+  });
+  const automationScheduler = new AutomationScheduler({
+    configStore,
+    runner: automationRunner,
+    notificationManager,
+    logger: logger.child({ component: "automation-scheduler" }),
+  });
+  const alertEngine = new AlertEngine({
+    configStore,
+    eventBus,
+    notificationManager,
+    historyStore: alertHistoryStore,
+    logger: logger.child({ component: "alert-engine" }),
+  });
 
   const prMonitor = new PrMonitorService({
     store: persistence.attemptStore,
@@ -273,6 +307,10 @@ export async function createServices(
     configOverlayStore: overlayStore,
     secretsStore,
     eventBus,
+    notificationStore,
+    automationStore,
+    automationScheduler,
+    alertHistoryStore,
     attemptStore: persistence.attemptStore,
     archiveDir,
     templateStore,
@@ -295,9 +333,14 @@ export async function createServices(
     notificationManager,
     linearClient,
     eventBus,
+    notificationStore,
+    automationStore,
+    alertHistoryStore,
+    automationScheduler,
     persistence,
     webhookHealthTracker: webhook.webhookHealthTracker,
     webhookRegistrar: webhook.webhookRegistrar,
+    alertEngine,
     webhookInbox: webhook.webhookInbox,
     prMonitor,
   };

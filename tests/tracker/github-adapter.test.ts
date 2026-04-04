@@ -95,6 +95,7 @@ function createMockClient(): GitHubIssuesClient {
     closeIssue: vi.fn().mockResolvedValue(undefined),
     reopenIssue: vi.fn().mockResolvedValue(undefined),
     createComment: vi.fn().mockResolvedValue(undefined),
+    createIssue: vi.fn().mockResolvedValue(makeRawIssue()),
     withRetry: vi.fn().mockImplementation((_op: string, fn: () => Promise<void>) => fn()),
   } as unknown as GitHubIssuesClient;
 }
@@ -180,6 +181,35 @@ describe("GitHubTrackerAdapter", () => {
       await adapter.createComment("7", "Hello world");
 
       expect(client.withRetry).toHaveBeenCalledWith("createComment", expect.any(Function));
+    });
+  });
+
+  describe("createIssue", () => {
+    it("creates a GitHub issue and returns normalized identifiers", async () => {
+      vi.mocked(client.createIssue).mockResolvedValue(
+        makeRawIssue({
+          number: 11,
+          labels: [{ name: "in-progress" }],
+          html_url: "https://github.com/acme/awesome/issues/11",
+        }),
+      );
+
+      const result = await adapter.createIssue({
+        title: "Investigate webhook drift",
+        description: "Refresh queue did not converge",
+        stateName: "in-progress",
+      });
+
+      expect(client.createIssue).toHaveBeenCalledWith({
+        title: "Investigate webhook drift",
+        body: "Refresh queue did not converge",
+        labels: ["in-progress"],
+      });
+      expect(result).toEqual({
+        issueId: "11",
+        identifier: "acme/awesome#11",
+        url: "https://github.com/acme/awesome/issues/11",
+      });
     });
   });
 

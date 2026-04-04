@@ -2,7 +2,7 @@ import type { Issue } from "../core/types.js";
 import type { LinearClient } from "../linear/client.js";
 import { buildIssueTransitionMutation } from "../linear/transition-query.js";
 import { asBooleanOrNull, asRecord } from "../utils/type-guards.js";
-import type { TrackerPort } from "./port.js";
+import type { TrackerIssueCreateInput, TrackerIssueCreateResult, TrackerPort } from "./port.js";
 
 /**
  * Thin adapter that implements TrackerPort by delegating to LinearClient.
@@ -34,6 +34,14 @@ export class LinearTrackerAdapter implements TrackerPort {
 
   createComment(issueId: string, body: string): Promise<void> {
     return this.client.createComment(issueId, body);
+  }
+
+  createIssue(input: TrackerIssueCreateInput): Promise<TrackerIssueCreateResult> {
+    return this.client.createIssue({
+      title: input.title,
+      description: input.description ?? null,
+      stateName: input.stateName ?? null,
+    });
   }
 
   async transitionIssue(issueId: string, stateId: string): Promise<{ success: boolean }> {

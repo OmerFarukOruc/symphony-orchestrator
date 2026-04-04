@@ -22,6 +22,8 @@ import { toErrorString } from "../utils/type-guards.js";
 import { createServices } from "./services.js";
 import { wireNotifications, watchConfigChanges } from "./notifications.js";
 import type { PrMonitorService } from "../git/pr-monitor.js";
+import type { AutomationScheduler } from "../automation/scheduler.js";
+import type { AlertEngine } from "../alerts/engine.js";
 
 const SETUP_MODE_ERRORS = new Set(["missing_tracker_api_key", "missing_tracker_project_slug"]);
 
@@ -83,6 +85,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (!needsSetup) {
     await orchestrator.start();
     prMonitor.start();
+    services.automationScheduler.start();
+    services.alertEngine.start();
   }
   await httpServer.start(port);
 
@@ -99,6 +103,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     webhookHealthTracker: services.webhookHealthTracker,
     webhookRegistrar: services.webhookRegistrar,
     prMonitor,
+    automationScheduler: services.automationScheduler,
+    alertEngine: services.alertEngine,
     logger,
   });
   logger.info({ dataDir, port, archiveDir }, "service started");
@@ -270,6 +276,8 @@ function buildShutdown({
   webhookHealthTracker,
   webhookRegistrar,
   prMonitor,
+  automationScheduler,
+  alertEngine,
   logger,
 }: {
   httpServer: HttpServer;
@@ -281,6 +289,8 @@ function buildShutdown({
   webhookHealthTracker?: WebhookHealthTracker;
   webhookRegistrar?: WebhookRegistrar;
   prMonitor?: PrMonitorService;
+  automationScheduler?: AutomationScheduler;
+  alertEngine?: AlertEngine;
   logger: ReturnType<typeof createLogger>;
 }): () => Promise<void> {
   let shuttingDown = false;
@@ -288,6 +298,8 @@ function buildShutdown({
     if (shuttingDown) return;
     shuttingDown = true;
     prMonitor?.stop();
+    automationScheduler?.stop();
+    alertEngine?.stop();
     await httpServer.stop().catch((error: unknown) => {
       logger.warn({ error: toErrorString(error) }, "http server shutdown failed");
     });

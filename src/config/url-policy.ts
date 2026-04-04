@@ -57,6 +57,10 @@ function isAllowedSlackWebhookHost(host: string): boolean {
   return host === "hooks.slack.com" || host === "hooks.slack-gov.com";
 }
 
+function isAllowedNotificationWebhookHost(_host: string): boolean {
+  return false;
+}
+
 export function normalizeTrackerEndpoint(kind: string, value: string): string {
   const envName = "RISOLUTO_ALLOWED_TRACKER_HOSTS";
   if (kind === "github") {
@@ -75,5 +79,14 @@ export function normalizeSlackWebhookUrl(value: string): string {
     "notifications.slack.webhookUrl",
     "RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS",
     isAllowedSlackWebhookHost,
+  );
+}
+
+export function normalizeNotificationWebhookUrl(value: string): string {
+  return ensureAllowedUrl(
+    value,
+    "notifications.channels[].url",
+    "RISOLUTO_ALLOWED_NOTIFICATION_WEBHOOK_HOSTS",
+    isAllowedNotificationWebhookHost,
   );
 }

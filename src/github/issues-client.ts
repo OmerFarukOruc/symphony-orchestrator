@@ -165,6 +165,23 @@ export class GitHubIssuesClient {
     }
   }
 
+  async withRetryReturn<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          throw error;
+        }
+        const delayMs = 1000 * 2 ** (attempt - 1) * (randomInt(500, 1000) / 1000);
+        this.logger.warn({ operation, attempt, delayMs, error: toErrorString(error) }, "github write-back retry");
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    throw new GitHubIssuesClientError("github_http_error", `${operation} exhausted retries without result`);
+  }
+
   // -------------------------------------------------------------------------
   // Public API
   // -------------------------------------------------------------------------
@@ -218,6 +235,20 @@ export class GitHubIssuesClient {
     await this.request<unknown>(`/repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
       method: "POST",
       body: JSON.stringify({ body }),
+    });
+  }
+
+  async createIssue(input: { title: string; body?: string | null; labels?: string[] }): Promise<RawGitHubIssue> {
+    const { owner, repo } = this.getOwnerRepo();
+    return this.withRetryReturn("createIssue", async () => {
+      return this.request<RawGitHubIssue>(`/repos/${owner}/${repo}/issues`, {
+        method: "POST",
+        body: JSON.stringify({
+          title: input.title,
+          body: input.body ?? undefined,
+          labels: input.labels ?? [],
+        }),
+      });
     });
   }
 }

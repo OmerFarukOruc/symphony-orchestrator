@@ -13,6 +13,8 @@ import { resolveConfigString, resolvePathConfigString } from "./resolvers.js";
 import {
   asCodexAuthMode,
   asReasoningEffort,
+  normalizeAlerts,
+  normalizeAutomations,
   normalizeCodexProvider,
   normalizeTurnSandboxPolicy,
   normalizeApprovalPolicy,
@@ -20,6 +22,7 @@ import {
   normalizeGitHub,
   normalizeRepos,
   normalizeStateMachine,
+  normalizeTriggers,
 } from "./normalizers.js";
 import { DEFAULT_ACTIVE_STATES, DEFAULT_TERMINAL_STATES } from "../state/policy.js";
 import { normalizeTrackerEndpoint } from "./url-policy.js";
@@ -311,6 +314,9 @@ export function deriveServiceConfig(workflow: WorkflowDefinition, options?: Deri
   const root = asRecord(mergedConfig);
   const tracker = asRecord(root.tracker);
   const notifications = asRecord(root.notifications);
+  const triggers = asRecord(root.triggers);
+  const automations = root.automations;
+  const alerts = asRecord(root.alerts);
   const github = asRecord(root.github);
   const repos = root.repos;
   const polling = asRecord(root.polling);
@@ -325,6 +331,9 @@ export function deriveServiceConfig(workflow: WorkflowDefinition, options?: Deri
   return {
     tracker: deriveTrackerConfig(tracker, secretResolver),
     notifications: normalizeNotifications(notifications, secretResolver),
+    triggers: normalizeTriggers(triggers, secretResolver),
+    automations: normalizeAutomations(automations),
+    alerts: normalizeAlerts(alerts),
     github: normalizeGitHub(github, secretResolver),
     repos: normalizeRepos(repos),
     polling: derivePollingConfig(polling),

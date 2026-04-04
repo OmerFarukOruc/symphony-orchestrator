@@ -121,6 +121,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce({ models: [{ id: "gpt-5.4" }] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-abc" }); // thread/start
 
@@ -241,6 +242,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({}) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-1" }); // thread/start
 
@@ -272,6 +274,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({}) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-2" }); // thread/start
 
@@ -303,6 +306,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockRejectedValueOnce(new Error("rate limit unavailable")) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({ threadId: "thread-3" }); // thread/start
 
@@ -327,6 +331,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-init" }); // thread/start
 
@@ -338,6 +343,10 @@ describe("initializeSession", () => {
       const initCall = session.connection.request.mock.calls[0];
       expect(initCall[0]).toBe("initialize");
       expect(initCall[1]).toMatchObject({
+        clientInfo: {
+          name: "risoluto",
+          title: "Risoluto",
+        },
         capabilities: {
           experimentalApi: true,
           optOutNotificationMethods: [
@@ -361,6 +370,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-svc" }); // thread/start
 
@@ -369,9 +379,10 @@ describe("initializeSession", () => {
 
       await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
 
-      const threadCall = session.connection.request.mock.calls[5];
-      expect(threadCall[0]).toBe("thread/start");
-      expect(threadCall[1]).toMatchObject({ serviceName: "risoluto" });
+      const threadCall = session.connection.request.mock.calls.find((call) => call[0] === "thread/start");
+      expect(threadCall).toBeDefined();
+      expect(threadCall?.[0]).toBe("thread/start");
+      expect(threadCall?.[1]).toMatchObject({ serviceName: "risoluto" });
     });
 
     it("uses personality from config instead of hardcoded value", async () => {
@@ -381,6 +392,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-p" }); // thread/start
 
@@ -397,9 +409,10 @@ describe("initializeSession", () => {
 
       await initializeSession(session, config, input, deps, liquid);
 
-      const threadCall = session.connection.request.mock.calls[5];
-      expect(threadCall[0]).toBe("thread/start");
-      expect(threadCall[1]).toMatchObject({ personality: "concise" });
+      const threadCall = session.connection.request.mock.calls.find((call) => call[0] === "thread/start");
+      expect(threadCall).toBeDefined();
+      expect(threadCall?.[0]).toBe("thread/start");
+      expect(threadCall?.[1]).toMatchObject({ personality: "concise" });
     });
   });
 
@@ -411,6 +424,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({}) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce({ models: [] }) // model/list
         .mockResolvedValueOnce({}); // thread/start -- no threadId
 
@@ -431,6 +445,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "resumed-thread-1" }); // thread/resume
 
@@ -451,6 +466,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce(null) // model/list
         .mockRejectedValueOnce(new Error("resume not supported")) // thread/resume
         .mockResolvedValueOnce({ threadId: "fresh-thread-1" }); // thread/start fallback
@@ -475,6 +491,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-fresh" }); // thread/start
 
@@ -486,7 +503,7 @@ describe("initializeSession", () => {
       expect(result).toEqual({ threadId: "thread-fresh", prompt: "prompt" });
       // Verify thread/resume was never called
       const requestCalls = session.connection.request.mock.calls;
-      const resumeCall = requestCalls.find(([method]: [string]) => method === "thread/resume");
+      const resumeCall = requestCalls.find((call) => call[0] === "thread/resume");
       expect(resumeCall).toBeUndefined();
     });
 
@@ -497,6 +514,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "resumed-thread-2" }) // thread/resume
         .mockResolvedValueOnce({}); // thread/rollback
@@ -509,6 +527,7 @@ describe("initializeSession", () => {
       expect(result).toEqual({ threadId: "resumed-thread-2", prompt: "prompt" });
       expect(session.connection.request).toHaveBeenCalledWith("thread/rollback", {
         threadId: "resumed-thread-2",
+        numTurns: 1,
       });
     });
 
@@ -519,6 +538,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "resumed-thread-3" }) // thread/resume
         .mockRejectedValueOnce(new Error("rollback unsupported")); // thread/rollback fails
@@ -544,6 +564,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockResolvedValueOnce({ requirements: [] }) // configRequirements/read
+        .mockResolvedValueOnce({ config: { model: "gpt-5.4" } }) // config/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-cr-1" }); // thread/start
 
@@ -563,6 +584,7 @@ describe("initializeSession", () => {
         .mockResolvedValueOnce({ status: "authenticated" }) // account/read
         .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
         .mockRejectedValueOnce(new Error("not supported")) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
         .mockResolvedValueOnce(null) // model/list
         .mockResolvedValueOnce({ threadId: "thread-cr-2" }); // thread/start
 
@@ -572,6 +594,33 @@ describe("initializeSession", () => {
       const result = await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
 
       expect(result).toEqual({ threadId: "thread-cr-2", prompt: "prompt" });
+    });
+  });
+
+  describe("app-server introspection", () => {
+    it("emits config and thread snapshot events when supported", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({ requirements: { allowedSandboxModes: ["workspaceWrite"] } }) // configRequirements/read
+        .mockResolvedValueOnce({ config: { model: "gpt-5.4", model_provider: "openai" } }) // config/read
+        .mockResolvedValueOnce({ data: [{ id: "gpt-5.4" }] }) // model/list
+        .mockResolvedValueOnce({ threadId: "thread-introspect" }) // thread/start
+        .mockResolvedValueOnce({
+          thread: { id: "thread-introspect", name: "Issue thread", status: { type: "idle" }, ephemeral: false },
+        }); // thread/read
+
+      const liquid = makeLiquid({ render: async () => "prompt" });
+      const input = makeInput();
+
+      const result = await initializeSession(session, makeMinimalConfig(), input, deps, liquid);
+
+      expect(result).toEqual({ threadId: "thread-introspect", prompt: "prompt" });
+      expect(events.some((event) => event.event === "codex_requirements_loaded")).toBe(true);
+      expect(events.some((event) => event.event === "codex_config_loaded")).toBe(true);
+      expect(events.some((event) => event.event === "thread_loaded")).toBe(true);
     });
   });
 });

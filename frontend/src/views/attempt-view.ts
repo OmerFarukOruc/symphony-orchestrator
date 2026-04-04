@@ -12,7 +12,7 @@ import {
   formatTimestamp,
 } from "../utils/format";
 import { registerPageCleanup } from "../utils/page";
-import type { AttemptCheckpointRecord, AttemptRecord, IssueDetail } from "../types";
+import type { AttemptAppServer, AttemptCheckpointRecord, AttemptRecord, IssueDetail } from "../types";
 import { resolveIssueIdentifier } from "./attempt-utils";
 
 function createValueLink(label: string, href: string): HTMLElement {
@@ -51,6 +51,36 @@ function createSection(title: string, className = "attempt-section mc-panel"): H
   heading.textContent = title;
   section.append(heading);
   return section;
+}
+
+function formatListValue(values: string[] | null | undefined): string {
+  if (!values || values.length === 0) {
+    return "—";
+  }
+  return values.join(", ");
+}
+
+function formatJsonValue(value: Record<string, unknown> | null | undefined): string {
+  if (!value) {
+    return "{}";
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+function createJsonBlock(label: string, value: Record<string, unknown>): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = "attempt-json-block-wrap";
+
+  const title = document.createElement("strong");
+  title.className = "attempt-json-block-title";
+  title.textContent = label;
+
+  const block = document.createElement("pre");
+  block.className = "attempt-json-block";
+  block.textContent = formatJsonValue(value);
+
+  wrapper.append(title, block);
+  return wrapper;
 }
 
 function humanizeTrigger(trigger: string): string {
@@ -197,6 +227,53 @@ function buildCheckpointHistorySection(checkpoints: AttemptCheckpointRecord[]): 
   return section;
 }
 
+function buildAppServerSection(appServer: AttemptAppServer | undefined): HTMLElement {
+  const section = createSection("Codex app-server session");
+  const intro = document.createElement("p");
+  intro.className = "text-secondary";
+  intro.textContent =
+    "Latest archived app-server config, thread status, and runtime requirements captured for this run.";
+  section.append(intro);
+
+  if (!appServer) {
+    section.append(
+      Object.assign(document.createElement("p"), {
+        className: "text-secondary",
+        textContent: "This attempt was archived before app-server introspection was recorded.",
+      }),
+    );
+    return section;
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "attempt-meta-grid";
+  grid.append(
+    createMetaItem("Provider", appServer.effectiveProvider ?? "—", true),
+    createMetaItem("Effective model", appServer.effectiveModel ?? "—", true),
+    createMetaItem("Reasoning effort", appServer.reasoningEffort ?? "—", true),
+    createMetaItem("Approval policy", appServer.approvalPolicy ?? "—", true),
+    createMetaItem("Thread name", appServer.threadName ?? "—"),
+    createMetaItem("Thread status", appServer.threadStatus ?? "—", true),
+    createMetaItem("Allowed approval policies", formatListValue(appServer.allowedApprovalPolicies), true),
+    createMetaItem("Allowed sandbox modes", formatListValue(appServer.allowedSandboxModes), true),
+  );
+  section.append(grid);
+
+  const details = document.createElement("div");
+  details.className = "attempt-detail-stack";
+  if (appServer.threadStatusPayload) {
+    details.append(createJsonBlock("Thread status payload", appServer.threadStatusPayload));
+  }
+  if (appServer.networkRequirements) {
+    details.append(createJsonBlock("Network requirements", appServer.networkRequirements));
+  }
+  if (details.childElementCount > 0) {
+    section.append(details);
+  }
+
+  return section;
+}
+
 function renderLoading(): HTMLElement {
   const shell = document.createElement("div");
   shell.className = "page attempt-page fade-in";
@@ -295,7 +372,7 @@ function renderAttemptPage(
   if (prSummary) {
     page.append(prSummary);
   }
-  page.append(buildCheckpointHistorySection(checkpoints), routing, ids);
+  page.append(buildCheckpointHistorySection(checkpoints), routing, buildAppServerSection(attempt.appServer), ids);
   if (attempt.errorMessage || attempt.errorCode) {
     const error = createSection("Error");
     const body = document.createElement("p");

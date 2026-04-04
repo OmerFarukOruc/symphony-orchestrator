@@ -64,7 +64,7 @@ flowchart LR
     B -->|"persist"| F["💾 Archive<br/><sub>Attempt History</sub>"]
     B -->|"serve"| G["🖥️ Dashboard<br/><sub>Web UI + API</sub>"]
     B -->|"push"| H["🐙 GitHub<br/><sub>Branches + PRs</sub>"]
-    B -->|"alert"| I["📬 Slack<br/><sub>Notifications</sub>"]
+    B -->|"alert"| I["📬 Multi-Channel<br/><sub>Slack, Webhook, Desktop</sub>"]
 
     style A fill:#7c3aed,stroke:#6d28d9,color:#fff
     style B fill:#2563eb,stroke:#1d4ed8,color:#fff
@@ -104,7 +104,7 @@ Navigate to **http://localhost:4000** — the setup wizard starts automatically.
 | ---------------------- | -------------------------------------------------- |
 | 🔐 **Protect secrets** | Generates an encryption master key for credentials |
 | 🗂️ **Connect Linear**  | Paste your API key and select a project            |
-| 🤖 **Add OpenAI**      | Paste an API key or use Codex Login                |
+| 🤖 **Add OpenAI**      | Choose direct API key, browser sign-in, or a proxy / compatible provider |
 | 🐙 **Add GitHub**      | Paste a GitHub PAT _(optional)_                    |
 
 **4. Create an issue and watch it run**
@@ -131,6 +131,8 @@ export OPENAI_API_KEY="sk-..."   # API key path
 # — or —
 codex login                       # ChatGPT/Codex subscription path
 ```
+
+For OpenAI-compatible proxies such as CLIProxyAPI or LiteLLM, use the setup wizard's **Proxy / compatible provider** option. Risoluto stores the provider token as `OPENAI_API_KEY` and writes an explicit `codex.provider` block instead of silently switching the direct API-key path.
 
 </details>
 
@@ -162,6 +164,8 @@ codex login                       # ChatGPT/Codex subscription path
 
 - **📊 Real-time dashboard** — Board and overview views at `localhost:4000`
 - **📡 Full JSON API** — 50+ endpoints under `/api/v1/*`
+- **🔔 Persistent notification timeline** — Durable `/notifications` feed with read-state and SSE refresh
+- **🗓️ Automation + alert APIs** — Automation run history, manual run endpoints, and alert delivery history
 - **💰 Cost tracking** — Per-issue and per-model dollar cost in dashboard and API
 - **📡 Live agent feed** — Real-time SSE streaming with subagent drill-down
 - **📈 Prometheus metrics** — `GET /metrics` for scrape-friendly monitoring
@@ -178,7 +182,9 @@ codex login                       # ChatGPT/Codex subscription path
 
 - **🐙 Git automation** — Clone, commit, push, and PR creation on completion
 - **🐙 GitHub Issues adapter** — Use GitHub Issues instead of (or alongside) Linear
-- **📬 Slack notifications** — Lifecycle alerts with verbosity controls
+- **📬 Multi-channel notifications** — Slack, outbound webhook, and desktop delivery through one channel registry
+- **🪝 Webhook ingress** — Signed Linear and GitHub webhooks plus authenticated generic trigger dispatch
+- **🗓️ Cron automations + rule-based alerts** — Scheduled report/findings/implement runs with persisted history and cooldown-aware alert routing
 - **🤖 Codex integration** — `codex app-server` via JSON-RPC with dynamic tool handling
 - **🔌 MCP server** — `linear_graphql` dynamic tool for orchestrator introspection
 - **🔄 PR/CI automation** — Tracker completion comments (success + failure), agent-authored PR summaries, PR review feedback ingestion for retry, auto-merge policy engine, PR lifecycle monitoring (60s polling, merge detection, auto-archive), and attempt checkpoint history
@@ -203,9 +209,9 @@ codex login                       # ChatGPT/Codex subscription path
 
 ## 🔮 Where It's Heading
 
-Risoluto's active roadmap is tracked in [#354 — Symphony v2 Feature Roadmap (2026 Research Reset)](https://github.com/OmerFarukOruc/risoluto/issues/354). As of **2026-04-03**, the reconciled local roadmap shows **79 open feature issues across 11 currently named bundle categories**, excluding the active epic **#354** and the long-range vision issue **#62**. The older [#9 roadmap issue](https://github.com/OmerFarukOruc/risoluto/issues/9) is preserved as historical context only.
+Risoluto's active roadmap is tracked in [#354 — Symphony v2 Feature Roadmap (2026 Research Reset)](https://github.com/OmerFarukOruc/risoluto/issues/354). As of **2026-04-04**, the reconciled local roadmap shows **71 open feature issues across 11 currently named bundle categories**, excluding the active epic **#354** and the long-range vision issue **#62**. The older [#9 roadmap issue](https://github.com/OmerFarukOruc/risoluto/issues/9) is preserved as historical context only.
 
-The latest roadmap reconciliation closed already-implemented issues [#258](https://github.com/OmerFarukOruc/risoluto/issues/258), [#275](https://github.com/OmerFarukOruc/risoluto/issues/275), [#276](https://github.com/OmerFarukOruc/risoluto/issues/276), [#278](https://github.com/OmerFarukOruc/risoluto/issues/278), [#299](https://github.com/OmerFarukOruc/risoluto/issues/299), [#303](https://github.com/OmerFarukOruc/risoluto/issues/303), [#307](https://github.com/OmerFarukOruc/risoluto/issues/307), [#318](https://github.com/OmerFarukOruc/risoluto/issues/318), [#319](https://github.com/OmerFarukOruc/risoluto/issues/319), [#326](https://github.com/OmerFarukOruc/risoluto/issues/326), [#333](https://github.com/OmerFarukOruc/risoluto/issues/333), [#335](https://github.com/OmerFarukOruc/risoluto/issues/335), [#346](https://github.com/OmerFarukOruc/risoluto/issues/346), and [#375](https://github.com/OmerFarukOruc/risoluto/issues/375), while stronger partials were promoted from `research` to `triage`.
+The latest roadmap reconciliation closed already-implemented issues [#254](https://github.com/OmerFarukOruc/risoluto/issues/254), [#258](https://github.com/OmerFarukOruc/risoluto/issues/258), [#260](https://github.com/OmerFarukOruc/risoluto/issues/260), [#262](https://github.com/OmerFarukOruc/risoluto/issues/262), [#275](https://github.com/OmerFarukOruc/risoluto/issues/275), [#276](https://github.com/OmerFarukOruc/risoluto/issues/276), [#278](https://github.com/OmerFarukOruc/risoluto/issues/278), [#282](https://github.com/OmerFarukOruc/risoluto/issues/282), [#286](https://github.com/OmerFarukOruc/risoluto/issues/286), [#292](https://github.com/OmerFarukOruc/risoluto/issues/292), [#299](https://github.com/OmerFarukOruc/risoluto/issues/299), [#303](https://github.com/OmerFarukOruc/risoluto/issues/303), [#307](https://github.com/OmerFarukOruc/risoluto/issues/307), [#308](https://github.com/OmerFarukOruc/risoluto/issues/308), [#315](https://github.com/OmerFarukOruc/risoluto/issues/315), [#318](https://github.com/OmerFarukOruc/risoluto/issues/318), [#319](https://github.com/OmerFarukOruc/risoluto/issues/319), [#326](https://github.com/OmerFarukOruc/risoluto/issues/326), [#333](https://github.com/OmerFarukOruc/risoluto/issues/333), [#335](https://github.com/OmerFarukOruc/risoluto/issues/335), [#346](https://github.com/OmerFarukOruc/risoluto/issues/346), and [#375](https://github.com/OmerFarukOruc/risoluto/issues/375), while the remaining stronger partials were promoted from `research` to `triage`.
 
 The newest still-open post-reset additions are [#366](https://github.com/OmerFarukOruc/risoluto/issues/366) fanout/merge execution, [#367](https://github.com/OmerFarukOruc/risoluto/issues/367) `risoluto doctor` (`triage`), [#368](https://github.com/OmerFarukOruc/risoluto/issues/368) dependency graph UI, [#369](https://github.com/OmerFarukOruc/risoluto/issues/369) per-step success criteria, and [#373](https://github.com/OmerFarukOruc/risoluto/issues/373) the Docker Sandboxes executor backend (`triage`).
 

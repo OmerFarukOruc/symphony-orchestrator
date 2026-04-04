@@ -125,6 +125,12 @@ Key baseline evidence captured before implementation:
 - Added startup orphan recovery in `src/orchestrator/recovery.ts` and wired it into `src/orchestrator/orchestrator.ts`. Persisted `running` attempts are now classified on startup, resumed onto the same attempt record when possible, or transitioned to explicit cleanup/escalation outcomes with durable attempt events.
 - Added `GET /api/v1/recovery` plus OpenAPI and response-schema coverage so operators can inspect the latest startup recovery report without digging through logs.
 
+## Notifications Bundle (2026-04-04)
+
+- Added typed multi-channel notification config, preserved legacy Slack behavior, and shipped Slack, generic webhook, and desktop delivery backends through the shared notification manager.
+- Added durable notifications, `/api/v1/notifications`, `/api/v1/notifications/:id/read`, `/api/v1/notifications/read-all`, a real `/notifications` page, and notification-triggered realtime refresh wiring.
+- Added `/webhooks/github`, `/api/v1/webhooks/trigger`, cron automations plus run history APIs, alert rules plus alert history APIs, synced `docs-site/openapi.json`, and verified the final tree with `pnpm run build`, `pnpm run lint`, `pnpm run format:check`, `pnpm run typecheck`, `pnpm run typecheck:frontend`, `pnpm test`, `pnpm exec playwright test --project=smoke`, `pnpm exec playwright test --project=visual`, and manual browser verification on the real app.
+
     pnpm run build
     ✓ tsc -p tsconfig.json && pnpm run build:frontend
 

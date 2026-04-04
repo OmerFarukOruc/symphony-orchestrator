@@ -5,7 +5,7 @@
 <p>
   <img alt="Version" src="https://img.shields.io/badge/version-0.6.0-blue?style=flat-square" />
   <img alt="Spec Conformance" src="https://img.shields.io/badge/spec-238%2F239-brightgreen?style=flat-square" />
-  <img alt="Open Roadmap Features" src="https://img.shields.io/badge/open_roadmap_features-79-blue?style=flat-square" />
+  <img alt="Open Roadmap Features" src="https://img.shields.io/badge/open_roadmap_features-71-blue?style=flat-square" />
 </p>
 
 > [!NOTE]
@@ -18,21 +18,29 @@
 
 ## Reconciliation Snapshot
 
-- **Reconciled:** 2026-04-03
+- **Reconciled:** 2026-04-04
 - **Canonical roadmap epic:** [#354](https://github.com/OmerFarukOruc/risoluto/issues/354)
 - **Historical roadmap snapshot:** [#9](https://github.com/OmerFarukOruc/risoluto/issues/9)
 - **Counting rule:** feature totals exclude the active roadmap epic **#354** and the long-range vision issue **#62**
-- **Current open roadmap count:** **79** features
+- **Current open roadmap count:** **71** features
 
-This `79` count reflects the reconciled post-merge roadmap inventory for **2026-04-03**, after closing the following shipped issues and excluding the active roadmap epic **#354** plus the long-range vision issue **#62**:
+This `71` count reflects the reconciled post-merge roadmap inventory for **2026-04-04**, after closing the following shipped issues and excluding the active roadmap epic **#354** plus the long-range vision issue **#62**:
 
+- [#254](https://github.com/OmerFarukOruc/risoluto/issues/254)
 - [#258](https://github.com/OmerFarukOruc/risoluto/issues/258)
+- [#260](https://github.com/OmerFarukOruc/risoluto/issues/260)
+- [#262](https://github.com/OmerFarukOruc/risoluto/issues/262)
 - [#275](https://github.com/OmerFarukOruc/risoluto/issues/275)
 - [#276](https://github.com/OmerFarukOruc/risoluto/issues/276)
 - [#278](https://github.com/OmerFarukOruc/risoluto/issues/278)
+- [#282](https://github.com/OmerFarukOruc/risoluto/issues/282)
+- [#286](https://github.com/OmerFarukOruc/risoluto/issues/286)
+- [#292](https://github.com/OmerFarukOruc/risoluto/issues/292)
 - [#299](https://github.com/OmerFarukOruc/risoluto/issues/299)
 - [#303](https://github.com/OmerFarukOruc/risoluto/issues/303)
 - [#307](https://github.com/OmerFarukOruc/risoluto/issues/307)
+- [#308](https://github.com/OmerFarukOruc/risoluto/issues/308)
+- [#315](https://github.com/OmerFarukOruc/risoluto/issues/315)
 - [#318](https://github.com/OmerFarukOruc/risoluto/issues/318)
 - [#319](https://github.com/OmerFarukOruc/risoluto/issues/319)
 - [#326](https://github.com/OmerFarukOruc/risoluto/issues/326)
@@ -51,6 +59,14 @@ The following roadmap issues were completed and should no longer be counted as o
 
 | Issue | Feature | Bundle | Status |
 | --- | --- | --- | --- |
+| [#254](https://github.com/OmerFarukOruc/risoluto/issues/254) | Channel adapter pattern for multi-channel notifications | Notifications, Chat & Triggers | Shipped 2026-04-04 |
+| [#260](https://github.com/OmerFarukOruc/risoluto/issues/260) | Cron-based scheduled triggers for recurring actions | Notifications, Chat & Triggers | Shipped 2026-04-04 |
+| [#262](https://github.com/OmerFarukOruc/risoluto/issues/262) | Webhook trigger endpoints for external event-driven dispatch | Notifications, Chat & Triggers | Shipped 2026-04-04 |
+| [#282](https://github.com/OmerFarukOruc/risoluto/issues/282) | Rule-based alerting engine with multi-channel dispatch | Notifications, Chat & Triggers | Shipped 2026-04-04 |
+| [#286](https://github.com/OmerFarukOruc/risoluto/issues/286) | Cron-scheduled automation workflows with report modes | Notifications, Chat & Triggers | Shipped 2026-04-04 |
+| [#292](https://github.com/OmerFarukOruc/risoluto/issues/292) | Persistent typed notification system with dashboard API | Notifications, Chat & Triggers | Shipped 2026-04-04 |
+| [#308](https://github.com/OmerFarukOruc/risoluto/issues/308) | Cross-platform desktop notifications for agent completion | Notifications, Chat & Triggers | Shipped 2026-04-04 |
+| [#315](https://github.com/OmerFarukOruc/risoluto/issues/315) | Webhook receiver for push-based issue ingestion from Linear and GitHub | Notifications, Chat & Triggers | Shipped 2026-04-04 |
 | [#276](https://github.com/OmerFarukOruc/risoluto/issues/276) | Issue dependency blocker detection in dispatch selection | Multi-Agent / Orchestration | Shipped 2026-04-03 |
 | [#278](https://github.com/OmerFarukOruc/risoluto/issues/278) | Execution replay system with phase-aware event recording | Persistence / State | Shipped 2026-04-03 |
 | [#319](https://github.com/OmerFarukOruc/risoluto/issues/319) | Pre-cleanup commit enforcement to prevent silent work loss | Persistence / State | Shipped 2026-04-03 |
@@ -89,13 +105,10 @@ Issue [#354](https://github.com/OmerFarukOruc/risoluto/issues/354) introduced si
 
 The 2026-04-03 code audit found meaningful shipped overlap for these still-open roadmap issues, so they were relabeled from `research` to `triage` in GitHub rather than left as untouched backlog:
 
-- [#254](https://github.com/OmerFarukOruc/risoluto/issues/254) — Channel adapter pattern for multi-channel notifications
 - [#261](https://github.com/OmerFarukOruc/risoluto/issues/261) — LLM provider registry with capability flags and credential validation
-- [#262](https://github.com/OmerFarukOruc/risoluto/issues/262) — Webhook trigger endpoints for external event-driven dispatch
 - [#263](https://github.com/OmerFarukOruc/risoluto/issues/263) — Config cache with invalidation for hot-reloadable settings
 - [#271](https://github.com/OmerFarukOruc/risoluto/issues/271) — MCP server tools for tracker GraphQL access by agents
 - [#313](https://github.com/OmerFarukOruc/risoluto/issues/313) — Bounded concurrency scheduler with FIFO queue for worker dispatch
-- [#315](https://github.com/OmerFarukOruc/risoluto/issues/315) — Webhook receiver for push-based issue ingestion from Linear and GitHub
 - [#317](https://github.com/OmerFarukOruc/risoluto/issues/317) — Label-based multi-repo routing engine for single-instance multi-repo orchestration
 - [#325](https://github.com/OmerFarukOruc/risoluto/issues/325) — Config key alias normalization (snake_case/camelCase compatibility)
 - [#344](https://github.com/OmerFarukOruc/risoluto/issues/344) — Configurable reaction engine for CI failures, reviews, and merge events
@@ -114,14 +127,14 @@ These counts mirror the live open issue inventory in [#354](https://github.com/O
 | Multi-Agent & Orchestration | 12 | [#276](https://github.com/OmerFarukOruc/risoluto/issues/276) moved to shipped; includes [#366](https://github.com/OmerFarukOruc/risoluto/issues/366) and triage follow-ups [#313](https://github.com/OmerFarukOruc/risoluto/issues/313), [#317](https://github.com/OmerFarukOruc/risoluto/issues/317), and [#344](https://github.com/OmerFarukOruc/risoluto/issues/344) |
 | Observability & Logging | 12 | No shipped-count change in this reconciliation |
 | Plugin Architecture & Adapters | 11 | Includes triage follow-up [#271](https://github.com/OmerFarukOruc/risoluto/issues/271) |
-| Notifications, Chat & Triggers | 8 | Includes triage follow-ups [#254](https://github.com/OmerFarukOruc/risoluto/issues/254), [#262](https://github.com/OmerFarukOruc/risoluto/issues/262), and [#315](https://github.com/OmerFarukOruc/risoluto/issues/315) |
+| Notifications, Chat & Triggers | 0 | Notifications / triggers / automations bundle shipped on 2026-04-04 |
 | Config & Validation | 7 | Includes triage follow-ups [#261](https://github.com/OmerFarukOruc/risoluto/issues/261), [#263](https://github.com/OmerFarukOruc/risoluto/issues/263), [#325](https://github.com/OmerFarukOruc/risoluto/issues/325), and post-reset issue [#367](https://github.com/OmerFarukOruc/risoluto/issues/367) |
 | Sandbox & Security | 6 | [#299](https://github.com/OmerFarukOruc/risoluto/issues/299) and [#303](https://github.com/OmerFarukOruc/risoluto/issues/303) moved to shipped |
 | Dashboard & UI | 4 | Includes post-reset issue [#368](https://github.com/OmerFarukOruc/risoluto/issues/368) |
 | PR Review & CI Pipeline | 2 | Open backlog is now only [#288](https://github.com/OmerFarukOruc/risoluto/issues/288) and [#347](https://github.com/OmerFarukOruc/risoluto/issues/347) |
 | Persistence & State | 0 | [#278](https://github.com/OmerFarukOruc/risoluto/issues/278), [#319](https://github.com/OmerFarukOruc/risoluto/issues/319), [#346](https://github.com/OmerFarukOruc/risoluto/issues/346), and [#375](https://github.com/OmerFarukOruc/risoluto/issues/375) moved to shipped |
 | Security & Auth | 1 | Post-reset issue [#373](https://github.com/OmerFarukOruc/risoluto/issues/373) remains open · triage |
-| **Total** | **79** | Reflects the reconciled post-merge roadmap count for 2026-04-03 |
+| **Total** | **71** | Reflects the reconciled post-merge roadmap count for 2026-04-04 |
 
 ---
 

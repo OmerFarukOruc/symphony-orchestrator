@@ -9,10 +9,12 @@ import {
   buildIssuesByIdsQuery,
   buildIssuesByStatesQuery,
   buildProjectLookupQuery,
+  buildCreateIssueMutation,
   buildWebhooksQuery,
   buildWebhookCreateMutation,
   buildWebhookUpdateMutation,
   buildWebhookDeleteMutation,
+  buildTeamStatesQuery,
 } from "./queries.js";
 import { fetchCandidateIssues, fetchIssueStatesByIds, fetchIssuesByStates } from "./issue-pagination.js";
 import { LinearClientError } from "./errors.js";
@@ -154,10 +156,8 @@ export class LinearClient {
     if (!config.tracker.projectSlug) {
       return null;
     }
-    const payload = await this.runGraphQL(buildProjectLookupQuery(), { projectSlug: config.tracker.projectSlug });
-    const projects = asRecord(asRecord(payload.data).projects);
-    const project = asRecord(asArray(projects.nodes).at(0));
-    return asStringOrNull(asRecord(asArray(asRecord(project.teams).nodes).at(0)).id);
+    const project = await this.resolveProjectContext(config);
+    return project.teamId;
   }
 
   private async fetchCandidateIssuesByStateIds(config: ServiceConfig, stateIds: string[]): Promise<Issue[]> {
@@ -300,6 +300,37 @@ export class LinearClient {
     });
   }
 
+  async createIssue(input: {
+    title: string;
+    description?: string | null;
+    stateName?: string | null;
+  }): Promise<{ issueId: string; identifier: string; url: string | null }> {
+    const config = this.getConfig();
+    const project = await this.resolveProjectContext(config);
+    if (!project.teamId) {
+      throw new LinearClientError("linear_unknown_payload", "project team could not be resolved for issue creation");
+    }
+    const stateId = input.stateName ? await this.resolveTeamStateId(project.teamId, input.stateName) : null;
+    const payload = await this.withRetryReturn("createIssue", async () => {
+      return this.runGraphQL(buildCreateIssueMutation(), {
+        teamId: project.teamId,
+        projectId: project.projectId,
+        title: input.title,
+        description: input.description ?? null,
+        stateId,
+      });
+    });
+    const issueCreate = asRecord(asRecord(payload.data).issueCreate);
+    const issue = asRecord(issueCreate.issue);
+    const issueId = asStringOrNull(issue.id);
+    const identifier = asStringOrNull(issue.identifier);
+    const url = asStringOrNull(issue.url);
+    if (issueCreate.success !== true || !issueId || !identifier) {
+      throw new LinearClientError("linear_unknown_payload", "linear issue creation was not confirmed");
+    }
+    return { issueId, identifier, url };
+  }
+
   private async withRetry(operation: string, fn: () => Promise<void>): Promise<void> {
     const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -384,5 +415,38 @@ export class LinearClient {
     }
 
     return payload;
+  }
+
+  private async resolveProjectContext(
+    config: ServiceConfig,
+  ): Promise<{ projectId: string | null; teamId: string | null }> {
+    if (!config.tracker.projectSlug) {
+      throw new LinearClientError("linear_unknown_payload", "tracker.projectSlug is required to create Linear issues");
+    }
+    const payload = await this.runGraphQL(buildProjectLookupQuery(), { projectSlug: config.tracker.projectSlug });
+    const projects = asRecord(asRecord(payload.data).projects);
+    const project = asRecord(asArray(projects.nodes).at(0));
+    return {
+      projectId: asStringOrNull(project.id),
+      teamId: asStringOrNull(asRecord(asArray(asRecord(project.teams).nodes).at(0)).id),
+    };
+  }
+
+  private async resolveTeamStateId(teamId: string | null, stateName: string): Promise<string | null> {
+    if (!teamId) {
+      return null;
+    }
+    const payload = await this.runGraphQL(buildTeamStatesQuery(), { teamId });
+    const team = asRecord(asRecord(payload.data).team);
+    const states = asArray(asRecord(team.states).nodes);
+    const target = stateName.trim().toLowerCase();
+    for (const state of states.map((entry) => asRecord(entry))) {
+      const id = asStringOrNull(state.id);
+      const name = asStringOrNull(state.name)?.trim().toLowerCase();
+      if (id && name === target) {
+        return id;
+      }
+    }
+    return null;
   }
 }

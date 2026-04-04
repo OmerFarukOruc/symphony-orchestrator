@@ -10,6 +10,7 @@ import type { ConfigStore } from "../config/store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import { fetchCodexModels } from "../codex/model-list.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
+import type { RisolutoLogger } from "../core/types.js";
 import { globalMetrics } from "../observability/metrics.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import { registerSecretsApi } from "../secrets/api.js";
@@ -18,17 +19,33 @@ import { registerSetupApi } from "../setup/api.js";
 import type { PromptTemplateStore } from "../prompt/store.js";
 import { registerTemplateApi } from "../prompt/api.js";
 import type { AuditLogger } from "../audit/logger.js";
+import type { AutomationScheduler } from "../automation/scheduler.js";
 import { registerAuditApi } from "../audit/api.js";
 import type { TrackerPort } from "../tracker/port.js";
+import type { AlertHistoryStorePort } from "../alerts/history-store.js";
 
 import type { AttemptStorePort } from "../core/attempt-store-port.js";
+import { handleListAlertHistory } from "./alerts-handler.js";
+import { handleListAutomations, handleListAutomationRuns, handleRunAutomation } from "./automations-handler.js";
+import {
+  handleListNotifications,
+  handleMarkAllNotificationsRead,
+  handleMarkNotificationRead,
+} from "./notifications-handler.js";
 import { handleAttemptDetail } from "./attempt-handler.js";
 import { handleAttemptCheckpoints } from "./checkpoint-handler.js";
+import { handleWebhookGitHub, type GitHubWebhookHandlerDeps } from "./github-webhook-handler.js";
 import { handleGitContext } from "./git-context.js";
 import { handleModelUpdate } from "./model-handler.js";
 import { getOpenApiSpec } from "./openapi.js";
 import { handleListPrs } from "./pr-handler.js";
-import { modelUpdateSchema, steerSchema, templateOverrideSchema, transitionSchema } from "./request-schemas.js";
+import {
+  modelUpdateSchema,
+  steerSchema,
+  templateOverrideSchema,
+  transitionSchema,
+  triggerSchema,
+} from "./request-schemas.js";
 import { issueNotFound, methodNotAllowed, refreshReason, sanitizeConfigValue } from "./route-helpers.js";
 import { createSSEHandler } from "./sse.js";
 import { getSwaggerHtml } from "./swagger-html.js";
@@ -37,20 +54,28 @@ import { handleTransition } from "./transition-handler.js";
 import { handleGetTransitions } from "./transitions-api.js";
 import { validateBody } from "./validation.js";
 import { handleWebhookLinear, type WebhookHandlerDeps } from "./webhook-handler.js";
+import { handleTriggerDispatch } from "./trigger-handler.js";
 import type { WebhookRequest } from "./webhook-types.js";
 import { handleWorkspaceInventory, handleWorkspaceRemove } from "./workspace-inventory.js";
 import type { RecoveryReport } from "../orchestrator/recovery-types.js";
+import type { AutomationStorePort } from "../persistence/sqlite/automation-store.js";
+import type { NotificationStorePort } from "../persistence/sqlite/notification-store.js";
 
 const frontendDist = join(process.cwd(), "dist/frontend");
 
 interface HttpRouteDeps {
   orchestrator: OrchestratorPort;
+  logger?: RisolutoLogger;
   tracker?: TrackerPort;
   configStore?: ConfigStore;
   configOverlayStore?: ConfigOverlayPort;
   secretsStore?: SecretsStore;
   eventBus?: TypedEventBus<RisolutoEventMap>;
   attemptStore?: Pick<AttemptStorePort, "listCheckpoints" | "getAllPrs">;
+  notificationStore?: NotificationStorePort;
+  automationStore?: AutomationStorePort;
+  automationScheduler?: Pick<AutomationScheduler, "listAutomations" | "runNow">;
+  alertHistoryStore?: AlertHistoryStorePort;
   templateStore?: PromptTemplateStore;
   auditLogger?: AuditLogger;
   frontendDir?: string;
@@ -71,6 +96,10 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   registerPrRoutes(app, deps);
   registerGitRoutes(app, deps);
   registerWorkspaceRoutes(app, deps);
+  registerNotificationRoutes(app, deps);
+  registerAutomationRoutes(app, deps);
+  registerAlertRoutes(app, deps);
+  registerTriggerRoutes(app, deps);
   registerIssueRoutes(app, deps);
   registerWebhookRoutes(app, deps);
 
@@ -397,6 +426,112 @@ function registerWorkspaceRoutes(app: Express, deps: HttpRouteDeps): void {
     });
 }
 
+function registerNotificationRoutes(app: Express, deps: HttpRouteDeps): void {
+  app
+    .route("/api/v1/notifications")
+    .get(async (req, res) => {
+      await handleListNotifications({ notificationStore: deps.notificationStore }, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/notifications/:notification_id/read")
+    .post(async (req, res) => {
+      await handleMarkNotificationRead({ notificationStore: deps.notificationStore }, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res, ["POST"]);
+    });
+
+  app
+    .route("/api/v1/notifications/read-all")
+    .post(async (req, res) => {
+      await handleMarkAllNotificationsRead({ notificationStore: deps.notificationStore }, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res, ["POST"]);
+    });
+}
+
+function registerAutomationRoutes(app: Express, deps: HttpRouteDeps): void {
+  app
+    .route("/api/v1/automations")
+    .get(async (req, res) => {
+      await handleListAutomations({ scheduler: deps.automationScheduler }, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/automations/runs")
+    .get(async (req, res) => {
+      await handleListAutomationRuns(
+        { scheduler: deps.automationScheduler, automationStore: deps.automationStore },
+        req,
+        res,
+      );
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/automations/:automation_name/run")
+    .post(async (req, res) => {
+      await handleRunAutomation({ scheduler: deps.automationScheduler }, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res, ["POST"]);
+    });
+}
+
+function registerAlertRoutes(app: Express, deps: HttpRouteDeps): void {
+  app
+    .route("/api/v1/alerts/history")
+    .get(async (req, res) => {
+      await handleListAlertHistory({ alertHistoryStore: deps.alertHistoryStore }, req, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+}
+
+function registerTriggerRoutes(app: Express, deps: HttpRouteDeps): void {
+  const triggerLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: deps.configStore?.getConfig?.().triggers?.rateLimitPerMinute ?? 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app
+    .route("/api/v1/webhooks/trigger")
+    .post(triggerLimiter, validateBody(triggerSchema), async (req, res) => {
+      const logger = deps.logger ?? deps.webhookHandlerDeps?.logger;
+      if (!logger) {
+        res.status(503).json({ error: { code: "not_configured", message: "trigger logger not available" } });
+        return;
+      }
+      await handleTriggerDispatch(
+        {
+          configStore: deps.configStore,
+          tracker: deps.tracker,
+          orchestrator: deps.orchestrator,
+          webhookInbox: deps.webhookHandlerDeps?.webhookInbox,
+          logger,
+        },
+        req,
+        res,
+      );
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res, ["POST"]);
+    });
+}
+
 function registerWebhookRoutes(app: Express, deps: HttpRouteDeps): void {
   if (!deps.webhookHandlerDeps) return;
 
@@ -408,11 +543,27 @@ function registerWebhookRoutes(app: Express, deps: HttpRouteDeps): void {
   });
 
   const webhookDeps = deps.webhookHandlerDeps;
+  const githubWebhookDeps: GitHubWebhookHandlerDeps = {
+    configStore: deps.configStore,
+    requestTargetedRefresh: deps.orchestrator.requestTargetedRefresh.bind(deps.orchestrator),
+    stopWorkerForIssue: deps.orchestrator.stopWorkerForIssue.bind(deps.orchestrator),
+    webhookInbox: webhookDeps.webhookInbox,
+    logger: webhookDeps.logger,
+  };
 
   app
     .route("/webhooks/linear")
     .post(webhookLimiter, (req, res) => {
       handleWebhookLinear(webhookDeps, req as WebhookRequest, res);
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res, ["POST"]);
+    });
+
+  app
+    .route("/webhooks/github")
+    .post(webhookLimiter, (req, res) => {
+      handleWebhookGitHub(githubWebhookDeps, req as WebhookRequest, res);
     })
     .all((_req, res) => {
       methodNotAllowed(res, ["POST"]);

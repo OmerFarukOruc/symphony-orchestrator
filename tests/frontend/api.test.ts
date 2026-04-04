@@ -86,4 +86,45 @@ describe("frontend api", () => {
       headers: undefined,
     });
   });
+
+  it("requests notifications with query parameters", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(createJsonResponse({ notifications: [], unreadCount: 0, totalCount: 0 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.getNotifications({ limit: 25, unread: true });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/notifications?limit=25&unread=true", {
+      headers: undefined,
+    });
+  });
+
+  it("marks one notification as read", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(createJsonResponse({ ok: true, notification: { id: "notif-1", read: true }, unreadCount: 0 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.postNotificationRead("notif-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/notifications/notif-1/read", {
+      method: "POST",
+      headers: undefined,
+      body: undefined,
+    });
+  });
+
+  it("marks all notifications as read", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ ok: true, updatedCount: 2, unreadCount: 0 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.postNotificationsReadAll();
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/notifications/read-all", {
+      method: "POST",
+      headers: undefined,
+      body: undefined,
+    });
+  });
 });

@@ -6,10 +6,18 @@
  */
 
 import type {
+  AlertConfig,
+  AlertRuleConfig,
+  AutomationConfig,
+  AutomationMode,
   CodexAuthMode,
   CodexProviderConfig,
+  NotificationChannelConfig,
   NotificationConfig,
+  NotificationSeverity,
   RepoConfig,
+  TriggerAction,
+  TriggerConfig,
   ServiceConfig,
   ReasoningEffort,
   StateMachineConfig,
@@ -17,7 +25,99 @@ import type {
 } from "../core/types.js";
 import { asBoolean, asRecord, asString, asStringArray, asStringMap, asRecordArray } from "./coercion.js";
 import { resolveConfigString } from "./resolvers.js";
-import { normalizeGitHubApiBaseUrl, normalizeSlackWebhookUrl } from "./url-policy.js";
+import { normalizeGitHubApiBaseUrl, normalizeNotificationWebhookUrl, normalizeSlackWebhookUrl } from "./url-policy.js";
+
+function pickValue(record: Record<string, unknown>, ...keys: string[]): unknown {
+  for (const key of keys) {
+    if (key in record) {
+      return record[key];
+    }
+  }
+  return undefined;
+}
+
+function asNotificationSeverity(value: unknown, fallback: NotificationSeverity = "info"): NotificationSeverity {
+  return value === "warning" || value === "critical" || value === "info" ? value : fallback;
+}
+
+function asTriggerAction(value: unknown): TriggerAction | null {
+  return value === "create_issue" || value === "re_poll" || value === "refresh_issue" ? value : null;
+}
+
+function asAutomationMode(value: unknown, fallback: AutomationMode = "report"): AutomationMode {
+  return value === "implement" || value === "report" || value === "findings" ? value : fallback;
+}
+
+function normalizeLegacySlackConfig(
+  value: Record<string, unknown>,
+  secretResolver?: (name: string) => string | undefined,
+): NotificationConfig["slack"] {
+  const webhookUrl = resolveConfigString(pickValue(value, "webhook_url", "webhookUrl"), secretResolver);
+  if (!webhookUrl) {
+    return null;
+  }
+  const verbosity = asString(pickValue(value, "verbosity"), "critical");
+  return {
+    webhookUrl: normalizeSlackWebhookUrl(webhookUrl),
+    verbosity: verbosity === "off" || verbosity === "critical" || verbosity === "verbose" ? verbosity : "critical",
+  };
+}
+
+function normalizeNotificationChannels(
+  value: unknown,
+  secretResolver?: (name: string) => string | undefined,
+): NotificationChannelConfig[] {
+  return asRecordArray(value)
+    .map((channel): NotificationChannelConfig | null => {
+      const type = asString(channel.type).trim().toLowerCase();
+      const enabled = asBoolean(pickValue(channel, "enabled"), true);
+      const minSeverity = asNotificationSeverity(pickValue(channel, "min_severity", "minSeverity"), "info");
+
+      if (type === "slack") {
+        const webhookUrl = resolveConfigString(pickValue(channel, "webhook_url", "webhookUrl"), secretResolver);
+        if (!webhookUrl) {
+          return null;
+        }
+        const verbosity = asString(pickValue(channel, "verbosity"), "critical");
+        return {
+          type: "slack",
+          name: asString(channel.name, "slack"),
+          enabled,
+          minSeverity,
+          webhookUrl: normalizeSlackWebhookUrl(webhookUrl),
+          verbosity:
+            verbosity === "off" || verbosity === "critical" || verbosity === "verbose" ? verbosity : "critical",
+        };
+      }
+
+      if (type === "webhook") {
+        const url = resolveConfigString(pickValue(channel, "url"), secretResolver);
+        if (!url) {
+          return null;
+        }
+        return {
+          type: "webhook",
+          name: asString(channel.name, "webhook"),
+          enabled,
+          minSeverity,
+          url: normalizeNotificationWebhookUrl(url),
+          headers: asStringMap(pickValue(channel, "headers")),
+        };
+      }
+
+      if (type === "desktop") {
+        return {
+          type: "desktop",
+          name: asString(channel.name, "desktop"),
+          enabled,
+          minSeverity,
+        };
+      }
+
+      return null;
+    })
+    .filter((channel): channel is NotificationChannelConfig => channel !== null);
+}
 
 /**
  * Normalize a Codex auth mode string.
@@ -72,18 +172,96 @@ export function normalizeNotifications(
   secretResolver?: (name: string) => string | undefined,
 ): NotificationConfig {
   const root = asRecord(value);
-  const slack = asRecord(root.slack);
-  const webhookUrl = resolveConfigString(slack.webhook_url, secretResolver);
-  if (!webhookUrl) {
-    return { slack: null };
+  const slack = normalizeLegacySlackConfig(asRecord(root.slack), secretResolver);
+  const channels = normalizeNotificationChannels(root.channels, secretResolver);
+  if (slack) {
+    channels.unshift({
+      type: "slack",
+      name: "slack",
+      enabled: true,
+      minSeverity: "info",
+      webhookUrl: slack.webhookUrl,
+      verbosity: slack.verbosity,
+    });
   }
-  const verbosity = asString(slack.verbosity, "critical");
   return {
-    slack: {
-      webhookUrl: normalizeSlackWebhookUrl(webhookUrl),
-      verbosity: verbosity === "off" || verbosity === "critical" || verbosity === "verbose" ? verbosity : "critical",
-    },
+    slack,
+    channels,
   };
+}
+
+/**
+ * Normalize trigger configuration.
+ * Returns null when the section is empty.
+ */
+export function normalizeTriggers(
+  value: unknown,
+  secretResolver?: (name: string) => string | undefined,
+): TriggerConfig | null {
+  const root = asRecord(value);
+  if (Object.keys(root).length === 0) {
+    return null;
+  }
+  const allowedActions = asStringArray(pickValue(root, "allowed_actions", "allowedActions"), [])
+    .map(asTriggerAction)
+    .filter((action): action is TriggerAction => action !== null);
+
+  return {
+    apiKey: resolveConfigString(pickValue(root, "api_key", "apiKey"), secretResolver) || null,
+    allowedActions,
+    githubSecret: resolveConfigString(pickValue(root, "github_secret", "githubSecret"), secretResolver) || null,
+    rateLimitPerMinute: Number(pickValue(root, "rate_limit_per_minute", "rateLimitPerMinute") ?? 30) || 30,
+  };
+}
+
+/**
+ * Normalize automation configuration.
+ */
+export function normalizeAutomations(value: unknown): AutomationConfig[] {
+  return asRecordArray(value)
+    .map((automation): AutomationConfig | null => {
+      const name = asString(automation.name);
+      const schedule = asString(automation.schedule);
+      const prompt = asString(automation.prompt);
+      if (!name || !schedule || !prompt) {
+        return null;
+      }
+      return {
+        name,
+        schedule,
+        mode: asAutomationMode(automation.mode, "report"),
+        prompt,
+        enabled: asBoolean(automation.enabled, true),
+        repoUrl: asString(pickValue(automation, "repo_url", "repoUrl")) || null,
+      };
+    })
+    .filter((automation): automation is AutomationConfig => automation !== null);
+}
+
+/**
+ * Normalize alert rule configuration.
+ * Returns null when no valid rules are configured.
+ */
+export function normalizeAlerts(value: unknown): AlertConfig | null {
+  const root = asRecord(value);
+  const rules = asRecordArray(root.rules)
+    .map((rule): AlertRuleConfig | null => {
+      const name = asString(rule.name);
+      const type = asString(rule.type);
+      if (!name || !type) {
+        return null;
+      }
+      return {
+        name,
+        type,
+        severity: asNotificationSeverity(rule.severity, "critical"),
+        channels: asStringArray(rule.channels, []),
+        cooldownMs: Number(pickValue(rule, "cooldown_ms", "cooldownMs") ?? 300_000) || 300_000,
+        enabled: asBoolean(rule.enabled, true),
+      };
+    })
+    .filter((rule): rule is AlertRuleConfig => rule !== null);
+  return rules.length > 0 ? { rules } : null;
 }
 
 /**

@@ -2,6 +2,7 @@ export interface TurnState {
   reasoningBuffers: Map<string, string>;
   turnCompletionResolvers: Map<string, (payload: unknown) => void>;
   completedTurnNotifications: Map<string, unknown>;
+  reviewSummaries: Map<string, string>;
 }
 
 export function createTurnState(): TurnState {
@@ -9,6 +10,7 @@ export function createTurnState(): TurnState {
     reasoningBuffers: new Map<string, string>(),
     turnCompletionResolvers: new Map<string, (payload: unknown) => void>(),
     completedTurnNotifications: new Map<string, unknown>(),
+    reviewSummaries: new Map<string, string>(),
   };
 }
 
@@ -45,6 +47,22 @@ export function recordCompletedTurn(state: TurnState, turnId: string | null, pay
     return;
   }
   state.completedTurnNotifications.set(turnId, payload);
+}
+
+export function recordReviewSummary(state: TurnState, turnId: string | null, summary: string | null): void {
+  if (!turnId || !summary) {
+    return;
+  }
+  state.reviewSummaries.set(turnId, summary);
+}
+
+export function consumeReviewSummary(state: TurnState, turnId: string | null): string | null {
+  if (!turnId) {
+    return null;
+  }
+  const summary = state.reviewSummaries.get(turnId) ?? null;
+  state.reviewSummaries.delete(turnId);
+  return summary;
 }
 
 export function waitForTurnCompletion(

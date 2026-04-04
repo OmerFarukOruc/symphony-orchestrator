@@ -223,15 +223,25 @@ export class AgentRunner implements RunAttemptDispatcher {
     );
 
     if (config.codex.selfReview && outcome.kind === "normal" && outcome.threadId) {
-      const review = await runSelfReview(session.connection, outcome.threadId, this.deps.logger);
+      const review = await runSelfReview(
+        session.connection,
+        turnState,
+        outcome.threadId,
+        this.deps.logger,
+        input.signal,
+        Math.min(config.codex.turnTimeoutMs, 300_000),
+      );
       if (review) {
         input.onEvent(
           createLifecycleEvent({
             issue: input.issue,
             event: "self_review",
-            message: review.passed
-              ? `Self-review passed: ${review.summary}`
-              : `Self-review flagged issues: ${review.summary}`,
+            message:
+              review.passed === true
+                ? `Self-review passed: ${review.summary}`
+                : review.passed === false
+                  ? `Self-review flagged issues: ${review.summary}`
+                  : `Self-review completed: ${review.summary}`,
             sessionId: outcome.threadId,
           }),
         );

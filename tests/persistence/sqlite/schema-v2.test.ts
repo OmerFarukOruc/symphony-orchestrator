@@ -22,6 +22,9 @@ describe("Schema v3 — config + webhook inbox tables", () => {
       expect(tables).toContain("attempt_events");
       expect(tables).toContain("issue_index");
       expect(tables).toContain("webhook_inbox");
+      expect(tables).toContain("notifications");
+      expect(tables).toContain("automation_runs");
+      expect(tables).toContain("alert_history");
     } finally {
       closeDatabase(db);
     }
@@ -36,7 +39,7 @@ describe("Schema v3 — config + webhook inbox tables", () => {
         version: number;
       };
       // v3 was the baseline; v4 adds the `summary` column. Version only goes up.
-      expect(row.version).toBeGreaterThanOrEqual(3);
+      expect(row.version).toBeGreaterThanOrEqual(8);
     } finally {
       closeDatabase(db);
     }

@@ -2,7 +2,9 @@ import type { RisolutoLogger } from "../core/types.js";
 import {
   type NotificationChannel,
   type NotificationEvent,
+  type NotificationSeverity,
   type NotificationVerbosity,
+  shouldDeliverByMinSeverity,
   shouldDeliverByVerbosity,
 } from "./channel.js";
 import { toErrorString } from "../utils/type-guards.js";
@@ -48,7 +50,7 @@ function buildSlackPayload(event: NotificationEvent): Record<string, unknown> {
       type: "header",
       text: {
         type: "plain_text",
-        text: `Risoluto ${slackSeverityTag(event.severity)} ${event.type}`,
+        text: event.title ?? `Risoluto ${slackSeverityTag(event.severity)} ${event.type}`,
       },
     },
     {
@@ -102,27 +104,33 @@ function buildSlackPayload(event: NotificationEvent): Record<string, unknown> {
 }
 
 interface SlackWebhookChannelOptions {
+  name?: string;
   webhookUrl: string;
   verbosity: NotificationVerbosity;
+  minSeverity?: NotificationSeverity;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
   logger?: RisolutoLogger;
 }
 
 export class SlackWebhookChannel implements NotificationChannel {
-  readonly name = "slack_webhook";
+  readonly name: string;
 
   private readonly timeoutMs: number;
 
   private readonly fetchImpl: typeof fetch;
 
   constructor(private readonly options: SlackWebhookChannelOptions) {
+    this.name = options.name ?? "slack_webhook";
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
   async notify(event: NotificationEvent): Promise<void> {
     if (!shouldDeliverByVerbosity(event, this.options.verbosity)) {
+      return;
+    }
+    if (!shouldDeliverByMinSeverity(event.severity, this.options.minSeverity ?? "info")) {
       return;
     }
 

@@ -8,6 +8,7 @@ vi.mock("../../src/codex/model-list.js", () => ({
 
 import { fetchCodexModels } from "../../src/codex/model-list.js";
 import { registerHttpRoutes } from "../../src/http/routes.js";
+import { createMockLogger } from "../helpers.js";
 
 function makeOrchestrator() {
   return {
@@ -48,16 +49,59 @@ function makeOrchestrator() {
   };
 }
 
+function makeNotificationStore() {
+  return {
+    list: vi.fn().mockResolvedValue([]),
+    countUnread: vi.fn().mockResolvedValue(0),
+    countAll: vi.fn().mockResolvedValue(0),
+    markRead: vi.fn().mockResolvedValue(null),
+    markAllRead: vi.fn().mockResolvedValue({ updatedCount: 0, unreadCount: 0 }),
+  };
+}
+
+function makeAutomationStore() {
+  return {
+    listRuns: vi.fn().mockResolvedValue([]),
+    countRuns: vi.fn().mockResolvedValue(0),
+  };
+}
+
+function makeAutomationScheduler() {
+  return {
+    listAutomations: vi.fn().mockReturnValue([]),
+    runNow: vi.fn().mockResolvedValue(null),
+  };
+}
+
+function makeAlertHistoryStore() {
+  return {
+    list: vi.fn().mockResolvedValue([]),
+  };
+}
+
 let server: http.Server;
 let port: number;
 let orchestrator: ReturnType<typeof makeOrchestrator>;
+let notificationStore: ReturnType<typeof makeNotificationStore>;
+let automationStore: ReturnType<typeof makeAutomationStore>;
+let automationScheduler: ReturnType<typeof makeAutomationScheduler>;
+let alertHistoryStore: ReturnType<typeof makeAlertHistoryStore>;
 
 beforeAll(async () => {
   orchestrator = makeOrchestrator();
+  notificationStore = makeNotificationStore();
+  automationStore = makeAutomationStore();
+  automationScheduler = makeAutomationScheduler();
+  alertHistoryStore = makeAlertHistoryStore();
   const app = express();
   app.use(express.json());
   registerHttpRoutes(app, {
     orchestrator: orchestrator as never,
+    notificationStore: notificationStore as never,
+    automationStore: automationStore as never,
+    automationScheduler: automationScheduler as never,
+    alertHistoryStore: alertHistoryStore as never,
+    logger: createMockLogger(),
     frontendDir: "/tmp",
   });
   await new Promise<void>((resolve) => {
@@ -273,5 +317,165 @@ describe("HTTP routes", () => {
   it("GET /api/v1/models with wrong method returns 405", async () => {
     const res = await fetchRoute("/api/v1/models", { method: "DELETE" });
     expect(res.status).toBe(405);
+  });
+
+  it("GET /api/v1/notifications returns the notification timeline", async () => {
+    notificationStore.list.mockResolvedValueOnce([
+      {
+        id: "notif-1",
+        type: "worker_failed",
+        severity: "critical",
+        title: "Worker failed",
+        message: "MT-1 crashed",
+        source: "MT-1",
+        href: null,
+        read: false,
+        dedupeKey: "notif-1",
+        metadata: { issueIdentifier: "MT-1" },
+        deliverySummary: null,
+        createdAt: "2026-04-04T09:00:00.000Z",
+        updatedAt: "2026-04-04T09:00:00.000Z",
+      },
+    ]);
+    notificationStore.countUnread.mockResolvedValueOnce(1);
+    notificationStore.countAll.mockResolvedValueOnce(1);
+
+    const res = await fetchRoute("/api/v1/notifications?limit=10&unread=true");
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.unreadCount).toBe(1);
+    expect(body.totalCount).toBe(1);
+    expect(body.notifications).toHaveLength(1);
+    expect(notificationStore.list).toHaveBeenCalledWith({ limit: 10, unreadOnly: true });
+  });
+
+  it("POST /api/v1/notifications/:id/read marks one notification as read", async () => {
+    notificationStore.markRead.mockResolvedValueOnce({
+      id: "notif-1",
+      type: "worker_failed",
+      severity: "critical",
+      title: "Worker failed",
+      message: "MT-1 crashed",
+      source: "MT-1",
+      href: null,
+      read: true,
+      dedupeKey: "notif-1",
+      metadata: null,
+      deliverySummary: null,
+      createdAt: "2026-04-04T09:00:00.000Z",
+      updatedAt: "2026-04-04T09:05:00.000Z",
+    });
+    notificationStore.countUnread.mockResolvedValueOnce(0);
+
+    const res = await fetchRoute("/api/v1/notifications/notif-1/read", { method: "POST" });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.notification.read).toBe(true);
+  });
+
+  it("POST /api/v1/notifications/read-all marks all notifications as read", async () => {
+    notificationStore.markAllRead.mockResolvedValueOnce({ updatedCount: 3, unreadCount: 0 });
+
+    const res = await fetchRoute("/api/v1/notifications/read-all", { method: "POST" });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ ok: true, updatedCount: 3, unreadCount: 0 });
+  });
+
+  it("GET /api/v1/automations returns scheduler state", async () => {
+    automationScheduler.listAutomations.mockReturnValueOnce([
+      {
+        name: "nightly-report",
+        schedule: "0 2 * * *",
+        mode: "report",
+        enabled: true,
+        repoUrl: "https://github.com/acme/app",
+        valid: true,
+        nextRun: "2026-04-05T00:00:00.000Z",
+        lastError: null,
+      },
+    ]);
+
+    const res = await fetchRoute("/api/v1/automations");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.automations).toHaveLength(1);
+  });
+
+  it("GET /api/v1/automations/runs returns persisted runs", async () => {
+    automationStore.listRuns.mockResolvedValueOnce([
+      {
+        id: "run-1",
+        automationName: "nightly-report",
+        mode: "report",
+        trigger: "schedule",
+        repoUrl: "https://github.com/acme/app",
+        status: "completed",
+        output: "ok",
+        details: null,
+        issueId: null,
+        issueIdentifier: null,
+        issueUrl: null,
+        error: null,
+        startedAt: "2026-04-04T11:00:00.000Z",
+        finishedAt: "2026-04-04T11:01:00.000Z",
+      },
+    ]);
+    automationStore.countRuns.mockResolvedValueOnce(1);
+
+    const res = await fetchRoute("/api/v1/automations/runs");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.totalCount).toBe(1);
+    expect(body.runs).toHaveLength(1);
+  });
+
+  it("POST /api/v1/automations/:name/run triggers a manual run", async () => {
+    automationScheduler.runNow.mockResolvedValueOnce({
+      id: "run-1",
+      automationName: "nightly-report",
+      mode: "report",
+      trigger: "manual",
+      repoUrl: "https://github.com/acme/app",
+      status: "completed",
+      output: "ok",
+      details: null,
+      issueId: null,
+      issueIdentifier: null,
+      issueUrl: null,
+      error: null,
+      startedAt: "2026-04-04T11:00:00.000Z",
+      finishedAt: "2026-04-04T11:01:00.000Z",
+    });
+
+    const res = await fetchRoute("/api/v1/automations/nightly-report/run", { method: "POST" });
+    expect(res.status).toBe(202);
+    expect(automationScheduler.runNow).toHaveBeenCalledWith("nightly-report");
+  });
+
+  it("GET /api/v1/alerts/history returns stored alert history", async () => {
+    alertHistoryStore.list.mockResolvedValueOnce([
+      {
+        id: "alert-1",
+        ruleName: "worker-failures",
+        eventType: "worker.failed",
+        severity: "critical",
+        status: "delivered",
+        channels: ["ops-webhook"],
+        deliveredChannels: ["ops-webhook"],
+        failedChannels: [],
+        message: "ENG-1 matched worker-failures",
+        createdAt: "2026-04-04T11:30:00.000Z",
+      },
+    ]);
+
+    const res = await fetchRoute("/api/v1/alerts/history");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.history).toHaveLength(1);
   });
 });

@@ -114,6 +114,33 @@ export class SetupPage extends BasePage {
     return this.page.locator("#setup-repo-url");
   }
 
+  // ── OpenAI setup step ───────────────────────────────────────────
+
+  /** All auth mode cards on the OpenAI step. */
+  get openaiAuthCards(): Locator {
+    return this.page.locator(".setup-auth-card");
+  }
+
+  /** Proxy / compatible provider auth mode card. */
+  get proxyProviderCard(): Locator {
+    return this.page.locator(".setup-auth-card", { hasText: /Proxy \/ compatible provider/ });
+  }
+
+  /** Optional provider display name input. */
+  get providerNameInput(): Locator {
+    return this.page.locator("#setup-openai-provider-name");
+  }
+
+  /** Provider base URL input. */
+  get providerBaseUrlInput(): Locator {
+    return this.page.locator("#setup-openai-provider-base-url");
+  }
+
+  /** Provider token input. */
+  get providerTokenInput(): Locator {
+    return this.page.locator("#setup-openai-provider-token");
+  }
+
   // ── GitHub token step ───────────────────────────────────────────
 
   /** GitHub token input field. */
@@ -142,7 +169,7 @@ export class SetupPage extends BasePage {
 
   /** Primary "Next" / "Continue" button. */
   get nextButton(): Locator {
-    return this.page.locator("button.mc-button.is-primary", { hasText: /Next|Continue|Saving/ });
+    return this.page.locator("button.mc-button.is-primary", { hasText: /next|continue|saving|save/i });
   }
 
   /** "Skip" button (ghost variant). */

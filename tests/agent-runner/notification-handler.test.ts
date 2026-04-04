@@ -253,6 +253,8 @@ describe("handleNotification", () => {
       ["dynamicToolCall", "tool_call"],
       ["webSearch", "web_search"],
       ["userMessage", "user_message"],
+      ["enteredReviewMode", "review_started"],
+      ["exitedReviewMode", "review_completed"],
       ["unknownType", "item_started"],
     ])("maps item type %s → event %s for item/started", (itemType, expectedEvent) => {
       handleNotification({
@@ -267,6 +269,28 @@ describe("handleNotification", () => {
         onEvent,
       });
       expect(events[0]).toMatchObject({ event: expectedEvent, metadata: { itemType, verb: "started" } });
+    });
+  });
+
+  describe("thread/status/changed", () => {
+    it("emits the structured thread status payload", () => {
+      handleNotification({
+        state,
+        notification: {
+          method: "thread/status/changed",
+          params: { threadId: "thread-1", status: { type: "active", activeFlags: ["waitingOnApproval"] } },
+        },
+        issue,
+        threadId: "thread-1",
+        turnId: "turn-1",
+        onEvent,
+      });
+
+      expect(events[0]).toMatchObject({
+        event: "thread_status",
+        message: "Thread status changed to active",
+        content: JSON.stringify({ type: "active", activeFlags: ["waitingOnApproval"] }),
+      });
     });
   });
 
@@ -368,7 +392,6 @@ describe("handleNotification", () => {
       ["codex/event/patch_apply_end", "tool_edit", "File changes applied"],
       ["codex/event/mcp_startup_complete", "system", "MCP tools initialized"],
       ["thread/started", "thread_started", "Thread session opened"],
-      ["thread/status/changed", "thread_status", "Thread status changed"],
       ["account/rateLimits/updated", "rate_limits", "API rate limits updated"],
       ["item/agentMessage/delta", "agent_streaming", "Agent streaming text"],
       ["item/fileChange/outputDelta", "tool_output", "File change output streaming"],

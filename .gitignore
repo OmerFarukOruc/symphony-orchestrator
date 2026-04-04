@@ -77,3 +77,4 @@ sast/
 
 # Claude Code / ui-test artifacts
 .context/
+.worktrees

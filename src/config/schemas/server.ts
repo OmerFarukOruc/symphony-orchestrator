@@ -14,6 +14,7 @@ export const serverConfigSchema = z.object({
 });
 
 const notificationVerbositySchema = z.enum(["off", "critical", "verbose"]).catch("critical");
+const notificationSeveritySchema = z.enum(["info", "warning", "critical"]).catch("info");
 
 const slackConfigSchema = z
   .object({
@@ -23,9 +24,71 @@ const slackConfigSchema = z
   .nullable()
   .default(null);
 
+const notificationChannelBaseSchema = z.object({
+  name: z.string(),
+  enabled: z.boolean().default(true),
+  minSeverity: notificationSeveritySchema.default("info"),
+});
+
+const slackChannelConfigSchema = notificationChannelBaseSchema.extend({
+  type: z.literal("slack"),
+  webhookUrl: z.string(),
+  verbosity: notificationVerbositySchema.default("critical"),
+});
+
+const webhookChannelConfigSchema = notificationChannelBaseSchema.extend({
+  type: z.literal("webhook"),
+  url: z.string(),
+  headers: z.record(z.string(), z.string()).default({}),
+});
+
+const desktopChannelConfigSchema = notificationChannelBaseSchema.extend({
+  type: z.literal("desktop"),
+});
+
 export const notificationConfigSchema = z.object({
   slack: slackConfigSchema,
+  channels: z
+    .array(z.union([slackChannelConfigSchema, webhookChannelConfigSchema, desktopChannelConfigSchema]))
+    .default([]),
 });
+
+export const triggerConfigSchema = z
+  .object({
+    apiKey: z.string().nullable().default(null),
+    allowedActions: z.array(z.enum(["create_issue", "re_poll", "refresh_issue"])).default([]),
+    githubSecret: z.string().nullable().default(null),
+    rateLimitPerMinute: z.number().default(30),
+  })
+  .nullable()
+  .default(null);
+
+export const automationConfigSchema = z.object({
+  name: z.string(),
+  schedule: z.string(),
+  mode: z.enum(["implement", "report", "findings"]).default("report"),
+  prompt: z.string(),
+  enabled: z.boolean().default(true),
+  repoUrl: z.string().nullable().default(null),
+});
+
+export const alertConfigSchema = z
+  .object({
+    rules: z
+      .array(
+        z.object({
+          name: z.string(),
+          type: z.string(),
+          severity: notificationSeveritySchema.default("critical"),
+          channels: z.array(z.string()).default([]),
+          cooldownMs: z.number().default(300000),
+          enabled: z.boolean().default(true),
+        }),
+      )
+      .default([]),
+  })
+  .nullable()
+  .default(null);
 
 export const gitHubConfigSchema = z
   .object({

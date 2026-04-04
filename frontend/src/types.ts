@@ -109,6 +109,20 @@ export interface AttemptRecord extends AttemptSummary {
   turnId?: string | null;
   summary?: string | null;
   events?: RecentEvent[];
+  appServer?: AttemptAppServer;
+}
+
+export interface AttemptAppServer {
+  effectiveProvider: string | null;
+  effectiveModel: string | null;
+  reasoningEffort: string | null;
+  approvalPolicy: string | null;
+  threadName: string | null;
+  threadStatus: string | null;
+  threadStatusPayload: Record<string, unknown> | null;
+  allowedApprovalPolicies: string[] | null;
+  allowedSandboxModes: string[] | null;
+  networkRequirements: Record<string, unknown> | null;
 }
 
 export interface AttemptCheckpointRecord {
@@ -186,6 +200,51 @@ export interface RuntimeInfo {
   data_dir: string;
   feature_flags: Record<string, boolean>;
   provider_summary: string;
+}
+
+export interface NotificationDeliveryFailure {
+  channel: string;
+  error: string;
+}
+
+export interface NotificationDeliverySummary {
+  deliveredChannels: string[];
+  failedChannels: NotificationDeliveryFailure[];
+  skippedDuplicate: boolean;
+}
+
+export interface NotificationRecord {
+  id: string;
+  type: string;
+  severity: "info" | "warning" | "critical";
+  title: string;
+  message: string;
+  source: string | null;
+  href: string | null;
+  read: boolean;
+  dedupeKey: string | null;
+  metadata: Record<string, unknown> | null;
+  deliverySummary: NotificationDeliverySummary | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationsListResponse {
+  notifications: NotificationRecord[];
+  unreadCount: number;
+  totalCount: number;
+}
+
+export interface NotificationReadResponse {
+  ok: true;
+  notification: NotificationRecord;
+  unreadCount: number;
+}
+
+export interface NotificationsReadAllResponse {
+  ok: true;
+  updatedCount: number;
+  unreadCount: number;
 }
 
 export interface SetupStatus {

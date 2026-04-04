@@ -38,6 +38,75 @@ const issueBlockerRefSchema = z.object({
 });
 
 const modelSourceSchema = z.enum(["default", "override"]);
+const notificationSeveritySchema = z.enum(["info", "warning", "critical"]);
+const notificationDeliverySummarySchema = z.object({
+  deliveredChannels: z.array(z.string()),
+  failedChannels: z.array(
+    z.object({
+      channel: z.string(),
+      error: z.string(),
+    }),
+  ),
+  skippedDuplicate: z.boolean(),
+});
+const notificationRecordSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  severity: notificationSeveritySchema,
+  title: z.string(),
+  message: z.string(),
+  source: z.string().nullable(),
+  href: z.string().nullable(),
+  read: z.boolean(),
+  dedupeKey: z.string().nullable(),
+  metadata: z.record(z.string(), z.unknown()).nullable(),
+  deliverySummary: notificationDeliverySummarySchema.nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+const automationScheduleSchema = z.object({
+  name: z.string(),
+  schedule: z.string(),
+  mode: z.enum(["implement", "report", "findings"]),
+  enabled: z.boolean(),
+  repoUrl: z.string().nullable(),
+  valid: z.boolean(),
+  nextRun: z.string().nullable(),
+  lastError: z.string().nullable(),
+});
+const automationRunRecordSchema = z.object({
+  id: z.string(),
+  automationName: z.string(),
+  mode: z.enum(["implement", "report", "findings"]),
+  trigger: z.enum(["schedule", "manual"]),
+  repoUrl: z.string().nullable(),
+  status: z.enum(["running", "completed", "failed", "skipped"]),
+  output: z.string().nullable(),
+  details: z.record(z.string(), z.unknown()).nullable(),
+  issueId: z.string().nullable(),
+  issueIdentifier: z.string().nullable(),
+  issueUrl: z.string().nullable(),
+  error: z.string().nullable(),
+  startedAt: z.string(),
+  finishedAt: z.string().nullable(),
+});
+const alertHistoryRecordSchema = z.object({
+  id: z.string(),
+  ruleName: z.string(),
+  eventType: z.string(),
+  severity: notificationSeveritySchema,
+  status: z.enum(["delivered", "suppressed", "partial_failure", "failed"]),
+  channels: z.array(z.string()),
+  deliveredChannels: z.array(z.string()),
+  failedChannels: z.array(
+    z.object({
+      channel: z.string(),
+      error: z.string(),
+    }),
+  ),
+  message: z.string(),
+  createdAt: z.string(),
+});
 
 const serializedStateRecentEventSchema = z.object({
   at: z.string(),
@@ -220,6 +289,58 @@ export const attemptsListResponseSchema = z.object({
   current_attempt_id: z.string().nullable(),
 });
 
+export const notificationsListResponseSchema = z.object({
+  notifications: z.array(notificationRecordSchema),
+  unreadCount: z.number(),
+  totalCount: z.number(),
+});
+
+export const notificationReadResponseSchema = z.object({
+  ok: z.literal(true),
+  notification: notificationRecordSchema,
+  unreadCount: z.number(),
+});
+
+export const notificationsReadAllResponseSchema = z.object({
+  ok: z.literal(true),
+  updatedCount: z.number(),
+  unreadCount: z.number(),
+});
+
+export const automationsListResponseSchema = z.object({
+  automations: z.array(automationScheduleSchema),
+});
+
+export const automationRunsListResponseSchema = z.object({
+  runs: z.array(automationRunRecordSchema),
+  totalCount: z.number(),
+});
+
+export const automationRunResponseSchema = z.object({
+  ok: z.literal(true),
+  run: automationRunRecordSchema,
+});
+
+export const alertHistoryListResponseSchema = z.object({
+  history: z.array(alertHistoryRecordSchema),
+});
+
+export const webhookAcceptedResponseSchema = z.object({
+  ok: z.literal(true),
+});
+
+export const triggerResponseSchema = z.object({
+  ok: z.literal(true),
+  action: z.string(),
+  duplicate: z.boolean().optional(),
+  queued: z.boolean().optional(),
+  coalesced: z.boolean().optional(),
+  targeted: z.boolean().optional(),
+  issueId: z.string().optional(),
+  issueIdentifier: z.string().optional(),
+  issueUrl: z.string().nullable().optional(),
+});
+
 /* ------------------------------------------------------------------ */
 /*  New schemas — tightened for OpenAPI contract coverage                */
 /* ------------------------------------------------------------------ */
@@ -288,9 +409,23 @@ const attemptSummarySchema = z.object({
   turnId: z.string().nullable().optional(),
 });
 
+const attemptAppServerSchema = z.object({
+  effectiveProvider: z.string().nullable(),
+  effectiveModel: z.string().nullable(),
+  reasoningEffort: z.string().nullable(),
+  approvalPolicy: z.string().nullable(),
+  threadName: z.string().nullable(),
+  threadStatus: z.string().nullable(),
+  threadStatusPayload: z.record(z.string(), z.unknown()).nullable(),
+  allowedApprovalPolicies: z.array(z.string()).nullable(),
+  allowedSandboxModes: z.array(z.string()).nullable(),
+  networkRequirements: z.record(z.string(), z.unknown()).nullable(),
+});
+
 /** GET /api/v1/attempts/{attempt_id} — attempt detail with events. */
 export const attemptDetailResponseSchema = attemptSummarySchema.extend({
   events: z.array(recentEventSchema),
+  appServer: attemptAppServerSchema.optional(),
 });
 
 /** POST /api/v1/{issue_identifier}/model — 202 model updated. */

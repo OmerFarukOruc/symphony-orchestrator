@@ -184,6 +184,61 @@ const CREATE_TABLES_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_pull_requests_status ON pull_requests(status);
   CREATE INDEX IF NOT EXISTS idx_pull_requests_issue_id ON pull_requests(issue_id);
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id               TEXT PRIMARY KEY,
+    type             TEXT NOT NULL,
+    severity         TEXT NOT NULL CHECK(severity IN ('info','warning','critical')),
+    title            TEXT NOT NULL,
+    message          TEXT NOT NULL,
+    source           TEXT,
+    href             TEXT,
+    read             INTEGER NOT NULL DEFAULT 0,
+    dedupe_key       TEXT,
+    metadata         TEXT,
+    delivery_summary TEXT,
+    created_at       TEXT NOT NULL,
+    updated_at       TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+  CREATE INDEX IF NOT EXISTS idx_notifications_read_created_at ON notifications(read, created_at);
+
+  CREATE TABLE IF NOT EXISTS automation_runs (
+    id               TEXT PRIMARY KEY,
+    automation_name  TEXT NOT NULL,
+    mode             TEXT NOT NULL CHECK(mode IN ('implement','report','findings')),
+    trigger          TEXT NOT NULL CHECK(trigger IN ('schedule','manual')),
+    repo_url         TEXT,
+    status           TEXT NOT NULL CHECK(status IN ('running','completed','failed','skipped')),
+    output           TEXT,
+    details          TEXT,
+    issue_id         TEXT,
+    issue_identifier TEXT,
+    issue_url        TEXT,
+    error            TEXT,
+    started_at       TEXT NOT NULL,
+    finished_at      TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_automation_runs_started_at ON automation_runs(started_at);
+  CREATE INDEX IF NOT EXISTS idx_automation_runs_name_started_at ON automation_runs(automation_name, started_at);
+
+  CREATE TABLE IF NOT EXISTS alert_history (
+    id                 TEXT PRIMARY KEY,
+    rule_name          TEXT NOT NULL,
+    event_type         TEXT NOT NULL,
+    severity           TEXT NOT NULL CHECK(severity IN ('info','warning','critical')),
+    status             TEXT NOT NULL CHECK(status IN ('delivered','suppressed','partial_failure','failed')),
+    channels           TEXT NOT NULL,
+    delivered_channels TEXT NOT NULL,
+    failed_channels    TEXT NOT NULL,
+    message            TEXT NOT NULL,
+    created_at         TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_alert_history_created_at ON alert_history(created_at);
+  CREATE INDEX IF NOT EXISTS idx_alert_history_rule_created_at ON alert_history(rule_name, created_at);
 `;
 
 type SqliteDb = InstanceType<typeof BetterSqlite3>;
@@ -355,6 +410,79 @@ function applyV6Migration(sqlite: SqliteDb): void {
 }
 
 /**
+ * v7 migration: add durable notifications table.
+ */
+function applyV7Migration(sqlite: SqliteDb): void {
+  if (hasSchemaVersion(sqlite, 7)) return;
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id               TEXT PRIMARY KEY,
+      type             TEXT NOT NULL,
+      severity         TEXT NOT NULL CHECK(severity IN ('info','warning','critical')),
+      title            TEXT NOT NULL,
+      message          TEXT NOT NULL,
+      source           TEXT,
+      href             TEXT,
+      read             INTEGER NOT NULL DEFAULT 0,
+      dedupe_key       TEXT,
+      metadata         TEXT,
+      delivery_summary TEXT,
+      created_at       TEXT NOT NULL,
+      updated_at       TEXT NOT NULL
+    )
+  `);
+  sqlite.exec("CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)");
+  sqlite.exec("CREATE INDEX IF NOT EXISTS idx_notifications_read_created_at ON notifications(read, created_at)");
+  bumpSchemaVersion(sqlite, 7);
+}
+
+/**
+ * v8 migration: add automation run history and alert history tables.
+ */
+function applyV8Migration(sqlite: SqliteDb): void {
+  if (hasSchemaVersion(sqlite, 8)) return;
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS automation_runs (
+      id               TEXT PRIMARY KEY,
+      automation_name  TEXT NOT NULL,
+      mode             TEXT NOT NULL CHECK(mode IN ('implement','report','findings')),
+      trigger          TEXT NOT NULL CHECK(trigger IN ('schedule','manual')),
+      repo_url         TEXT,
+      status           TEXT NOT NULL CHECK(status IN ('running','completed','failed','skipped')),
+      output           TEXT,
+      details          TEXT,
+      issue_id         TEXT,
+      issue_identifier TEXT,
+      issue_url        TEXT,
+      error            TEXT,
+      started_at       TEXT NOT NULL,
+      finished_at      TEXT
+    )
+  `);
+  sqlite.exec("CREATE INDEX IF NOT EXISTS idx_automation_runs_started_at ON automation_runs(started_at)");
+  sqlite.exec(
+    "CREATE INDEX IF NOT EXISTS idx_automation_runs_name_started_at ON automation_runs(automation_name, started_at)",
+  );
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS alert_history (
+      id                 TEXT PRIMARY KEY,
+      rule_name          TEXT NOT NULL,
+      event_type         TEXT NOT NULL,
+      severity           TEXT NOT NULL CHECK(severity IN ('info','warning','critical')),
+      status             TEXT NOT NULL CHECK(status IN ('delivered','suppressed','partial_failure','failed')),
+      channels           TEXT NOT NULL,
+      delivered_channels TEXT NOT NULL,
+      failed_channels    TEXT NOT NULL,
+      message            TEXT NOT NULL,
+      created_at         TEXT NOT NULL
+    )
+  `);
+  sqlite.exec("CREATE INDEX IF NOT EXISTS idx_alert_history_created_at ON alert_history(created_at)");
+  sqlite.exec("CREATE INDEX IF NOT EXISTS idx_alert_history_rule_created_at ON alert_history(rule_name, created_at)");
+  bumpSchemaVersion(sqlite, 8);
+}
+
+/**
  * Opens (or creates) a SQLite database at the given path,
  * enables WAL journal mode, and ensures the schema tables exist.
  *
@@ -382,6 +510,8 @@ export function openDatabase(dbPath: string): RisolutoDatabase {
   applyV4Migration(sqlite);
   applyV5Migration(sqlite);
   applyV6Migration(sqlite);
+  applyV7Migration(sqlite);
+  applyV8Migration(sqlite);
 
   return drizzle(sqlite, { schema });
 }

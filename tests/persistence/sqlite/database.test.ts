@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { closeDatabase, openDatabase } from "../../../src/persistence/sqlite/database.js";
-import { attemptEvents, attempts, issueIndex } from "../../../src/persistence/sqlite/schema.js";
+import { attemptEvents, attempts, issueIndex, notifications } from "../../../src/persistence/sqlite/schema.js";
 import type { RisolutoDatabase } from "../../../src/persistence/sqlite/database.js";
 
 const tempDirs: string[] = [];
@@ -39,6 +39,9 @@ describe("openDatabase", () => {
 
       const index = db.select().from(issueIndex).all();
       expect(index).toEqual([]);
+
+      const notificationRows = db.select().from(notifications).all();
+      expect(notificationRows).toEqual([]);
     } finally {
       closeDatabase(db);
     }

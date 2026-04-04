@@ -24,15 +24,22 @@ export async function runPreflight(
 
   for (const command of commands) {
     try {
-      const result = await connection.request("command/exec", { command });
+      const result = await connection.request("command/exec", { command: ["sh", "-lc", command] });
       const data = asRecord(result);
       const exitCode = typeof data.exitCode === "number" ? data.exitCode : -1;
+      const output =
+        typeof data.output === "string"
+          ? data.output
+          : [data.stdout, data.stderr]
+              .filter((value): value is string => typeof value === "string")
+              .join("\n")
+              .trim();
       if (exitCode !== 0) {
         logger.warn({ command, exitCode }, "preflight command failed");
         return {
           passed: false,
           failedCommand: command,
-          output: typeof data.output === "string" ? data.output : undefined,
+          output: output || undefined,
         };
       }
     } catch (error) {

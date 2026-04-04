@@ -69,9 +69,10 @@ export function describeSetupError(message: string): SetupErrorCopy {
 
   if (/(not found|404)/.test(normalized)) {
     return {
-      title: "We couldn't find that resource",
-      summary: "This usually means the URL, project, or token points somewhere unavailable.",
-      retry: "Check the selection above, then try again.",
+      title: "This setup endpoint isn't available",
+      summary:
+        "This usually means the service on this port is running an older build or a different app that does not expose the setup API.",
+      retry: "Restart the local Risoluto service, then try again.",
     };
   }
 

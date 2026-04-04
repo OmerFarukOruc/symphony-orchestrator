@@ -412,8 +412,8 @@ describe("DockerSession.steerTurn", () => {
     expect(result).toBe(true);
     expect(session.connection.request).toHaveBeenCalledWith("turn/steer", {
       threadId: "thread-abc",
-      turnId: "turn-xyz",
-      message: "change direction",
+      expectedTurnId: "turn-xyz",
+      input: [{ type: "text", text: "change direction" }],
     });
   });
 

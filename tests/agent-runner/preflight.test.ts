@@ -26,10 +26,11 @@ describe("runPreflight", () => {
     const result = await runPreflight(connection, ["npm test", "npm run lint"], logger);
     expect(result.passed).toBe(true);
     expect(connection.request).toHaveBeenCalledTimes(2);
+    expect(connection.request).toHaveBeenCalledWith("command/exec", { command: ["sh", "-lc", "npm test"] });
   });
 
   it("fails when a command returns non-zero exit code", async () => {
-    const connection = mockConnection(() => Promise.resolve({ exitCode: 1, output: "test failed" }));
+    const connection = mockConnection(() => Promise.resolve({ exitCode: 1, stdout: "test failed", stderr: "" }));
     const result = await runPreflight(connection, ["npm test"], logger);
     expect(result.passed).toBe(false);
     expect(result.failedCommand).toBe("npm test");

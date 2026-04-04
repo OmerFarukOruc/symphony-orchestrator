@@ -66,6 +66,7 @@ describe("fresh database bootstrap", () => {
       expect(tableNames).toContain("config_history");
       expect(tableNames).toContain("issue_config");
       expect(tableNames).toContain("webhook_inbox");
+      expect(tableNames).toContain("notifications");
       expect(tableNames).toContain("schema_version");
     } finally {
       closeDatabase(db);
@@ -115,7 +116,7 @@ describe("fresh database bootstrap", () => {
     }
   });
 
-  it("seeds schema_version to 6", async () => {
+  it("seeds schema_version to 7", async () => {
     const dir = await createTempDir();
     const dbPath = path.join(dir, "version.db");
     const db = openDatabase(dbPath);
@@ -125,7 +126,7 @@ describe("fresh database bootstrap", () => {
       const versionRow = raw.prepare("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1").get() as {
         version: number;
       };
-      expect(versionRow.version).toBe(6);
+      expect(versionRow.version).toBe(7);
     } finally {
       closeDatabase(db);
     }

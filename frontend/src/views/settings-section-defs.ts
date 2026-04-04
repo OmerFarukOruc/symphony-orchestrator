@@ -722,7 +722,8 @@ function staticSections(): SettingsSectionDefinition[] {
       id: "notifications",
       groupId: SECTION_GROUPS.NOTIFICATIONS.id,
       title: "Notifications",
-      description: "Get Slack updates when work completes, fails, or needs attention.",
+      description:
+        "Manage Slack here, then use overlay or API config for advanced channels, triggers, automations, and alerts.",
       badge: "Integration",
       prefixes: ["notifications"],
       saveLabel: "Save notifications",

@@ -42,6 +42,19 @@ export interface AttemptSummary {
   turnId?: string | null;
 }
 
+export interface AttemptAppServerView {
+  effectiveProvider: string | null;
+  effectiveModel: string | null;
+  reasoningEffort: string | null;
+  approvalPolicy: string | null;
+  threadName: string | null;
+  threadStatus: string | null;
+  threadStatusPayload: Record<string, unknown> | null;
+  allowedApprovalPolicies: string[] | null;
+  allowedSandboxModes: string[] | null;
+  networkRequirements: Record<string, unknown> | null;
+}
+
 export interface SnapshotBuilderDeps {
   attemptStore: {
     getAttempt: (attemptId: string) => AttemptRecord | null;
@@ -209,6 +222,7 @@ export function buildIssueDetail(
 /** Typed detail view for a single attempt, including its event stream. */
 export interface AttemptDetailView extends AttemptSummary {
   events: RecentEvent[];
+  appServer?: AttemptAppServerView;
 }
 
 // Builds attempt detail view with events.
@@ -217,9 +231,11 @@ export function buildAttemptDetail(attemptId: string, deps: SnapshotBuilderDeps)
   if (!attempt) {
     return null;
   }
+  const events = deps.attemptStore.getEvents(attemptId);
   return {
     ...buildAttemptSummary(attempt),
-    events: deps.attemptStore.getEvents(attemptId),
+    events,
+    appServer: buildAttemptAppServer(attempt, events),
   };
 }
 
@@ -289,4 +305,89 @@ function buildAttemptSummary(attempt: AttemptRecord): AttemptSummary {
     threadId: attempt.threadId,
     turnId: attempt.turnId,
   };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function asStringArray(value: unknown): string[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const strings = value.filter((entry): entry is string => typeof entry === "string");
+  return strings;
+}
+
+function findLatestEvent(events: RecentEvent[], eventName: string): RecentEvent | null {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    if (events[index]?.event === eventName) {
+      return events[index] ?? null;
+    }
+  }
+  return null;
+}
+
+function extractThreadStatusPayload(event: RecentEvent | null): Record<string, unknown> | null {
+  const metadata = asRecord(event?.metadata);
+  return asRecord(metadata?.threadStatus) ?? asRecord(metadata?.status);
+}
+
+function hasAppServerData(value: AttemptAppServerView): boolean {
+  return Object.values(value).some((entry) => entry !== null);
+}
+
+function buildConfigSummary(
+  attempt: AttemptRecord,
+  events: RecentEvent[],
+): Pick<AttemptAppServerView, "effectiveProvider" | "effectiveModel" | "reasoningEffort" | "approvalPolicy"> {
+  const configMetadata = asRecord(findLatestEvent(events, "codex_config_loaded")?.metadata);
+  return {
+    effectiveProvider: asString(configMetadata?.modelProvider),
+    effectiveModel: asString(configMetadata?.model) ?? attempt.model,
+    reasoningEffort: asString(configMetadata?.reasoningEffort) ?? attempt.reasoningEffort,
+    approvalPolicy: asString(configMetadata?.approvalPolicy),
+  };
+}
+
+function buildRequirementsSummary(
+  events: RecentEvent[],
+): Pick<AttemptAppServerView, "allowedApprovalPolicies" | "allowedSandboxModes" | "networkRequirements"> {
+  const requirementsMetadata = asRecord(findLatestEvent(events, "codex_requirements_loaded")?.metadata);
+  return {
+    allowedApprovalPolicies: asStringArray(requirementsMetadata?.allowedApprovalPolicies),
+    allowedSandboxModes: asStringArray(requirementsMetadata?.allowedSandboxModes),
+    networkRequirements: asRecord(requirementsMetadata?.network),
+  };
+}
+
+function buildThreadSummary(
+  events: RecentEvent[],
+): Pick<AttemptAppServerView, "threadName" | "threadStatus" | "threadStatusPayload"> {
+  const threadLoadedMetadata = asRecord(findLatestEvent(events, "thread_loaded")?.metadata);
+  const threadLoadedStatus = asRecord(threadLoadedMetadata?.status);
+  const threadStatusPayload =
+    extractThreadStatusPayload(findLatestEvent(events, "thread_status")) ?? threadLoadedStatus ?? null;
+  return {
+    threadName: asString(threadLoadedMetadata?.name),
+    threadStatus: asString(threadStatusPayload?.type),
+    threadStatusPayload,
+  };
+}
+
+function buildAttemptAppServer(attempt: AttemptRecord, events: RecentEvent[]): AttemptAppServerView | undefined {
+  const summary: AttemptAppServerView = {
+    ...buildConfigSummary(attempt, events),
+    ...buildThreadSummary(events),
+    ...buildRequirementsSummary(events),
+  };
+
+  return hasAppServerData(summary) ? summary : undefined;
 }

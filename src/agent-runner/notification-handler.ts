@@ -11,6 +11,7 @@ import { detectStopSignal, type StopSignal } from "../core/signal-detection.js";
 import {
   appendReasoningText,
   composeSessionId,
+  recordReviewSummary,
   deleteReasoningBuffer,
   recordCompletedTurn,
   type TurnState,
@@ -87,8 +88,10 @@ function handlePlanDelta(input: NotificationInput, params: Record<string, unknow
 }
 
 function handleTurnPlanUpdated(input: NotificationInput, params: Record<string, unknown>): void {
-  const plan = asRecord(params.plan);
-  const steps = plan.steps;
+  const plan = params.plan;
+  const planRecord = asRecord(plan);
+  const steps = Array.isArray(plan) ? plan : (planRecord.steps ?? plan);
+  const explanation = asString(params.explanation);
   input.onEvent({
     at: new Date().toISOString(),
     issueId: input.issue.id,
@@ -96,8 +99,23 @@ function handleTurnPlanUpdated(input: NotificationInput, params: Record<string, 
     sessionId: composeSessionId(input.threadId, input.turnId),
     event: "agent_plan",
     message: "Agent plan updated",
-    content: typeof steps === "string" ? steps : JSON.stringify(steps),
-    metadata: { isPlan: true },
+    content: [explanation, typeof steps === "string" ? steps : JSON.stringify(steps)].filter(Boolean).join("\n"),
+    metadata: { isPlan: true, explanation: explanation ?? null },
+  });
+}
+
+function handleThreadStatusChanged(input: NotificationInput, params: Record<string, unknown>): void {
+  const status = asRecord(params.status);
+  const statusType = asString(status.type) ?? "unknown";
+  input.onEvent({
+    at: new Date().toISOString(),
+    issueId: input.issue.id,
+    issueIdentifier: input.issue.identifier,
+    sessionId: composeSessionId(asString(params.threadId) ?? input.threadId, input.turnId),
+    event: "thread_status",
+    message: `Thread status changed to ${statusType}`,
+    content: JSON.stringify(status),
+    metadata: { threadStatus: status },
   });
 }
 
@@ -130,6 +148,8 @@ const ITEM_TYPE_EVENT: Record<string, string> = {
   mcpToolCall: "mcp_tool_call",
   contextCompaction: "context_compaction",
   imageView: "image_view",
+  enteredReviewMode: "review_started",
+  exitedReviewMode: "review_completed",
 };
 
 function handleItemEvent(
@@ -142,6 +162,9 @@ function handleItemEvent(
   const itemId = asString(item.id);
 
   const content = extractItemContent(itemType, itemId, item, verb, input.state.reasoningBuffers);
+  if (itemType === "exitedReviewMode" && verb === "completed") {
+    recordReviewSummary(input.state, itemId, asString(item.review));
+  }
   if (verb === "completed") {
     deleteReasoningBuffer(input.state, itemId);
   }
@@ -187,6 +210,7 @@ const methodHandlers: Record<string, (input: NotificationInput, params: Record<s
   "item/reasoning/summaryPartAdded": handleReasoningPartAdded,
   "item/plan/delta": handlePlanDelta,
   "turn/plan/updated": handleTurnPlanUpdated,
+  "thread/status/changed": handleThreadStatusChanged,
 };
 
 export function handleNotification(input: NotificationInput): void {
@@ -234,7 +258,6 @@ const CODEX_NOTIFICATION_LABELS: Record<string, { event: string; message: string
   "codex/event/patch_apply_end": { event: "tool_edit", message: "File changes applied" },
   "codex/event/mcp_startup_complete": { event: "system", message: "MCP tools initialized" },
   "thread/started": { event: "thread_started", message: "Thread session opened" },
-  "thread/status/changed": { event: "thread_status", message: "Thread status changed" },
   "account/rateLimits/updated": { event: "rate_limits", message: "API rate limits updated" },
   "item/agentMessage/delta": { event: "agent_streaming", message: "Agent streaming text" },
   "item/fileChange/outputDelta": { event: "tool_output", message: "File change output streaming" },

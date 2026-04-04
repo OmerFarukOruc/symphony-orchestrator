@@ -32,6 +32,9 @@ interface SetupState {
   repoRoutes: Array<Record<string, unknown>>;
   tokenInput: string;
   openaiKeyInput: string;
+  providerNameInput: string;
+  providerBaseUrlInput: string;
+  providerTokenInput: string;
   authMode: OpenaiAuthMode;
   authJsonInput: string;
   showManualAuthFallback: boolean;
@@ -72,6 +75,9 @@ const state: SetupState = {
   repoRoutes: [],
   tokenInput: "",
   openaiKeyInput: "",
+  providerNameInput: "",
+  providerBaseUrlInput: "",
+  providerTokenInput: "",
   authMode: "api_key",
   authJsonInput: "",
   showManualAuthFallback: false,
@@ -274,6 +280,9 @@ function buildMasterKeyStep(): HTMLElement {
         state.repoRoutes = [];
         state.tokenInput = "";
         state.openaiKeyInput = "";
+        state.providerNameInput = "";
+        state.providerBaseUrlInput = "";
+        state.providerTokenInput = "";
         await generateAndSetKey();
       } catch (error_) {
         state.error = error_ instanceof Error ? error_.message : String(error_);
@@ -781,6 +790,9 @@ function buildOpenaiKeyStep(): HTMLElement {
     loading: state.loading,
     error: state.error,
     openaiKeyInput: state.openaiKeyInput,
+    providerNameInput: state.providerNameInput,
+    providerBaseUrlInput: state.providerBaseUrlInput,
+    providerTokenInput: state.providerTokenInput,
     authMode: state.authMode,
     authJsonInput: state.authJsonInput,
     showManualAuthFallback: state.showManualAuthFallback,
@@ -799,6 +811,15 @@ function buildOpenaiKeyStep(): HTMLElement {
     },
     onOpenaiKeyInput: (value) => {
       state.openaiKeyInput = value;
+    },
+    onProviderNameInput: (value) => {
+      state.providerNameInput = value;
+    },
+    onProviderBaseUrlInput: (value) => {
+      state.providerBaseUrlInput = value;
+    },
+    onProviderTokenInput: (value) => {
+      state.providerTokenInput = value;
     },
     onAuthJsonInput: (value) => {
       state.authJsonInput = value;
@@ -833,21 +854,69 @@ function moveToGithubStep(): void {
   rerender();
 }
 
+async function submitApiKeyAuth(): Promise<boolean> {
+  if (!state.openaiKeyInput) {
+    return false;
+  }
+
+  const result = await api.postOpenaiKey({ key: state.openaiKeyInput });
+  if (result.valid) {
+    return true;
+  }
+
+  state.error = "That OpenAI key wasn't accepted. Double-check it and try again.";
+  return false;
+}
+
+async function submitProxyProviderAuth(): Promise<boolean> {
+  if (!state.providerBaseUrlInput || !state.providerTokenInput) {
+    return false;
+  }
+
+  const result = await api.postOpenaiKey({
+    key: state.providerTokenInput,
+    provider: {
+      name: state.providerNameInput.trim() || undefined,
+      baseUrl: state.providerBaseUrlInput.trim(),
+    },
+  });
+  if (result.valid) {
+    return true;
+  }
+
+  state.error = "That provider endpoint or token wasn't accepted. Double-check both values and try again.";
+  return false;
+}
+
+async function submitManualAuth(): Promise<boolean> {
+  if (!state.authJsonInput) {
+    return false;
+  }
+
+  await api.postCodexAuth(state.authJsonInput);
+  return true;
+}
+
+async function submitOpenaiAuthByMode(): Promise<boolean> {
+  switch (state.authMode) {
+    case "api_key":
+      return submitApiKeyAuth();
+    case "proxy_provider":
+      return submitProxyProviderAuth();
+    default:
+      return submitManualAuth();
+  }
+}
+
 async function advanceOpenaiAuth(): Promise<void> {
   setLoading(true);
   state.error = null;
   try {
-    if (state.authMode === "api_key") {
-      if (!state.openaiKeyInput) return;
-      const result = await api.postOpenaiKey(state.openaiKeyInput);
-      if (!result.valid) {
-        state.error = "That OpenAI key wasn't accepted. Double-check it and try again.";
-        return;
-      }
-    } else {
-      if (!state.authJsonInput) return;
-      await api.postCodexAuth(state.authJsonInput);
+    const didAdvance = await submitOpenaiAuthByMode();
+    if (!didAdvance) {
+      return;
     }
+
     moveToGithubStep();
     return;
   } catch (err) {

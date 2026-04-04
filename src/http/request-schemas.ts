@@ -71,3 +71,19 @@ export const templateOverrideSchema = z
   .strict();
 
 export type TemplateOverrideBody = z.infer<typeof templateOverrideSchema>;
+
+export const triggerSchema = z
+  .object({
+    action: z.enum(["create_issue", "re_poll", "refresh_issue"]),
+    title: z.string().trim().min(1).optional(),
+    description: z.string().optional(),
+    state_name: z.string().trim().min(1).optional(),
+    stateName: z.string().trim().min(1).optional(),
+    issue_id: z.string().trim().min(1).optional(),
+    issueId: z.string().trim().min(1).optional(),
+    issue_identifier: z.string().trim().min(1).optional(),
+    issueIdentifier: z.string().trim().min(1).optional(),
+    idempotency_key: z.string().trim().min(1).optional(),
+    idempotencyKey: z.string().trim().min(1).optional(),
+  })
+  .strict();

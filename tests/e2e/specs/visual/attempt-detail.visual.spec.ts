@@ -23,6 +23,18 @@ test.describe("Attempt Detail Visual Regression", () => {
         issueIdentifier: "SYM-42",
         title: "Fix authentication bug",
         turnCount: 8,
+        appServer: {
+          effectiveProvider: "cliproxyapi",
+          effectiveModel: "gpt-5.4",
+          reasoningEffort: "medium",
+          approvalPolicy: "never",
+          threadName: "Authentication fix thread",
+          threadStatus: "active",
+          threadStatusPayload: { type: "active", activeFlags: ["waitingOnApproval"] },
+          allowedApprovalPolicies: ["never", "onRequest"],
+          allowedSandboxModes: ["workspaceWrite"],
+          networkRequirements: { enabled: true, allowedDomains: ["api.openai.com"] },
+        },
         events: [
           {
             at: "2026-01-15T10:05:00.000Z",
@@ -92,6 +104,18 @@ test.describe("Attempt Detail Visual Regression", () => {
         issueIdentifier: "SYM-42",
         title: "Fix authentication bug",
         turnCount: 3,
+        appServer: {
+          effectiveProvider: "openai",
+          effectiveModel: "gpt-5.4",
+          reasoningEffort: "medium",
+          approvalPolicy: "never",
+          threadName: "Authentication fix thread",
+          threadStatus: "systemError",
+          threadStatusPayload: { type: "systemError" },
+          allowedApprovalPolicies: ["never"],
+          allowedSandboxModes: ["workspaceWrite"],
+          networkRequirements: { enabled: false },
+        },
         events: [
           {
             at: "2026-01-15T11:00:00.000Z",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { modelUpdateSchema, steerSchema, transitionSchema } from "../../src/http/request-schemas.js";
+import { modelUpdateSchema, steerSchema, transitionSchema, triggerSchema } from "../../src/http/request-schemas.js";
 
 describe("modelUpdateSchema", () => {
   it("parses a valid model update with model only", () => {
@@ -143,5 +143,36 @@ describe("steerSchema", () => {
     if (!result.success) {
       expect(result.error.issues.some((issue) => issue.code === "unrecognized_keys")).toBe(true);
     }
+  });
+});
+
+describe("triggerSchema", () => {
+  it("parses a valid create_issue payload", () => {
+    const result = triggerSchema.parse({
+      action: "create_issue",
+      title: "Investigate slow cron run",
+      description: "The nightly automation timed out",
+      state_name: "Backlog",
+    });
+    expect(result.action).toBe("create_issue");
+    expect(result.title).toBe("Investigate slow cron run");
+  });
+
+  it("parses refresh_issue with camelCase issue fields", () => {
+    const result = triggerSchema.parse({
+      action: "refresh_issue",
+      issueId: "issue-1",
+      issueIdentifier: "ENG-1",
+    });
+    expect(result.issueId).toBe("issue-1");
+    expect(result.issueIdentifier).toBe("ENG-1");
+  });
+
+  it("rejects unsupported actions", () => {
+    expect(triggerSchema.safeParse({ action: "delete_issue" }).success).toBe(false);
+  });
+
+  it("rejects extra fields", () => {
+    expect(triggerSchema.safeParse({ action: "re_poll", extra: true }).success).toBe(false);
   });
 });

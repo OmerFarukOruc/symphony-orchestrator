@@ -64,7 +64,7 @@ describe("POST /api/v1/setup/openai-key", () => {
     });
   });
 
-  it("validates and stores a valid OpenAI key with default provider config", async () => {
+  it("validates and stores a direct OpenAI key without a provider block", async () => {
     const secretsStore = createSecretsStoreMock();
     const configOverlayStore = createConfigOverlayStoreMock();
     getExternalFetchMock().mockResolvedValueOnce(createTextResponse(200, "ok"));
@@ -86,35 +86,58 @@ describe("POST /api/v1/setup/openai-key", () => {
     // Verify auth mode set
     expect(configOverlayStore.set).toHaveBeenCalledWith("codex.auth.mode", "api_key");
 
-    // Verify default provider config was set (no custom provider exists)
+    // Verify direct OpenAI clears any previous provider config
+    expect(configOverlayStore.delete).toHaveBeenCalledWith("codex.provider");
+    expect(configOverlayStore.set).not.toHaveBeenCalledWith("codex.provider.name", expect.any(String));
+    expect(configOverlayStore.set).not.toHaveBeenCalledWith("codex.provider.base_url", expect.any(String));
+    expect(configOverlayStore.set).not.toHaveBeenCalledWith("codex.provider.env_key", expect.any(String));
+    expect(configOverlayStore.set).not.toHaveBeenCalledWith("codex.provider.wire_api", expect.any(String));
+  });
+
+  it("stores an explicit proxy provider when provider settings are supplied", async () => {
+    const secretsStore = createSecretsStoreMock();
+    const configOverlayStore = createConfigOverlayStoreMock();
+    getExternalFetchMock().mockResolvedValueOnce(createTextResponse(200, "ok"));
+
+    const { baseUrl } = await startSetupApiServer({ secretsStore, configOverlayStore });
+    const response = await postJson(baseUrl, "/api/v1/setup/openai-key", {
+      key: "proxy-token-456",
+      provider: {
+        name: "CLIProxyAPI",
+        baseUrl: "http://localhost:8317/v1",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ valid: true });
+    expect(getExternalFetchMock()).toHaveBeenCalledWith("http://localhost:8317/v1/models", {
+      headers: { authorization: "Bearer proxy-token-456" },
+    });
+
+    // Verify secrets stored and auth mode set
+    expect(secretsStore.set).toHaveBeenCalledWith("OPENAI_API_KEY", "proxy-token-456");
+    expect(configOverlayStore.set).toHaveBeenCalledWith("codex.auth.mode", "api_key");
+    expect(configOverlayStore.delete).toHaveBeenCalledWith("codex.provider");
     expect(configOverlayStore.set).toHaveBeenCalledWith("codex.provider.name", "CLIProxyAPI");
     expect(configOverlayStore.set).toHaveBeenCalledWith("codex.provider.base_url", "http://localhost:8317/v1");
     expect(configOverlayStore.set).toHaveBeenCalledWith("codex.provider.env_key", "OPENAI_API_KEY");
     expect(configOverlayStore.set).toHaveBeenCalledWith("codex.provider.wire_api", "responses");
   });
 
-  it("skips default provider config when a custom provider already exists", async () => {
-    const secretsStore = createSecretsStoreMock();
-    const configOverlayStore = createConfigOverlayStoreMock();
-    // Make toMap() return an overlay with a custom provider name
-    vi.spyOn(configOverlayStore, "toMap").mockReturnValue({
-      codex: { provider: { name: "CustomProvider", base_url: "https://custom.example.com" } },
+  it("returns 400 when provider config is supplied without a base URL", async () => {
+    const { baseUrl } = await startSetupApiServer();
+    const response = await postJson(baseUrl, "/api/v1/setup/openai-key", {
+      key: "proxy-token-456",
+      provider: { name: "CLIProxyAPI" },
     });
-    getExternalFetchMock().mockResolvedValueOnce(createTextResponse(200, "ok"));
 
-    const { baseUrl } = await startSetupApiServer({ secretsStore, configOverlayStore });
-    const response = await postJson(baseUrl, "/api/v1/setup/openai-key", { key: "sk-valid456" });
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ valid: true });
-
-    // Verify secrets stored and auth mode set
-    expect(secretsStore.set).toHaveBeenCalledWith("OPENAI_API_KEY", "sk-valid456");
-    expect(configOverlayStore.set).toHaveBeenCalledWith("codex.auth.mode", "api_key");
-
-    // Verify provider config was NOT set (custom provider preserved)
-    expect(configOverlayStore.set).not.toHaveBeenCalledWith("codex.provider.name", expect.any(String));
-    expect(configOverlayStore.set).not.toHaveBeenCalledWith("codex.provider.base_url", expect.any(String));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        code: "missing_provider_base_url",
+        message: "provider.baseUrl is required when provider is configured",
+      },
+    });
   });
 
   it("returns valid=false and does not store when OpenAI API rejects the key", async () => {

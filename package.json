@@ -60,6 +60,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.3.1",
     "liquidjs": "^10.25.1",
+    "node-cron": "^4.2.1",
     "pino": "^10.3.1",
     "yaml": "^2.8.3",
     "zod": "^4.3.6"

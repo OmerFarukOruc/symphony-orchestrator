@@ -7,6 +7,12 @@
  */
 
 export interface RisolutoEventMap {
+  /** A notification was persisted to the operator timeline. */
+  "notification.created": { notification: import("./notification-types.js").NotificationRecord };
+
+  /** A notification was updated after delivery or read-state changes. */
+  "notification.updated": { notification: import("./notification-types.js").NotificationRecord };
+
   /** An agent worker was launched for an issue. */
   "issue.started": { issueId: string; identifier: string; attempt: number | null };
 
@@ -68,5 +74,29 @@ export interface RisolutoEventMap {
   "webhook.health_changed": {
     oldStatus: import("../webhook/types.js").WebhookHealthStatus;
     newStatus: import("../webhook/types.js").WebhookHealthStatus;
+  };
+
+  /** An automation run started. */
+  "automation.run.started": {
+    runId: string;
+    automationName: string;
+    mode: import("./notification-types.js").AutomationMode;
+    trigger: "schedule" | "manual";
+  };
+
+  /** An automation run completed or was skipped. */
+  "automation.run.completed": {
+    runId: string;
+    automationName: string;
+    mode: import("./notification-types.js").AutomationMode;
+    status: "completed" | "skipped";
+  };
+
+  /** An automation run failed. */
+  "automation.run.failed": {
+    runId: string;
+    automationName: string;
+    mode: import("./notification-types.js").AutomationMode;
+    error: string;
   };
 }

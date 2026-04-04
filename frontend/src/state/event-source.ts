@@ -23,6 +23,8 @@ const EVENT_DISPATCH_MAP = new Map<string, string>([
   ["agent.event", "risoluto:agent-event"],
   ["worker.failed", "risoluto:worker-failed"],
   ["model.updated", "risoluto:model-updated"],
+  ["notification.created", "risoluto:notification-created"],
+  ["notification.updated", "risoluto:notification-updated"],
   ["workspace.event", "risoluto:workspace-event"],
   ["poll.complete", "risoluto:poll-complete"],
   ["system.error", "risoluto:system-error"],
@@ -152,4 +154,16 @@ export function subscribeAllEvents(
   };
   window.addEventListener("risoluto:any-event", listener);
   return () => window.removeEventListener("risoluto:any-event", listener);
+}
+
+export function subscribeNotificationUpdates(handler: () => void): () => void {
+  const listener = (): void => {
+    handler();
+  };
+  window.addEventListener("risoluto:notification-created", listener);
+  window.addEventListener("risoluto:notification-updated", listener);
+  return () => {
+    window.removeEventListener("risoluto:notification-created", listener);
+    window.removeEventListener("risoluto:notification-updated", listener);
+  };
 }

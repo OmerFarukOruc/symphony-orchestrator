@@ -1,5 +1,17 @@
 import type { Issue } from "../core/types.js";
 
+export interface TrackerIssueCreateInput {
+  title: string;
+  description?: string | null;
+  stateName?: string | null;
+}
+
+export interface TrackerIssueCreateResult {
+  issueId: string;
+  identifier: string;
+  url: string | null;
+}
+
 /**
  * Tracker abstraction that decouples orchestration logic from any specific
  * issue tracker (Linear, GitHub Issues, GitLab, Jira, etc.).
@@ -29,6 +41,9 @@ export interface TrackerPort {
 
   /** Post a comment on an issue. */
   createComment(issueId: string, body: string): Promise<void>;
+
+  /** Create a new tracker issue and return its stable identifiers. */
+  createIssue(input: TrackerIssueCreateInput): Promise<TrackerIssueCreateResult>;
 
   /**
    * Execute a state transition and return whether it succeeded.

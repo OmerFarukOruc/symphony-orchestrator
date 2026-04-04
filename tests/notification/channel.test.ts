@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { shouldDeliverByVerbosity, type NotificationEvent } from "../../src/notification/channel.js";
+import {
+  shouldDeliverByMinSeverity,
+  shouldDeliverByVerbosity,
+  type NotificationEvent,
+} from "../../src/notification/channel.js";
 
 function event(severity: NotificationEvent["severity"]): NotificationEvent {
   return {
@@ -33,5 +37,18 @@ describe("shouldDeliverByVerbosity", () => {
   it("sends all events when verbose mode is used", () => {
     expect(shouldDeliverByVerbosity(event("info"), "verbose")).toBe(true);
     expect(shouldDeliverByVerbosity(event("critical"), "verbose")).toBe(true);
+  });
+});
+
+describe("shouldDeliverByMinSeverity", () => {
+  it("allows same-or-higher severities", () => {
+    expect(shouldDeliverByMinSeverity("info", "info")).toBe(true);
+    expect(shouldDeliverByMinSeverity("warning", "info")).toBe(true);
+    expect(shouldDeliverByMinSeverity("critical", "warning")).toBe(true);
+  });
+
+  it("blocks lower severities", () => {
+    expect(shouldDeliverByMinSeverity("info", "warning")).toBe(false);
+    expect(shouldDeliverByMinSeverity("warning", "critical")).toBe(false);
   });
 });

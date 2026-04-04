@@ -26,6 +26,11 @@ export interface ApiMockOverrides {
   prRecords?: PrRecord[];
   /** Override the checkpoints list returned by GET /api/v1/attempts/:id/checkpoints. */
   checkpointRecords?: Record<string, CheckpointRecord[]>;
+  notifications?: {
+    notifications: Array<Record<string, unknown>>;
+    unreadCount: number;
+    totalCount: number;
+  };
 
   /** Override individual route handlers */
   routeOverrides?: Record<string, (route: Route) => Promise<void> | void>;
@@ -48,6 +53,7 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
   const secrets = overrides.secrets ?? buildSecrets();
   const transitions = overrides.transitions ?? { transitions: {} };
   const gitContext = overrides.gitContext ?? buildGitContext();
+  const notifications = overrides.notifications ?? { notifications: [], unreadCount: 0, totalCount: 0 };
   const runtimeInfo = overrides.runtimeInfo ?? {
     version: "0.3.1",
     workflow_path: "/tmp/WORKFLOW.md",
@@ -212,6 +218,39 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
   await page.route("**/api/v1/prs", (route) => {
     const prs = overrides.prRecords ?? [buildPrRecord()];
     return json(route, { prs });
+  });
+
+  await page.route(/\/api\/v1\/notifications(?:\?.*)?$/, (route) => {
+    if (route.request().method() === "GET") {
+      return json(route, notifications);
+    }
+    return route.fallback();
+  });
+  await page.route(/\/api\/v1\/notifications\/[^/]+\/read$/, (route) => {
+    if (route.request().method() === "POST") {
+      const first = notifications.notifications[0] ?? null;
+      return json(route, {
+        ok: true,
+        notification: first
+          ? {
+              ...first,
+              read: true,
+            }
+          : null,
+        unreadCount: Math.max(0, notifications.unreadCount - 1),
+      });
+    }
+    return route.fallback();
+  });
+  await page.route("**/api/v1/notifications/read-all", (route) => {
+    if (route.request().method() === "POST") {
+      return json(route, {
+        ok: true,
+        updatedCount: notifications.unreadCount,
+        unreadCount: 0,
+      });
+    }
+    return route.fallback();
   });
 
   // Abort

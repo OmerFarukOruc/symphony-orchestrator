@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   connectEventSource,
+  subscribeNotificationUpdates,
   subscribeIssueEvents,
   subscribeAllEvents,
   type AgentEventPayload,
@@ -160,6 +161,30 @@ describe("subscribeAllEvents", () => {
       type: "worker.failed",
       payload: { identifier: "ENG-1", error: "timeout" },
     });
+  });
+});
+
+describe("subscribeNotificationUpdates", () => {
+  it("calls the handler for both created and updated notification events", () => {
+    const handler = vi.fn();
+    const unsubscribe = subscribeNotificationUpdates(handler);
+
+    fakeTarget.dispatchEvent(new CustomEvent("risoluto:notification-created"));
+    fakeTarget.dispatchEvent(new CustomEvent("risoluto:notification-updated"));
+
+    expect(handler).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+
+  it("returns an unsubscribe function that removes both listeners", () => {
+    const handler = vi.fn();
+    const unsubscribe = subscribeNotificationUpdates(handler);
+
+    unsubscribe();
+    fakeTarget.dispatchEvent(new CustomEvent("risoluto:notification-created"));
+    fakeTarget.dispatchEvent(new CustomEvent("risoluto:notification-updated"));
+
+    expect(handler).not.toHaveBeenCalled();
   });
 });
 

@@ -2,8 +2,23 @@
 // into a dedicated root so it doesn't interfere with the vanilla app.
 import type { AgentationProps } from "agentation";
 
-function shouldMountAgentation(): boolean {
-  return document.body.dataset.agentation === "enabled";
+const AGENTATION_QUERY_PARAM = "agentation";
+const ENABLED_AGENTATION_VALUES = new Set(["1", "true", "enabled", "on"]);
+
+function queryEnablesAgentation(): boolean {
+  try {
+    const value = new URL(globalThis.location.href).searchParams.get(AGENTATION_QUERY_PARAM);
+    return value !== null && ENABLED_AGENTATION_VALUES.has(value.trim().toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+export function shouldMountAgentation(): boolean {
+  if (typeof document === "undefined" || !document.body) {
+    return false;
+  }
+  return document.body.dataset.agentation === "enabled" || queryEnablesAgentation();
 }
 
 async function mountAgentation(): Promise<void> {
@@ -17,10 +32,11 @@ async function mountAgentation(): Promise<void> {
   root.id = "agentation-root";
   document.body.appendChild(root);
 
-  createRoot(root).render(createElement<AgentationProps>(Agentation, { endpoint: "http://localhost:4747" }));
+  const endpoint = document.body.dataset.agentationEndpoint?.trim() || "http://localhost:4747";
+  createRoot(root).render(createElement<AgentationProps>(Agentation, { endpoint }));
 }
 
-if (shouldMountAgentation()) {
+if (typeof document !== "undefined" && shouldMountAgentation()) {
   try {
     await mountAgentation();
   } catch (error) {

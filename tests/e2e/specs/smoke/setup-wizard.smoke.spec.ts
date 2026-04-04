@@ -104,6 +104,32 @@ test.describe("Setup Wizard Walkthrough", () => {
     await expect(page.getByText("Add GitHub access")).toBeVisible();
   });
 
+  test("OpenAI step shows an explicit proxy / compatible provider option", async () => {
+    await setup.navigateAndWaitForKey();
+
+    await setup.stepIndicators.nth(3).click();
+
+    await expect(setup.activeStepIndicator).toContainText("OpenAI");
+    await expect(setup.openaiAuthCards).toHaveCount(3);
+    await setup.proxyProviderCard.click();
+    await expect(setup.providerBaseUrlInput).toBeVisible();
+    await expect(setup.providerTokenInput).toBeVisible();
+  });
+
+  test("saving proxy provider settings advances from OpenAI to GitHub", async () => {
+    await setup.navigateAndWaitForKey();
+
+    await setup.stepIndicators.nth(3).click();
+    await setup.proxyProviderCard.click();
+    await setup.providerNameInput.fill("CLIProxyAPI");
+    await setup.providerBaseUrlInput.fill("http://127.0.0.1:8317/v1");
+    await setup.providerTokenInput.fill("proxy-token");
+    await expect(setup.nextButton).toBeEnabled();
+    await setup.nextButton.click({ force: true });
+
+    await expect(setup.activeStepIndicator).toContainText("GitHub", { timeout: 5000 });
+  });
+
   // ── Skip behavior ──────────────────────────────────────────────
 
   test("skip button on Linear step advances to GitHub step", async ({ page }) => {

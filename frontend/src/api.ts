@@ -7,6 +7,9 @@ import type {
   GitContextResponse,
   IssueDetail,
   LinearProject,
+  NotificationReadResponse,
+  NotificationsListResponse,
+  NotificationsReadAllResponse,
   PromptTemplate,
   RuntimeInfo,
   RuntimeSnapshot,
@@ -81,10 +84,34 @@ async function del(path: string): Promise<void> {
   await send<unknown>("DELETE", path);
 }
 
+interface SetupOpenaiKeyPayload {
+  key: string;
+  provider?: {
+    name?: string;
+    baseUrl: string;
+  };
+}
+
 export const api = {
   getModels: () => get<{ models: Array<{ id: string; displayName: string; isDefault: boolean }> }>("/api/v1/models"),
   getState: () => get<RuntimeSnapshot>("/api/v1/state"),
   getRuntime: () => get<RuntimeInfo>("/api/v1/runtime"),
+  getNotifications: (params?: { limit?: number; unread?: boolean }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit !== undefined) {
+      qs.set("limit", String(params.limit));
+    }
+    if (params?.unread) {
+      qs.set("unread", "true");
+    }
+    const query = qs.toString();
+    return get<NotificationsListResponse>(query ? `/api/v1/notifications?${query}` : "/api/v1/notifications");
+  },
+  postNotificationRead: (id: string) => {
+    if (!id) return Promise.reject(new Error("notification id is required"));
+    return send<NotificationReadResponse>("POST", `/api/v1/notifications/${encodeURIComponent(id)}/read`);
+  },
+  postNotificationsReadAll: () => send<NotificationsReadAllResponse>("POST", "/api/v1/notifications/read-all"),
   getIssue: (id: string) => {
     if (!id) return Promise.reject(new Error("issue id is required"));
     return get<IssueDetail>(`/api/v1/${encodeURIComponent(id)}`);
@@ -135,7 +162,7 @@ export const api = {
   postMasterKey: (key?: string) => post<{ key: string }>("/api/v1/setup/master-key", { key }),
   getLinearProjects: () => get<{ projects: LinearProject[] }>("/api/v1/setup/linear-projects"),
   postLinearProject: (slugId: string) => post<{ ok: boolean }>("/api/v1/setup/linear-project", { slugId }),
-  postOpenaiKey: (key: string) => post<{ valid: boolean }>("/api/v1/setup/openai-key", { key }),
+  postOpenaiKey: (payload: SetupOpenaiKeyPayload) => post<{ valid: boolean }>("/api/v1/setup/openai-key", payload),
   postCodexAuth: (authJson: string) => post<{ ok: boolean }>("/api/v1/setup/codex-auth", { authJson }),
   startPkceAuth: () => post<{ authUrl: string }>("/api/v1/setup/pkce-auth/start", {}),
   pollPkceAuthStatus: () =>

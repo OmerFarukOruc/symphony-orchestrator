@@ -1,12 +1,15 @@
 import { buildSetupError, buildTitleWithBadge, getSetupErrorMessage } from "./setup-shared";
 
-export type OpenaiAuthMode = "api_key" | "codex_login";
+export type OpenaiAuthMode = "api_key" | "codex_login" | "proxy_provider";
 export type DeviceAuthStatus = "idle" | "starting" | "pending" | "complete" | "expired";
 
 export interface OpenaiSetupStepState {
   loading: boolean;
   error: string | null;
   openaiKeyInput: string;
+  providerNameInput: string;
+  providerBaseUrlInput: string;
+  providerTokenInput: string;
   authMode: OpenaiAuthMode;
   authJsonInput: string;
   showManualAuthFallback: boolean;
@@ -22,6 +25,9 @@ export interface OpenaiSetupStepState {
 export interface OpenaiSetupStepActions {
   onSelectAuthMode: (mode: OpenaiAuthMode) => void;
   onOpenaiKeyInput: (value: string) => void;
+  onProviderNameInput: (value: string) => void;
+  onProviderBaseUrlInput: (value: string) => void;
+  onProviderTokenInput: (value: string) => void;
   onAuthJsonInput: (value: string) => void;
   onStartDeviceAuth: () => void;
   onCancelDeviceAuth: () => void;
@@ -74,7 +80,23 @@ export function buildOpenaiKeyStep(state: OpenaiSetupStepState, actions: OpenaiS
     }
   });
 
-  modeWrap.append(apiKeyCard, loginCard);
+  const proxyCard = document.createElement("div");
+  proxyCard.className = `setup-auth-card${state.authMode === "proxy_provider" ? " is-selected" : ""}`;
+  proxyCard.setAttribute("role", "button");
+  proxyCard.setAttribute("tabindex", "0");
+  proxyCard.setAttribute("aria-pressed", String(state.authMode === "proxy_provider"));
+  proxyCard.innerHTML =
+    '<div class="setup-auth-card-title">Proxy / compatible provider</div>' +
+    '<div class="setup-auth-card-desc">Use a host-side proxy or OpenAI-compatible endpoint such as CLIProxyAPI or LiteLLM.</div>';
+  proxyCard.addEventListener("click", () => actions.onSelectAuthMode("proxy_provider"));
+  proxyCard.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      actions.onSelectAuthMode("proxy_provider");
+    }
+  });
+
+  modeWrap.append(apiKeyCard, loginCard, proxyCard);
   el.append(titleRow, sub, modeWrap);
 
   const actionsRow = document.createElement("div");
@@ -92,7 +114,12 @@ export function buildOpenaiKeyStep(state: OpenaiSetupStepState, actions: OpenaiS
   saveBtn.textContent = state.loading ? "Saving…" : "Save and continue";
 
   const updateSaveButton = (): void => {
-    const hasInput = state.authMode === "api_key" ? !!state.openaiKeyInput : !!state.authJsonInput;
+    const hasInput =
+      state.authMode === "api_key"
+        ? !!state.openaiKeyInput
+        : state.authMode === "proxy_provider"
+          ? !!state.providerBaseUrlInput && !!state.providerTokenInput
+          : !!state.authJsonInput;
     saveBtn.disabled = state.loading || !hasInput;
   };
 
@@ -105,6 +132,10 @@ export function buildOpenaiKeyStep(state: OpenaiSetupStepState, actions: OpenaiS
 
   if (state.authMode === "codex_login") {
     el.append(buildCodexLoginFields(state, actions, updateSaveButton));
+  }
+
+  if (state.authMode === "proxy_provider") {
+    el.append(buildProxyProviderFields(state, actions, updateSaveButton));
   }
 
   if (state.error) {
@@ -157,6 +188,113 @@ function buildApiKeyField(
 
   field.append(label, input, hint);
   return field;
+}
+
+function buildProxyProviderFields(
+  state: OpenaiSetupStepState,
+  actions: OpenaiSetupStepActions,
+  updateSaveButton: () => void,
+): HTMLElement {
+  const wrap = document.createElement("div");
+
+  const callout = document.createElement("div");
+  callout.className = "setup-callout";
+  callout.innerHTML =
+    '<strong style="color:var(--text-accent)">Proxy mode</strong>' +
+    '<div style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:var(--space-1);line-height:1.7">' +
+    "Use this when you run a local proxy or another OpenAI-compatible endpoint. Risoluto stores the token encrypted and writes an explicit <code>codex.provider</code> block for the runtime." +
+    "</div>";
+
+  const nameId = "setup-openai-provider-name";
+  const baseUrlId = "setup-openai-provider-base-url";
+  const baseUrlHintId = "setup-openai-provider-base-url-hint";
+  const tokenId = "setup-openai-provider-token";
+  const tokenHintId = "setup-openai-provider-token-hint";
+
+  const nameField = document.createElement("div");
+  nameField.className = "setup-field";
+
+  const nameLabel = document.createElement("label");
+  nameLabel.className = "setup-label";
+  nameLabel.htmlFor = nameId;
+  nameLabel.textContent = "Display name (optional)";
+
+  const nameInput = document.createElement("input");
+  nameInput.id = nameId;
+  nameInput.className = "setup-input";
+  nameInput.type = "text";
+  nameInput.placeholder = "CLIProxyAPI";
+  nameInput.value = state.providerNameInput;
+  nameInput.addEventListener("input", () => {
+    state.providerNameInput = nameInput.value;
+    actions.onProviderNameInput(nameInput.value);
+  });
+  nameField.append(nameLabel, nameInput);
+
+  const baseUrlField = document.createElement("div");
+  baseUrlField.className = "setup-field";
+
+  const baseUrlLabel = document.createElement("label");
+  baseUrlLabel.className = "setup-label";
+  baseUrlLabel.htmlFor = baseUrlId;
+  baseUrlLabel.textContent = "Provider base URL";
+
+  const baseUrlInput = document.createElement("input");
+  baseUrlInput.id = baseUrlId;
+  baseUrlInput.className = "setup-input";
+  baseUrlInput.type = "url";
+  baseUrlInput.required = true;
+  baseUrlInput.spellcheck = false;
+  baseUrlInput.placeholder = "http://127.0.0.1:8317/v1";
+  baseUrlInput.setAttribute("aria-describedby", baseUrlHintId);
+  baseUrlInput.value = state.providerBaseUrlInput;
+  baseUrlInput.addEventListener("input", () => {
+    state.providerBaseUrlInput = baseUrlInput.value;
+    actions.onProviderBaseUrlInput(baseUrlInput.value);
+    updateSaveButton();
+  });
+
+  const baseUrlHint = document.createElement("div");
+  baseUrlHint.id = baseUrlHintId;
+  baseUrlHint.className = "setup-hint";
+  baseUrlHint.textContent = "Point this at the OpenAI-compatible /v1 endpoint that your workers should use.";
+
+  baseUrlField.append(baseUrlLabel, baseUrlInput, baseUrlHint);
+
+  const tokenField = document.createElement("div");
+  tokenField.className = "setup-field";
+
+  const tokenLabel = document.createElement("label");
+  tokenLabel.className = "setup-label";
+  tokenLabel.htmlFor = tokenId;
+  tokenLabel.textContent = "Provider API key or token";
+
+  const tokenInput = document.createElement("input");
+  tokenInput.id = tokenId;
+  tokenInput.className = "setup-input";
+  tokenInput.type = "password";
+  tokenInput.required = true;
+  tokenInput.autocomplete = "off";
+  tokenInput.spellcheck = false;
+  tokenInput.placeholder = "sk-… or provider token";
+  tokenInput.setAttribute("aria-describedby", tokenHintId);
+  tokenInput.value = state.providerTokenInput;
+  tokenInput.addEventListener("input", () => {
+    state.providerTokenInput = tokenInput.value;
+    actions.onProviderTokenInput(tokenInput.value);
+    updateSaveButton();
+  });
+
+  const tokenHint = document.createElement("div");
+  tokenHint.id = tokenHintId;
+  tokenHint.className = "setup-hint";
+  tokenHint.textContent =
+    "Risoluto stores this encrypted and passes it through as OPENAI_API_KEY for the configured provider.";
+
+  tokenField.append(tokenLabel, tokenInput, tokenHint);
+
+  wrap.append(callout, nameField, baseUrlField, tokenField);
+  return wrap;
 }
 
 function buildCodexLoginFields(

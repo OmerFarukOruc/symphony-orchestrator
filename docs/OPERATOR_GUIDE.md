@@ -32,7 +32,7 @@ Open http://127.0.0.1:4000 — the **setup wizard** opens automatically and walk
 
 1. **Protect secrets** — generates an encryption master key
 2. **Connect Linear** — paste your API key and select a project
-3. **Add OpenAI** — paste an API key or use Codex Login (see [Setup Wizard](#-setup-wizard))
+3. **Add OpenAI** — choose direct API key, browser sign-in, or a proxy / compatible provider (see [Setup Wizard](#-setup-wizard))
 4. **Add GitHub** — paste a GitHub PAT (optional)
 
 **3. Verify it works**
@@ -148,7 +148,7 @@ Risoluto stores all runtime state in a single directory (default: `~/.risoluto`)
 | `config/overlay.yaml`    | Persistent operator config (written by setup wizard and config API) |
 | `master.key`             | Encryption key for the secrets store                                |
 | `secrets.enc`            | AES-256-GCM encrypted credentials                                   |
-| `risoluto.db`            | SQLite database for attempt history and issue state                 |
+| `risoluto.db`            | SQLite database for attempts, issue state, notifications, automation runs, and alert history |
 | `archives/`              | Per-attempt event archives                                          |
 
 Override the default with `--data-dir`:
@@ -163,6 +163,77 @@ node dist/cli/index.js --data-dir /var/lib/risoluto --port 4000
 ### Legacy auto-import
 
 On the first boot of a fresh data directory, Risoluto checks for a `WORKFLOW.md` file in the current working directory (or the parent of the data directory). If found, it imports the front-matter as the initial overlay config and the prompt body as the prompt template. This is a one-time migration path — subsequent boots use the data directory exclusively.
+
+---
+
+## 🔔 Notifications, Triggers, Automations, and Alerts
+
+Risoluto now ships one coherent operator-event pipeline:
+
+- `notifications.channels[]` drives Slack, outbound webhook, and desktop delivery through one registry
+- `/notifications` shows the persisted notification timeline with read-state behavior
+- `/webhooks/linear`, `/webhooks/github`, and `/api/v1/webhooks/trigger` feed external events into the runtime
+- `automations[]` schedules recurring `report`, `findings`, or `implement` runs
+- `alerts.rules[]` subscribes to runtime events and fanouts cooldown-aware alerts
+
+### Example config shape
+
+```yaml
+notifications:
+  slack:
+    webhook_url: $SLACK_WEBHOOK_URL
+    verbosity: critical
+  channels:
+    - type: webhook
+      name: ops-webhook
+      url: https://notify.example/hooks/risoluto
+      min_severity: warning
+    - type: desktop
+      name: local-desktop
+      enabled: true
+
+triggers:
+  api_key: $RISOLUTO_TRIGGER_API_KEY
+  allowed_actions: ["create_issue", "re_poll", "refresh_issue"]
+  github_secret: $GITHUB_WEBHOOK_SECRET
+  rate_limit_per_minute: 30
+
+automations:
+  - name: nightly-report
+    schedule: "0 2 * * *"
+    mode: report
+    prompt: "Summarize current runtime health and blocked work."
+    repo_url: https://github.com/acme/app
+    enabled: true
+
+alerts:
+  rules:
+    - name: worker-failures
+      type: worker_failed
+      severity: critical
+      channels: ["slack", "ops-webhook", "local-desktop"]
+      cooldown_ms: 300000
+      enabled: true
+```
+
+### Operator surfaces
+
+- `GET /api/v1/notifications`
+- `POST /api/v1/notifications/:notification_id/read`
+- `POST /api/v1/notifications/read-all`
+- `POST /api/v1/webhooks/trigger`
+- `GET /api/v1/automations`
+- `GET /api/v1/automations/runs`
+- `POST /api/v1/automations/:automation_name/run`
+- `GET /api/v1/alerts/history`
+
+### Runtime behavior
+
+- Invalid cron expressions are skipped, logged, and persisted as warning notifications instead of aborting startup.
+- `report` and `findings` automations require `repo_url` so tracker-free runs stay bound to a concrete repository context.
+- `implement` automations create a real tracker issue first, then request a targeted orchestrator refresh so the existing issue-centric worker flow can pick it up.
+- Alert routing is rule-scoped first, then channel-scoped: a rule selects channel names, and each channel still applies its own minimum-severity threshold.
+- The Settings UI remains truthful but not exhaustive for these new sections; use the config overlay / secrets APIs (or the setup flow) to manage them today.
 
 ---
 
@@ -317,7 +388,7 @@ When Risoluto starts without a master key configured, it enters **setup mode** a
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
 | **1. Protect secrets** | Calls `POST /api/v1/setup/master-key` to generate and persist the encryption key that protects stored credentials on disk.                                                                                 | Yes            |
 | **2. Connect Linear**  | Stores `LINEAR_API_KEY` via `POST /api/v1/secrets/:key`, lists projects with `GET /api/v1/setup/linear-projects`, then saves the selected `tracker.project_slug` with `POST /api/v1/setup/linear-project`. | Yes            |
-| **3. Add OpenAI**      | Uses `POST /api/v1/setup/openai-key` for API-key mode, browser PKCE sign-in via `POST /api/v1/setup/pkce-auth/start`, or `POST /api/v1/setup/codex-auth` for manual `auth.json` upload.                    | Yes            |
+| **3. Add OpenAI**      | Offers three explicit modes: direct API key, browser PKCE sign-in, or proxy / compatible provider. The API-key and proxy paths both use `POST /api/v1/setup/openai-key`; browser sign-in uses `POST /api/v1/setup/pkce-auth/start`, and the manual fallback uses `POST /api/v1/setup/codex-auth`. | Yes            |
 | **4. Add GitHub**      | Optionally validates and stores a GitHub PAT with `POST /api/v1/setup/github-token`.                                                                                                                       | No (skippable) |
 
 After completing all steps, click **"Go to Dashboard"** to unlock normal navigation.
@@ -336,7 +407,50 @@ After completing all steps, click **"Go to Dashboard"** to unlock normal navigat
 
 #### API Key Mode
 
-Paste an `sk-...` API key directly. Risoluto validates it and stores it in the encrypted secrets store.
+Choose **API key** when you want to talk to OpenAI directly. Risoluto validates the key against OpenAI, stores it in the encrypted secrets store, sets `codex.auth.mode: "api_key"`, and clears any previous `codex.provider` block.
+
+```yaml
+codex:
+  auth:
+    mode: api_key
+```
+
+Secret written:
+
+```text
+OPENAI_API_KEY=<your direct OpenAI key>
+```
+
+#### Proxy / Compatible Provider
+
+Choose **Proxy / compatible provider** when you want Risoluto workers to call a local proxy or another OpenAI-compatible endpoint such as CLIProxyAPI or LiteLLM.
+
+The setup UI asks for:
+
+1. **Display name (optional)** — cosmetic label such as `CLIProxyAPI`
+2. **Provider base URL** — the OpenAI-compatible `/v1` endpoint, for example `http://127.0.0.1:8317/v1`
+3. **Provider API key or token** — stored encrypted and passed through as `OPENAI_API_KEY`
+
+Risoluto validates the provider by calling `<baseUrl>/models`, then persists this shape:
+
+```yaml
+codex:
+  auth:
+    mode: api_key
+  provider:
+    name: CLIProxyAPI # optional
+    base_url: http://127.0.0.1:8317/v1
+    env_key: OPENAI_API_KEY
+    wire_api: responses
+```
+
+Secret written:
+
+```text
+OPENAI_API_KEY=<provider token>
+```
+
+Important: the direct API-key path does not silently become CLIProxyAPI anymore. Only the explicit proxy option writes `codex.provider`.
 
 #### Codex Login Mode (Browser Sign-In)
 
