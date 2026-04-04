@@ -45,13 +45,26 @@ When this skill runs inside an active anvil run, keep all created artifacts unde
 
 Do not default to `docs/archive/` during an anvil run. Repo-global archive paths are only for non-anvil ad hoc verification or when the user explicitly asks for a durable shared archive copy.
 
-Recommended shell setup before running commands in an anvil run:
+Before running the command examples below, define the artifact variables using one of these setup snippets.
+
+### Setup for an anvil run
 
 ```bash
 slug="$(cat .anvil/ACTIVE_RUN)"
 verify_root=".anvil/$slug/verification"
 screenshots_dir="$verify_root/screenshots"
 videos_dir="$verify_root/videos"
+report_path="$verify_root/visual-verify-report.md"
+mkdir -p "$screenshots_dir" "$videos_dir"
+```
+
+### Setup for an ad hoc non-anvil session
+
+```bash
+verify_root="docs/archive/visual-verify"
+screenshots_dir="$verify_root/screenshots"
+videos_dir="$verify_root/videos"
+report_path="$verify_root/visual-verify-report.md"
 mkdir -p "$screenshots_dir" "$videos_dir"
 ```
 
@@ -174,13 +187,6 @@ Use this after major UI changes, before releases, or when the user asks to "dogf
 
 ```bash
 mkdir -p "$screenshots_dir" "$videos_dir"
-```
-
-For an anvil run, replace those repo-global paths with:
-
-```bash
-mkdir -p "$screenshots_dir" "$videos_dir"
-report_path="$verify_root/visual-verify-report.md"
 ```
 
 Create `"$report_path"` from the template at `skills/visual-verify/templates/verification-report-template.md`. Fill in the date, session name, and environment info.
@@ -542,7 +548,7 @@ This skill uses **`agent-browser` CLI commands** run via bash/shell. All command
 
 **File operations:** When the skill says "create a file from the template", use whatever file-creation tool your agent provides (bash `cp`, `write_to_file`, `apply_patch`, etc.). The important thing is that the file gets created with the template content.
 
-**Screenshot paths:** In an anvil run, use `.anvil/<slug>/verification/screenshots/` and sibling verification folders. Reserve `docs/archive/` for non-anvil ad hoc verification or an explicit cross-run archive request.
+**Screenshot paths:** In an anvil run, use `.anvil/<slug>/verification/screenshots/` and sibling verification folders. In an ad hoc session, use the setup snippet above so screenshots, videos, and the report all land under `docs/archive/visual-verify/`.
 
 ## References
 
