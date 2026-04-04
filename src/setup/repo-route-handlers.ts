@@ -106,11 +106,6 @@ export function handlePostRepoRoute(deps: RepoRouteApiDeps) {
 
 export function handleGetRepoRoutes(deps: RepoRouteApiDeps) {
   return (_req: Request, res: Response) => {
-    if (deps.secretsStore.isInitialized()) {
-      res.status(404).json({ error: { code: "not_found", message: "Not found" } });
-      return;
-    }
-
     const overlay = deps.configOverlayStore.toMap();
     const routes = readRepos(overlay);
     res.json({ routes });

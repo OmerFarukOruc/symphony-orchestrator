@@ -285,7 +285,35 @@ export const recoveryReportResponseSchema = z.object({
 
 /** GET /api/v1/:issue_identifier/attempts — attempts list response. */
 export const attemptsListResponseSchema = z.object({
-  attempts: z.array(z.record(z.string(), z.unknown())),
+  attempts: z.array(
+    z.object({
+      attemptId: z.string(),
+      attemptNumber: z.number().nullable(),
+      startedAt: z.string(),
+      endedAt: z.string().nullable(),
+      status: z.string(),
+      model: z.string(),
+      reasoningEffort: reasoningEffortSchema.nullable(),
+      tokenUsage: tokenUsageSchema.nullable(),
+      costUsd: z.number().nullable(),
+      errorCode: z.string().nullable(),
+      errorMessage: z.string().nullable(),
+      appServerBadge: z
+        .object({
+          effectiveProvider: z.string().nullable(),
+          threadStatus: z.string().nullable(),
+        })
+        .optional(),
+      issueIdentifier: z.string().optional(),
+      title: z.string().optional(),
+      workspacePath: z.string().nullable().optional(),
+      workspaceKey: z.string().nullable().optional(),
+      modelSource: modelSourceSchema.optional(),
+      turnCount: z.number().optional(),
+      threadId: z.string().nullable().optional(),
+      turnId: z.string().nullable().optional(),
+    }),
+  ),
   current_attempt_id: z.string().nullable(),
 });
 
@@ -383,7 +411,7 @@ export const stateResponseSchema = z.object({
 /** GET /api/v1/{issue_identifier} — issue detail with attempts and events. */
 export const issueDetailResponseSchema = runtimeIssueViewSchema.extend({
   recentEvents: z.array(recentEventSchema),
-  attempts: z.array(z.record(z.string(), z.unknown())),
+  attempts: attemptsListResponseSchema.shape.attempts,
   currentAttemptId: z.string().nullable(),
 });
 
@@ -399,6 +427,12 @@ const attemptSummarySchema = z.object({
   costUsd: z.number().nullable(),
   errorCode: z.string().nullable(),
   errorMessage: z.string().nullable(),
+  appServerBadge: z
+    .object({
+      effectiveProvider: z.string().nullable(),
+      threadStatus: z.string().nullable(),
+    })
+    .optional(),
   issueIdentifier: z.string().optional(),
   title: z.string().optional(),
   workspacePath: z.string().nullable().optional(),

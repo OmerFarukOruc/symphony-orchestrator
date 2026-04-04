@@ -13,6 +13,7 @@ DENY_PATTERNS = {
     r"\bgit\s+worktree\s+add\b": "Use the managed worktree flow from anvil-execute instead of raw git worktree add.",
     r"\brm\s+-rf\b.*\.anvil\b": "Deleting .anvil state is blocked during an active anvil run.",
 }
+RELEVANT_COMMAND_PATTERNS = [r"\bgit\s+push\b", *DENY_PATTERNS.keys()]
 
 
 def push_allowed(status) -> bool:
@@ -56,6 +57,9 @@ def deny(reason: str) -> int:
 def main() -> int:
     payload = json.load(sys.stdin)
     command = payload.get("tool_input", {}).get("command", "")
+    if not any(re.search(pattern, command) for pattern in RELEVANT_COMMAND_PATTERNS):
+        return 0
+
     root = repo_root(payload["cwd"])
     slug, status, _ = load_active_status(root)
     active_run = run_is_active(status)

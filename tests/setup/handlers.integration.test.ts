@@ -323,10 +323,8 @@ describe("handleGetStatus — real stores", () => {
     expect((res._body as { steps: { masterKey: { done: boolean } } }).steps.masterKey.done).toBe(true);
   });
 
-  it("marks linearProject done when LINEAR_API_KEY is stored in the real SecretsStore", async () => {
-    delete process.env.LINEAR_API_KEY;
-
-    await secretsStore.set("LINEAR_API_KEY", "lin_real_key");
+  it("marks linearProject done when tracker.project_slug is stored in the real overlay", async () => {
+    await configOverlayStore.set("tracker.project_slug", "risoluto");
 
     const deps = makeDeps();
     const handler = handleGetStatus(deps);

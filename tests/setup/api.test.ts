@@ -75,6 +75,7 @@ describe("registerSetupApi", () => {
 
   it("reports setup status when steps are completed from store, env, and auth file sources", async () => {
     const secretsStore = createSecretsStoreMock();
+    const configOverlayStore = createConfigOverlayStoreMock();
     vi.spyOn(secretsStore, "isInitialized").mockReturnValue(true);
     vi.spyOn(secretsStore, "get").mockImplementation((key) => {
       if (key === "LINEAR_API_KEY") return null;
@@ -82,11 +83,12 @@ describe("registerSetupApi", () => {
       if (key === "GITHUB_TOKEN") return null;
       return null;
     });
+    vi.spyOn(configOverlayStore, "toMap").mockReturnValue({ "tracker.project_slug": "linear-project" });
     mocks.existsSyncMock.mockReturnValue(true);
     process.env.LINEAR_API_KEY = "linear-from-env";
     process.env.GITHUB_TOKEN = "gh-from-env";
 
-    const { baseUrl } = await startSetupApiServer({ secretsStore });
+    const { baseUrl } = await startSetupApiServer({ secretsStore, configOverlayStore });
     const response = await fetch(`${baseUrl}/api/v1/setup/status`);
 
     expect(response.status).toBe(200);

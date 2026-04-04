@@ -546,7 +546,11 @@ describe("snapshot-builder", () => {
 
     it("builds attempt detail with events", () => {
       const attempt = createAttemptRecord();
-      const event = createEvent({ attemptId: "attempt-1" } as Partial<RecentEvent> as RecentEvent);
+      const event = createEvent({
+        attemptId: "attempt-1",
+        event: "codex_config_loaded",
+        metadata: { modelProvider: "cliproxyapi" },
+      } as Partial<RecentEvent> as RecentEvent);
 
       const deps = {
         attemptStore: createAttemptStore({
@@ -560,6 +564,60 @@ describe("snapshot-builder", () => {
       expect(detail).toMatchObject({
         attemptId: "attempt-1",
         events: [event],
+        appServerBadge: { effectiveProvider: "cliproxyapi", threadStatus: null },
+        appServer: {
+          effectiveProvider: "cliproxyapi",
+          effectiveModel: "gpt-5.4",
+          reasoningEffort: "high",
+        },
+      });
+    });
+
+    it("adds app-server badges to archived attempts in issue detail", () => {
+      const attempt = createAttemptRecord();
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          attemptsByIssue: new Map([["MT-42", [attempt]]]),
+          events: [
+            createEvent({
+              attemptId: "attempt-1",
+              event: "codex_config_loaded",
+              metadata: { modelProvider: "cliproxyapi" },
+            } as Partial<RecentEvent> as RecentEvent),
+            createEvent({
+              attemptId: "attempt-1",
+              event: "thread_status",
+              metadata: { threadStatus: { type: "active" } },
+            } as Partial<RecentEvent> as RecentEvent),
+          ],
+        }),
+      };
+      const callbacks = createCallbacks({
+        getCompletedViews: () =>
+          new Map([
+            [
+              "MT-42",
+              {
+                issueId: "issue-1",
+                identifier: "MT-42",
+                title: "Test Issue",
+                state: "Done",
+                workspaceKey: "MT-42",
+                message: null,
+                status: "completed",
+                updatedAt: "2026-03-15T00:01:00Z",
+                attempt: 1,
+                error: null,
+              },
+            ],
+          ]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      expect(detail?.attempts[0]).toMatchObject({
+        appServerBadge: { effectiveProvider: "cliproxyapi", threadStatus: "active" },
       });
     });
 

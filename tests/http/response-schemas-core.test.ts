@@ -310,13 +310,40 @@ describe("attemptsListResponseSchema", () => {
   it("parses a valid attempts list with entries", () => {
     const result = attemptsListResponseSchema.parse({
       attempts: [
-        { id: "a1", status: "done" },
-        { id: "a2", status: "running" },
+        {
+          attemptId: "a1",
+          attemptNumber: 1,
+          startedAt: "2026-04-01T00:00:00Z",
+          endedAt: "2026-04-01T00:10:00Z",
+          status: "done",
+          model: "gpt-5.4",
+          reasoningEffort: "medium",
+          tokenUsage: null,
+          costUsd: null,
+          errorCode: null,
+          errorMessage: null,
+          appServerBadge: { effectiveProvider: "openai", threadStatus: "completed" },
+        },
+        {
+          attemptId: "a2",
+          attemptNumber: 2,
+          startedAt: "2026-04-01T01:00:00Z",
+          endedAt: null,
+          status: "running",
+          model: "gpt-5.4",
+          reasoningEffort: "medium",
+          tokenUsage: null,
+          costUsd: null,
+          errorCode: null,
+          errorMessage: null,
+          appServerBadge: { effectiveProvider: "cliproxyapi", threadStatus: "active" },
+        },
       ],
       current_attempt_id: "a2",
     });
     expect(result.attempts).toHaveLength(2);
     expect(result.current_attempt_id).toBe("a2");
+    expect(result.attempts[1]?.appServerBadge?.effectiveProvider).toBe("cliproxyapi");
   });
 
   it("parses with null current_attempt_id", () => {
@@ -653,6 +680,10 @@ describe("attemptDetailResponseSchema", () => {
       turnCount: 3,
       threadId: "thread-1",
       turnId: "turn-1",
+      appServerBadge: {
+        effectiveProvider: "cliproxyapi",
+        threadStatus: "active",
+      },
       appServer: {
         effectiveProvider: "cliproxyapi",
         effectiveModel: "gpt-5.4",

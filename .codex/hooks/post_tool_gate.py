@@ -36,22 +36,25 @@ def extract_exit_code(tool_response) -> int:
     return 0
 
 
+def find_gate_name(command: str) -> str | None:
+    for pattern, candidate in COMMAND_TO_GATE:
+        if re.search(pattern, command):
+            return candidate
+    return None
+
+
 def main() -> int:
     payload = json.load(sys.stdin)
+    command = payload.get("tool_input", {}).get("command", "")
+    gate_name = find_gate_name(command)
+    if gate_name is None:
+        return 0
+
     root = repo_root(payload["cwd"])
     slug, status, status_path = load_active_status(root)
     if slug is None or status is None or status_path is None:
         return 0
     if not run_is_active(status):
-        return 0
-
-    command = payload.get("tool_input", {}).get("command", "")
-    gate_name = None
-    for pattern, candidate in COMMAND_TO_GATE:
-        if re.search(pattern, command):
-            gate_name = candidate
-            break
-    if gate_name is None:
         return 0
 
     exit_code = extract_exit_code(payload.get("tool_response"))

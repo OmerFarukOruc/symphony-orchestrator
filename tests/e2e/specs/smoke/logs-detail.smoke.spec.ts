@@ -79,18 +79,25 @@ test.describe("Logs Page & Attempt Detail Smoke", () => {
     await expect(page.getByText("Run History")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("#1").first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("#2").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("cliproxyapi").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("active").first()).toBeVisible({ timeout: 5000 });
   });
 
   test("clicking an attempt row shows attempt detail panel", async ({ page }) => {
     await gotoAndWait(page, "/issues/SYM-42/runs");
 
-    // Click the first attempt row (#1 - failed attempt)
-    const firstRow = page.locator(".runs-row").first();
-    await expect(firstRow).toBeVisible({ timeout: 5000 });
-    await firstRow.click();
+    // Click the live run row so the drawer content is deterministic.
+    const liveRow = page.locator(".runs-row", { hasText: "cliproxyapi" }).first();
+    await expect(liveRow).toBeVisible({ timeout: 5000 });
+    await liveRow.click();
 
     // The detail panel should show summary info
-    await expect(page.locator(".runs-detail-panel").first()).toBeVisible({ timeout: 5000 });
+    const detailPanel = page.locator(".runs-detail-panel").first();
+    await expect(detailPanel).toBeVisible({ timeout: 5000 });
+    await expect(detailPanel.getByText("App-server: Authentication fix thread · o3-mini · active")).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(detailPanel.getByText(/Requirements: Approval: never/i)).toBeVisible({ timeout: 5000 });
   });
 
   // ── Attempt Detail ───────────────────────────────────────────────────

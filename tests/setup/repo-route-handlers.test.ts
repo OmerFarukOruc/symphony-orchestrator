@@ -183,7 +183,7 @@ describe("repo route handlers", () => {
     });
   });
 
-  it("returns 404 for repo route discovery after bootstrap is configured", async () => {
+  it("still returns repo routes after bootstrap is configured", async () => {
     const configOverlayStore = createConfigOverlayStoreMock();
     vi.spyOn(configOverlayStore, "toMap").mockReturnValue({
       repos: [{ repo_url: "https://github.com/org/repo", default_branch: "main", identifier_prefix: "NIN" }],
@@ -195,9 +195,9 @@ describe("repo route handlers", () => {
     const { baseUrl } = await startSetupApiServer({ configOverlayStore, secretsStore });
     const response = await fetch(`${baseUrl}/api/v1/setup/repo-routes`);
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      error: { code: "not_found", message: "Not found" },
+      routes: [{ repo_url: "https://github.com/org/repo", default_branch: "main", identifier_prefix: "NIN" }],
     });
   });
 

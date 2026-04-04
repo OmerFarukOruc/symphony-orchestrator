@@ -67,6 +67,7 @@
 }
 
 .runs-run-cell,
+.runs-app-server,
 .runs-time-cell,
 .runs-detail-header,
 .runs-compare-card-header {
@@ -83,6 +84,10 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-1);
+}
+
+.runs-app-server {
+  flex-wrap: wrap;
 }
 
 .runs-live-pill {
@@ -125,6 +130,10 @@
 
 .runs-detail-card {
   padding: var(--space-4);
+}
+
+.runs-detail-note {
+  margin: 0;
 }
 
 .runs-compare-grid {

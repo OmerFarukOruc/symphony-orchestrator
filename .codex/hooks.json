@@ -18,8 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/pre_tool_policy.py\"",
-            "statusMessage": "Checking shell policy"
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/pre_tool_policy.py\""
           }
         ]
       }
@@ -30,8 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/post_tool_gate.py\"",
-            "statusMessage": "Updating anvil gate state"
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/post_tool_gate.py\""
           }
         ]
       }

@@ -59,6 +59,47 @@ function createModelCell(value: string | null): HTMLTableCellElement {
   return createMonoTableCell(value ?? "—");
 }
 
+function threadStatusClass(status: string | null | undefined): string {
+  switch (status) {
+    case "active":
+      return "is-status-running";
+    case "idle":
+    case "completed":
+      return "is-status-completed";
+    case "systemError":
+      return "is-status-blocked";
+    case "notLoaded":
+      return "is-status-queued";
+    default:
+      return "is-status";
+  }
+}
+
+function createAppServerCell(attempt: AttemptSummary): HTMLTableCellElement {
+  const cell = document.createElement("td");
+  cell.dataset.label = "App-server";
+  cell.className = "runs-app-server-cell";
+
+  const wrap = document.createElement("div");
+  wrap.className = "runs-app-server";
+
+  const provider = document.createElement("strong");
+  provider.className = "text-mono";
+  provider.textContent = attempt.appServerBadge?.effectiveProvider ?? "—";
+
+  wrap.append(provider);
+
+  if (attempt.appServerBadge?.threadStatus) {
+    const status = document.createElement("span");
+    status.className = `mc-badge is-sm ${threadStatusClass(attempt.appServerBadge.threadStatus)}`;
+    status.textContent = attempt.appServerBadge.threadStatus;
+    wrap.append(status);
+  }
+
+  cell.append(wrap);
+  return cell;
+}
+
 export function createRunsTable(options: RunsTableOptions): HTMLElement {
   const wrap = document.createElement("div");
   wrap.className = "runs-table-wrap mc-panel";
@@ -72,6 +113,7 @@ export function createRunsTable(options: RunsTableOptions): HTMLElement {
     "End",
     "Duration",
     "Model",
+    "App-server",
     "Reasoning",
     "Tokens",
     "Error",
@@ -129,6 +171,7 @@ export function createRunsTable(options: RunsTableOptions): HTMLElement {
     const endCell = setTableCellLabel(createTimeCell(attempt.endedAt), "End");
     const durationCell = setTableCellLabel(createMonoTableCell(durationLabel(attempt)), "Duration");
     const modelCell = setTableCellLabel(createModelCell(attempt.model), "Model");
+    const appServerCell = setTableCellLabel(createAppServerCell(attempt), "App-server");
     const reasoningCell = setTableCellLabel(createMonoTableCell(attempt.reasoningEffort ?? "—"), "Reasoning");
     const tokenCell = setTableCellLabel(createMonoTableCell(tokenBreakdown(attempt)), "Tokens");
     const errorCell = setTableCellLabel(createErrorCell(attempt), "Error");
@@ -141,6 +184,7 @@ export function createRunsTable(options: RunsTableOptions): HTMLElement {
       endCell,
       durationCell,
       modelCell,
+      appServerCell,
       reasoningCell,
       tokenCell,
       errorCell,

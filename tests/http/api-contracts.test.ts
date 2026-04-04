@@ -315,7 +315,25 @@ describe("API Contract Snapshots", () => {
     it("response structure matches snapshot", async () => {
       orchestrator.getIssueDetail.mockReturnValueOnce({
         issueId: "i1",
-        attempts: [{ id: "a1", startedAt: "2024-01-01T00:00:00Z" }],
+        attempts: [
+          {
+            attemptId: "a1",
+            attemptNumber: 1,
+            startedAt: "2024-01-01T00:00:00Z",
+            endedAt: null,
+            status: "running",
+            model: "gpt-5.4",
+            reasoningEffort: "medium",
+            tokenUsage: null,
+            costUsd: null,
+            errorCode: null,
+            errorMessage: null,
+            appServerBadge: {
+              effectiveProvider: "cliproxyapi",
+              threadStatus: "active",
+            },
+          },
+        ],
         currentAttemptId: "a1",
       });
 
@@ -329,8 +347,21 @@ describe("API Contract Snapshots", () => {
         {
           "attempts": [
             {
-              "id": "string",
+              "appServerBadge": {
+                "effectiveProvider": "string",
+                "threadStatus": "string",
+              },
+              "attemptId": "string",
+              "attemptNumber": "number",
+              "costUsd": "null",
+              "endedAt": "null",
+              "errorCode": "null",
+              "errorMessage": "null",
+              "model": "string",
+              "reasoningEffort": "string",
               "startedAt": "string",
+              "status": "string",
+              "tokenUsage": "null",
             },
           ],
           "current_attempt_id": "string",

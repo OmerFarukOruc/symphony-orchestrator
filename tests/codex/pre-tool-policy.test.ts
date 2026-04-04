@@ -67,6 +67,26 @@ function permissionReason(result: HookResult): string | null {
 }
 
 describe("pre_tool_policy", () => {
+  it("ignores unrelated shell commands even when ACTIVE_RUN exists", () => {
+    const repoDir = createHookRepo({
+      slug: "sample-run",
+      phase: "execute",
+      active: true,
+      pending_phases: ["verify", "docs-tests-closeout", "final-push"],
+      pending_gates: [],
+      open_claims: 0,
+      failed_claims: 0,
+      docs_status: "pending",
+      tests_status: "pending",
+      push_status: "not_started",
+    });
+
+    const result = runPreTool(repoDir, "ls -la");
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+  });
+
   it("blocks push while an anvil run is actually active", () => {
     const repoDir = createHookRepo({
       slug: "sample-run",

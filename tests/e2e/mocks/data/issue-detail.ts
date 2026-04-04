@@ -46,6 +46,10 @@ export interface AttemptSummary {
   costUsd: number | null;
   errorCode: string | null;
   errorMessage: string | null;
+  appServerBadge?: {
+    effectiveProvider: string | null;
+    threadStatus: string | null;
+  };
 }
 
 export function buildIssueDetail(overrides?: Partial<IssueDetail>): IssueDetail {
@@ -120,6 +124,10 @@ export function buildIssueDetail(overrides?: Partial<IssueDetail>): IssueDetail 
         costUsd: null,
         errorCode: null,
         errorMessage: null,
+        appServerBadge: {
+          effectiveProvider: "openai",
+          threadStatus: "completed",
+        },
       },
     ],
     currentAttemptId: "att-001",

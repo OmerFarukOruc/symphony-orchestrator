@@ -105,10 +105,8 @@ describe("GET /api/v1/setup/status", () => {
     expect(body.steps.masterKey.done).toBe(true);
   });
 
-  it("reflects linearProject done after storing LINEAR_API_KEY", async () => {
-    delete process.env.LINEAR_API_KEY;
-
-    await secretsStore.set("LINEAR_API_KEY", "lin_integration_key");
+  it("reflects linearProject done after storing tracker.project_slug", async () => {
+    await configOverlayStore.set("tracker.project_slug", "risoluto");
 
     const response = await fetch(`${ctx.baseUrl}/api/v1/setup/status`);
     const body = (await response.json()) as { steps: { linearProject: { done: boolean } } };
@@ -392,12 +390,15 @@ describe("POST /api/v1/setup/repo-route", () => {
 /* ── GET /api/v1/setup/repo-routes ──────────────────────────────── */
 
 describe("GET /api/v1/setup/repo-routes", () => {
-  it("returns 404 when the secrets store is initialized (setup already complete guard)", async () => {
-    // secretsStore is initialized in beforeEach — this guard applies
+  it("returns repo routes even when the secrets store is initialized", async () => {
+    await configOverlayStore.set("repos", [
+      { repo_url: "https://github.com/org/repo", identifier_prefix: "ORG", default_branch: "main" },
+    ]);
+
     const response = await fetch(`${ctx.baseUrl}/api/v1/setup/repo-routes`);
-    expect(response.status).toBe(404);
-    const body = (await response.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("not_found");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { routes: unknown[] };
+    expect(body.routes).toHaveLength(1);
   });
 
   it("returns routes from overlay when store is uninitialized", async () => {

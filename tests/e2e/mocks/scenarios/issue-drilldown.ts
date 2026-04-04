@@ -23,6 +23,7 @@ export function buildIssueDrilldownScenario(): ApiMockOverrides {
     errorCode: "AGENT_ERROR",
     errorMessage: "Agent crashed during file write",
     tokenUsage: { inputTokens: 2000, outputTokens: 1000, totalTokens: 3000 },
+    appServerBadge: { effectiveProvider: "openai", threadStatus: "systemError" },
   });
 
   const runningAttempt = buildAttemptSummary({
@@ -34,6 +35,7 @@ export function buildIssueDrilldownScenario(): ApiMockOverrides {
     errorCode: null,
     errorMessage: null,
     tokenUsage: { inputTokens: 5000, outputTokens: 3000, totalTokens: 8000 },
+    appServerBadge: { effectiveProvider: "cliproxyapi", threadStatus: "active" },
   });
 
   const sym42Detail: IssueDetail = buildIssueDetail({
@@ -84,6 +86,18 @@ export function buildIssueDrilldownScenario(): ApiMockOverrides {
         turnCount: 3,
         threadId: "thread-001",
         turnId: "turn-003",
+        appServer: {
+          effectiveProvider: "openai",
+          effectiveModel: "o3-mini",
+          reasoningEffort: "medium",
+          approvalPolicy: "never",
+          threadName: "Authentication recovery",
+          threadStatus: "systemError",
+          threadStatusPayload: { type: "systemError" },
+          allowedApprovalPolicies: ["never"],
+          allowedSandboxModes: ["workspaceWrite"],
+          networkRequirements: { enabled: false },
+        },
         events: [],
       },
       "att-002": {
@@ -96,6 +110,18 @@ export function buildIssueDrilldownScenario(): ApiMockOverrides {
         turnCount: 5,
         threadId: "thread-002",
         turnId: "turn-005",
+        appServer: {
+          effectiveProvider: "cliproxyapi",
+          effectiveModel: "o3-mini",
+          reasoningEffort: "medium",
+          approvalPolicy: "never",
+          threadName: "Authentication fix thread",
+          threadStatus: "active",
+          threadStatusPayload: { type: "active", activeFlags: ["waitingOnApproval"] },
+          allowedApprovalPolicies: ["never", "onRequest"],
+          allowedSandboxModes: ["workspaceWrite"],
+          networkRequirements: { enabled: true, allowedDomains: ["api.openai.com"] },
+        },
         events: [],
       },
     },

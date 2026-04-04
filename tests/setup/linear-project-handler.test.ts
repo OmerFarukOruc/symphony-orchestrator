@@ -121,19 +121,27 @@ describe("GET /api/v1/setup/linear-projects", () => {
     expect(body.error.message).toBe("DNS resolution failed");
   });
 
-  it("returns 404 after bootstrap is configured", async () => {
+  it("still lists projects after the secrets store is initialized", async () => {
     const secretsStore = createSecretsStoreMock();
     vi.spyOn(secretsStore, "isInitialized").mockReturnValue(true);
     vi.spyOn(secretsStore, "get").mockImplementation((key) => (key === "LINEAR_API_KEY" ? "lin_api_key" : null));
+    getExternalFetchMock().mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: {
+          projects: {
+            nodes: [{ id: "p1", name: "Alpha", slugId: "alpha", teams: { nodes: [{ key: "ENG" }] } }],
+          },
+        },
+      }),
+    );
 
     const { baseUrl } = await startSetupApiServer({ secretsStore });
     const response = await fetch(`${baseUrl}/api/v1/setup/linear-projects`);
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      error: { code: "not_found", message: "Not found" },
+      projects: [{ id: "p1", name: "Alpha", slugId: "alpha", teamKey: "ENG" }],
     });
-    expect(getExternalFetchMock()).not.toHaveBeenCalled();
   });
 });
 

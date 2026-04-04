@@ -96,6 +96,7 @@ export interface AttemptSummary {
   costUsd: number | null;
   errorCode: string | null;
   errorMessage: string | null;
+  appServerBadge?: AttemptAppServerBadge;
 }
 
 export interface AttemptRecord extends AttemptSummary {
@@ -112,13 +113,16 @@ export interface AttemptRecord extends AttemptSummary {
   appServer?: AttemptAppServer;
 }
 
-export interface AttemptAppServer {
+export interface AttemptAppServerBadge {
   effectiveProvider: string | null;
+  threadStatus: string | null;
+}
+
+export interface AttemptAppServer extends AttemptAppServerBadge {
   effectiveModel: string | null;
   reasoningEffort: string | null;
   approvalPolicy: string | null;
   threadName: string | null;
-  threadStatus: string | null;
   threadStatusPayload: Record<string, unknown> | null;
   allowedApprovalPolicies: string[] | null;
   allowedSandboxModes: string[] | null;

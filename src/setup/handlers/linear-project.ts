@@ -7,11 +7,6 @@ const GRAPHQL_PAGE_SIZE = 50;
 
 export function handleGetLinearProjects(deps: SetupApiDeps) {
   return async (_req: Request, res: Response) => {
-    if (deps.secretsStore.isInitialized()) {
-      res.status(404).json({ error: { code: "not_found", message: "Not found" } });
-      return;
-    }
-
     const apiKey = getLinearApiKey(deps);
     if (!apiKey) {
       res.status(400).json({ error: { code: "missing_api_key", message: "LINEAR_API_KEY not configured" } });

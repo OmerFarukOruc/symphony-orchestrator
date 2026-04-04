@@ -10,6 +10,10 @@ export interface AttemptSummary {
   costUsd: number | null;
   errorCode: string | null;
   errorMessage: string | null;
+  appServerBadge?: {
+    effectiveProvider: string | null;
+    threadStatus: string | null;
+  };
 }
 
 export interface AttemptRecord extends AttemptSummary {
@@ -50,6 +54,10 @@ export function buildAttemptSummary(overrides?: Partial<AttemptSummary>): Attemp
     costUsd: null,
     errorCode: null,
     errorMessage: null,
+    appServerBadge: {
+      effectiveProvider: "openai",
+      threadStatus: "completed",
+    },
     ...overrides,
   };
 }

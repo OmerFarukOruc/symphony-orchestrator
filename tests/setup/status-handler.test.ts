@@ -86,10 +86,10 @@ describe("handleGetStatus", () => {
     });
   });
 
-  it("marks linearProject as done when LINEAR_API_KEY is in secrets store", () => {
-    const secretsStore = createSecretsStoreMock();
-    vi.spyOn(secretsStore, "get").mockImplementation((key) => (key === "LINEAR_API_KEY" ? "lin_key" : null));
-    const deps = makeDeps({ secretsStore });
+  it("marks linearProject as done when tracker.project_slug is in the overlay", () => {
+    const configOverlayStore = createConfigOverlayStoreMock();
+    vi.spyOn(configOverlayStore, "toMap").mockReturnValue({ "tracker.project_slug": "risoluto" });
+    const deps = makeDeps({ configOverlayStore });
     const handler = handleGetStatus(deps);
     const res = makeMockResponse();
 
@@ -100,16 +100,17 @@ describe("handleGetStatus", () => {
     });
   });
 
-  it("marks linearProject as done when LINEAR_API_KEY is in env", () => {
-    process.env.LINEAR_API_KEY = "env-linear-key";
-    const deps = makeDeps();
+  it("keeps linearProject incomplete when only LINEAR_API_KEY is present", () => {
+    const secretsStore = createSecretsStoreMock();
+    vi.spyOn(secretsStore, "get").mockImplementation((key) => (key === "LINEAR_API_KEY" ? "lin_key" : null));
+    const deps = makeDeps({ secretsStore });
     const handler = handleGetStatus(deps);
     const res = makeMockResponse();
 
     handler({} as Request, res);
 
     expect(res._body).toMatchObject({
-      steps: { linearProject: { done: true } },
+      steps: { linearProject: { done: false } },
     });
   });
 
@@ -197,9 +198,10 @@ describe("handleGetStatus", () => {
 
   it("sets configured to true only when both masterKey and linearProject are done", () => {
     const secretsStore = createSecretsStoreMock();
+    const configOverlayStore = createConfigOverlayStoreMock();
     vi.spyOn(secretsStore, "isInitialized").mockReturnValue(true);
-    vi.spyOn(secretsStore, "get").mockImplementation((key) => (key === "LINEAR_API_KEY" ? "lin_key" : null));
-    const deps = makeDeps({ secretsStore });
+    vi.spyOn(configOverlayStore, "toMap").mockReturnValue({ "tracker.project_slug": "risoluto" });
+    const deps = makeDeps({ secretsStore, configOverlayStore });
     const handler = handleGetStatus(deps);
     const res = makeMockResponse();
 

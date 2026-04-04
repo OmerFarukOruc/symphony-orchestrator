@@ -10,6 +10,47 @@ import {
   formatTimestamp,
 } from "../utils/format";
 
+function formatList(values: string[] | null | undefined): string {
+  if (!values || values.length === 0) {
+    return "—";
+  }
+  return values.join(", ");
+}
+
+function formatAppServerSummary(detail: AttemptRecord | null): string {
+  const provider = detail?.appServer?.effectiveProvider;
+  const status = detail?.appServer?.threadStatus;
+  if (!provider && !status) {
+    return "Not captured";
+  }
+  return [provider ?? "provider unknown", status ?? "status unknown"].join(" · ");
+}
+
+function formatAppServerRequirements(detail: AttemptRecord | null): string {
+  const appServer = detail?.appServer;
+  if (!appServer) {
+    return "Runtime requirements were not archived for this run.";
+  }
+
+  return [
+    `Approval: ${appServer.approvalPolicy ?? formatList(appServer.allowedApprovalPolicies)}`,
+    `Sandbox: ${formatList(appServer.allowedSandboxModes)}`,
+  ].join(" · ");
+}
+
+function formatAppServerNote(detail: AttemptRecord | null): string {
+  const appServer = detail?.appServer;
+  if (!appServer) {
+    return "App-server introspection was not captured for this run.";
+  }
+
+  return [
+    appServer.threadName ?? "Unnamed thread",
+    appServer.effectiveModel ?? detail?.model ?? "model unknown",
+    appServer.threadStatus ?? "status unknown",
+  ].join(" · ");
+}
+
 export function renderRunsLoadingPanel(): HTMLElement {
   const shell = document.createElement("div");
   shell.className = "runs-detail-panel";
@@ -54,6 +95,7 @@ export function renderRunsSummary(attempt: AttemptSummary, detail: AttemptRecord
         ? `${formatCompactNumber(attempt.tokenUsage.totalTokens)} total · ${formatCompactNumber(attempt.tokenUsage.inputTokens)} in · ${formatCompactNumber(attempt.tokenUsage.outputTokens)} out`
         : "—",
     ],
+    ["App-server", formatAppServerSummary(detail)],
     ["Thread / turns", `${detail?.threadId ?? "—"} · ${detail?.turnCount ?? 0} turns`],
   ];
 
@@ -80,10 +122,16 @@ export function renderRunsSummary(attempt: AttemptSummary, detail: AttemptRecord
   const workspace = document.createElement("p");
   workspace.className = "text-secondary";
   workspace.textContent = `Workspace: ${detail?.workspacePath ?? detail?.workspaceKey ?? "Not captured in archive"}`;
+  const appServer = document.createElement("p");
+  appServer.className = "text-secondary runs-detail-note";
+  appServer.textContent = `App-server: ${formatAppServerNote(detail)}`;
+  const requirements = document.createElement("p");
+  requirements.className = "text-secondary runs-detail-note";
+  requirements.textContent = `Requirements: ${formatAppServerRequirements(detail)}`;
   const error = document.createElement("p");
   error.className = attempt.errorMessage || attempt.errorCode ? "runs-inline-error" : "text-secondary";
   error.textContent = attempt.errorMessage ?? attempt.errorCode ?? "No recorded error for this run.";
-  notes.append(noteTitle, workspace, error);
+  notes.append(noteTitle, workspace, appServer, requirements, error);
 
   panel.append(header, strip, notes);
   return panel;

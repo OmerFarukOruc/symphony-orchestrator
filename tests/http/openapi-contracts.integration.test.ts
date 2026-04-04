@@ -177,6 +177,7 @@ function buildSeededOrchestrator(): OrchestratorPort {
         costUsd: null,
         errorCode: null,
         errorMessage: null,
+        appServerBadge: { effectiveProvider: "cliproxyapi", threadStatus: "active" },
       },
     ],
     currentAttemptId: "att-1",
@@ -194,6 +195,19 @@ function buildSeededOrchestrator(): OrchestratorPort {
     costUsd: null,
     errorCode: null,
     errorMessage: null,
+    appServerBadge: { effectiveProvider: "cliproxyapi", threadStatus: "active" },
+    appServer: {
+      effectiveProvider: "cliproxyapi",
+      effectiveModel: "o4-mini",
+      reasoningEffort: null,
+      approvalPolicy: "never",
+      threadName: "Issue thread",
+      threadStatus: "active",
+      threadStatusPayload: { type: "active" },
+      allowedApprovalPolicies: ["never"],
+      allowedSandboxModes: ["workspaceWrite"],
+      networkRequirements: { enabled: true },
+    },
     events: [
       {
         at: "2026-01-01T00:00:00Z",

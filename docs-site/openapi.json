@@ -2931,10 +2931,198 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "propertyNames": {
-                          "type": "string"
+                        "properties": {
+                          "attemptId": {
+                            "type": "string"
+                          },
+                          "attemptNumber": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "startedAt": {
+                            "type": "string"
+                          },
+                          "endedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "model": {
+                            "type": "string"
+                          },
+                          "reasoningEffort": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "tokenUsage": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "inputTokens": {
+                                    "type": "number"
+                                  },
+                                  "outputTokens": {
+                                    "type": "number"
+                                  },
+                                  "totalTokens": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": ["inputTokens", "outputTokens", "totalTokens"],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "costUsd": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "errorCode": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "errorMessage": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "appServerBadge": {
+                            "type": "object",
+                            "properties": {
+                              "effectiveProvider": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "threadStatus": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": ["effectiveProvider", "threadStatus"],
+                            "additionalProperties": false
+                          },
+                          "issueIdentifier": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "workspacePath": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "workspaceKey": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "modelSource": {
+                            "type": "string",
+                            "enum": ["default", "override"]
+                          },
+                          "turnCount": {
+                            "type": "number"
+                          },
+                          "threadId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "turnId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
                         },
-                        "additionalProperties": {}
+                        "required": [
+                          "attemptId",
+                          "attemptNumber",
+                          "startedAt",
+                          "endedAt",
+                          "status",
+                          "model",
+                          "reasoningEffort",
+                          "tokenUsage",
+                          "costUsd",
+                          "errorCode",
+                          "errorMessage"
+                        ],
+                        "additionalProperties": false
                       }
                     },
                     "currentAttemptId": {
@@ -3495,10 +3683,198 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "propertyNames": {
-                          "type": "string"
+                        "properties": {
+                          "attemptId": {
+                            "type": "string"
+                          },
+                          "attemptNumber": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "startedAt": {
+                            "type": "string"
+                          },
+                          "endedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "model": {
+                            "type": "string"
+                          },
+                          "reasoningEffort": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["none", "minimal", "low", "medium", "high", "xhigh"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "tokenUsage": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "inputTokens": {
+                                    "type": "number"
+                                  },
+                                  "outputTokens": {
+                                    "type": "number"
+                                  },
+                                  "totalTokens": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": ["inputTokens", "outputTokens", "totalTokens"],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "costUsd": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "errorCode": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "errorMessage": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "appServerBadge": {
+                            "type": "object",
+                            "properties": {
+                              "effectiveProvider": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "threadStatus": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": ["effectiveProvider", "threadStatus"],
+                            "additionalProperties": false
+                          },
+                          "issueIdentifier": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "workspacePath": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "workspaceKey": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "modelSource": {
+                            "type": "string",
+                            "enum": ["default", "override"]
+                          },
+                          "turnCount": {
+                            "type": "number"
+                          },
+                          "threadId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "turnId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
                         },
-                        "additionalProperties": {}
+                        "required": [
+                          "attemptId",
+                          "attemptNumber",
+                          "startedAt",
+                          "endedAt",
+                          "status",
+                          "model",
+                          "reasoningEffort",
+                          "tokenUsage",
+                          "costUsd",
+                          "errorCode",
+                          "errorMessage"
+                        ],
+                        "additionalProperties": false
                       }
                     },
                     "current_attempt_id": {
@@ -3729,6 +4105,33 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "appServerBadge": {
+                      "type": "object",
+                      "properties": {
+                        "effectiveProvider": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "threadStatus": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["effectiveProvider", "threadStatus"],
+                      "additionalProperties": false
                     },
                     "issueIdentifier": {
                       "type": "string"

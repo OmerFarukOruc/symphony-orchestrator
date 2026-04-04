@@ -32,6 +32,7 @@ export interface AttemptSummary {
   costUsd: number | null;
   errorCode: string | null;
   errorMessage: string | null;
+  appServerBadge?: AttemptAppServerBadgeView;
   issueIdentifier?: string;
   title?: string;
   workspacePath?: string | null;
@@ -42,13 +43,16 @@ export interface AttemptSummary {
   turnId?: string | null;
 }
 
-export interface AttemptAppServerView {
+export interface AttemptAppServerBadgeView {
   effectiveProvider: string | null;
+  threadStatus: string | null;
+}
+
+export interface AttemptAppServerView extends AttemptAppServerBadgeView {
   effectiveModel: string | null;
   reasoningEffort: string | null;
   approvalPolicy: string | null;
   threadName: string | null;
-  threadStatus: string | null;
   threadStatusPayload: Record<string, unknown> | null;
   allowedApprovalPolicies: string[] | null;
   allowedSandboxModes: string[] | null;
@@ -214,7 +218,9 @@ export function buildIssueDetail(
     configuredTemplateId: templateId,
     configuredTemplateName: templateName,
     recentEvents: relatedEvents,
-    attempts: archivedAttempts.map((attempt) => buildAttemptSummary(attempt)),
+    attempts: archivedAttempts.map((attempt) =>
+      buildAttemptSummary(attempt, deps.attemptStore.getEvents(attempt.attemptId)),
+    ),
     currentAttemptId: runningEntry?.runId ?? null,
   };
 }
@@ -233,7 +239,7 @@ export function buildAttemptDetail(attemptId: string, deps: SnapshotBuilderDeps)
   }
   const events = deps.attemptStore.getEvents(attemptId);
   return {
-    ...buildAttemptSummary(attempt),
+    ...buildAttemptSummary(attempt, events),
     events,
     appServer: buildAttemptAppServer(attempt, events),
   };
@@ -281,32 +287,6 @@ function computeArchivedTokenField(
   return Math.max(archived[field], liveCodexTotals[field]);
 }
 
-// Builds a minimal attempt summary from an AttemptRecord.
-function buildAttemptSummary(attempt: AttemptRecord): AttemptSummary {
-  const costUsd = computeAttemptCostUsd(attempt);
-  return {
-    attemptId: attempt.attemptId,
-    attemptNumber: attempt.attemptNumber,
-    startedAt: attempt.startedAt,
-    endedAt: attempt.endedAt,
-    status: attempt.status,
-    model: attempt.model,
-    reasoningEffort: attempt.reasoningEffort,
-    tokenUsage: attempt.tokenUsage,
-    costUsd,
-    errorCode: attempt.errorCode,
-    errorMessage: attempt.errorMessage,
-    issueIdentifier: attempt.issueIdentifier,
-    title: attempt.title,
-    workspacePath: attempt.workspacePath,
-    workspaceKey: attempt.workspaceKey,
-    modelSource: attempt.modelSource,
-    turnCount: attempt.turnCount,
-    threadId: attempt.threadId,
-    turnId: attempt.turnId,
-  };
-}
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -342,6 +322,19 @@ function extractThreadStatusPayload(event: RecentEvent | null): Record<string, u
 
 function hasAppServerData(value: AttemptAppServerView): boolean {
   return Object.values(value).some((entry) => entry !== null);
+}
+
+function buildAttemptAppServerBadge(
+  appServer: AttemptAppServerView | undefined,
+): AttemptAppServerBadgeView | undefined {
+  if (!appServer) {
+    return undefined;
+  }
+  const badge: AttemptAppServerBadgeView = {
+    effectiveProvider: appServer.effectiveProvider,
+    threadStatus: appServer.threadStatus,
+  };
+  return Object.values(badge).some((entry) => entry !== null) ? badge : undefined;
 }
 
 function buildConfigSummary(
@@ -388,6 +381,33 @@ function buildAttemptAppServer(attempt: AttemptRecord, events: RecentEvent[]): A
     ...buildThreadSummary(events),
     ...buildRequirementsSummary(events),
   };
-
   return hasAppServerData(summary) ? summary : undefined;
+}
+
+// Builds a minimal attempt summary from an AttemptRecord.
+function buildAttemptSummary(attempt: AttemptRecord, events: RecentEvent[] = []): AttemptSummary {
+  const costUsd = computeAttemptCostUsd(attempt);
+  const appServer = buildAttemptAppServer(attempt, events);
+  return {
+    attemptId: attempt.attemptId,
+    attemptNumber: attempt.attemptNumber,
+    startedAt: attempt.startedAt,
+    endedAt: attempt.endedAt,
+    status: attempt.status,
+    model: attempt.model,
+    reasoningEffort: attempt.reasoningEffort,
+    tokenUsage: attempt.tokenUsage,
+    costUsd,
+    errorCode: attempt.errorCode,
+    errorMessage: attempt.errorMessage,
+    appServerBadge: buildAttemptAppServerBadge(appServer),
+    issueIdentifier: attempt.issueIdentifier,
+    title: attempt.title,
+    workspacePath: attempt.workspacePath,
+    workspaceKey: attempt.workspaceKey,
+    modelSource: attempt.modelSource,
+    turnCount: attempt.turnCount,
+    threadId: attempt.threadId,
+    turnId: attempt.turnId,
+  };
 }
