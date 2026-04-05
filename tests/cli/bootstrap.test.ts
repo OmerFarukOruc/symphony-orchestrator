@@ -94,7 +94,21 @@ describe("CLI parseCliArgs (via main module)", () => {
   it("rejects invalid --port values before startup", async () => {
     const { main } = await import("../../src/cli/index.js");
     await expect(main(["--port", "abc"])).rejects.toThrow(
-      "invalid --port value: abc. Expected an integer between 0 and 65535.",
+      "invalid --port value: abc. Expected an integer between 1 and 65535 with no leading zeros.",
+    );
+  });
+
+  it("rejects --port 0 (anvil hardening: port 0 means 'any' and must be explicit)", async () => {
+    const { main } = await import("../../src/cli/index.js");
+    await expect(main(["--port", "0"])).rejects.toThrow(
+      "invalid --port value: 0. Expected an integer between 1 and 65535 with no leading zeros.",
+    );
+  });
+
+  it("rejects --port with leading zeros (anvil hardening: 00004000 is not 4000)", async () => {
+    const { main } = await import("../../src/cli/index.js");
+    await expect(main(["--port", "04000"])).rejects.toThrow(
+      "invalid --port value: 04000. Expected an integer between 1 and 65535 with no leading zeros.",
     );
   });
 });

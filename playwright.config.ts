@@ -1,7 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 5173;
+// oh-my-anvil adoption: honor ANVIL_FRONTEND_PORT so parallel factory runs
+// don't collide on 5173. Visual regression viewport also env-driven so the
+// 2560x1440 mandate from the verify battery applies per-run without a code
+// change.
+const PORT = Number(process.env.ANVIL_FRONTEND_PORT ?? 5173);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+const VISUAL_VIEWPORT_WIDTH = Number(process.env.ANVIL_VISUAL_VIEWPORT_WIDTH ?? 2560);
+const VISUAL_VIEWPORT_HEIGHT = Number(process.env.ANVIL_VISUAL_VIEWPORT_HEIGHT ?? 1440);
 const isCI = !!process.env.CI;
 
 export default defineConfig({
@@ -31,8 +37,10 @@ export default defineConfig({
       testMatch: ["**/*.visual.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
-        // Deterministic viewport for visual regression
-        viewport: { width: 2560, height: 1440 },
+        // Deterministic viewport for visual regression. 2560x1440 by default
+        // (matches Omer's review resolution). Override per-run via
+        // ANVIL_VISUAL_VIEWPORT_WIDTH / ANVIL_VISUAL_VIEWPORT_HEIGHT.
+        viewport: { width: VISUAL_VIEWPORT_WIDTH, height: VISUAL_VIEWPORT_HEIGHT },
       },
     },
   ],
