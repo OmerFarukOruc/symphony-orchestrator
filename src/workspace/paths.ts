@@ -3,7 +3,10 @@ import path from "node:path";
 const SAFE_PATH_DIRS = new Set(["/usr/local/bin", "/usr/bin", "/bin", "/usr/local/sbin", "/usr/sbin", "/sbin"]);
 
 export function buildSafePath(): string {
-  const current = process.env.PATH ?? "";
+  const current = process.env.PATH;
+  if (!current) {
+    return "/usr/local/bin:/usr/bin:/bin";
+  }
   const filtered = current.split(":").filter((dir) => SAFE_PATH_DIRS.has(dir));
   return filtered.length > 0 ? filtered.join(":") : "/usr/local/bin:/usr/bin:/bin";
 }
