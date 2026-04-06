@@ -36,15 +36,7 @@ export async function loadWorkflowDefinition(workflowPath: string): Promise<Work
     };
   }
 
-  const firstNewline = source.indexOf("\n");
-  if (firstNewline === -1) {
-    throw new WorkflowLoaderError({
-      code: "workflow_parse_error",
-      message: "workflow front matter is not closed with a terminating --- line",
-    });
-  }
-
-  const endMarker = source.indexOf("\n---", firstNewline);
+  const endMarker = source.indexOf("\n---");
   if (endMarker === -1) {
     throw new WorkflowLoaderError({
       code: "workflow_parse_error",
@@ -52,7 +44,7 @@ export async function loadWorkflowDefinition(workflowPath: string): Promise<Work
     });
   }
 
-  const frontMatterContent = source.slice(firstNewline + 1, endMarker);
+  const frontMatterContent = source.slice(4, endMarker);
   const afterEnd = source.indexOf("\n", endMarker + 4);
   const body = afterEnd === -1 ? "" : source.slice(afterEnd + 1);
 
