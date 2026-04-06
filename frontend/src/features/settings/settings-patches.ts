@@ -1,4 +1,4 @@
-import { parsePathValue } from "./config-helpers";
+import { parsePathValue } from "../../views/config-helpers";
 import type { SettingsFieldDefinition, SettingsSectionDefinition } from "./settings-types";
 import { getValueAtPath, setValueAtPath } from "./settings-paths";
 

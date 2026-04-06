@@ -1,6 +1,6 @@
 import type { Express, Response } from "express";
 
-import { SecretsStore } from "./store.js";
+import type { SecretsPort } from "./port.js";
 import { methodNotAllowed } from "../http/route-helpers.js";
 import { isRecord } from "../utils/type-guards.js";
 
@@ -23,7 +23,7 @@ function validateSecretKeyOrReject(key: string | undefined, response: Response):
 }
 
 interface SecretsApiDeps {
-  secretsStore: SecretsStore;
+  secretsStore: SecretsPort;
 }
 
 export function registerSecretsApi(app: Express, deps: SecretsApiDeps): void {

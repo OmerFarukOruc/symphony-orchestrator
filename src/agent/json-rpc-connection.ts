@@ -2,7 +2,7 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import {
   createErrorResponse,
-  createRequest,
+  createIdCounter,
   isJsonRpcErrorResponse,
   isJsonRpcNotification,
   isJsonRpcRequest,
@@ -24,6 +24,7 @@ export class JsonRpcTimeoutError extends Error {
 
 export class JsonRpcConnection {
   private buffer = "";
+  private readonly createRequest = createIdCounter();
   private readonly pending = new Map<
     JsonRpcId,
     {
@@ -102,7 +103,7 @@ export class JsonRpcConnection {
     if (this._exited) {
       return Promise.reject(new Error("connection already exited"));
     }
-    const request = createRequest(method, params);
+    const request = this.createRequest(method, params);
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(request.id);

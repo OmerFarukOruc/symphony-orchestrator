@@ -29,6 +29,10 @@ class Counter {
     this.values.set(key, (this.values.get(key) ?? 0) + 1);
   }
 
+  reset(): void {
+    this.values.clear();
+  }
+
   serialize(name: string, help: string): string {
     return serializeKeyValue(name, help, "counter", this.values);
   }
@@ -50,6 +54,10 @@ class Histogram {
 
   constructor(buckets: readonly number[] = DEFAULT_BUCKETS) {
     this.buckets = buckets;
+  }
+
+  reset(): void {
+    this.states.clear();
   }
 
   // Hot path: called per HTTP request. In-place mutation is intentional to avoid
@@ -101,6 +109,10 @@ class Gauge {
     this.values.set(labelKey(labels), value);
   }
 
+  reset(): void {
+    this.values.clear();
+  }
+
   serialize(name: string, help: string): string {
     return serializeKeyValue(name, help, "gauge", this.values);
   }
@@ -132,6 +144,26 @@ export class MetricsCollector {
   readonly webhookDlqCount = new Gauge();
   readonly webhookLastDeliveryAgeSeconds = new Gauge();
   readonly webhookProcessingLatencySeconds = new Histogram();
+
+  /** Reset all counters, gauges, and histograms to their initial empty state. */
+  reset(): void {
+    this.httpRequestsTotal.reset();
+    this.httpRequestDurationSeconds.reset();
+    this.orchestratorPollsTotal.reset();
+    this.agentRunsTotal.reset();
+    this.containerCpuPercent.reset();
+    this.containerMemoryPercent.reset();
+    this.webhookDeliveriesTotal.reset();
+    this.webhookDuplicatesTotal.reset();
+    this.webhookEventsProcessedTotal.reset();
+    this.webhookProcessorRetriesTotal.reset();
+    this.webhookDlqTotal.reset();
+    this.webhookSubscriptionChecksTotal.reset();
+    this.webhookBacklogCount.reset();
+    this.webhookDlqCount.reset();
+    this.webhookLastDeliveryAgeSeconds.reset();
+    this.webhookProcessingLatencySeconds.reset();
+  }
 
   serialize(): string {
     return [
@@ -179,4 +211,10 @@ export class MetricsCollector {
   }
 }
 
-export const globalMetrics = new MetricsCollector();
+/**
+ * Create a fresh, isolated MetricsCollector instance.
+ * Use this for dependency injection and per-test isolation.
+ */
+export function createMetricsCollector(): MetricsCollector {
+  return new MetricsCollector();
+}

@@ -11,3 +11,13 @@ export interface GitRunResult {
 }
 
 export type GitRunner = (args: string[], options: GitCommandOptions) => Promise<GitRunResult>;
+
+/**
+ * Typed subset of the GitHub REST API response for a newly created (or
+ * found existing) pull request. Returned by `GitPostRunPort.createPullRequest`.
+ */
+export interface PrCreateResult {
+  html_url: string;
+  number: number;
+  state: "open" | "closed";
+}

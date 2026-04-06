@@ -1,4 +1,4 @@
-import { buildDiffText, prettyJson, redactPath } from "./config-helpers";
+import { buildDiffText, prettyJson, redactPath } from "../../views/config-helpers";
 import { buildDefaultSections } from "./settings-section-defs.js";
 import { buildSectionPatchPlan } from "./settings-patches";
 import { getValueAtPath, setValueAtPath } from "./settings-paths";

@@ -1,14 +1,14 @@
 import type { Request, Response } from "express";
 
 import type { ConfigOverlayPort } from "../config/overlay.js";
-import type { SecretsStore } from "../secrets/store.js";
+import type { SecretsPort } from "../secrets/port.js";
 import { isRecord } from "../utils/type-guards.js";
 
 const GITHUB_URL_RE = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(?:\.git)?$/u;
 
 export interface RepoRouteApiDeps {
   configOverlayStore: ConfigOverlayPort;
-  secretsStore: SecretsStore;
+  secretsStore: SecretsPort;
 }
 
 interface RepoEntry {

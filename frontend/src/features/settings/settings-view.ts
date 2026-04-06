@@ -1,12 +1,12 @@
-import { api } from "../api.js";
-import { createEmptyState } from "../components/empty-state.js";
-import { createPageHeader } from "../components/page-header.js";
-import { openProjectPicker } from "../components/project-picker.js";
-import { registerKeyboardScope } from "../ui/keyboard-scope.js";
-import { skeletonBlock } from "../ui/skeleton.js";
-import { toast } from "../ui/toast.js";
-import { createAsyncState, handleError, withLoading } from "../utils/async-state.js";
-import { renderAsyncState } from "../utils/render-guards.js";
+import { api } from "../../api.js";
+import { createEmptyState } from "../../components/empty-state.js";
+import { createPageHeader } from "../../components/page-header.js";
+import { openProjectPicker } from "../../components/project-picker.js";
+import { registerKeyboardScope } from "../../ui/keyboard-scope.js";
+import { skeletonBlock } from "../../ui/skeleton.js";
+import { toast } from "../../ui/toast.js";
+import { createAsyncState, handleError, withLoading } from "../../utils/async-state.js";
+import { renderAsyncState } from "../../utils/render-guards.js";
 
 import { buildSettingsSections, getSectionById, sectionVisibleInMode } from "./settings-helpers.js";
 import { createSettingsKeyboardHandler } from "./settings-keyboard.js";

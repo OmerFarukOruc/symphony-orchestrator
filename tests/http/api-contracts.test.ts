@@ -90,6 +90,16 @@ function makeOrchestrator() {
   };
 }
 
+function makeLogger() {
+  return {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    child: vi.fn().mockImplementation(() => makeLogger()),
+  };
+}
+
 let server: http.Server;
 let port: number;
 let orchestrator: ReturnType<typeof makeOrchestrator>;
@@ -100,6 +110,7 @@ beforeAll(async () => {
   app.use(express.json());
   registerHttpRoutes(app, {
     orchestrator: orchestrator as never,
+    logger: makeLogger() as never,
     frontendDir: "/tmp",
   });
   await new Promise<void>((resolve) => {

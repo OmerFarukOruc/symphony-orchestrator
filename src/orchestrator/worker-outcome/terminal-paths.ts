@@ -1,21 +1,13 @@
 import type { OutcomeContext } from "../context.js";
-import type { RunOutcome, Workspace, Issue, ModelSelection } from "../../core/types.js";
-import type { RunningEntry } from "../runtime-types.js";
 import { buildOutcomeView } from "../outcome-view-builder.js";
 import { nowIso } from "../views.js";
 import { issueRef, outcomeToStatus } from "./types.js";
+import type { PreparedWorkerOutcome } from "./types.js";
 import { toErrorString } from "../../utils/type-guards.js";
 import { writeFailureWriteback } from "./completion-writeback.js";
 
-export function handleServiceStopped(
-  ctx: OutcomeContext,
-  outcome: RunOutcome,
-  entry: RunningEntry,
-  issue: Issue,
-  workspace: Workspace,
-  modelSelection: ModelSelection,
-  attempt: number | null,
-): void {
+export function handleServiceStopped(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): void {
+  const { outcome, entry, latestIssue: issue, workspace, modelSelection, attempt } = prepared;
   ctx.notify({
     type: "worker_failed",
     severity: "critical",
@@ -41,15 +33,8 @@ export function handleServiceStopped(
   });
 }
 
-export async function handleTerminalCleanup(
-  ctx: OutcomeContext,
-  outcome: RunOutcome,
-  entry: RunningEntry,
-  issue: Issue,
-  workspace: Workspace,
-  modelSelection: ModelSelection,
-  attempt: number | null,
-): Promise<void> {
+export async function handleTerminalCleanup(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): Promise<void> {
+  const { outcome, entry, latestIssue: issue, workspace, modelSelection, attempt } = prepared;
   const removalResult = ctx.deps.workspaceManager.removeWorkspaceWithResult
     ? await ctx.deps.workspaceManager.removeWorkspaceWithResult(issue.identifier, issue).catch((error) => {
         ctx.deps.logger.info(
@@ -114,15 +99,8 @@ export async function handleTerminalCleanup(
   ctx.releaseIssueClaim(issue.id);
 }
 
-export function handleInactiveIssue(
-  ctx: OutcomeContext,
-  _outcome: RunOutcome,
-  entry: RunningEntry,
-  issue: Issue,
-  workspace: Workspace,
-  modelSelection: ModelSelection,
-  _attempt: number | null,
-): void {
+export function handleInactiveIssue(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): void {
+  const { entry, latestIssue: issue, workspace, modelSelection } = prepared;
   ctx.completedViews.set(
     issue.identifier,
     buildOutcomeView(issue, workspace, entry, modelSelection, {
@@ -138,15 +116,8 @@ export function handleInactiveIssue(
   ctx.releaseIssueClaim(issue.id);
 }
 
-export function handleOperatorAbort(
-  ctx: OutcomeContext,
-  outcome: RunOutcome,
-  entry: RunningEntry,
-  issue: Issue,
-  workspace: Workspace,
-  modelSelection: ModelSelection,
-  attempt: number | null,
-): void {
+export function handleOperatorAbort(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): void {
+  const { outcome, entry, latestIssue: issue, workspace, modelSelection, attempt } = prepared;
   ctx.notify({
     type: "worker_failed",
     severity: "info",
@@ -176,13 +147,9 @@ export function handleOperatorAbort(
 
 export async function handleCancelledOrHardFailure(
   ctx: OutcomeContext,
-  outcome: RunOutcome,
-  entry: RunningEntry,
-  issue: Issue,
-  workspace: Workspace,
-  modelSelection: ModelSelection,
-  attempt: number | null,
+  prepared: PreparedWorkerOutcome,
 ): Promise<void> {
+  const { outcome, entry, latestIssue: issue, workspace, modelSelection, attempt } = prepared;
   const errorReason = outcome.errorMessage ?? outcome.errorCode ?? "worker stopped without a retry";
   ctx.notify({
     type: "worker_failed",

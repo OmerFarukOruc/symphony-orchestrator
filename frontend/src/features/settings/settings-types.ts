@@ -3,7 +3,7 @@
  * between settings-helpers.ts, settings-section-defs.ts, and settings-patches.ts.
  */
 
-import type { IconName } from "../ui/icons";
+import type { IconName } from "../../ui/icons";
 
 /** Controls which settings are visible: "simple" keeps the common settings in front. */
 export type SettingsMode = "simple" | "advanced";

@@ -399,10 +399,11 @@ async function runPollingLoop(
 
 async function enrichWithPrUrl(ctx: RunContext, attemptData: Record<string, unknown>): Promise<void> {
   // The PR is created asynchronously after the attempt reaches `completed` status.
-  // Retry for up to 10 seconds to allow the git post-run step to finish.
-  const maxAttempts = 5;
+  // Poll for the full PR verification timeout so slower GitHub post-run work
+  // does not cause a false negative after an otherwise successful run.
   const retryDelayMs = 2000;
-  for (let i = 0; i < maxAttempts; i++) {
+  const deadline = Date.now() + ctx.config.timeouts.pr_verification_ms;
+  while (Date.now() < deadline) {
     try {
       const detail = (await fetchJson(`${ctx.baseUrl}/api/v1/${ctx.issueIdentifier}`)) as IssueDetailResponse;
       if (detail.pullRequestUrl) {
@@ -413,9 +414,11 @@ async function enrichWithPrUrl(ctx: RunContext, attemptData: Record<string, unkn
     } catch {
       log(ctx, "Could not fetch issue detail for PR URL");
     }
-    if (i < maxAttempts - 1) {
-      await sleep(retryDelayMs);
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      break;
     }
+    await sleep(Math.min(retryDelayMs, remainingMs));
   }
 }
 

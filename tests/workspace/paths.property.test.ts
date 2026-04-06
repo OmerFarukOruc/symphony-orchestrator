@@ -31,9 +31,12 @@ describe("property: sanitizeIdentifier", () => {
 
   it("preserves already-safe identifiers unchanged", () => {
     fc.assert(
-      fc.property(fc.stringMatching(/^[\w.-]{0,50}$/), (input) => {
-        expect(sanitizeIdentifier(input)).toBe(input);
-      }),
+      fc.property(
+        fc.stringMatching(/^[\w.-]{0,50}$/).filter((input) => input !== "." && input !== ".."),
+        (input) => {
+          expect(sanitizeIdentifier(input)).toBe(input);
+        },
+      ),
     );
   });
 

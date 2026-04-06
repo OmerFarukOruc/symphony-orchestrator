@@ -1,5 +1,5 @@
-import { randomInt } from "node:crypto";
 import { asArray, asRecord, asStringOrNull, toErrorString } from "../utils/type-guards.js";
+import { withRetry, withRetryReturn } from "../utils/retry.js";
 import { normalizeIssue } from "./issue-parser.js";
 import type { Issue, ServiceConfig, RisolutoLogger } from "../core/types.js";
 import {
@@ -235,7 +235,7 @@ export class LinearClient {
     label?: string;
     secret?: string;
   }): Promise<{ id: string; secret: string | null }> {
-    const payload = await this.withRetryReturn("createWebhook", async () => {
+    const payload = await withRetryReturn(this.logger, "createWebhook", async () => {
       return this.runGraphQL(buildWebhookCreateMutation(), {
         url: input.url,
         teamIds: input.teamIds ?? null,
@@ -265,7 +265,7 @@ export class LinearClient {
       secret?: string;
     },
   ): Promise<void> {
-    await this.withRetry("updateWebhook", async () => {
+    await withRetry(this.logger, "updateWebhook", async () => {
       await this.runGraphQL(buildWebhookUpdateMutation(), { id, ...input });
     });
   }
@@ -275,7 +275,7 @@ export class LinearClient {
    * Retries up to 3 times with exponential backoff.
    */
   async deleteWebhook(id: string): Promise<void> {
-    await this.withRetry("deleteWebhook", async () => {
+    await withRetry(this.logger, "deleteWebhook", async () => {
       await this.runGraphQL(buildWebhookDeleteMutation(), { id });
     });
   }
@@ -285,7 +285,7 @@ export class LinearClient {
    * Retries up to 3 times with exponential backoff. Non-blocking on failure.
    */
   async updateIssueState(issueId: string, stateId: string): Promise<void> {
-    await this.withRetry("updateIssueState", async () => {
+    await withRetry(this.logger, "updateIssueState", async () => {
       await this.runGraphQL(buildIssueTransitionMutation(), { issueId, stateId });
     });
   }
@@ -295,7 +295,7 @@ export class LinearClient {
    * Retries up to 3 times with exponential backoff. Non-blocking on failure.
    */
   async createComment(issueId: string, body: string): Promise<void> {
-    await this.withRetry("createComment", async () => {
+    await withRetry(this.logger, "createComment", async () => {
       await this.runGraphQL(buildIssueCommentMutation(), { issueId, body });
     });
   }
@@ -311,7 +311,7 @@ export class LinearClient {
       throw new LinearClientError("linear_unknown_payload", "project team could not be resolved for issue creation");
     }
     const stateId = input.stateName ? await this.resolveTeamStateId(project.teamId, input.stateName) : null;
-    const payload = await this.withRetryReturn("createIssue", async () => {
+    const payload = await withRetryReturn(this.logger, "createIssue", async () => {
       return this.runGraphQL(buildCreateIssueMutation(), {
         teamId: project.teamId,
         projectId: project.projectId,
@@ -329,45 +329,6 @@ export class LinearClient {
       throw new LinearClientError("linear_unknown_payload", "linear issue creation was not confirmed");
     }
     return { issueId, identifier, url };
-  }
-
-  private async withRetry(operation: string, fn: () => Promise<void>): Promise<void> {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        await fn();
-        return;
-      } catch (error) {
-        if (attempt === maxAttempts) {
-          this.logger.warn(
-            { operation, attempt, error: toErrorString(error) },
-            "linear write-back failed after max retries (non-fatal)",
-          );
-          return;
-        }
-        const delayMs = 1000 * 2 ** (attempt - 1) * (randomInt(500, 1000) / 1000);
-        this.logger.warn({ operation, attempt, delayMs, error: toErrorString(error) }, "linear write-back retry");
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-  }
-
-  private async withRetryReturn<T>(operation: string, fn: () => Promise<T>): Promise<T> {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        return await fn();
-      } catch (error) {
-        if (attempt === maxAttempts) {
-          throw error;
-        }
-        const delayMs = 1000 * 2 ** (attempt - 1) * (randomInt(500, 1000) / 1000);
-        this.logger.warn({ operation, attempt, delayMs, error: toErrorString(error) }, "linear write-back retry");
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-    /* c8 ignore next -- unreachable: loop always returns or throws */
-    throw new LinearClientError("linear_unknown_payload", `${operation} exhausted retries without result`);
   }
 
   async runGraphQL(

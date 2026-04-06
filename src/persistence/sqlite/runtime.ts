@@ -49,6 +49,10 @@ export async function initPersistenceRuntime(options: PersistenceRuntimeOptions)
 
   if (mode === "jsonl") {
     // Legacy JSONL mode — no shared DB, attempt store manages its own files.
+    logger.warn(
+      { mode: "jsonl" },
+      "JSONL persistence mode is deprecated. Set RISOLUTO_PERSISTENCE=sqlite (or unset the variable) to enable full features including PR tracking and checkpoint history.",
+    );
     const store = new AttemptStore(dataDir, storeLogger);
     await store.start();
     return {

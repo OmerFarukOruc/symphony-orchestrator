@@ -159,26 +159,65 @@ export class AttemptStore {
     await appendFile(this.eventsPath(event.attemptId), serialized, "utf8");
   }
 
+  /**
+   * @legacy JSONL store stub — not implemented.
+   *
+   * Checkpoint history requires SQLite. Unset `RISOLUTO_PERSISTENCE` (or set
+   * it to `sqlite`) to enable checkpoint tracking.
+   *
+   * @throws {TypeError} Always.
+   */
   async appendCheckpoint(_checkpoint: Omit<AttemptCheckpointRecord, "checkpointId" | "ordinal">): Promise<void> {
     throw new TypeError("appendCheckpoint not supported in JSONL mode");
   }
 
+  /**
+   * @legacy JSONL store stub — not implemented.
+   *
+   * Checkpoint history requires SQLite. Unset `RISOLUTO_PERSISTENCE` (or set
+   * it to `sqlite`) to enable checkpoint listing.
+   *
+   * @throws {TypeError} Always.
+   */
   async listCheckpoints(_attemptId: string): Promise<AttemptCheckpointRecord[]> {
     throw new TypeError("listCheckpoints not supported in JSONL mode");
   }
 
+  /**
+   * @legacy JSONL store stub — not implemented.
+   *
+   * PR tracking requires SQLite. To enable PR monitoring, migrate to SQLite
+   * by unsetting `RISOLUTO_PERSISTENCE` (or setting it to `sqlite`).
+   *
+   * @throws {TypeError} Always.
+   */
   async upsertPr(_pr: UpsertPrInput): Promise<void> {
     throw new TypeError("upsertPr not supported in JSONL mode");
   }
 
+  /**
+   * @legacy JSONL store stub — not implemented.
+   *
+   * @throws {TypeError} Always. Migrate to SQLite to enable PR queries.
+   */
   async getOpenPrs(): Promise<OpenPrRecord[]> {
     throw new TypeError("getOpenPrs not supported in JSONL mode");
   }
 
+  /**
+   * @legacy JSONL store stub — not implemented.
+   *
+   * @throws {TypeError} Always. Migrate to SQLite to enable PR queries.
+   */
   async getAllPrs(): Promise<OpenPrRecord[]> {
     throw new TypeError("getAllPrs not supported in JSONL mode");
   }
 
+  /**
+   * @legacy JSONL store stub — not implemented.
+   *
+   * @throws {TypeError} Always. Migrate to SQLite to enable PR status transitions.
+   */
   async updatePrStatus(
     _url: string,
     _status: "merged" | "closed",

@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Core source lives in `src/`. Start with `src/cli/index.ts` for process startup and archive directory setup, `src/orchestrator/orchestrator.ts` for polling, retries, runtime state, and model overrides, and `src/agent-runner/index.ts` for Codex worker execution. HTTP and dashboard behavior live in `src/http/server.ts` and `src/http/routes.ts`. Archived run persistence lives in `src/core/attempt-store.ts`, workspace lifecycle in `src/workspace/manager.ts`, and Linear transport in `src/linear/client.ts`.
+Core source lives in `src/`. Start with `src/cli/index.ts` for process startup and archive directory setup, `src/orchestrator/orchestrator.ts` for polling, retries, runtime state, and model overrides, and `src/agent-runner/index.ts` for Codex worker execution. HTTP and dashboard behavior live in `src/http/server.ts` and `src/http/routes/` (domain-split route modules). Archived run persistence lives in `src/persistence/sqlite/`, workspace lifecycle in `src/workspace/manager.ts`, and Linear transport in `src/linear/client.ts`.
 
 Tests live in `tests/` and use fixture data from `tests/fixtures/`. Built artifacts are emitted to `dist/`; treat that directory as generated output, not hand-edited source. Runtime docs and operator guidance live in `README.md`, `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/CONFORMANCE_AUDIT.md`, `docs/RELEASING.md`, and `docs/TRUST_AND_AUTH.md`. `EXECPLAN.md` is the implementation log and should stay factual when behavior changes.
 
@@ -143,17 +143,28 @@ When writing complex features or significant refactors, use an ExecPlan (as desc
 
 ### Module Map
 
-The `src/` directory contains 25 modules. Here is the dependency hierarchy:
+The `src/` directory contains 25+ modules. Here is the dependency hierarchy:
 
 ```
 Entry Point
   src/cli/index.ts          → parses CLI args, inits config stores, calls createServices()
-  src/cli/services.ts       → DI wiring: instantiates all services and connects ports
+  src/cli/services.ts       → DI wiring: phased factory functions, instantiates all services
 
 Core (shared by everything)
-  src/core/types.ts          → domain types: Issue, AttemptRecord, RunOutcome, ServiceConfig
-  src/core/event-bus.ts      → TypedEventBus<RisolutoEventMap> for publish/subscribe
-  src/core/attempt-store-port.ts → AttemptStorePort interface
+  src/core/types/           → domain type leaf modules:
+    issue.ts                → Issue, IssueState
+    attempt.ts              → AttemptRecord, RunOutcome
+    runtime.ts              → RuntimeSnapshot, RunningEntry
+    config.ts               → ServiceConfig and related shapes
+    codex.ts                → Codex-specific config types
+    model.ts                → ModelConfig
+    workspace.ts            → WorkspaceInfo
+    health.ts               → HealthCheck types
+    pr.ts                   → PrRecord, PrState
+    logger.ts               → LoggerPort
+  src/core/types.ts         → barrel re-export of all types/ leaves (backward compat)
+  src/core/event-bus.ts     → TypedEventBus<RisolutoEventMap> for publish/subscribe
+  src/core/attempt-store-port.ts → AttemptStorePort (composed of sub-interfaces below)
   src/core/lifecycle-events.ts   → event type definitions
 
 Orchestration (the brain)
@@ -165,18 +176,21 @@ Orchestration (the brain)
 
 Agent Execution
   src/agent-runner/             → Codex session management, turn execution
+  src/agent-runner/agent-session.ts → AgentSession abstraction (wraps a single Codex run)
   src/dispatch/                 → dispatch factory, priority logic
   src/codex/                    → Codex app-server protocol, model list
+  src/codex/methods.ts          → centralized RPC method name constants
+  src/codex/runtime-config.ts   → PrecomputedRuntimeConfig (extracted from protocol module)
 
 Tracker Adapters (issue trackers)
-  src/tracker/port.ts           → TrackerPort interface
-  src/tracker/factory.ts        → createTracker() — returns {tracker, linearClient}
+  src/tracker/port.ts           → TrackerPort interface (includes tracker-tool-provider abstraction)
+  src/tracker/factory.ts        → createTracker() — returns {tracker, trackerToolProvider, linearClient}
   src/linear/client.ts          → LinearClient (concrete TrackerPort for Linear)
   src/github/issues-client.ts   → GitHubIssuesClient (concrete TrackerPort for GitHub)
 
 HTTP & Dashboard
   src/http/server.ts            → HttpServer class (Express)
-  src/http/routes.ts            → registerRoutes() — all /api/v1/* endpoints
+  src/http/routes/              → domain-split route modules (replaces monolithic routes.ts)
   src/http/sse.ts               → Server-Sent Events for live dashboard updates
 
 Infrastructure
@@ -186,10 +200,19 @@ Infrastructure
   src/workspace/manager.ts      → WorkspaceManager — directory/worktree lifecycle
   src/git/                      → GitManager, PR monitor, repo router
   src/webhook/                  → webhook health tracker, registrar
-  src/secrets/store.ts          → SecretsStore for sensitive config values
+  src/webhook/composition.ts    → webhook service composition factory
+  src/secrets/store.ts          → SecretsStore — concrete SecretsPort implementation
+  src/secrets/port.ts           → SecretsPort interface
   src/prompt/store.ts           → PromptTemplateStore (SQLite-backed)
+  src/prompt/port.ts            → TemplateStorePort interface
+  src/prompt/resolver.ts        → template resolution logic
   src/audit/logger.ts           → AuditLogger (SQLite-backed event log)
+  src/audit/port.ts             → AuditLoggerPort interface
+  src/utils/retry.ts            → shared retry utility (used by Linear and GitHub clients)
   src/notification/manager.ts   → NotificationManager for run lifecycle alerts
+
+Frontend
+  frontend/src/features/settings/ → Settings feature slice (components, hooks, types)
 ```
 
 ### Port Pattern
@@ -200,24 +223,33 @@ The codebase uses **port/adapter** architecture. Consumers depend on port interf
 |---|---|---|---|
 | `OrchestratorPort` | `src/orchestrator/port.ts` | `Orchestrator` | `services.ts` → `HttpServer` |
 | `TrackerPort` | `src/tracker/port.ts` | `LinearTrackerAdapter`, `GitHubTrackerAdapter` | `tracker/factory.ts` |
-| `AttemptStorePort` | `src/core/attempt-store-port.ts` | `AttemptStore` (JSONL), `SqliteAttemptStore` | `persistence/sqlite/runtime.ts` |
+| `AttemptStorePort` | `src/core/attempt-store-port.ts` | `SqliteAttemptStore` | `persistence/sqlite/runtime.ts` |
+| `PrStorePort` | `src/core/attempt-store-port.ts` | sub-interface of `AttemptStorePort` | `persistence/sqlite/runtime.ts` |
+| `AttemptAnalyticsPort` | `src/core/attempt-store-port.ts` | sub-interface of `AttemptStorePort` | `persistence/sqlite/runtime.ts` |
+| `CheckpointStorePort` | `src/core/attempt-store-port.ts` | sub-interface of `AttemptStorePort` | `persistence/sqlite/runtime.ts` |
 | `ConfigOverlayPort` | `src/config/overlay.ts` | `ConfigOverlayStore` (file), `DbConfigStore` (SQLite) | `cli/index.ts` |
 | `GitIntegrationPort` | `src/git/port.ts` | `GitManager` | `services.ts` |
 | `RunAttemptDispatcher` | `src/dispatch/types.ts` | Created by `dispatch/factory.ts` | `services.ts` |
+| `SecretsPort` | `src/secrets/port.ts` | `SecretsStore` | `cli/index.ts` |
+| `TemplateStorePort` | `src/prompt/port.ts` | `PromptTemplateStore` | `services.ts` |
+| `AuditLoggerPort` | `src/audit/port.ts` | `AuditLogger` | `services.ts` |
 
 ### Dependency Injection Flow
 
-All service wiring happens in `src/cli/services.ts → createServices()`. This is the only place that instantiates concrete implementations and connects ports. The flow:
+All service wiring happens in `src/cli/services.ts`. The former monolithic `createServices()` is now split into phased factory functions for clarity. The flow:
 
 ```
 cli/index.ts
-  ├─ initializeConfigStores()  → ConfigStore, ConfigOverlayStore, SecretsStore
-  ├─ createServices(configStore, overlayStore, secretsStore, archiveDir, logger)
-  │    ├─ initPersistenceRuntime()  → {db, attemptStore}
-  │    ├─ createTracker()           → {tracker: TrackerPort, linearClient}
+  ├─ initializeConfigStores()  → ConfigStore, ConfigOverlayStore, SecretsStore (via SecretsPort)
+  ├─ createServices(configStore, overlayStore, secretsPort, archiveDir, logger)
+  │    ├─ initPersistenceRuntime()  → {db, attemptStore, prStore, checkpointStore}
+  │    ├─ createTracker()           → {tracker: TrackerPort, trackerToolProvider, linearClient}
   │    ├─ new WorkspaceManager()
   │    ├─ createDispatcher()        → agentRunner: RunAttemptDispatcher
   │    ├─ new TypedEventBus()
+  │    ├─ composeWebhookServices()  → src/webhook/composition.ts
+  │    ├─ resolveTemplate()         → src/prompt/resolver.ts
+  │    ├─ new MetricsCollector()    → injectable via DI and shared across HTTP/orchestrator/agent-runner
   │    ├─ new Orchestrator({...deps})
   │    └─ new HttpServer({...deps})
   └─ services.orchestrator.start()  → begins polling loop
@@ -377,7 +409,7 @@ test("dashboard shows running issues", async ({ page, apiMock }) => {
 
 1. **Define request/response schema** in `src/http/request-schemas.ts` (Zod)
 2. **Create handler** in `src/http/<feature>-handler.ts`
-3. **Register route** in `src/http/routes.ts` → `registerRoutes()`
+3. **Register route** in the appropriate domain module under `src/http/routes/`
 4. **Update OpenAPI spec** in `src/http/openapi.ts`
 5. **Wire deps** — handler receives `OrchestratorPort` and other ports via `HttpRouteDeps`
 6. **Test** — add unit test in `tests/http/` + smoke E2E in `tests/e2e/specs/smoke/`
@@ -385,9 +417,9 @@ test("dashboard shows running issues", async ({ page, apiMock }) => {
 ### Adding a New Tracker Adapter
 
 1. **Implement `TrackerPort`** in `src/tracker/<name>-adapter.ts`
-2. **Create client** in `src/<name>/client.ts` for the raw API
+2. **Create client** in `src/<name>/client.ts` for the raw API; use `src/utils/retry.ts` for retry logic
 3. **Add factory branch** in `src/tracker/factory.ts` → `createTracker()`
-4. **Extend `ServiceConfig`** in `src/core/types.ts` with new tracker kind
+4. **Extend `ServiceConfig`** in `src/core/types/config.ts` with new tracker kind
 5. **Update config validation** in `src/config/builders.ts`
 6. **Test** — mock the TrackerPort methods in `tests/orchestrator/orchestrator-fixtures.ts`
 
@@ -422,6 +454,13 @@ test("dashboard shows running issues", async ({ page, apiMock }) => {
 | **Overlay** | Runtime config overrides (via UI) that layer on top of the YAML config file. Stored in `ConfigOverlayPort`. |
 | **Dispatch** | Priority-sorted queue of issues eligible for worker launch. Sorted by priority, then `createdAt`. |
 | **Recovery** | On startup, the orchestrator scans for orphaned attempts and either resumes or marks them failed. See `recovery.ts`. |
+| **AgentSession** | Abstraction in `src/agent-runner/agent-session.ts` wrapping a single Codex app-server run lifecycle (connect → turns → close). |
+| **SecretsPort** | Interface (`src/secrets/port.ts`) for reading and writing encrypted secrets. Concrete impl: `SecretsStore`. |
+| **TemplateStorePort** | Interface (`src/prompt/port.ts`) for prompt template CRUD. Concrete impl: `PromptTemplateStore`. |
+| **AuditLoggerPort** | Interface (`src/audit/port.ts`) for persisting audit events. Concrete impl: `AuditLogger`. |
+| **PrStorePort** | Sub-interface of `AttemptStorePort` for PR record persistence. |
+| **CheckpointStorePort** | Sub-interface of `AttemptStorePort` for attempt checkpoint state. |
+| **AttemptAnalyticsPort** | Sub-interface of `AttemptStorePort` for aggregated attempt analytics queries. |
 
 ## Design System Reference
 

@@ -1,8 +1,8 @@
-import type { AsyncState } from "../utils/async-state.js";
+import type { AsyncState } from "../../utils/async-state.js";
 
-import { api } from "../api.js";
-import { router } from "../router.js";
-import { toast } from "../ui/toast.js";
+import { api } from "../../api.js";
+import { router } from "../../router.js";
+import { toast } from "../../ui/toast.js";
 import { buildSettingsSections, formatFieldDraft, isSchemaLimited } from "./settings-helpers.js";
 import { getValueAtPath } from "./settings-paths.js";
 import { renderSettingsLayout } from "./settings-sections.js";

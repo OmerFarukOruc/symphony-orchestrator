@@ -12,12 +12,12 @@
 import type { Express } from "express";
 
 import { methodNotAllowed } from "../http/route-helpers.js";
-import type { PromptTemplateStore } from "./store.js";
+import type { TemplateStorePort } from "./port.js";
 import { PromptTemplateValidationError } from "./template-policy.js";
 import { isRecord } from "../utils/type-guards.js";
 
 interface TemplateApiDeps {
-  templateStore: PromptTemplateStore;
+  templateStore: TemplateStorePort;
 }
 
 function sendTemplateValidationError(

@@ -1,170 +1,107 @@
 import { AuditLogger } from "../audit/logger.js";
+import { createMetricsCollector } from "../observability/metrics.js";
 import { AlertEngine } from "../alerts/engine.js";
-import { AlertHistoryStore } from "../alerts/history-store.js";
+import { AlertHistoryStore, type AlertHistoryStorePort } from "../alerts/history-store.js";
 import { AutomationRunner } from "../automation/runner.js";
 import { AutomationScheduler } from "../automation/scheduler.js";
 import { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
-import type { RisolutoLogger, WebhookConfig } from "../core/types.js";
+import type { WebhookConfig } from "../core/types.js";
 import { PromptTemplateStore } from "../prompt/store.js";
+import { createTemplateResolver } from "../prompt/resolver.js";
 import { createGitHubToolProvider, createRepoRouterProvider } from "./runtime-providers.js";
 import type { ConfigOverlayPort } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
 import { createDispatcher } from "../dispatch/factory.js";
-import type { WebhookHandlerDeps } from "../http/webhook-handler.js";
 import { HttpServer } from "../http/server.js";
 import type { createLogger } from "../core/logger.js";
 import { NotificationManager } from "../notification/manager.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
-import { DefaultWebhookHealthTracker, type WebhookHealthTracker } from "../webhook/health-tracker.js";
-import { WebhookRegistrar } from "../webhook/registrar.js";
 import { initPersistenceRuntime, type PersistenceRuntime } from "../persistence/sqlite/runtime.js";
 import { IssueConfigStore } from "../persistence/sqlite/issue-config-store.js";
-import { AutomationStore } from "../persistence/sqlite/automation-store.js";
-import { NotificationStore } from "../persistence/sqlite/notification-store.js";
-import { SqliteWebhookInbox } from "../persistence/sqlite/webhook-inbox.js";
+import { AutomationStore, type AutomationStorePort } from "../persistence/sqlite/automation-store.js";
+import { NotificationStore, type NotificationStorePort } from "../persistence/sqlite/notification-store.js";
 import { PathRegistry } from "../workspace/path-registry.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { createTracker } from "../tracker/factory.js";
-import { isRecord } from "../utils/type-guards.js";
 import { WorkspaceManager } from "../workspace/manager.js";
 import { PrMonitorService, type PrMonitorGhClient } from "../git/pr-monitor.js";
+import { initWebhookInfrastructure, buildWebhookHandlerDeps } from "../webhook/composition.js";
 
-/**
- * Evaluate webhook config and emit the appropriate startup log.
- *
- * Returns `true` when webhook mode is fully configured (both URL and
- * secret present), `false` otherwise. Unit 4 will extend this to
- * instantiate the health tracker on the `true` path.
- */
-export function evaluateWebhookConfig(
-  webhookConfig: WebhookConfig | null | undefined,
-  logger: RisolutoLogger,
-): boolean {
-  if (webhookConfig?.webhookUrl && webhookConfig.webhookSecret) {
-    logger.info({ webhookUrl: webhookConfig.webhookUrl }, "webhook mode enabled — waiting for first verified delivery");
-    return true;
-  }
+// Re-export for consumers that import evaluateWebhookConfig from this module
+// (e.g. tests/webhook/manual-mode.test.ts).
+export { evaluateWebhookConfig } from "../webhook/composition.js";
+export type { WebhookConfig };
 
-  if (webhookConfig?.webhookUrl && !webhookConfig.webhookSecret) {
-    logger.warn(
-      { webhookUrl: webhookConfig.webhookUrl },
-      "webhook_url is configured but webhook_secret is missing — set $LINEAR_WEBHOOK_SECRET or configure webhook_secret in Settings",
-    );
-  }
+// ---------------------------------------------------------------------------
+// Phase types
+// ---------------------------------------------------------------------------
 
-  return false;
-}
-
-/**
- * Build webhook handler deps when webhook URL is configured.
- */
-function buildWebhookHandlerDeps(input: {
-  orchestrator: Orchestrator;
-  webhookHealthTracker: WebhookHealthTracker | undefined;
-  webhookInbox: SqliteWebhookInbox | undefined;
-  getWebhookSecret: () => string | null;
-  getPreviousWebhookSecret: () => string | null;
-  logger: ReturnType<typeof createLogger>;
-}): WebhookHandlerDeps {
-  return {
-    getWebhookSecret: input.getWebhookSecret,
-    getPreviousWebhookSecret: input.getPreviousWebhookSecret,
-    requestRefresh: (reason: string) => input.orchestrator.requestRefresh(reason),
-    requestTargetedRefresh: (issueId: string, issueIdentifier: string, reason: string) =>
-      input.orchestrator.requestTargetedRefresh(issueId, issueIdentifier, reason),
-    stopWorkerForIssue: (issueIdentifier: string, reason: string) =>
-      input.orchestrator.stopWorkerForIssue(issueIdentifier, reason),
-    recordVerifiedDelivery: (eventType: string) => input.webhookHealthTracker?.recordVerifiedDelivery(eventType),
-    webhookInbox: input.webhookInbox,
-    logger: input.logger.child({ component: "webhook-handler" }),
-  };
-}
-
-/**
- * Initialize webhook infrastructure: inbox, health tracker, registrar.
- * Returns a mutable secret reference that the registrar can update.
- */
-function initWebhookInfrastructure(input: {
+interface InfrastructurePhase {
   persistence: PersistenceRuntime;
-  webhookConfig: WebhookConfig | null | undefined;
+  tracker: ReturnType<typeof createTracker>["tracker"];
+  trackerToolProvider: ReturnType<typeof createTracker>["trackerToolProvider"];
   linearClient: ReturnType<typeof createTracker>["linearClient"];
-  eventBus: TypedEventBus<RisolutoEventMap>;
-  secretsStore: SecretsStore;
-  logger: ReturnType<typeof createLogger>;
-}): {
-  webhookUrlSet: boolean;
-  webhookEnabled: boolean;
-  webhookHealthTracker: WebhookHealthTracker | undefined;
-  webhookInbox: SqliteWebhookInbox | undefined;
-  webhookRegistrar: WebhookRegistrar | undefined;
-  resolvedWebhookSecret: { current: string | null };
-  resolvedPreviousWebhookSecret: string | null;
-} {
-  const webhookConfig = input.webhookConfig;
-  const webhookUrlSet = !!webhookConfig?.webhookUrl;
-  const webhookEnabled = evaluateWebhookConfig(webhookConfig, input.logger);
-
-  const webhookInbox =
-    webhookUrlSet && input.persistence.db
-      ? new SqliteWebhookInbox(input.persistence.db, input.logger.child({ component: "webhook-inbox" }))
-      : undefined;
-
-  const webhookHealthTracker = webhookEnabled
-    ? new DefaultWebhookHealthTracker({
-        config: webhookConfig!,
-        eventBus: input.eventBus,
-        logger: input.logger.child({ component: "webhook-health" }),
-        linearClient: input.linearClient ?? undefined,
-      })
-    : undefined;
-
-  const resolvedWebhookSecret = { current: webhookConfig?.webhookSecret ?? null };
-  const resolvedPreviousWebhookSecret = webhookConfig?.previousWebhookSecret ?? null;
-
-  const webhookRegistrar =
-    webhookUrlSet && input.linearClient
-      ? new WebhookRegistrar({
-          linearClient: input.linearClient,
-          secretsStore: input.secretsStore,
-          getWebhookConfig: () => input.webhookConfig,
-          onSecretResolved: (secret) => {
-            resolvedWebhookSecret.current = secret;
-          },
-          logger: input.logger.child({ component: "webhook-registrar" }),
-        })
-      : undefined;
-
-  return {
-    webhookUrlSet,
-    webhookEnabled,
-    webhookHealthTracker,
-    webhookInbox,
-    webhookRegistrar,
-    resolvedWebhookSecret,
-    resolvedPreviousWebhookSecret,
-  };
+  repoRouter: ReturnType<typeof createRepoRouterProvider>;
+  gitManager: ReturnType<typeof createGitHubToolProvider>;
+  metrics: ReturnType<typeof createMetricsCollector>;
 }
 
-export async function createServices(
+interface WorkspaceDispatchPhase {
+  workspaceManager: WorkspaceManager;
+  pathRegistry: PathRegistry;
+  agentRunner: ReturnType<typeof createDispatcher>;
+}
+
+interface EventNotificationPhase {
+  eventBus: TypedEventBus<RisolutoEventMap>;
+  notificationStore: NotificationStorePort;
+  automationStore: AutomationStorePort;
+  alertHistoryStore: AlertHistoryStorePort;
+  notificationManager: NotificationManager;
+}
+
+interface TemplateAuditPhase {
+  templateStore: PromptTemplateStore | undefined;
+  auditLogger: AuditLogger | undefined;
+  issueConfigStore: IssueConfigStore;
+  resolveTemplate: (identifier: string) => Promise<string>;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1 — Infrastructure: persistence, tracker, git providers
+// ---------------------------------------------------------------------------
+
+async function createInfrastructure(
   configStore: ConfigStore,
-  overlayStore: ConfigOverlayPort,
   secretsStore: SecretsStore,
   archiveDir: string,
   logger: ReturnType<typeof createLogger>,
-  options?: {
-    persistence?: PersistenceRuntime;
-  },
-) {
+  options?: { persistence?: PersistenceRuntime },
+): Promise<InfrastructurePhase> {
+  const metrics = createMetricsCollector();
   const persistence = options?.persistence ?? (await initPersistenceRuntime({ dataDir: archiveDir, logger }));
-
-  const { tracker, linearClient } = createTracker(() => configStore.getConfig(), logger);
-
+  const { tracker, trackerToolProvider, linearClient } = createTracker(() => configStore.getConfig(), logger);
   const repoRouter = createRepoRouterProvider(() => configStore.getConfig());
   const gitManager = createGitHubToolProvider(() => configStore.getConfig(), {
     env: process.env,
     resolveSecret: (name) => secretsStore.get(name) ?? undefined,
   });
+
+  return { persistence, tracker, trackerToolProvider, linearClient, repoRouter, gitManager, metrics };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 — Workspace + Dispatch
+// ---------------------------------------------------------------------------
+
+function createWorkspaceAndDispatch(
+  configStore: ConfigStore,
+  infra: InfrastructurePhase,
+  archiveDir: string,
+  logger: ReturnType<typeof createLogger>,
+): WorkspaceDispatchPhase {
+  const { tracker, trackerToolProvider, gitManager, repoRouter, metrics } = infra;
 
   const workspaceManager = new WorkspaceManager(
     () => configStore.getConfig(),
@@ -188,14 +125,26 @@ export async function createServices(
   const pathRegistry = PathRegistry.fromEnv();
   const agentRunner = createDispatcher(() => configStore.getConfig(), {
     tracker,
-    linearClient,
+    trackerToolProvider,
     workspaceManager,
     archiveDir,
     pathRegistry,
     githubToolClient: gitManager,
     logger,
+    metrics,
   });
 
+  return { workspaceManager, pathRegistry, agentRunner };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 — Event + Notification
+// ---------------------------------------------------------------------------
+
+function createEventAndNotification(
+  persistence: PersistenceRuntime,
+  logger: ReturnType<typeof createLogger>,
+): EventNotificationPhase {
   const eventBus = new TypedEventBus<RisolutoEventMap>();
   const notificationStore = NotificationStore.create(persistence.db);
   const automationStore = AutomationStore.create(persistence.db);
@@ -206,50 +155,52 @@ export async function createServices(
     store: notificationStore,
   });
 
-  // --- Webhook integration ---
-  const webhook = initWebhookInfrastructure({
-    persistence,
-    webhookConfig: configStore.getConfig().webhook,
-    linearClient,
-    eventBus,
-    secretsStore,
-    logger,
-  });
+  return { eventBus, notificationStore, automationStore, alertHistoryStore, notificationManager };
+}
 
+// ---------------------------------------------------------------------------
+// Phase 5 — Template + Audit
+// ---------------------------------------------------------------------------
+
+function createTemplateAndAudit(
+  configStore: ConfigStore,
+  persistence: PersistenceRuntime,
+  eventBus: TypedEventBus<RisolutoEventMap>,
+  logger: ReturnType<typeof createLogger>,
+): TemplateAuditPhase {
   const templateStore = persistence.db
     ? new PromptTemplateStore(persistence.db, logger.child({ component: "templates" }))
     : undefined;
   const auditLogger = persistence.db ? new AuditLogger(persistence.db, eventBus) : undefined;
   const issueConfigStore = IssueConfigStore.create(persistence.db);
 
-  const readSelectedTemplateId = (): string | null => {
-    const mergedConfigMap = configStore.getMergedConfigMap();
-    const systemConfig = mergedConfigMap.system;
-    if (!isRecord(systemConfig)) {
-      return null;
-    }
-    const selectedTemplateId = systemConfig.selectedTemplateId;
-    return typeof selectedTemplateId === "string" && selectedTemplateId.trim() ? selectedTemplateId : null;
-  };
+  const resolveTemplate = createTemplateResolver({
+    templateStore,
+    issueConfigStore,
+    configStore,
+    logger,
+  });
 
-  const resolveTemplate = async (identifier: string): Promise<string> => {
-    if (templateStore) {
-      const overrideTemplateId = issueConfigStore.getTemplateId(identifier);
-      if (overrideTemplateId) {
-        const tmpl = templateStore.get(overrideTemplateId);
-        if (tmpl) return tmpl.body;
-      }
-      const selectedTemplateId = readSelectedTemplateId();
-      if (selectedTemplateId) {
-        const tmpl = templateStore.get(selectedTemplateId);
-        if (tmpl) return tmpl.body;
-      }
-      const def = templateStore.get("default");
-      if (def) return def.body;
-    }
-    logger.warn({ identifier }, "no prompt template found — using empty string");
-    return "";
-  };
+  return { templateStore, auditLogger, issueConfigStore, resolveTemplate };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — Runtime: orchestrator, automation, alerts, PR monitor
+// ---------------------------------------------------------------------------
+
+function createRuntimeServices(
+  configStore: ConfigStore,
+  infra: InfrastructurePhase,
+  workspace: WorkspaceDispatchPhase,
+  events: EventNotificationPhase,
+  templateAudit: TemplateAuditPhase,
+  webhook: ReturnType<typeof initWebhookInfrastructure>,
+  logger: ReturnType<typeof createLogger>,
+) {
+  const { persistence, tracker, repoRouter, gitManager, metrics } = infra;
+  const { workspaceManager, agentRunner } = workspace;
+  const { eventBus, automationStore, alertHistoryStore, notificationManager } = events;
+  const { templateStore, issueConfigStore, resolveTemplate } = templateAudit;
 
   const orchestrator = new Orchestrator({
     attemptStore: persistence.attemptStore,
@@ -266,7 +217,9 @@ export async function createServices(
     webhookHealthTracker: webhook.webhookHealthTracker,
     logger: logger.child({ component: "orchestrator" }),
     resolveTemplate,
+    metrics,
   });
+
   const automationRunner = new AutomationRunner({
     orchestrator,
     tracker,
@@ -275,12 +228,14 @@ export async function createServices(
     store: automationStore,
     logger: logger.child({ component: "automation-runner" }),
   });
+
   const automationScheduler = new AutomationScheduler({
     configStore,
     runner: automationRunner,
     notificationManager,
     logger: logger.child({ component: "automation-scheduler" }),
   });
+
   const alertEngine = new AlertEngine({
     configStore,
     eventBus,
@@ -299,6 +254,31 @@ export async function createServices(
     events: eventBus,
     orchestrator,
   });
+
+  return { orchestrator, automationRunner, automationScheduler, alertEngine, prMonitor };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7 — HTTP layer
+// ---------------------------------------------------------------------------
+
+function createHttpLayer(
+  configStore: ConfigStore,
+  overlayStore: ConfigOverlayPort,
+  secretsStore: SecretsStore,
+  infra: InfrastructurePhase,
+  events: EventNotificationPhase,
+  templateAudit: TemplateAuditPhase,
+  runtime: ReturnType<typeof createRuntimeServices>,
+  webhook: ReturnType<typeof initWebhookInfrastructure>,
+  archiveDir: string,
+  logger: ReturnType<typeof createLogger>,
+) {
+  const { persistence, tracker, metrics } = infra;
+  const { eventBus, notificationStore, automationStore, alertHistoryStore } = events;
+  const { templateStore, auditLogger } = templateAudit;
+  const { orchestrator, automationScheduler } = runtime;
+
   const httpServer = new HttpServer({
     orchestrator,
     logger: logger.child({ component: "http" }),
@@ -315,6 +295,7 @@ export async function createServices(
     archiveDir,
     templateStore,
     auditLogger,
+    metrics,
     webhookHandlerDeps: webhook.webhookUrlSet
       ? buildWebhookHandlerDeps({
           orchestrator,
@@ -327,21 +308,83 @@ export async function createServices(
       : undefined,
   });
 
+  return { httpServer };
+}
+
+// ---------------------------------------------------------------------------
+// Public entry point
+// ---------------------------------------------------------------------------
+
+/**
+ * Assemble all Risoluto services in dependency order.
+ *
+ * Phases execute sequentially; each phase receives only the outputs it
+ * depends on, keeping wiring explicit and testable.
+ */
+export async function createServices(
+  configStore: ConfigStore,
+  overlayStore: ConfigOverlayPort,
+  secretsStore: SecretsStore,
+  archiveDir: string,
+  logger: ReturnType<typeof createLogger>,
+  options?: {
+    persistence?: PersistenceRuntime;
+  },
+) {
+  // Phase 1 — Infrastructure
+  const infra = await createInfrastructure(configStore, secretsStore, archiveDir, logger, options);
+
+  // Phase 2 — Workspace + Dispatch
+  const workspace = createWorkspaceAndDispatch(configStore, infra, archiveDir, logger);
+
+  // Phase 3 — Event + Notification
+  const events = createEventAndNotification(infra.persistence, logger);
+
+  // Phase 4 — Webhook
+  const webhook = initWebhookInfrastructure({
+    persistence: infra.persistence,
+    webhookConfig: configStore.getConfig().webhook,
+    linearClient: infra.linearClient,
+    eventBus: events.eventBus,
+    secretsStore,
+    logger,
+  });
+
+  // Phase 5 — Template + Audit
+  const templateAudit = createTemplateAndAudit(configStore, infra.persistence, events.eventBus, logger);
+
+  // Phase 6 — Runtime services
+  const runtime = createRuntimeServices(configStore, infra, workspace, events, templateAudit, webhook, logger);
+
+  // Phase 7 — HTTP layer
+  const { httpServer } = createHttpLayer(
+    configStore,
+    overlayStore,
+    secretsStore,
+    infra,
+    events,
+    templateAudit,
+    runtime,
+    webhook,
+    archiveDir,
+    logger,
+  );
+
   return {
-    orchestrator,
+    orchestrator: runtime.orchestrator,
     httpServer,
-    notificationManager,
-    linearClient,
-    eventBus,
-    notificationStore,
-    automationStore,
-    alertHistoryStore,
-    automationScheduler,
-    persistence,
+    notificationManager: events.notificationManager,
+    linearClient: infra.linearClient,
+    eventBus: events.eventBus,
+    notificationStore: events.notificationStore,
+    automationStore: events.automationStore,
+    alertHistoryStore: events.alertHistoryStore,
+    automationScheduler: runtime.automationScheduler,
+    persistence: infra.persistence,
     webhookHealthTracker: webhook.webhookHealthTracker,
     webhookRegistrar: webhook.webhookRegistrar,
-    alertEngine,
+    alertEngine: runtime.alertEngine,
     webhookInbox: webhook.webhookInbox,
-    prMonitor,
+    prMonitor: runtime.prMonitor,
   };
 }

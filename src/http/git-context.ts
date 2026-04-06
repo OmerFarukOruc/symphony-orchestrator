@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import type { ConfigStore } from "../config/store.js";
 import type { RuntimeIssueView, RuntimeSnapshot } from "../core/types.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
-import type { SecretsStore } from "../secrets/store.js";
+import type { SecretsPort } from "../secrets/port.js";
 
 /* ------------------------------------------------------------------ */
 /*  Response types                                                     */
@@ -157,7 +157,7 @@ function extractActiveBranches(snapshot: RuntimeSnapshot): ActiveBranchView[] {
 export interface GitContextDeps {
   orchestrator: OrchestratorPort;
   configStore?: ConfigStore;
-  secretsStore?: SecretsStore;
+  secretsStore?: SecretsPort;
   fetchImpl?: typeof fetch;
 }
 

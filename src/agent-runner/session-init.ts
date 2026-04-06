@@ -9,9 +9,12 @@ import { createLifecycleEvent } from "../core/lifecycle-events.js";
 import { validatePromptTemplate } from "../prompt/template-policy.js";
 import { toErrorString } from "../utils/type-guards.js";
 import type { Issue, ModelSelection, RunOutcome, ServiceConfig, RisolutoLogger, Workspace } from "../core/types.js";
+import { CODEX_METHOD } from "../codex/methods.js";
+import type { TrackerToolProvider } from "../tracker/tool-provider.js";
 
 interface SessionInitDeps {
   logger: RisolutoLogger;
+  trackerToolProvider: TrackerToolProvider;
 }
 
 interface SessionInitInput {
@@ -35,12 +38,12 @@ interface SessionInitInput {
   previousPrFeedback?: string | null;
 }
 
-interface SessionInitSuccess {
+export interface SessionInitSuccess {
   threadId: string;
   prompt: string;
 }
 
-type EarlyOutcome = RunOutcome & { threadId: string | null; turnId: string | null; turnCount: number };
+export type EarlyOutcome = RunOutcome & { threadId: string | null; turnId: string | null; turnCount: number };
 
 function summarizeCodexConfig(result: unknown): Record<string, unknown> {
   const config = asRecord(asRecord(result).config);
@@ -143,7 +146,7 @@ async function initCodexProtocol(
   input: SessionInitInput,
   deps: SessionInitDeps,
 ): Promise<{ kind: "failed"; errorCode: string; errorMessage: string } | null> {
-  await session.connection.request("initialize", {
+  await session.connection.request(CODEX_METHOD.Initialize, {
     clientInfo: {
       name: "risoluto",
       title: "Risoluto",
@@ -161,9 +164,9 @@ async function initCodexProtocol(
       ],
     },
   });
-  session.connection.notify("initialized", {});
+  session.connection.notify(CODEX_METHOD.Initialized, {});
 
-  const accountInfo = await session.connection.request("account/read", {});
+  const accountInfo = await session.connection.request(CODEX_METHOD.AccountRead, {});
   if (authIsRequired(accountInfo) && !hasUsableAccount(accountInfo)) {
     return {
       kind: "failed",
@@ -173,7 +176,7 @@ async function initCodexProtocol(
   }
 
   try {
-    const rateLimitResult = await session.connection.request("account/rateLimits/read", {});
+    const rateLimitResult = await session.connection.request(CODEX_METHOD.AccountRateLimitsRead, {});
     input.onEvent({
       at: new Date().toISOString(),
       issueId: input.issue.id,
@@ -188,7 +191,7 @@ async function initCodexProtocol(
   }
 
   try {
-    const requirementsResult = await session.connection.request("configRequirements/read", {});
+    const requirementsResult = await session.connection.request(CODEX_METHOD.ConfigRequirementsRead, {});
     input.onEvent({
       at: new Date().toISOString(),
       issueId: input.issue.id,
@@ -203,7 +206,7 @@ async function initCodexProtocol(
   }
 
   try {
-    const configResult = await session.connection.request("config/read", { includeLayers: false });
+    const configResult = await session.connection.request(CODEX_METHOD.ConfigRead, { includeLayers: false });
     input.onEvent({
       at: new Date().toISOString(),
       issueId: input.issue.id,
@@ -228,16 +231,18 @@ async function startThread(
 ): Promise<string> {
   if (input.previousThreadId) {
     try {
-      const resumeResult = await session.connection.request("thread/resume", {
+      const resumeResult = await session.connection.request(CODEX_METHOD.ThreadResume, {
         threadId: input.previousThreadId,
       });
       const resumedId = extractThreadId(resumeResult);
       if (resumedId) {
         deps.logger.info({ threadId: resumedId }, "resumed previous thread");
         if (input.rollbackLastTurn) {
-          await session.connection.request("thread/rollback", { threadId: resumedId, numTurns: 1 }).catch(() => {
-            deps.logger.info({ threadId: resumedId }, "thread/rollback failed — continuing with resumed thread");
-          });
+          await session.connection
+            .request(CODEX_METHOD.ThreadRollback, { threadId: resumedId, numTurns: 1 })
+            .catch(() => {
+              deps.logger.info({ threadId: resumedId }, "thread/rollback failed — continuing with resumed thread");
+            });
         }
         await emitThreadSnapshot(session, input, resumedId);
         return resumedId;
@@ -247,14 +252,14 @@ async function startThread(
     }
   }
 
-  const threadResult = await session.connection.request("thread/start", {
+  const threadResult = await session.connection.request(CODEX_METHOD.ThreadStart, {
     cwd: input.workspace.path,
     model: input.modelSelection.model,
     approvalPolicy: config.codex.approvalPolicy,
     sandbox: config.codex.threadSandbox,
     personality: config.codex.personality,
     serviceName: "risoluto",
-    dynamicTools: buildDynamicTools(),
+    dynamicTools: buildDynamicTools(deps.trackerToolProvider, deps.logger),
   });
 
   const resolvedThreadId = extractThreadId(threadResult);
@@ -267,7 +272,10 @@ async function startThread(
 
 async function emitThreadSnapshot(session: DockerSession, input: SessionInitInput, threadId: string): Promise<void> {
   try {
-    const threadReadResult = await session.connection.request("thread/read", { threadId, includeTurns: false });
+    const threadReadResult = await session.connection.request(CODEX_METHOD.ThreadRead, {
+      threadId,
+      includeTurns: false,
+    });
     input.onEvent({
       at: new Date().toISOString(),
       issueId: input.issue.id,

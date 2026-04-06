@@ -1,6 +1,7 @@
 import type { JsonRpcConnection } from "../agent/json-rpc-connection.js";
 import type { RisolutoLogger } from "../core/types.js";
 import { asRecord, asString } from "./helpers.js";
+import { CODEX_METHOD } from "../codex/methods.js";
 
 export async function fetchAvailableModels(
   connection: JsonRpcConnection,
@@ -11,7 +12,7 @@ export async function fetchAvailableModels(
     let cursor: string | null = null;
 
     do {
-      const result = await connection.request("model/list", cursor ? { cursor, limit: 100 } : { limit: 100 });
+      const result = await connection.request(CODEX_METHOD.ModelList, cursor ? { cursor, limit: 100 } : { limit: 100 });
       const data = asRecord(result);
       const models = Array.isArray(data.data) ? data.data : data.models;
       if (!Array.isArray(models)) {

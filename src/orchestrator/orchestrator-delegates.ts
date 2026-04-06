@@ -33,22 +33,43 @@ import {
 import { handleWorkerFailure } from "./worker-failure.js";
 import { handleWorkerOutcome } from "./worker-outcome/index.js";
 import { detectAndKillStalledWorkers, type StallEvent } from "./stall-detector.js";
-import { globalMetrics } from "../observability/metrics.js";
+import { createMetricsCollector } from "../observability/metrics.js";
 
 /**
  * Pure delegation helpers that forward from Orchestrator methods to extracted state modules.
  * Keeps Orchestrator thin by housing all private method logic here.
+ *
+ * The context object is built once and reused for the lifetime of the orchestrator.
+ * All closures reference `state` and `deps` directly — since `state` fields are mutated
+ * in-place (Maps, Sets, primitive reassignments), the stable context always reflects
+ * the latest values without needing to rebuild closures on every call.
  */
 
 export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): OrchestratorContext {
-  return {
-    running: state.running,
-    runningEntries: state.runningEntries,
-    retryEntries: state.retryEntries,
-    completedViews: state.completedViews,
-    detailViews: state.detailViews,
-    claimedIssueIds: state.claimedIssueIds,
-    queuedViews: state.queuedViews,
+  // Build the context object first so closures can reference it directly,
+  // avoiding recursive buildCtx() calls inside the returned object.
+  const ctx: OrchestratorContext = {
+    get running() {
+      return state.running;
+    },
+    get runningEntries() {
+      return state.runningEntries;
+    },
+    get retryEntries() {
+      return state.retryEntries;
+    },
+    get completedViews() {
+      return state.completedViews;
+    },
+    get detailViews() {
+      return state.detailViews;
+    },
+    get claimedIssueIds() {
+      return state.claimedIssueIds;
+    },
+    get queuedViews() {
+      return state.queuedViews;
+    },
     deps,
     getConfig: () => deps.configStore.getConfig(),
     isRunning: () => state.running,
@@ -65,9 +86,9 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
       forwardToEventBus(deps, event);
     },
     queueRetry: (issue, attempt, delayMs, error, metadata) =>
-      queueRetryState(buildCtx(state, deps), issue, attempt, delayMs, error, metadata),
-    clearRetryEntry: (issueId) => clearRetryEntryState(buildCtx(state, deps), issueId),
-    launchWorker: async (issue, attempt, options) => launchWorkerDelegate(state, deps, issue, attempt, options),
+      queueRetryState(ctx, issue, attempt, delayMs, error, metadata),
+    clearRetryEntry: (issueId) => clearRetryEntryState(ctx, issueId),
+    launchWorker: async (issue, attempt, options) => launchWorkerDelegate(deps, ctx, issue, attempt, options),
     canDispatchIssue: (issue) =>
       canDispatchIssueState(
         issue,
@@ -83,10 +104,8 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
         pendingStateCounts,
         runningStateCounts,
       ),
-    revalidateAndLaunchRetry: (issueId, attempt) =>
-      revalidateAndLaunchRetryState(buildCtx(state, deps), issueId, attempt),
-    handleRetryLaunchFailure: (issue, attempt, error) =>
-      handleRetryLaunchFailureState(buildCtx(state, deps), issue, attempt, error),
+    revalidateAndLaunchRetry: (issueId, attempt) => revalidateAndLaunchRetryState(ctx, issueId, attempt),
+    handleRetryLaunchFailure: (issue, attempt, error) => handleRetryLaunchFailureState(ctx, issue, attempt, error),
     getQueuedViews: () => state.queuedViews,
     setQueuedViews: (views) => {
       state.queuedViews = views;
@@ -116,6 +135,7 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
     },
     eventBus: deps.eventBus,
   };
+  return ctx;
 }
 
 export interface OrchestratorState {
@@ -230,18 +250,17 @@ function applyUsageEvent(
 }
 
 async function launchWorkerDelegate(
-  state: OrchestratorState,
   deps: OrchestratorDeps,
+  ctx: OrchestratorContext,
   issue: Issue,
   attempt: number | null,
   options?: LaunchWorkerOptions,
 ): Promise<void> {
-  const ctx = buildCtx(state, deps);
   await launchWorkerState(
     {
       ...ctx,
       handleWorkerPromise: (promise, workerIssue, workspace, entry, workerAttempt) =>
-        handleWorkerPromise(state, deps, promise, workerIssue, workspace, entry, workerAttempt),
+        handleWorkerPromise(ctx, promise, workerIssue, workspace, entry, workerAttempt),
     },
     issue,
     attempt,
@@ -255,22 +274,22 @@ async function launchWorkerDelegate(
 }
 
 async function handleWorkerPromise(
-  state: OrchestratorState,
-  deps: OrchestratorDeps,
+  ctx: OrchestratorContext,
   promise: Promise<RunOutcome>,
   workerIssue: Issue,
   workspace: Workspace,
   entry: RunningEntry,
   workerAttempt: number | null,
 ): Promise<void> {
+  const metrics = ctx.deps.metrics ?? createMetricsCollector();
   await promise
     .then(async (outcome) => {
-      await handleWorkerOutcome(buildCtx(state, deps), outcome, entry, workerIssue, workspace, workerAttempt);
-      globalMetrics.agentRunsTotal.increment({ outcome: outcome.kind });
+      await handleWorkerOutcome(ctx, outcome, entry, workerIssue, workspace, workerAttempt);
+      metrics.agentRunsTotal.increment({ outcome: outcome.kind });
     })
     .catch(async (error) => {
-      await handleWorkerFailure(buildCtx(state, deps), workerIssue, entry, error);
-      globalMetrics.agentRunsTotal.increment({ outcome: "failed" });
+      await handleWorkerFailure(ctx, workerIssue, entry, error);
+      metrics.agentRunsTotal.increment({ outcome: "failed" });
     });
 }
 

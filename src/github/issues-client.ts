@@ -1,6 +1,6 @@
-import { randomInt } from "node:crypto";
 import type { Issue, ServiceConfig, RisolutoLogger } from "../core/types.js";
 import { toErrorString } from "../utils/type-guards.js";
+import { withRetry as sharedWithRetry, withRetryReturn as sharedWithRetryReturn } from "../utils/retry.js";
 
 // ---------------------------------------------------------------------------
 // Error type
@@ -145,41 +145,11 @@ export class GitHubIssuesClient {
   }
 
   async withRetry(operation: string, fn: () => Promise<void>): Promise<void> {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        await fn();
-        return;
-      } catch (error) {
-        if (attempt === maxAttempts) {
-          this.logger.warn(
-            { operation, attempt, error: toErrorString(error) },
-            "github write-back failed after max retries (non-fatal)",
-          );
-          return;
-        }
-        const delayMs = 1000 * 2 ** (attempt - 1) * (randomInt(500, 1000) / 1000);
-        this.logger.warn({ operation, attempt, delayMs, error: toErrorString(error) }, "github write-back retry");
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
+    return sharedWithRetry(this.logger, operation, fn);
   }
 
   async withRetryReturn<T>(operation: string, fn: () => Promise<T>): Promise<T> {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        return await fn();
-      } catch (error) {
-        if (attempt === maxAttempts) {
-          throw error;
-        }
-        const delayMs = 1000 * 2 ** (attempt - 1) * (randomInt(500, 1000) / 1000);
-        this.logger.warn({ operation, attempt, delayMs, error: toErrorString(error) }, "github write-back retry");
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-    throw new GitHubIssuesClientError("github_http_error", `${operation} exhausted retries without result`);
+    return sharedWithRetryReturn(this.logger, operation, fn);
   }
 
   // -------------------------------------------------------------------------

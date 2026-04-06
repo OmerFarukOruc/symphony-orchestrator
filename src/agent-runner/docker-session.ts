@@ -16,29 +16,31 @@ import { inspectContainerRunning, removeContainer, removeVolume, stopContainer }
 import { getContainerStats } from "../docker/stats.js";
 import { handleCodexRequest } from "../agent/codex-request-handler.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
-import type { LinearClient } from "../linear/client.js";
-import { globalMetrics } from "../observability/metrics.js";
+import type { TrackerToolProvider } from "../tracker/tool-provider.js";
+import { createMetricsCollector, type MetricsCollector } from "../observability/metrics.js";
 import { createLifecycleEvent } from "../core/lifecycle-events.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { Issue, ModelSelection, ServiceConfig, RisolutoLogger, Workspace } from "../core/types.js";
+
+import type { PrecomputedRuntimeConfig } from "../codex/runtime-config.js";
+import { CODEX_METHOD } from "../codex/methods.js";
+
+export type { PrecomputedRuntimeConfig } from "../codex/runtime-config.js";
 
 function parsePercent(value: string): number {
   const parsed = Number.parseFloat(value.replaceAll("%", "").trim());
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-import type { PrecomputedRuntimeConfig } from "../dispatch/types.js";
-
-export type { PrecomputedRuntimeConfig } from "../dispatch/types.js";
-
 export interface DockerSessionDeps {
   archiveDir?: string;
   pathRegistry?: PathRegistry;
   githubToolClient?: GithubApiToolClient;
-  linearClient: LinearClient | null;
+  trackerToolProvider: TrackerToolProvider;
   logger: RisolutoLogger;
   spawnProcess?: typeof spawn;
+  metrics?: MetricsCollector;
 }
 
 interface DockerSessionInput {
@@ -136,7 +138,7 @@ export async function createDockerSession(
     inspectRunning: spawnProcess === spawn ? () => inspectContainerRunning(docker.containerName) : async () => true,
   });
   setupConnection(session, child, config, input, deps, turnState);
-  startStatsPolling(session, input);
+  startStatsPolling(session, input, deps);
 
   return session;
 }
@@ -181,7 +183,7 @@ function buildDockerSessionObject(
     steerTurn: async (message: string): Promise<boolean> => {
       if (!session.threadId || !session.turnId) return false;
       try {
-        await session.connection.request("turn/steer", {
+        await session.connection.request(CODEX_METHOD.TurnSteer, {
           threadId: session.threadId,
           expectedTurnId: session.turnId,
           input: [{ type: "text", text: message }],
@@ -230,7 +232,7 @@ function setupConnection(
     logger,
     config.codex.readTimeoutMs,
     async (request: JsonRpcRequest) => {
-      const result = await handleCodexRequest(request, deps.linearClient, deps.githubToolClient);
+      const result = await handleCodexRequest(request, deps.trackerToolProvider, deps.githubToolClient);
       if (result.fatalFailure) {
         fatalFailure = result.fatalFailure;
         session.connection.close();
@@ -264,8 +266,10 @@ function setupConnection(
 function startStatsPolling(
   session: DockerSession & { statsInterval: ReturnType<typeof setInterval> | null },
   input: DockerSessionInput,
+  deps: DockerSessionDeps,
 ): void {
   const statsIntervalMs = 30_000;
+  const metrics = deps.metrics ?? createMetricsCollector();
   session.statsInterval = setInterval(async () => {
     try {
       const stats = await getContainerStats(session.containerName);
@@ -278,8 +282,8 @@ function startStatsPolling(
           event: "container_stats",
           message: `CPU ${stats.cpuPercent} | MEM ${stats.memoryUsage}/${stats.memoryLimit} (${stats.memoryPercent})`,
         });
-        globalMetrics.containerCpuPercent.set(parsePercent(stats.cpuPercent), { issue: input.issue.identifier });
-        globalMetrics.containerMemoryPercent.set(parsePercent(stats.memoryPercent), { issue: input.issue.identifier });
+        metrics.containerCpuPercent.set(parsePercent(stats.cpuPercent), { issue: input.issue.identifier });
+        metrics.containerMemoryPercent.set(parsePercent(stats.memoryPercent), { issue: input.issue.identifier });
       }
     } catch {
       // intentionally swallowed — stats are best-effort

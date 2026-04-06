@@ -1,4 +1,6 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import type { RisolutoLogger } from "../core/types.js";
+import type { TrackerToolProvider } from "../tracker/tool-provider.js";
 
 /** Maximum bytes of stderr to buffer during startup for diagnostics. */
 const MAX_STDERR_BUFFER = 4096;
@@ -80,40 +82,56 @@ export function waitForStartup(
   });
 }
 
-export function buildDynamicTools(): object[] {
-  return [
-    {
-      name: "linear_graphql",
-      description: "Run exactly one GraphQL operation against Linear.",
-      inputSchema: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          query: { type: "string", description: "A single GraphQL query, mutation, or subscription document." },
-          variables: {
-            type: "object",
-            additionalProperties: true,
-            description: "Optional GraphQL variables for the document.",
-          },
+const TOOL_SCHEMAS: Record<string, object> = {
+  linear_graphql: {
+    name: "linear_graphql",
+    description: "Run exactly one GraphQL operation against Linear.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        query: { type: "string", description: "A single GraphQL query, mutation, or subscription document." },
+        variables: {
+          type: "object",
+          additionalProperties: true,
+          description: "Optional GraphQL variables for the document.",
         },
-        required: ["query"],
       },
+      required: ["query"],
     },
-    {
-      name: "github_api",
-      description: "Read pull request status or add a pull request comment in GitHub.",
-      inputSchema: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          action: { type: "string", enum: ["add_pr_comment", "get_pr_status"] },
-          owner: { type: "string" },
-          repo: { type: "string" },
-          pullNumber: { type: "number" },
-          body: { type: "string" },
-        },
-        required: ["action", "owner", "repo", "pullNumber"],
+  },
+  github_api: {
+    name: "github_api",
+    description: "Read pull request status or add a pull request comment in GitHub.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        action: { type: "string", enum: ["add_pr_comment", "get_pr_status"] },
+        owner: { type: "string" },
+        repo: { type: "string" },
+        pullNumber: { type: "number" },
+        body: { type: "string" },
       },
+      required: ["action", "owner", "repo", "pullNumber"],
     },
-  ];
+  },
+};
+
+/**
+ * Build the dynamic tools list for Codex `thread/start`.
+ *
+ * Includes all tools declared by the tracker provider plus the `github_api`
+ * tool (always present as a non-tracker tool).
+ */
+export function buildDynamicTools(trackerToolProvider: TrackerToolProvider, logger: RisolutoLogger): object[] {
+  const allNames = [...trackerToolProvider.toolNames, "github_api"];
+  const unknownNames = allNames.filter((name) => TOOL_SCHEMAS[name] === undefined);
+  if (unknownNames.length > 0) {
+    logger.warn({ toolNames: unknownNames }, "tracker tool provider declared tools without schemas");
+  }
+  return allNames.flatMap((name) => {
+    const schema = TOOL_SCHEMAS[name];
+    return schema ? [schema] : [];
+  });
 }

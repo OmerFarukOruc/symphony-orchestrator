@@ -1,8 +1,7 @@
 import { asRecord, asStringOrNull as asString } from "../utils/type-guards.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import { handleGithubApiToolCall } from "../git/github-api-tool.js";
-import type { LinearClient } from "../linear/client.js";
-import { handleLinearGraphqlToolCall } from "../linear/graphql-tool.js";
+import type { TrackerToolProvider } from "../tracker/tool-provider.js";
 import type { JsonRpcRequest } from "../codex/protocol.js";
 
 interface CodexRequestResult {
@@ -26,19 +25,16 @@ function toolErrorResponse(errorMessage: string): CodexRequestResult {
 
 async function handleToolCall(
   params: Record<string, unknown>,
-  linearClient: LinearClient | null,
+  trackerToolProvider: TrackerToolProvider,
   githubToolClient?: GithubApiToolClient,
 ): Promise<CodexRequestResult> {
   const toolName = asString(params.name) ?? asString(params.toolName);
   const toolArgs = params.arguments ?? params.args ?? params.input ?? null;
 
-  if (toolName === "linear_graphql") {
-    if (!linearClient) {
-      return toolErrorResponse("linear_graphql is not available: tracker is not configured for Linear");
-    }
-    const response = await handleLinearGraphqlToolCall(linearClient, toolArgs);
-    return { response, fatalFailure: null };
+  if (toolName === null) {
+    return toolErrorResponse("unsupported dynamic tool: unknown");
   }
+
   if (toolName === "github_api") {
     if (!githubToolClient) {
       return toolErrorResponse("github_api is not configured");
@@ -46,12 +42,24 @@ async function handleToolCall(
     const response = await handleGithubApiToolCall(githubToolClient, toolArgs);
     return { response, fatalFailure: null };
   }
-  return toolErrorResponse(`unsupported dynamic tool: ${toolName ?? "unknown"}`);
+
+  const trackerResult = await trackerToolProvider.handleToolCall(toolName, toolArgs);
+  if (trackerResult !== null) {
+    if (trackerResult.fatalFailure) {
+      return { fatalFailure: trackerResult.fatalFailure };
+    }
+    return { response: trackerResult.response, fatalFailure: null };
+  }
+
+  if (toolName === "linear_graphql") {
+    return toolErrorResponse("linear_graphql is not available: tracker is not configured for Linear");
+  }
+  return toolErrorResponse(`unsupported dynamic tool: ${toolName}`);
 }
 
 export async function handleCodexRequest(
   request: JsonRpcRequest,
-  linearClient: LinearClient | null,
+  trackerToolProvider: TrackerToolProvider,
   githubToolClient?: GithubApiToolClient,
 ): Promise<CodexRequestResult> {
   switch (request.method) {
@@ -66,7 +74,7 @@ export async function handleCodexRequest(
       };
     }
     case "item/tool/call":
-      return handleToolCall(asRecord(request.params), linearClient, githubToolClient);
+      return handleToolCall(asRecord(request.params), trackerToolProvider, githubToolClient);
     case "item/tool/requestUserInput":
       return {
         response: { result: null },

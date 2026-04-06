@@ -4,6 +4,7 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import { initializeSession } from "../../src/agent-runner/session-init.js";
 import { StartupTimeoutError } from "../../src/agent-runner/session-helpers.js";
+import { NullTrackerToolProvider } from "../../src/tracker/tool-provider.js";
 import { createMockLogger } from "../helpers.js";
 import { createIssue, createWorkspace, createModelSelection } from "../orchestrator/issue-test-factories.js";
 import type { DockerSession } from "../../src/agent-runner/docker-session.js";
@@ -92,7 +93,7 @@ describe("initializeSession", () => {
   let events: CapturedEvent[];
   let onEvent: (event: CapturedEvent) => void;
   const logger = createMockLogger();
-  const deps = { logger };
+  const deps = { logger, trackerToolProvider: new NullTrackerToolProvider() };
 
   beforeEach(() => {
     events = [];

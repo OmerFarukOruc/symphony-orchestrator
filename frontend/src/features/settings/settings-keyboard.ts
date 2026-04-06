@@ -1,4 +1,4 @@
-import { createKeyboardCommandMap } from "../ui/keyboard-commands.js";
+import { createKeyboardCommandMap } from "../../ui/keyboard-commands.js";
 
 interface SettingsKeyboardOptions {
   onFocusSearch: () => void;

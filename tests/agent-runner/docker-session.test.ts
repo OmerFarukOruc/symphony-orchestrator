@@ -113,6 +113,10 @@ vi.mock("../../src/core/lifecycle-events.js", () => ({
 }));
 
 vi.mock("../../src/observability/metrics.js", () => ({
+  createMetricsCollector: () => ({
+    containerCpuPercent: { set: vi.fn() },
+    containerMemoryPercent: { set: vi.fn() },
+  }),
   globalMetrics: {
     containerCpuPercent: { set: vi.fn() },
     containerMemoryPercent: { set: vi.fn() },
@@ -233,7 +237,7 @@ function makeInput(overrides?: Partial<{ signal: AbortSignal; onEvent: AgentRunn
 function makeDeps(overrides?: Partial<DockerSessionDeps>): DockerSessionDeps {
   return {
     logger: createMockLogger(),
-    linearClient: null,
+    trackerToolProvider: { toolNames: [], handleToolCall: vi.fn() },
     archiveDir: "/tmp/archive",
     ...overrides,
   };

@@ -3,6 +3,8 @@ import { EventEmitter, Readable } from "node:stream";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import { waitForStartup, buildDynamicTools, StartupTimeoutError } from "../../src/agent-runner/session-helpers.js";
+import { NullTrackerToolProvider } from "../../src/tracker/tool-provider.js";
+import type { RisolutoLogger } from "../../src/core/types.js";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -97,23 +99,59 @@ describe("waitForStartup", () => {
   });
 });
 
+const linearProvider = { toolNames: ["linear_graphql"], handleToolCall: vi.fn() };
+const testLogger: RisolutoLogger = {
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  child: vi.fn(),
+};
+
 describe("buildDynamicTools", () => {
-  it("returns two tool definitions", () => {
-    const tools = buildDynamicTools();
+  it("returns two tool definitions when tracker provides linear_graphql", () => {
+    const tools = buildDynamicTools(linearProvider, testLogger);
     expect(tools.length).toBe(2);
   });
 
+  it("returns one tool definition when tracker provides no tools", () => {
+    const tools = buildDynamicTools(new NullTrackerToolProvider(), testLogger);
+    expect(tools.length).toBe(1);
+  });
+
   it("includes linear_graphql tool with correct schema", () => {
-    const tools = buildDynamicTools() as Array<{ name: string; inputSchema: Record<string, unknown> }>;
+    const tools = buildDynamicTools(linearProvider, testLogger) as Array<{
+      name: string;
+      inputSchema: Record<string, unknown>;
+    }>;
     const linearTool = tools.find((t) => t.name === "linear_graphql");
     expect(linearTool).toMatchObject({ name: "linear_graphql" });
     expect(linearTool!.inputSchema.required).toContain("query");
   });
 
   it("includes github_api tool with correct schema", () => {
-    const tools = buildDynamicTools() as Array<{ name: string; inputSchema: Record<string, unknown> }>;
+    const tools = buildDynamicTools(linearProvider, testLogger) as Array<{
+      name: string;
+      inputSchema: Record<string, unknown>;
+    }>;
     const githubTool = tools.find((t) => t.name === "github_api");
     expect(githubTool).toMatchObject({ name: "github_api" });
     expect(githubTool!.inputSchema.required).toContain("action");
+  });
+
+  it("warns when a tracker tool provider declares a tool without a schema", () => {
+    const logger = {
+      ...testLogger,
+      warn: vi.fn(),
+    };
+    const provider = { toolNames: ["linear_graphql", "unknown_tool"], handleToolCall: vi.fn() };
+
+    const tools = buildDynamicTools(provider, logger);
+
+    expect(tools).toHaveLength(2);
+    expect(logger.warn).toHaveBeenCalledWith(
+      { toolNames: ["unknown_tool"] },
+      "tracker tool provider declared tools without schemas",
+    );
   });
 });

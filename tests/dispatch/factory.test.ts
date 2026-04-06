@@ -76,7 +76,7 @@ function createMockDeps(): DispatcherFactoryDeps {
       createComment: vi.fn(),
       transitionIssue: vi.fn(),
     },
-    linearClient: {} as DispatcherFactoryDeps["linearClient"],
+    trackerToolProvider: { toolNames: [], handleToolCall: vi.fn() } as DispatcherFactoryDeps["trackerToolProvider"],
     workspaceManager: {} as DispatcherFactoryDeps["workspaceManager"],
     archiveDir: "/tmp/archives",
     pathRegistry: {} as DispatcherFactoryDeps["pathRegistry"],

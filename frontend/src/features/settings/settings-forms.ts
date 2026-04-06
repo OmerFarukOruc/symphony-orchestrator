@@ -4,8 +4,8 @@ import {
   createSelectControl,
   createTextInput,
   createTextareaControl,
-} from "../components/forms";
-import { formatDurationHuman } from "../utils/format.js";
+} from "../../components/forms";
+import { formatDurationHuman } from "../../utils/format.js";
 
 import type { SettingsFieldDefinition } from "./settings-helpers";
 
@@ -110,7 +110,7 @@ function buildCredentialControl(): HTMLElement {
   container.append(loading);
 
   void (async () => {
-    const { api } = await import("../api.js");
+    const { api } = await import("../../api.js");
 
     async function refresh(): Promise<void> {
       try {

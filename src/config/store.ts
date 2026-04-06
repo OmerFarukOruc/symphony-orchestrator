@@ -47,7 +47,7 @@ export class ConfigStore {
       const overlay = cloneConfigMap(this.deps?.overlayStore?.toMap() ?? {});
       const mergedConfigMap = deepMerge(workflow.config, overlay) as Record<string, unknown>;
       const config = deriveServiceConfig(workflow, {
-        overlay,
+        mergedConfigMap,
         secretResolver: (name) => this.deps?.secretsStore?.get(name) ?? undefined,
       });
       this.config = config;

@@ -1,16 +1,15 @@
 /**
- * Webhook registrar — manages the lifecycle of a Linear webhook subscription.
+ * Webhook registrar — manages the lifecycle of a tracker webhook subscription.
  *
  * Handles three resolution strategies in priority order:
  *   1. Manual config secret  → use directly, verify URL exists (best-effort)
  *   2. Stored secret         → reuse previous registration, re-enable if disabled
- *   3. Auto-create           → register a new webhook via the Linear API
+ *   3. Auto-create           → register a new webhook via the tracker API
  *
  * All errors are caught and logged — registration failures never prevent
  * the orchestrator from running in polling-only mode.
  */
 
-import type { LinearClient } from "../linear/client.js";
 import { LinearClientError } from "../linear/errors.js";
 import type { SecretsStore } from "../secrets/store.js";
 import type { RisolutoLogger, WebhookConfig } from "../core/types.js";
@@ -20,8 +19,19 @@ const SECRETS_KEY = "LINEAR_WEBHOOK_SECRET";
 const RESOURCE_TYPES = ["Issue", "Comment"];
 const WEBHOOK_LABEL = "Risoluto";
 
+/** Tracker-agnostic interface for webhook registration operations. */
+export interface WebhookRegistrationPort {
+  listWebhooks(): Promise<Array<{ id: string; url: string; enabled: boolean }>>;
+  createWebhook(options: { url: string; resourceTypes: string[]; label: string }): Promise<{
+    id: string;
+    secret?: string | null;
+  }>;
+  updateWebhook(id: string, options: { enabled: boolean }): Promise<void>;
+  deleteWebhook(id: string): Promise<void>;
+}
+
 export interface WebhookRegistrarDeps {
-  linearClient: Pick<LinearClient, "listWebhooks" | "createWebhook" | "updateWebhook" | "deleteWebhook">;
+  linearClient: WebhookRegistrationPort;
   secretsStore: Pick<SecretsStore, "get" | "set" | "delete">;
   getWebhookConfig: () => WebhookConfig | null | undefined;
   onSecretResolved: (secret: string) => void;

@@ -4,7 +4,7 @@ import {
   buildSettingsSections,
   SECTION_IDS,
   type SettingsSectionDefinition,
-} from "../../frontend/src/views/settings-helpers";
+} from "../../frontend/src/features/settings/settings-helpers";
 
 /**
  * Exercises the default section builder (schema-limited path)

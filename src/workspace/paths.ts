@@ -18,7 +18,9 @@ export function isWithinRoot(root: string, candidate: string): boolean {
 }
 
 export function sanitizeIdentifier(identifier: string): string {
-  return identifier.replaceAll(/[^A-Za-z0-9._-]/g, "_");
+  const sanitized = identifier.replaceAll(/[^A-Za-z0-9._-]/g, "_");
+  // "." and ".." are valid characters but unsafe as standalone path segments.
+  return sanitized === "." || sanitized === ".." ? sanitized.replaceAll(".", "_") : sanitized;
 }
 
 export interface ResolvedWorkspacePath {

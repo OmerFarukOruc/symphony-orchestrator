@@ -4,7 +4,7 @@ import { createPageHeader } from "../components/page-header";
 import { registerKeyboardScope } from "../ui/keyboard-scope.js";
 import { registerPageCleanup } from "../utils/page";
 import { flattenConfig, prettyJson } from "./config-helpers";
-import { getValueAtPath } from "./settings-paths";
+import { getValueAtPath } from "../features/settings/index.js";
 import { createConfigActions } from "./config-actions";
 import { handleConfigKeyboard } from "./config-keyboard";
 import { renderOverlayPanel, renderSchemaPanel, renderDiffPanel, renderEmptyState } from "./config-panels";

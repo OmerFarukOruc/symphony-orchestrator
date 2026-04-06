@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { SettingsSectionDefinition } from "../../frontend/src/views/settings-helpers";
-import { buildSectionPatchPlan } from "../../frontend/src/views/settings-patches";
+import type { SettingsSectionDefinition } from "../../frontend/src/features/settings/settings-helpers";
+import { buildSectionPatchPlan } from "../../frontend/src/features/settings/settings-patches";
 
 const section: SettingsSectionDefinition = {
   id: "runtime",

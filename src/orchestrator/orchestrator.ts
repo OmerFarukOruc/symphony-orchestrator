@@ -18,6 +18,7 @@ import {
   buildSnapshot,
 } from "./snapshot-builder.js";
 import { buildCtx, cleanupTerminalWorkspaces, type OrchestratorState } from "./orchestrator-delegates.js";
+import type { OrchestratorContext } from "./context.js";
 import { runStartupRecovery } from "./recovery.js";
 import type { OrchestratorPort } from "./port.js";
 import type { OrchestratorDeps } from "./runtime-types.js";
@@ -26,7 +27,7 @@ import type { ModelSelection, ReasoningEffort, RuntimeSnapshot } from "../core/t
 import type { RecoveryReport } from "./recovery-types.js";
 import { serializeSnapshot } from "../http/route-helpers.js";
 import { toErrorString } from "../utils/type-guards.js";
-import { globalMetrics } from "../observability/metrics.js";
+import { createMetricsCollector } from "../observability/metrics.js";
 
 function clearTrackedCollection(size: number, clear: () => void, onDirty: () => void): void {
   if (size === 0) {
@@ -86,6 +87,7 @@ class DirtyTrackingSet<T> extends Set<T> {
 
 export class Orchestrator implements OrchestratorPort {
   private readonly _state: OrchestratorState;
+  private readonly _ctx: OrchestratorContext;
   private tickInFlight = false;
   private nextTickTimer: NodeJS.Timeout | null = null;
   private refreshQueued = false;
@@ -99,6 +101,7 @@ export class Orchestrator implements OrchestratorPort {
   } | null = null;
 
   constructor(private readonly deps: OrchestratorDeps) {
+    this.deps.metrics ??= createMetricsCollector();
     const markDirty = () => this.markStateDirty();
     this._state = {
       running: false,
@@ -118,6 +121,9 @@ export class Orchestrator implements OrchestratorPort {
       stallEvents: [],
       markDirty,
     };
+    // Build once — closures inside the context reference state directly,
+    // so mutations are visible without rebuilding the context object.
+    this._ctx = buildCtx(this._state, this.deps);
     this.watchdog = new Watchdog({
       getRunningCount: () => this._state.runningEntries.size,
       getQueuedCount: () => this._state.queuedViews.length,
@@ -128,10 +134,6 @@ export class Orchestrator implements OrchestratorPort {
     this.deps.configStore.subscribe(() => {
       this.markStateDirty();
     });
-  }
-
-  private ctx() {
-    return buildCtx(this._state, this.deps);
   }
 
   private markStateDirty(): void {
@@ -149,7 +151,7 @@ export class Orchestrator implements OrchestratorPort {
       tracker: this.deps.tracker,
       workspaceManager: this.deps.workspaceManager,
       getConfig: () => this.deps.configStore.getConfig(),
-      launchWorker: (issue, attempt, options) => this.ctx().launchWorker(issue, attempt, options),
+      launchWorker: (issue, attempt, options) => this._ctx.launchWorker(issue, attempt, options),
       logger: this.deps.logger,
     });
     await cleanupTerminalWorkspaces(this._state, this.deps);
@@ -222,7 +224,7 @@ export class Orchestrator implements OrchestratorPort {
     this.deps.logger.info({ issueIdentifier, reason }, "stopping worker via webhook signal");
     entry.status = "stopping";
     this.markStateDirty();
-    this.ctx().pushEvent({
+    this._ctx.pushEvent({
       at: nowIso(),
       issueId: entry.issue.id,
       issueIdentifier: entry.issue.identifier,
@@ -298,7 +300,7 @@ export class Orchestrator implements OrchestratorPort {
     if (!alreadyStopping) {
       entry.status = "stopping";
       this.markStateDirty();
-      this.ctx().pushEvent({
+      this._ctx.pushEvent({
         at: requestedAt,
         issueId: entry.issue.id,
         issueIdentifier: entry.issue.identifier,
@@ -325,7 +327,7 @@ export class Orchestrator implements OrchestratorPort {
         issueModelOverrides: this._state.issueModelOverrides,
         runningEntries: this._state.runningEntries,
         retryEntries: this._state.retryEntries,
-        pushEvent: (event) => this.ctx().pushEvent(event),
+        pushEvent: (event) => this._ctx.pushEvent(event),
         requestRefresh: (r) => this.requestRefresh(r),
         issueConfigStore: this.deps.issueConfigStore,
       },
@@ -392,23 +394,25 @@ export class Orchestrator implements OrchestratorPort {
   private async tick(): Promise<void> {
     if (!this._state.running || this.tickInFlight) return;
     this.tickInFlight = true;
+    const metrics = this.deps.metrics ?? createMetricsCollector();
+    this.deps.metrics = metrics;
     try {
-      if (this.ctx().detectAndKillStalled().killed > 0) {
+      if (this._ctx.detectAndKillStalled().killed > 0) {
         this.markStateDirty();
       }
-      if (await reconcileRunningAndRetryingState(this.ctx())) {
+      if (await reconcileRunningAndRetryingState(this._ctx)) {
         this.markStateDirty();
       }
       const candidateIssues = sortIssuesForDispatch(await this.deps.tracker.fetchCandidateIssues());
-      await refreshQueueViewsState(this.ctx(), candidateIssues);
-      await launchAvailableWorkersState(this.ctx(), candidateIssues);
-      globalMetrics.orchestratorPollsTotal.increment({ status: "ok" });
+      await refreshQueueViewsState(this._ctx, candidateIssues);
+      await launchAvailableWorkersState(this._ctx, candidateIssues);
+      metrics.orchestratorPollsTotal.increment({ status: "ok" });
       this.deps.eventBus?.emit("poll.complete", {
         timestamp: nowIso(),
         issueCount: this._state.queuedViews.length + this._state.runningEntries.size,
       });
     } catch (error) {
-      globalMetrics.orchestratorPollsTotal.increment({ status: "error" });
+      metrics.orchestratorPollsTotal.increment({ status: "error" });
       this.deps.logger.error({ error: toErrorString(error) }, "orchestrator tick failed");
     } finally {
       this.tickInFlight = false;

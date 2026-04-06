@@ -12,6 +12,7 @@ import type { RisolutoDatabase } from "../persistence/sqlite/database.js";
 import { config, promptTemplates } from "../persistence/sqlite/schema.js";
 import type { RisolutoLogger } from "../core/types.js";
 import { createPromptLiquid, PromptTemplateValidationError, validatePromptTemplate } from "./template-policy.js";
+import type { TemplateStorePort } from "./port.js";
 
 export interface PromptTemplate {
   id: string;
@@ -52,7 +53,7 @@ function assertValidTemplateBody(body: string): void {
   validatePromptTemplate(body);
 }
 
-export class PromptTemplateStore {
+export class PromptTemplateStore implements TemplateStorePort {
   private readonly liquid = createPromptLiquid();
 
   constructor(

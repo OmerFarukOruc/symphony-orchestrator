@@ -68,6 +68,11 @@ describe("sanitizeIdentifier", () => {
     expect(sanitizeIdentifier("MT-42")).toBe("MT-42");
   });
 
+  it("rewrites dot-only traversal segments into underscores", () => {
+    expect(sanitizeIdentifier(".")).toBe("_");
+    expect(sanitizeIdentifier("..")).toBe("__");
+  });
+
   it("replaces spaces with underscores", () => {
     expect(sanitizeIdentifier("my issue")).toBe("my_issue");
   });
@@ -124,6 +129,17 @@ describe("resolveWorkspacePath", () => {
     const result = resolveWorkspacePath("/workspaces", "../../etc");
     expect(result.workspaceKey).toBe(".._.._etc");
     expect(isWithinRoot("/workspaces", result.workspacePath)).toBe(true);
+  });
+
+  it("sanitizes dot-only identifiers into non-traversing workspace keys", () => {
+    expect(resolveWorkspacePath("/workspaces", ".")).toEqual({
+      workspaceKey: "_",
+      workspacePath: path.resolve("/workspaces", "_"),
+    });
+    expect(resolveWorkspacePath("/workspaces", "..")).toEqual({
+      workspaceKey: "__",
+      workspacePath: path.resolve("/workspaces", "__"),
+    });
   });
 
   it("does not throw for safe identifiers", () => {

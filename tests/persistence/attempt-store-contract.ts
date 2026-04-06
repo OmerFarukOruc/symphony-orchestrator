@@ -15,7 +15,49 @@
 import { describe, it, expect, afterEach } from "vitest";
 
 import type { AttemptStorePort } from "../../src/core/attempt-store-port.js";
-import { createAttempt, createEvent } from "./attempt-store-fixtures.js";
+import type { AttemptEvent, AttemptRecord } from "../../src/core/types.js";
+
+function createAttempt(overrides: Partial<AttemptRecord> = {}): AttemptRecord {
+  return {
+    attemptId: "attempt-1",
+    issueId: "issue-1",
+    issueIdentifier: "MT-42",
+    title: "Characterize persistence",
+    workspaceKey: "MT-42",
+    workspacePath: "/tmp/risoluto/MT-42",
+    status: "running",
+    attemptNumber: 1,
+    startedAt: "2026-03-16T10:00:00.000Z",
+    endedAt: null,
+    model: "gpt-5.4",
+    reasoningEffort: "high",
+    modelSource: "default",
+    threadId: null,
+    turnId: null,
+    turnCount: 0,
+    errorCode: null,
+    errorMessage: null,
+    tokenUsage: null,
+    pullRequestUrl: null,
+    stopSignal: null,
+    summary: null,
+    ...overrides,
+  };
+}
+
+function createEvent(overrides: Partial<AttemptEvent> = {}): AttemptEvent {
+  return {
+    attemptId: "attempt-1",
+    at: "2026-03-16T10:00:00.000Z",
+    issueId: "issue-1",
+    issueIdentifier: "MT-42",
+    sessionId: null,
+    event: "attempt.updated",
+    message: "updated",
+    content: null,
+    ...overrides,
+  };
+}
 
 export interface ContractHarness<T extends AttemptStorePort> {
   /** Create a fresh store instance. Called once per test. */

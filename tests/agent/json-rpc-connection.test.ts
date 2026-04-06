@@ -117,6 +117,25 @@ describe("JsonRpcConnection", () => {
       expect(await promise2).toBe("second");
     });
 
+    it("starts request ids independently for separate connections", async () => {
+      const firstMock = makeMockChild();
+      const secondMock = makeMockChild();
+      const firstConn = createConnection(firstMock);
+      const secondConn = createConnection(secondMock);
+
+      const firstPromise = firstConn.request("test/first-connection", {});
+      const secondPromise = secondConn.request("test/second-connection", {});
+
+      expect(lastSentMessage(firstMock).id).toBe(1);
+      expect(lastSentMessage(secondMock).id).toBe(1);
+
+      firstMock.sendLine({ jsonrpc: "2.0", id: 1, result: "ok" });
+      secondMock.sendLine({ jsonrpc: "2.0", id: 1, result: "ok" });
+
+      await expect(firstPromise).resolves.toBe("ok");
+      await expect(secondPromise).resolves.toBe("ok");
+    });
+
     it("skips empty lines between messages", async () => {
       const mock = makeMockChild();
       const conn = createConnection(mock);

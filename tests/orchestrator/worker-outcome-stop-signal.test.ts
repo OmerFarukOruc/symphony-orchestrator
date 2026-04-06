@@ -5,6 +5,7 @@ import type { UpsertPrInput } from "../../src/core/attempt-store-port.js";
 import type { Issue, ModelSelection, RuntimeIssueView, ServiceConfig, Workspace } from "../../src/core/types.js";
 import type { OutcomeContext } from "../../src/orchestrator/context.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
+import type { PreparedWorkerOutcome } from "../../src/orchestrator/worker-outcome/types.js";
 import { createIssue, createWorkspace, createModelSelection, createRunningEntry } from "./issue-test-factories.js";
 
 function makeConfig(overrides: Partial<ServiceConfig["agent"]> = {}): ServiceConfig {
@@ -28,6 +29,17 @@ function makeConfig(overrides: Partial<ServiceConfig["agent"]> = {}): ServiceCon
       ...overrides,
     },
   } as unknown as ServiceConfig;
+}
+
+function makeOutcome() {
+  return {
+    kind: "normal" as const,
+    errorCode: null,
+    errorMessage: null,
+    threadId: null,
+    turnId: null,
+    turnCount: 1,
+  };
 }
 
 function makeCtx(
@@ -69,6 +81,17 @@ function makeCtx(
     notify: vi.fn(),
     queueRetry: vi.fn(),
   } as unknown as OutcomeContext;
+}
+
+function makePrepared(
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  modelSelection: ModelSelection,
+  attempt: number | null,
+  overrides: Partial<PreparedWorkerOutcome> = {},
+): PreparedWorkerOutcome {
+  return { outcome: makeOutcome(), entry, issue, latestIssue: issue, workspace, attempt, modelSelection, ...overrides };
 }
 
 const repoMatch = {
@@ -114,7 +137,7 @@ describe("handleStopSignal — done signal", () => {
     ctx = makeCtx({ gitManager });
     const entry = createRunningEntry({ repoMatch });
 
-    await handleStopSignal(ctx, "done", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     expect(gitManager.commitAndPush).toHaveBeenCalled();
     expect(gitManager.createPullRequest).toHaveBeenCalled();
@@ -150,7 +173,7 @@ describe("handleStopSignal — done signal", () => {
     ctx = makeCtx({ gitManager, attemptStore });
     const entry = createRunningEntry({ repoMatch });
 
-    await handleStopSignal(ctx, "done", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, workspace, modelSelection, 1));
     await flushAsyncWork();
 
     expect(attemptStore.lastMarker).toBe("bound");
@@ -174,7 +197,7 @@ describe("handleStopSignal — done signal", () => {
     ctx = makeCtx({ gitManager });
     const entry = createRunningEntry({ repoMatch });
 
-    await handleStopSignal(ctx, "done", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({ issue_identifier: issue.identifier, error: "push rejected" }),
@@ -187,7 +210,7 @@ describe("handleStopSignal — done signal", () => {
     ctx = makeCtx({ gitManager: undefined });
     const entry = createRunningEntry({ repoMatch });
 
-    await handleStopSignal(ctx, "done", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
   });
@@ -200,7 +223,7 @@ describe("handleStopSignal — done signal", () => {
     ctx = makeCtx({ gitManager });
     const entry = createRunningEntry({ repoMatch: null });
 
-    await handleStopSignal(ctx, "done", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     expect(gitManager.commitAndPush).not.toHaveBeenCalled();
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
@@ -210,7 +233,7 @@ describe("handleStopSignal — done signal", () => {
     ctx = makeCtx();
     const entry = createRunningEntry();
 
-    await handleStopSignal(ctx, "done", entry, issue, workspace, modelSelection, 2);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, workspace, modelSelection, 2));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view).toMatchObject({
@@ -223,7 +246,7 @@ describe("handleStopSignal — done signal", () => {
     ctx = makeCtx();
     const entry = createRunningEntry();
 
-    await handleStopSignal(ctx, "done", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.notify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -239,7 +262,7 @@ describe("handleStopSignal — done signal", () => {
     ctx = makeCtx();
     const entry = createRunningEntry();
 
-    await handleStopSignal(ctx, "done", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
       issueId: issue.id,
@@ -252,7 +275,7 @@ describe("handleStopSignal — done signal", () => {
     ctx = makeCtx();
     const entry = createRunningEntry();
 
-    await handleStopSignal(ctx, "done", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.releaseIssueClaim).not.toHaveBeenCalled();
   });
@@ -274,7 +297,7 @@ describe("handleStopSignal — blocked signal", () => {
   it("sets completed view with status 'paused'", async () => {
     const entry = createRunningEntry();
 
-    await handleStopSignal(ctx, "blocked", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "blocked", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view).toMatchObject({
@@ -286,7 +309,7 @@ describe("handleStopSignal — blocked signal", () => {
   it("sends worker_failed notification with critical severity", async () => {
     const entry = createRunningEntry();
 
-    await handleStopSignal(ctx, "blocked", entry, issue, workspace, modelSelection, 3);
+    await handleStopSignal(ctx, "blocked", makePrepared(entry, issue, workspace, modelSelection, 3));
 
     expect(ctx.notify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -300,7 +323,7 @@ describe("handleStopSignal — blocked signal", () => {
   it("emits issue.completed event with 'paused' outcome", async () => {
     const entry = createRunningEntry();
 
-    await handleStopSignal(ctx, "blocked", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "blocked", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
       issueId: issue.id,
@@ -312,7 +335,7 @@ describe("handleStopSignal — blocked signal", () => {
   it("releases claim on blocked", async () => {
     const entry = createRunningEntry();
 
-    await handleStopSignal(ctx, "blocked", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctx, "blocked", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
   });
@@ -325,7 +348,7 @@ describe("handleStopSignal — blocked signal", () => {
     const ctxWithGit = makeCtx({ gitManager });
     const entry = createRunningEntry({ repoMatch });
 
-    await handleStopSignal(ctxWithGit, "blocked", entry, issue, workspace, modelSelection, 1);
+    await handleStopSignal(ctxWithGit, "blocked", makePrepared(entry, issue, workspace, modelSelection, 1));
 
     expect(gitManager.commitAndPush).not.toHaveBeenCalled();
   });
@@ -333,7 +356,7 @@ describe("handleStopSignal — blocked signal", () => {
   it("updates attempt store with paused status", async () => {
     const entry = createRunningEntry();
 
-    await handleStopSignal(ctx, "blocked", entry, issue, workspace, modelSelection, 2);
+    await handleStopSignal(ctx, "blocked", makePrepared(entry, issue, workspace, modelSelection, 2));
 
     expect(ctx.deps.attemptStore.updateAttempt).toHaveBeenCalledWith(
       entry.runId,
@@ -351,7 +374,7 @@ describe("handleStopSignal — attempt store error handling", () => {
     const entry = createRunningEntry();
     const issue = createIssue();
 
-    await handleStopSignal(ctx, "done", entry, issue, createWorkspace(), createModelSelection(), 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, createWorkspace(), createModelSelection(), 1));
 
     expect(ctx.deps.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({ attempt_id: entry.runId, error: "db write failed" }),
@@ -368,7 +391,7 @@ describe("handleStopSignal — pullRequestUrl logging", () => {
     const entry = createRunningEntry({ repoMatch: null });
     const issue = createIssue();
 
-    await handleStopSignal(ctx, "done", entry, issue, createWorkspace(), createModelSelection(), 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, createWorkspace(), createModelSelection(), 1));
 
     // Should NOT have the "pull request created" log
     const infoCalls = (ctx.deps.logger.info as ReturnType<typeof vi.fn>).mock.calls;
@@ -387,7 +410,7 @@ describe("handleStopSignal — pullRequestUrl logging", () => {
     const entry = createRunningEntry({ repoMatch });
     const issue = createIssue();
 
-    await handleStopSignal(ctx, "done", entry, issue, createWorkspace(), createModelSelection(), 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, createWorkspace(), createModelSelection(), 1));
 
     expect(ctx.deps.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({ url: "https://github.com/org/repo/pull/1" }),
@@ -404,7 +427,7 @@ describe("handleStopSignal — writeback integration", () => {
     });
     const issue = createIssue();
 
-    await handleStopSignal(ctx, "done", entry, issue, createWorkspace(), createModelSelection(), 1);
+    await handleStopSignal(ctx, "done", makePrepared(entry, issue, createWorkspace(), createModelSelection(), 1));
     await flushAsyncWork();
 
     expect(ctx.deps.tracker.createComment).toHaveBeenCalledWith(
@@ -418,7 +441,7 @@ describe("handleStopSignal — writeback integration", () => {
     const entry = createRunningEntry();
     const issue = createIssue();
 
-    await handleStopSignal(ctx, "blocked", entry, issue, createWorkspace(), createModelSelection(), 1);
+    await handleStopSignal(ctx, "blocked", makePrepared(entry, issue, createWorkspace(), createModelSelection(), 1));
     await flushAsyncWork();
 
     expect(ctx.deps.tracker.createComment).toHaveBeenCalledWith(

@@ -72,19 +72,10 @@ describe("executeGitPostRun", () => {
     );
   });
 
-  it("returns null pullRequestUrl when PR response has no html_url", async () => {
+  it("returns null pullRequestUrl when PR response is undefined (no PR created)", async () => {
     const gitManager = {
       commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42-fix-the-bug" }),
-      createPullRequest: vi.fn().mockResolvedValue({ number: 99 }), // no html_url
-    };
-    const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toMatchObject({ pullRequestUrl: null });
-  });
-
-  it("returns null pullRequestUrl when PR response html_url is not a string", async () => {
-    const gitManager = {
-      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42-fix-the-bug" }),
-      createPullRequest: vi.fn().mockResolvedValue({ html_url: 123 }),
+      createPullRequest: vi.fn().mockResolvedValue(undefined),
     };
     const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
     expect(result).toMatchObject({ pullRequestUrl: null });
@@ -108,32 +99,5 @@ describe("executeGitPostRun", () => {
     await expect(executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch())).rejects.toThrow(
       "GitHub API error",
     );
-  });
-
-  it("returns null pullRequestUrl when PR response is null", async () => {
-    const gitManager = {
-      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42" }),
-      createPullRequest: vi.fn().mockResolvedValue(null),
-    };
-    const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toMatchObject({ pullRequestUrl: null });
-  });
-
-  it("returns null pullRequestUrl when PR response is a string", async () => {
-    const gitManager = {
-      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42" }),
-      createPullRequest: vi.fn().mockResolvedValue("not an object"),
-    };
-    const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toMatchObject({ pullRequestUrl: null });
-  });
-
-  it("returns null pullRequestUrl when PR response is a number", async () => {
-    const gitManager = {
-      commitAndPush: vi.fn().mockResolvedValue({ pushed: true, branchName: "mt-42" }),
-      createPullRequest: vi.fn().mockResolvedValue(42),
-    };
-    const result = await executeGitPostRun(gitManager, makeWorkspace(), makeIssue(), makeRepoMatch());
-    expect(result).toMatchObject({ pullRequestUrl: null });
   });
 });

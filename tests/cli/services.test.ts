@@ -15,6 +15,7 @@ const mockInitPersistenceRuntime = vi.hoisted(() =>
 const mockCreateTracker = vi.hoisted(() =>
   vi.fn().mockReturnValue({
     tracker: { fake: "tracker" },
+    trackerToolProvider: { toolNames: [], handleToolCall: vi.fn() },
     linearClient: { fake: "linearClient" },
   }),
 );

@@ -9,8 +9,7 @@ import {
 
 import { createConfigState } from "./config-state.js";
 import { createConfigPage } from "./config-view.js";
-import { createSettingsState } from "./settings-state.js";
-import { createSettingsPage } from "./settings-view.js";
+import { createSettingsPage, createSettingsState } from "../features/settings/index.js";
 
 interface UnifiedSettingsCache {
   advancedState: ReturnType<typeof createConfigState>;

@@ -20,6 +20,7 @@ import type {
 } from "./turn-executor-types.js";
 import type { RunOutcome } from "../core/types.js";
 import { compactThread } from "./thread-compact.js";
+import { CODEX_METHOD } from "../codex/methods.js";
 
 const CONTINUATION_PROMPT =
   "Continue the current issue, make concrete progress, and stop only when done or blocked. When the issue is complete, end your final message with `RISOLUTO_STATUS: DONE`. If you are blocked and cannot proceed, end your final message with `RISOLUTO_STATUS: BLOCKED`.";
@@ -120,7 +121,7 @@ async function runSingleTurn(
   prompt: string,
 ): Promise<TurnResult> {
   state.turnCount += 1;
-  const turnResult = await input.connection.request("turn/start", {
+  const turnResult = await input.connection.request(CODEX_METHOD.TurnStart, {
     threadId: state.threadId,
     cwd: input.runInput.workspace.path,
     title: `${input.runInput.issue.identifier}: ${input.runInput.issue.title}`,

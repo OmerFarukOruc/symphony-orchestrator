@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { AsyncState } from "../../frontend/src/utils/async-state";
-import type { SettingsState } from "../../frontend/src/views/settings-state";
-import { type SettingsPageData, updateSettingsHeader } from "../../frontend/src/views/settings-view-render";
+import type { SettingsState } from "../../frontend/src/features/settings/settings-state";
+import { type SettingsPageData, updateSettingsHeader } from "../../frontend/src/features/settings/settings-view-render";
 
 function createStubElement(): HTMLElement {
   return { textContent: "" } as unknown as HTMLElement;

@@ -247,10 +247,13 @@ describe("GitManager", () => {
   it("creates a pull request via GitHub API", async () => {
     const fetchMock = vi.fn(
       async () =>
-        new Response(JSON.stringify({ number: 101, html_url: "https://github.com/acme/backend/pull/101" }), {
-          status: 201,
-          headers: { "content-type": "application/json" },
-        }),
+        new Response(
+          JSON.stringify({ number: 101, html_url: "https://github.com/acme/backend/pull/101", state: "open" }),
+          {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          },
+        ),
     );
 
     const manager = new GitManager({

@@ -1,24 +1,22 @@
 import type { OutcomeContext } from "../context.js";
-import type { Issue, Workspace, ModelSelection } from "../../core/types.js";
+import type { Issue, Workspace } from "../../core/types.js";
 import type { RunningEntry } from "../runtime-types.js";
 import type { StopSignal } from "../../core/signal-detection.js";
 import { buildOutcomeView } from "../outcome-view-builder.js";
 import { nowIso } from "../views.js";
 import { executeGitPostRun } from "../git-post-run.js";
 import { issueRef } from "./types.js";
+import type { PreparedWorkerOutcome } from "./types.js";
 import { writeCompletionWriteback } from "./completion-writeback.js";
 import { toErrorString } from "../../utils/type-guards.js";
 
 export async function handleStopSignal(
   ctx: OutcomeContext,
   stopSignal: StopSignal,
-  entry: RunningEntry,
-  issue: Issue,
-  workspace: Workspace,
-  modelSelection: ModelSelection,
-  attempt: number | null,
+  prepared: PreparedWorkerOutcome,
   turnCount: number | null = null,
 ): Promise<void> {
+  const { entry, latestIssue: issue, workspace, modelSelection, attempt } = prepared;
   const { pullRequestUrl, summary } = await runGitPostRun(ctx, stopSignal, entry, workspace, issue);
 
   await ctx.deps.attemptStore

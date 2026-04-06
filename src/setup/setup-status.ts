@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import type { SecretsStore } from "../secrets/store.js";
+import type { SecretsPort } from "../secrets/port.js";
 import { isRecord } from "../utils/type-guards.js";
 
 const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
@@ -38,7 +38,7 @@ export function hasCodexAuthFile(archiveDir: string, overlay: Record<string, unk
   return existsSync(path.join(authDir, "auth.json"));
 }
 
-export function hasLinearCredentials(secretsStore: SecretsStore): boolean {
+export function hasLinearCredentials(secretsStore: SecretsPort): boolean {
   return Boolean(secretsStore.get("LINEAR_API_KEY") ?? process.env.LINEAR_API_KEY ?? "");
 }
 

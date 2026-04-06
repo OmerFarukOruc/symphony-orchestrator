@@ -1,6 +1,7 @@
 import type { JsonRpcConnection } from "../agent/json-rpc-connection.js";
 import type { RisolutoLogger } from "../core/types.js";
 import { toErrorString } from "../utils/type-guards.js";
+import { CODEX_METHOD } from "../codex/methods.js";
 
 export async function compactThread(
   connection: JsonRpcConnection,
@@ -8,7 +9,7 @@ export async function compactThread(
   logger: RisolutoLogger,
 ): Promise<boolean> {
   try {
-    await connection.request("thread/compact/start", { threadId });
+    await connection.request(CODEX_METHOD.ThreadCompactStart, { threadId });
     logger.info({ threadId }, "thread compacted successfully");
     return true;
   } catch (error) {

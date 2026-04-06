@@ -9,7 +9,7 @@ import { AgentRunner, extractItemContent } from "../../src/agent-runner/index.js
 import { createLogger } from "../../src/core/logger.js";
 import type { Issue, ServiceConfig } from "../../src/core/types.js";
 import { WorkspaceManager } from "../../src/workspace/manager.js";
-import { LinearClient } from "../../src/linear/client.js";
+import { NullTrackerToolProvider } from "../../src/tracker/tool-provider.js";
 import type { TrackerPort } from "../../src/tracker/port.js";
 
 const tempDirs: string[] = [];
@@ -125,15 +125,11 @@ async function createRunner(
   } as unknown as TrackerPort;
   Object.assign(tracker, trackerOverrides ?? {});
 
-  const linearClient = {
-    runGraphQL: vi.fn(async () => ({ data: { viewer: { id: "user-1" } } })),
-  } as unknown as LinearClient;
-
   return {
     runner: new AgentRunner({
       getConfig: () => config,
       tracker,
-      linearClient,
+      trackerToolProvider: new NullTrackerToolProvider(),
       workspaceManager,
       logger: createLogger(),
       spawnProcess: ((_program: string, _args: readonly string[] | undefined, options: { cwd?: string } | undefined) =>

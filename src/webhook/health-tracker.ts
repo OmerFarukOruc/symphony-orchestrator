@@ -35,14 +35,20 @@ export interface WebhookHealthTracker {
   stop(): void;
 }
 
+/**
+ * Tracker-agnostic interface for webhook health subscription checks.
+ * Implemented by LinearClient; other trackers may provide their own or omit it.
+ */
+export interface WebhookHealthClient {
+  runGraphQL: (query: string, variables?: Record<string, unknown>) => Promise<Record<string, unknown>>;
+}
+
 export interface WebhookHealthTrackerDeps {
   config: WebhookConfig;
   eventBus: TypedEventBus<RisolutoEventMap>;
   logger: RisolutoLogger;
-  /** Optional Linear client for periodic subscription checks (Phase 1: may be omitted). */
-  linearClient?: {
-    runGraphQL: (query: string, variables?: Record<string, unknown>) => Promise<Record<string, unknown>>;
-  };
+  /** Optional client for periodic webhook subscription checks. May be omitted for non-Linear trackers. */
+  linearClient?: WebhookHealthClient;
 }
 
 export class DefaultWebhookHealthTracker implements WebhookHealthTracker {
@@ -58,7 +64,7 @@ export class DefaultWebhookHealthTracker implements WebhookHealthTracker {
   private readonly config: WebhookConfig;
   private readonly eventBus: TypedEventBus<RisolutoEventMap>;
   private readonly logger: RisolutoLogger;
-  private readonly linearClient: WebhookHealthTrackerDeps["linearClient"];
+  private readonly linearClient: WebhookHealthClient | undefined;
 
   constructor(deps: WebhookHealthTrackerDeps) {
     this.config = deps.config;

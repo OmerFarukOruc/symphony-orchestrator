@@ -6,13 +6,15 @@
  * for concurrent read performance.
  */
 
-import BetterSqlite3 from "better-sqlite3";
+import BetterSqlite3, { type Database as BetterSqlite3Database } from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 
 import * as schema from "./schema.js";
 
-export type RisolutoDatabase = BetterSQLite3Database<typeof schema>;
+export type RisolutoDatabase = BetterSQLite3Database<typeof schema> & {
+  $client: BetterSqlite3Database;
+};
 
 /** SQL statements that create the schema tables if they don't exist. */
 const CREATE_TABLES_SQL = `
@@ -523,9 +525,5 @@ export function openDatabase(dbPath: string): RisolutoDatabase {
  * the session and calls `.close()` on it to release file locks and flush WAL.
  */
 export function closeDatabase(db: RisolutoDatabase): void {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const session = (db as any).session;
-  if (session?.client?.close) {
-    session.client.close();
-  }
+  db.$client.close();
 }

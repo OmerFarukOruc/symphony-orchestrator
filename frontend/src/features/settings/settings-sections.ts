@@ -1,5 +1,5 @@
-import { createEmptyState } from "../components/empty-state";
-import { createIcon } from "../ui/icons";
+import { createEmptyState } from "../../components/empty-state";
+import { createIcon } from "../../ui/icons";
 
 import {
   buildSectionDiffPreview,

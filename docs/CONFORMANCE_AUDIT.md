@@ -708,7 +708,7 @@ Capabilities shipped that go beyond the spec requirements:
 | ------------------------- | :---: | ------------------------------------------------------------------------------------------------------------------------- |
 | Dispatch extraction       |   1   | `sortIssuesForDispatch()` and `isBlockedByNonTerminal()` extracted as pure tested functions                               |
 | CDN-free dashboard        |   1   | All CDN dependencies removed; vanilla CSS + system fonts                                                                  |
-| `GET /metrics`            |   1   | Prometheus text endpoint wired to `globalMetrics`                                                                         |
+| `GET /metrics`            |   1   | Prometheus text endpoint wired to the shared injected `MetricsCollector`                                                  |
 | Lifecycle notifications   |   2   | Pluggable `NotificationChannel` interface, Slack/webhook/desktop backends, persisted delivery-summary reporting, Windows desktop support |
 | Built-in git operations   |   3   | `GitManager` (clone/branch/commit/push/PR), `RepoRouter` (identifier prefix + label matching)                             |
 | GitHub API tool           |   3   | Agent-available `github_api` tool (read-only: `add_pr_comment`, `get_pr_status`)                                          |

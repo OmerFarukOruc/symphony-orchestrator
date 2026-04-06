@@ -5,7 +5,7 @@ import {
   getSectionGroup,
   SECTION_GROUPS,
   sectionGroups,
-} from "../../frontend/src/views/settings-helpers";
+} from "../../frontend/src/features/settings/settings-helpers";
 
 describe("buildSettingsSections", () => {
   it("uses clearer tracker labels and hints in the default schema-limited view", () => {

@@ -78,7 +78,7 @@ function buildSlackPayload(event: NotificationEvent): Record<string, unknown> {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `<${event.issue.url}|Open issue in Linear>`,
+        text: `<${event.issue.url}|Open issue>`,
       },
     });
   }
