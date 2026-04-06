@@ -76,6 +76,13 @@ function makeRunningEntry(overrides: Partial<RunningEntry> = {}): RunningEntry {
   } as RunningEntry;
 }
 
+function makeAbortControllerStub(aborted: boolean): Pick<AbortController, "abort" | "signal"> {
+  return {
+    abort: vi.fn(),
+    signal: { aborted } as AbortSignal,
+  };
+}
+
 function makeRetryEntry(overrides: Partial<RetryRuntimeEntry> = {}): RetryRuntimeEntry {
   return {
     issueId: "issue-1",
@@ -766,6 +773,100 @@ describe("reconcileRunningAndRetrying — changed return value", () => {
     expect(result).toBe(false);
     expect(entry.cleanupOnExit).toBe(true);
     expect(entry.status).toBe("stopping");
+  });
+
+  it("returns true for an inactive same-object issue when stopping is the only change", async () => {
+    const inactiveIssue = makeIssue({ id: "issue-1", state: "Backlog" });
+    const abortController = makeAbortControllerStub(false);
+    const entry = makeRunningEntry({
+      issue: inactiveIssue,
+      abortController: abortController as AbortController,
+    });
+
+    const result = await reconcileRunningAndRetrying({
+      runningEntries: new Map([["issue-1", entry]]),
+      retryEntries: new Map(),
+      deps: {
+        tracker: {
+          fetchIssueStatesByIds: vi.fn().mockResolvedValue([inactiveIssue]),
+          fetchIssuesByStates: vi.fn(),
+        },
+        workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
+      },
+      getConfig: () => makeConfig(),
+      clearRetryEntry: vi.fn(),
+      pushEvent: vi.fn(),
+    });
+
+    expect(result).toBe(true);
+    expect(abortController.abort).toHaveBeenCalledWith("inactive");
+    expect(entry.status).toBe("stopping");
+    expect(entry.cleanupOnExit).toBe(false);
+  });
+
+  it("returns true when terminal reconciliation only enables cleanupOnExit", async () => {
+    const terminalIssue = makeIssue({ id: "issue-1", state: "Done" });
+    const abortController = makeAbortControllerStub(true);
+    const entry = makeRunningEntry({
+      issue: terminalIssue,
+      abortController: abortController as AbortController,
+      cleanupOnExit: false,
+      status: "stopping",
+    });
+
+    const result = await reconcileRunningAndRetrying({
+      runningEntries: new Map([["issue-1", entry]]),
+      retryEntries: new Map(),
+      deps: {
+        tracker: {
+          fetchIssueStatesByIds: vi.fn().mockResolvedValue([terminalIssue]),
+          fetchIssuesByStates: vi.fn(),
+        },
+        workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
+      },
+      getConfig: () => makeConfig(),
+      clearRetryEntry: vi.fn(),
+      pushEvent: vi.fn(),
+    });
+
+    expect(result).toBe(true);
+    expect(entry.cleanupOnExit).toBe(true);
+    expect(entry.status).toBe("stopping");
+    expect(abortController.abort).not.toHaveBeenCalled();
+  });
+
+  it("returns true when terminal reconciliation only updates status on an already-aborted entry", async () => {
+    const terminalIssue = makeIssue({ id: "issue-1", state: "Done" });
+    const abortController = makeAbortControllerStub(true);
+    const entry = makeRunningEntry({
+      issue: terminalIssue,
+      abortController: abortController as AbortController,
+      status: "running",
+      cleanupOnExit: true,
+    });
+
+    const result = await reconcileRunningAndRetrying({
+      runningEntries: new Map([["issue-1", entry]]),
+      retryEntries: new Map(),
+      deps: {
+        tracker: {
+          fetchIssueStatesByIds: vi.fn().mockResolvedValue([terminalIssue]),
+          fetchIssuesByStates: vi.fn(),
+        },
+        workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
+      },
+      getConfig: () => makeConfig(),
+      clearRetryEntry: vi.fn(),
+      pushEvent: vi.fn(),
+    });
+
+    expect(result).toBe(true);
+    expect(entry.status).toBe("stopping");
+    expect(entry.cleanupOnExit).toBe(true);
+    expect(abortController.abort).not.toHaveBeenCalled();
   });
 
   it("skips running entries when issue is missing from fetch results", async () => {
