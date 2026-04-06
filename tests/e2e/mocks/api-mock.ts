@@ -44,6 +44,71 @@ function json(route: Route, body: unknown, status = 200): Promise<void> {
   });
 }
 
+function buildObservabilityResponse(snapshot: RuntimeSnapshot) {
+  const systemStatus = snapshot.system_health?.status ?? "healthy";
+  const healthStatus = systemStatus === "critical" ? "error" : systemStatus === "degraded" ? "warn" : "ok";
+  const rawMetrics =
+    "# HELP risoluto_http_requests_total Total HTTP requests\n" +
+    "# TYPE risoluto_http_requests_total counter\n" +
+    "risoluto_http_requests_total 42\n";
+  return {
+    generated_at: snapshot.generated_at,
+    snapshot_root: "/tmp/observability",
+    components: [
+      {
+        component: "orchestrator",
+        pid: 4242,
+        updated_at: snapshot.generated_at,
+        metrics: {
+          lifecycle_poll: {
+            total: 12,
+            success: 12,
+            failure: 0,
+            last_at: snapshot.generated_at,
+            last_success_at: snapshot.generated_at,
+            last_failure_at: null,
+            last_failure_reason: null,
+          },
+        },
+        health: {
+          orchestrator: {
+            surface: "orchestrator",
+            component: "orchestrator",
+            status: healthStatus,
+            updated_at: snapshot.generated_at,
+            reason: snapshot.system_health?.message ?? "All systems operational",
+            details: null,
+          },
+        },
+        traces: [],
+        sessions: {},
+      },
+    ],
+    health: {
+      status: healthStatus,
+      counts: {
+        ok: healthStatus === "ok" ? 1 : 0,
+        warn: healthStatus === "warn" ? 1 : 0,
+        error: healthStatus === "error" ? 1 : 0,
+      },
+      surfaces: [
+        {
+          surface: "orchestrator",
+          component: "orchestrator",
+          status: healthStatus,
+          updated_at: snapshot.generated_at,
+          reason: snapshot.system_health?.message ?? "All systems operational",
+          details: null,
+        },
+      ],
+    },
+    traces: [],
+    session_state: [],
+    runtime_state: snapshot,
+    raw_metrics: rawMetrics,
+  };
+}
+
 export async function installApiMock(page: Page, overrides: ApiMockOverrides = {}): Promise<void> {
   const setupStatus = overrides.setupStatus ?? buildSetupStatus();
   const snapshot = overrides.runtimeSnapshot ?? buildRuntimeSnapshot();
@@ -101,6 +166,7 @@ export async function installApiMock(page: Page, overrides: ApiMockOverrides = {
 
   // State & Runtime
   await page.route("**/api/v1/state", (route) => json(route, snapshot));
+  await page.route("**/api/v1/observability", (route) => json(route, buildObservabilityResponse(snapshot)));
   await page.route("**/api/v1/runtime", (route) => json(route, runtimeInfo));
   await page.route("**/api/v1/git/context", (route) => json(route, gitContext));
   await page.route("**/api/v1/models", (route) =>

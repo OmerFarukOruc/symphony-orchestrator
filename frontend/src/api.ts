@@ -10,6 +10,7 @@ import type {
   NotificationReadResponse,
   NotificationsListResponse,
   NotificationsReadAllResponse,
+  ObservabilitySummary,
   PromptTemplate,
   RuntimeInfo,
   RuntimeSnapshot,
@@ -95,6 +96,7 @@ interface SetupOpenaiKeyPayload {
 export const api = {
   getModels: () => get<{ models: Array<{ id: string; displayName: string; isDefault: boolean }> }>("/api/v1/models"),
   getState: () => get<RuntimeSnapshot>("/api/v1/state"),
+  getObservability: () => get<ObservabilitySummary>("/api/v1/observability"),
   getRuntime: () => get<RuntimeInfo>("/api/v1/runtime"),
   getNotifications: (params?: { limit?: number; unread?: boolean }) => {
     const qs = new URLSearchParams();

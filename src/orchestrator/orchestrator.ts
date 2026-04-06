@@ -28,6 +28,7 @@ import type { RecoveryReport } from "./recovery-types.js";
 import { serializeSnapshot } from "../http/route-helpers.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { createMetricsCollector } from "../observability/metrics.js";
+import type { ObservabilityHealthStatus } from "../observability/health.js";
 
 function clearTrackedCollection(size: number, clear: () => void, onDirty: () => void): void {
   if (size === 0) {
@@ -145,6 +146,11 @@ export class Orchestrator implements OrchestratorPort {
     if (this._state.running) return;
     this._state.running = true;
     this.markStateDirty();
+    this.deps.observability?.getComponent("orchestrator").setHealth({
+      surface: "orchestrator",
+      status: "ok",
+      reason: "orchestrator started",
+    });
     this.watchdog.start();
     this.lastRecoveryReport = await runStartupRecovery({
       attemptStore: this.deps.attemptStore,
@@ -178,6 +184,11 @@ export class Orchestrator implements OrchestratorPort {
   async stop(): Promise<void> {
     this._state.running = false;
     this.markStateDirty();
+    this.deps.observability?.getComponent("orchestrator").setHealth({
+      surface: "orchestrator",
+      status: "warn",
+      reason: "orchestrator stopped",
+    });
     this.watchdog.stop();
     if (this.nextTickTimer) {
       clearTimeout(this.nextTickTimer);
@@ -395,7 +406,9 @@ export class Orchestrator implements OrchestratorPort {
     if (!this._state.running || this.tickInFlight) return;
     this.tickInFlight = true;
     const metrics = this.deps.metrics ?? createMetricsCollector();
+    const observer = this.deps.observability?.getComponent("orchestrator");
     this.deps.metrics = metrics;
+    const startedAt = Date.now();
     try {
       if (this._ctx.detectAndKillStalled().killed > 0) {
         this.markStateDirty();
@@ -407,12 +420,44 @@ export class Orchestrator implements OrchestratorPort {
       await refreshQueueViewsState(this._ctx, candidateIssues);
       await launchAvailableWorkersState(this._ctx, candidateIssues);
       metrics.orchestratorPollsTotal.increment({ status: "ok" });
+      observer?.recordOperation({
+        metric: "lifecycle_poll",
+        operation: "orchestrator_tick",
+        outcome: "success",
+        durationMs: Date.now() - startedAt,
+        data: {
+          running: this._state.runningEntries.size,
+          queued: this._state.queuedViews.length,
+        },
+      });
+      const health = this.watchdog.getHealth();
+      observer?.setHealth({
+        surface: "orchestrator",
+        status: mapWatchdogStatus(health.status),
+        reason: health.message,
+        details: {
+          runningCount: health.runningCount,
+          recentStalls: health.recentStalls.length,
+        },
+      });
       this.deps.eventBus?.emit("poll.complete", {
         timestamp: nowIso(),
         issueCount: this._state.queuedViews.length + this._state.runningEntries.size,
       });
     } catch (error) {
       metrics.orchestratorPollsTotal.increment({ status: "error" });
+      observer?.recordOperation({
+        metric: "lifecycle_poll",
+        operation: "orchestrator_tick",
+        outcome: "failure",
+        durationMs: Date.now() - startedAt,
+        reason: toErrorString(error),
+      });
+      observer?.setHealth({
+        surface: "orchestrator",
+        status: "error",
+        reason: toErrorString(error),
+      });
       this.deps.logger.error({ error: toErrorString(error) }, "orchestrator tick failed");
     } finally {
       this.tickInFlight = false;
@@ -456,4 +501,14 @@ export class Orchestrator implements OrchestratorPort {
       },
     };
   }
+}
+
+function mapWatchdogStatus(status: "healthy" | "degraded" | "critical"): ObservabilityHealthStatus {
+  if (status === "critical") {
+    return "error";
+  }
+  if (status === "degraded") {
+    return "warn";
+  }
+  return "ok";
 }

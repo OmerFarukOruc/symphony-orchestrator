@@ -11,6 +11,7 @@ import {
   errorResponseSchema,
   issueDetailResponseSchema,
   modelUpdateResponseSchema,
+  observabilityResponseSchema,
   recoveryReportResponseSchema,
   refreshResponseSchema,
   runtimeResponseSchema,
@@ -577,6 +578,47 @@ describe("stateResponseSchema", () => {
   it("rejects missing required fields", () => {
     expect(stateResponseSchema.safeParse({}).success).toBe(false);
     expect(stateResponseSchema.safeParse({ generated_at: "x" }).success).toBe(false);
+  });
+});
+
+describe("observabilityResponseSchema", () => {
+  it("parses a minimal aggregate observability snapshot", () => {
+    const state = {
+      generated_at: "2026-04-01T00:00:00Z",
+      counts: { running: 0, retrying: 0 },
+      running: [],
+      retrying: [],
+      workflow_columns: [],
+      codex_totals: { input_tokens: 0, output_tokens: 0, total_tokens: 0, seconds_running: 0, cost_usd: 0 },
+      rate_limits: null,
+      recent_events: [],
+    };
+    const result = observabilityResponseSchema.parse({
+      generated_at: "2026-04-01T00:00:05Z",
+      snapshot_root: "/tmp/observability",
+      components: [],
+      health: {
+        status: "ok",
+        counts: { ok: 1, warn: 0, error: 0 },
+        surfaces: [
+          {
+            surface: "database",
+            component: "persistence",
+            status: "ok",
+            updated_at: "2026-04-01T00:00:05Z",
+            reason: "attempt store configured",
+            details: null,
+          },
+        ],
+      },
+      traces: [],
+      session_state: [],
+      runtime_state: state,
+      raw_metrics: "# HELP risoluto_http_requests_total Total HTTP requests\nrisoluto_http_requests_total 0\n",
+    });
+
+    expect(result.health.status).toBe("ok");
+    expect(result.runtime_state.generated_at).toBe("2026-04-01T00:00:00Z");
   });
 });
 

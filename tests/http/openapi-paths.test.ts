@@ -58,6 +58,13 @@ describe("buildStateAndMetricsPaths", () => {
     expect(item.get).not.toHaveProperty("security");
   });
 
+  it("includes GET /api/v1/observability", () => {
+    const item = paths["/api/v1/observability"] as TestPathItem;
+    expect(item).toHaveProperty("get");
+    expect(item.get.operationId).toBe("getObservability");
+    expect(item.get).toHaveProperty("security");
+  });
+
   it("includes GET /api/v1/recovery", () => {
     const item = paths["/api/v1/recovery"] as TestPathItem;
     expect(item).toHaveProperty("get");

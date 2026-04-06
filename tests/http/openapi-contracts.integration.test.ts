@@ -411,6 +411,17 @@ describe("OpenAPI Contract Tests", () => {
       expectSchemaValid(validate, body, "GET /api/v1/runtime 200");
     });
 
+    it("GET /api/v1/observability -> 200, matches observabilityResponseSchema", async () => {
+      const validate = compileResponseSchema("/api/v1/observability", "get", "200");
+      const response = await fetchApi("/api/v1/observability");
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("application/json");
+
+      const body = await response.json();
+      expectSchemaValid(validate, body, "GET /api/v1/observability 200");
+    });
+
     it("POST /api/v1/refresh -> 202, matches refreshResponseSchema", async () => {
       const validate = compileResponseSchema("/api/v1/refresh", "post", "202");
       const response = await fetchApi("/api/v1/refresh", { method: "POST" });
@@ -749,10 +760,11 @@ describe("OpenAPI Contract Tests", () => {
     it("covers all spec-defined paths", () => {
       const spec = getOpenApiSpec();
       const specPaths = Object.keys(spec.paths as Record<string, unknown>);
-      // All 20 OpenAPI paths are covered by the tests above.
+      // All core OpenAPI paths are covered by the tests above.
       expect(specPaths).toEqual(
         expect.arrayContaining([
           "/api/v1/state",
+          "/api/v1/observability",
           "/api/v1/runtime",
           "/api/v1/refresh",
           "/api/v1/transitions",

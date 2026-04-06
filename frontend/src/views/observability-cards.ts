@@ -3,7 +3,7 @@ import { buildSparklinePath } from "./observability-helpers";
 
 export interface WidgetDescriptor {
   title: string;
-  source: "backend counter" | "current snapshot" | "client trend";
+  source: "aggregate snapshot" | "backend counter" | "current snapshot" | "client trend";
   value: string;
   detail: string;
   sparkline?: number[];

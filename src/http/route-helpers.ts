@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 
 import type { RuntimeSnapshot } from "../core/types.js";
 import { redactSensitiveValue } from "../core/content-sanitizer.js";
+import type { ObservabilitySummary } from "../observability/snapshot.js";
 import { isRecord } from "../utils/type-guards.js";
 
 export function issueNotFound(response: Response): void {
@@ -80,6 +81,106 @@ export function serializeSnapshot(snapshot: RuntimeSnapshot & Record<string, unk
           last_event_type: snapshot.webhookHealth.lastEventType,
         }
       : undefined,
+  };
+}
+
+export function serializeObservabilitySummary(summary: ObservabilitySummary): Record<string, unknown> {
+  return {
+    generated_at: summary.generatedAt,
+    snapshot_root: summary.snapshotRoot,
+    components: summary.components.map((component) => ({
+      component: component.component,
+      pid: component.pid,
+      updated_at: component.updatedAt,
+      metrics: Object.fromEntries(
+        Object.entries(component.metrics).map(([name, metric]) => [
+          name,
+          {
+            total: metric.total,
+            success: metric.success,
+            failure: metric.failure,
+            last_at: metric.lastAt ?? null,
+            last_success_at: metric.lastSuccessAt ?? null,
+            last_failure_at: metric.lastFailureAt ?? null,
+            last_failure_reason: metric.lastFailureReason ?? null,
+          },
+        ]),
+      ),
+      health: Object.fromEntries(
+        Object.entries(component.health).map(([surface, health]) => [
+          surface,
+          {
+            surface: health.surface,
+            component: health.component,
+            status: health.status,
+            updated_at: health.updatedAt,
+            reason: health.reason ?? null,
+            details: health.details ?? null,
+          },
+        ]),
+      ),
+      traces: component.traces.map((trace) => ({
+        id: trace.id,
+        component: trace.component,
+        metric: trace.metric,
+        operation: trace.operation,
+        outcome: trace.outcome,
+        correlation_id: trace.correlationId,
+        started_at: trace.startedAt,
+        ended_at: trace.endedAt,
+        duration_ms: trace.durationMs,
+        reason: trace.reason,
+        data: trace.data ?? null,
+      })),
+      sessions: Object.fromEntries(
+        Object.entries(component.sessions).map(([key, session]) => [
+          key,
+          {
+            key: session.key,
+            component: session.component,
+            status: session.status,
+            updated_at: session.updatedAt,
+            correlation_id: session.correlationId,
+            metadata: session.metadata ?? null,
+          },
+        ]),
+      ),
+    })),
+    health: {
+      status: summary.health.status,
+      counts: summary.health.counts,
+      surfaces: summary.health.surfaces.map((surface) => ({
+        surface: surface.surface,
+        component: surface.component,
+        status: surface.status,
+        updated_at: surface.updatedAt,
+        reason: surface.reason ?? null,
+        details: surface.details ?? null,
+      })),
+    },
+    traces: summary.traces.map((trace) => ({
+      id: trace.id,
+      component: trace.component,
+      metric: trace.metric,
+      operation: trace.operation,
+      outcome: trace.outcome,
+      correlation_id: trace.correlationId,
+      started_at: trace.startedAt,
+      ended_at: trace.endedAt,
+      duration_ms: trace.durationMs,
+      reason: trace.reason,
+      data: trace.data ?? null,
+    })),
+    session_state: summary.sessionState.map((session) => ({
+      key: session.key,
+      component: session.component,
+      status: session.status,
+      updated_at: session.updatedAt,
+      correlation_id: session.correlationId,
+      metadata: session.metadata ?? null,
+    })),
+    runtime_state: summary.runtimeState,
+    raw_metrics: summary.rawMetrics,
   };
 }
 

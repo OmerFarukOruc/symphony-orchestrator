@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import express, { type Express } from "express";
@@ -18,9 +19,11 @@ const frontendDist = join(process.cwd(), "dist/frontend");
 
 export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   const staticRoot = deps.frontendDir ?? frontendDist;
+  const spaIndexPath = join(staticRoot, "index.html");
   const routeDeps = {
     ...deps,
     metrics: deps.metrics ?? createMetricsCollector(),
+    observability: deps.observability,
   } satisfies HttpRouteDeps;
 
   validateHttpDeps(routeDeps);
@@ -49,6 +52,6 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
       response.status(404).json({ error: { code: "not_found", message: "Not found" } });
       return;
     }
-    response.sendFile(join(staticRoot, "index.html"));
+    response.type("html").send(readFileSync(spaIndexPath, "utf8"));
   });
 }

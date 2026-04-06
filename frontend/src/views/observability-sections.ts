@@ -31,6 +31,7 @@ export function renderObservabilitySections(
 ): void {
   container.replaceChildren();
   const metrics = parsePrometheusText(state.metricsRaw);
+  const summaryData = state.summary;
   const summary = document.createElement("section");
   summary.className = "mc-strip observability-summary";
   const summaryWrap = document.createElement("div");
@@ -38,11 +39,17 @@ export function renderObservabilitySections(
   summaryH2.textContent = "Instrumentation status";
   const summaryP = document.createElement("p");
   summaryP.className = "text-secondary";
-  summaryP.textContent = summarizeMetrics(metrics);
+  summaryP.textContent = summaryData
+    ? `${summaryData.components.length} component snapshots · ${summaryData.health.counts.warn} warn · ${summaryData.health.counts.error} error`
+    : summarizeMetrics(metrics);
   summaryWrap.append(summaryH2, summaryP);
   const summaryBadge = document.createElement("span");
   summaryBadge.className = "mc-badge";
-  summaryBadge.textContent = getMissingFamilies(metrics).length ? "Fallback messaging active" : "Metrics connected";
+  summaryBadge.textContent = summaryData
+    ? `Overall ${summaryData.health.status.toUpperCase()}`
+    : getMissingFamilies(metrics).length
+      ? "Fallback messaging active"
+      : "Metrics connected";
   summary.append(summaryWrap, summaryBadge);
   container.append(summary);
   if (!snapshot) {
@@ -58,6 +65,20 @@ export function renderObservabilitySections(
   }
   const sections = [
     buildSection("Service health", [
+      {
+        title: "Overall observability",
+        source: "aggregate snapshot",
+        value: summaryData ? summaryData.health.status.toUpperCase() : "Pending",
+        detail: summaryData
+          ? `${summaryData.health.surfaces.length} surfaces · ${summaryData.session_state.length} tracked sessions`
+          : "Waiting for the aggregate observability snapshot.",
+      },
+      {
+        title: "Recent traces",
+        source: "aggregate snapshot",
+        value: summaryData ? `${summaryData.traces.length}` : "0",
+        detail: summarizeRecentTraces(summaryData),
+      },
       {
         title: "Last poll freshness",
         source: "current snapshot",
@@ -158,4 +179,17 @@ function buildAnomalyCards(
     buildListCard("Stale polling warnings", anomalies.stale, "current snapshot"),
     buildListCard("Missing instrumentation warnings", anomalies.instrumentation, "backend counter"),
   ];
+}
+
+function summarizeRecentTraces(summary: ObservabilityState["summary"]): string {
+  if (!summary) {
+    return "No aggregate trace data yet.";
+  }
+  if (summary.traces.length === 0) {
+    return "No traces recorded yet.";
+  }
+  return summary.traces
+    .slice(0, 3)
+    .map((trace) => `${trace.component}:${trace.operation}`)
+    .join(" · ");
 }

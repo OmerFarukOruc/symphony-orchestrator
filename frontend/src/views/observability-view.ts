@@ -20,7 +20,7 @@ export function createObservabilityPage(): HTMLElement {
   actions.className = "mc-actions";
   const sourceBadge = document.createElement("span");
   sourceBadge.className = "mc-badge";
-  sourceBadge.textContent = "Sources labeled per widget";
+  sourceBadge.textContent = "Unified snapshot + raw metrics";
   const drawerButton = createButton("Raw metrics (x)");
   const refreshButton = createButton("Refresh (r)", "primary");
   actions.append(sourceBadge, drawerButton, refreshButton);
@@ -40,18 +40,20 @@ export function createObservabilityPage(): HTMLElement {
   content.append(body, drawer.root);
   page.append(header, content);
 
-  async function loadMetrics(showErrorToast = false): Promise<void> {
+  async function loadObservability(showErrorToast = false): Promise<void> {
     if (state.loadingMetrics && state.metricsFetchedAt > 0) {
       return;
     }
     state.loadingMetrics = true;
     render();
     try {
-      state.metricsRaw = await api.getMetrics();
+      state.summary = await api.getObservability();
+      state.metricsRaw = state.summary.raw_metrics;
       state.metricsFetchedAt = Date.now();
+      store.mergeSnapshot(state.summary.runtime_state);
       state.error = null;
     } catch (error) {
-      state.error = error instanceof Error ? error.message : "Failed to load metrics.";
+      state.error = error instanceof Error ? error.message : "Failed to load observability.";
       if (showErrorToast) {
         toast(state.error, "error");
       }
@@ -69,9 +71,9 @@ export function createObservabilityPage(): HTMLElement {
     render();
     try {
       await api.postRefresh().catch(() => undefined);
-      const [snapshot, metrics] = await Promise.all([api.getState(), api.getMetrics()]);
-      store.mergeSnapshot(snapshot, { resetStale: true });
-      state.metricsRaw = metrics;
+      state.summary = await api.getObservability();
+      store.mergeSnapshot(state.summary.runtime_state, { resetStale: true });
+      state.metricsRaw = state.summary.raw_metrics;
       state.metricsFetchedAt = Date.now();
       state.error = null;
       toast("Observability refreshed.", "success");
@@ -86,11 +88,12 @@ export function createObservabilityPage(): HTMLElement {
   }
 
   function sync(appState: AppState): void {
-    if (appState.snapshot) {
-      pushSnapshotTrend(state, appState.snapshot);
+    const snapshot = state.summary?.runtime_state ?? appState.snapshot;
+    if (snapshot) {
+      pushSnapshotTrend(state, snapshot);
     }
     if (Date.now() - state.metricsFetchedAt > 4_000 && !state.refreshing) {
-      void loadMetrics();
+      void loadObservability();
     }
     render();
   }
@@ -99,9 +102,15 @@ export function createObservabilityPage(): HTMLElement {
     refreshButton.disabled = state.refreshing;
     refreshButton.textContent = state.refreshing ? "Refreshing…" : "Refresh (r)";
     drawerButton.textContent = state.rawDrawerOpen ? "Hide raw metrics (x)" : "Raw metrics (x)";
-    renderObservabilitySections(body, store.getState().snapshot, store.getState().staleCount, state, {
-      onRefresh: () => void refreshAll(),
-    });
+    renderObservabilitySections(
+      body,
+      state.summary?.runtime_state ?? store.getState().snapshot,
+      store.getState().staleCount,
+      state,
+      {
+        onRefresh: () => void refreshAll(),
+      },
+    );
     drawer.render(state.metricsRaw, state.rawDrawerOpen);
   }
 
@@ -123,7 +132,7 @@ export function createObservabilityPage(): HTMLElement {
   };
 
   const onPollComplete = (): void => {
-    void loadMetrics().then(() => flashDiff(body));
+    void loadObservability().then(() => flashDiff(body));
   };
 
   window.addEventListener(APP_STATE_UPDATE_EVENT, onState);
@@ -131,7 +140,7 @@ export function createObservabilityPage(): HTMLElement {
   window.addEventListener("risoluto:poll-complete", onPollComplete);
   window.addEventListener("keydown", onKey);
   sync(store.getState());
-  void loadMetrics();
+  void loadObservability();
   registerPageCleanup(page, () => {
     window.removeEventListener(APP_STATE_UPDATE_EVENT, onState);
     window.removeEventListener(APP_STATE_HEARTBEAT_EVENT, onState);

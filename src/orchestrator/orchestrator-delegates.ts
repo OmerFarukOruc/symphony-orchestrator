@@ -34,6 +34,7 @@ import { handleWorkerFailure } from "./worker-failure.js";
 import { handleWorkerOutcome } from "./worker-outcome/index.js";
 import { detectAndKillStalledWorkers, type StallEvent } from "./stall-detector.js";
 import { createMetricsCollector } from "../observability/metrics.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 /**
  * Pure delegation helpers that forward from Orchestrator methods to extracted state modules.
@@ -282,14 +283,58 @@ async function handleWorkerPromise(
   workerAttempt: number | null,
 ): Promise<void> {
   const metrics = ctx.deps.metrics ?? createMetricsCollector();
+  const observer = ctx.deps.observability?.getComponent("orchestrator");
   await promise
     .then(async (outcome) => {
       await handleWorkerOutcome(ctx, outcome, entry, workerIssue, workspace, workerAttempt);
       metrics.agentRunsTotal.increment({ outcome: outcome.kind });
+      observer?.recordOperation({
+        metric: "worker_completion",
+        operation: "worker_outcome",
+        outcome: outcome.kind === "failed" ? "failure" : "success",
+        correlationId: entry.runId,
+        data: {
+          issueId: workerIssue.id,
+          issueIdentifier: workerIssue.identifier,
+          outcome: outcome.kind,
+        },
+      });
+      observer?.setSession(workerIssue.id, {
+        status: outcome.kind,
+        correlationId: entry.runId,
+        metadata: {
+          issueIdentifier: workerIssue.identifier,
+          workspaceKey: workspace.workspaceKey,
+        },
+      });
     })
     .catch(async (error) => {
       await handleWorkerFailure(ctx, workerIssue, entry, error);
       metrics.agentRunsTotal.increment({ outcome: "failed" });
+      observer?.recordOperation({
+        metric: "worker_completion",
+        operation: "worker_outcome",
+        outcome: "failure",
+        correlationId: entry.runId,
+        reason: toErrorString(error),
+        data: {
+          issueId: workerIssue.id,
+          issueIdentifier: workerIssue.identifier,
+        },
+      });
+      observer?.setSession(workerIssue.id, {
+        status: "failed",
+        correlationId: entry.runId,
+        metadata: {
+          issueIdentifier: workerIssue.identifier,
+          error: toErrorString(error),
+        },
+      });
+      observer?.setHealth({
+        surface: "workers",
+        status: "warn",
+        reason: `worker failed for ${workerIssue.identifier}`,
+      });
     });
 }
 

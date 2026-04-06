@@ -136,6 +136,16 @@ describe("HTTP routes", () => {
     expect(orchestrator.getSnapshot).not.toHaveBeenCalled();
   });
 
+  it("GET /api/v1/observability returns aggregate snapshot", async () => {
+    const res = await fetchRoute("/api/v1/observability");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty("generated_at");
+    expect(body).toHaveProperty("health");
+    expect(body).toHaveProperty("runtime_state");
+    expect(body).toHaveProperty("raw_metrics");
+  });
+
   it("GET /api/v1/runtime returns runtime info", async () => {
     const res = await fetchRoute("/api/v1/runtime");
     expect(res.status).toBe(200);
