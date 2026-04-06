@@ -6,6 +6,15 @@ import { normalizeCodexAuthJson, readCodexAuthTokens } from "./auth-file.js";
 import { isTokenExpired, refreshAccessToken } from "./token-refresh.js";
 import { toErrorString } from "../utils/type-guards.js";
 
+/**
+ * Pre-computed Codex runtime config for data plane dispatch.
+ * Avoids reading auth.json from disk by providing values pre-computed by the control plane.
+ */
+export interface PrecomputedRuntimeConfig {
+  configToml: string;
+  authJsonBase64: string | null;
+}
+
 const DIRECT_OPENAI_PROVIDER_ID = "risoluto_openai_api";
 const DIRECT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 

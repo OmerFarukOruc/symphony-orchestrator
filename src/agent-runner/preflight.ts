@@ -1,6 +1,7 @@
 import type { RisolutoLogger } from "../core/types.js";
 import { asRecord } from "./helpers.js";
 import { toErrorString } from "../utils/type-guards.js";
+import { CODEX_METHOD } from "../codex/methods.js";
 
 /** Minimal interface for the JSON-RPC request method used by preflight. */
 export interface PreflightConnection {
@@ -24,7 +25,7 @@ export async function runPreflight(
 
   for (const command of commands) {
     try {
-      const result = await connection.request("command/exec", { command: ["sh", "-lc", command] });
+      const result = await connection.request(CODEX_METHOD.CommandExec, { command: ["sh", "-lc", command] });
       const data = asRecord(result);
       const exitCode = typeof data.exitCode === "number" ? data.exitCode : -1;
       const output =

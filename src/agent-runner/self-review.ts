@@ -3,6 +3,7 @@ import type { RisolutoLogger } from "../core/types.js";
 import { asRecord, asString, extractTurnId } from "./helpers.js";
 import { consumeReviewSummary, waitForTurnCompletion, type TurnState } from "./turn-state.js";
 import { toErrorString } from "../utils/type-guards.js";
+import { CODEX_METHOD } from "../codex/methods.js";
 
 export interface SelfReviewResult {
   passed: boolean | null;
@@ -37,7 +38,7 @@ export async function runSelfReview(
   timeoutMs: number,
 ): Promise<SelfReviewResult | null> {
   try {
-    const result = await connection.request("review/start", {
+    const result = await connection.request(CODEX_METHOD.ReviewStart, {
       threadId,
       delivery: "inline",
       target: { type: "uncommittedChanges" },

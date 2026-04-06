@@ -23,14 +23,15 @@ import type { PathRegistry } from "../workspace/path-registry.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { Issue, ModelSelection, ServiceConfig, RisolutoLogger, Workspace } from "../core/types.js";
 
+import type { PrecomputedRuntimeConfig } from "../codex/runtime-config.js";
+import { CODEX_METHOD } from "../codex/methods.js";
+
+export type { PrecomputedRuntimeConfig } from "../codex/runtime-config.js";
+
 function parsePercent(value: string): number {
   const parsed = Number.parseFloat(value.replaceAll("%", "").trim());
   return Number.isFinite(parsed) ? parsed : 0;
 }
-
-import type { PrecomputedRuntimeConfig } from "../dispatch/types.js";
-
-export type { PrecomputedRuntimeConfig } from "../dispatch/types.js";
 
 export interface DockerSessionDeps {
   archiveDir?: string;
@@ -181,7 +182,7 @@ function buildDockerSessionObject(
     steerTurn: async (message: string): Promise<boolean> => {
       if (!session.threadId || !session.turnId) return false;
       try {
-        await session.connection.request("turn/steer", {
+        await session.connection.request(CODEX_METHOD.TurnSteer, {
           threadId: session.threadId,
           expectedTurnId: session.turnId,
           input: [{ type: "text", text: message }],

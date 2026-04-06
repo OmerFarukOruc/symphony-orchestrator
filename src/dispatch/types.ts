@@ -9,14 +9,7 @@ import type {
   Workspace,
 } from "../core/types.js";
 
-/**
- * Pre-computed Codex runtime config for data plane dispatch.
- * Avoids reading auth.json from disk by providing values pre-computed by control plane.
- */
-export interface PrecomputedRuntimeConfig {
-  configToml: string;
-  authJsonBase64: string | null;
-}
+export type { PrecomputedRuntimeConfig } from "../codex/runtime-config.js";
 
 /**
  * Interface for the runAttempt dispatcher.
