@@ -10,6 +10,7 @@ import type { RisolutoLogger } from "../core/types.js";
 import type { AutomationStorePort } from "../persistence/sqlite/automation-store.js";
 import type { NotificationStorePort } from "../persistence/sqlite/notification-store.js";
 import type { MetricsCollector } from "../observability/metrics.js";
+import type { ObservabilityHub } from "../observability/hub.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import type { TemplateStorePort } from "../prompt/port.js";
 import type { SecretsPort } from "../secrets/port.js";
@@ -35,4 +36,5 @@ export interface HttpRouteDeps {
   archiveDir?: string;
   webhookHandlerDeps?: WebhookHandlerDeps;
   metrics?: MetricsCollector;
+  observability?: ObservabilityHub;
 }

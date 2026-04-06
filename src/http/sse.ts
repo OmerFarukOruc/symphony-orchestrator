@@ -10,6 +10,8 @@ import type { Request, Response } from "express";
 
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
+import type { ComponentObserver } from "../observability/hub.js";
+import { getRequestId } from "../observability/tracing.js";
 
 const KEEP_ALIVE_MS = 30_000;
 
@@ -22,8 +24,38 @@ type AnyHandler = (channel: keyof RisolutoEventMap, payload: RisolutoEventMap[ke
  * carry `{"type":"<channel>","payload":{...}}` for every bus emission.
  */
 export function createSSEHandler(eventBus: TypedEventBus<RisolutoEventMap>): (req: Request, res: Response) => void {
+  return createSSEHandlerWithObserver(eventBus);
+}
+
+export function createSSEHandlerWithObserver(
+  eventBus: TypedEventBus<RisolutoEventMap>,
+  observer?: ComponentObserver,
+): (req: Request, res: Response) => void {
+  let activeConnections = 0;
   return (req: Request, res: Response) => {
     configureSSEHeaders(res);
+    const correlationId = getRequestId(req);
+    activeConnections += 1;
+    observer?.setSession(correlationId, {
+      status: "connected",
+      correlationId,
+      metadata: {
+        path: req.path,
+      },
+    });
+    observer?.recordOperation({
+      metric: "sse_connect",
+      operation: "sse_connect",
+      outcome: "success",
+      correlationId,
+      data: { activeConnections },
+    });
+    observer?.setHealth({
+      surface: "sse",
+      status: "ok",
+      reason: activeConnections === 1 ? "first SSE client connected" : "SSE clients connected",
+      details: { activeConnections },
+    });
 
     let closed = false;
     let keepAliveTimer: ReturnType<typeof setInterval> | null = null;
@@ -49,6 +81,21 @@ export function createSSEHandler(eventBus: TypedEventBus<RisolutoEventMap>): (re
         keepAliveTimer = null;
       }
       eventBus.offAny(handler);
+      activeConnections = Math.max(0, activeConnections - 1);
+      observer?.clearSession(correlationId);
+      observer?.recordOperation({
+        metric: "sse_disconnect",
+        operation: "sse_disconnect",
+        outcome: "success",
+        correlationId,
+        data: { activeConnections },
+      });
+      observer?.setHealth({
+        surface: "sse",
+        status: "ok",
+        reason: activeConnections === 0 ? "no active SSE clients" : "SSE stream healthy",
+        details: { activeConnections },
+      });
     };
 
     safeWrite(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
@@ -60,7 +107,23 @@ export function createSSEHandler(eventBus: TypedEventBus<RisolutoEventMap>): (re
 
     req.once("close", cleanup);
     res.once("close", cleanup);
-    res.once("error", cleanup);
+    res.once("error", () => {
+      observer?.recordOperation({
+        metric: "sse_error",
+        operation: "sse_stream",
+        outcome: "failure",
+        correlationId,
+        reason: "response stream error",
+        data: { activeConnections },
+      });
+      observer?.setHealth({
+        surface: "sse",
+        status: "warn",
+        reason: "response stream error",
+        details: { activeConnections },
+      });
+      cleanup();
+    });
   };
 }
 

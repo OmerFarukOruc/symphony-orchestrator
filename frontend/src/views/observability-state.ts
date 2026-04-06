@@ -1,4 +1,4 @@
-import type { RuntimeSnapshot } from "../types";
+import type { ObservabilitySummary, RuntimeSnapshot } from "../types";
 
 export interface ObservabilityTrendPoint {
   capturedAt: number;
@@ -11,6 +11,7 @@ export interface ObservabilityTrendPoint {
 }
 
 export interface ObservabilityState {
+  summary: ObservabilitySummary | null;
   metricsRaw: string;
   metricsFetchedAt: number;
   loadingMetrics: boolean;
@@ -22,6 +23,7 @@ export interface ObservabilityState {
 
 export function createObservabilityState(): ObservabilityState {
   return {
+    summary: null,
     metricsRaw: "",
     metricsFetchedAt: 0,
     loadingMetrics: true,

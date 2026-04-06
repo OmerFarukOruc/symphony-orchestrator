@@ -1,17 +1,19 @@
 import type { Express } from "express";
 
 import { fetchCodexModels } from "../../codex/model-list.js";
+import { createObservabilityHub } from "../../observability/hub.js";
 import { createMetricsCollector } from "../../observability/metrics.js";
 import type { RecoveryReport } from "../../orchestrator/recovery-types.js";
 import type { HttpRouteDeps } from "../route-types.js";
-import { methodNotAllowed, refreshReason } from "../route-helpers.js";
-import { createSSEHandler } from "../sse.js";
+import { methodNotAllowed, refreshReason, serializeObservabilitySummary } from "../route-helpers.js";
+import { createSSEHandlerWithObserver } from "../sse.js";
 import { getOpenApiSpec } from "../openapi.js";
 import { getSwaggerHtml } from "../swagger-html.js";
 import { handleGetTransitions } from "../transitions-api.js";
 
 export function registerSystemRoutes(app: Express, deps: HttpRouteDeps): void {
   const metrics = deps.metrics ?? createMetricsCollector();
+  const observability = deps.observability ?? createObservabilityHub({ archiveDir: deps.archiveDir });
   if (!deps.eventBus) {
     deps.logger?.warn({ msg: "eventBus not provided — /api/v1/events SSE endpoint will not be registered" });
   }
@@ -20,6 +22,24 @@ export function registerSystemRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/state")
     .get((_req, res) => {
       res.json(deps.orchestrator.getSerializedState());
+    })
+    .all((_req, res) => {
+      methodNotAllowed(res);
+    });
+
+  app
+    .route("/api/v1/observability")
+    .get(async (_req, res, next) => {
+      try {
+        const summary = await observability.aggregate({
+          runtimeState: deps.orchestrator.getSerializedState(),
+          rawMetrics: metrics.serialize(),
+          attemptStoreConfigured: Boolean(deps.attemptStore),
+        });
+        res.json(serializeObservabilitySummary(summary));
+      } catch (error) {
+        next(error);
+      }
     })
     .all((_req, res) => {
       methodNotAllowed(res);
@@ -86,7 +106,7 @@ export function registerSystemRoutes(app: Express, deps: HttpRouteDeps): void {
   if (deps.eventBus) {
     app
       .route("/api/v1/events")
-      .get(createSSEHandler(deps.eventBus))
+      .get(createSSEHandlerWithObserver(deps.eventBus, observability.getComponent("sse")))
       .all((_req, res) => {
         methodNotAllowed(res);
       });

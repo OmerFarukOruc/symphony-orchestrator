@@ -195,6 +195,19 @@ describe("HttpServer", () => {
       ],
     });
 
+    const observabilityResponse = await fetch(`${baseUrl}/api/v1/observability`);
+    expect(observabilityResponse.status).toBe(200);
+    expect(observabilityResponse.headers.get("content-type")).toContain("application/json");
+    expect(await observabilityResponse.json()).toMatchObject({
+      runtime_state: expect.objectContaining({
+        generated_at: "2026-03-16T00:00:00Z",
+      }),
+      health: expect.objectContaining({
+        status: expect.any(String),
+      }),
+      raw_metrics: expect.any(String),
+    });
+
     const metricsResponse = await fetch(`${baseUrl}/metrics`);
     expect(metricsResponse.status).toBe(200);
     expect(metricsResponse.headers.get("content-type")).toContain("text/plain");
@@ -294,10 +307,12 @@ describe("HttpServer", () => {
       frontendDir,
     });
     const started = await server.start(0);
-    const response = await fetch(`http://127.0.0.1:${started.port}/dashboard`);
-    expect(response.status).toBe(200);
-    const html = await response.text();
-    expect(html).toContain('<div id="app">');
+    for (const path of ["/dashboard", "/observability"]) {
+      const response = await fetch(`http://127.0.0.1:${started.port}${path}`);
+      expect(response.status).toBe(200);
+      const html = await response.text();
+      expect(html).toContain('<div id="app">');
+    }
   });
 
   it("rejects invalid reasoning_effort string with 400", async () => {

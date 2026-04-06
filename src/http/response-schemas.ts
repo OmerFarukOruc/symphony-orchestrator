@@ -413,6 +413,77 @@ export const stateResponseSchema = z.object({
   available_models: z.array(z.string()).nullable().optional(),
 });
 
+const observabilityMetricCounterSchema = z.object({
+  total: z.number(),
+  success: z.number(),
+  failure: z.number(),
+  last_at: z.string().nullable(),
+  last_success_at: z.string().nullable(),
+  last_failure_at: z.string().nullable(),
+  last_failure_reason: z.string().nullable(),
+});
+
+const observabilityHealthSurfaceSchema = z.object({
+  surface: z.string(),
+  component: z.string(),
+  status: z.enum(["ok", "warn", "error"]),
+  updated_at: z.string(),
+  reason: z.string().nullable(),
+  details: z.record(z.string(), z.unknown()).nullable(),
+});
+
+const observabilityTraceSchema = z.object({
+  id: z.string(),
+  component: z.string(),
+  metric: z.string(),
+  operation: z.string(),
+  outcome: z.enum(["success", "failure"]),
+  correlation_id: z.string().nullable(),
+  started_at: z.string(),
+  ended_at: z.string(),
+  duration_ms: z.number().nullable(),
+  reason: z.string().nullable(),
+  data: z.record(z.string(), z.unknown()).nullable(),
+});
+
+const observabilitySessionSchema = z.object({
+  key: z.string(),
+  component: z.string(),
+  status: z.string(),
+  updated_at: z.string(),
+  correlation_id: z.string().nullable(),
+  metadata: z.record(z.string(), z.unknown()).nullable(),
+});
+
+const observabilityComponentSchema = z.object({
+  component: z.string(),
+  pid: z.number(),
+  updated_at: z.string(),
+  metrics: z.record(z.string(), observabilityMetricCounterSchema),
+  health: z.record(z.string(), observabilityHealthSurfaceSchema),
+  traces: z.array(observabilityTraceSchema),
+  sessions: z.record(z.string(), observabilitySessionSchema),
+});
+
+export const observabilityResponseSchema = z.object({
+  generated_at: z.string(),
+  snapshot_root: z.string(),
+  components: z.array(observabilityComponentSchema),
+  health: z.object({
+    status: z.enum(["ok", "warn", "error"]),
+    counts: z.object({
+      ok: z.number(),
+      warn: z.number(),
+      error: z.number(),
+    }),
+    surfaces: z.array(observabilityHealthSurfaceSchema),
+  }),
+  traces: z.array(observabilityTraceSchema),
+  session_state: z.array(observabilitySessionSchema),
+  runtime_state: stateResponseSchema,
+  raw_metrics: z.string(),
+});
+
 /** GET /api/v1/{issue_identifier} — issue detail with attempts and events. */
 export const issueDetailResponseSchema = runtimeIssueViewSchema.extend({
   recentEvents: z.array(recentEventSchema),

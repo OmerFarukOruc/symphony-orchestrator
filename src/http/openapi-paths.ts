@@ -33,6 +33,7 @@ import {
   notificationTestResponseSchema,
   notificationsListResponseSchema,
   notificationsReadAllResponseSchema,
+  observabilityResponseSchema,
   prsListResponseSchema,
   recoveryReportResponseSchema,
   refreshResponseSchema,
@@ -108,6 +109,15 @@ export function buildStateAndMetricsPaths(): Record<string, PathItem> {
         responses: {
           "200": jsonResponse("Runtime information", toSchema(runtimeResponseSchema)),
         },
+      },
+    },
+    "/api/v1/observability": {
+      get: {
+        tags: ["State & Metrics"],
+        summary: "Get aggregate observability snapshot",
+        operationId: "getObservability",
+        security: protectedReadSecurity,
+        responses: protectedReadResponses("Aggregate observability snapshot", toSchema(observabilityResponseSchema)),
       },
     },
     "/api/v1/recovery": {

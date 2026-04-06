@@ -33,6 +33,7 @@ describe("getOpenApiSpec", () => {
   it("includes core state routes", () => {
     const paths = spec.paths as Record<string, unknown>;
     expect(paths).toHaveProperty("/api/v1/state");
+    expect(paths).toHaveProperty("/api/v1/observability");
     expect(paths).toHaveProperty("/api/v1/runtime");
     expect(paths).toHaveProperty("/api/v1/refresh");
     expect(paths).toHaveProperty("/metrics");
@@ -101,6 +102,7 @@ describe("getOpenApiSpec", () => {
   it("marks protected reads with auth requirements", () => {
     const paths = spec.paths as Record<string, Record<string, Record<string, unknown>>>;
     expect(paths["/api/v1/state"].get.security).toEqual([{ bearerAuth: [] }]);
+    expect(paths["/api/v1/observability"].get.security).toEqual([{ bearerAuth: [] }]);
     expect(paths["/api/v1/{issue_identifier}"].get.security).toEqual([{ bearerAuth: [] }]);
     expect(paths["/api/v1/runtime"].get.security).toBeUndefined();
   });

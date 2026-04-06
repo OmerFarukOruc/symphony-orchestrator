@@ -6,7 +6,8 @@ import type { WebhookRequest } from "./webhook-types.js";
 import type { HttpRouteDeps } from "./route-types.js";
 
 import { createMetricsCollector } from "../observability/metrics.js";
-import { tracingMiddleware } from "../observability/tracing.js";
+import { createObservabilityHub, type ObservabilityHub } from "../observability/hub.js";
+import { getRequestId, tracingMiddleware } from "../observability/tracing.js";
 
 import { registerHttpRoutes } from "./routes.js";
 import { createReadGuard, hasConfiguredReadAccessToken } from "./read-guard.js";
@@ -19,6 +20,7 @@ function isLoopbackBindHost(host: string): boolean {
 
 export class HttpServer {
   private readonly app: Express;
+  private readonly observability: ObservabilityHub;
   private server: http.Server | null = null;
 
   constructor(private readonly deps: HttpRouteDeps) {
@@ -27,10 +29,14 @@ export class HttpServer {
     this.app.set("trust proxy", process.env.RISOLUTO_TRUST_PROXY === "true" ? 1 : false);
     this.app.use(tracingMiddleware);
     const metrics = this.deps.metrics ?? createMetricsCollector();
+    this.observability = this.deps.observability ?? createObservabilityHub({ archiveDir: this.deps.archiveDir });
+    const httpObserver = this.observability.getComponent("http");
     this.app.use((request, response, next) => {
       const startedAt = process.hrtime.bigint();
       response.once("finish", () => {
         const durationSeconds = Number(process.hrtime.bigint() - startedAt) / 1_000_000_000;
+        const durationMs = durationSeconds * 1000;
+        const requestId = getRequestId(request);
         metrics.httpRequestsTotal.increment({
           method: request.method,
           status: String(response.statusCode),
@@ -38,6 +44,34 @@ export class HttpServer {
         metrics.httpRequestDurationSeconds.observe(durationSeconds, {
           method: request.method,
           status: String(response.statusCode),
+        });
+        httpObserver.recordOperation({
+          metric: "api_request",
+          operation: "http_request",
+          outcome: response.statusCode >= 500 ? "failure" : "success",
+          correlationId: requestId,
+          durationMs,
+          reason: response.statusCode >= 500 ? `HTTP ${response.statusCode}` : null,
+          data: {
+            method: request.method,
+            path: request.path,
+            statusCode: response.statusCode,
+          },
+        });
+        httpObserver.setHealth({
+          surface: "http",
+          status: response.statusCode >= 500 ? "error" : response.statusCode >= 400 ? "warn" : "ok",
+          reason:
+            response.statusCode >= 500
+              ? `last request returned ${response.statusCode}`
+              : response.statusCode >= 400
+                ? `last request returned ${response.statusCode}`
+                : "request handling healthy",
+          details: {
+            method: request.method,
+            path: request.path,
+            statusCode: response.statusCode,
+          },
         });
       });
       next();
@@ -54,7 +88,7 @@ export class HttpServer {
     );
     this.app.use(createReadGuard());
     this.app.use(createWriteGuard());
-    registerHttpRoutes(this.app, { ...this.deps, metrics });
+    registerHttpRoutes(this.app, { ...this.deps, metrics, observability: this.observability });
     this.app.use(serviceErrorHandler);
   }
 
@@ -90,6 +124,11 @@ export class HttpServer {
       });
     });
     this.server = startedServer;
+    this.observability.getComponent("http").setHealth({
+      surface: "http",
+      status: "ok",
+      reason: "http server listening",
+    });
     if (startedServer) {
       const address = (startedServer as { address?: () => { port: number } | string | null }).address?.();
       if (address && typeof address === "object") {
@@ -112,6 +151,12 @@ export class HttpServer {
         resolve();
       });
     });
+    this.observability.getComponent("http").setHealth({
+      surface: "http",
+      status: "warn",
+      reason: "http server stopped",
+    });
+    await this.observability.drain();
     this.server = null;
   }
 }

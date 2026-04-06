@@ -7,6 +7,7 @@ import { sanitizeIdentifier } from "../workspace/paths.js";
 import { withWorkspaceLifecycleLock } from "../workspace/lifecycle-lock.js";
 import { isActiveState, isTodoState, normalizeStateKey } from "../state/policy.js";
 import type { NotificationEvent } from "../notification/channel.js";
+import type { ComponentObserver } from "../observability/hub.js";
 import type {
   AttemptRecord,
   CheckpointTrigger,
@@ -140,6 +141,7 @@ type LaunchContext = {
     | "gitManager"
     | "logger"
     | "resolveTemplate"
+    | "observability"
   >;
   runningEntries: Map<string, RunningEntry>;
   completedViews: Map<string, ReturnType<typeof issueView>>;
@@ -420,6 +422,7 @@ export async function launchWorker(
   attempt: number | null,
   options?: LaunchWorkerOptions,
 ): Promise<void> {
+  const observer = ctx.deps.observability?.getComponent("orchestrator");
   if (!options?.claimHeld) {
     ctx.claimIssue(issue.id);
   }
@@ -456,7 +459,16 @@ export async function launchWorker(
     emitLaunchNotifications(ctx, issue, workspace, attempt, modelSelection);
 
     const promptTemplate = await ctx.deps.resolveTemplate(issue.identifier);
-    const promise = ctx.deps.agentRunner.runAttempt({
+    observer?.setSession(issue.id, {
+      status: "running",
+      correlationId: entry.runId,
+      metadata: {
+        issueId: issue.id,
+        issueIdentifier: issue.identifier,
+        attempt,
+      },
+    });
+    const runAttemptInput = {
       issue,
       attempt,
       modelSelection,
@@ -466,10 +478,18 @@ export async function launchWorker(
       onEvent: buildOnEventHandler(ctx, entry),
       previousThreadId: options?.previousThreadId ?? options?.recoveredAttempt?.threadId ?? null,
       previousPrFeedback: options?.previousPrFeedback ?? null,
-      onSteerReady: (steerFn) => {
+      onSteerReady: (steerFn: (message: string) => Promise<boolean>) => {
         entry.steerTurn = steerFn;
       },
-    });
+    };
+    let promise: Promise<RunOutcome>;
+    try {
+      promise = ctx.deps.agentRunner.runAttempt(runAttemptInput);
+      recordLaunchObserverState(observer, issue, entry.runId, attempt, "success");
+    } catch (error) {
+      recordLaunchObserverState(observer, issue, entry.runId, attempt, "failure", toErrorString(error));
+      throw error;
+    }
     const workerPromise = ctx.handleWorkerPromise(promise, issue, workspace, entry, attempt);
     // Write a terminal_completion checkpoint once the worker promise settles,
     // regardless of outcome. Errors are swallowed — this must not block cleanup.
@@ -479,4 +499,44 @@ export async function launchWorker(
       });
     });
   });
+}
+
+function recordLaunchObserverState(
+  observer: ComponentObserver | undefined,
+  issue: Issue,
+  runId: string,
+  attempt: number | null,
+  outcome: "success" | "failure",
+  error?: string,
+): void {
+  observer?.recordOperation({
+    metric: "spawn",
+    operation: "worker_spawn",
+    outcome,
+    correlationId: runId,
+    reason: error ?? null,
+    data: {
+      issueId: issue.id,
+      issueIdentifier: issue.identifier,
+      attempt,
+    },
+  });
+  observer?.setHealth({
+    surface: "workers",
+    status: outcome === "success" ? "ok" : "warn",
+    reason: outcome === "success" ? "worker launched" : `worker launch failed for ${issue.identifier}`,
+    details: {
+      issueIdentifier: issue.identifier,
+    },
+  });
+  if (outcome === "failure") {
+    observer?.setSession(issue.id, {
+      status: "spawn_failed",
+      correlationId: runId,
+      metadata: {
+        issueIdentifier: issue.identifier,
+        error,
+      },
+    });
+  }
 }

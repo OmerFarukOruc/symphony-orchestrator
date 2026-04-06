@@ -1,5 +1,44 @@
 type Labels = Record<string, string>;
 
+export interface ObservabilityMetricCounter {
+  total: number;
+  success: number;
+  failure: number;
+  lastAt?: string;
+  lastSuccessAt?: string;
+  lastFailureAt?: string;
+  lastFailureReason?: string;
+}
+
+export function recordMetricCounter(
+  counter: ObservabilityMetricCounter | undefined,
+  input: { outcome: "success" | "failure"; at?: string; reason?: string | null },
+): ObservabilityMetricCounter {
+  const next: ObservabilityMetricCounter = {
+    total: counter?.total ?? 0,
+    success: counter?.success ?? 0,
+    failure: counter?.failure ?? 0,
+    lastAt: counter?.lastAt,
+    lastSuccessAt: counter?.lastSuccessAt,
+    lastFailureAt: counter?.lastFailureAt,
+    lastFailureReason: counter?.lastFailureReason,
+  };
+  const at = input.at ?? new Date().toISOString();
+  next.total += 1;
+  next.lastAt = at;
+  if (input.outcome === "success") {
+    next.success += 1;
+    next.lastSuccessAt = at;
+    return next;
+  }
+  next.failure += 1;
+  next.lastFailureAt = at;
+  if (input.reason) {
+    next.lastFailureReason = input.reason;
+  }
+  return next;
+}
+
 function labelKey(labels: Labels): string {
   return Object.entries(labels)
     .sort(([a], [b]) => a.localeCompare(b))

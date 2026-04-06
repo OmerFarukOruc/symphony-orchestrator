@@ -1,5 +1,6 @@
 import { AuditLogger } from "../audit/logger.js";
 import { createMetricsCollector } from "../observability/metrics.js";
+import { createObservabilityHub } from "../observability/hub.js";
 import { AlertEngine } from "../alerts/engine.js";
 import { AlertHistoryStore, type AlertHistoryStorePort } from "../alerts/history-store.js";
 import { AutomationRunner } from "../automation/runner.js";
@@ -45,6 +46,7 @@ interface InfrastructurePhase {
   repoRouter: ReturnType<typeof createRepoRouterProvider>;
   gitManager: ReturnType<typeof createGitHubToolProvider>;
   metrics: ReturnType<typeof createMetricsCollector>;
+  observability: ReturnType<typeof createObservabilityHub>;
 }
 
 interface WorkspaceDispatchPhase {
@@ -80,6 +82,7 @@ async function createInfrastructure(
   options?: { persistence?: PersistenceRuntime },
 ): Promise<InfrastructurePhase> {
   const metrics = createMetricsCollector();
+  const observability = createObservabilityHub({ archiveDir });
   const persistence = options?.persistence ?? (await initPersistenceRuntime({ dataDir: archiveDir, logger }));
   const { tracker, trackerToolProvider, linearClient } = createTracker(() => configStore.getConfig(), logger);
   const repoRouter = createRepoRouterProvider(() => configStore.getConfig());
@@ -88,7 +91,7 @@ async function createInfrastructure(
     resolveSecret: (name) => secretsStore.get(name) ?? undefined,
   });
 
-  return { persistence, tracker, trackerToolProvider, linearClient, repoRouter, gitManager, metrics };
+  return { persistence, tracker, trackerToolProvider, linearClient, repoRouter, gitManager, metrics, observability };
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +200,7 @@ function createRuntimeServices(
   webhook: ReturnType<typeof initWebhookInfrastructure>,
   logger: ReturnType<typeof createLogger>,
 ) {
-  const { persistence, tracker, repoRouter, gitManager, metrics } = infra;
+  const { persistence, tracker, repoRouter, gitManager, metrics, observability } = infra;
   const { workspaceManager, agentRunner } = workspace;
   const { eventBus, automationStore, alertHistoryStore, notificationManager } = events;
   const { templateStore, issueConfigStore, resolveTemplate } = templateAudit;
@@ -218,6 +221,7 @@ function createRuntimeServices(
     logger: logger.child({ component: "orchestrator" }),
     resolveTemplate,
     metrics,
+    observability,
   });
 
   const automationRunner = new AutomationRunner({
@@ -274,7 +278,7 @@ function createHttpLayer(
   archiveDir: string,
   logger: ReturnType<typeof createLogger>,
 ) {
-  const { persistence, tracker, metrics } = infra;
+  const { persistence, tracker, metrics, observability } = infra;
   const { eventBus, notificationStore, automationStore, alertHistoryStore } = events;
   const { templateStore, auditLogger } = templateAudit;
   const { orchestrator, automationScheduler } = runtime;
@@ -296,6 +300,7 @@ function createHttpLayer(
     templateStore,
     auditLogger,
     metrics,
+    observability,
     webhookHandlerDeps: webhook.webhookUrlSet
       ? buildWebhookHandlerDeps({
           orchestrator,

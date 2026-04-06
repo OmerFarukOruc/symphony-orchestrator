@@ -9,6 +9,7 @@ import type { NotificationManager } from "../notification/manager.js";
 import type { RepoMatch, RepoRouter } from "../git/repo-router.js";
 import type { WebhookHealthTracker } from "../webhook/health-tracker.js";
 import type { PromptTemplateStore } from "../prompt/store.js";
+import type { ObservabilityHub } from "../observability/hub.js";
 import type {
   AttemptRecord,
   Issue,
@@ -72,4 +73,5 @@ export interface OrchestratorDeps {
   logger: RisolutoLogger;
   resolveTemplate: (identifier: string) => Promise<string>;
   metrics?: MetricsCollector;
+  observability?: ObservabilityHub;
 }

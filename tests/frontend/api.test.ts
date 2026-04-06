@@ -47,6 +47,30 @@ describe("frontend api", () => {
     expect(snapshot).toEqual(snapshotBody);
   });
 
+  it("returns the aggregate observability snapshot from the API", async () => {
+    const snapshotBody = createSnapshot("2026-03-20T00:00:00.000Z");
+    const observabilityBody = {
+      generated_at: "2026-03-20T00:00:00.000Z",
+      snapshot_root: "/tmp/observability",
+      components: [],
+      health: {
+        status: "ok",
+        counts: { ok: 1, warn: 0, error: 0 },
+        surfaces: [],
+      },
+      traces: [],
+      session_state: [],
+      runtime_state: snapshotBody,
+      raw_metrics: "# HELP risoluto_http_requests_total Total HTTP requests\nrisoluto_http_requests_total 2\n",
+    };
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(createJsonResponse(observabilityBody)));
+
+    const summary = await api.getObservability();
+
+    expect(summary).toEqual(observabilityBody);
+  });
+
   it("adds a bearer token to protected reads when a token is bootstrapped from the URL", async () => {
     const snapshotBody = createSnapshot("2026-03-20T00:00:00.000Z");
     const fetchMock = vi.fn().mockResolvedValue(createJsonResponse(snapshotBody));

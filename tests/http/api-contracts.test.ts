@@ -223,6 +223,99 @@ describe("API Contract Snapshots", () => {
     });
   });
 
+  describe("GET /api/v1/observability", () => {
+    it("response structure matches snapshot", async () => {
+      const res = await fetchRoute("/api/v1/observability");
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      const structure = extractStructure(body);
+
+      expect(structure).toMatchInlineSnapshot(`
+        {
+          "components": "[]",
+          "generated_at": "string",
+          "health": {
+            "counts": {
+              "error": "number",
+              "ok": "number",
+              "warn": "number",
+            },
+            "status": "string",
+            "surfaces": [
+              {
+                "component": "string",
+                "details": "null",
+                "reason": "string",
+                "status": "string",
+                "surface": "string",
+                "updated_at": "string",
+              },
+            ],
+          },
+          "raw_metrics": "string",
+          "runtime_state": {
+            "codex_totals": {
+              "cost_usd": "number",
+              "input_tokens": "number",
+              "output_tokens": "number",
+              "seconds_running": "number",
+              "total_tokens": "number",
+            },
+            "completed": "[]",
+            "counts": {
+              "completed": "number",
+              "queued": "number",
+              "retrying": "number",
+              "running": "number",
+            },
+            "generated_at": "string",
+            "queued": [
+              {
+                "id": "string",
+                "identifier": "string",
+                "state": "string",
+                "title": "string",
+              },
+            ],
+            "rate_limits": "null",
+            "recent_events": [
+              {
+                "content": "null",
+                "issue_identifier": "string",
+                "metadata": "null",
+              },
+            ],
+            "retrying": "[]",
+            "running": [
+              {
+                "id": "string",
+                "identifier": "string",
+                "model": "string",
+                "runningAttemptId": "string",
+                "startedAt": "string",
+                "state": "string",
+                "title": "string",
+              },
+            ],
+            "workflow_columns": [
+              {
+                "count": "number",
+                "issues": "[]",
+                "key": "string",
+                "label": "string",
+                "terminal": "boolean",
+              },
+            ],
+          },
+          "session_state": "[]",
+          "snapshot_root": "string",
+          "traces": "[]",
+        }
+      `);
+    });
+  });
+
   describe("POST /api/v1/refresh", () => {
     it("response structure matches snapshot", async () => {
       const res = await fetchRoute("/api/v1/refresh", { method: "POST" });
