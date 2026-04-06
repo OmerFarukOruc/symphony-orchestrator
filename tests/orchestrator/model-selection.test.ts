@@ -210,6 +210,14 @@ describe("updateIssueModelSelection", () => {
     expect(result.reasoningEffort).toBeNull();
   });
 
+  it("omits effort suffix in running-entry event message when reasoningEffort is null", async () => {
+    const ctx = makeCtx({ runningEntry: {} });
+    await updateIssueModelSelection(ctx, { identifier: "MT-1", model: "o3-mini", reasoningEffort: null });
+    const event = ctx.pushEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(event.message).toBe("next run model updated to o3-mini");
+    expect(event.event).toBe("model_selection_updated");
+  });
+
   it("returns updated=true and restarted=false for retry entry path", async () => {
     const ctx = makeCtx({ retryEntry: {} });
     const result = await updateIssueModelSelection(ctx, {
@@ -228,6 +236,14 @@ describe("updateIssueModelSelection", () => {
     await updateIssueModelSelection(ctx, { identifier: "MT-1", model: "o3-mini", reasoningEffort: "low" });
     const event = ctx.pushEvent.mock.calls[0][0] as Record<string, unknown>;
     expect(event.message).toBe("next run model updated to o3-mini (low)");
+    expect(event.event).toBe("model_selection_updated");
+  });
+
+  it("omits effort suffix in retry-entry event message when reasoningEffort is null", async () => {
+    const ctx = makeCtx({ retryEntry: {} });
+    await updateIssueModelSelection(ctx, { identifier: "MT-1", model: "o3-mini", reasoningEffort: null });
+    const event = ctx.pushEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(event.message).toBe("next run model updated to o3-mini");
     expect(event.event).toBe("model_selection_updated");
   });
 
