@@ -2,7 +2,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import YAML from "yaml";
 import { afterEach, describe, expect, it } from "vitest";
+import { vi } from "vitest";
 
 import { loadWorkflowDefinition } from "../../src/workflow/loader.js";
 
@@ -16,6 +18,7 @@ async function createTempDir(): Promise<string> {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
@@ -197,6 +200,21 @@ describe("loadWorkflowDefinition", () => {
       await expectWorkflowLoaderError(loadWorkflowDefinition(filePath), {
         code: "workflow_parse_error",
         messagePattern: /Flow sequence in block collection/,
+        cause: "present",
+      });
+    });
+
+    it("throws workflow_parse_error with the fallback message when YAML parsing throws a non-Error value", async () => {
+      const dir = await createTempDir();
+      const filePath = path.join(dir, "WORKFLOW.md");
+      await writeFile(filePath, "---\nkey: value\n---\nBody\n", "utf8");
+      vi.spyOn(YAML, "parse").mockImplementation(() => {
+        throw "unexpected parse failure";
+      });
+
+      await expectWorkflowLoaderError(loadWorkflowDefinition(filePath), {
+        code: "workflow_parse_error",
+        message: "workflow parsing failed",
         cause: "present",
       });
     });
