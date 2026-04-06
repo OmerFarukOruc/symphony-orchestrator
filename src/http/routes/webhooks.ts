@@ -22,18 +22,13 @@ export function registerWebhookRoutes(app: Express, deps: HttpRouteDeps): void {
   app
     .route("/api/v1/webhooks/trigger")
     .post(triggerLimiter, validateBody(triggerSchema), async (req, res) => {
-      const logger = deps.logger ?? deps.webhookHandlerDeps?.logger;
-      if (!logger) {
-        res.status(503).json({ error: { code: "not_configured", message: "trigger logger not available" } });
-        return;
-      }
       await handleTriggerDispatch(
         {
           configStore: deps.configStore,
           tracker: deps.tracker,
           orchestrator: deps.orchestrator,
           webhookInbox: deps.webhookHandlerDeps?.webhookInbox,
-          logger,
+          logger: deps.webhookHandlerDeps?.logger ?? deps.logger,
         },
         req,
         res,
@@ -44,7 +39,7 @@ export function registerWebhookRoutes(app: Express, deps: HttpRouteDeps): void {
     });
 
   if (!deps.webhookHandlerDeps) {
-    deps.logger?.warn({
+    deps.logger.warn({
       msg: "webhookHandlerDeps not provided — /webhooks/linear and /webhooks/github will not be registered",
     });
     return;

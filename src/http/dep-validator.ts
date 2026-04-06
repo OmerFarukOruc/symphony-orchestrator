@@ -26,10 +26,7 @@ export function validateHttpDeps(deps: HttpRouteDeps): void {
     if (!isMissing(deps[entry.key])) {
       continue;
     }
-    deps.logger?.warn(
-      { feature: entry.feature },
-      "http route dependency missing; related endpoints may be unavailable",
-    );
+    deps.logger.warn({ feature: entry.feature }, "http route dependency missing; related endpoints may be unavailable");
   }
 
   const config = typeof deps.configStore?.getConfig === "function" ? deps.configStore.getConfig() : null;

@@ -46,21 +46,28 @@ interface DeriveServiceConfigOptions {
  * Alias registry mapping snake_case config keys to their camelCase equivalents.
  *
  * Each entry is [snakeCaseKey, camelCaseKey]. The registry is the single source
- * of truth for all dual-format keys. `normalizeRecord` uses it to fold both
- * variants onto the snake_case key so sub-builders can access one form only.
+ * of truth for dual-format keys within a single config section. Builders pass
+ * the section-specific alias list into `normalizeRecord` so alias handling
+ * stays local to the subsection being derived.
  */
-const ALIAS_REGISTRY: ReadonlyArray<readonly [string, string]> = [
+const WEBHOOK_ALIAS_REGISTRY: ReadonlyArray<readonly [string, string]> = [
   // webhook
   ["webhook_url", "webhookUrl"],
   ["webhook_secret", "webhookSecret"],
   ["polling_stretch_ms", "pollingStretchMs"],
   ["polling_base_ms", "pollingBaseMs"],
   ["health_check_interval_ms", "healthCheckIntervalMs"],
+];
+
+const AGENT_ALIAS_REGISTRY: ReadonlyArray<readonly [string, string]> = [
   // agent
   ["preflight_commands", "preflightCommands"],
   ["auto_retry_on_review_feedback", "autoRetryOnReviewFeedback"],
   ["pr_monitor_interval_ms", "prMonitorIntervalMs"],
   ["auto_merge", "autoMerge"],
+];
+
+const MERGE_POLICY_ALIAS_REGISTRY: ReadonlyArray<readonly [string, string]> = [
   // merge policy
   ["allowed_paths", "allowedPaths"],
   ["require_labels", "requireLabels"],
@@ -78,9 +85,12 @@ const ALIAS_REGISTRY: ReadonlyArray<readonly [string, string]> = [
  *
  * Returns a new object — the original is not mutated.
  */
-function normalizeRecord(record: Record<string, unknown>): Record<string, unknown> {
+function normalizeRecord(
+  record: Record<string, unknown>,
+  aliasRegistry: ReadonlyArray<readonly [string, string]>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = { ...record };
-  for (const [snakeKey, camelKey] of ALIAS_REGISTRY) {
+  for (const [snakeKey, camelKey] of aliasRegistry) {
     // Intentional loose nullish check: preserve "", 0, and false while
     // treating both null and undefined the same as the previous `??` path.
     if (out[snakeKey] == null && out[camelKey] != null) {
@@ -165,7 +175,7 @@ function deriveWorkspaceConfig(
  * never need to guard against undefined fields.
  */
 function deriveMergePolicyConfig(raw: Record<string, unknown>): ServiceConfig["agent"]["autoMerge"] {
-  const norm = normalizeRecord(raw);
+  const norm = normalizeRecord(raw, MERGE_POLICY_ALIAS_REGISTRY);
   const allowedPaths = asLooseStringArray(norm.allowed_paths);
   const requireLabels = asLooseStringArray(norm.require_labels);
   const excludeLabels = asLooseStringArray(norm.exclude_labels);
@@ -190,7 +200,7 @@ function deriveMergePolicyConfig(raw: Record<string, unknown>): ServiceConfig["a
  * Build the agent configuration subsection.
  */
 function deriveAgentConfig(agent: Record<string, unknown>): ServiceConfig["agent"] {
-  const norm = normalizeRecord(agent);
+  const norm = normalizeRecord(agent, AGENT_ALIAS_REGISTRY);
   return {
     maxConcurrentAgents: asNumber(norm.max_concurrent_agents, 10),
     maxConcurrentAgentsByState: Object.fromEntries(
@@ -320,7 +330,7 @@ function deriveWebhookConfig(
   webhook: Record<string, unknown>,
   secretResolver?: (name: string) => string | undefined,
 ): ServiceConfig["webhook"] | null {
-  const norm = normalizeRecord(webhook);
+  const norm = normalizeRecord(webhook, WEBHOOK_ALIAS_REGISTRY);
   const webhookUrl = resolveConfigString(norm.webhook_url, secretResolver) || null;
   if (!webhookUrl) return null;
 

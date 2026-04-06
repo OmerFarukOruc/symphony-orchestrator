@@ -9,7 +9,7 @@ import type { HttpRouteDeps } from "../route-types.js";
 import { sanitizeConfigValue } from "../route-helpers.js";
 
 function warnMissing(deps: HttpRouteDeps, feature: string): void {
-  deps.logger?.warn({ msg: `${feature} not provided — skipping registration` });
+  deps.logger.warn({ msg: `${feature} not provided — skipping registration` });
 }
 
 export function registerExtensionRoutes(app: Express, deps: HttpRouteDeps): void {

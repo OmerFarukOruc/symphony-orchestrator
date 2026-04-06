@@ -282,7 +282,6 @@ async function handleWorkerPromise(
   workerAttempt: number | null,
 ): Promise<void> {
   const metrics = ctx.deps.metrics ?? createMetricsCollector();
-  ctx.deps.metrics = metrics;
   await promise
     .then(async (outcome) => {
       await handleWorkerOutcome(ctx, outcome, entry, workerIssue, workspace, workerAttempt);

@@ -147,6 +147,27 @@ describe("handleCodexRequest", () => {
       expect(response.success).toBe(false);
       expect(response.contentItems[0].text).toContain("not configured");
     });
+
+    it("dispatches github_api before consulting the tracker tool provider", async () => {
+      const ghClient = mockGithubClient();
+      const provider: TrackerToolProvider = {
+        toolNames: ["github_api"],
+        handleToolCall: vi.fn().mockResolvedValue({
+          response: { success: true, contentItems: [{ type: "inputText", text: "wrong handler" }] },
+          fatalFailure: null,
+        }),
+      };
+      const toolArgs = { action: "get_pr_status", owner: "org", repo: "repo", pullNumber: 1 };
+
+      await handleCodexRequest(
+        makeRequest("item/tool/call", { name: "github_api", arguments: toolArgs }),
+        provider,
+        ghClient,
+      );
+
+      expect(handleGithubApiToolCall).toHaveBeenCalledWith(ghClient, toolArgs);
+      expect(provider.handleToolCall).not.toHaveBeenCalled();
+    });
   });
 
   describe("tool dispatch — unsupported tool", () => {

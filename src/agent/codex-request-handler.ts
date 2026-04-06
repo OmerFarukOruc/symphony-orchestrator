@@ -35,6 +35,14 @@ async function handleToolCall(
     return toolErrorResponse("unsupported dynamic tool: unknown");
   }
 
+  if (toolName === "github_api") {
+    if (!githubToolClient) {
+      return toolErrorResponse("github_api is not configured");
+    }
+    const response = await handleGithubApiToolCall(githubToolClient, toolArgs);
+    return { response, fatalFailure: null };
+  }
+
   const trackerResult = await trackerToolProvider.handleToolCall(toolName, toolArgs);
   if (trackerResult !== null) {
     if (trackerResult.fatalFailure) {
@@ -43,13 +51,6 @@ async function handleToolCall(
     return { response: trackerResult.response, fatalFailure: null };
   }
 
-  if (toolName === "github_api") {
-    if (!githubToolClient) {
-      return toolErrorResponse("github_api is not configured");
-    }
-    const response = await handleGithubApiToolCall(githubToolClient, toolArgs);
-    return { response, fatalFailure: null };
-  }
   if (toolName === "linear_graphql") {
     return toolErrorResponse("linear_graphql is not available: tracker is not configured for Linear");
   }
