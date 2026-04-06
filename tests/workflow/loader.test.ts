@@ -28,16 +28,32 @@ async function expectWorkflowLoaderError(
     cause?: "present";
   },
 ): Promise<void> {
-  const messageMatcher = expected.message ?? expect.stringMatching(expected.messagePattern ?? /^.+$/);
-  await expect(promise).rejects.toMatchObject({
+  const error = await promise.catch((error_) => error_);
+  const messagePattern = expected.messagePattern ?? /^.+$/;
+
+  expect(error).toBeInstanceOf(Error);
+  expect(error).toMatchObject({
     name: "WorkflowLoaderError",
-    message: messageMatcher,
     validationError: {
       code: expected.code,
-      message: messageMatcher,
     },
-    ...(expected.cause ? { cause: expect.anything() } : {}),
   });
+
+  if (!(error instanceof Error)) {
+    return;
+  }
+
+  if (expected.message !== undefined) {
+    expect(error.message).toBe(expected.message);
+    expect(error.validationError.message).toBe(expected.message);
+  } else {
+    expect(error.message).toMatch(messagePattern);
+    expect(error.validationError.message).toMatch(messagePattern);
+  }
+
+  if (expected.cause) {
+    expect(error.cause).toBeTruthy();
+  }
 }
 
 describe("loadWorkflowDefinition", () => {
