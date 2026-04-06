@@ -3,14 +3,13 @@ import path from "node:path";
 const SAFE_PATH_DIRS = new Set(["/usr/local/bin", "/usr/bin", "/bin", "/usr/local/sbin", "/usr/sbin", "/sbin"]);
 
 export function buildSafePath(): string {
-  const current = process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin";
+  const current = process.env.PATH ?? "";
   const filtered = current.split(":").filter((dir) => SAFE_PATH_DIRS.has(dir));
   return filtered.length > 0 ? filtered.join(":") : "/usr/local/bin:/usr/bin:/bin";
 }
 
 export function isWithinRoot(root: string, candidate: string): boolean {
   const relative = path.relative(root, candidate);
-  if (relative === "") return true;
   if (path.isAbsolute(relative)) return false;
   // Check for actual path traversal segments (..), not just names starting with ".."
   // e.g., "../foo" or "..\foo" are traversals, but ".._" is a valid directory name
