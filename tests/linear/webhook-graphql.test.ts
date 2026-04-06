@@ -399,7 +399,7 @@ describe("webhook GraphQL error paths", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({ operation: "updateWebhook", attempt: 3 }),
-      "linear write-back failed after max retries (non-fatal)",
+      "write-back failed after max retries (non-fatal)",
     );
   });
 

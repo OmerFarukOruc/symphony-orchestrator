@@ -101,7 +101,7 @@ function createWorkspaceAndDispatch(
   archiveDir: string,
   logger: ReturnType<typeof createLogger>,
 ): WorkspaceDispatchPhase {
-  const { tracker, gitManager, repoRouter } = infra;
+  const { tracker, trackerToolProvider, gitManager, repoRouter, metrics } = infra;
 
   const workspaceManager = new WorkspaceManager(
     () => configStore.getConfig(),
@@ -197,7 +197,7 @@ function createRuntimeServices(
   webhook: ReturnType<typeof initWebhookInfrastructure>,
   logger: ReturnType<typeof createLogger>,
 ) {
-  const { persistence, tracker, repoRouter, gitManager } = infra;
+  const { persistence, tracker, repoRouter, gitManager, metrics } = infra;
   const { workspaceManager, agentRunner } = workspace;
   const { eventBus, automationStore, alertHistoryStore, notificationManager } = events;
   const { templateStore, issueConfigStore, resolveTemplate } = templateAudit;
@@ -274,7 +274,7 @@ function createHttpLayer(
   archiveDir: string,
   logger: ReturnType<typeof createLogger>,
 ) {
-  const { persistence, tracker } = infra;
+  const { persistence, tracker, metrics } = infra;
   const { eventBus, notificationStore, automationStore, alertHistoryStore } = events;
   const { templateStore, auditLogger } = templateAudit;
   const { orchestrator, automationScheduler } = runtime;
