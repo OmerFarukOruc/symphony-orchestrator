@@ -1,10 +1,38 @@
 /**
  * Migrates existing JSONL archive data into a SQLite database.
  *
- * Reads `<archiveDir>/attempts/*.json` and `<archiveDir>/events/*.jsonl`
- * files, inserting them into the corresponding SQLite tables. Attempt
- * inserts use ON CONFLICT DO NOTHING (keyed on attempt_id). The caller
- * gates migration behind an emptiness check, making repeated calls safe.
+ * ## Migration path: JSONL → SQLite
+ *
+ * Risoluto previously stored each attempt as a JSON file under
+ * `<archiveDir>/attempts/<attemptId>.json` and its events as JSONL lines
+ * under `<archiveDir>/events/<attemptId>.jsonl`. SQLite is now the default
+ * and primary persistence backend.
+ *
+ * ### How migration works
+ *
+ * `initPersistenceRuntime` calls this function on first boot when the
+ * `attempts` table is empty. It reads the JSON/JSONL archive files and
+ * inserts them into the SQLite schema. Attempt inserts use
+ * `ON CONFLICT DO NOTHING` keyed on `attempt_id`, so the migration is
+ * **idempotent** — safe to call multiple times without duplicating records.
+ *
+ * ### Operator steps to migrate
+ *
+ * 1. Stop the running Risoluto service.
+ * 2. Ensure `RISOLUTO_PERSISTENCE` is unset (or set to `sqlite`).
+ * 3. Restart — migration runs automatically on first boot.
+ * 4. Verify data in the dashboard, then optionally archive the legacy
+ *    `attempts/` and `events/` directories.
+ *
+ * ### Idempotency guarantees
+ *
+ * - Attempt records: `ON CONFLICT DO NOTHING` on `attempt_id` — re-running
+ *   migration never overwrites an existing row.
+ * - Event records: events are appended without deduplication; callers must
+ *   ensure `migrateFromJsonl` is only called when the `attempts` table is
+ *   empty (which `initPersistenceRuntime` already enforces).
+ * - Corrupt or missing archive files are skipped with a warning; they do
+ *   not abort the migration.
  */
 
 import { readdir, readFile } from "node:fs/promises";
