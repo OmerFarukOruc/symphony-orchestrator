@@ -17,6 +17,7 @@ import type {
 } from "../../src/core/types.js";
 import type { OutcomeContext } from "../../src/orchestrator/context.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
+import type { PreparedWorkerOutcome } from "../../src/orchestrator/worker-outcome/types.js";
 import { createIssue, createWorkspace, createModelSelection, createRunningEntry } from "./issue-test-factories.js";
 
 function makeConfig(): ServiceConfig {
@@ -84,6 +85,18 @@ function makeCtx(): OutcomeContext {
   } as unknown as OutcomeContext;
 }
 
+function makePrepared(
+  outcome: RunOutcome,
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  modelSelection: ModelSelection,
+  attempt: number | null,
+  overrides: Partial<PreparedWorkerOutcome> = {},
+): PreparedWorkerOutcome {
+  return { outcome, entry, issue, latestIssue: issue, workspace, attempt, modelSelection, ...overrides };
+}
+
 describe("handleServiceStopped", () => {
   let ctx: OutcomeContext;
   let issue: Issue;
@@ -102,7 +115,7 @@ describe("handleServiceStopped", () => {
   it("sends worker_failed notification with critical severity", () => {
     const outcome = makeOutcome({ errorMessage: "service shutting down" });
 
-    handleServiceStopped(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    handleServiceStopped(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.notify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -116,7 +129,7 @@ describe("handleServiceStopped", () => {
   it("uses default message when errorMessage is null", () => {
     const outcome = makeOutcome({ errorMessage: null });
 
-    handleServiceStopped(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    handleServiceStopped(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.notify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -126,7 +139,7 @@ describe("handleServiceStopped", () => {
   });
 
   it("releases the issue claim", () => {
-    handleServiceStopped(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    handleServiceStopped(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
   });
@@ -134,7 +147,7 @@ describe("handleServiceStopped", () => {
   it("sets completed view with cancelled status", () => {
     const outcome = makeOutcome({ errorMessage: "shutdown" });
 
-    handleServiceStopped(ctx, outcome, entry, issue, workspace, modelSelection, 2);
+    handleServiceStopped(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 2));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view).toBeDefined();
@@ -143,7 +156,7 @@ describe("handleServiceStopped", () => {
   });
 
   it("emits issue.completed event with cancelled outcome", () => {
-    handleServiceStopped(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    handleServiceStopped(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
       issueId: issue.id,
@@ -171,7 +184,7 @@ describe("handleTerminalCleanup", () => {
   it("removes workspace", async () => {
     const outcome = makeOutcome({ kind: "normal" });
 
-    await handleTerminalCleanup(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.workspaceManager.removeWorkspace).toHaveBeenCalledWith(issue.identifier, issue);
   });
@@ -181,7 +194,7 @@ describe("handleTerminalCleanup", () => {
     removeWorkspace.mockRejectedValue(new Error("permission denied"));
     const outcome = makeOutcome({ kind: "normal" });
 
-    await handleTerminalCleanup(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({ issue_identifier: issue.identifier, error: "permission denied" }),
@@ -194,7 +207,7 @@ describe("handleTerminalCleanup", () => {
   it("sets completed view with status based on outcome kind", async () => {
     const outcome = makeOutcome({ kind: "cancelled", errorMessage: "user cancelled" });
 
-    await handleTerminalCleanup(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view).toMatchObject({
@@ -206,7 +219,7 @@ describe("handleTerminalCleanup", () => {
   it("maps failed outcome kind to failed status", async () => {
     const outcome = makeOutcome({ kind: "failed", errorCode: "turn_failed", errorMessage: "oops" });
 
-    await handleTerminalCleanup(ctx, outcome, entry, issue, workspace, modelSelection, 2);
+    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 2));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view!.status).toBe("failed");
@@ -216,7 +229,7 @@ describe("handleTerminalCleanup", () => {
   it("uses errorCode as error when errorMessage is null", async () => {
     const outcome = makeOutcome({ kind: "failed", errorCode: "sandbox_error", errorMessage: null });
 
-    await handleTerminalCleanup(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view!.error).toBe("sandbox_error");
@@ -225,7 +238,7 @@ describe("handleTerminalCleanup", () => {
   it("emits issue.completed event with mapped outcome", async () => {
     const outcome = makeOutcome({ kind: "timed_out" });
 
-    await handleTerminalCleanup(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
       issueId: issue.id,
@@ -235,7 +248,7 @@ describe("handleTerminalCleanup", () => {
   });
 
   it("releases the issue claim", async () => {
-    await handleTerminalCleanup(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    await handleTerminalCleanup(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
   });
@@ -257,7 +270,7 @@ describe("handleInactiveIssue", () => {
   });
 
   it("sets completed view with paused status", () => {
-    handleInactiveIssue(ctx, makeOutcome(), entry, issue, workspace, modelSelection, null);
+    handleInactiveIssue(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, null));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view).toMatchObject({
@@ -267,7 +280,7 @@ describe("handleInactiveIssue", () => {
   });
 
   it("emits issue.completed event with paused outcome", () => {
-    handleInactiveIssue(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    handleInactiveIssue(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
       issueId: issue.id,
@@ -277,13 +290,13 @@ describe("handleInactiveIssue", () => {
   });
 
   it("releases the issue claim", () => {
-    handleInactiveIssue(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    handleInactiveIssue(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
   });
 
   it("does not send any notifications", () => {
-    handleInactiveIssue(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    handleInactiveIssue(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.notify).not.toHaveBeenCalled();
   });
@@ -307,7 +320,7 @@ describe("handleOperatorAbort", () => {
   it("sends worker_failed notification with info severity", () => {
     const outcome = makeOutcome({ errorMessage: "operator stopped this", errorCode: "operator_abort" });
 
-    handleOperatorAbort(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    handleOperatorAbort(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.notify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -322,7 +335,7 @@ describe("handleOperatorAbort", () => {
   it("uses default message when errorMessage is null", () => {
     const outcome = makeOutcome({ errorMessage: null, errorCode: "operator_abort" });
 
-    handleOperatorAbort(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    handleOperatorAbort(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.notify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -334,7 +347,7 @@ describe("handleOperatorAbort", () => {
   it("sets completed view with cancelled status", () => {
     const outcome = makeOutcome({ errorCode: "operator_abort" });
 
-    handleOperatorAbort(ctx, outcome, entry, issue, workspace, modelSelection, 3);
+    handleOperatorAbort(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 3));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view).toBeDefined();
@@ -344,7 +357,7 @@ describe("handleOperatorAbort", () => {
   });
 
   it("emits issue.completed event with cancelled outcome", () => {
-    handleOperatorAbort(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    handleOperatorAbort(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
       issueId: issue.id,
@@ -354,13 +367,13 @@ describe("handleOperatorAbort", () => {
   });
 
   it("calls suppressIssueDispatch", () => {
-    handleOperatorAbort(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    handleOperatorAbort(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.suppressIssueDispatch).toHaveBeenCalledWith(issue);
   });
 
   it("releases the issue claim", () => {
-    handleOperatorAbort(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    handleOperatorAbort(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
   });
@@ -384,7 +397,7 @@ describe("handleCancelledOrHardFailure", () => {
   it("sends worker_failed notification with critical severity", () => {
     const outcome = makeOutcome({ kind: "failed", errorMessage: "startup crashed", errorCode: "startup_failed" });
 
-    handleCancelledOrHardFailure(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.notify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -399,7 +412,7 @@ describe("handleCancelledOrHardFailure", () => {
   it("uses default message when errorMessage is null", () => {
     const outcome = makeOutcome({ kind: "failed", errorMessage: null });
 
-    handleCancelledOrHardFailure(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.notify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -411,7 +424,7 @@ describe("handleCancelledOrHardFailure", () => {
   it("maps cancelled kind to cancelled status in view", () => {
     const outcome = makeOutcome({ kind: "cancelled", errorCode: "shutdown" });
 
-    handleCancelledOrHardFailure(ctx, outcome, entry, issue, workspace, modelSelection, 2);
+    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 2));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view).toBeDefined();
@@ -422,7 +435,7 @@ describe("handleCancelledOrHardFailure", () => {
   it("maps non-cancelled kind to failed status in view", () => {
     const outcome = makeOutcome({ kind: "failed", errorCode: "startup_failed" });
 
-    handleCancelledOrHardFailure(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view!.status).toBe("failed");
@@ -431,7 +444,7 @@ describe("handleCancelledOrHardFailure", () => {
   it("emits issue.completed event with cancelled outcome for cancelled kind", () => {
     const outcome = makeOutcome({ kind: "cancelled" });
 
-    handleCancelledOrHardFailure(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
       issueId: issue.id,
@@ -443,7 +456,7 @@ describe("handleCancelledOrHardFailure", () => {
   it("emits issue.completed event with failed outcome for non-cancelled kind", () => {
     const outcome = makeOutcome({ kind: "failed" });
 
-    handleCancelledOrHardFailure(ctx, outcome, entry, issue, workspace, modelSelection, 1);
+    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
       issueId: issue.id,
@@ -453,13 +466,13 @@ describe("handleCancelledOrHardFailure", () => {
   });
 
   it("releases the issue claim", () => {
-    handleCancelledOrHardFailure(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    handleCancelledOrHardFailure(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
   });
 
   it("does not call suppressIssueDispatch", () => {
-    handleCancelledOrHardFailure(ctx, makeOutcome(), entry, issue, workspace, modelSelection, 1);
+    handleCancelledOrHardFailure(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.suppressIssueDispatch).not.toHaveBeenCalled();
   });

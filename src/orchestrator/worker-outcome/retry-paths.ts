@@ -1,9 +1,9 @@
 import type { OutcomeContext } from "../context.js";
-import type { RunOutcome, Issue, Workspace, ModelSelection } from "../../core/types.js";
-import type { RunningEntry } from "../runtime-types.js";
+import type { Issue } from "../../core/types.js";
 import { buildOutcomeView } from "../outcome-view-builder.js";
 import { nowIso } from "../views.js";
 import { issueRef } from "./types.js";
+import type { PreparedWorkerOutcome } from "./types.js";
 import { writeFailureWriteback } from "./completion-writeback.js";
 
 function queueRetryWithLog(
@@ -22,25 +22,13 @@ function queueRetryWithLog(
   );
 }
 
-export function handleContinuationRetry(
-  ctx: OutcomeContext,
-  entry: RunningEntry,
-  latestIssue: Issue,
-  _workspace: Workspace,
-  _modelSelection: ModelSelection,
-  attempt: number | null,
-): void {
+export function handleContinuationRetry(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): void {
+  const { entry, latestIssue, attempt } = prepared;
   queueRetryWithLog(ctx, latestIssue, attempt, 1000, "continuation", { threadId: entry.sessionId });
 }
 
-export async function handleContinuationExhausted(
-  ctx: OutcomeContext,
-  entry: RunningEntry,
-  latestIssue: Issue,
-  workspace: Workspace,
-  modelSelection: ModelSelection,
-  attempt: number | null,
-): Promise<void> {
+export async function handleContinuationExhausted(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): Promise<void> {
+  const { entry, latestIssue, workspace, modelSelection, attempt } = prepared;
   const maxContinuations = ctx.getConfig().agent.maxContinuationAttempts;
   const message = `agent did not emit RISOLUTO_STATUS after ${maxContinuations} continuations`;
   ctx.notify({
@@ -80,30 +68,25 @@ export async function handleContinuationExhausted(
   });
 }
 
-export function handleErrorRetry(
-  ctx: OutcomeContext,
-  outcome: RunOutcome,
-  latestIssue: Issue,
-  attempt: number | null,
-  entry?: RunningEntry,
-): void {
+export function handleErrorRetry(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): void {
+  const { outcome, entry, latestIssue, attempt } = prepared;
   const nextAttempt = (attempt ?? 0) + 1;
   const delayMs = Math.min(10_000 * 2 ** Math.max(0, nextAttempt - 1), ctx.getConfig().agent.maxRetryBackoffMs);
   queueRetryWithLog(ctx, latestIssue, attempt, delayMs, outcome.errorCode ?? "turn_failed", {
-    threadId: entry?.sessionId ?? outcome.threadId,
+    threadId: entry.sessionId ?? outcome.threadId,
   });
 }
 
-export function handleModelOverrideRetry(ctx: OutcomeContext, latestIssue: Issue, attempt: number | null): void {
+export function handleModelOverrideRetry(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): void {
+  const { latestIssue, attempt } = prepared;
   ctx.queueRetry(latestIssue, attempt ?? 1, 0, "model_override_updated");
 }
 
 export function queueRetryWithDelay(
   ctx: OutcomeContext,
-  latestIssue: Issue,
-  attempt: number | null,
+  prepared: PreparedWorkerOutcome,
   delayMs: number,
   reason: string,
 ): void {
-  queueRetryWithLog(ctx, latestIssue, attempt, delayMs, reason);
+  queueRetryWithLog(ctx, prepared.latestIssue, prepared.attempt, delayMs, reason);
 }

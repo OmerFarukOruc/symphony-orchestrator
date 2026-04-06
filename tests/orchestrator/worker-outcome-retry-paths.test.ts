@@ -5,9 +5,17 @@ import { handleContinuationExhausted } from "../../src/orchestrator/worker-outco
 import { handleErrorRetry } from "../../src/orchestrator/worker-outcome/retry-paths.js";
 import { handleModelOverrideRetry } from "../../src/orchestrator/worker-outcome/retry-paths.js";
 import { queueRetryWithDelay } from "../../src/orchestrator/worker-outcome/retry-paths.js";
-import type { Issue, ModelSelection, RuntimeIssueView, ServiceConfig, Workspace } from "../../src/core/types.js";
+import type {
+  Issue,
+  ModelSelection,
+  RunOutcome,
+  RuntimeIssueView,
+  ServiceConfig,
+  Workspace,
+} from "../../src/core/types.js";
 import type { OutcomeContext } from "../../src/orchestrator/context.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
+import type { PreparedWorkerOutcome } from "../../src/orchestrator/worker-outcome/types.js";
 import { createIssue, createWorkspace, createModelSelection, createRunningEntry } from "./issue-test-factories.js";
 
 function makeConfig(overrides: Partial<ServiceConfig["agent"]> = {}): ServiceConfig {
@@ -64,6 +72,30 @@ function makeCtx(overrides: { config?: ServiceConfig } = {}): OutcomeContext {
   } as unknown as OutcomeContext;
 }
 
+function makeOutcome(overrides: Partial<RunOutcome> = {}): RunOutcome {
+  return {
+    kind: "normal",
+    errorCode: null,
+    errorMessage: null,
+    threadId: null,
+    turnId: null,
+    turnCount: 1,
+    ...overrides,
+  };
+}
+
+function makePrepared(
+  outcome: RunOutcome,
+  entry: RunningEntry,
+  issue: Issue,
+  workspace: Workspace,
+  modelSelection: ModelSelection,
+  attempt: number | null,
+  overrides: Partial<PreparedWorkerOutcome> = {},
+): PreparedWorkerOutcome {
+  return { outcome, entry, issue, latestIssue: issue, workspace, attempt, modelSelection, ...overrides };
+}
+
 describe("handleContinuationRetry", () => {
   let ctx: OutcomeContext;
   let issue: Issue;
@@ -80,14 +112,14 @@ describe("handleContinuationRetry", () => {
   });
 
   it("queues retry with 1000ms delay and reason 'continuation'", () => {
-    handleContinuationRetry(ctx, entry, issue, workspace, modelSelection, 2);
+    handleContinuationRetry(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 2));
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(issue, 3, 1000, "continuation", { threadId: "session-abc" });
   });
 
   it("passes entry sessionId as threadId metadata", () => {
     const customEntry = createRunningEntry({ sessionId: "custom-thread" });
-    handleContinuationRetry(ctx, customEntry, issue, workspace, modelSelection, 1);
+    handleContinuationRetry(ctx, makePrepared(makeOutcome(), customEntry, issue, workspace, modelSelection, 1));
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(expect.anything(), 2, 1000, "continuation", {
       threadId: "custom-thread",
@@ -95,13 +127,13 @@ describe("handleContinuationRetry", () => {
   });
 
   it("treats null attempt as 0 and queues attempt 1", () => {
-    handleContinuationRetry(ctx, entry, issue, workspace, modelSelection, null);
+    handleContinuationRetry(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, null));
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(issue, 1, 1000, "continuation", expect.any(Object));
   });
 
   it("logs the retry with issue metadata", () => {
-    handleContinuationRetry(ctx, entry, issue, workspace, modelSelection, 3);
+    handleContinuationRetry(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 3));
 
     expect(ctx.deps.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -132,7 +164,7 @@ describe("handleContinuationExhausted", () => {
   });
 
   it("sends a critical notification with max continuation message", async () => {
-    await handleContinuationExhausted(ctx, entry, issue, workspace, modelSelection, 5);
+    await handleContinuationExhausted(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 5));
 
     expect(ctx.notify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -144,7 +176,7 @@ describe("handleContinuationExhausted", () => {
   });
 
   it("sets a completed view with failed status and max_continuations_exceeded error", async () => {
-    await handleContinuationExhausted(ctx, entry, issue, workspace, modelSelection, 3);
+    await handleContinuationExhausted(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 3));
 
     const view = ctx.completedViews.get(issue.identifier);
     expect(view).toBeDefined();
@@ -153,7 +185,7 @@ describe("handleContinuationExhausted", () => {
   });
 
   it("emits issue.completed event with failed outcome", async () => {
-    await handleContinuationExhausted(ctx, entry, issue, workspace, modelSelection, 2);
+    await handleContinuationExhausted(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 2));
 
     expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
       issueId: issue.id,
@@ -163,13 +195,13 @@ describe("handleContinuationExhausted", () => {
   });
 
   it("releases the issue claim", async () => {
-    await handleContinuationExhausted(ctx, entry, issue, workspace, modelSelection, 2);
+    await handleContinuationExhausted(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 2));
 
     expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
   });
 
   it("updates attempt store with failed status and error", async () => {
-    await handleContinuationExhausted(ctx, entry, issue, workspace, modelSelection, 4);
+    await handleContinuationExhausted(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 4));
 
     expect(ctx.deps.attemptStore.updateAttempt).toHaveBeenCalledWith(entry.runId, {
       status: "failed",
@@ -182,7 +214,10 @@ describe("handleContinuationExhausted", () => {
     const config = makeConfig({ maxContinuationAttempts: 10 });
     const customCtx = makeCtx({ config });
 
-    await handleContinuationExhausted(customCtx, entry, issue, workspace, modelSelection, 3);
+    await handleContinuationExhausted(
+      customCtx,
+      makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 3),
+    );
 
     expect(customCtx.notify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -195,22 +230,25 @@ describe("handleContinuationExhausted", () => {
 describe("handleErrorRetry", () => {
   let ctx: OutcomeContext;
   let issue: Issue;
+  let workspace: Workspace;
+  let modelSelection: ModelSelection;
 
   beforeEach(() => {
     ctx = makeCtx();
     issue = createIssue();
+    workspace = createWorkspace();
+    modelSelection = createModelSelection();
   });
 
   it("queues retry with exponential backoff (attempt 1 -> delay 20000)", () => {
-    const outcome = {
-      kind: "failed" as const,
+    const outcome = makeOutcome({
+      kind: "failed",
       errorCode: "turn_failed",
       errorMessage: null,
       threadId: "t-1",
-      turnId: null,
-      turnCount: 1,
-    };
-    handleErrorRetry(ctx, outcome, issue, 1);
+    });
+    const entry = createRunningEntry({ sessionId: "t-1" });
+    handleErrorRetry(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     const queueRetryMock = ctx.queueRetry as unknown as ReturnType<typeof vi.fn>;
     const [, nextAttempt, delayMs, reason] = queueRetryMock.mock.calls[0] as [unknown, number, number, string];
@@ -222,15 +260,14 @@ describe("handleErrorRetry", () => {
   it("caps delay at maxRetryBackoffMs", () => {
     const config = makeConfig({ maxRetryBackoffMs: 5000 });
     const customCtx = makeCtx({ config });
-    const outcome = {
-      kind: "failed" as const,
+    const outcome = makeOutcome({
+      kind: "failed",
       errorCode: "turn_failed",
       errorMessage: null,
       threadId: null,
-      turnId: null,
-      turnCount: 1,
-    };
-    handleErrorRetry(customCtx, outcome, issue, 10);
+    });
+    const entry = createRunningEntry();
+    handleErrorRetry(customCtx, makePrepared(outcome, entry, issue, workspace, modelSelection, 10));
 
     const queueRetryMock = customCtx.queueRetry as unknown as ReturnType<typeof vi.fn>;
     const [, , delayMs] = queueRetryMock.mock.calls[0] as [unknown, number, number];
@@ -238,76 +275,55 @@ describe("handleErrorRetry", () => {
   });
 
   it("uses outcome.errorCode as the retry reason", () => {
-    const outcome = {
-      kind: "failed" as const,
+    const outcome = makeOutcome({
+      kind: "failed",
       errorCode: "sandbox_error",
       errorMessage: null,
       threadId: null,
-      turnId: null,
-      turnCount: 1,
-    };
-    handleErrorRetry(ctx, outcome, issue, 0);
+    });
+    const entry = createRunningEntry();
+    handleErrorRetry(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 0));
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(issue, 1, expect.any(Number), "sandbox_error", expect.any(Object));
   });
 
   it("falls back to 'turn_failed' when errorCode is null", () => {
-    const outcome = {
-      kind: "failed" as const,
+    const outcome = makeOutcome({
+      kind: "failed",
       errorCode: null,
       errorMessage: null,
       threadId: null,
-      turnId: null,
-      turnCount: 1,
-    };
-    handleErrorRetry(ctx, outcome, issue, 1);
+    });
+    const entry = createRunningEntry();
+    handleErrorRetry(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(issue, 2, expect.any(Number), "turn_failed", expect.any(Object));
   });
 
-  it("passes entry sessionId when entry is provided", () => {
+  it("passes entry sessionId as threadId", () => {
     const entry = createRunningEntry({ sessionId: "sess-retry" });
-    const outcome = {
-      kind: "failed" as const,
+    const outcome = makeOutcome({
+      kind: "failed",
       errorCode: "turn_failed",
       errorMessage: null,
       threadId: "outcome-thread",
-      turnId: null,
-      turnCount: 1,
-    };
-    handleErrorRetry(ctx, outcome, issue, 1, entry);
+    });
+    handleErrorRetry(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(expect.anything(), 2, expect.any(Number), "turn_failed", {
       threadId: "sess-retry",
     });
   });
 
-  it("falls back to outcome.threadId when no entry is provided", () => {
-    const outcome = {
-      kind: "failed" as const,
-      errorCode: "turn_failed",
-      errorMessage: null,
-      threadId: "outcome-thread",
-      turnId: null,
-      turnCount: 1,
-    };
-    handleErrorRetry(ctx, outcome, issue, 1);
-
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.anything(), 2, expect.any(Number), "turn_failed", {
-      threadId: "outcome-thread",
-    });
-  });
-
   it("treats null attempt as 0", () => {
-    const outcome = {
-      kind: "failed" as const,
+    const outcome = makeOutcome({
+      kind: "failed",
       errorCode: "turn_failed",
       errorMessage: null,
       threadId: null,
-      turnId: null,
-      turnCount: 1,
-    };
-    handleErrorRetry(ctx, outcome, issue, null);
+    });
+    const entry = createRunningEntry();
+    handleErrorRetry(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, null));
 
     const queueRetryMock = ctx.queueRetry as unknown as ReturnType<typeof vi.fn>;
     const [, nextAttempt, delayMs] = queueRetryMock.mock.calls[0] as [unknown, number, number];
@@ -319,26 +335,33 @@ describe("handleErrorRetry", () => {
 describe("handleModelOverrideRetry", () => {
   let ctx: OutcomeContext;
   let issue: Issue;
+  let workspace: Workspace;
+  let modelSelection: ModelSelection;
 
   beforeEach(() => {
     ctx = makeCtx();
     issue = createIssue();
+    workspace = createWorkspace();
+    modelSelection = createModelSelection();
   });
 
   it("queues retry with 0ms delay and reason 'model_override_updated'", () => {
-    handleModelOverrideRetry(ctx, issue, 2);
+    const entry = createRunningEntry();
+    handleModelOverrideRetry(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 2));
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(issue, 2, 0, "model_override_updated");
   });
 
   it("treats null attempt as 1", () => {
-    handleModelOverrideRetry(ctx, issue, null);
+    const entry = createRunningEntry();
+    handleModelOverrideRetry(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, null));
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(issue, 1, 0, "model_override_updated");
   });
 
   it("preserves the current attempt number", () => {
-    handleModelOverrideRetry(ctx, issue, 5);
+    const entry = createRunningEntry();
+    handleModelOverrideRetry(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 5));
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(issue, 5, 0, "model_override_updated");
   });
@@ -347,20 +370,36 @@ describe("handleModelOverrideRetry", () => {
 describe("queueRetryWithDelay", () => {
   let ctx: OutcomeContext;
   let issue: Issue;
+  let workspace: Workspace;
+  let modelSelection: ModelSelection;
 
   beforeEach(() => {
     ctx = makeCtx();
     issue = createIssue();
+    workspace = createWorkspace();
+    modelSelection = createModelSelection();
   });
 
   it("queues retry with specified delay and reason", () => {
-    queueRetryWithDelay(ctx, issue, 2, 30_000, "rate_limited");
+    const entry = createRunningEntry();
+    queueRetryWithDelay(
+      ctx,
+      makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 2),
+      30_000,
+      "rate_limited",
+    );
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(issue, 3, 30_000, "rate_limited", undefined);
   });
 
   it("logs the queued retry", () => {
-    queueRetryWithDelay(ctx, issue, 1, 5000, "usage_limit");
+    const entry = createRunningEntry();
+    queueRetryWithDelay(
+      ctx,
+      makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1),
+      5000,
+      "usage_limit",
+    );
 
     expect(ctx.deps.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -375,7 +414,13 @@ describe("queueRetryWithDelay", () => {
   });
 
   it("treats null attempt as 0 and queues attempt 1", () => {
-    queueRetryWithDelay(ctx, issue, null, 1000, "custom_reason");
+    const entry = createRunningEntry();
+    queueRetryWithDelay(
+      ctx,
+      makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, null),
+      1000,
+      "custom_reason",
+    );
 
     expect(ctx.queueRetry).toHaveBeenCalledWith(issue, 1, 1000, "custom_reason", undefined);
   });
