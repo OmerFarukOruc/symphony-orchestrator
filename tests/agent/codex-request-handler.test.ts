@@ -120,7 +120,7 @@ describe("handleCodexRequest", () => {
       expect(result.fatalFailure).toBeNull();
       const response = result.response as { success: boolean; contentItems: { text: string }[] };
       expect(response.success).toBe(false);
-      expect(response.contentItems[0].text).toContain("unsupported dynamic tool");
+      expect(response.contentItems[0].text).toContain("tracker is not configured for Linear");
     });
   });
 

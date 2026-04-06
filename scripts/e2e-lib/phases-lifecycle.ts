@@ -414,7 +414,11 @@ async function enrichWithPrUrl(ctx: RunContext, attemptData: Record<string, unkn
     } catch {
       log(ctx, "Could not fetch issue detail for PR URL");
     }
-    await sleep(retryDelayMs);
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      break;
+    }
+    await sleep(Math.min(retryDelayMs, remainingMs));
   }
 }
 

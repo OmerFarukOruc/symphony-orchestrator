@@ -81,6 +81,8 @@ const ALIAS_REGISTRY: ReadonlyArray<readonly [string, string]> = [
 function normalizeRecord(record: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...record };
   for (const [snakeKey, camelKey] of ALIAS_REGISTRY) {
+    // Intentional loose nullish check: preserve "", 0, and false while
+    // treating both null and undefined the same as the previous `??` path.
     if (out[snakeKey] == null && out[camelKey] != null) {
       out[snakeKey] = out[camelKey];
     }

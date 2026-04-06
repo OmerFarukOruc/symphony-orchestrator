@@ -50,6 +50,9 @@ async function handleToolCall(
     const response = await handleGithubApiToolCall(githubToolClient, toolArgs);
     return { response, fatalFailure: null };
   }
+  if (toolName === "linear_graphql") {
+    return toolErrorResponse("linear_graphql is not available: tracker is not configured for Linear");
+  }
   return toolErrorResponse(`unsupported dynamic tool: ${toolName}`);
 }
 
