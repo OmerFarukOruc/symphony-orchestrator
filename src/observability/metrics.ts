@@ -211,12 +211,9 @@ export class MetricsCollector {
   }
 }
 
-export const globalMetrics = new MetricsCollector();
-
 /**
  * Create a fresh, isolated MetricsCollector instance.
- * Use this for dependency injection — prefer injected instances over the
- * `globalMetrics` singleton in new code.
+ * Use this for dependency injection and per-test isolation.
  */
 export function createMetricsCollector(): MetricsCollector {
   return new MetricsCollector();

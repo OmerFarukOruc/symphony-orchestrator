@@ -87,11 +87,3 @@ export const triggerSchema = z
     idempotencyKey: z.string().trim().min(1).optional(),
   })
   .strict();
-
-/**
- * POST /api/v1/notifications/test
- *
- * No body required today. Strict empty object allows future extension
- * (e.g. custom message, channel override) without breaking existing clients.
- */
-export const notificationTestSchema = z.object({}).strict();
