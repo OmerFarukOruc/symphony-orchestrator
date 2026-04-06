@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import { withRetry, withRetryReturn } from "../../src/utils/retry.js";
 import type { RisolutoLogger } from "../../src/core/types.js";
 
@@ -12,12 +12,7 @@ function createLogger(): RisolutoLogger {
   } as unknown as RisolutoLogger;
 }
 
-beforeEach(() => {
-  vi.useFakeTimers();
-});
-
 afterEach(() => {
-  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -33,6 +28,7 @@ describe("withRetry", () => {
   });
 
   it("retries on failure and succeeds on second attempt", async () => {
+    vi.useFakeTimers();
     const logger = createLogger();
     let calls = 0;
     const fn = vi.fn(async () => {
@@ -43,6 +39,7 @@ describe("withRetry", () => {
     const promise = withRetry(logger, "op", fn);
     await vi.runAllTimersAsync();
     await promise;
+    vi.useRealTimers();
 
     expect(fn).toHaveBeenCalledTimes(2);
     expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -50,6 +47,7 @@ describe("withRetry", () => {
   });
 
   it("swallows error after max attempts (non-fatal)", async () => {
+    vi.useFakeTimers();
     const logger = createLogger();
     const fn = vi.fn(async () => {
       throw new Error("always fails");
@@ -57,7 +55,8 @@ describe("withRetry", () => {
 
     const promise = withRetry(logger, "op", fn, { maxAttempts: 3 });
     await vi.runAllTimersAsync();
-    await promise; // must not throw
+    await promise;
+    vi.useRealTimers();
 
     expect(fn).toHaveBeenCalledTimes(3);
     expect(logger.warn).toHaveBeenCalledTimes(3);
@@ -66,6 +65,7 @@ describe("withRetry", () => {
   });
 
   it("respects custom maxAttempts", async () => {
+    vi.useFakeTimers();
     const logger = createLogger();
     const fn = vi.fn(async () => {
       throw new Error("fail");
@@ -74,6 +74,7 @@ describe("withRetry", () => {
     const promise = withRetry(logger, "op", fn, { maxAttempts: 2 });
     await vi.runAllTimersAsync();
     await promise;
+    vi.useRealTimers();
 
     expect(fn).toHaveBeenCalledTimes(2);
   });
@@ -92,6 +93,7 @@ describe("withRetryReturn", () => {
   });
 
   it("retries on failure and returns value on second attempt", async () => {
+    vi.useFakeTimers();
     const logger = createLogger();
     let calls = 0;
     const fn = vi.fn(async () => {
@@ -103,35 +105,46 @@ describe("withRetryReturn", () => {
     const promise = withRetryReturn(logger, "op", fn);
     await vi.runAllTimersAsync();
     const result = await promise;
+    vi.useRealTimers();
 
     expect(result).toBe("ok");
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
   it("re-throws after max attempts", async () => {
-    const sentinelError = new Error("permanent failure");
+    vi.useFakeTimers();
     const logger = createLogger();
     const fn = vi.fn(async () => {
-      throw sentinelError;
+      throw new Error("permanent failure");
     });
 
     const promise = withRetryReturn(logger, "op", fn, { maxAttempts: 3 });
+    // Attach a catch handler immediately to prevent unhandled rejection warnings
+    const caught = promise.catch((error: unknown) => error);
     await vi.runAllTimersAsync();
+    const error_ = await caught;
+    vi.useRealTimers();
 
-    await expect(promise).rejects.toThrow("permanent failure");
+    expect(error_).toBeInstanceOf(Error);
+    expect((error_ as Error).message).toBe("permanent failure");
     expect(fn).toHaveBeenCalledTimes(3);
   });
 
   it("respects custom maxAttempts", async () => {
+    vi.useFakeTimers();
     const logger = createLogger();
     const fn = vi.fn(async () => {
       throw new Error("fail");
     });
 
     const promise = withRetryReturn(logger, "op", fn, { maxAttempts: 2 });
+    const caught = promise.catch((error: unknown) => error);
     await vi.runAllTimersAsync();
+    const error_ = await caught;
+    vi.useRealTimers();
 
-    await expect(promise).rejects.toThrow("fail");
+    expect(error_).toBeInstanceOf(Error);
+    expect((error_ as Error).message).toBe("fail");
     expect(fn).toHaveBeenCalledTimes(2);
   });
 });
