@@ -6,7 +6,7 @@ import type { Issue, RisolutoLogger } from "../core/types.js";
 import { GitHubPrClient } from "./github-pr-client.js";
 import type { GitIntegrationPort } from "./port.js";
 import type { RepoMatch } from "./repo-router.js";
-import type { GitRunner } from "./git-types.js";
+import type { GitRunner, PrCreateResult } from "./git-types.js";
 export type { GitCommandOptions, GitRunResult, GitRunner } from "./git-types.js";
 import {
   ensureBaseClone,
@@ -188,7 +188,7 @@ export class GitManager implements GitIntegrationPort {
     issue: Pick<Issue, "identifier" | "title" | "url">,
     branchName: string,
     summary?: string | null,
-  ): Promise<unknown> {
+  ): Promise<PrCreateResult | undefined> {
     return this.githubPrClient.createPullRequest(route, issue, branchName, summary);
   }
 

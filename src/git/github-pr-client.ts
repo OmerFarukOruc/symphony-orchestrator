@@ -1,6 +1,8 @@
 import type { Issue } from "../core/types.js";
 import type { GithubApiToolClient } from "./github-api-tool.js";
+import type { PrCreateResult } from "./git-types.js";
 import type { RepoMatch } from "./repo-router.js";
+import { isRecord } from "../utils/type-guards.js";
 
 /**
  * Typed shape of the GitHub REST API response for a single pull request.
@@ -20,13 +22,21 @@ export interface PrStatusResponse {
  * accessing `.state`, `.merged`, or other typed fields.
  */
 export function isPrStatusResponse(value: unknown): value is PrStatusResponse {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value as Record<string, unknown>;
+  if (!isRecord(value)) return false;
   return (
-    (v["state"] === "open" || v["state"] === "closed") &&
-    typeof v["merged"] === "boolean" &&
-    typeof v["number"] === "number" &&
-    typeof v["html_url"] === "string"
+    (value["state"] === "open" || value["state"] === "closed") &&
+    typeof value["merged"] === "boolean" &&
+    typeof value["number"] === "number" &&
+    typeof value["html_url"] === "string"
+  );
+}
+
+function isPrCreateResult(value: unknown): value is PrCreateResult {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value["html_url"] === "string" &&
+    typeof value["number"] === "number" &&
+    (value["state"] === "open" || value["state"] === "closed")
   );
 }
 
@@ -141,7 +151,7 @@ export class GitHubPrClient implements GithubApiToolClient {
     issue: Pick<Issue, "identifier" | "title" | "url">,
     branchName: string,
     summary?: string | null,
-  ): Promise<unknown> {
+  ): Promise<PrCreateResult | undefined> {
     const owner = route.githubOwner ?? parseGithubRepo(route.repoUrl)?.owner;
     const repo = route.githubRepo ?? parseGithubRepo(route.repoUrl)?.repo;
     if (!owner || !repo) {
@@ -157,7 +167,8 @@ export class GitHubPrClient implements GithubApiToolClient {
       body: prBody,
     });
     try {
-      return await this.githubRequest(`/repos/${owner}/${repo}/pulls`, { method: "POST", body }, tokenEnvName);
+      const created = await this.githubRequest(`/repos/${owner}/${repo}/pulls`, { method: "POST", body }, tokenEnvName);
+      return isPrCreateResult(created) ? created : undefined;
     } catch (error) {
       if (!isDuplicatePrError(error)) throw error;
       const existing = await this.githubRequest(
@@ -165,7 +176,8 @@ export class GitHubPrClient implements GithubApiToolClient {
         { method: "GET" },
         tokenEnvName,
       );
-      return Array.isArray(existing) && existing.length > 0 ? existing[0] : undefined;
+      const first = Array.isArray(existing) ? existing[0] : undefined;
+      return isPrCreateResult(first) ? first : undefined;
     }
   }
 

@@ -112,7 +112,7 @@ describe("GitHubPrClient", () => {
 
   describe("createPullRequest", () => {
     it("creates a PR and returns the response", async () => {
-      const prData = { number: 99, html_url: "https://github.com/acme/backend/pull/99" };
+      const prData = { number: 99, html_url: "https://github.com/acme/backend/pull/99", state: "open" as const };
       mockFetch.mockResolvedValueOnce(createJsonResponse(201, prData));
       const client = new GitHubPrClient(deps);
 
@@ -214,7 +214,7 @@ describe("GitHubPrClient", () => {
 
     it("falls back to existing PR on 422 duplicate error", async () => {
       const duplicatePayload = { message: "Validation Failed", errors: [{ message: "A pull request already exists" }] };
-      const existingPr = { number: 50, html_url: "https://github.com/acme/backend/pull/50" };
+      const existingPr = { number: 50, html_url: "https://github.com/acme/backend/pull/50", state: "open" as const };
 
       mockFetch
         .mockResolvedValueOnce(createJsonResponse(422, duplicatePayload))

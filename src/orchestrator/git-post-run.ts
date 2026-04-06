@@ -171,13 +171,7 @@ export async function executeGitPostRun(
   }
 
   const pullRequest = await gitManager.createPullRequest(repoMatch, issue, commitResult.branchName, summary);
-  const pullRequestUrl =
-    typeof pullRequest === "object" &&
-    pullRequest !== null &&
-    "html_url" in pullRequest &&
-    typeof (pullRequest as { html_url?: unknown }).html_url === "string"
-      ? ((pullRequest as { html_url: string }).html_url ?? null)
-      : null;
+  const pullRequestUrl = pullRequest?.html_url ?? null;
 
   // ── Auto-merge policy evaluation ────────────────────────────────────────
   // Only runs when an AutoMergeContext is provided. All failures are non-fatal.

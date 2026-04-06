@@ -1,5 +1,6 @@
 import type { Issue } from "../core/types.js";
 import type { GithubApiToolClient } from "./github-api-tool.js";
+import type { PrCreateResult } from "./git-types.js";
 import type { RepoMatch } from "./repo-router.js";
 
 export interface GitCloneResult {
@@ -46,7 +47,7 @@ export interface GitPostRunPort {
     issue: Pick<Issue, "identifier" | "title" | "url">,
     branchName: string,
     summary?: string | null,
-  ): Promise<unknown>;
+  ): Promise<PrCreateResult | undefined>;
   /**
    * Force-pushes the local branch to the remote using `--force-with-lease`.
    * Aborts with an error if the remote branch has advanced since the last
