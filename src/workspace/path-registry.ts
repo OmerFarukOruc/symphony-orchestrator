@@ -25,7 +25,6 @@ export class PathRegistry {
         containerPrefix: normalizePrefix(containerPrefix),
         hostPrefix: normalizePrefix(hostPrefix),
       }))
-      .filter((entry) => entry.containerPrefix.length > 0 && entry.hostPrefix.length > 0)
       .sort((left, right) => right.containerPrefix.length - left.containerPrefix.length);
   }
 
