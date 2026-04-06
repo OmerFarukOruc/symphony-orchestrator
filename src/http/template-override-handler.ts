@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import type { OrchestratorPort } from "../orchestrator/port.js";
-import type { PromptTemplateStore } from "../prompt/store.js";
+import type { TemplateStorePort } from "../prompt/port.js";
 import type { TemplateOverrideBody } from "./request-schemas.js";
 import { issueNotFound } from "./route-helpers.js";
 
@@ -15,7 +15,7 @@ import { issueNotFound } from "./route-helpers.js";
  */
 export function handleTemplateOverride(
   orchestrator: OrchestratorPort,
-  templateStore: PromptTemplateStore,
+  templateStore: TemplateStorePort,
   request: Request,
   response: Response,
 ): void {

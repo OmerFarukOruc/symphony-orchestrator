@@ -4,6 +4,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 
 import { asStringRecord, isRecord, toErrorString } from "../utils/type-guards.js";
 import type { RisolutoLogger } from "../core/types.js";
+import type { SecretsPort } from "./port.js";
 
 const ENCRYPTION_ALGORITHM = "aes-256-gcm";
 const IV_BYTE_LENGTH = 12;
@@ -84,7 +85,7 @@ function decrypt(envelope: SecretsEnvelope, key: Buffer): string {
   return plaintext.toString("utf8");
 }
 
-export class SecretsStore {
+export class SecretsStore implements SecretsPort {
   private readonly cache = new Map<string, string>();
   private readonly listeners = new Set<() => void>();
   private encryptionKey: Buffer | null = null;

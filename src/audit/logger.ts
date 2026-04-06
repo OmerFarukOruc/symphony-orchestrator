@@ -10,6 +10,7 @@ import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { RisolutoDatabase } from "../persistence/sqlite/database.js";
 import { configHistory } from "../persistence/sqlite/schema.js";
+import type { AuditLoggerPort } from "./port.js";
 
 const REDACTED = "[REDACTED]";
 
@@ -91,7 +92,7 @@ function buildWhereClause(options?: AuditQueryOptions): WhereResult {
   };
 }
 
-export class AuditLogger {
+export class AuditLogger implements AuditLoggerPort {
   constructor(
     private readonly db: RisolutoDatabase,
     private readonly eventBus?: TypedEventBus<RisolutoEventMap>,
@@ -166,18 +167,14 @@ export class AuditLogger {
     const sql = `SELECT * FROM config_history ${where} ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = (this.db as any).session.client;
-    const rows = raw.prepare(sql).all(...params) as Array<Record<string, unknown>>;
+    const rows = this.db.$client.prepare(sql).all(...params) as Array<Record<string, unknown>>;
 
     return rows.map(rowToAuditRecord);
   }
 
   count(options?: AuditQueryOptions): number {
     const { where, params } = buildWhereClause(options);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = (this.db as any).session.client;
-    const result = raw.prepare(`SELECT COUNT(*) as count FROM config_history ${where}`).get(...params) as {
+    const result = this.db.$client.prepare(`SELECT COUNT(*) as count FROM config_history ${where}`).get(...params) as {
       count: number;
     };
     return result.count;

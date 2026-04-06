@@ -16,7 +16,7 @@
 import type { Express } from "express";
 
 import { methodNotAllowed } from "../http/route-helpers.js";
-import type { AuditLogger } from "./logger.js";
+import type { AuditLoggerPort } from "./port.js";
 
 function clampInt(value: number, min: number, max: number, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
@@ -24,7 +24,7 @@ function clampInt(value: number, min: number, max: number, fallback: number): nu
 }
 
 interface AuditApiDeps {
-  auditLogger: AuditLogger;
+  auditLogger: AuditLoggerPort;
 }
 
 export function registerAuditApi(app: Express, deps: AuditApiDeps): void {
