@@ -1,10 +1,7 @@
 import path from "node:path";
 
 function normalizePrefix(value: string): string {
-  if (!value || value === "/") {
-    return "/";
-  }
-  const normalized = path.posix.normalize(value);
+  const normalized = path.posix.normalize(value || "/");
   return normalized.endsWith("/") && normalized !== "/" ? normalized.slice(0, -1) : normalized;
 }
 

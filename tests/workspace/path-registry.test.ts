@@ -63,6 +63,7 @@ describe("PathRegistry", () => {
 
     expect(registry.translate("/data/workspaces/MT-1")).toBe("/host-rootdata/workspaces/MT-1");
     expect(registry.translate("/")).toBe("/host-root");
+    expect(registry.translate("relative/path")).toBe("relative/path");
   });
 
   it("uses default container roots from env when only host paths are configured", () => {
@@ -84,5 +85,13 @@ describe("PathRegistry", () => {
     );
 
     expect(registry.translate("/data/workspaces/team-a/MT-2")).toBe("/host/team-a/MT-2");
+  });
+
+  it("treats empty mapping prefixes like root prefixes after normalization", () => {
+    const registry = new PathRegistry({
+      "": "/host-root",
+    });
+
+    expect(registry.translate("/data/workspaces/MT-1")).toBe("/host-rootdata/workspaces/MT-1");
   });
 });
