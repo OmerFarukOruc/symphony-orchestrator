@@ -1,4 +1,5 @@
 import { AuditLogger } from "../audit/logger.js";
+import { createMetricsCollector } from "../observability/metrics.js";
 import { AlertEngine } from "../alerts/engine.js";
 import { AlertHistoryStore, type AlertHistoryStorePort } from "../alerts/history-store.js";
 import { AutomationRunner } from "../automation/runner.js";
@@ -43,6 +44,7 @@ interface InfrastructurePhase {
   linearClient: ReturnType<typeof createTracker>["linearClient"];
   repoRouter: ReturnType<typeof createRepoRouterProvider>;
   gitManager: ReturnType<typeof createGitHubToolProvider>;
+  metrics: ReturnType<typeof createMetricsCollector>;
 }
 
 interface WorkspaceDispatchPhase {
@@ -77,6 +79,7 @@ async function createInfrastructure(
   logger: ReturnType<typeof createLogger>,
   options?: { persistence?: PersistenceRuntime },
 ): Promise<InfrastructurePhase> {
+  const metrics = createMetricsCollector();
   const persistence = options?.persistence ?? (await initPersistenceRuntime({ dataDir: archiveDir, logger }));
   const { tracker, trackerToolProvider, linearClient } = createTracker(() => configStore.getConfig(), logger);
   const repoRouter = createRepoRouterProvider(() => configStore.getConfig());
@@ -85,7 +88,7 @@ async function createInfrastructure(
     resolveSecret: (name) => secretsStore.get(name) ?? undefined,
   });
 
-  return { persistence, tracker, trackerToolProvider, linearClient, repoRouter, gitManager };
+  return { persistence, tracker, trackerToolProvider, linearClient, repoRouter, gitManager, metrics };
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +131,7 @@ function createWorkspaceAndDispatch(
     pathRegistry,
     githubToolClient: gitManager,
     logger,
+    metrics,
   });
 
   return { workspaceManager, pathRegistry, agentRunner };
@@ -213,6 +217,7 @@ function createRuntimeServices(
     webhookHealthTracker: webhook.webhookHealthTracker,
     logger: logger.child({ component: "orchestrator" }),
     resolveTemplate,
+    metrics,
   });
 
   const automationRunner = new AutomationRunner({
@@ -290,6 +295,7 @@ function createHttpLayer(
     archiveDir,
     templateStore,
     auditLogger,
+    metrics,
     webhookHandlerDeps: webhook.webhookUrlSet
       ? buildWebhookHandlerDeps({
           orchestrator,

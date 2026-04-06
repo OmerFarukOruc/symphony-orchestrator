@@ -284,11 +284,11 @@ async function handleWorkerPromise(
   await promise
     .then(async (outcome) => {
       await handleWorkerOutcome(ctx, outcome, entry, workerIssue, workspace, workerAttempt);
-      globalMetrics.agentRunsTotal.increment({ outcome: outcome.kind });
+      (deps.metrics ?? globalMetrics).agentRunsTotal.increment({ outcome: outcome.kind });
     })
     .catch(async (error) => {
       await handleWorkerFailure(ctx, workerIssue, entry, error);
-      globalMetrics.agentRunsTotal.increment({ outcome: "failed" });
+      (deps.metrics ?? globalMetrics).agentRunsTotal.increment({ outcome: "failed" });
     });
 }
 

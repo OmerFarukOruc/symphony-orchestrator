@@ -393,6 +393,7 @@ export class Orchestrator implements OrchestratorPort {
   private async tick(): Promise<void> {
     if (!this._state.running || this.tickInFlight) return;
     this.tickInFlight = true;
+    const metrics = this.deps.metrics ?? globalMetrics;
     try {
       if (this._ctx.detectAndKillStalled().killed > 0) {
         this.markStateDirty();
@@ -403,13 +404,13 @@ export class Orchestrator implements OrchestratorPort {
       const candidateIssues = sortIssuesForDispatch(await this.deps.tracker.fetchCandidateIssues());
       await refreshQueueViewsState(this._ctx, candidateIssues);
       await launchAvailableWorkersState(this._ctx, candidateIssues);
-      globalMetrics.orchestratorPollsTotal.increment({ status: "ok" });
+      (this.deps.metrics ?? globalMetrics).orchestratorPollsTotal.increment({ status: "ok" });
       this.deps.eventBus?.emit("poll.complete", {
         timestamp: nowIso(),
         issueCount: this._state.queuedViews.length + this._state.runningEntries.size,
       });
     } catch (error) {
-      globalMetrics.orchestratorPollsTotal.increment({ status: "error" });
+      metrics.orchestratorPollsTotal.increment({ status: "error" });
       this.deps.logger.error({ error: toErrorString(error) }, "orchestrator tick failed");
     } finally {
       this.tickInFlight = false;

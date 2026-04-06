@@ -17,7 +17,7 @@ import { getContainerStats } from "../docker/stats.js";
 import { handleCodexRequest } from "../agent/codex-request-handler.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import type { TrackerToolProvider } from "../tracker/tool-provider.js";
-import { globalMetrics } from "../observability/metrics.js";
+import { globalMetrics, type MetricsCollector } from "../observability/metrics.js";
 import { createLifecycleEvent } from "../core/lifecycle-events.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
@@ -40,6 +40,7 @@ export interface DockerSessionDeps {
   trackerToolProvider: TrackerToolProvider;
   logger: RisolutoLogger;
   spawnProcess?: typeof spawn;
+  metrics?: MetricsCollector;
 }
 
 interface DockerSessionInput {
@@ -137,7 +138,7 @@ export async function createDockerSession(
     inspectRunning: spawnProcess === spawn ? () => inspectContainerRunning(docker.containerName) : async () => true,
   });
   setupConnection(session, child, config, input, deps, turnState);
-  startStatsPolling(session, input);
+  startStatsPolling(session, input, deps);
 
   return session;
 }
@@ -265,8 +266,10 @@ function setupConnection(
 function startStatsPolling(
   session: DockerSession & { statsInterval: ReturnType<typeof setInterval> | null },
   input: DockerSessionInput,
+  deps: DockerSessionDeps,
 ): void {
   const statsIntervalMs = 30_000;
+  const metrics = deps.metrics ?? globalMetrics;
   session.statsInterval = setInterval(async () => {
     try {
       const stats = await getContainerStats(session.containerName);
@@ -279,8 +282,8 @@ function startStatsPolling(
           event: "container_stats",
           message: `CPU ${stats.cpuPercent} | MEM ${stats.memoryUsage}/${stats.memoryLimit} (${stats.memoryPercent})`,
         });
-        globalMetrics.containerCpuPercent.set(parsePercent(stats.cpuPercent), { issue: input.issue.identifier });
-        globalMetrics.containerMemoryPercent.set(parsePercent(stats.memoryPercent), { issue: input.issue.identifier });
+        metrics.containerCpuPercent.set(parsePercent(stats.cpuPercent), { issue: input.issue.identifier });
+        metrics.containerMemoryPercent.set(parsePercent(stats.memoryPercent), { issue: input.issue.identifier });
       }
     } catch {
       // intentionally swallowed — stats are best-effort

@@ -16,6 +16,7 @@ import { toErrorString } from "../utils/type-guards.js";
 import type { PathRegistry } from "../workspace/path-registry.js";
 import type { Issue, ModelSelection, RunOutcome, ServiceConfig, RisolutoLogger, Workspace } from "../core/types.js";
 import { WorkspaceManager } from "../workspace/manager.js";
+import type { MetricsCollector } from "../observability/metrics.js";
 
 export { extractItemContent } from "./helpers.js";
 
@@ -35,6 +36,7 @@ export class AgentRunner implements RunAttemptDispatcher {
       githubToolClient?: GithubApiToolClient;
       logger: RisolutoLogger;
       spawnProcess?: DockerSessionDeps["spawnProcess"];
+      metrics?: MetricsCollector;
     },
   ) {}
 
@@ -107,6 +109,7 @@ export class AgentRunner implements RunAttemptDispatcher {
           trackerToolProvider: this.deps.trackerToolProvider,
           logger: this.deps.logger,
           spawnProcess: this.deps.spawnProcess,
+          metrics: this.deps.metrics,
         },
         turnState,
         input.precomputedRuntimeConfig,

@@ -28,15 +28,31 @@ interface JsonRpcErrorResponse {
   };
 }
 
-let nextId = 1;
-
-export function createRequest(method: string, params: unknown): JsonRpcRequest {
-  return {
+/**
+ * Create an isolated request ID counter.
+ * Returns a `createRequest` function that increments its own counter,
+ * avoiding shared module-level state across concurrent sessions.
+ */
+export function createIdCounter(): (method: string, params: unknown) => JsonRpcRequest {
+  let nextId = 1;
+  return (method: string, params: unknown): JsonRpcRequest => ({
     jsonrpc: "2.0",
     id: nextId++,
     method,
     params,
-  };
+  });
+}
+
+// Module-level fallback counter for callers that use `createRequest` directly.
+// Prefer `createIdCounter()` for per-session isolation.
+const _moduleCounter = createIdCounter();
+
+/**
+ * Create a JSON-RPC request using a shared module-level ID counter.
+ * Prefer `createIdCounter()` when you need per-session counter isolation.
+ */
+export function createRequest(method: string, params: unknown): JsonRpcRequest {
+  return _moduleCounter(method, params);
 }
 
 export function createSuccessResponse(id: JsonRpcId, result: unknown): JsonRpcSuccessResponse {

@@ -7,6 +7,7 @@ import type { PathRegistry } from "../workspace/path-registry.js";
 import type { WorkspaceManager } from "../workspace/manager.js";
 import { DispatchClient } from "./client.js";
 import type { RunAttemptDispatcher } from "./types.js";
+import type { MetricsCollector } from "../observability/metrics.js";
 
 /**
  * Dependencies the dispatcher factory needs to construct either a local
@@ -20,6 +21,7 @@ export interface DispatcherFactoryDeps {
   pathRegistry: PathRegistry;
   githubToolClient: GithubApiToolClient;
   logger: RisolutoLogger;
+  metrics?: MetricsCollector;
 }
 
 /**
@@ -49,5 +51,6 @@ export function createDispatcher(getConfig: () => ServiceConfig, deps: Dispatche
     pathRegistry: deps.pathRegistry,
     githubToolClient: deps.githubToolClient,
     logger: deps.logger.child({ component: "agent-runner" }),
+    metrics: deps.metrics,
   });
 }

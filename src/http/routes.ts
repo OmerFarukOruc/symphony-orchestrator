@@ -11,7 +11,7 @@ import type { TypedEventBus } from "../core/event-bus.js";
 import { fetchCodexModels } from "../codex/model-list.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { RisolutoLogger } from "../core/types.js";
-import { globalMetrics } from "../observability/metrics.js";
+import { globalMetrics, type MetricsCollector } from "../observability/metrics.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import { registerSecretsApi } from "../secrets/api.js";
 import type { SecretsStore } from "../secrets/store.js";
@@ -82,6 +82,7 @@ interface HttpRouteDeps {
   frontendDir?: string;
   archiveDir?: string;
   webhookHandlerDeps?: WebhookHandlerDeps;
+  metrics?: MetricsCollector;
 }
 
 export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
@@ -170,7 +171,7 @@ function registerStateAndMetricsRoutes(app: Express, deps: HttpRouteDeps): void 
     .route("/metrics")
     .get((_req, res) => {
       res.setHeader("content-type", "text/plain; version=0.0.4; charset=utf-8");
-      res.send(globalMetrics.serialize());
+      res.send((deps.metrics ?? globalMetrics).serialize());
     })
     .all((_req, res) => {
       methodNotAllowed(res);

@@ -21,6 +21,7 @@ import type {
 import type { StopSignal } from "../core/signal-detection.js";
 import { WorkspaceManager } from "../workspace/manager.js";
 import type { IssueConfigStore } from "../persistence/sqlite/issue-config-store.js";
+import type { MetricsCollector } from "../observability/metrics.js";
 
 export interface RunningEntry {
   runId: string;
@@ -70,4 +71,5 @@ export interface OrchestratorDeps {
   templateStore?: PromptTemplateStore;
   logger: RisolutoLogger;
   resolveTemplate: (identifier: string) => Promise<string>;
+  metrics?: MetricsCollector;
 }

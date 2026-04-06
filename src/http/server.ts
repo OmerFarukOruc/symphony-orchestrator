@@ -14,7 +14,7 @@ import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { RisolutoLogger } from "../core/types.js";
 import type { PromptTemplateStore } from "../prompt/store.js";
-import { globalMetrics } from "../observability/metrics.js";
+import { globalMetrics, type MetricsCollector } from "../observability/metrics.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import type { AutomationStorePort } from "../persistence/sqlite/automation-store.js";
 import type { NotificationStorePort } from "../persistence/sqlite/notification-store.js";
@@ -55,21 +55,23 @@ export class HttpServer {
       templateStore?: PromptTemplateStore;
       auditLogger?: AuditLogger;
       webhookHandlerDeps?: WebhookHandlerDeps;
+      metrics?: MetricsCollector;
     },
   ) {
     this.app = express();
     this.app.disable("x-powered-by");
     this.app.set("trust proxy", process.env.RISOLUTO_TRUST_PROXY === "true" ? 1 : false);
     this.app.use(tracingMiddleware);
+    const metrics = this.deps.metrics ?? globalMetrics;
     this.app.use((request, response, next) => {
       const startedAt = process.hrtime.bigint();
       response.once("finish", () => {
         const durationSeconds = Number(process.hrtime.bigint() - startedAt) / 1_000_000_000;
-        globalMetrics.httpRequestsTotal.increment({
+        metrics.httpRequestsTotal.increment({
           method: request.method,
           status: String(response.statusCode),
         });
-        globalMetrics.httpRequestDurationSeconds.observe(durationSeconds, {
+        metrics.httpRequestDurationSeconds.observe(durationSeconds, {
           method: request.method,
           status: String(response.statusCode),
         });
@@ -88,7 +90,7 @@ export class HttpServer {
     );
     this.app.use(createReadGuard());
     this.app.use(createWriteGuard());
-    registerHttpRoutes(this.app, this.deps);
+    registerHttpRoutes(this.app, { ...this.deps, metrics });
     this.app.use(serviceErrorHandler);
   }
 
