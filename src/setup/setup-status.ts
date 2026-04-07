@@ -4,9 +4,11 @@ import path from "node:path";
 import type { SecretsPort } from "../secrets/port.js";
 import { isRecord } from "../utils/type-guards.js";
 
-const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
-
-function readOverlayString(overlay: Record<string, unknown>, flatKey: string, nestedPath: string[]): string | null {
+export function readOverlayString(
+  overlay: Record<string, unknown>,
+  flatKey: string,
+  nestedPath: string[],
+): string | null {
   const flatValue = overlay[flatKey];
   if (typeof flatValue === "string") {
     return flatValue;
@@ -14,7 +16,7 @@ function readOverlayString(overlay: Record<string, unknown>, flatKey: string, ne
 
   let cursor: unknown = overlay;
   for (const segment of nestedPath) {
-    if (!isRecord(cursor) || DANGEROUS_KEYS.has(segment)) {
+    if (!isRecord(cursor)) {
       return null;
     }
     const desc = Object.getOwnPropertyDescriptor(cursor, segment);
@@ -27,9 +29,17 @@ function readOverlayString(overlay: Record<string, unknown>, flatKey: string, ne
   return typeof cursor === "string" ? cursor : null;
 }
 
+export function readCodexAuthMode(overlay: Record<string, unknown>): string | null {
+  return readOverlayString(overlay, "codex.auth.mode", ["codex", "auth", "mode"]);
+}
+
+export function readCodexAuthSourceHome(overlay: Record<string, unknown>): string | null {
+  return readOverlayString(overlay, "codex.auth.source_home", ["codex", "auth", "source_home"]);
+}
+
 export function hasCodexAuthFile(archiveDir: string, overlay: Record<string, unknown>): boolean {
-  const authMode = readOverlayString(overlay, "codex.auth.mode", ["codex", "auth", "mode"]);
-  const authSourceHome = readOverlayString(overlay, "codex.auth.source_home", ["codex", "auth", "source_home"]);
+  const authMode = readCodexAuthMode(overlay);
+  const authSourceHome = readCodexAuthSourceHome(overlay);
   if (authMode === "" || authSourceHome === "") {
     return false;
   }

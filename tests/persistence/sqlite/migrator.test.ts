@@ -107,6 +107,8 @@ describe("migrateFromJsonl", () => {
     const result = await migrateFromJsonl(db, archiveDir, logger);
 
     expect(result).toEqual({ attemptCount: 0, eventCount: 0 });
+    expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalled();
   });
 
   it("imports valid attempt JSON files", async () => {
@@ -204,6 +206,7 @@ describe("migrateFromJsonl", () => {
     const result = await migrateFromJsonl(db, archiveDir, logger);
 
     expect(result.attemptCount).toBe(1);
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it("skips non-.jsonl files in events directory", async () => {
@@ -226,6 +229,7 @@ describe("migrateFromJsonl", () => {
     const result = await migrateFromJsonl(db, archiveDir, logger);
 
     expect(result.eventCount).toBe(1);
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it("logs warning and skips corrupt attempt files", async () => {
@@ -294,6 +298,8 @@ describe("migrateFromJsonl", () => {
     const result = await migrateFromJsonl(db, archiveDir, logger);
 
     expect(result.eventCount).toBe(1);
+    expect(db.select().from(attemptEvents).all()).toHaveLength(1);
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it("logs info when migration imports records", async () => {
@@ -308,8 +314,84 @@ describe("migrateFromJsonl", () => {
 
     await migrateFromJsonl(db, archiveDir, logger);
 
+    expect(logger.info).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledWith(
       expect.objectContaining({ attemptCount: 1, eventCount: 0 }),
+      "JSONL migration completed",
+    );
+  });
+
+  it("logs info when only event records are imported", async () => {
+    const archiveDir = await createTempDir();
+    const attemptsDir = path.join(archiveDir, "attempts");
+    const eventsDir = path.join(archiveDir, "events");
+    await mkdir(attemptsDir, { recursive: true });
+    await mkdir(eventsDir, { recursive: true });
+
+    const record = createAttemptRecord();
+    await writeFile(path.join(attemptsDir, "attempt-1.json"), JSON.stringify(record));
+
+    const event = createAttemptEvent({ event: "attempt.completed", message: "completed" });
+    await writeFile(path.join(eventsDir, "attempt-1.jsonl"), JSON.stringify(event));
+
+    db = openDatabase(":memory:");
+    const logger = createMockLogger();
+
+    const result = await migrateFromJsonl(db, archiveDir, logger);
+
+    expect(result).toEqual({ attemptCount: 1, eventCount: 1 });
+    expect(logger.info).toHaveBeenCalledTimes(1);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ attemptCount: 1, eventCount: 1 }),
+      "JSONL migration completed",
+    );
+  });
+
+  it("logs info when migration imports only event rows for an existing attempt", async () => {
+    const archiveDir = await createTempDir();
+    const eventsDir = path.join(archiveDir, "events");
+    await mkdir(eventsDir, { recursive: true });
+
+    db = openDatabase(":memory:");
+    db.insert(attempts)
+      .values({
+        attemptId: "attempt-1",
+        issueId: "issue-1",
+        issueIdentifier: "MT-42",
+        title: "Existing attempt",
+        workspaceKey: "MT-42",
+        workspacePath: "/tmp/risoluto/MT-42",
+        status: "completed",
+        attemptNumber: 1,
+        startedAt: "2026-03-16T10:00:00.000Z",
+        endedAt: "2026-03-16T10:05:00.000Z",
+        model: "gpt-5.4",
+        reasoningEffort: "high",
+        modelSource: "default",
+        threadId: null,
+        turnId: null,
+        turnCount: 0,
+        errorCode: null,
+        errorMessage: null,
+        inputTokens: null,
+        outputTokens: null,
+        totalTokens: null,
+        pullRequestUrl: null,
+        stopSignal: null,
+        summary: null,
+      })
+      .run();
+    const logger = createMockLogger();
+
+    const event = createAttemptEvent({ event: "attempt.completed", message: "completed" });
+    await writeFile(path.join(eventsDir, "attempt-1.jsonl"), JSON.stringify(event));
+
+    const result = await migrateFromJsonl(db, archiveDir, logger);
+
+    expect(result).toEqual({ attemptCount: 0, eventCount: 1 });
+    expect(logger.info).toHaveBeenCalledTimes(1);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ attemptCount: 0, eventCount: 1 }),
       "JSONL migration completed",
     );
   });

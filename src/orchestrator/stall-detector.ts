@@ -95,8 +95,7 @@ export function detectAndKillStalledWorkers(ctx: StallDetectorContext): StallDet
   }
 
   const combined = [...ctx.stallEvents, ...newEvents];
-  const updatedStallEvents =
-    combined.length > MAX_STALL_EVENTS ? combined.slice(combined.length - MAX_STALL_EVENTS) : combined;
+  const updatedStallEvents = combined.slice(-MAX_STALL_EVENTS);
 
   return { killed, updatedStallEvents };
 }

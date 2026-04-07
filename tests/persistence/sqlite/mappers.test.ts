@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import type { AttemptEvent, AttemptRecord, TokenUsageSnapshot } from "../../../src/core/types.js";
+import type {
+  AttemptCheckpointRecord,
+  AttemptEvent,
+  AttemptRecord,
+  TokenUsageSnapshot,
+} from "../../../src/core/types.js";
 import {
   attemptEventToRow,
   attemptRecordToRow,
+  fromAttemptCheckpointRecord,
   rowToAttemptEvent,
   rowToAttemptRecord,
+  toAttemptCheckpointRecord,
 } from "../../../src/persistence/sqlite/mappers.js";
 
 // ---------------------------------------------------------------------------
@@ -52,6 +59,24 @@ function createAttemptEvent(overrides: Partial<AttemptEvent> = {}): AttemptEvent
     content: null,
     usage: { inputTokens: 200, outputTokens: 100, totalTokens: 300 },
     metadata: null,
+    ...overrides,
+  };
+}
+
+function createCheckpointRecord(overrides: Partial<AttemptCheckpointRecord> = {}): AttemptCheckpointRecord {
+  return {
+    checkpointId: "checkpoint-1",
+    attemptId: "attempt-1",
+    ordinal: 1,
+    trigger: "manual",
+    eventCursor: "cursor-1",
+    status: "completed",
+    threadId: "thread-abc",
+    turnId: "turn-xyz",
+    turnCount: 3,
+    tokenUsage: { inputTokens: 1000, outputTokens: 500, totalTokens: 1500 },
+    metadata: { note: "checkpoint" },
+    createdAt: "2026-03-20T10:02:00.000Z",
     ...overrides,
   };
 }
@@ -513,6 +538,43 @@ describe("rowToAttemptEvent / attemptEventToRow", () => {
       const event = createAttemptEvent({ metadata });
       const restored = rowToAttemptEvent(attemptEventToRow(event) as Parameters<typeof rowToAttemptEvent>[0]);
       expect(restored.metadata).toEqual(metadata);
+    });
+  });
+});
+
+describe("toAttemptCheckpointRecord / fromAttemptCheckpointRecord", () => {
+  it("round-trips checkpoint nullable fields and token usage", () => {
+    const checkpoint = createCheckpointRecord({
+      eventCursor: null,
+      threadId: null,
+      turnId: null,
+      tokenUsage: null,
+      metadata: null,
+    });
+
+    const row = fromAttemptCheckpointRecord(checkpoint);
+    const restored = toAttemptCheckpointRecord({
+      ...row,
+      checkpointId: checkpoint.checkpointId,
+    } as Parameters<typeof toAttemptCheckpointRecord>[0]);
+
+    expect(restored).toEqual(checkpoint);
+  });
+
+  it("reconstructs checkpoint token usage when only some token columns are present", () => {
+    const row = {
+      ...fromAttemptCheckpointRecord(createCheckpointRecord({ tokenUsage: null })),
+      checkpointId: "checkpoint-1",
+      inputTokens: null,
+      outputTokens: 25,
+      totalTokens: null,
+    };
+
+    const restored = toAttemptCheckpointRecord(row as Parameters<typeof toAttemptCheckpointRecord>[0]);
+    expect(restored.tokenUsage).toEqual({
+      inputTokens: 0,
+      outputTokens: 25,
+      totalTokens: 0,
     });
   });
 });

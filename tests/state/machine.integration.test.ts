@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { StateMachine, createDefaultStateMachine } from "../../src/state/machine.js";
+import {
+  DEFAULT_ACTIVE_STATES,
+  DEFAULT_TERMINAL_STATES,
+  StateMachine,
+  createDefaultStateMachine,
+} from "../../src/state/machine.js";
 
 // ── createDefaultStateMachine ─────────────────────────────────────────────────
 
 describe("createDefaultStateMachine — integration", () => {
+  it("exports the expected default active and terminal state arrays", () => {
+    expect(DEFAULT_ACTIVE_STATES).toEqual(["Backlog", "Todo", "In Progress"]);
+    expect(DEFAULT_TERMINAL_STATES).toEqual(["Done", "Canceled"]);
+  });
+
   it("returns a StateMachine instance", () => {
     const machine = createDefaultStateMachine();
     expect(machine).toBeInstanceOf(StateMachine);
@@ -24,6 +34,8 @@ describe("createDefaultStateMachine — integration", () => {
     expect(machine.isKnownState("in progress")).toBe(true);
     expect(machine.isKnownState("IN PROGRESS")).toBe(true);
     expect(machine.isKnownState("DONE")).toBe(true);
+    expect(machine.isKnownState("  In Progress  ")).toBe(true);
+    expect(machine.isTerminalState("  Done  ")).toBe(true);
   });
 
   it("marks Done and Canceled as terminal", () => {
@@ -96,6 +108,18 @@ describe("StateMachine.getStages — integration", () => {
       terminalStates: ["done"],
     });
     expect(machine.getStages()).toHaveLength(2);
+  });
+
+  it("skips blank string stage entries when stages are provided directly", () => {
+    const machine = new StateMachine({
+      stages: ["  ", "Open", "Done"],
+      terminalStates: ["done"],
+    });
+
+    expect(machine.getStages()).toEqual([
+      { key: "open", terminal: false },
+      { key: "done", terminal: true },
+    ]);
   });
 });
 
@@ -258,6 +282,20 @@ describe("StateMachine.canTransition — explicit transitions — integration", 
 
     expect(machine.canTransition("open", "done")).toBe(true);
     expect(machine.canTransition("open", "phantom")).toBe(false);
+  });
+
+  it("falls back to self-transition only when the explicit map is non-empty but contains no known sources", () => {
+    const machine = new StateMachine({
+      stages: ["open", "done"],
+      terminalStates: ["done"],
+      transitions: {
+        ghost: ["open"],
+      },
+    });
+
+    expect(machine.canTransition("open", "open")).toBe(true);
+    expect(machine.canTransition("open", "done")).toBe(false);
+    expect(machine.canTransition("done", "done")).toBe(true);
   });
 });
 

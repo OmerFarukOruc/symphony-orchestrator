@@ -66,7 +66,9 @@ describe("turn state", () => {
       timeoutMs: 500,
     });
     vi.advanceTimersByTime(501);
-    await expect(promise).rejects.toThrow("timed out waiting for turn completion after 500ms");
+    await expect(promise).rejects.toMatchObject({
+      message: "timed out waiting for turn completion after 500ms",
+    });
     expect(state.turnCompletionResolvers.has("turn-timeout")).toBe(false);
   });
 
@@ -79,8 +81,79 @@ describe("turn state", () => {
       timeoutMs: 5000,
     });
     controller.abort();
-    await expect(promise).rejects.toThrow("turn completion interrupted");
+    await expect(promise).rejects.toMatchObject({
+      message: "turn completion interrupted",
+    });
     expect(state.turnCompletionResolvers.has("turn-abort")).toBe(false);
+  });
+
+  it("registers the abort listener with once semantics", () => {
+    vi.useFakeTimers();
+    const state = createTurnState();
+    const addEventListener = vi.fn();
+    const removeEventListener = vi.fn();
+    const signal = {
+      aborted: false,
+      addEventListener,
+      removeEventListener,
+    } as unknown as AbortSignal;
+
+    waitForTurnCompletion(state, {
+      turnId: "turn-once",
+      signal,
+      timeoutMs: 5000,
+    }).catch(() => undefined);
+
+    expect(addEventListener).toHaveBeenCalledTimes(1);
+    expect(addEventListener.mock.calls[0]?.[0]).toBe("abort");
+    expect(typeof addEventListener.mock.calls[0]?.[1]).toBe("function");
+    expect(addEventListener.mock.calls[0]?.[2]).toEqual({ once: true });
+  });
+
+  it("removes the abort listener when the waiter times out", async () => {
+    vi.useFakeTimers();
+    const state = createTurnState();
+    const addEventListener = vi.fn();
+    const removeEventListener = vi.fn();
+    const signal = {
+      aborted: false,
+      addEventListener,
+      removeEventListener,
+    } as unknown as AbortSignal;
+
+    const promise = waitForTurnCompletion(state, {
+      turnId: "turn-timeout-cleanup",
+      signal,
+      timeoutMs: 500,
+    });
+
+    vi.advanceTimersByTime(501);
+    await expect(promise).rejects.toMatchObject({
+      message: "timed out waiting for turn completion after 500ms",
+    });
+    expect(removeEventListener).toHaveBeenCalledWith("abort", addEventListener.mock.calls[0]?.[1]);
+  });
+
+  it("removes the abort listener when the waiter resolves successfully", async () => {
+    const state = createTurnState();
+    const addEventListener = vi.fn();
+    const removeEventListener = vi.fn();
+    const signal = {
+      aborted: false,
+      addEventListener,
+      removeEventListener,
+    } as unknown as AbortSignal;
+
+    const promise = waitForTurnCompletion(state, {
+      turnId: "turn-resolve-cleanup",
+      signal,
+      timeoutMs: 5000,
+    });
+
+    recordCompletedTurn(state, "turn-resolve-cleanup", { ok: true });
+
+    await expect(promise).resolves.toEqual({ ok: true });
+    expect(removeEventListener).toHaveBeenCalledWith("abort", addEventListener.mock.calls[0]?.[1]);
   });
 
   it("handles multiple concurrent waiters on different turnIds", async () => {

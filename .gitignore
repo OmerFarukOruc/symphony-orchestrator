@@ -79,6 +79,10 @@ sast/
 .context/
 .worktrees
 
+# Autoresearch / mutation-research tooling artifacts
+autoresearch-*
+research-results-*
+
 # oh-my-anvil v3 — transient run state (specs and legacy are tracked)
 .anvil/runs/
 .anvil/ACTIVE_RUN

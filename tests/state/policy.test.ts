@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_ACTIVE_STATES,
+  DEFAULT_TERMINAL_STATES,
+  getStateMachine,
   listWorkflowStages,
   isActiveState,
   isGateState,
@@ -88,7 +91,32 @@ function createStateMachineConfig(): ServiceConfig {
   } as unknown as ServiceConfig;
 }
 
+function createDivergentStateMachineConfig(): ServiceConfig {
+  const base = createConfig({
+    activeStates: ["Todo", "In Progress", "Gate Review"],
+    terminalStates: ["Done", "Cancelled", "Archived"],
+  });
+  return {
+    ...base,
+    stateMachine: {
+      stages: [
+        { name: "Queued", kind: "todo" },
+        { name: "In Progress", kind: "active" },
+        { name: "Gate Review", kind: "gate" },
+        { name: "Archived", kind: "terminal" },
+        { name: "Done", kind: "active" },
+      ],
+      transitions: {},
+    },
+  } as unknown as ServiceConfig;
+}
+
 describe("normalizeStateList", () => {
+  it("exports the documented default state lists", () => {
+    expect(DEFAULT_ACTIVE_STATES).toEqual(["Backlog", "Todo", "In Progress"]);
+    expect(DEFAULT_TERMINAL_STATES).toEqual(["Done", "Canceled"]);
+  });
+
   it("lowercases and deduplicates states", () => {
     const result = normalizeStateList(["In Progress", "in progress", "TODO", "Done"]);
     expect(result).toEqual(["in progress", "todo", "done"]);
@@ -146,6 +174,33 @@ describe("isActiveState", () => {
     expect(isActiveState("Backlog", config)).toBe(false); // backlog is not active
     expect(isActiveState("Gate Review", config)).toBe(false); // gate is not active
   });
+
+  it("prefers state machine active rules when tracker active states disagree", () => {
+    const config = createDivergentStateMachineConfig();
+    expect(isActiveState("Queued", config)).toBe(true);
+    expect(isActiveState("Gate Review", config)).toBe(false);
+    expect(isActiveState("Done", config)).toBe(true);
+  });
+
+  it("reuses cached stage sets for repeated active-state lookups", () => {
+    const config = createStateMachineConfig();
+    expect(isActiveState("Todo", config)).toBe(true);
+    config.stateMachine?.stages.splice(
+      0,
+      config.stateMachine.stages.length,
+      { name: "Todo", kind: "gate" },
+      { name: "Done", kind: "terminal" },
+    );
+    expect(isActiveState("Todo", config)).toBe(true);
+  });
+
+  it("reuses cached tracker state sets for repeated active-state lookups", () => {
+    const config = createConfig({ activeStates: ["Todo"] });
+    expect(isActiveState("Todo", config)).toBe(true);
+    config.tracker.activeStates.splice(0, config.tracker.activeStates.length, "Queued");
+    expect(isActiveState("Todo", config)).toBe(true);
+    expect(isActiveState("Queued", config)).toBe(false);
+  });
 });
 
 describe("isTerminalState", () => {
@@ -176,6 +231,19 @@ describe("isTerminalState", () => {
     expect(isTerminalState("In Progress", config)).toBe(false);
     expect(isTerminalState("Backlog", config)).toBe(false);
   });
+
+  it("prefers state machine terminal rules when tracker terminal states disagree", () => {
+    const config = createDivergentStateMachineConfig();
+    expect(isTerminalState("Archived", config)).toBe(true);
+    expect(isTerminalState("Done", config)).toBe(false);
+  });
+
+  it("reuses cached state machine decisions for repeated terminal lookups", () => {
+    const config = createStateMachineConfig();
+    expect(isTerminalState("Done", config)).toBe(true);
+    config.stateMachine?.stages.splice(0, config.stateMachine.stages.length, { name: "Done", kind: "active" });
+    expect(isTerminalState("Done", config)).toBe(true);
+  });
 });
 
 describe("isGateState", () => {
@@ -198,6 +266,13 @@ describe("isGateState", () => {
     expect(isGateState("Done", config)).toBe(false);
     expect(isGateState("Backlog", config)).toBe(false);
   });
+
+  it("reuses cached stage sets for repeated gate-state lookups", () => {
+    const config = createStateMachineConfig();
+    expect(isGateState("Gate Review", config)).toBe(true);
+    config.stateMachine?.stages.splice(0, config.stateMachine.stages.length, { name: "Gate Review", kind: "active" });
+    expect(isGateState("Gate Review", config)).toBe(true);
+  });
 });
 
 describe("isTodoState", () => {
@@ -217,6 +292,12 @@ describe("isTodoState", () => {
     expect(isTodoState("Todo", config)).toBe(true);
     expect(isTodoState("In Progress", config)).toBe(false);
     expect(isTodoState("Backlog", config)).toBe(false);
+  });
+
+  it("prefers state machine todo rules when the default fallback would disagree", () => {
+    const config = createDivergentStateMachineConfig();
+    expect(isTodoState("Queued", config)).toBe(true);
+    expect(isTodoState("Todo", config)).toBe(false);
   });
 });
 
@@ -284,5 +365,53 @@ describe("listWorkflowStages", () => {
     expect(stages.find((s) => s.label === "Gate Review")?.kind).toBe("gate");
     expect(stages.find((s) => s.label === "Gate Review")?.terminal).toBe(false);
     expect(stages.find((s) => s.label === "Done")?.terminal).toBe(true);
+  });
+
+  it("falls back to tracker stages when a malformed state machine omits stages", () => {
+    const config = {
+      ...createConfig(),
+      stateMachine: { transitions: {} },
+    } as unknown as ServiceConfig;
+
+    expect(listWorkflowStages(config).map((stage) => stage.label)).toEqual([
+      "Todo",
+      "In Progress",
+      "Done",
+      "Cancelled",
+      "Duplicate",
+    ]);
+  });
+});
+
+describe("getStateMachine", () => {
+  it("reuses the cached machine instance for the same state machine config", () => {
+    const config = createStateMachineConfig();
+    const first = getStateMachine(config);
+    const second = getStateMachine(config);
+
+    expect(second).toBe(first);
+  });
+
+  it("returns a fresh tracker-derived machine when no state machine is configured", () => {
+    const config = createConfig();
+    const first = getStateMachine(config);
+    const second = getStateMachine(config);
+
+    expect(second).not.toBe(first);
+    expect(first.isTerminalState("Done")).toBe(true);
+    expect(second.isTerminalState("Done")).toBe(true);
+  });
+
+  it("uses tracker-provided states when building a machine without explicit stateMachine config", () => {
+    const config = createConfig({
+      activeStates: ["Planned"],
+      terminalStates: ["Shipped"],
+    });
+
+    const machine = getStateMachine(config);
+
+    expect(machine.isTerminalState("Shipped")).toBe(true);
+    expect(machine.isTerminalState("Done")).toBe(false);
+    expect(machine.getStages().map((stage) => stage.key)).toEqual(["planned", "shipped"]);
   });
 });

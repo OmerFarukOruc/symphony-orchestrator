@@ -1,8 +1,6 @@
 import type { ServiceConfig, StateStageKind } from "../core/types.js";
 import { StateMachine } from "./machine.js";
-
-export const DEFAULT_ACTIVE_STATES = ["Backlog", "Todo", "In Progress"];
-export const DEFAULT_TERMINAL_STATES = ["Done", "Canceled"];
+export { DEFAULT_ACTIVE_STATES, DEFAULT_TERMINAL_STATES } from "./machine.js";
 const STATE_MACHINE_CACHE = new WeakMap<object, StateMachine>();
 const TRACKER_STATE_CACHE = new WeakMap<ServiceConfig, { active: Set<string>; terminal: Set<string> }>();
 const STATE_STAGE_CACHE = new WeakMap<
@@ -33,10 +31,7 @@ export function normalizeStateList(states: string[]): string[] {
 }
 
 export function isTerminalState(state: string, config: ServiceConfig): boolean {
-  if (config.stateMachine) {
-    return getStateMachine(config).isTerminalState(state);
-  }
-  return getTrackerStateSets(config).terminal.has(normalizeStateValue(state));
+  return getStateMachine(config).isTerminalState(state);
 }
 
 export function isActiveState(state: string, config: ServiceConfig): boolean {

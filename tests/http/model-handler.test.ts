@@ -42,6 +42,12 @@ describe("handleModelUpdate", () => {
       res,
     );
     expect(res._status).toBe(404);
+    expect(res._body).toEqual({
+      error: {
+        code: "not_found",
+        message: "Unknown issue identifier",
+      },
+    });
   });
 
   it("returns 202 with correct shape on success", async () => {

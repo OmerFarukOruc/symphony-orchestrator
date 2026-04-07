@@ -2,7 +2,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import YAML from "yaml";
 import { afterEach, describe, expect, it } from "vitest";
+import { vi } from "vitest";
 
 import { loadWorkflowDefinition } from "../../src/workflow/loader.js";
 
@@ -16,8 +18,46 @@ async function createTempDir(): Promise<string> {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
+
+async function expectWorkflowLoaderError(
+  promise: Promise<unknown>,
+  expected: {
+    code: string;
+    message?: string;
+    messagePattern?: RegExp;
+    cause?: "present";
+  },
+): Promise<void> {
+  const error = await promise.catch((error_) => error_);
+  const messagePattern = expected.messagePattern ?? /^.+$/;
+
+  expect(error).toBeInstanceOf(Error);
+  expect(error).toMatchObject({
+    name: "WorkflowLoaderError",
+    validationError: {
+      code: expected.code,
+    },
+  });
+
+  if (!(error instanceof Error)) {
+    return;
+  }
+
+  if (expected.message !== undefined) {
+    expect(error.message).toBe(expected.message);
+    expect(error.validationError.message).toBe(expected.message);
+  } else {
+    expect(error.message).toMatch(messagePattern);
+    expect(error.validationError.message).toMatch(messagePattern);
+  }
+
+  if (expected.cause) {
+    expect(error.cause).toBeTruthy();
+  }
+}
 
 describe("loadWorkflowDefinition", () => {
   describe("plain text (no YAML front matter)", () => {
@@ -86,13 +126,25 @@ describe("loadWorkflowDefinition", () => {
 
       expect(result.promptTemplate).toBe("Fix {{ issue.identifier }}: {{ issue.title }}");
     });
+
+    it("ignores inline content on the same line as the closing front matter delimiter", async () => {
+      const dir = await createTempDir();
+      const filePath = path.join(dir, "WORKFLOW.md");
+      await writeFile(filePath, "---\nkey: value\n---INLINE CONTENT", "utf8");
+
+      const result = await loadWorkflowDefinition(filePath);
+
+      expect(result.config).toEqual({ key: "value" });
+      expect(result.promptTemplate).toBe("");
+    });
   });
 
   describe("error handling", () => {
     it("throws missing_workflow_file for a nonexistent file", async () => {
-      await expect(loadWorkflowDefinition("/nonexistent/WORKFLOW.md")).rejects.toMatchObject({
-        name: "WorkflowLoaderError",
-        validationError: { code: "missing_workflow_file" },
+      await expectWorkflowLoaderError(loadWorkflowDefinition("/nonexistent/WORKFLOW.md"), {
+        code: "missing_workflow_file",
+        message: "workflow file not found: /nonexistent/WORKFLOW.md",
+        cause: "present",
       });
     });
 
@@ -101,11 +153,9 @@ describe("loadWorkflowDefinition", () => {
       const filePath = path.join(dir, "WORKFLOW.md");
       await writeFile(filePath, "---\nkey: value\nmore: stuff\n", "utf8");
 
-      await expect(loadWorkflowDefinition(filePath)).rejects.toMatchObject({
-        validationError: {
-          code: "workflow_parse_error",
-          message: "workflow front matter is not closed with a terminating --- line",
-        },
+      await expectWorkflowLoaderError(loadWorkflowDefinition(filePath), {
+        code: "workflow_parse_error",
+        message: "workflow front matter is not closed with a terminating --- line",
       });
     });
 
@@ -114,8 +164,9 @@ describe("loadWorkflowDefinition", () => {
       const filePath = path.join(dir, "WORKFLOW.md");
       await writeFile(filePath, "---", "utf8");
 
-      await expect(loadWorkflowDefinition(filePath)).rejects.toMatchObject({
-        validationError: { code: "workflow_parse_error" },
+      await expectWorkflowLoaderError(loadWorkflowDefinition(filePath), {
+        code: "workflow_parse_error",
+        message: "workflow front matter is not closed with a terminating --- line",
       });
     });
 
@@ -124,8 +175,9 @@ describe("loadWorkflowDefinition", () => {
       const filePath = path.join(dir, "WORKFLOW.md");
       await writeFile(filePath, "---\njust a string\n---\nBody\n", "utf8");
 
-      await expect(loadWorkflowDefinition(filePath)).rejects.toMatchObject({
-        validationError: { code: "workflow_front_matter_not_a_map" },
+      await expectWorkflowLoaderError(loadWorkflowDefinition(filePath), {
+        code: "workflow_front_matter_not_a_map",
+        message: "workflow front matter must parse to a YAML map",
       });
     });
 
@@ -134,8 +186,9 @@ describe("loadWorkflowDefinition", () => {
       const filePath = path.join(dir, "WORKFLOW.md");
       await writeFile(filePath, "---\n- item1\n- item2\n---\nBody\n", "utf8");
 
-      await expect(loadWorkflowDefinition(filePath)).rejects.toMatchObject({
-        validationError: { code: "workflow_front_matter_not_a_map" },
+      await expectWorkflowLoaderError(loadWorkflowDefinition(filePath), {
+        code: "workflow_front_matter_not_a_map",
+        message: "workflow front matter must parse to a YAML map",
       });
     });
 
@@ -144,8 +197,25 @@ describe("loadWorkflowDefinition", () => {
       const filePath = path.join(dir, "WORKFLOW.md");
       await writeFile(filePath, "---\ninvalid: [\n---\nBody\n", "utf8");
 
-      await expect(loadWorkflowDefinition(filePath)).rejects.toMatchObject({
-        validationError: { code: "workflow_parse_error" },
+      await expectWorkflowLoaderError(loadWorkflowDefinition(filePath), {
+        code: "workflow_parse_error",
+        messagePattern: /Flow sequence in block collection/,
+        cause: "present",
+      });
+    });
+
+    it("throws workflow_parse_error with the fallback message when YAML parsing throws a non-Error value", async () => {
+      const dir = await createTempDir();
+      const filePath = path.join(dir, "WORKFLOW.md");
+      await writeFile(filePath, "---\nkey: value\n---\nBody\n", "utf8");
+      vi.spyOn(YAML, "parse").mockImplementation(() => {
+        throw "unexpected parse failure";
+      });
+
+      await expectWorkflowLoaderError(loadWorkflowDefinition(filePath), {
+        code: "workflow_parse_error",
+        message: "workflow parsing failed",
+        cause: "present",
       });
     });
   });

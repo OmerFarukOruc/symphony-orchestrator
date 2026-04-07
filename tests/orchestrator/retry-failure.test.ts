@@ -127,6 +127,7 @@ describe("handleRetryLaunchFailure", () => {
       "run-abc",
       expect.objectContaining({ status: "failed", errorCode: "worker_failed" }),
     );
+    expect(ctx.deps.attemptStore.createAttempt).not.toHaveBeenCalled();
   });
 
   it("creates a new attempt record when no running entry exists", async () => {

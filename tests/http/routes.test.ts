@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
 import express from "express";
 import http from "node:http";
+import { join } from "node:path";
 
 vi.mock("../../src/codex/model-list.js", () => ({
   fetchCodexModels: vi.fn().mockResolvedValue(null),
@@ -120,6 +121,79 @@ afterAll(async () => {
 
 async function fetchRoute(path: string, options?: RequestInit): Promise<Response> {
   return fetch(`http://127.0.0.1:${port}${path}`, options);
+}
+
+async function loadRoutesModuleWithMocks() {
+  vi.resetModules();
+
+  const staticMiddleware = vi.fn();
+  const limiterMiddleware = vi.fn();
+  const staticSpy = vi.fn(() => staticMiddleware);
+  const rateLimitSpy = vi.fn(() => limiterMiddleware);
+  const createMetricsCollectorSpy = vi.fn(() => ({ record: vi.fn() }));
+  const validateHttpDepsSpy = vi.fn();
+  const registerSystemRoutesSpy = vi.fn();
+  const registerExtensionRoutesSpy = vi.fn();
+  const registerGitRoutesSpy = vi.fn();
+  const registerWorkspaceRoutesSpy = vi.fn();
+  const registerNotificationRoutesSpy = vi.fn();
+  const registerIssueRoutesSpy = vi.fn();
+  const registerWebhookRoutesSpy = vi.fn();
+
+  vi.doMock("node:fs", () => ({
+    readFileSync: vi.fn(() => "<html></html>"),
+  }));
+  vi.doMock("express", () => ({
+    default: { static: staticSpy },
+  }));
+  vi.doMock("express-rate-limit", () => ({
+    default: rateLimitSpy,
+  }));
+  vi.doMock("../../src/observability/metrics.js", () => ({
+    createMetricsCollector: createMetricsCollectorSpy,
+  }));
+  vi.doMock("../../src/http/dep-validator.js", () => ({
+    validateHttpDeps: validateHttpDepsSpy,
+  }));
+  vi.doMock("../../src/http/routes/system.js", () => ({
+    registerSystemRoutes: registerSystemRoutesSpy,
+  }));
+  vi.doMock("../../src/http/routes/extensions.js", () => ({
+    registerExtensionRoutes: registerExtensionRoutesSpy,
+  }));
+  vi.doMock("../../src/http/routes/git.js", () => ({
+    registerGitRoutes: registerGitRoutesSpy,
+  }));
+  vi.doMock("../../src/http/routes/workspaces.js", () => ({
+    registerWorkspaceRoutes: registerWorkspaceRoutesSpy,
+  }));
+  vi.doMock("../../src/http/routes/notifications.js", () => ({
+    registerNotificationRoutes: registerNotificationRoutesSpy,
+  }));
+  vi.doMock("../../src/http/routes/issues.js", () => ({
+    registerIssueRoutes: registerIssueRoutesSpy,
+  }));
+  vi.doMock("../../src/http/routes/webhooks.js", () => ({
+    registerWebhookRoutes: registerWebhookRoutesSpy,
+  }));
+
+  const module = await import("../../src/http/routes.js");
+  return {
+    registerHttpRoutes: module.registerHttpRoutes,
+    staticMiddleware,
+    limiterMiddleware,
+    staticSpy,
+    rateLimitSpy,
+    createMetricsCollectorSpy,
+    validateHttpDepsSpy,
+    registerSystemRoutesSpy,
+    registerExtensionRoutesSpy,
+    registerGitRoutesSpy,
+    registerWorkspaceRoutesSpy,
+    registerNotificationRoutesSpy,
+    registerIssueRoutesSpy,
+    registerWebhookRoutesSpy,
+  };
 }
 
 describe("HTTP routes", () => {
@@ -487,5 +561,156 @@ describe("HTTP routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.history).toHaveLength(1);
+  });
+});
+
+describe("registerHttpRoutes wiring", () => {
+  it("uses the default frontend dist path and creates fallback metrics when deps.metrics is absent", async () => {
+    const {
+      registerHttpRoutes,
+      staticMiddleware,
+      staticSpy,
+      createMetricsCollectorSpy,
+      validateHttpDepsSpy,
+      registerSystemRoutesSpy,
+    } = await loadRoutesModuleWithMocks();
+    const app = { use: vi.fn(), all: vi.fn() };
+    const deps = {
+      orchestrator: {},
+      notificationStore: {},
+      automationStore: {},
+      automationScheduler: {},
+      alertHistoryStore: {},
+      logger: createMockLogger(),
+    };
+
+    registerHttpRoutes(app as never, deps as never);
+
+    expect(staticSpy).toHaveBeenCalledWith(join(process.cwd(), "dist/frontend"));
+    expect(app.use).toHaveBeenCalledWith(staticMiddleware);
+    expect(createMetricsCollectorSpy).toHaveBeenCalledOnce();
+    expect(validateHttpDepsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metrics: createMetricsCollectorSpy.mock.results[0]?.value,
+      }),
+    );
+    expect(registerSystemRoutesSpy).toHaveBeenCalledWith(
+      app,
+      expect.objectContaining({
+        metrics: createMetricsCollectorSpy.mock.results[0]?.value,
+      }),
+    );
+  });
+
+  it("reuses provided metrics and configures the shared API limiter", async () => {
+    const { registerHttpRoutes, limiterMiddleware, rateLimitSpy, createMetricsCollectorSpy } =
+      await loadRoutesModuleWithMocks();
+    const app = { use: vi.fn(), all: vi.fn() };
+    const providedMetrics = { observe: vi.fn() };
+
+    registerHttpRoutes(
+      app as never,
+      {
+        orchestrator: {},
+        notificationStore: {},
+        automationStore: {},
+        automationScheduler: {},
+        alertHistoryStore: {},
+        logger: createMockLogger(),
+        frontendDir: "/custom/frontend",
+        metrics: providedMetrics,
+      } as never,
+    );
+
+    expect(createMetricsCollectorSpy).not.toHaveBeenCalled();
+    expect(rateLimitSpy).toHaveBeenCalledWith({
+      windowMs: 60_000,
+      limit: 300,
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
+    expect(app.use).toHaveBeenCalledWith("/api/", limiterMiddleware);
+    expect(app.use).toHaveBeenCalledWith("/metrics", limiterMiddleware);
+  });
+
+  it("returns the exact webhook 404 payload from the dedicated fallback route", async () => {
+    const { registerHttpRoutes } = await loadRoutesModuleWithMocks();
+    const app = { use: vi.fn(), all: vi.fn() };
+    const response = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+    };
+
+    registerHttpRoutes(
+      app as never,
+      {
+        orchestrator: {},
+        notificationStore: {},
+        automationStore: {},
+        automationScheduler: {},
+        alertHistoryStore: {},
+        logger: createMockLogger(),
+      } as never,
+    );
+
+    const webhookFallback = app.all.mock.calls[0]?.[1] as (request: Request, response: Response) => void;
+    webhookFallback({} as Request, response as never);
+
+    expect(app.all).toHaveBeenCalledWith("/webhooks/*path", expect.any(Function));
+    expect(response.status).toHaveBeenCalledWith(404);
+    expect(response.json).toHaveBeenCalledWith({
+      error: { code: "not_found", message: "Not found" },
+    });
+  });
+
+  it("uses the SPA fallback only for non-API, non-metrics paths", async () => {
+    const { registerHttpRoutes } = await loadRoutesModuleWithMocks();
+    const app = { use: vi.fn(), all: vi.fn() };
+
+    registerHttpRoutes(
+      app as never,
+      {
+        orchestrator: {},
+        notificationStore: {},
+        automationStore: {},
+        automationScheduler: {},
+        alertHistoryStore: {},
+        logger: createMockLogger(),
+        frontendDir: "/custom/frontend",
+      } as never,
+    );
+
+    const fallback = app.use.mock.calls.at(-1)?.[0] as (request: Request, response: Response) => void;
+    const apiResponse = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+      sendFile: vi.fn(),
+    };
+    fallback({ path: "/api/missing" } as Request, apiResponse as never);
+    expect(apiResponse.status).toHaveBeenCalledWith(404);
+    expect(apiResponse.json).toHaveBeenCalledWith({
+      error: { code: "not_found", message: "Not found" },
+    });
+    expect(apiResponse.sendFile).not.toHaveBeenCalled();
+
+    const metricsResponse = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+      sendFile: vi.fn(),
+    };
+    fallback({ path: "/metrics" } as Request, metricsResponse as never);
+    expect(metricsResponse.status).toHaveBeenCalledWith(404);
+    expect(metricsResponse.sendFile).not.toHaveBeenCalled();
+
+    const spaResponse = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+      type: vi.fn().mockReturnThis(),
+      send: vi.fn(),
+    };
+    fallback({ path: "/dashboard" } as Request, spaResponse as never);
+    expect(spaResponse.type).toHaveBeenCalledWith("html");
+    expect(spaResponse.send).toHaveBeenCalled();
+    expect(spaResponse.status).not.toHaveBeenCalled();
   });
 });

@@ -47,4 +47,51 @@ describe("PathRegistry", () => {
     expect(registry.translate("/container/ws/MT-7")).toBe("/host/ws/MT-7");
     expect(registry.translate("/container/arc/logs")).toBe("/host/arc/logs");
   });
+
+  it("normalizes trailing slashes on both mapping prefixes and translated paths", () => {
+    const registry = new PathRegistry({
+      "/data/workspaces/": "/host/workspaces/",
+    });
+
+    expect(registry.translate("/data/workspaces/team-a/")).toBe("/host/workspaces/team-a");
+  });
+
+  it("supports root prefix mappings", () => {
+    const registry = new PathRegistry({
+      "/": "/host-root",
+    });
+
+    expect(registry.translate("/data/workspaces/MT-1")).toBe("/host-rootdata/workspaces/MT-1");
+    expect(registry.translate("/")).toBe("/host-root");
+    expect(registry.translate("relative/path")).toBe("relative/path");
+  });
+
+  it("uses default container roots from env when only host paths are configured", () => {
+    const registry = PathRegistry.fromEnv({
+      RISOLUTO_HOST_WORKSPACE_ROOT: "/host/ws",
+      RISOLUTO_HOST_ARCHIVE_DIR: "/host/arc",
+    });
+
+    expect(registry.translate("/data/workspaces/MT-7")).toBe("/host/ws/MT-7");
+    expect(registry.translate("/data/archives/logs")).toBe("/host/arc/logs");
+  });
+
+  it("normalizes map-based mappings before sorting and translating", () => {
+    const registry = new PathRegistry(
+      new Map([
+        ["/data/workspaces/team-a/", "/host/team-a/"],
+        ["/data/workspaces/", "/host/workspaces/"],
+      ]),
+    );
+
+    expect(registry.translate("/data/workspaces/team-a/MT-2")).toBe("/host/team-a/MT-2");
+  });
+
+  it("treats empty mapping prefixes like root prefixes after normalization", () => {
+    const registry = new PathRegistry({
+      "": "/host-root",
+    });
+
+    expect(registry.translate("/data/workspaces/MT-1")).toBe("/host-rootdata/workspaces/MT-1");
+  });
 });

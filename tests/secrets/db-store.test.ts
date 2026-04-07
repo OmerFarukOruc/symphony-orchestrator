@@ -2,16 +2,19 @@ import { describe, expect, it, beforeEach } from "vitest";
 
 import { openDatabase, closeDatabase, type RisolutoDatabase } from "../../src/persistence/sqlite/database.js";
 import { DbSecretsStore } from "../../src/secrets/db-store.js";
-import { createLogger } from "../../src/core/logger.js";
+import { createMockLogger } from "../helpers.js";
+import type { RisolutoLogger } from "../../src/core/types.js";
 
 const TEST_MASTER_KEY = "test-master-key-for-unit-tests";
 
 let db: RisolutoDatabase;
 let store: DbSecretsStore;
+let logger: RisolutoLogger;
 
 beforeEach(async () => {
   db = openDatabase(":memory:");
-  store = new DbSecretsStore(db, createLogger(), { masterKey: TEST_MASTER_KEY });
+  logger = createMockLogger();
+  store = new DbSecretsStore(db, logger, { masterKey: TEST_MASTER_KEY });
   await store.start();
 
   return () => closeDatabase(db);
@@ -61,7 +64,7 @@ describe("DbSecretsStore", () => {
   });
 
   it("isInitialized returns false before start", () => {
-    const uninit = new DbSecretsStore(db, createLogger());
+    const uninit = new DbSecretsStore(db, createMockLogger());
     expect(uninit.isInitialized()).toBe(false);
   });
 
@@ -71,7 +74,7 @@ describe("DbSecretsStore", () => {
   });
 
   it("initializeWithKey sets encryption key", async () => {
-    const fresh = new DbSecretsStore(db, createLogger());
+    const fresh = new DbSecretsStore(db, createMockLogger());
     await fresh.initializeWithKey(TEST_MASTER_KEY);
     expect(fresh.isInitialized()).toBe(true);
     // Can read secrets written by the other store
@@ -116,7 +119,7 @@ describe("DbSecretsStore", () => {
   it("data persists across store instances", async () => {
     await store.set("PERSIST_TEST", "survives");
 
-    const store2 = new DbSecretsStore(db, createLogger(), { masterKey: TEST_MASTER_KEY });
+    const store2 = new DbSecretsStore(db, createMockLogger(), { masterKey: TEST_MASTER_KEY });
     await store2.start();
     expect(store2.get("PERSIST_TEST")).toBe("survives");
   });
@@ -124,14 +127,69 @@ describe("DbSecretsStore", () => {
   it("different master key cannot decrypt", async () => {
     await store.set("SECRET", "hidden");
 
-    const store2 = new DbSecretsStore(db, createLogger(), { masterKey: "wrong-key" });
+    const wrongLogger = createMockLogger();
+    const store2 = new DbSecretsStore(db, wrongLogger, { masterKey: "wrong-key" });
     await store2.start();
     expect(store2.get("SECRET")).toBeNull(); // decrypt fails, returns null
+    expect(wrongLogger.warn).toHaveBeenCalledTimes(1);
+    expect(wrongLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: "SECRET",
+        error: expect.any(String),
+      }),
+      "failed to decrypt secret",
+    );
   });
 
   it("handles special characters in values", async () => {
     const special = 'value with "quotes", newlines\n, unicode: , and JSON: {"key": "val"}';
     await store.set("SPECIAL", special);
     expect(store.get("SPECIAL")).toBe(special);
+  });
+
+  it("throws the startup error when neither options.masterKey nor MASTER_KEY is provided", async () => {
+    delete process.env.MASTER_KEY;
+    const unstarted = new DbSecretsStore(db, createMockLogger());
+
+    await expect(unstarted.start()).rejects.toThrow("MASTER_KEY is required to initialize DbSecretsStore");
+    expect(unstarted.isInitialized()).toBe(false);
+  });
+
+  it("uses process.env.MASTER_KEY when options.masterKey is absent", async () => {
+    process.env.MASTER_KEY = TEST_MASTER_KEY;
+    const envBacked = new DbSecretsStore(db, createMockLogger());
+
+    await envBacked.start();
+    await store.set("ENV_SHARED", "value");
+    expect(envBacked.get("ENV_SHARED")).toBe("value");
+  });
+
+  it("throws the required-key error when set is called before start", async () => {
+    const unstarted = new DbSecretsStore(db, createMockLogger(), { masterKey: TEST_MASTER_KEY });
+
+    await expect(unstarted.set("API_KEY", "value")).rejects.toThrow("DbSecretsStore has not been started");
+  });
+
+  it("list returns only sorted string keys even after updates", async () => {
+    await store.set("BETA", "1");
+    await store.set("ALPHA", "2");
+    await store.set("BETA", "3");
+
+    const keys = store.list();
+    expect(keys).toEqual(["ALPHA", "BETA"]);
+    expect(keys.every((key) => typeof key === "string")).toBe(true);
+  });
+
+  it("sorts key names even when the database returns them out of order", () => {
+    const fakeDb = {
+      select: () => ({
+        from: () => ({
+          all: () => [{ key: "ZEBRA" }, { key: "ALPHA" }, { key: "MIDDLE" }],
+        }),
+      }),
+    } as unknown as RisolutoDatabase;
+    const fakeStore = new DbSecretsStore(fakeDb, createMockLogger(), { masterKey: TEST_MASTER_KEY });
+
+    expect(fakeStore.list()).toEqual(["ALPHA", "MIDDLE", "ZEBRA"]);
   });
 });

@@ -1,5 +1,5 @@
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildSafePath, isWithinRoot, sanitizeIdentifier, resolveWorkspacePath } from "../../src/workspace/paths.js";
 
@@ -58,6 +58,29 @@ describe("isWithinRoot", () => {
 
   it("handles trailing slashes correctly", () => {
     expect(isWithinRoot("/workspace/", "/workspace/file.txt")).toBe(true);
+  });
+
+  describe("path API edge cases", () => {
+    afterEach(() => {
+      vi.doUnmock("node:path");
+      vi.resetModules();
+    });
+
+    it("rejects candidates when path.relative returns an absolute path", async () => {
+      vi.resetModules();
+      vi.doMock("node:path", async () => {
+        const actual = await vi.importActual<typeof import("node:path")>("node:path");
+        return {
+          default: {
+            ...actual.default,
+            relative: vi.fn(() => "/other-drive/workspace"),
+          },
+        };
+      });
+
+      const { isWithinRoot: mockedIsWithinRoot } = await import("../../src/workspace/paths.js");
+      expect(mockedIsWithinRoot("/workspace", "/workspace/issue-1")).toBe(false);
+    });
   });
 });
 
@@ -146,5 +169,33 @@ describe("resolveWorkspacePath", () => {
     const result = resolveWorkspacePath("/workspaces", "safe-identifier");
     expect(result.workspaceKey).toBe("safe-identifier");
     expect(isWithinRoot("/workspaces", result.workspacePath)).toBe(true);
+  });
+
+  describe("escape guard", () => {
+    afterEach(() => {
+      vi.doUnmock("node:path");
+      vi.resetModules();
+    });
+
+    it("throws the escaped path when path.resolve produces a path outside the root", async () => {
+      vi.resetModules();
+      vi.doMock("node:path", async () => {
+        const actual = await vi.importActual<typeof import("node:path")>("node:path");
+        return {
+          default: {
+            ...actual.default,
+            resolve: vi.fn((...args: string[]) =>
+              args[0] === "/workspaces" && args[1] === "issue" ? "/escaped/issue" : actual.default.resolve(...args),
+            ),
+          },
+        };
+      });
+
+      const { resolveWorkspacePath: mockedResolveWorkspacePath } = await import("../../src/workspace/paths.js");
+
+      expect(() => mockedResolveWorkspacePath("/workspaces", "issue")).toThrow(
+        "workspace path escaped root: /escaped/issue",
+      );
+    });
   });
 });

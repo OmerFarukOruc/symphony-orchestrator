@@ -1,10 +1,7 @@
 import path from "node:path";
 
 function normalizePrefix(value: string): string {
-  if (!value || value === "/") {
-    return "/";
-  }
-  const normalized = path.posix.normalize(value);
+  const normalized = path.posix.normalize(value || "/");
   return normalized.endsWith("/") && normalized !== "/" ? normalized.slice(0, -1) : normalized;
 }
 
@@ -25,7 +22,6 @@ export class PathRegistry {
         containerPrefix: normalizePrefix(containerPrefix),
         hostPrefix: normalizePrefix(hostPrefix),
       }))
-      .filter((entry) => entry.containerPrefix.length > 0 && entry.hostPrefix.length > 0)
       .sort((left, right) => right.containerPrefix.length - left.containerPrefix.length);
   }
 

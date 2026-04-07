@@ -615,4 +615,77 @@ describe("AttemptStore", () => {
       expect(migratedEvents).toEqual([olderEvent, newerEvent]);
     });
   });
+
+  it("re-sorts issue indexes on startup when archive filenames load in a non-chronological order", async () => {
+    const baseDir = await createTempDir();
+    const attemptsDir = path.join(baseDir, "attempts");
+    const eventsDir = path.join(baseDir, "events");
+    await mkdir(attemptsDir, { recursive: true });
+    await mkdir(eventsDir, { recursive: true });
+
+    const newerAttempt = createAttempt({
+      attemptId: "a-attempt",
+      startedAt: "2026-03-16T10:05:00.000Z",
+      status: "completed",
+      endedAt: "2026-03-16T10:06:00.000Z",
+    });
+    const olderAttempt = createAttempt({
+      attemptId: "z-attempt",
+      startedAt: "2026-03-16T10:00:00.000Z",
+      status: "completed",
+      endedAt: "2026-03-16T10:01:00.000Z",
+    });
+
+    await writeFile(
+      path.join(attemptsDir, `${newerAttempt.attemptId}.json`),
+      `${JSON.stringify(newerAttempt, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(attemptsDir, `${olderAttempt.attemptId}.json`),
+      `${JSON.stringify(olderAttempt, null, 2)}\n`,
+      "utf8",
+    );
+
+    const store = await createStore(baseDir);
+
+    expect(store.getAttemptsForIssue("MT-42").map((attempt) => attempt.attemptId)).toEqual(["a-attempt", "z-attempt"]);
+  });
+
+  it("throws descriptive TypeErrors for JSONL-only unsupported persistence APIs", async () => {
+    const baseDir = await createTempDir();
+    const store = await createStore(baseDir);
+
+    await expect(
+      store.appendCheckpoint({
+        attemptId: "attempt-1",
+        at: "2026-03-16T10:00:00.000Z",
+        kind: "session",
+        label: "checkpoint",
+        status: "completed",
+        metadata: null,
+      }),
+    ).rejects.toThrow("appendCheckpoint not supported in JSONL mode");
+    await expect(store.listCheckpoints("attempt-1")).rejects.toThrow("listCheckpoints not supported in JSONL mode");
+    await expect(
+      store.upsertPr({
+        issueId: "issue-1",
+        issueIdentifier: "MT-42",
+        url: "https://github.com/example/repo/pull/1",
+        number: 1,
+        title: "Add persistence coverage",
+        state: "open",
+        merged: false,
+        createdAt: "2026-03-16T10:00:00.000Z",
+        updatedAt: "2026-03-16T10:01:00.000Z",
+        mergeCommitSha: null,
+        mergedAt: null,
+      }),
+    ).rejects.toThrow("upsertPr not supported in JSONL mode");
+    await expect(store.getOpenPrs()).rejects.toThrow("getOpenPrs not supported in JSONL mode");
+    await expect(store.getAllPrs()).rejects.toThrow("getAllPrs not supported in JSONL mode");
+    await expect(
+      store.updatePrStatus("https://github.com/example/repo/pull/1", "closed", "2026-03-16T10:02:00.000Z", "abc123"),
+    ).rejects.toThrow("updatePrStatus not supported in JSONL mode");
+  });
 });

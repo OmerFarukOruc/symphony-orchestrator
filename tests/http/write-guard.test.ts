@@ -67,6 +67,64 @@ function closeServer(server: http.Server): Promise<void> {
   });
 }
 
+function createMockRequest({
+  method = "POST",
+  path = "/api/v1/test",
+  remoteAddress = "127.0.0.1",
+  authorization,
+  requestId,
+}: {
+  method?: string;
+  path?: string;
+  remoteAddress?: string;
+  authorization?: string;
+  requestId?: string;
+} = {}): Request {
+  return {
+    method,
+    path,
+    socket: { remoteAddress },
+    get: vi.fn((header: string) => {
+      const normalized = header.toLowerCase();
+      if (normalized === "authorization") {
+        return authorization;
+      }
+      if (normalized === "x-request-id") {
+        return requestId;
+      }
+      return undefined;
+    }),
+  } as unknown as Request;
+}
+
+function createMockResponse(): Response & {
+  _status: number;
+  _body: unknown;
+  _events: Map<string, () => void>;
+} {
+  const events = new Map<string, () => void>();
+  const response = {
+    _status: 200,
+    _body: undefined as unknown,
+    statusCode: 200,
+    _events: events,
+    status(code: number) {
+      response._status = code;
+      response.statusCode = code;
+      return response;
+    },
+    json(body: unknown) {
+      response._body = body;
+      return response;
+    },
+    once(event: string, handler: () => void) {
+      events.set(event, handler);
+      return response;
+    },
+  };
+  return response as unknown as Response & { _status: number; _body: unknown; _events: Map<string, () => void> };
+}
+
 describe("createWriteGuard", () => {
   let server: http.Server | null = null;
 
@@ -140,6 +198,153 @@ describe("createWriteGuard", () => {
       body: "{}",
     });
     expect(response.status).toBe(401);
+  });
+
+  it("allows GET, HEAD, and OPTIONS as safe methods without auth checks", () => {
+    for (const method of ["GET", "HEAD", "OPTIONS"]) {
+      const next = vi.fn();
+      const response = createMockResponse();
+      const request = createMockRequest({ method, remoteAddress: "203.0.113.10" });
+
+      createWriteGuard()(request, response, next);
+
+      expect(next).toHaveBeenCalledOnce();
+      expect(response._status).toBe(200);
+      expect(response._body).toBeUndefined();
+    }
+  });
+
+  it("trims configured and supplied bearer tokens before comparing", () => {
+    vi.stubEnv("RISOLUTO_WRITE_TOKEN", "  padded-secret  ");
+    const next = vi.fn();
+    const request = createMockRequest({
+      remoteAddress: "203.0.113.10",
+      authorization: "Bearer   padded-secret   ",
+    });
+
+    createWriteGuard()(request, createMockResponse(), next);
+
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it("returns the exact unauthorized payload for malformed bearer headers", () => {
+    vi.stubEnv("RISOLUTO_WRITE_TOKEN", "test-secret-token");
+    const next = vi.fn();
+    const response = createMockResponse();
+
+    createWriteGuard()(
+      createMockRequest({
+        authorization: "Basic not-a-bearer-token",
+        remoteAddress: "127.0.0.1",
+      }),
+      response,
+      next,
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(response._status).toBe(401);
+    expect(response._body).toEqual({
+      error: {
+        code: "write_unauthorized",
+        message: "Mutating requests require a valid Authorization: Bearer <token> header",
+      },
+    });
+  });
+
+  it("returns the exact unauthorized payload when the authorization header is missing", () => {
+    vi.stubEnv("RISOLUTO_WRITE_TOKEN", "test-secret-token");
+    const next = vi.fn();
+    const response = createMockResponse();
+    const request = createMockRequest({ remoteAddress: "127.0.0.1" });
+
+    createWriteGuard()(request, response, next);
+
+    expect(request.get).toHaveBeenCalledWith("authorization");
+    expect(next).not.toHaveBeenCalled();
+    expect(response._status).toBe(401);
+    expect(response._body).toEqual({
+      error: {
+        code: "write_unauthorized",
+        message: "Mutating requests require a valid Authorization: Bearer <token> header",
+      },
+    });
+  });
+
+  it("rejects non-bearer headers even when dropping the first seven characters would match the token", () => {
+    vi.stubEnv("RISOLUTO_WRITE_TOKEN", "test-secret-token");
+    const next = vi.fn();
+    const response = createMockResponse();
+
+    createWriteGuard()(
+      createMockRequest({
+        authorization: "1234567test-secret-token",
+        remoteAddress: "127.0.0.1",
+      }),
+      response,
+      next,
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(response._status).toBe(401);
+    expect(response._body).toEqual({
+      error: {
+        code: "write_unauthorized",
+        message: "Mutating requests require a valid Authorization: Bearer <token> header",
+      },
+    });
+  });
+
+  it("returns the exact forbidden payload for non-loopback mutating requests without a token", () => {
+    const next = vi.fn();
+    const response = createMockResponse();
+
+    createWriteGuard()(
+      createMockRequest({
+        remoteAddress: "203.0.113.10",
+      }),
+      response,
+      next,
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(response._status).toBe(403);
+    expect(response._body).toEqual({
+      error: {
+        code: "write_forbidden",
+        message:
+          "Mutating requests are only allowed from loopback addresses. " +
+          "Set RISOLUTO_WRITE_TOKEN to allow remote write access.",
+      },
+    });
+  });
+
+  it("records write audit details on finish when a request is allowed", async () => {
+    const auditLog = {
+      record: vi.fn().mockResolvedValue(undefined),
+    };
+    const next = vi.fn();
+    const response = createMockResponse();
+    const request = createMockRequest({
+      method: "POST",
+      path: "/api/v1/test",
+      remoteAddress: "127.0.0.1",
+      requestId: "req-123",
+    });
+
+    createWriteGuard({ auditLog })(request, response, next);
+    response.statusCode = 204;
+    response._events.get("finish")?.();
+    await Promise.resolve();
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(auditLog.record).toHaveBeenCalledWith({
+      at: expect.any(String),
+      method: "POST",
+      path: "/api/v1/test",
+      requestId: "req-123",
+      remoteAddress: "127.0.0.1",
+      statusCode: 204,
+    });
   });
 });
 

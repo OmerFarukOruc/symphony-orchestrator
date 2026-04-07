@@ -25,11 +25,7 @@ export function deepMerge(base: unknown, overlay: unknown): unknown {
   const overlayRecord = asRecord(overlay);
   const merged: Record<string, unknown> = { ...baseRecord };
   for (const [key, value] of Object.entries(overlayRecord)) {
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      merged[key] = deepMerge(baseRecord[key], value);
-      continue;
-    }
-    merged[key] = value;
+    merged[key] = deepMerge(baseRecord[key], value);
   }
   return merged;
 }

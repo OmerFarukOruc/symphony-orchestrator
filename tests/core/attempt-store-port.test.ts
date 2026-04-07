@@ -39,6 +39,16 @@ describe("sortAttemptsDesc", () => {
     expect(sorted[1].attemptId).toBe("a-1");
   });
 
+  it("uses startedAt before attemptNumber and attemptId when those orderings disagree", () => {
+    const older = makeAttempt({ attemptId: "z-attempt", attemptNumber: 9, startedAt: "2026-03-16T10:00:00.000Z" });
+    const newer = makeAttempt({ attemptId: "a-attempt", attemptNumber: 1, startedAt: "2026-03-16T11:00:00.000Z" });
+
+    const sorted = [older, newer].sort(sortAttemptsDesc);
+
+    expect(sorted[0].attemptId).toBe("a-attempt");
+    expect(sorted[1].attemptId).toBe("z-attempt");
+  });
+
   it("breaks ties on startedAt by attemptNumber descending", () => {
     const low = makeAttempt({ attemptId: "a-1", attemptNumber: 1, startedAt: "2026-03-16T10:00:00.000Z" });
     const high = makeAttempt({ attemptId: "a-2", attemptNumber: 3, startedAt: "2026-03-16T10:00:00.000Z" });
@@ -47,6 +57,24 @@ describe("sortAttemptsDesc", () => {
 
     expect(sorted[0].attemptId).toBe("a-2");
     expect(sorted[1].attemptId).toBe("a-1");
+  });
+
+  it("uses attemptNumber before attemptId when those orderings disagree", () => {
+    const lowerNumber = makeAttempt({
+      attemptId: "z-attempt",
+      attemptNumber: 1,
+      startedAt: "2026-03-16T10:00:00.000Z",
+    });
+    const higherNumber = makeAttempt({
+      attemptId: "a-attempt",
+      attemptNumber: 3,
+      startedAt: "2026-03-16T10:00:00.000Z",
+    });
+
+    const sorted = [lowerNumber, higherNumber].sort(sortAttemptsDesc);
+
+    expect(sorted[0].attemptId).toBe("a-attempt");
+    expect(sorted[1].attemptId).toBe("z-attempt");
   });
 
   it("breaks ties on startedAt and attemptNumber by attemptId descending", () => {
@@ -142,6 +170,21 @@ describe("sumAttemptDurationSeconds", () => {
     });
 
     expect(sumAttemptDurationSeconds([invalid])).toBe(0);
+  });
+
+  it("skips attempts when either date string is invalid", () => {
+    const invalidStart = makeAttempt({
+      attemptId: "a-1",
+      startedAt: "not-a-date",
+      endedAt: "2026-03-16T10:03:00.000Z",
+    });
+    const invalidEnd = makeAttempt({
+      attemptId: "a-2",
+      startedAt: "2026-03-16T10:00:00.000Z",
+      endedAt: "not-a-date",
+    });
+
+    expect(sumAttemptDurationSeconds([invalidStart, invalidEnd])).toBe(0);
   });
 
   it("accepts any iterable (e.g. a Set)", () => {

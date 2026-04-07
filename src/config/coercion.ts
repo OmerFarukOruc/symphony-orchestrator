@@ -30,9 +30,7 @@ export function asNumberMap(value: unknown): Record<string, number> {
     return {};
   }
   return Object.fromEntries(
-    Object.entries(value).filter(
-      (entry): entry is [string, number] => typeof entry[1] === "number" && Number.isFinite(entry[1]),
-    ),
+    Object.entries(value).filter((entry): entry is [string, number] => Number.isFinite(entry[1])),
   );
 }
 

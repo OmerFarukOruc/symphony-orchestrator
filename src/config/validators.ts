@@ -1,28 +1,77 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { z } from "zod";
-
 import { normalizeStateList } from "../state/policy.js";
 import type { ServiceConfig, ValidationError } from "../core/types.js";
 import { codexAuthModeValues } from "./schemas/index.js";
 
+type DispatchTrackerShape = {
+  apiKey: string;
+  endpoint: string;
+  kind: "linear";
+  projectSlug: string;
+};
+
+type DispatchTrackerParseResult =
+  | { success: true; data: DispatchTrackerShape }
+  | { success: false; error: { issues: Array<{ path: string[] }> } };
+
+function trackerParseFailure(field?: string): DispatchTrackerParseResult {
+  return {
+    success: false,
+    error: {
+      issues: [
+        {
+          path: field === undefined ? [] : [field],
+        },
+      ],
+    },
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 /**
- * Zod schema for validating tracker fields that must pass
- * before dispatch can proceed. Stricter than the config-shape
- * schema: kind must be "linear" and required fields non-empty.
+ * Minimal safeParse-compatible validator for the dispatch-critical tracker fields.
+ * It preserves the caller contract used by validateDispatch and the focused tests
+ * without relying on Zod mutations that Stryker struggles to distinguish here.
  */
-const dispatchTrackerSchema = z.object({
-  kind: z.literal("linear"),
-  apiKey: z.string().min(1),
-  endpoint: z.string().min(1),
-  projectSlug: z.string().min(1),
-});
+export const dispatchTrackerSchema = {
+  safeParse(value: unknown): DispatchTrackerParseResult {
+    if (!isRecord(value)) {
+      return trackerParseFailure();
+    }
+    if (value.kind !== "linear") {
+      return trackerParseFailure("kind");
+    }
+    if (typeof value.apiKey !== "string" || value.apiKey.length === 0) {
+      return trackerParseFailure("apiKey");
+    }
+    if (typeof value.endpoint !== "string" || value.endpoint.length === 0) {
+      return trackerParseFailure("endpoint");
+    }
+    if (typeof value.projectSlug !== "string" || value.projectSlug.length === 0) {
+      return trackerParseFailure("projectSlug");
+    }
+    return {
+      success: true,
+      data: {
+        kind: "linear",
+        apiKey: value.apiKey,
+        endpoint: value.endpoint,
+        projectSlug: value.projectSlug,
+      },
+    };
+  },
+};
 
 function validateTrackerConfig(config: ServiceConfig): ValidationError | null {
   const result = dispatchTrackerSchema.safeParse(config.tracker);
   if (!result.success) {
     const field = String(result.error.issues[0].path[0]);
-    return trackerIssueToError(field, config.tracker.kind);
+    const trackerKind = isRecord(config.tracker) ? config.tracker.kind : undefined;
+    return trackerIssueToError(field, trackerKind);
   }
   if (normalizeStateList(config.tracker.activeStates).length === 0) {
     return { code: "invalid_tracker_active_states", message: "tracker.active_states must contain at least one state" };
@@ -36,8 +85,8 @@ function validateTrackerConfig(config: ServiceConfig): ValidationError | null {
   return null;
 }
 
-/** Map a Zod tracker field issue to the corresponding error code/message. */
-function trackerIssueToError(field: string, trackerKind: string): ValidationError {
+/** Map a tracker field issue to the corresponding error code/message. */
+function trackerIssueToError(field: string, trackerKind: unknown): ValidationError {
   const errors: Record<string, ValidationError> = {
     kind: {
       code: "invalid_tracker_kind",
@@ -131,7 +180,7 @@ export function validateDispatch(
   );
 }
 
-function normalizeRepoTarget(value: string | null | undefined): string {
+export function normalizeRepoTarget(value: string | null | undefined): string {
   if (!value) {
     return "";
   }

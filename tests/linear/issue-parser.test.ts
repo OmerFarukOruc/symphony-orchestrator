@@ -98,6 +98,11 @@ describe("normalizeIssue", () => {
     expect(issue.identifier).toBe("");
   });
 
+  it("falls back to empty string for missing title", () => {
+    const issue = normalizeIssue(makeRawIssue({ title: undefined }));
+    expect(issue.title).toBe("");
+  });
+
   it("falls back to 'unknown' for missing state", () => {
     const issue = normalizeIssue(makeRawIssue({ state: undefined }));
     expect(issue.state).toBe("unknown");
@@ -137,6 +142,28 @@ describe("normalizeIssue", () => {
       expect(issue.blockedBy[0].state).toBe("Todo");
     });
 
+    it("falls back to the issue side when relatedIssue is empty even if ids match", () => {
+      const raw = makeRawIssue({
+        id: "the-issue",
+        inverseRelations: {
+          nodes: [
+            {
+              issue: { id: "the-issue", identifier: "MT-1", state: { name: "In Progress" } },
+              relatedIssue: {},
+            },
+          ],
+        },
+      });
+
+      const issue = normalizeIssue(raw);
+      expect(issue.blockedBy).toHaveLength(1);
+      expect(issue.blockedBy[0]).toEqual({
+        id: "the-issue",
+        identifier: "MT-1",
+        state: "In Progress",
+      });
+    });
+
     it("identifies the blocker correctly when relatedIssue is the blocking side", () => {
       // issue.id !== issueId so the `issue` field is the blocker
       const raw = makeRawIssue({
@@ -169,6 +196,29 @@ describe("normalizeIssue", () => {
       });
       const issue = normalizeIssue(raw);
       expect(issue.blockedBy[0].state).toBe(null);
+    });
+
+    it("uses the empty-string fallback id consistently when the root issue id is missing", () => {
+      const raw = makeRawIssue({
+        id: undefined,
+        inverseRelations: {
+          nodes: [
+            {
+              issue: { id: "", identifier: "MT-1", state: { name: "Blocked" } },
+              relatedIssue: { id: "blocker-id", identifier: "MT-2", state: { name: "Todo" } },
+            },
+          ],
+        },
+      });
+
+      const issue = normalizeIssue(raw);
+      expect(issue.id).toBe("");
+      expect(issue.blockedBy).toHaveLength(1);
+      expect(issue.blockedBy[0]).toEqual({
+        id: "blocker-id",
+        identifier: "MT-2",
+        state: "Todo",
+      });
     });
   });
 });

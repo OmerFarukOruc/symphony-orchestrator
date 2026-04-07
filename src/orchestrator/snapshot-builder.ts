@@ -325,9 +325,9 @@ function asStringArray(value: unknown): string[] | null {
 }
 
 function findLatestEvent(events: RecentEvent[], eventName: string): RecentEvent | null {
-  for (let index = events.length - 1; index >= 0; index -= 1) {
-    if (events[index]?.event === eventName) {
-      return events[index] ?? null;
+  for (const event of [...events].reverse()) {
+    if (event?.event === eventName) {
+      return event ?? null;
     }
   }
   return null;

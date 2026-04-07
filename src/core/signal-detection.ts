@@ -17,7 +17,22 @@ const BLOCKED_MARKERS = [
 ] as const;
 
 function normalizeForDetection(content: string): string {
-  return content.trim().toLowerCase().replaceAll(/\s+/g, " ");
+  return content.toLowerCase().replaceAll(/\s+/g, " ");
+}
+
+function detectStructuredStatus(content: string): StopSignal | null {
+  try {
+    const parsed: unknown = JSON.parse(content);
+    const statusValue = (Object(parsed ?? {}) as Record<string, unknown>).status;
+    const status = typeof statusValue === "string" ? statusValue.toUpperCase() : null;
+
+    if (status === "DONE") return "done";
+    if (status === "BLOCKED") return "blocked";
+  } catch {
+    // Not JSON — fall through to text pattern matching
+  }
+
+  return null;
 }
 
 export function detectStopSignal(content: string | null): StopSignal | null {
@@ -25,16 +40,9 @@ export function detectStopSignal(content: string | null): StopSignal | null {
     return null;
   }
 
-  // Try structured JSON first (outputSchema responses)
-  try {
-    const parsed: unknown = JSON.parse(content.trim());
-    if (parsed && typeof parsed === "object" && "status" in parsed) {
-      const status = String((parsed as Record<string, unknown>).status).toUpperCase();
-      if (status === "DONE") return "done";
-      if (status === "BLOCKED") return "blocked";
-    }
-  } catch {
-    // Not JSON — fall through to text pattern matching
+  const structuredStatus = detectStructuredStatus(content);
+  if (structuredStatus) {
+    return structuredStatus;
   }
 
   const normalized = normalizeForDetection(content);

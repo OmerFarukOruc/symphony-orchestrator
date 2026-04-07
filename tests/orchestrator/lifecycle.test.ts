@@ -76,6 +76,13 @@ function makeRunningEntry(overrides: Partial<RunningEntry> = {}): RunningEntry {
   } as RunningEntry;
 }
 
+function makeAbortControllerStub(aborted: boolean): Pick<AbortController, "abort" | "signal"> {
+  return {
+    abort: vi.fn(),
+    signal: { aborted } as AbortSignal,
+  };
+}
+
 function makeRetryEntry(overrides: Partial<RetryRuntimeEntry> = {}): RetryRuntimeEntry {
   return {
     issueId: "issue-1",
@@ -131,7 +138,7 @@ describe("reconcileRunningAndRetrying", () => {
 
   it("aborts running entry when issue moves to terminal state", async () => {
     const entry = makeRunningEntry();
-    await reconcileRunningAndRetrying({
+    const result = await reconcileRunningAndRetrying({
       runningEntries: new Map([["issue-1", entry]]),
       retryEntries: new Map(),
       deps: {
@@ -146,6 +153,7 @@ describe("reconcileRunningAndRetrying", () => {
       clearRetryEntry: vi.fn(),
       pushEvent: vi.fn(),
     });
+    expect(result).toBe(true);
     expect(entry.cleanupOnExit).toBe(true);
     expect(entry.abortController.signal.aborted).toBe(true);
     expect(entry.status).toBe("stopping");
@@ -153,7 +161,7 @@ describe("reconcileRunningAndRetrying", () => {
 
   it("aborts running entry when issue becomes inactive (non-terminal)", async () => {
     const entry = makeRunningEntry();
-    await reconcileRunningAndRetrying({
+    const result = await reconcileRunningAndRetrying({
       runningEntries: new Map([["issue-1", entry]]),
       retryEntries: new Map(),
       deps: {
@@ -168,6 +176,7 @@ describe("reconcileRunningAndRetrying", () => {
       clearRetryEntry: vi.fn(),
       pushEvent: vi.fn(),
     });
+    expect(result).toBe(true);
     expect(entry.abortController.signal.aborted).toBe(true);
     expect(entry.status).toBe("stopping");
     expect(entry.cleanupOnExit).toBe(false);
@@ -218,6 +227,31 @@ describe("reconcileRunningAndRetrying", () => {
     });
     expect(clearRetryEntry).toHaveBeenCalledWith("issue-1");
     expect(removeWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("keeps active retry entries in place and refreshes their issue snapshot", async () => {
+    const clearRetryEntry = vi.fn();
+    const retryEntry = makeRetryEntry({ issue: makeIssue({ id: "issue-1", title: "stale title" }) });
+    const latestIssue = makeIssue({ id: "issue-1", title: "fresh title" });
+
+    await reconcileRunningAndRetrying({
+      runningEntries: new Map(),
+      retryEntries: new Map([["issue-1", retryEntry]]),
+      deps: {
+        tracker: {
+          fetchIssueStatesByIds: vi.fn().mockResolvedValue([latestIssue]),
+          fetchIssuesByStates: vi.fn(),
+        },
+        workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
+      },
+      getConfig: () => makeConfig(),
+      clearRetryEntry,
+      pushEvent: vi.fn(),
+    });
+
+    expect(clearRetryEntry).not.toHaveBeenCalled();
+    expect(retryEntry.issue).toBe(latestIssue);
   });
 
   it("clears retry entry when issue not found in fetch results", async () => {
@@ -528,6 +562,73 @@ describe("reconcileRunningAndRetrying — changed return value", () => {
     expect(result).toBe(true);
   });
 
+  it("returns true when a terminal issue refreshes the running entry object even if it is already stopping", async () => {
+    const originalIssue = makeIssue({ id: "issue-1", title: "old" });
+    const terminalIssue = makeIssue({ id: "issue-1", state: "Done", title: "new" });
+    const abortController = new AbortController();
+    abortController.abort("terminal");
+    const entry = makeRunningEntry({
+      issue: originalIssue,
+      abortController,
+      cleanupOnExit: true,
+      status: "stopping",
+    });
+
+    const result = await reconcileRunningAndRetrying({
+      runningEntries: new Map([["issue-1", entry]]),
+      retryEntries: new Map(),
+      deps: {
+        tracker: {
+          fetchIssueStatesByIds: vi.fn().mockResolvedValue([terminalIssue]),
+          fetchIssuesByStates: vi.fn(),
+        },
+        workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
+      },
+      getConfig: () => makeConfig(),
+      clearRetryEntry: vi.fn(),
+      pushEvent: vi.fn(),
+    });
+
+    expect(result).toBe(true);
+    expect(entry.issue).toBe(terminalIssue);
+    expect(entry.cleanupOnExit).toBe(true);
+    expect(entry.status).toBe("stopping");
+  });
+
+  it("returns true when an inactive issue refreshes the running entry object even if it is already stopping", async () => {
+    const originalIssue = makeIssue({ id: "issue-1", title: "old" });
+    const inactiveIssue = makeIssue({ id: "issue-1", state: "Backlog", title: "new" });
+    const abortController = new AbortController();
+    abortController.abort("inactive");
+    const entry = makeRunningEntry({
+      issue: originalIssue,
+      abortController,
+      status: "stopping",
+    });
+
+    const result = await reconcileRunningAndRetrying({
+      runningEntries: new Map([["issue-1", entry]]),
+      retryEntries: new Map(),
+      deps: {
+        tracker: {
+          fetchIssueStatesByIds: vi.fn().mockResolvedValue([inactiveIssue]),
+          fetchIssuesByStates: vi.fn(),
+        },
+        workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
+      },
+      getConfig: () => makeConfig(),
+      clearRetryEntry: vi.fn(),
+      pushEvent: vi.fn(),
+    });
+
+    expect(result).toBe(true);
+    expect(entry.issue).toBe(inactiveIssue);
+    expect(entry.cleanupOnExit).toBe(false);
+    expect(entry.status).toBe("stopping");
+  });
+
   it("correctly combines changed from multiple running entries", async () => {
     const issue1 = makeIssue({ id: "issue-1", identifier: "MT-1" });
     const issue2 = makeIssue({ id: "issue-2", identifier: "MT-2" });
@@ -640,6 +741,132 @@ describe("reconcileRunningAndRetrying — changed return value", () => {
     });
     // Status was already stopping, should still be stopping
     expect(entry.status).toBe("stopping");
+  });
+
+  it("returns false when a terminal entry is already stopping and unchanged", async () => {
+    const terminalIssue = makeIssue({ id: "issue-1", state: "Done" });
+    const abortController = new AbortController();
+    abortController.abort("terminal");
+    const entry = makeRunningEntry({
+      issue: terminalIssue,
+      abortController,
+      cleanupOnExit: true,
+      status: "stopping",
+    });
+
+    const result = await reconcileRunningAndRetrying({
+      runningEntries: new Map([["issue-1", entry]]),
+      retryEntries: new Map(),
+      deps: {
+        tracker: {
+          fetchIssueStatesByIds: vi.fn().mockResolvedValue([terminalIssue]),
+          fetchIssuesByStates: vi.fn(),
+        },
+        workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
+      },
+      getConfig: () => makeConfig(),
+      clearRetryEntry: vi.fn(),
+      pushEvent: vi.fn(),
+    });
+
+    expect(result).toBe(false);
+    expect(entry.cleanupOnExit).toBe(true);
+    expect(entry.status).toBe("stopping");
+  });
+
+  it("returns true for an inactive same-object issue when stopping is the only change", async () => {
+    const inactiveIssue = makeIssue({ id: "issue-1", state: "Backlog" });
+    const abortController = makeAbortControllerStub(false);
+    const entry = makeRunningEntry({
+      issue: inactiveIssue,
+      abortController: abortController as AbortController,
+    });
+
+    const result = await reconcileRunningAndRetrying({
+      runningEntries: new Map([["issue-1", entry]]),
+      retryEntries: new Map(),
+      deps: {
+        tracker: {
+          fetchIssueStatesByIds: vi.fn().mockResolvedValue([inactiveIssue]),
+          fetchIssuesByStates: vi.fn(),
+        },
+        workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
+      },
+      getConfig: () => makeConfig(),
+      clearRetryEntry: vi.fn(),
+      pushEvent: vi.fn(),
+    });
+
+    expect(result).toBe(true);
+    expect(abortController.abort).toHaveBeenCalledWith("inactive");
+    expect(entry.status).toBe("stopping");
+    expect(entry.cleanupOnExit).toBe(false);
+  });
+
+  it("returns true when terminal reconciliation only enables cleanupOnExit", async () => {
+    const terminalIssue = makeIssue({ id: "issue-1", state: "Done" });
+    const abortController = makeAbortControllerStub(true);
+    const entry = makeRunningEntry({
+      issue: terminalIssue,
+      abortController: abortController as AbortController,
+      cleanupOnExit: false,
+      status: "stopping",
+    });
+
+    const result = await reconcileRunningAndRetrying({
+      runningEntries: new Map([["issue-1", entry]]),
+      retryEntries: new Map(),
+      deps: {
+        tracker: {
+          fetchIssueStatesByIds: vi.fn().mockResolvedValue([terminalIssue]),
+          fetchIssuesByStates: vi.fn(),
+        },
+        workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
+      },
+      getConfig: () => makeConfig(),
+      clearRetryEntry: vi.fn(),
+      pushEvent: vi.fn(),
+    });
+
+    expect(result).toBe(true);
+    expect(entry.cleanupOnExit).toBe(true);
+    expect(entry.status).toBe("stopping");
+    expect(abortController.abort).not.toHaveBeenCalled();
+  });
+
+  it("returns true when terminal reconciliation only updates status on an already-aborted entry", async () => {
+    const terminalIssue = makeIssue({ id: "issue-1", state: "Done" });
+    const abortController = makeAbortControllerStub(true);
+    const entry = makeRunningEntry({
+      issue: terminalIssue,
+      abortController: abortController as AbortController,
+      status: "running",
+      cleanupOnExit: true,
+    });
+
+    const result = await reconcileRunningAndRetrying({
+      runningEntries: new Map([["issue-1", entry]]),
+      retryEntries: new Map(),
+      deps: {
+        tracker: {
+          fetchIssueStatesByIds: vi.fn().mockResolvedValue([terminalIssue]),
+          fetchIssuesByStates: vi.fn(),
+        },
+        workspaceManager: { removeWorkspace: vi.fn() },
+        logger: makeMockLogger(),
+      },
+      getConfig: () => makeConfig(),
+      clearRetryEntry: vi.fn(),
+      pushEvent: vi.fn(),
+    });
+
+    expect(result).toBe(true);
+    expect(entry.status).toBe("stopping");
+    expect(entry.cleanupOnExit).toBe(true);
+    expect(abortController.abort).not.toHaveBeenCalled();
   });
 
   it("skips running entries when issue is missing from fetch results", async () => {
@@ -939,6 +1166,34 @@ describe("seedCompletedClaims", () => {
     });
     const view = completedViews.get("MT-1")!;
     expect(view.status).toBe("completed");
+  });
+
+  it("keeps the first attempt when startedAt timestamps are equal", () => {
+    const completedViews = new Map<string, Record<string, unknown>>();
+    const firstAttempt = makeAttemptRecord({
+      attemptId: "attempt-first",
+      issueIdentifier: "MT-1",
+      startedAt: "2026-01-02T00:00:00Z",
+      status: "failed",
+    });
+    const secondAttempt = makeAttemptRecord({
+      attemptId: "attempt-second",
+      issueIdentifier: "MT-1",
+      startedAt: "2026-01-02T00:00:00Z",
+      status: "completed",
+    });
+
+    seedCompletedClaims({
+      claimedIssueIds: new Set(),
+      completedViews: completedViews as never,
+      deps: {
+        attemptStore: { getAllAttempts: () => [firstAttempt, secondAttempt] },
+        logger: { info: vi.fn() },
+      },
+    });
+
+    const view = completedViews.get("MT-1")!;
+    expect(view.status).toBe("failed");
   });
 
   it("logs the seeded count when views are seeded", () => {

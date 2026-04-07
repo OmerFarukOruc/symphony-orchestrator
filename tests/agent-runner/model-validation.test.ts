@@ -60,6 +60,22 @@ describe("fetchAvailableModels", () => {
     expect(result).toBeNull();
   });
 
+  it("returns already collected model ids when a later page is malformed", async () => {
+    const conn = makeConnection(async (_method, params) => {
+      const record = params as { cursor?: string };
+      if (!record.cursor) {
+        return { data: [{ id: "gpt-5.4" }], nextCursor: "page-2" };
+      }
+      return { models: "not-an-array" };
+    });
+
+    const result = await fetchAvailableModels(conn, logger);
+
+    expect(result).toEqual(["gpt-5.4"]);
+    expect(conn.request).toHaveBeenNthCalledWith(1, "model/list", { limit: 100 });
+    expect(conn.request).toHaveBeenNthCalledWith(2, "model/list", { cursor: "page-2", limit: 100 });
+  });
+
   it("returns an empty array when models is an empty array", async () => {
     const conn = makeConnection(async () => ({
       models: [],

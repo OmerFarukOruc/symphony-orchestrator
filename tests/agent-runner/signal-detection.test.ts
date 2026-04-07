@@ -73,5 +73,18 @@ describe("detectStopSignal", () => {
     it("falls through to text matching for JSON without status field", () => {
       expect(detectStopSignal('{"result":"ok"}\nRISOLUTO_STATUS: BLOCKED')).toBe("blocked");
     });
+
+    it("returns null for valid JSON values without an object status field", () => {
+      expect(detectStopSignal("null")).toBeNull();
+      expect(detectStopSignal("42")).toBeNull();
+      expect(detectStopSignal('"done"')).toBeNull();
+      expect(detectStopSignal("[]")).toBeNull();
+      expect(detectStopSignal("{}")).toBeNull();
+    });
+
+    it("accepts whitespace-padded JSON with a status field", () => {
+      expect(detectStopSignal(' \n {"status":"DONE","summary":"completed"} \t')).toBe("done");
+      expect(detectStopSignal('\n\t{"status":"blocked"}   ')).toBe("blocked");
+    });
   });
 });

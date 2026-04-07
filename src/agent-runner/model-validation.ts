@@ -23,10 +23,7 @@ export async function fetchAvailableModels(
       cursor = asString(data.nextCursor);
     } while (cursor);
 
-    if (modelIds.length > 0) {
-      return modelIds;
-    }
-    return [];
+    return modelIds;
   } catch {
     // Older Codex versions may not support model/list — silently skip
     logger.warn("model/list unavailable — skipping model validation");

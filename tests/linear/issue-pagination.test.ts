@@ -6,7 +6,6 @@ import {
   fetchIssueStatesByIds,
   fetchIssuesByStates,
 } from "../../src/linear/issue-pagination.js";
-import { LinearClientError } from "../../src/linear/errors.js";
 import type { Issue, ServiceConfig } from "../../src/core/types.js";
 
 function makeConfig(overrides: Partial<ServiceConfig["tracker"]> = {}): ServiceConfig {
@@ -173,14 +172,73 @@ describe("fetchCandidateIssues", () => {
     const runGraphQL = vi.fn().mockResolvedValue({});
     const deps = { runGraphQL, getConfig: () => makeConfig() };
 
-    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toThrow(LinearClientError);
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing data object",
+    });
+  });
+
+  it("throws LinearClientError when data is null", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue({ data: null });
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing data object",
+    });
+  });
+
+  it("throws LinearClientError when data only exists on the prototype chain", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue(
+      Object.create({
+        data: {
+          issues: {
+            nodes: [makeIssueNode("1")],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      }),
+    );
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing data object",
+    });
   });
 
   it("throws LinearClientError when issues is missing", async () => {
     const runGraphQL = vi.fn().mockResolvedValue({ data: {} });
     const deps = { runGraphQL, getConfig: () => makeConfig() };
 
-    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toThrow(LinearClientError);
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing issues connection",
+    });
+  });
+
+  it("throws LinearClientError when issues is an array", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue({
+      data: { issues: [] },
+    });
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing issues connection",
+    });
+  });
+
+  it("throws LinearClientError when issues is null", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue({
+      data: { issues: null },
+    });
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing issues connection",
+    });
   });
 
   it("throws LinearClientError when nodes is not an array", async () => {
@@ -189,7 +247,70 @@ describe("fetchCandidateIssues", () => {
     });
     const deps = { runGraphQL, getConfig: () => makeConfig() };
 
-    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toThrow(LinearClientError);
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing issues.nodes array",
+    });
+  });
+
+  it("throws LinearClientError when pageInfo is null", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue({
+      data: { issues: { nodes: [makeIssueNode("1")], pageInfo: null } },
+    });
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing pageInfo object",
+    });
+  });
+
+  it("throws LinearClientError when pageInfo is an array", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue({
+      data: { issues: { nodes: [makeIssueNode("1")], pageInfo: [] } },
+    });
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing pageInfo object",
+    });
+  });
+
+  it("throws LinearClientError when pageInfo is a primitive", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue({
+      data: { issues: { nodes: [makeIssueNode("1")], pageInfo: "invalid" } },
+    });
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing pageInfo object",
+    });
+  });
+
+  it("throws LinearClientError when hasNextPage is not a boolean", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue({
+      data: { issues: { nodes: [makeIssueNode("1")], pageInfo: { hasNextPage: "yes", endCursor: null } } },
+    });
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response missing boolean pageInfo.hasNextPage",
+    });
+  });
+
+  it("throws LinearClientError when endCursor is neither null nor string", async () => {
+    const runGraphQL = vi.fn().mockResolvedValue({
+      data: { issues: { nodes: [makeIssueNode("1")], pageInfo: { hasNextPage: false, endCursor: 123 } } },
+    });
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_unknown_payload",
+      message: "linear graphql response has invalid pageInfo.endCursor",
+    });
   });
 
   it("throws LinearClientError when hasNextPage=true but endCursor is null", async () => {
@@ -203,19 +324,24 @@ describe("fetchCandidateIssues", () => {
     });
     const deps = { runGraphQL, getConfig: () => makeConfig() };
 
-    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toThrow(LinearClientError);
+    await expect(fetchCandidateIssues(deps, () => "query", fakeNormalizeIssue)).rejects.toMatchObject({
+      code: "linear_missing_end_cursor",
+      message: "pagination returned hasNextPage=true with null endCursor after 1 issues",
+    });
   });
 });
 
 describe("fetchCandidateIssuesByStateIds", () => {
   it("returns empty array for empty state ids", async () => {
     const runGraphQL = vi.fn();
+    const buildQuery = vi.fn(() => "query");
     const deps = { runGraphQL, getConfig: () => makeConfig() };
 
-    const result = await fetchCandidateIssuesByStateIds(deps, [], () => "query", fakeNormalizeIssue);
+    const result = await fetchCandidateIssuesByStateIds(deps, [], buildQuery, fakeNormalizeIssue);
 
     expect(result).toEqual([]);
     expect(runGraphQL).not.toHaveBeenCalled();
+    expect(buildQuery).not.toHaveBeenCalled();
   });
 
   it("passes stateIds and projectSlug variables", async () => {
@@ -264,12 +390,14 @@ describe("fetchCandidateIssuesByStateIds", () => {
 describe("fetchIssueStatesByIds", () => {
   it("returns empty array for empty ids", async () => {
     const runGraphQL = vi.fn();
+    const buildQuery = vi.fn(() => "query");
     const deps = { runGraphQL, getConfig: () => makeConfig() };
 
-    const result = await fetchIssueStatesByIds(deps, [], 50, () => "query", fakeNormalizeIssue);
+    const result = await fetchIssueStatesByIds(deps, [], 50, buildQuery, fakeNormalizeIssue);
 
     expect(result).toEqual([]);
     expect(runGraphQL).not.toHaveBeenCalled();
+    expect(buildQuery).not.toHaveBeenCalled();
   });
 
   it("fetches ids in chunks", async () => {
@@ -285,6 +413,21 @@ describe("fetchIssueStatesByIds", () => {
     expect(runGraphQL).toHaveBeenCalledTimes(2);
     expect(runGraphQL.mock.calls[0][1]).toMatchObject({ ids: ["1", "2"] });
     expect(runGraphQL.mock.calls[1][1]).toMatchObject({ ids: ["3"] });
+  });
+
+  it("does not request an extra empty chunk when ids length is divisible by page size", async () => {
+    const runGraphQL = vi
+      .fn()
+      .mockResolvedValueOnce(makeSinglePageResponse([makeIssueNode("1"), makeIssueNode("2")]))
+      .mockResolvedValueOnce(makeSinglePageResponse([makeIssueNode("3"), makeIssueNode("4")]));
+    const deps = { runGraphQL, getConfig: () => makeConfig() };
+
+    const issues = await fetchIssueStatesByIds(deps, ["1", "2", "3", "4"], 2, () => "query", fakeNormalizeIssue);
+
+    expect(issues).toHaveLength(4);
+    expect(runGraphQL).toHaveBeenCalledTimes(2);
+    expect(runGraphQL.mock.calls[0][1]).toMatchObject({ ids: ["1", "2"] });
+    expect(runGraphQL.mock.calls[1][1]).toMatchObject({ ids: ["3", "4"] });
   });
 });
 

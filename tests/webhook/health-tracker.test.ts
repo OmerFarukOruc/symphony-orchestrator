@@ -72,6 +72,15 @@ describe("DefaultWebhookHealthTracker", () => {
     tracker.stop();
   });
 
+  it("creates a child logger scoped to webhook-health", () => {
+    const deps = makeDeps();
+    const tracker = new DefaultWebhookHealthTracker(deps);
+
+    expect(deps.logger.child).toHaveBeenCalledWith({ component: "webhook-health" });
+
+    tracker.stop();
+  });
+
   it("reports pollingBaseMs as effectiveIntervalMs when disconnected", () => {
     const deps = makeDeps({ config: makeWebhookConfig({ pollingBaseMs: 20_000 }) });
     const tracker = new DefaultWebhookHealthTracker(deps);
@@ -96,6 +105,10 @@ describe("DefaultWebhookHealthTracker", () => {
     expect(health.stats.deliveriesReceived).toBe(1);
     expect(health.stats.lastEventType).toBe("Issue:create");
     expect(health.stats.lastDeliveryAt).not.toBeNull();
+    expect(deps.logger.info).toHaveBeenCalledWith(
+      { oldStatus: "disconnected", newStatus: "connected", deliveriesReceived: 1 },
+      "webhook health: disconnected → connected",
+    );
 
     tracker.stop();
   });
@@ -116,6 +129,21 @@ describe("DefaultWebhookHealthTracker", () => {
     expect(health.status).toBe("connected");
     expect(health.stats.deliveriesReceived).toBe(3);
     expect(health.stats.lastEventType).toBe("Comment:create");
+
+    tracker.stop();
+  });
+
+  it("does not start a cooldown when deliveries arrive while already connected", () => {
+    const deps = makeDeps();
+    const tracker = new DefaultWebhookHealthTracker(deps);
+
+    tracker.recordVerifiedDelivery("Issue:create");
+    expect(vi.getTimerCount()).toBe(0);
+
+    tracker.recordVerifiedDelivery("Issue:update");
+
+    expect(tracker.getHealth().status).toBe("connected");
+    expect(vi.getTimerCount()).toBe(0);
 
     tracker.stop();
   });
@@ -153,6 +181,19 @@ describe("DefaultWebhookHealthTracker", () => {
     tracker.stop();
   });
 
+  it("ignores subscription checks when stopped even if internal state still looks connected", () => {
+    const deps = makeDeps();
+    const tracker = new DefaultWebhookHealthTracker(deps);
+
+    (tracker as unknown as { status: string; stopped: boolean }).status = "connected";
+    (tracker as unknown as { status: string; stopped: boolean }).stopped = true;
+
+    tracker.recordSubscriptionCheck(false);
+
+    expect((tracker as unknown as { status: string }).status).toBe("connected");
+    expect(deps.logger.info).not.toHaveBeenCalled();
+  });
+
   // -------------------------------------------------------------------------
   // Error path: subscription check finds enabled=false → degraded
   // -------------------------------------------------------------------------
@@ -169,6 +210,10 @@ describe("DefaultWebhookHealthTracker", () => {
     const health = tracker.getHealth();
     expect(health.status).toBe("degraded");
     expect(health.effectiveIntervalMs).toBe(deps.config.pollingBaseMs);
+    expect(deps.logger.info).toHaveBeenCalledWith(
+      { oldStatus: "connected", newStatus: "degraded", deliveriesReceived: 1 },
+      "webhook health: connected → degraded",
+    );
 
     tracker.stop();
   });
@@ -263,6 +308,7 @@ describe("DefaultWebhookHealthTracker", () => {
 
     // Subscription check resets cooldown timer
     tracker.recordSubscriptionCheck(false);
+    expect(deps.logger.debug).toHaveBeenCalledWith({}, "degraded cooldown reset by subscription check");
 
     // Advance another 40s — would have been enough for the original cooldown
     // but the reset means the cooldown is cancelled (no timer running)
@@ -273,6 +319,96 @@ describe("DefaultWebhookHealthTracker", () => {
     tracker.recordVerifiedDelivery("Comment:create");
     vi.advanceTimersByTime(60_000);
     expect(tracker.getHealth().status).toBe("connected");
+
+    tracker.stop();
+  });
+
+  it("does not reset an active cooldown when subscription checks report enabled=true", () => {
+    const deps = makeDeps();
+    const tracker = new DefaultWebhookHealthTracker(deps);
+
+    tracker.recordVerifiedDelivery("Issue:create");
+    tracker.recordSubscriptionCheck(false);
+    tracker.recordVerifiedDelivery("Issue:update");
+    expect(tracker.getHealth().status).toBe("degraded");
+
+    tracker.recordSubscriptionCheck(true);
+    vi.advanceTimersByTime(60_000);
+
+    expect(tracker.getHealth().status).toBe("connected");
+    expect(deps.logger.debug).not.toHaveBeenCalledWith({}, "degraded cooldown reset by subscription check");
+
+    tracker.stop();
+  });
+
+  it("leaves an existing cooldown timer running when enabled=true while degraded", () => {
+    const deps = makeDeps();
+    const tracker = new DefaultWebhookHealthTracker(deps);
+
+    (tracker as unknown as { status: string }).status = "degraded";
+    (tracker as unknown as { cooldownTimer: ReturnType<typeof setTimeout> | null }).cooldownTimer = setTimeout(
+      () => {},
+      1_000,
+    );
+    expect(vi.getTimerCount()).toBe(1);
+
+    tracker.recordSubscriptionCheck(true);
+
+    expect(vi.getTimerCount()).toBe(1);
+
+    clearTimeout((tracker as unknown as { cooldownTimer: ReturnType<typeof setTimeout> | null }).cooldownTimer!);
+    (tracker as unknown as { cooldownTimer: ReturnType<typeof setTimeout> | null }).cooldownTimer = null;
+    tracker.stop();
+  });
+
+  it("does not clear a seeded cooldown timer when subscription checks run while disconnected", () => {
+    const deps = makeDeps();
+    const tracker = new DefaultWebhookHealthTracker(deps);
+
+    (tracker as unknown as { status: string }).status = "disconnected";
+    (tracker as unknown as { cooldownTimer: ReturnType<typeof setTimeout> | null }).cooldownTimer = setTimeout(
+      () => {},
+      1_000,
+    );
+    expect(vi.getTimerCount()).toBe(1);
+
+    tracker.recordSubscriptionCheck(false);
+
+    expect(vi.getTimerCount()).toBe(1);
+
+    clearTimeout((tracker as unknown as { cooldownTimer: ReturnType<typeof setTimeout> | null }).cooldownTimer!);
+    (tracker as unknown as { cooldownTimer: ReturnType<typeof setTimeout> | null }).cooldownTimer = null;
+    tracker.stop();
+  });
+
+  it("does not log a cooldown reset when no cooldown is active", () => {
+    const deps = makeDeps();
+    const tracker = new DefaultWebhookHealthTracker(deps);
+
+    tracker.recordVerifiedDelivery("Issue:create");
+    tracker.recordSubscriptionCheck(false);
+    expect(tracker.getHealth().status).toBe("degraded");
+
+    tracker.recordSubscriptionCheck(false);
+
+    expect(deps.logger.debug).not.toHaveBeenCalledWith({}, "degraded cooldown reset by subscription check");
+
+    tracker.stop();
+  });
+
+  it("does not reconnect when the cooldown fires after status has already left degraded", () => {
+    const deps = makeDeps();
+    const tracker = new DefaultWebhookHealthTracker(deps);
+
+    tracker.recordVerifiedDelivery("Issue:create");
+    tracker.recordSubscriptionCheck(false);
+    tracker.recordVerifiedDelivery("Issue:update");
+    expect(tracker.getHealth().status).toBe("degraded");
+
+    (tracker as unknown as { status: string }).status = "disconnected";
+    vi.advanceTimersByTime(60_000);
+
+    expect(tracker.getHealth().status).toBe("disconnected");
 
     tracker.stop();
   });
@@ -319,6 +455,7 @@ describe("DefaultWebhookHealthTracker", () => {
     tracker.stop(); // should not throw or emit again
 
     expect(tracker.getHealth().status).toBe("disconnected");
+    expect(deps.logger.debug).toHaveBeenCalledTimes(2);
   });
 
   it("ignores deliveries after stop()", () => {
@@ -332,9 +469,61 @@ describe("DefaultWebhookHealthTracker", () => {
     expect(tracker.getHealth().stats.deliveriesReceived).toBe(0);
   });
 
+  it("clears active cooldown and periodic timers on stop()", async () => {
+    const linearClient = {
+      runGraphQL: vi.fn().mockResolvedValue({
+        webhooks: {
+          nodes: [{ url: "https://risoluto.example.com/webhooks/linear", enabled: true }],
+        },
+      }),
+    };
+    const deps = makeDeps({
+      linearClient,
+      config: makeWebhookConfig({ healthCheckIntervalMs: 5_000 }),
+    });
+    const tracker = new DefaultWebhookHealthTracker(deps);
+
+    tracker.recordVerifiedDelivery("Issue:create");
+    tracker.recordSubscriptionCheck(false);
+    tracker.recordVerifiedDelivery("Issue:update");
+    expect(tracker.getHealth().status).toBe("degraded");
+
+    tracker.stop();
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(65_000);
+
+    expect(tracker.getHealth().status).toBe("disconnected");
+    expect(linearClient.runGraphQL).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(deps.logger.debug).toHaveBeenCalledWith(
+      {
+        finalStats: {
+          deliveriesReceived: 2,
+          lastDeliveryAt: expect.any(String),
+          lastEventType: "Issue:update",
+        },
+      },
+      "webhook health tracker stopped",
+    );
+  });
+
   // -------------------------------------------------------------------------
   // Integration: event emissions
   // -------------------------------------------------------------------------
+
+  it("does not log or emit a transition when asked to stay in the same status", () => {
+    const deps = makeDeps();
+    const events: Array<{ oldStatus: string; newStatus: string }> = [];
+    deps.eventBus.on("webhook.health_changed", (payload) => events.push(payload));
+    const tracker = new DefaultWebhookHealthTracker(deps);
+
+    (tracker as unknown as { transition: (status: string) => void }).transition("disconnected");
+
+    expect(deps.logger.info).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
+
+    tracker.stop();
+  });
 
   it("emits webhook.health_changed on state transitions with old+new status", () => {
     const deps = makeDeps();
@@ -400,6 +589,8 @@ describe("DefaultWebhookHealthTracker", () => {
     // First check fires at 10s
     await vi.advanceTimersByTimeAsync(10_000);
     expect(linearClient.runGraphQL).toHaveBeenCalledTimes(1);
+    expect(linearClient.runGraphQL).toHaveBeenCalledWith("query { webhooks { nodes { url enabled } } }");
+    expect(deps.logger.debug).toHaveBeenCalledWith({ intervalMs: 10_000 }, "periodic subscription check started");
 
     // Still connected (enabled=true)
     expect(tracker.getHealth().status).toBe("connected");
