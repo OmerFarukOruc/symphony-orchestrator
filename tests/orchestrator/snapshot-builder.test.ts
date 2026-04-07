@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AttemptRecord, RecentEvent, RuntimeIssueView, ServiceConfig } from "../../src/core/types.js";
 import { sumAttemptDurationSeconds } from "../../src/core/attempt-store-port.js";
+import { computeAttemptCostUsd } from "../../src/core/model-pricing.js";
 import type { RunningEntry, RetryRuntimeEntry } from "../../src/orchestrator/runtime-types.js";
 import {
   buildSnapshot,
@@ -687,6 +688,163 @@ describe("snapshot-builder", () => {
         },
       });
     });
+
+    it("uses the latest matching app-server events even when a non-matching trailing event exists", () => {
+      const attempt = createAttemptRecord();
+      const events = [
+        createEvent({
+          attemptId: "attempt-1",
+          event: "codex_config_loaded",
+          metadata: { modelProvider: "old-provider", model: "gpt-5.4" },
+        } as Partial<RecentEvent> as RecentEvent),
+        createEvent({
+          attemptId: "attempt-1",
+          event: "codex_config_loaded",
+          metadata: { modelProvider: "new-provider", model: "gpt-5.4" },
+        } as Partial<RecentEvent> as RecentEvent),
+        createEvent({
+          attemptId: "attempt-1",
+          event: "worker_finished",
+        } as Partial<RecentEvent> as RecentEvent),
+      ];
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          events,
+        }),
+      };
+
+      const detail = buildAttemptDetail("attempt-1", deps);
+
+      expect(detail?.appServer?.effectiveProvider).toBe("new-provider");
+    });
+
+    it("skips undefined trailing entries when scanning backward for the latest matching event", () => {
+      const attempt = createAttemptRecord();
+      const events = [
+        createEvent({
+          attemptId: "attempt-1",
+          event: "codex_config_loaded",
+          metadata: { modelProvider: "new-provider", model: "gpt-5.4" },
+        } as Partial<RecentEvent> as RecentEvent),
+        undefined as unknown as RecentEvent,
+      ];
+      const baseStore = createAttemptStore({
+        attempts: [attempt],
+      });
+      const deps = {
+        attemptStore: {
+          ...baseStore,
+          getEvents: () => events,
+        },
+      };
+
+      const detail = buildAttemptDetail("attempt-1", deps);
+
+      expect(detail?.appServer?.effectiveProvider).toBe("new-provider");
+    });
+
+    it("does not read beyond the last event while scanning for the latest matching event", () => {
+      const attempt = createAttemptRecord();
+      const rawEvents = [
+        createEvent({
+          attemptId: "attempt-1",
+          event: "codex_config_loaded",
+          metadata: { modelProvider: "only-provider", model: "gpt-5.4" },
+        } as Partial<RecentEvent> as RecentEvent),
+      ];
+      const events = new Proxy(rawEvents, {
+        get(target, property, receiver) {
+          if (typeof property === "string" && /^\\d+$/.test(property) && Number(property) > target.length - 1) {
+            throw new Error(`unexpected out-of-range access: ${property}`);
+          }
+          return Reflect.get(target, property, receiver);
+        },
+      });
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          events: events as unknown as RecentEvent[],
+        }),
+      };
+
+      const detail = buildAttemptDetail("attempt-1", deps);
+
+      expect(detail?.appServer?.effectiveProvider).toBe("only-provider");
+    });
+
+    it("filters requirement arrays to strings and ignores invalid network metadata", () => {
+      const attempt = createAttemptRecord();
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          events: [
+            createEvent({
+              attemptId: "attempt-1",
+              event: "codex_requirements_loaded",
+              metadata: {
+                allowedApprovalPolicies: ["never", 7, "onRequest"],
+                allowedSandboxModes: ["workspaceWrite", { mode: "danger" }],
+                network: "enabled",
+              },
+            } as Partial<RecentEvent> as RecentEvent),
+          ],
+        }),
+      };
+
+      const detail = buildAttemptDetail("attempt-1", deps);
+
+      expect(detail?.appServer?.allowedApprovalPolicies).toEqual(["never", "onRequest"]);
+      expect(detail?.appServer?.allowedSandboxModes).toEqual(["workspaceWrite"]);
+      expect(detail?.appServer?.networkRequirements).toBeNull();
+    });
+
+    it("omits app-server data entirely when introspection metadata has no usable fields", () => {
+      const attempt = createAttemptRecord({
+        model: null as unknown as string,
+        reasoningEffort: null,
+      });
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          events: [
+            createEvent({
+              attemptId: "attempt-1",
+              event: "codex_requirements_loaded",
+              metadata: [],
+            } as Partial<RecentEvent> as RecentEvent),
+          ],
+        }),
+      };
+
+      const detail = buildAttemptDetail("attempt-1", deps);
+
+      expect(detail?.appServer).toBeUndefined();
+      expect(detail?.appServerBadge).toBeUndefined();
+    });
+
+    it("omits the app-server badge when provider and thread status are both unavailable", () => {
+      const attempt = createAttemptRecord();
+      const deps = {
+        attemptStore: createAttemptStore({
+          attempts: [attempt],
+          events: [
+            createEvent({
+              attemptId: "attempt-1",
+              event: "codex_requirements_loaded",
+              metadata: {
+                allowedApprovalPolicies: ["never"],
+              },
+            } as Partial<RecentEvent> as RecentEvent),
+          ],
+        }),
+      };
+
+      const detail = buildAttemptDetail("attempt-1", deps);
+
+      expect(detail?.appServer).toBeDefined();
+      expect(detail?.appServerBadge).toBeUndefined();
+    });
   });
 
   describe("buildRunningIssueView", () => {
@@ -763,6 +921,23 @@ describe("snapshot-builder", () => {
 
       expect(cost).toBe(0);
     });
+
+    it("adds live running-entry costs to archived cost using token usage snapshots", () => {
+      const attemptStore = createAttemptStore();
+      (attemptStore.sumCostUsd as ReturnType<typeof vi.fn>).mockReturnValue(1.25);
+      const runningEntry = createRunningEntry({
+        tokenUsage: { inputTokens: 1000, outputTokens: 500, totalTokens: 1500 },
+      });
+      const expectedLiveCost =
+        computeAttemptCostUsd({
+          model: runningEntry.modelSelection.model,
+          tokenUsage: runningEntry.tokenUsage,
+        }) ?? 0;
+
+      const cost = computeCostUsd(attemptStore, () => new Map([["MT-42", runningEntry]]));
+
+      expect(cost).toBe(1.25 + expectedLiveCost);
+    });
   });
 
   describe("computeSecondsRunning", () => {
@@ -834,6 +1009,34 @@ describe("snapshot-builder", () => {
   });
 
   describe("buildSnapshot — additional coverage", () => {
+    it("sorts completed views by newest updatedAt before applying the 25-item cap", () => {
+      const completedViews = new Map<string, RuntimeIssueView>();
+      for (let i = 0; i < 30; i++) {
+        completedViews.set(`MT-${i}`, {
+          issueId: `issue-${i}`,
+          identifier: `MT-${i}`,
+          title: `Issue ${i}`,
+          state: "Done",
+          workspaceKey: null,
+          message: null,
+          status: "completed",
+          updatedAt: `2026-03-${String(i + 1).padStart(2, "0")}T00:00:00Z`,
+          attempt: 1,
+          error: null,
+        });
+      }
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => completedViews,
+      });
+
+      const snapshot = buildSnapshot(deps, callbacks);
+
+      expect(snapshot.completed).toHaveLength(25);
+      expect(snapshot.completed[0]?.identifier).toBe("MT-29");
+      expect(snapshot.completed.at(-1)?.identifier).toBe("MT-5");
+    });
+
     it("caps completed views at 25 entries", () => {
       const completedViews = new Map<string, RuntimeIssueView>();
       for (let i = 0; i < 30; i++) {
@@ -948,6 +1151,18 @@ describe("snapshot-builder", () => {
     });
 
     it("merges detailViews into workflowColumns completed list", () => {
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-completed",
+        identifier: "MT-98",
+        title: "Completed Issue",
+        state: "Done",
+        workspaceKey: null,
+        message: null,
+        status: "completed",
+        updatedAt: "2026-03-16T00:01:00Z",
+        attempt: 1,
+        error: null,
+      };
       const detailView: RuntimeIssueView = {
         issueId: "issue-detail",
         identifier: "MT-99",
@@ -962,13 +1177,16 @@ describe("snapshot-builder", () => {
       };
       const deps = { attemptStore: createAttemptStore() };
       const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-98", completedView]]),
         getDetailViews: () => new Map([["MT-99", detailView]]),
       });
 
       const snapshot = buildSnapshot(deps, callbacks);
+      const doneColumn = snapshot.workflowColumns.find((column) => column.key === "done");
 
-      // Just verify it doesn't crash and includes the detail view data
-      expect(snapshot.workflowColumns).toBeDefined();
+      expect(doneColumn).toBeDefined();
+      expect(doneColumn?.count).toBe(2);
+      expect(doneColumn?.issues.map((issue) => issue.identifier)).toEqual(["MT-98", "MT-99"]);
     });
   });
 
@@ -1046,6 +1264,32 @@ describe("snapshot-builder", () => {
 
       expect(detail).not.toBeNull();
       expect(detail!.recentEvents).toEqual([matchingEvent]);
+    });
+
+    it("does not enrich startedAt or tokenUsage when no archived attempts exist", () => {
+      const detailView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-50",
+        title: "Queued Issue",
+        state: "In Progress",
+        workspaceKey: null,
+        message: null,
+        status: "queued",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: null,
+        error: null,
+      };
+      const deps = { attemptStore: createAttemptStore() };
+      const callbacks = createCallbacks({
+        getDetailViews: () => new Map([["MT-50", detailView]]),
+        getRecentEvents: () => [createEvent({ issueIdentifier: "MT-50" })],
+      });
+
+      const detail = buildIssueDetail("MT-50", deps, callbacks);
+
+      expect(detail).not.toBeNull();
+      expect(detail?.startedAt).toBeUndefined();
+      expect(detail?.tokenUsage).toBeUndefined();
     });
 
     it("enriches tokenUsage from archived attempts when missing on view", () => {
@@ -1272,6 +1516,84 @@ describe("snapshot-builder", () => {
       expect(summary.workspacePath).toBe("/tmp/risoluto/MT-42");
       expect(summary.workspaceKey).toBe("MT-42");
       expect(summary.modelSource).toBe("default");
+    });
+
+    it("reuses cached archived attempt events while building detail and summaries", () => {
+      const attempt1 = createAttemptRecord({ attemptId: "a1" });
+      const attempt2 = createAttemptRecord({ attemptId: "a2", attemptNumber: 2 });
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Completed Issue",
+        state: "Done",
+        workspaceKey: "MT-42",
+        message: "Completed",
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 2,
+        error: null,
+      };
+      const eventsByAttempt = new Map<string, RecentEvent[]>([
+        ["a1", [createEvent({ attemptId: "a1", event: "worker_started" } as Partial<RecentEvent> as RecentEvent)]],
+        ["a2", [createEvent({ attemptId: "a2", event: "worker_finished" } as Partial<RecentEvent> as RecentEvent)]],
+      ]);
+      const baseStore = createAttemptStore({
+        attempts: [attempt1, attempt2],
+        attemptsByIssue: new Map([["MT-42", [attempt1, attempt2]]]),
+      });
+      const getEvents = vi.fn((attemptId: string) => eventsByAttempt.get(attemptId) ?? []);
+      const deps = {
+        attemptStore: {
+          ...baseStore,
+          getEvents,
+        },
+      };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      expect(detail?.recentEvents).toEqual([...eventsByAttempt.get("a1")!, ...eventsByAttempt.get("a2")!]);
+      expect(detail?.attempts).toHaveLength(2);
+      expect(getEvents).toHaveBeenCalledTimes(2);
+      expect(getEvents).toHaveBeenNthCalledWith(1, "a1");
+      expect(getEvents).toHaveBeenNthCalledWith(2, "a2");
+    });
+
+    it("reuses cached events for duplicate archived attempts with the same attemptId", () => {
+      const duplicateAttempt = createAttemptRecord({ attemptId: "a1" });
+      const completedView: RuntimeIssueView = {
+        issueId: "issue-1",
+        identifier: "MT-42",
+        title: "Completed Issue",
+        state: "Done",
+        workspaceKey: "MT-42",
+        message: "Completed",
+        status: "completed",
+        updatedAt: "2026-03-16T00:00:00Z",
+        attempt: 1,
+        error: null,
+      };
+      const baseStore = createAttemptStore({
+        attempts: [duplicateAttempt],
+        attemptsByIssue: new Map([["MT-42", [duplicateAttempt, duplicateAttempt]]]),
+      });
+      const getEvents = vi.fn(() => [createEvent({ attemptId: "a1" } as Partial<RecentEvent> as RecentEvent)]);
+      const deps = {
+        attemptStore: {
+          ...baseStore,
+          getEvents,
+        },
+      };
+      const callbacks = createCallbacks({
+        getCompletedViews: () => new Map([["MT-42", completedView]]),
+      });
+
+      const detail = buildIssueDetail("MT-42", deps, callbacks);
+
+      expect(detail?.recentEvents).toHaveLength(2);
+      expect(getEvents).toHaveBeenCalledTimes(1);
     });
   });
 });

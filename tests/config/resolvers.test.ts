@@ -47,6 +47,12 @@ describe("resolveConfigString", () => {
     it("does not expand invalid var names", () => {
       expect(resolveConfigString("$123invalid")).toBe("$123invalid");
     });
+
+    it("does not expand malformed env references with extra suffix characters", () => {
+      process.env.RISOLUTO_TEST_VAR = "resolved-value";
+      expect(resolveConfigString("$RISOLUTO_TEST_VAR-extra")).toBe("$RISOLUTO_TEST_VAR-extra");
+      expect(resolveConfigString("$RISOLUTO_TEST_VAR/path")).toBe("$RISOLUTO_TEST_VAR/path");
+    });
   });
 
   describe("$SECRET:name expansion", () => {
@@ -68,6 +74,12 @@ describe("resolveConfigString", () => {
       const resolver = (name: string) => (name === "my.secret-name" ? "found" : undefined);
       expect(resolveConfigString("$SECRET:my.secret-name", resolver)).toBe("found");
     });
+
+    it("does not resolve malformed secret references that are not exact matches", () => {
+      const resolver = (name: string) => `resolved:${name}`;
+      expect(resolveConfigString("$SECRET:my-key/extra", resolver)).toBe("$SECRET:my-key/extra");
+      expect(resolveConfigString("prefix$SECRET:my-key", resolver)).toBe("prefix$SECRET:my-key");
+    });
   });
 
   describe("home path (~) expansion", () => {
@@ -84,6 +96,17 @@ describe("resolveConfigString", () => {
     it("falls back to ~ when HOME is not set", () => {
       delete process.env.HOME;
       expect(resolveConfigString("~")).toBe("~");
+    });
+
+    it("keeps non-home-prefixed tilde strings unchanged", () => {
+      process.env.HOME = "/home/testuser";
+      expect(resolveConfigString("~~")).toBe("~~");
+      expect(resolveConfigString("~other")).toBe("~other");
+    });
+
+    it("falls back to ~/... when HOME is not set for prefixed home paths", () => {
+      delete process.env.HOME;
+      expect(resolveConfigString("~/docs")).toBe(path.join("~", "docs"));
     });
   });
 

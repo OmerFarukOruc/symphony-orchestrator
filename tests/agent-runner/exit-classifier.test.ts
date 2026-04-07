@@ -46,6 +46,25 @@ function makeState(
 }
 
 describe("classifyExitState", () => {
+  it("returns normal when exitPromise does not resolve before the timeout fallback", async () => {
+    vi.useFakeTimers();
+    try {
+      const state = {
+        ...makeState(),
+        exitPromise: new Promise<{ code: number | null; signal: string | null }>(() => undefined),
+      } as Parameters<typeof classifyExitState>[1];
+
+      const resultPromise = classifyExitState(makeInput(), state);
+      await vi.advanceTimersByTimeAsync(25);
+
+      const result = await resultPromise;
+      expect(result.kind).toBe("normal");
+      expect(result.errorCode).toBe(null);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("returns normal outcome when exit code is null and not aborted", async () => {
     const result = await classifyExitState(makeInput(), makeState({ exitCode: null }));
     expect(result.kind).toBe("normal");
@@ -57,6 +76,17 @@ describe("classifyExitState", () => {
     expect(result.kind).toBe("failed");
     expect(result.errorCode).toBe("port_exit");
     expect(result.errorMessage).toContain("1");
+  });
+
+  it("does not check OOM when a container exists but the exit code is not 137", async () => {
+    const inspectMock = vi.mocked(inspectOomKilled);
+    inspectMock.mockClear();
+
+    const result = await classifyExitState(makeInput(), makeState({ exitCode: 1, containerName: "container-abc" }));
+
+    expect(inspectMock).not.toHaveBeenCalled();
+    expect(result.kind).toBe("failed");
+    expect(result.errorCode).toBe("port_exit");
   });
 
   it("returns port_exit for exit code 137 when not OOM killed", async () => {

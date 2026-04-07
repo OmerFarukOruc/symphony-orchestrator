@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Request, Response } from "express";
 
 import {
+  issueNotFound,
   methodNotAllowed,
   serializeSnapshot,
   sanitizeConfigValue,
@@ -30,12 +31,28 @@ function makeResponse(): Response & { _status: number; _body: unknown; _headers:
   return res as unknown as Response & { _status: number; _body: unknown; _headers: Record<string, string> };
 }
 
+describe("issueNotFound", () => {
+  it("returns 404 with the expected not-found payload", () => {
+    const res = makeResponse();
+    issueNotFound(res);
+
+    expect(res._status).toBe(404);
+    expect(res._body).toEqual({
+      error: {
+        code: "not_found",
+        message: "Unknown issue identifier",
+      },
+    });
+  });
+});
+
 describe("methodNotAllowed", () => {
   it("returns 405 with error JSON", () => {
     const res = makeResponse();
     methodNotAllowed(res);
     expect(res._status).toBe(405);
     expect((res._body as Record<string, { code: string }>).error.code).toBe("method_not_allowed");
+    expect((res._body as Record<string, { message: string }>).error.message).toBe("Method Not Allowed");
   });
 
   it("sets Allow header with specified methods", () => {
@@ -122,6 +139,125 @@ describe("serializeSnapshot", () => {
     expect(column.issues).toEqual([]);
     expect(column.count).toBe(0);
   });
+
+  it("serializes optional snapshot sections and event fallbacks", () => {
+    const snapshot = {
+      generatedAt: "2024-01-02T00:00:00Z",
+      counts: { running: 2, retrying: 1, queued: 0, completed: 4 },
+      running: [{ id: "r2" }],
+      retrying: [{ id: "retry-1" }],
+      completed: undefined,
+      queued: undefined,
+      workflowColumns: undefined,
+      codexTotals: { inputTokens: 20, outputTokens: 10, totalTokens: 30, secondsRunning: 5, costUsd: 0.25 },
+      rateLimits: { remaining: 10 },
+      recentEvents: [
+        {
+          at: "2024-01-02T00:00:00Z",
+          issueId: "i2",
+          issueIdentifier: "MT-2",
+          sessionId: "s2",
+          event: "queued",
+          message: "queued",
+          content: undefined,
+          metadata: undefined,
+        },
+      ],
+      stallEvents: [
+        {
+          at: "2024-01-02T00:01:00Z",
+          issueId: "i2",
+          issueIdentifier: "MT-2",
+          silentMs: 5000,
+          timeoutMs: 10000,
+        },
+      ],
+      systemHealth: {
+        status: "healthy",
+        checkedAt: "2024-01-02T00:02:00Z",
+        runningCount: 2,
+        message: "ok",
+      },
+      webhookHealth: {
+        status: "healthy",
+        effectiveIntervalMs: 30000,
+        stats: {
+          deliveriesReceived: 3,
+          lastDeliveryAt: "2024-01-02T00:03:00Z",
+          lastEventType: "issues.update",
+        },
+        lastDeliveryAt: "2024-01-02T00:03:00Z",
+        lastEventType: "issues.update",
+      },
+    } as unknown as RuntimeSnapshot & Record<string, unknown>;
+
+    const result = serializeSnapshot(snapshot);
+
+    expect(result.queued).toEqual([]);
+    expect(result.completed).toEqual([]);
+    expect(result.workflow_columns).toEqual([]);
+    expect((result.recent_events as Array<Record<string, unknown>>)[0]).toMatchObject({
+      content: null,
+      metadata: null,
+    });
+    expect(result.stall_events).toEqual([
+      {
+        at: "2024-01-02T00:01:00Z",
+        issue_id: "i2",
+        issue_identifier: "MT-2",
+        silent_ms: 5000,
+        timeout_ms: 10000,
+      },
+    ]);
+    expect(result.system_health).toEqual({
+      status: "healthy",
+      checked_at: "2024-01-02T00:02:00Z",
+      running_count: 2,
+      message: "ok",
+    });
+    expect(result.webhook_health).toEqual({
+      status: "healthy",
+      effective_interval_ms: 30000,
+      stats: {
+        deliveries_received: 3,
+        last_delivery_at: "2024-01-02T00:03:00Z",
+        last_event_type: "issues.update",
+      },
+      last_delivery_at: "2024-01-02T00:03:00Z",
+      last_event_type: "issues.update",
+    });
+  });
+
+  it("derives workflow column count from issues length when count is missing", () => {
+    const snapshot = {
+      generatedAt: "2024-01-01T00:00:00Z",
+      counts: { running: 0, retrying: 0, queued: 0, completed: 0 },
+      running: [],
+      retrying: [],
+      completed: [],
+      queued: [],
+      workflowColumns: [
+        {
+          key: "triage",
+          label: "Triage",
+          kind: "active",
+          terminal: true,
+          count: undefined,
+          issues: [{ id: "a" }, { id: "b" }],
+        },
+      ],
+      codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0, costUsd: null },
+      rateLimits: null,
+      recentEvents: [],
+    } as unknown as RuntimeSnapshot & Record<string, unknown>;
+
+    const result = serializeSnapshot(snapshot);
+    expect((result.workflow_columns as Array<Record<string, unknown>>)[0]).toMatchObject({
+      terminal: true,
+      count: 2,
+      issues: [{ id: "a" }, { id: "b" }],
+    });
+  });
 });
 
 describe("sanitizeConfigValue", () => {
@@ -164,6 +300,15 @@ describe("sanitizeConfigValue", () => {
     expect(http.headers).toBe("[REDACTED]");
   });
 
+  it("redacts singular sensitive branch names", () => {
+    expect(sanitizeConfigValue({ http: { header: { value: "hello" } } })).toEqual({
+      http: { header: "[REDACTED]" },
+    });
+    expect(sanitizeConfigValue({ config: { credential: { value: "hello" } } })).toEqual({
+      config: { credential: "[REDACTED]" },
+    });
+  });
+
   it("handles arrays recursively", () => {
     const result = sanitizeConfigValue({ items: [{ name: "ok" }, { apiKey: "secret" }] });
     const items = (result as Record<string, unknown[]>).items;
@@ -182,12 +327,24 @@ describe("sanitizeConfigValue", () => {
     expect(sanitizeConfigValue(true)).toBe(true);
     expect(sanitizeConfigValue(null)).toBe(null);
   });
+
+  it("redacts safe keys when the parent path is already sensitive", () => {
+    expect(sanitizeConfigValue({ nested: "hello" }, ["headers"])).toEqual({ nested: "[REDACTED]" });
+    expect(sanitizeConfigValue({ nested: "hello" }, ["secret"])).toEqual({ nested: "[REDACTED]" });
+    expect(sanitizeConfigValue({ nested: "hello" }, ["token"])).toEqual({ nested: "[REDACTED]" });
+  });
+
+  it("redacts array items when the inherited path is already sensitive", () => {
+    expect(sanitizeConfigValue(["hello"])).toEqual(["hello"]);
+    expect(sanitizeConfigValue(["hello"], ["headers"])).toEqual(["[REDACTED]"]);
+  });
 });
 
 describe("refreshReason", () => {
   it("returns custom header when present", () => {
     const req = { get: vi.fn().mockReturnValue("manual_trigger") } as unknown as Request;
     expect(refreshReason(req)).toBe("manual_trigger");
+    expect(req.get).toHaveBeenCalledWith("x-risoluto-reason");
   });
 
   it("returns default when header is absent", () => {

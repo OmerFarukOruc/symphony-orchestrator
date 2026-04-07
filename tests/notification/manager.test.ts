@@ -87,7 +87,11 @@ describe("NotificationManager", () => {
     const second = await manager.notify(event);
 
     expect(first.skippedDuplicate).toBe(false);
-    expect(second.skippedDuplicate).toBe(true);
+    expect(second).toEqual({
+      deliveredChannels: [],
+      failedChannels: [],
+      skippedDuplicate: true,
+    });
     expect(notifySpy).toHaveBeenCalledTimes(1);
   });
 
@@ -103,6 +107,14 @@ describe("NotificationManager", () => {
 
     expect(manager.removeChannel("dynamic")).toBe(true);
     expect(manager.listChannels()).toEqual([]);
+  });
+
+  it("lists channels in alphabetical order", () => {
+    const manager = new NotificationManager({
+      channels: [createChannel("zeta"), createChannel("alpha"), createChannel("beta")],
+    });
+
+    expect(manager.listChannels()).toEqual(["alpha", "beta", "zeta"]);
   });
 
   it("auto-generates a dedupe key from event fields when none is provided", async () => {
@@ -184,6 +196,74 @@ describe("NotificationManager", () => {
     });
   });
 
+  it("sorts delivered and failed channels in the summary", async () => {
+    const manager = new NotificationManager({
+      channels: [
+        createChannel(
+          "zeta",
+          vi.fn(async () => undefined),
+        ),
+        createChannel("alpha", async () => {
+          throw new Error("alpha failed");
+        }),
+        createChannel(
+          "beta",
+          vi.fn(async () => undefined),
+        ),
+      ],
+    });
+
+    const result = await manager.notify(createEvent());
+
+    expect(result).toEqual({
+      deliveredChannels: ["beta", "zeta"],
+      failedChannels: [{ channel: "alpha", error: "alpha failed" }],
+      skippedDuplicate: false,
+    });
+  });
+
+  it("only notifies explicitly requested registered channels", async () => {
+    const alphaNotify = vi.fn(async () => undefined);
+    const betaNotify = vi.fn(async () => undefined);
+    const manager = new NotificationManager({
+      channels: [createChannel("alpha", alphaNotify), createChannel("beta", betaNotify)],
+    });
+
+    const result = await manager.notify(createEvent(), { channelNames: ["beta"] });
+
+    expect(alphaNotify).not.toHaveBeenCalled();
+    expect(betaNotify).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      deliveredChannels: ["beta"],
+      failedChannels: [],
+      skippedDuplicate: false,
+    });
+  });
+
+  it("sorts multiple failing channels alphabetically", async () => {
+    const manager = new NotificationManager({
+      channels: [
+        createChannel("zeta", async () => {
+          throw new Error("zeta failed");
+        }),
+        createChannel("alpha", async () => {
+          throw new Error("alpha failed");
+        }),
+      ],
+    });
+
+    const result = await manager.notify(createEvent());
+
+    expect(result).toEqual({
+      deliveredChannels: [],
+      failedChannels: [
+        { channel: "alpha", error: "alpha failed" },
+        { channel: "zeta", error: "zeta failed" },
+      ],
+      skippedDuplicate: false,
+    });
+  });
+
   it("persists notifications and emits notification timeline events", async () => {
     const createdRecord = {
       id: "notif-1",
@@ -231,6 +311,120 @@ describe("NotificationManager", () => {
     expect(eventBus.emit).toHaveBeenNthCalledWith(1, "notification.created", { notification: createdRecord });
     expect(eventBus.emit).toHaveBeenNthCalledWith(2, "notification.updated", { notification: updatedRecord });
     expect(result.deliveredChannels).toEqual(["ops"]);
+  });
+
+  it("persists fallback title, source, href, metadata, and dedupe key values", async () => {
+    const store = {
+      create: vi.fn().mockResolvedValue(null),
+      updateDeliverySummary: vi.fn(),
+    };
+    const manager = new NotificationManager({
+      store: store as never,
+    });
+
+    await manager.notify(
+      createEvent({
+        type: "alert_fired",
+        title: undefined,
+        source: undefined,
+        href: undefined,
+        attempt: undefined,
+        metadata: undefined,
+        dedupeKey: undefined,
+      }),
+    );
+
+    expect(store.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Alert fired",
+        source: "MT-42",
+        href: "https://linear.app/example/issue/MT-42",
+        dedupeKey: "alert_fired|MT-42|none|info|worker finished successfully",
+        metadata: {
+          issueId: "issue-1",
+          issueIdentifier: "MT-42",
+          issueTitle: "Improve retries",
+          issueState: "Done",
+          issueUrl: "https://linear.app/example/issue/MT-42",
+          attempt: undefined,
+        },
+      }),
+    );
+  });
+
+  it("merges custom metadata while preserving canonical issue fields", async () => {
+    const store = {
+      create: vi.fn().mockResolvedValue(null),
+      updateDeliverySummary: vi.fn(),
+    };
+    const manager = new NotificationManager({
+      store: store as never,
+    });
+
+    await manager.notify(
+      createEvent({
+        metadata: {
+          custom: "value",
+          issueIdentifier: "override-attempt",
+        },
+      }),
+    );
+
+    expect(store.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          custom: "value",
+          issueIdentifier: "MT-42",
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    ["issue_claimed", "Issue claimed"],
+    ["worker_launched", "Worker launched"],
+    ["worker_completed", "Worker completed"],
+    ["worker_retry", "Worker retry queued"],
+    ["worker_failed", "Worker attention required"],
+    ["automation_completed", "Automation completed"],
+    ["automation_failed", "Automation failed"],
+    ["alert_fired", "Alert fired"],
+  ] as const)("uses the default title for %s", async (type, title) => {
+    const store = {
+      create: vi.fn().mockResolvedValue(null),
+      updateDeliverySummary: vi.fn(),
+    };
+    const manager = new NotificationManager({
+      store: store as never,
+    });
+
+    await manager.notify(
+      createEvent({
+        type,
+        title: undefined,
+      }),
+    );
+
+    expect(store.create).toHaveBeenCalledWith(expect.objectContaining({ title }));
+  });
+
+  it("falls back to the generic notification title for unknown event types", async () => {
+    const store = {
+      create: vi.fn().mockResolvedValue(null),
+      updateDeliverySummary: vi.fn(),
+    };
+    const manager = new NotificationManager({
+      store: store as never,
+    });
+
+    await manager.notify(
+      createEvent({
+        type: "unknown" as NotificationEvent["type"],
+        title: undefined,
+      }),
+    );
+
+    expect(store.create).toHaveBeenCalledWith(expect.objectContaining({ title: "Notification" }));
   });
 
   it("persists duplicate notifications while still suppressing duplicate fanout", async () => {
@@ -301,5 +495,160 @@ describe("NotificationManager", () => {
     expect(notifySpy).toHaveBeenCalledTimes(4); // a, b, c, a-again
 
     vi.useRealTimers();
+  });
+
+  it("drops stale dedupe entries from the internal cache during remember", async () => {
+    vi.useFakeTimers();
+    const manager = new NotificationManager({
+      channels: [createChannel("ch")],
+      dedupeWindowMs: 100,
+    });
+
+    await manager.notify(createEvent({ dedupeKey: "a" }));
+    await manager.notify(createEvent({ dedupeKey: "b" }));
+    vi.advanceTimersByTime(101);
+    await manager.notify(createEvent({ dedupeKey: "c" }));
+
+    const cache = (manager as unknown as { recentlyDelivered: Map<string, number> }).recentlyDelivered;
+    expect([...cache.keys()]).toEqual(["c"]);
+
+    vi.useRealTimers();
+  });
+
+  it("keeps boundary-age dedupe entries until they are older than the window", async () => {
+    vi.useFakeTimers();
+    const manager = new NotificationManager({
+      channels: [createChannel("ch")],
+      dedupeWindowMs: 100,
+    });
+
+    await manager.notify(createEvent({ dedupeKey: "a" }));
+    await manager.notify(createEvent({ dedupeKey: "b" }));
+    vi.advanceTimersByTime(100);
+    await manager.notify(createEvent({ dedupeKey: "c" }));
+
+    const cache = (manager as unknown as { recentlyDelivered: Map<string, number> }).recentlyDelivered;
+    expect([...cache.keys()]).toEqual(["a", "b", "c"]);
+
+    vi.useRealTimers();
+  });
+
+  it("treats entries at the dedupe boundary as duplicates", async () => {
+    vi.useFakeTimers();
+    const notifySpy = vi.fn(async () => undefined);
+    const manager = new NotificationManager({
+      channels: [createChannel("ch", notifySpy)],
+      dedupeWindowMs: 1_000,
+    });
+    const event = createEvent({ dedupeKey: "edge-key" });
+
+    await manager.notify(event);
+    vi.advanceTimersByTime(1_000);
+    const duplicate = await manager.notify(event);
+
+    expect(duplicate.skippedDuplicate).toBe(true);
+    expect(notifySpy).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it("warns and still delivers when notification persistence fails", async () => {
+    const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn() };
+    const store = {
+      create: vi.fn().mockRejectedValue(new Error("db offline")),
+      updateDeliverySummary: vi.fn(),
+    };
+    const manager = new NotificationManager({
+      channels: [createChannel("ops")],
+      store: store as never,
+      logger: logger as never,
+    });
+
+    const result = await manager.notify(createEvent());
+
+    expect(result).toEqual({
+      deliveredChannels: ["ops"],
+      failedChannels: [],
+      skippedDuplicate: false,
+    });
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "worker_completed",
+        issueIdentifier: "MT-42",
+        error: "db offline",
+      }),
+      "notification persistence failed",
+    );
+  });
+
+  it("warns when delivery summary persistence fails", async () => {
+    const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn() };
+    const store = {
+      create: vi.fn().mockResolvedValue({
+        id: "notif-1",
+        type: "worker_completed",
+        severity: "info",
+        title: "Worker completed",
+        message: "worker finished successfully",
+        source: "MT-42",
+        href: null,
+        read: false,
+        dedupeKey: "key-1",
+        metadata: {},
+        deliverySummary: null,
+        createdAt: "2026-03-17T02:00:00.000Z",
+        updatedAt: "2026-03-17T02:00:00.000Z",
+      }),
+      updateDeliverySummary: vi.fn().mockRejectedValue(new Error("write failed")),
+    };
+    const manager = new NotificationManager({
+      channels: [createChannel("ops")],
+      store: store as never,
+      logger: logger as never,
+    });
+
+    await manager.notify(createEvent({ dedupeKey: "key-1" }));
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        notificationId: "notif-1",
+        error: "write failed",
+      }),
+      "notification delivery summary persistence failed",
+    );
+  });
+
+  it("does not emit notification.updated when the store returns null after update", async () => {
+    const store = {
+      create: vi.fn().mockResolvedValue({
+        id: "notif-1",
+        type: "worker_completed",
+        severity: "info",
+        title: "Worker completed",
+        message: "worker finished successfully",
+        source: "MT-42",
+        href: null,
+        read: false,
+        dedupeKey: "notif-key",
+        metadata: {},
+        deliverySummary: null,
+        createdAt: "2026-03-17T02:00:00.000Z",
+        updatedAt: "2026-03-17T02:00:00.000Z",
+      }),
+      updateDeliverySummary: vi.fn().mockResolvedValue(null),
+    };
+    const eventBus = { emit: vi.fn() };
+    const manager = new NotificationManager({
+      channels: [createChannel("ops")],
+      store: store as never,
+      eventBus: eventBus as never,
+    });
+
+    await manager.notify(createEvent({ dedupeKey: "notif-key" }));
+
+    expect(eventBus.emit).toHaveBeenCalledTimes(1);
+    expect(eventBus.emit).toHaveBeenCalledWith(
+      "notification.created",
+      expect.objectContaining({ notification: expect.objectContaining({ id: "notif-1" }) }),
+    );
   });
 });

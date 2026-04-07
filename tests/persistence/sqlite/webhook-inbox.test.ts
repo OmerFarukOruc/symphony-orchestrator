@@ -9,6 +9,7 @@ import { createLogger } from "../../../src/core/logger.js";
 import { closeDatabase, openDatabase, type RisolutoDatabase } from "../../../src/persistence/sqlite/database.js";
 import { webhookInbox } from "../../../src/persistence/sqlite/schema.js";
 import { SqliteWebhookInbox } from "../../../src/persistence/sqlite/webhook-inbox.js";
+import { createMockLogger } from "../../helpers.js";
 
 const tempDirs: string[] = [];
 
@@ -76,6 +77,22 @@ afterEach(async () => {
 });
 
 describe("SqliteWebhookInbox", () => {
+  it("scopes constructor logging under the webhook-inbox component", async () => {
+    const dir = await createTempDir();
+    const dbPath = path.join(dir, "constructor-test.db");
+    const db = openDatabase(dbPath);
+    const logger = createMockLogger();
+
+    try {
+      const inbox = new SqliteWebhookInbox(db, logger);
+
+      expect(logger.child).toHaveBeenCalledWith({ component: "webhook-inbox" });
+      expect(inbox).toBeInstanceOf(SqliteWebhookInbox);
+    } finally {
+      closeDatabase(db);
+    }
+  });
+
   it("inserts verified deliveries once and returns duplicates as not new", async () => {
     const dir = await createTempDir();
     const store = createStore(dir);
@@ -194,6 +211,22 @@ describe("SqliteWebhookInbox", () => {
     }
   });
 
+  it("preserves retry errors that are already within the storage limit", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    try {
+      const exactLengthError = "e".repeat(500);
+      await store.inbox.insertVerified(createDelivery({ deliveryId: "delivery-retry-exact" }));
+
+      await store.inbox.markForRetry("delivery-retry-exact", exactLengthError, 1, "2026-04-01T10:15:00.000Z");
+
+      expect(getRow(store.db, "delivery-retry-exact")?.lastError).toBe(exactLengthError);
+    } finally {
+      store.close();
+    }
+  });
+
   it("moves deliveries to dead letter and truncates long errors without resetting retry metadata", async () => {
     const dir = await createTempDir();
     const store = createStore(dir);
@@ -218,6 +251,22 @@ describe("SqliteWebhookInbox", () => {
       });
       expect(row?.lastError).toBe(deadLetterError.slice(0, 500));
       expect(row?.lastError).toHaveLength(500);
+    } finally {
+      store.close();
+    }
+  });
+
+  it("preserves dead-letter errors that are already within the storage limit", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    try {
+      const exactLengthError = "d".repeat(500);
+      await store.inbox.insertVerified(createDelivery({ deliveryId: "delivery-dead-letter-exact" }));
+
+      await store.inbox.markDeadLetter("delivery-dead-letter-exact", exactLengthError);
+
+      expect(getRow(store.db, "delivery-dead-letter-exact")?.lastError).toBe(exactLengthError);
     } finally {
       store.close();
     }
@@ -340,5 +389,42 @@ describe("SqliteWebhookInbox", () => {
     } finally {
       store.close();
     }
+  });
+
+  it("rethrows non-duplicate insert failures", async () => {
+    const logger = createMockLogger();
+    const insertError = new Error("disk full");
+    const db = {
+      insert: () => ({
+        values: () => ({
+          run: () => {
+            throw insertError;
+          },
+        }),
+      }),
+    } as unknown as RisolutoDatabase;
+    const inbox = new SqliteWebhookInbox(db, logger);
+
+    await expect(inbox.insertVerified(createDelivery({ deliveryId: "delivery-error" }))).rejects.toThrow("disk full");
+  });
+
+  it("treats lowercase unique-constraint errors as duplicates", async () => {
+    const logger = createMockLogger();
+    const db = {
+      insert: () => ({
+        values: () => ({
+          run: () => {
+            throw new Error("sqlite unique constraint violation");
+          },
+        }),
+      }),
+    } as unknown as RisolutoDatabase;
+    const inbox = new SqliteWebhookInbox(db, logger);
+
+    await expect(inbox.insertVerified(createDelivery({ deliveryId: "delivery-lowercase-duplicate" }))).resolves.toEqual(
+      {
+        isNew: false,
+      },
+    );
   });
 });

@@ -3,8 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   hasCodexAuthFile,
   hasLinearCredentials,
-  readProjectSlug,
   hasRepoRoutes,
+  readCodexAuthMode,
+  readCodexAuthSourceHome,
+  readOverlayString,
+  readProjectSlug,
 } from "../../src/setup/setup-status.js";
 import { SecretsStore } from "../../src/secrets/store.js";
 import { createMockLogger } from "../helpers.js";
@@ -41,6 +44,16 @@ afterEach(() => {
 /* ── readOverlayString — flat-key vs nested-path resolution ─────── */
 
 describe("readOverlayString resolution (via hasCodexAuthFile)", () => {
+  it("reads codex auth mode from flat and nested overlays", () => {
+    expect(readCodexAuthMode({ "codex.auth.mode": "device" })).toBe("device");
+    expect(readCodexAuthMode({ codex: { auth: { mode: "browser" } } })).toBe("browser");
+  });
+
+  it("reads codex auth source_home from flat and nested overlays", () => {
+    expect(readCodexAuthSourceHome({ "codex.auth.source_home": "/flat/auth" })).toBe("/flat/auth");
+    expect(readCodexAuthSourceHome({ codex: { auth: { source_home: "/nested/auth" } } })).toBe("/nested/auth");
+  });
+
   it("resolves flat-key overlay (codex.auth.source_home)", () => {
     existsSyncMock.mockReturnValue(true);
 
@@ -65,25 +78,73 @@ describe("readOverlayString resolution (via hasCodexAuthFile)", () => {
   });
 
   it("returns false when auth.mode is empty string", () => {
+    existsSyncMock.mockReturnValue(true);
     const overlay = { "codex.auth.mode": "" };
     expect(hasCodexAuthFile("/archive", overlay)).toBe(false);
   });
 
   it("returns false when source_home is empty string", () => {
+    existsSyncMock.mockReturnValue(true);
     const overlay = { "codex.auth.source_home": "" };
     expect(hasCodexAuthFile("/archive", overlay)).toBe(false);
   });
+
+  it("returns false when auth.mode is empty even if source_home points at a valid auth file", () => {
+    existsSyncMock.mockReturnValue(true);
+    const overlay = {
+      "codex.auth.mode": "",
+      "codex.auth.source_home": "/custom/auth",
+    };
+    expect(hasCodexAuthFile("/archive", overlay)).toBe(false);
+  });
+
+  it("returns false when source_home is empty even if auth.mode is populated", () => {
+    existsSyncMock.mockReturnValue(true);
+    const overlay = {
+      "codex.auth.mode": "device",
+      "codex.auth.source_home": "",
+    };
+    expect(hasCodexAuthFile("/archive", overlay)).toBe(false);
+  });
+
+  it("returns null when a nested traversal hits a non-record value", () => {
+    expect(readOverlayString({ tracker: "bad-value" }, "tracker.project_slug", ["tracker", "project_slug"])).toBeNull();
+  });
+
+  it("returns null without throwing when a nested traversal hits null", () => {
+    expect(() =>
+      readOverlayString({ tracker: null }, "tracker.project_slug", ["tracker", "project_slug"]),
+    ).not.toThrow();
+    expect(readOverlayString({ tracker: null }, "tracker.project_slug", ["tracker", "project_slug"])).toBeNull();
+  });
+
+  it("returns null when a nested traversal hits a non-record value after module reload", async () => {
+    vi.resetModules();
+    const reloadedModule = await import("../../src/setup/setup-status.js");
+
+    expect(
+      reloadedModule.readOverlayString({ tracker: "bad-value" }, "tracker.project_slug", ["tracker", "project_slug"]),
+    ).toBeNull();
+  });
 });
 
-/* ── prototype-pollution defense ─────────────────────────────────── */
+/* ── own-property defense ────────────────────────────────────────── */
 
-describe("prototype-pollution defense", () => {
+describe("own-property defense", () => {
   it("does not resolve inherited properties from prototype chain", () => {
     // readOverlayString uses Object.getOwnPropertyDescriptor, so inherited
     // properties should NOT be resolved
     const proto = { tracker: { project_slug: "inherited-slug" } };
     const overlay = Object.create(proto) as Record<string, unknown>;
     expect(readProjectSlug(overlay)).toBeUndefined();
+  });
+
+  it("returns null without throwing when a deeper nested segment only exists on the prototype chain", () => {
+    const inheritedAuth = Object.create({ mode: "inherited-mode" }) as Record<string, unknown>;
+    const overlay: Record<string, unknown> = { codex: { auth: inheritedAuth } };
+
+    expect(() => readCodexAuthMode(overlay)).not.toThrow();
+    expect(readCodexAuthMode(overlay)).toBeNull();
   });
 
   it("does not resolve constructor from Object.prototype", () => {
@@ -136,6 +197,7 @@ describe("hasLinearCredentials", () => {
     const store = makeSecretsStore();
     vi.mocked(store.get).mockReturnValue("lin_api_xxx");
     expect(hasLinearCredentials(store)).toBe(true);
+    expect(store.get).toHaveBeenCalledWith("LINEAR_API_KEY");
   });
 
   it("returns true when environment variable is set", () => {

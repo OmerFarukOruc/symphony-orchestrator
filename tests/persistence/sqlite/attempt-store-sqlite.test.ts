@@ -3,12 +3,15 @@ import os from "node:os";
 import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
 
 import { createLogger } from "../../../src/core/logger.js";
-import type { AttemptEvent, AttemptRecord } from "../../../src/core/types.js";
+import type { AttemptCheckpointRecord, AttemptEvent, AttemptRecord } from "../../../src/core/types.js";
 import { SqliteAttemptStore } from "../../../src/persistence/sqlite/attempt-store-sqlite.js";
 import { openDatabase, closeDatabase } from "../../../src/persistence/sqlite/database.js";
 import { initPersistenceRuntime } from "../../../src/persistence/sqlite/runtime.js";
+import { pullRequests } from "../../../src/persistence/sqlite/schema.js";
+import { createMockLogger } from "../../helpers.js";
 
 const tempDirs: string[] = [];
 
@@ -60,6 +63,51 @@ function createEvent(overrides: Partial<AttemptEvent> = {}): AttemptEvent {
   };
 }
 
+function createCheckpoint(
+  overrides: Partial<Omit<AttemptCheckpointRecord, "checkpointId" | "ordinal">> = {},
+): Omit<AttemptCheckpointRecord, "checkpointId" | "ordinal"> {
+  return {
+    attemptId: "attempt-1",
+    trigger: "attempt_created",
+    eventCursor: null,
+    status: "running",
+    threadId: null,
+    turnId: null,
+    turnCount: 0,
+    tokenUsage: null,
+    metadata: null,
+    createdAt: "2026-03-16T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function createPrInput(
+  overrides: Partial<{
+    attemptId: string;
+    issueId: string;
+    owner: string;
+    repo: string;
+    pullNumber: number;
+    url: string;
+    branchName: string;
+    status: "open" | "merged" | "closed";
+    createdAt: string;
+  }> = {},
+) {
+  return {
+    attemptId: "attempt-1",
+    issueId: "issue-1",
+    owner: "openai",
+    repo: "risoluto",
+    pullNumber: 42,
+    url: "https://github.com/openai/risoluto/pull/42",
+    branchName: "feat/checkpoints",
+    status: "open" as const,
+    createdAt: "2026-03-16T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
 function createStore(dir: string): SqliteAttemptStore & { close(): void } {
   const dbPath = path.join(dir, "test.db");
   const db = openDatabase(dbPath);
@@ -74,6 +122,22 @@ afterEach(async () => {
 });
 
 describe("SqliteAttemptStore", () => {
+  it("logs initialization and start is a no-op", async () => {
+    const dir = await createTempDir();
+    const dbPath = path.join(dir, "test.db");
+    const db = openDatabase(dbPath);
+    const logger = createMockLogger();
+
+    try {
+      const store = new SqliteAttemptStore(db, logger);
+
+      await expect(store.start()).resolves.toBeUndefined();
+      expect(logger.info).toHaveBeenCalledWith("SQLite attempt store initialized (shared connection)");
+    } finally {
+      closeDatabase(db);
+    }
+  });
+
   it("creates and retrieves an attempt", async () => {
     const dir = await createTempDir();
     const store = createStore(dir);
@@ -338,6 +402,47 @@ describe("SqliteAttemptStore", () => {
     store.close();
   });
 
+  it("sumArchivedTokens returns zeros for an empty store", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    expect(store.sumArchivedTokens()).toEqual({ inputTokens: 0, outputTokens: 0, totalTokens: 0 });
+    store.close();
+  });
+
+  it("sumArchivedTokens sums token usage across archived attempts and ignores null usage", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    await store.createAttempt(
+      createAttempt({
+        attemptId: "attempt-1",
+        status: "completed",
+        endedAt: "2026-03-16T10:05:00.000Z",
+        tokenUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+      }),
+    );
+    await store.createAttempt(
+      createAttempt({
+        attemptId: "attempt-2",
+        status: "failed",
+        endedAt: "2026-03-16T11:05:00.000Z",
+        tokenUsage: { inputTokens: 30, outputTokens: 20, totalTokens: 50 },
+      }),
+    );
+    await store.createAttempt(
+      createAttempt({
+        attemptId: "attempt-3",
+        status: "running",
+        endedAt: null,
+        tokenUsage: null,
+      }),
+    );
+
+    expect(store.sumArchivedTokens()).toEqual({ inputTokens: 130, outputTokens: 70, totalTokens: 200 });
+    store.close();
+  });
+
   it("preserves token usage through round-trip", async () => {
     const dir = await createTempDir();
     const store = createStore(dir);
@@ -394,6 +499,244 @@ describe("SqliteAttemptStore", () => {
     expect(store2.getAttempt("attempt-1")).toMatchObject({ attemptId: "attempt-1" });
     expect(store2.getEvents("attempt-1")).toHaveLength(1);
     closeDatabase(db2);
+  });
+
+  it("assigns checkpoint ordinals and preserves token usage plus metadata", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    await store.createAttempt(createAttempt());
+    await store.appendCheckpoint(createCheckpoint({ trigger: "attempt_created" }));
+    await store.appendCheckpoint(
+      createCheckpoint({
+        trigger: "cursor_advanced",
+        turnCount: 1,
+        tokenUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+        metadata: { source: "test", step: 1 },
+      }),
+    );
+
+    const checkpoints = await store.listCheckpoints("attempt-1");
+    expect(checkpoints).toHaveLength(2);
+    expect(checkpoints[0].ordinal).toBe(1);
+    expect(checkpoints[1].ordinal).toBe(2);
+    expect(checkpoints[1].tokenUsage).toEqual({ inputTokens: 100, outputTokens: 50, totalTokens: 150 });
+    expect(checkpoints[1].metadata).toEqual({ source: "test", step: 1 });
+    store.close();
+  });
+
+  it("deduplicates only identical checkpoints and keeps distinct thread, turn, count, status, or trigger changes", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    await store.createAttempt(createAttempt());
+
+    const base = createCheckpoint({ trigger: "cursor_advanced", turnCount: 1 });
+    await store.appendCheckpoint(base);
+    await store.appendCheckpoint(base);
+    await store.appendCheckpoint(createCheckpoint({ trigger: "cursor_advanced", threadId: "thread-1", turnCount: 1 }));
+    await store.appendCheckpoint(
+      createCheckpoint({ trigger: "cursor_advanced", threadId: "thread-1", turnId: "turn-1", turnCount: 1 }),
+    );
+    await store.appendCheckpoint(
+      createCheckpoint({ trigger: "cursor_advanced", threadId: "thread-1", turnId: "turn-1", turnCount: 2 }),
+    );
+    await store.appendCheckpoint(
+      createCheckpoint({ trigger: "status_transition", threadId: "thread-1", turnId: "turn-1", turnCount: 2 }),
+    );
+    await store.appendCheckpoint(
+      createCheckpoint({
+        trigger: "status_transition",
+        threadId: "thread-1",
+        turnId: "turn-1",
+        turnCount: 2,
+        status: "completed",
+      }),
+    );
+
+    const checkpoints = await store.listCheckpoints("attempt-1");
+    expect(checkpoints).toHaveLength(6);
+    expect(checkpoints.map((checkpoint) => checkpoint.ordinal)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(checkpoints.map((checkpoint) => checkpoint.trigger)).toEqual([
+      "cursor_advanced",
+      "cursor_advanced",
+      "cursor_advanced",
+      "cursor_advanced",
+      "status_transition",
+      "status_transition",
+    ]);
+    expect(checkpoints.at(-1)?.status).toBe("completed");
+    store.close();
+  });
+
+  it("does not deduplicate when only threadId changes", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    await store.createAttempt(createAttempt());
+    await store.appendCheckpoint(createCheckpoint({ trigger: "cursor_advanced", turnCount: 1, threadId: null }));
+    await store.appendCheckpoint(createCheckpoint({ trigger: "cursor_advanced", turnCount: 1, threadId: "thread-2" }));
+
+    const checkpoints = await store.listCheckpoints("attempt-1");
+    expect(checkpoints).toHaveLength(2);
+    expect(checkpoints.map((checkpoint) => checkpoint.threadId)).toEqual([null, "thread-2"]);
+    store.close();
+  });
+
+  it("deduplicates identical checkpoints when threadId is the same non-null value", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    await store.createAttempt(createAttempt());
+    const checkpoint = createCheckpoint({ trigger: "cursor_advanced", threadId: "thread-2", turnCount: 1 });
+    await store.appendCheckpoint(checkpoint);
+    await store.appendCheckpoint(checkpoint);
+
+    await expect(store.listCheckpoints("attempt-1")).resolves.toHaveLength(1);
+    store.close();
+  });
+
+  it("does not deduplicate when only turnId changes", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    await store.createAttempt(createAttempt());
+    await store.appendCheckpoint(
+      createCheckpoint({ trigger: "cursor_advanced", threadId: "thread-2", turnCount: 1, turnId: null }),
+    );
+    await store.appendCheckpoint(
+      createCheckpoint({ trigger: "cursor_advanced", threadId: "thread-2", turnCount: 1, turnId: "turn-2" }),
+    );
+
+    const checkpoints = await store.listCheckpoints("attempt-1");
+    expect(checkpoints).toHaveLength(2);
+    expect(checkpoints.map((checkpoint) => checkpoint.turnId)).toEqual([null, "turn-2"]);
+    store.close();
+  });
+
+  it("deduplicates identical checkpoints when turnId is the same non-null value", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    await store.createAttempt(createAttempt());
+    const checkpoint = createCheckpoint({
+      trigger: "cursor_advanced",
+      threadId: "thread-2",
+      turnId: "turn-2",
+      turnCount: 1,
+    });
+    await store.appendCheckpoint(checkpoint);
+    await store.appendCheckpoint(checkpoint);
+
+    await expect(store.listCheckpoints("attempt-1")).resolves.toHaveLength(1);
+    store.close();
+  });
+
+  it("does not deduplicate when only turnCount changes", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    await store.createAttempt(createAttempt());
+    await store.appendCheckpoint(
+      createCheckpoint({ trigger: "cursor_advanced", threadId: "thread-2", turnId: "turn-2", turnCount: 1 }),
+    );
+    await store.appendCheckpoint(
+      createCheckpoint({ trigger: "cursor_advanced", threadId: "thread-2", turnId: "turn-2", turnCount: 2 }),
+    );
+
+    const checkpoints = await store.listCheckpoints("attempt-1");
+    expect(checkpoints).toHaveLength(2);
+    expect(checkpoints.map((checkpoint) => checkpoint.turnCount)).toEqual([1, 2]);
+    store.close();
+  });
+
+  it("returns an empty checkpoint list for an unknown attempt", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    await expect(store.listCheckpoints("missing-attempt")).resolves.toEqual([]);
+    store.close();
+  });
+
+  it("upserts PRs by URL, filters open PRs, and updates merged status details", async () => {
+    const dir = await createTempDir();
+    const store = createStore(dir);
+
+    await store.upsertPr(createPrInput());
+    await store.upsertPr(
+      createPrInput({
+        pullNumber: 43,
+        url: "https://github.com/openai/risoluto/pull/43",
+        branchName: "feat/other",
+        status: "closed",
+      }),
+    );
+    await store.upsertPr(
+      createPrInput({
+        issueId: "issue-2",
+        branchName: "feat/checkpoints-updated",
+        status: "open",
+      }),
+    );
+
+    const openPrs = await store.getOpenPrs();
+    expect(openPrs).toHaveLength(1);
+    expect(openPrs[0]).toMatchObject({
+      prId: "openai/risoluto#42",
+      issueId: "issue-2",
+      branchName: "feat/checkpoints-updated",
+      status: "open",
+      mergedAt: null,
+      mergeCommitSha: null,
+    });
+
+    const allPrs = await store.getAllPrs();
+    expect(allPrs).toHaveLength(2);
+
+    await store.updatePrStatus(
+      "https://github.com/openai/risoluto/pull/42",
+      "merged",
+      "2026-03-16T11:00:00.000Z",
+      "abc123",
+    );
+
+    const merged = (await store.getAllPrs()).find((pr) => pr.url.endsWith("/42"));
+    expect(merged).toMatchObject({
+      status: "merged",
+      mergedAt: "2026-03-16T11:00:00.000Z",
+      mergeCommitSha: "abc123",
+      branchName: "feat/checkpoints-updated",
+    });
+    store.close();
+  });
+
+  it("normalizes nullable PR fields when listing and clearing closed status details", async () => {
+    const dir = await createTempDir();
+    const dbPath = path.join(dir, "test.db");
+    const db = openDatabase(dbPath);
+    const store = new SqliteAttemptStore(db, createLogger());
+
+    try {
+      await store.upsertPr(
+        createPrInput({ attemptId: "attempt-9", url: "https://github.com/openai/risoluto/pull/99" }),
+      );
+      db.update(pullRequests)
+        .set({ attemptId: null })
+        .where(eq(pullRequests.url, "https://github.com/openai/risoluto/pull/99"))
+        .run();
+
+      await store.updatePrStatus("https://github.com/openai/risoluto/pull/99", "closed");
+
+      const [closedPr] = await store.getAllPrs();
+      expect(closedPr).toMatchObject({
+        attemptId: "",
+        status: "closed",
+        mergedAt: null,
+        mergeCommitSha: null,
+      });
+    } finally {
+      closeDatabase(db);
+    }
   });
 });
 

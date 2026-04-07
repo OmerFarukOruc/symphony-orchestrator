@@ -101,6 +101,95 @@ describe("SSE handler", () => {
       vi.useRealTimers();
     }
   });
+
+  it("registers cleanup on request close, response close, and response error", () => {
+    const req = {
+      once: vi.fn(),
+    };
+    const res = {
+      setHeader: vi.fn(),
+      flushHeaders: vi.fn(),
+      write: vi.fn(),
+      once: vi.fn(),
+      writableEnded: false,
+      destroyed: false,
+    };
+
+    createSSEHandler(eventBus)(req as never, res as never);
+
+    expect(req.once).toHaveBeenCalledWith("close", expect.any(Function));
+    expect(res.once).toHaveBeenCalledWith("close", expect.any(Function));
+    expect(res.once).toHaveBeenCalledWith("error", expect.any(Function));
+  });
+
+  it("does not write when the response is already ended or destroyed", () => {
+    for (const state of [
+      { writableEnded: true, destroyed: false },
+      { writableEnded: false, destroyed: true },
+    ]) {
+      const req = {
+        once: vi.fn(),
+      };
+      const res = {
+        setHeader: vi.fn(),
+        flushHeaders: vi.fn(),
+        write: vi.fn(),
+        once: vi.fn(),
+        writableEnded: state.writableEnded,
+        destroyed: state.destroyed,
+      };
+
+      createSSEHandler(eventBus)(req as never, res as never);
+
+      expect(res.write).not.toHaveBeenCalled();
+    }
+  });
+
+  it("cleans up only once and stops writing after close", async () => {
+    vi.useFakeTimers();
+    const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval");
+    const offAnySpy = vi.spyOn(eventBus, "offAny");
+    const reqListeners = new Map<string, (...args: unknown[]) => void>();
+    const resListeners = new Map<string, (...args: unknown[]) => void>();
+
+    const req = {
+      once: vi.fn((event: string, listener: (...args: unknown[]) => void) => {
+        reqListeners.set(event, listener);
+      }),
+    };
+    const res = {
+      setHeader: vi.fn(),
+      flushHeaders: vi.fn(),
+      write: vi.fn(),
+      once: vi.fn((event: string, listener: (...args: unknown[]) => void) => {
+        resListeners.set(event, listener);
+      }),
+      writableEnded: false,
+      destroyed: false,
+    };
+
+    try {
+      createSSEHandler(eventBus)(req as never, res as never);
+      expect(res.write).toHaveBeenCalledTimes(1);
+
+      reqListeners.get("close")?.();
+      reqListeners.get("close")?.();
+      resListeners.get("close")?.();
+      resListeners.get("error")?.(new Error("boom"));
+
+      expect(offAnySpy).toHaveBeenCalledTimes(1);
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+
+      eventBus.emit("issue.started", { issueId: "i1", identifier: "MT-1", attempt: 1 });
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(res.write).toHaveBeenCalledTimes(1);
+    } finally {
+      clearIntervalSpy.mockRestore();
+      offAnySpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
 });
 
 /* ---------- helpers ---------- */

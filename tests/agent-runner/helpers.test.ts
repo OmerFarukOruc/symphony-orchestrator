@@ -362,6 +362,15 @@ describe("extractAgentOrUserMessage", () => {
     expect(extractAgentOrUserMessage(item)).toBe("first second");
   });
 
+  it("returns a string rather than an array when reading content array text", () => {
+    const item = {
+      content: [{ text: "alpha" }, { text: "beta" }],
+    };
+    const result = extractAgentOrUserMessage(item);
+    expect(typeof result).toBe("string");
+    expect(Array.isArray(result)).toBe(false);
+  });
+
   it("filters non-text entries from content array", () => {
     const item = {
       content: [{ text: "a" }, { image: "data" }, { text: "b" }],
@@ -454,6 +463,17 @@ describe("extractItemContent", () => {
       expect(result).toBe("ls -la");
     });
 
+    it("joins array command parts and JSON-stringifies non-string parts for started verb", () => {
+      const result = extractItemContent(
+        "commandExecution",
+        null,
+        { command: ["node", { script: "build" }, "--watch"] },
+        "started",
+        emptyBuffers,
+      );
+      expect(result).toBe('node {"script":"build"} --watch');
+    });
+
     it("returns output string for completed verb", () => {
       const result = extractItemContent(
         "commandExecution",
@@ -463,6 +483,38 @@ describe("extractItemContent", () => {
         emptyBuffers,
       );
       expect(result).toBe("file1.txt\nfile2.txt");
+    });
+
+    it("falls back to aggregatedOutput for completed verb", () => {
+      const result = extractItemContent(
+        "commandExecution",
+        null,
+        { aggregatedOutput: "aggregated logs" },
+        "completed",
+        emptyBuffers,
+      );
+      expect(result).toBe("aggregated logs");
+    });
+
+    it("joins stdout and stderr for completed verb", () => {
+      const result = extractItemContent(
+        "commandExecution",
+        null,
+        { stdout: "line one", stderr: "line two" },
+        "completed",
+        emptyBuffers,
+      );
+      expect(result).toBe("line one\nline two");
+    });
+
+    it("returns stdout alone when stderr is absent", () => {
+      const result = extractItemContent("commandExecution", null, { stdout: "stdout only" }, "completed", emptyBuffers);
+      expect(result).toBe("stdout only");
+    });
+
+    it("returns stderr alone when stdout is absent", () => {
+      const result = extractItemContent("commandExecution", null, { stderr: "stderr only" }, "completed", emptyBuffers);
+      expect(result).toBe("stderr only");
     });
 
     it("returns exit code string when output is absent", () => {
@@ -481,8 +533,19 @@ describe("extractItemContent", () => {
     });
 
     it("handles non-numeric exitCode via JSON.stringify", () => {
-      const result = extractItemContent("commandExecution", null, { exitCode: "weird" }, "completed", emptyBuffers);
-      expect(result).toContain("weird");
+      const result = extractItemContent(
+        "commandExecution",
+        null,
+        { exitCode: { status: "weird" } },
+        "completed",
+        emptyBuffers,
+      );
+      expect(result).toBe('Exit code: {"status":"weird"}');
+    });
+
+    it("stringifies numeric exitCode using String semantics", () => {
+      const result = extractItemContent("commandExecution", null, { exitCode: Number.NaN }, "completed", emptyBuffers);
+      expect(result).toBe("Exit code: NaN");
     });
   });
 
@@ -505,6 +568,20 @@ describe("extractItemContent", () => {
     it("falls back to path when both diff and content are absent", () => {
       const result = extractItemContent("fileChange", null, { path: "/src/fallback.ts" }, "completed", emptyBuffers);
       expect(result).toBe("/src/fallback.ts");
+    });
+
+    it("does not treat started file paths as diffs for truncation", () => {
+      const longPath = "/workspace/" + "segment/".repeat(90);
+      const result = extractItemContent("fileChange", null, { path: longPath }, "started", emptyBuffers);
+      expect(result).toBe(longPath);
+      expect(result).not.toContain("diff truncated");
+    });
+
+    it("treats completed diffs as diffs for truncation", () => {
+      const longDiff = "+".repeat(650);
+      const result = extractItemContent("fileChange", null, { diff: longDiff }, "completed", emptyBuffers);
+      expect(result).toContain("diff truncated");
+      expect(result?.length).toBeLessThan(longDiff.length);
     });
   });
 
@@ -536,6 +613,11 @@ describe("extractItemContent", () => {
     it("uses fallback 'tool' when name is absent", () => {
       const result = extractItemContent("dynamicToolCall", null, { arguments: "{}" }, "started", emptyBuffers);
       expect(result).toMatch(/^tool\(/);
+    });
+
+    it("renders empty object arguments when started tool call has no arguments", () => {
+      const result = extractItemContent("dynamicToolCall", null, {}, "started", emptyBuffers);
+      expect(result).toBe("tool({})");
     });
 
     it("returns output for completed verb", () => {
@@ -584,9 +666,57 @@ describe("extractItemContent", () => {
     });
   });
 
+  describe("review mode items", () => {
+    it("returns review content for enteredReviewMode", () => {
+      const result = extractItemContent(
+        "enteredReviewMode",
+        null,
+        { review: "requesting review" },
+        "completed",
+        emptyBuffers,
+      );
+      expect(result).toBe("requesting review");
+    });
+
+    it("returns review content for exitedReviewMode", () => {
+      const result = extractItemContent(
+        "exitedReviewMode",
+        null,
+        { review: "review complete" },
+        "completed",
+        emptyBuffers,
+      );
+      expect(result).toBe("review complete");
+    });
+
+    it("returns null for review mode items when review text is absent", () => {
+      const result = extractItemContent("enteredReviewMode", null, {}, "completed", emptyBuffers);
+      expect(result).toBeNull();
+    });
+
+    it("does not treat non-review items as review mode even when review text exists", () => {
+      const result = extractItemContent("unknown", null, { review: "not review mode" }, "completed", emptyBuffers);
+      expect(result).toBeNull();
+    });
+  });
+
   describe("unknown type", () => {
     it("returns null for an unrecognized type", () => {
       const result = extractItemContent("unknown", null, { text: "data" }, "completed", emptyBuffers);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("sanitizer flags", () => {
+    it("does not mark non-file content as diff by default", () => {
+      const longMessage = "m".repeat(650);
+      const result = extractItemContent("agentMessage", null, { text: longMessage }, "completed", emptyBuffers);
+      expect(result).toBe(longMessage);
+      expect(result).not.toContain("diff truncated");
+    });
+
+    it("does not handle plan items for started verb", () => {
+      const result = extractItemContent("plan", null, { text: "premature plan" }, "started", emptyBuffers);
       expect(result).toBeNull();
     });
   });

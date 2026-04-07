@@ -91,6 +91,16 @@ describe("dispatch helpers", () => {
     expect(sorted.map((issue) => issue.identifier)).toEqual(["MT-1", "MT-2", "MT-3"]);
   });
 
+  it("uses priority before createdAt and identifier tiebreakers", () => {
+    const issues = [
+      createIssue({ id: "1", identifier: "MT-01", priority: 2, createdAt: "2026-03-14T00:00:00Z" }),
+      createIssue({ id: "2", identifier: "MT-99", priority: 1, createdAt: "2026-03-16T00:00:00Z" }),
+    ];
+
+    const sorted = sortIssuesForDispatch(issues);
+    expect(sorted.map((issue) => issue.identifier)).toEqual(["MT-99", "MT-01"]);
+  });
+
   it("sorts equal-priority issues by oldest createdAt first", () => {
     const issues = [
       createIssue({ id: "2", identifier: "MT-2", priority: 1, createdAt: "2026-03-16T00:00:00Z" }),
@@ -99,6 +109,16 @@ describe("dispatch helpers", () => {
 
     const sorted = sortIssuesForDispatch(issues);
     expect(sorted.map((issue) => issue.identifier)).toEqual(["MT-1", "MT-2"]);
+  });
+
+  it("prefers createdAt ordering even when identifier ordering disagrees", () => {
+    const issues = [
+      createIssue({ id: "1", identifier: "MT-01", priority: 1, createdAt: "2026-03-16T00:00:00Z" }),
+      createIssue({ id: "2", identifier: "MT-99", priority: 1, createdAt: "2026-03-14T00:00:00Z" }),
+    ];
+
+    const sorted = sortIssuesForDispatch(issues);
+    expect(sorted.map((issue) => issue.identifier)).toEqual(["MT-99", "MT-01"]);
   });
 
   it("uses identifier as a deterministic tiebreaker", () => {
@@ -157,6 +177,20 @@ describe("dispatch helpers", () => {
     });
 
     expect(isBlockedByNonTerminal(issue, config)).toBe(false);
+  });
+
+  it("returns true when any blocker is non-terminal, even if others are terminal", () => {
+    const config = createConfig();
+    const issue = createIssue({
+      id: "1",
+      identifier: "MT-1",
+      blockedBy: [
+        { id: "blk-1", identifier: "MT-0", state: "Done" },
+        { id: "blk-2", identifier: "MT-3", state: "In Progress" },
+      ],
+    });
+
+    expect(isBlockedByNonTerminal(issue, config)).toBe(true);
   });
 
   it("breaks ties by createdAt when priorities match", () => {

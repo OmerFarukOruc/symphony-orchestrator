@@ -52,9 +52,10 @@ vi.mock("../../src/agent-runner/thread-compact.js", () => ({
 import { executeTurns } from "../../src/agent-runner/turn-executor.js";
 import { waitForTurnCompletion } from "../../src/agent-runner/turn-state.js";
 import { isActiveState } from "../../src/state/policy.js";
-import { failureOutcome, outcomeForAbort } from "../../src/agent-runner/abort-outcomes.js";
+import { classifyRunError, failureOutcome, outcomeForAbort } from "../../src/agent-runner/abort-outcomes.js";
 import { classifyExitState } from "../../src/agent-runner/exit-classifier.js";
 import { compactThread } from "../../src/agent-runner/thread-compact.js";
+import { sanitizeContent } from "../../src/core/content-sanitizer.js";
 import type {
   AgentRunnerTurnExecutionInput,
   AgentRunnerTurnExecutionState,
@@ -185,7 +186,9 @@ describe("executeTurns", () => {
     const requestMock = (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request;
     expect(requestMock).toHaveBeenCalledTimes(2);
     const secondCall = requestMock.mock.calls[1];
-    expect(secondCall[1].input[0].text).toContain("Continue the current issue");
+    expect(secondCall[1].input[0].text).toBe(
+      "Continue the current issue, make concrete progress, and stop only when done or blocked. When the issue is complete, end your final message with `RISOLUTO_STATUS: DONE`. If you are blocked and cannot proceed, end your final message with `RISOLUTO_STATUS: BLOCKED`.",
+    );
   });
 
   it("stops immediately when abort signal is already set", async () => {
@@ -236,6 +239,19 @@ describe("executeTurns", () => {
     expect(result.errorMessage).toBe("model refused");
   });
 
+  it("uses default failed message when failed turn has no string error message", async () => {
+    vi.mocked(isActiveState).mockReturnValue(true);
+
+    const input = makeInput();
+    vi.mocked(waitForTurnCompletion).mockResolvedValue(makeCompletedTurnResponse("failed", {}));
+    const state = makeState();
+
+    const result = await executeTurns(input, state);
+
+    expect(result.kind).toBe("failed");
+    expect(result.errorMessage).toBe("turn failed");
+  });
+
   it("returns cancelled outcome for turn status 'interrupted'", async () => {
     vi.mocked(isActiveState).mockReturnValue(true);
 
@@ -250,6 +266,19 @@ describe("executeTurns", () => {
 
     expect(result.kind).toBe("cancelled");
     expect(result.errorCode).toBe("interrupted");
+  });
+
+  it("uses default interrupted message when interrupted turn omits message", async () => {
+    vi.mocked(isActiveState).mockReturnValue(true);
+
+    const input = makeInput();
+    vi.mocked(waitForTurnCompletion).mockResolvedValue(makeCompletedTurnResponse("interrupted", {}));
+    const state = makeState();
+
+    const result = await executeTurns(input, state);
+
+    expect(result.kind).toBe("cancelled");
+    expect(result.errorMessage).toBe("turn interrupted");
   });
 
   it("returns fatal failure outcome when getFatalFailure returns non-null", async () => {
@@ -428,6 +457,19 @@ describe("executeTurns", () => {
     expect(params.summary).toBe("detailed");
   });
 
+  it("sends text input objects to turn/start", async () => {
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const input = makeInput();
+    const state = makeState();
+
+    await executeTurns(input, state);
+
+    const requestMock = (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request;
+    const params = requestMock.mock.calls[0][1];
+    expect(params.input).toEqual([{ type: "text", text: "Please fix the login bug." }]);
+  });
+
   it("includes outputSchema when structuredOutput is true", async () => {
     vi.mocked(isActiveState).mockReturnValueOnce(false);
 
@@ -536,7 +578,8 @@ describe("executeTurns", () => {
 
     const onEvent = input.runInput.onEvent as ReturnType<typeof vi.fn>;
     const eventCall = onEvent.mock.calls[0][0];
-    expect(eventCall.message).toContain("ended with status unknown_status");
+    expect(sanitizeContent).toHaveBeenCalledWith("turn 1 ended with status unknown_status");
+    expect(eventCall.message).toBe("turn 1 ended with status unknown_status");
   });
 
   it("emits turn_completed event with 'completed' message for successful turns", async () => {
@@ -551,7 +594,7 @@ describe("executeTurns", () => {
     expect(onEvent).toHaveBeenCalled();
     const eventCall = onEvent.mock.calls[0][0];
     expect(eventCall.event).toBe("turn_completed");
-    expect(eventCall.message).toContain("completed");
+    expect(eventCall.message).toBe("turn 1 completed");
   });
 
   it("emits non-string error message as JSON in turn_completed event", async () => {
@@ -608,6 +651,28 @@ describe("executeTurns", () => {
 
     // Should be caught and classified as a run error
     expect(result.kind).toBe("failed");
+    expect(result.errorMessage).toBe("Error: turn/start did not return a turn identifier");
+  });
+
+  it("treats missing completed turn status as a failed turn", async () => {
+    vi.mocked(isActiveState).mockReturnValue(true);
+
+    const input = makeInput();
+    vi.mocked(waitForTurnCompletion).mockResolvedValue({
+      turn: {
+        error: {},
+      },
+    });
+    const state = makeState();
+
+    const result = await executeTurns(input, state);
+
+    expect(result.kind).toBe("failed");
+    expect(result.errorMessage).toBe("turn failed");
+
+    const onEvent = input.runInput.onEvent as ReturnType<typeof vi.fn>;
+    const eventCall = onEvent.mock.calls[0][0];
+    expect(eventCall.message).toBe("turn 1 ended with status failed");
   });
 
   it("returns stop when tracker returns no issue", async () => {
@@ -623,6 +688,9 @@ describe("executeTurns", () => {
 
     expect(result.kind).toBe("normal");
     expect(state.turnCount).toBe(1);
+    expect(
+      (input.tracker as unknown as { fetchIssueStatesByIds: ReturnType<typeof vi.fn> }).fetchIssueStatesByIds,
+    ).toHaveBeenCalledWith(["issue-1"]);
   });
 
   it("passes model and effort from modelSelection to turn/start", async () => {
@@ -675,5 +743,179 @@ describe("executeTurns", () => {
     expect(result.kind).toBe("normal");
     // The failed turn was decremented, so effectively: 1 (fail) - 1 (decrement) + 1 (retry) + 1 + 1 = 3
     expect(state.turnCount).toBe(3);
+  });
+
+  it("falls back to sanitized status message when sanitizeContent returns empty string", async () => {
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+    vi.mocked(sanitizeContent).mockReturnValueOnce("");
+
+    const input = makeInput();
+    const state = makeState();
+
+    await executeTurns(input, state);
+
+    const onEvent = input.runInput.onEvent as ReturnType<typeof vi.fn>;
+    const eventCall = onEvent.mock.calls[0][0];
+    expect(eventCall.message).toBe("turn 1 ended with status completed");
+  });
+
+  it("returns abort outcome when the signal aborts after request failure begins", async () => {
+    const input = makeInput();
+    const controller = new AbortController();
+    input.runInput.signal = controller.signal;
+    (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request.mockImplementationOnce(async () => {
+      controller.abort("shutdown");
+      throw new Error("request exploded");
+    });
+    const state = makeState();
+
+    const result = await executeTurns(input, state);
+
+    expect(outcomeForAbort).toHaveBeenCalledWith(controller.signal, "thread-1", null, 1);
+    expect(result.kind).toBe("cancelled");
+    expect(result.errorCode).toBe("shutdown");
+  });
+
+  it("returns fatal failure from catch path before abort or generic classification", async () => {
+    vi.mocked(classifyRunError).mockClear();
+    vi.mocked(failureOutcome).mockReturnValueOnce({
+      kind: "failed",
+      errorCode: "fatal_in_catch",
+      errorMessage: "fatal catch failure",
+      threadId: "thread-1",
+      turnId: null,
+      turnCount: 1,
+    });
+
+    const input = makeInput();
+    (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request.mockRejectedValueOnce(
+      new Error("transport down"),
+    );
+    const state = makeState();
+
+    const result = await executeTurns(input, state);
+
+    expect(result.kind).toBe("failed");
+    expect(result.errorCode).toBe("fatal_in_catch");
+    expect(classifyRunError).not.toHaveBeenCalled();
+  });
+
+  it("includes rate limits from the turn/start result in the completed event", async () => {
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const input = makeInput({
+      requestResult: {
+        turnId: "turn-abc",
+        rateLimits: { remaining: 7 },
+      },
+    });
+    const state = makeState();
+
+    await executeTurns(input, state);
+
+    const onEvent = input.runInput.onEvent as ReturnType<typeof vi.fn>;
+    const eventCall = onEvent.mock.calls[0][0];
+    expect(eventCall.rateLimits).toEqual({ remaining: 7 });
+  });
+
+  it("falls back to turnRecord.tokenUsage when usage is absent", async () => {
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const input = makeInput({
+      requestResult: { turnId: "turn-abc" },
+    });
+    vi.mocked(waitForTurnCompletion).mockResolvedValue({
+      turn: {
+        status: "completed",
+        error: {},
+        tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+      },
+    });
+    const state = makeState();
+
+    await executeTurns(input, state);
+
+    const onEvent = input.runInput.onEvent as ReturnType<typeof vi.fn>;
+    const eventCall = onEvent.mock.calls[0][0];
+    expect(eventCall.usage).toEqual({ inputTokens: 10, outputTokens: 20, totalTokens: 30 });
+  });
+
+  it("falls back to completedTurn usage fields when turnRecord usage fields are absent", async () => {
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const input = makeInput({
+      requestResult: { turnId: "turn-abc" },
+    });
+    vi.mocked(waitForTurnCompletion).mockResolvedValue({
+      usage: { inputTokens: 11, outputTokens: 22, totalTokens: 33 },
+      turn: {
+        status: "completed",
+        error: {},
+      },
+    });
+    const state = makeState();
+
+    await executeTurns(input, state);
+
+    const onEvent = input.runInput.onEvent as ReturnType<typeof vi.fn>;
+    const eventCall = onEvent.mock.calls[0][0];
+    expect(eventCall.usage).toEqual({ inputTokens: 11, outputTokens: 22, totalTokens: 33 });
+  });
+
+  it("falls back to turn/start result usage fields when completed turn has no usage", async () => {
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+
+    const input = makeInput({
+      requestResult: {
+        turnId: "turn-abc",
+        tokenUsage: { inputTokens: 12, outputTokens: 24, totalTokens: 36 },
+      },
+    });
+    vi.mocked(waitForTurnCompletion).mockResolvedValue({
+      turn: {
+        status: "completed",
+        error: {},
+      },
+    });
+    const state = makeState();
+
+    await executeTurns(input, state);
+
+    const onEvent = input.runInput.onEvent as ReturnType<typeof vi.fn>;
+    const eventCall = onEvent.mock.calls[0][0];
+    expect(eventCall.usage).toEqual({ inputTokens: 12, outputTokens: 24, totalTokens: 36 });
+  });
+
+  it("does not attempt compaction when logger is missing", async () => {
+    vi.mocked(isActiveState).mockReturnValue(true);
+    vi.mocked(compactThread).mockClear();
+
+    const input = makeInput();
+    delete (input as unknown as Record<string, unknown>).logger;
+    const state = makeState();
+
+    vi.mocked(waitForTurnCompletion).mockResolvedValue(
+      makeCompletedTurnResponse("failed", { message: "context window exceeded" }),
+    );
+
+    const result = await executeTurns(input, state);
+
+    expect(compactThread).not.toHaveBeenCalled();
+    expect(result.kind).toBe("failed");
+    expect(result.errorCode).toBe("context_window_exceeded");
+  });
+
+  it("classifies thrown errors when the signal is not aborted", async () => {
+    vi.mocked(isActiveState).mockReturnValue(true);
+    vi.mocked(classifyRunError).mockClear();
+
+    const input = makeInput();
+    const state = makeState();
+    vi.mocked(waitForTurnCompletion).mockRejectedValue(new Error("socket reset"));
+
+    const result = await executeTurns(input, state);
+
+    expect(classifyRunError).toHaveBeenCalledWith(expect.any(Error), "thread-1", "turn-abc", 1);
+    expect(result.kind).toBe("failed");
   });
 });
