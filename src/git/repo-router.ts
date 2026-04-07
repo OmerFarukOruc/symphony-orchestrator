@@ -22,7 +22,11 @@ export interface RepoMatch {
 }
 
 function normalize(value: string): string {
-  return value.trim().toLowerCase();
+  return value.trim();
+}
+
+function equalsIgnoreCase(left: string, right: string): boolean {
+  return left.localeCompare(right, undefined, { sensitivity: "accent" }) === 0;
 }
 
 function issuePrefix(identifier: string): string {
@@ -44,17 +48,17 @@ function toMatch(route: RepoRoute, matchedBy: RepoMatch["matchedBy"]): RepoMatch
 }
 
 export function matchIssue(issue: Issue, routes: RepoRoute[]): RepoMatch | null {
-  if (!Array.isArray(routes) || routes.length === 0) {
+  if (!Array.isArray(routes)) {
     return null;
   }
 
-  const labels = new Set(issue.labels.map(normalize));
+  const labels = issue.labels.map(normalize);
   for (const route of routes) {
     const label = route.label?.trim();
     if (!route.repoUrl?.trim() || !label) {
       continue;
     }
-    if (labels.has(normalize(label))) {
+    if (labels.some((issueLabel) => equalsIgnoreCase(issueLabel, label))) {
       return toMatch(route, "label");
     }
   }
@@ -65,7 +69,7 @@ export function matchIssue(issue: Issue, routes: RepoRoute[]): RepoMatch | null 
     if (!route.repoUrl?.trim() || !routePrefix) {
       continue;
     }
-    if (normalize(routePrefix) === prefix) {
+    if (equalsIgnoreCase(routePrefix, prefix)) {
       return toMatch(route, "identifier_prefix");
     }
   }

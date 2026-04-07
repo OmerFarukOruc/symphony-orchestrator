@@ -43,11 +43,14 @@ async function computeDirSize(dirPath: string): Promise<number> {
   try {
     const entries = await readdir(dirPath, { withFileTypes: true });
     for (const entry of entries) {
+      const isDirectory = entry.isDirectory();
+      const isFile = entry.isFile();
+      if (!isDirectory && !isFile) continue;
+
       const fullPath = path.join(dirPath, entry.name);
-      if (entry.isSymbolicLink()) continue;
-      if (entry.isDirectory()) {
+      if (isDirectory) {
         total += await computeDirSize(fullPath);
-      } else if (entry.isFile()) {
+      } else {
         const info = await stat(fullPath);
         total += info.size;
       }
@@ -207,16 +210,16 @@ export async function handleWorkspaceRemove(deps: WorkspaceInventoryDeps, req: R
   const resolvedRoot = path.resolve(workspaceRoot);
   const resolvedPath = path.resolve(wsPath);
 
-  if (!resolvedPath.startsWith(`${resolvedRoot}${path.sep}`) && resolvedPath !== resolvedRoot) {
+  if (!resolvedPath.startsWith(`${resolvedRoot}${path.sep}`)) {
     res.status(400).json({ error: { code: "bad_request", message: "Invalid workspace key" } });
     return;
   }
 
   await withWorkspaceLifecycleLock(workspaceKey, async () => {
     const snapshot = deps.orchestrator.getSnapshot();
-    const isActive =
-      snapshot.running.some((view) => view.workspaceKey === workspaceKey) ||
-      (snapshot.retrying ?? []).some((view) => view.workspaceKey === workspaceKey);
+    const isRetryingActive =
+      Array.isArray(snapshot.retrying) && snapshot.retrying.some((view) => view.workspaceKey === workspaceKey);
+    const isActive = snapshot.running.some((view) => view.workspaceKey === workspaceKey) || isRetryingActive;
 
     if (isActive) {
       res.status(409).json({ error: { code: "conflict", message: "Cannot remove an active workspace" } });

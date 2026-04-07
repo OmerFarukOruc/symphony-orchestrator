@@ -82,8 +82,8 @@ export function sumAttemptDurationSeconds(attempts: Iterable<AttemptRecord>): nu
     if (!attempt.endedAt) continue;
     const startedAt = Date.parse(attempt.startedAt);
     const endedAt = Date.parse(attempt.endedAt);
-    if (Number.isNaN(startedAt) || Number.isNaN(endedAt) || endedAt < startedAt) continue;
-    total += (endedAt - startedAt) / 1000;
+    if (Number.isNaN(startedAt) || Number.isNaN(endedAt)) continue;
+    total += Math.max(0, endedAt - startedAt) / 1000;
   }
   return total;
 }

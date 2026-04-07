@@ -189,23 +189,33 @@ function isSensitiveKey(key: string): boolean {
 }
 
 function isSensitiveBranch(path: string[]): boolean {
-  return path.some((segment) => /(headers?|credentials?|auth|secrets?)/i.test(segment));
+  return path.some((segment) => /(headers?|credentials?|auth)/i.test(segment));
 }
 
-export function sanitizeConfigValue(value: unknown, path: string[] = []): unknown {
+function hasSensitiveKeyInPath(path: string[]): boolean {
+  return path.some(isSensitiveKey);
+}
+
+function sanitizeConfigValueAtPath(value: unknown, path: string[]): unknown {
+  const underSensitivePath = hasSensitiveKeyInPath(path) || isSensitiveBranch(path);
   if (Array.isArray(value)) {
-    return value.map((item, index) => sanitizeConfigValue(item, [...path, String(index)]));
+    return value.map((item, index) => sanitizeConfigValueAtPath(item, [...path, String(index)]));
   }
   if (!isRecord(value)) {
-    return redactSensitiveValue(value);
+    return underSensitivePath ? "[REDACTED]" : redactSensitiveValue(value);
   }
   const sanitized: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
     const nextPath = [...path, key];
-    const underSensitiveBranch = nextPath.some((segment) => isSensitiveKey(segment)) || isSensitiveBranch(nextPath);
-    sanitized[key] = isSensitiveKey(key) || underSensitiveBranch ? "[REDACTED]" : sanitizeConfigValue(child, nextPath);
+    const underSensitiveBranch = hasSensitiveKeyInPath(path) || isSensitiveBranch(nextPath);
+    sanitized[key] =
+      isSensitiveKey(key) || underSensitiveBranch ? "[REDACTED]" : sanitizeConfigValueAtPath(child, nextPath);
   }
   return sanitized;
+}
+
+export function sanitizeConfigValue(value: unknown, path?: string[]): unknown {
+  return sanitizeConfigValueAtPath(value, path ?? new Array<string>());
 }
 
 export function refreshReason(request: Request): string {

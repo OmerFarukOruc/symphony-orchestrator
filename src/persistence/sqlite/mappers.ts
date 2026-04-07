@@ -51,7 +51,7 @@ export function rowToAttemptRecord(row: AttemptRow): AttemptRecord {
     tokenUsage,
     pullRequestUrl: row.pullRequestUrl ?? null,
     stopSignal: (row.stopSignal as AttemptRecord["stopSignal"]) ?? null,
-    summary: row.summary ?? null,
+    summary: row.summary,
   };
 }
 
@@ -81,7 +81,7 @@ export function attemptRecordToRow(record: AttemptRecord): AttemptInsertRow {
     totalTokens: record.tokenUsage?.totalTokens ?? null,
     pullRequestUrl: record.pullRequestUrl ?? null,
     stopSignal: record.stopSignal ?? null,
-    summary: record.summary ?? null,
+    summary: record.summary,
   };
 }
 
@@ -130,10 +130,10 @@ export function toAttemptCheckpointRecord(row: CheckpointRow): AttemptCheckpoint
     attemptId: row.attemptId,
     ordinal: row.ordinal,
     trigger: row.trigger as AttemptCheckpointRecord["trigger"],
-    eventCursor: row.eventCursor ?? null,
+    eventCursor: row.eventCursor,
     status: row.status as AttemptCheckpointRecord["status"],
-    threadId: row.threadId ?? null,
-    turnId: row.turnId ?? null,
+    threadId: row.threadId,
+    turnId: row.turnId,
     turnCount: row.turnCount,
     tokenUsage,
     metadata,
@@ -149,10 +149,10 @@ export function fromAttemptCheckpointRecord(
     attemptId: record.attemptId,
     ordinal: record.ordinal,
     trigger: record.trigger,
-    eventCursor: record.eventCursor ?? null,
+    eventCursor: record.eventCursor,
     status: record.status,
-    threadId: record.threadId ?? null,
-    turnId: record.turnId ?? null,
+    threadId: record.threadId,
+    turnId: record.turnId,
     turnCount: record.turnCount,
     inputTokens: record.tokenUsage?.inputTokens ?? null,
     outputTokens: record.tokenUsage?.outputTokens ?? null,

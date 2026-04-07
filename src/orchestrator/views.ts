@@ -1,21 +1,22 @@
 import type { Issue, RuntimeIssueView, TokenUsageSnapshot } from "../core/types.js";
 
-const HARD_FAILURE_CODES = new Set([
-  "startup_failed",
-  "inactive",
-  "terminal",
-  "shutdown",
-  "cancelled",
-  "auth_token_expired",
-  "unauthorized",
-]);
-
 export function nowIso(): string {
   return new Date().toISOString();
 }
 
 export function isHardFailure(errorCode: string | null): boolean {
-  return HARD_FAILURE_CODES.has(errorCode ?? "");
+  switch (errorCode) {
+    case "startup_failed":
+    case "inactive":
+    case "terminal":
+    case "shutdown":
+    case "cancelled":
+    case "auth_token_expired":
+    case "unauthorized":
+      return true;
+    default:
+      return false;
+  }
 }
 
 export function issueView(issue: Issue, extra?: Partial<RuntimeIssueView>): RuntimeIssueView {

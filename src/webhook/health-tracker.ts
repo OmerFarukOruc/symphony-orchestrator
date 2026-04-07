@@ -221,14 +221,7 @@ export class DefaultWebhookHealthTracker implements WebhookHealthTracker {
   }
 
   private computeEffectiveInterval(): number {
-    switch (this.status) {
-      case "connected":
-        return this.config.pollingStretchMs;
-      case "degraded":
-        return this.config.pollingBaseMs;
-      case "disconnected":
-        return this.config.pollingBaseMs;
-    }
+    return this.status === "connected" ? this.config.pollingStretchMs : this.config.pollingBaseMs;
   }
 
   private buildStats(): WebhookHealthStats {

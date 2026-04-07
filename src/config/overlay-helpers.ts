@@ -1,9 +1,14 @@
 import { isRecord } from "../utils/type-guards.js";
 
-const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
-
 export function isDangerousKey(key: string): boolean {
-  return DANGEROUS_KEYS.has(key);
+  switch (key) {
+    case "__proto__":
+    case "constructor":
+    case "prototype":
+      return true;
+    default:
+      return false;
+  }
 }
 
 export function normalizePathExpression(pathExpression: string): string[] {

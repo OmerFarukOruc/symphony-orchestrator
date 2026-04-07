@@ -80,6 +80,12 @@ export interface WebhookInboxStore {
   getRecent(limit?: number): Promise<WebhookDeliveryRecord[]>;
 }
 
+const MAX_ERROR_LENGTH = 500;
+
+function truncateError(error: string): string {
+  return error.slice(0, Math.min(error.length, MAX_ERROR_LENGTH));
+}
+
 export class SqliteWebhookInbox implements WebhookInboxStore {
   private readonly db: RisolutoDatabase;
   private readonly logger: RisolutoLogger;
@@ -155,7 +161,7 @@ export class SqliteWebhookInbox implements WebhookInboxStore {
         status: "retry",
         attemptCount,
         nextAttemptAt,
-        lastError: error.length > 500 ? error.slice(0, 500) : error,
+        lastError: truncateError(error),
       })
       .where(eq(webhookInbox.deliveryId, deliveryId))
       .run();
@@ -166,7 +172,7 @@ export class SqliteWebhookInbox implements WebhookInboxStore {
       .update(webhookInbox)
       .set({
         status: "dead_letter",
-        lastError: error.length > 500 ? error.slice(0, 500) : error,
+        lastError: truncateError(error),
       })
       .where(eq(webhookInbox.deliveryId, deliveryId))
       .run();

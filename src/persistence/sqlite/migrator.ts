@@ -128,6 +128,6 @@ async function safeReaddir(dir: string): Promise<string[]> {
   try {
     return await readdir(dir);
   } catch {
-    return [];
+    return Array<string>();
   }
 }

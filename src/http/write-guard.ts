@@ -19,7 +19,19 @@ import type { WriteAuditLog } from "./write-audit.js";
  *   did not supply a matching `Authorization: Bearer <token>` header.
  */
 
-const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+function isSafeMethod(method: string): boolean {
+  return method === "GET" || method === "HEAD" || method === "OPTIONS";
+}
+
+function parseBearerToken(authorization: string | undefined): string | undefined {
+  if (authorization === undefined) {
+    return undefined;
+  }
+  if (!authorization.startsWith("Bearer ")) {
+    return undefined;
+  }
+  return authorization.slice("Bearer ".length).trim();
+}
 
 /**
  * Node may surface local clients as any address in 127.0.0.0/8, including
@@ -47,7 +59,7 @@ export function createWriteGuard(
   const auditLog = options?.auditLog;
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (SAFE_METHODS.has(req.method)) {
+    if (isSafeMethod(req.method)) {
       next();
       return;
     }
@@ -63,8 +75,7 @@ export function createWriteGuard(
     const fromLoopback = isLoopbackAddress(remote);
 
     if (writeToken) {
-      const authorization = req.get("authorization") ?? "";
-      const suppliedToken = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+      const suppliedToken = parseBearerToken(req.get("authorization"));
 
       if (suppliedToken !== writeToken) {
         res.status(401).json({

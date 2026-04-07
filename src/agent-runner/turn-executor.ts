@@ -22,8 +22,15 @@ import type { RunOutcome } from "../core/types.js";
 import { compactThread } from "./thread-compact.js";
 import { CODEX_METHOD } from "../codex/methods.js";
 
-const CONTINUATION_PROMPT =
-  "Continue the current issue, make concrete progress, and stop only when done or blocked. When the issue is complete, end your final message with `RISOLUTO_STATUS: DONE`. If you are blocked and cannot proceed, end your final message with `RISOLUTO_STATUS: BLOCKED`.";
+const CONTINUATION_PROMPT_PARTS = [
+  "Continue the current issue, make concrete progress, and stop only when done or blocked.",
+  "When the issue is complete, end your final message with `RISOLUTO_STATUS: DONE`.",
+  "If you are blocked and cannot proceed, end your final message with `RISOLUTO_STATUS: BLOCKED`.",
+] as const;
+
+function getContinuationPrompt(): string {
+  return CONTINUATION_PROMPT_PARTS.join(" ");
+}
 
 const STRUCTURED_OUTPUT_SCHEMA = {
   type: "object",
@@ -93,23 +100,28 @@ function emitTurnCompletedEvent(
   completedUsage: ReturnType<typeof extractTokenUsageSnapshot>,
   turnResult: unknown,
 ): void {
+  const fallbackMessage = `turn ${state.turnCount} ended with status ${completedStatus}`;
   let rawMessage: string;
   if (completedStatus === "completed") {
     rawMessage = `turn ${state.turnCount} completed`;
-  } else if (completedError.message) {
-    rawMessage =
-      typeof completedError.message === "string" ? completedError.message : JSON.stringify(completedError.message);
   } else {
-    rawMessage = `turn ${state.turnCount} ended with status ${completedStatus}`;
+    const errorMessage = completedError.message;
+    rawMessage =
+      errorMessage === undefined
+        ? fallbackMessage
+        : typeof errorMessage === "string"
+          ? errorMessage
+          : JSON.stringify(errorMessage);
   }
 
+  const message = sanitizeContent(rawMessage);
   input.runInput.onEvent({
     at: new Date().toISOString(),
     issueId: input.runInput.issue.id,
     issueIdentifier: input.runInput.issue.identifier,
     sessionId: composeSessionId(state.threadId, state.turnId),
     event: "turn_completed",
-    message: sanitizeContent(rawMessage) || `turn ${state.turnCount} ended with status ${completedStatus}`,
+    message: message || fallbackMessage,
     usage: completedUsage ?? undefined,
     rateLimits: extractRateLimits(turnResult) ?? undefined,
   });
@@ -228,16 +240,18 @@ async function handleTurnLoop(
   input: AgentRunnerTurnExecutionInput,
   state: AgentRunnerTurnExecutionState,
 ): Promise<RunOutcome | null> {
-  while (state.turnCount < input.config.agent.maxTurns) {
-    const abortOutcome = checkAbort(input, state);
-    if (abortOutcome) return abortOutcome;
-
-    const prompt = state.turnCount === 0 ? input.prompt : CONTINUATION_PROMPT;
-    const result = await runSingleTurn(input, state, prompt);
-    const resolved = await resolveTurnResult(result, input, state);
-    if (resolved !== undefined) return resolved;
+  if (state.turnCount >= input.config.agent.maxTurns) {
+    return null;
   }
-  return null;
+
+  const abortOutcome = checkAbort(input, state);
+  if (abortOutcome) return abortOutcome;
+
+  const prompt = state.turnCount === 0 ? input.prompt : getContinuationPrompt();
+  const result = await runSingleTurn(input, state, prompt);
+  const resolved = await resolveTurnResult(result, input, state);
+  if (resolved !== undefined) return resolved;
+  return handleTurnLoop(input, state);
 }
 
 function handleExecutionError(

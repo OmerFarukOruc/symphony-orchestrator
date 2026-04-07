@@ -3,28 +3,62 @@ import type { Request, Response } from "express";
 import type { SecretsPort } from "../secrets/port.js";
 import { isRecord } from "../utils/type-guards.js";
 
-const GITHUB_URL_RE = /^https:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/iu;
-const GITHUB_API_BASE = "https://api.github.com";
-const DEFAULT_FALLBACK = "main";
-
 export interface DetectDefaultBranchDeps {
   secretsStore: SecretsPort;
   fetchImpl?: typeof fetch;
 }
 
-function parseOwnerRepo(url: string): { owner: string; repo: string } | null {
-  const match = GITHUB_URL_RE.exec(url.trim());
-  if (!match) return null;
-  return { owner: match[1], repo: match[2] };
+function getGitHubApiBase(): string {
+  return "https://api.github.com";
 }
 
-function resolveToken(deps: DetectDefaultBranchDeps): string | null {
+function getDefaultFallback(): string {
+  return "main";
+}
+
+function isSupportedGitHubHost(hostname: string): boolean {
+  return hostname === "github.com" || hostname === "www.github.com";
+}
+
+function isGitHubSegment(value: string): boolean {
+  return /^[\w.-]+$/u.test(value);
+}
+
+export function parseOwnerRepo(url: string): { owner: string; repo: string } | null {
+  if (url !== url.trim()) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" || !isSupportedGitHubHost(parsed.hostname) || parsed.search || parsed.hash) {
+      return null;
+    }
+
+    const normalizedPath = parsed.pathname.endsWith("/") ? parsed.pathname.slice(0, -1) : parsed.pathname;
+    const segments = normalizedPath.split("/");
+    if (segments.length !== 3) {
+      return null;
+    }
+
+    const [, owner, rawRepo] = segments;
+    const repo = rawRepo.endsWith(".git") ? rawRepo.slice(0, -4) : rawRepo;
+    if (!isGitHubSegment(owner) || !isGitHubSegment(repo)) {
+      return null;
+    }
+    return { owner, repo };
+  } catch {
+    return null;
+  }
+}
+
+export function resolveToken(deps: DetectDefaultBranchDeps): string | null {
   const fromSecrets = deps.secretsStore.get("GITHUB_TOKEN") ?? null;
   if (fromSecrets) return fromSecrets;
   return process.env.GITHUB_TOKEN ?? null;
 }
 
-async function fetchDefaultBranch(
+export async function fetchDefaultBranch(
   owner: string,
   repo: string,
   token: string | null,
@@ -39,7 +73,7 @@ async function fetchDefaultBranch(
   // Strategy: try authenticated first, then unauthenticated
   if (token) {
     try {
-      const response = await fetchImpl(`${GITHUB_API_BASE}/repos/${owner}/${repo}`, {
+      const response = await fetchImpl(`${getGitHubApiBase()}/repos/${owner}/${repo}`, {
         method: "GET",
         headers: { ...headers, authorization: `Bearer ${token}` },
       });
@@ -55,7 +89,7 @@ async function fetchDefaultBranch(
   }
 
   // Unauthenticated fallback (works for public repos)
-  const response = await fetchImpl(`${GITHUB_API_BASE}/repos/${owner}/${repo}`, {
+  const response = await fetchImpl(`${getGitHubApiBase()}/repos/${owner}/${repo}`, {
     method: "GET",
     headers,
   });
@@ -66,7 +100,7 @@ async function fetchDefaultBranch(
   if (typeof data.default_branch === "string") {
     return data.default_branch;
   }
-  return DEFAULT_FALLBACK;
+  return getDefaultFallback();
 }
 
 export function handleDetectDefaultBranch(deps: DetectDefaultBranchDeps) {
@@ -96,7 +130,7 @@ export function handleDetectDefaultBranch(deps: DetectDefaultBranchDeps) {
       res.json({ defaultBranch });
     } catch {
       // Always return a usable fallback — the branch input is still editable
-      res.json({ defaultBranch: DEFAULT_FALLBACK });
+      res.json({ defaultBranch: getDefaultFallback() });
     }
   };
 }

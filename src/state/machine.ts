@@ -1,5 +1,6 @@
-const DEFAULT_ACTIVE_STATES = ["Backlog", "Todo", "In Progress"];
-const DEFAULT_TERMINAL_STATES = ["Done", "Canceled"];
+import { DEFAULT_ACTIVE_STATES, DEFAULT_TERMINAL_STATES } from "./defaults.js";
+
+export { DEFAULT_ACTIVE_STATES, DEFAULT_TERMINAL_STATES } from "./defaults.js";
 
 interface StateMachineStage {
   key: string;
@@ -74,19 +75,22 @@ function buildExplicitTransitions(
   explicitTransitions: Record<string, string[]>,
 ): Map<string, Set<string>> {
   const transitions = new Map<string, Set<string>>();
-  for (const [from, rawTargets] of Object.entries(explicitTransitions)) {
-    const normalizedFrom = normalizeState(from);
-    if (!known.has(normalizedFrom)) {
-      continue;
-    }
+  const normalizedTransitions = new Map(
+    Object.entries(explicitTransitions).map(([from, rawTargets]) => [normalizeState(from), rawTargets]),
+  );
+
+  for (const normalizedFrom of known) {
     const allowed = new Set<string>();
-    for (const target of rawTargets) {
-      const normalizedTarget = normalizeState(target);
-      if (known.has(normalizedTarget)) {
-        allowed.add(normalizedTarget);
+    allowed.add(normalizedFrom);
+    const rawTargets = normalizedTransitions.get(normalizedFrom);
+    if (rawTargets) {
+      for (const rawTarget of rawTargets) {
+        const normalizedTarget = normalizeState(rawTarget);
+        if (known.has(normalizedTarget)) {
+          allowed.add(normalizedTarget);
+        }
       }
     }
-    allowed.add(normalizedFrom);
     transitions.set(normalizedFrom, allowed);
   }
   return transitions;
@@ -151,14 +155,8 @@ export class StateMachine {
   canTransition(from: string, to: string): boolean {
     const normalizedFrom = normalizeState(from);
     const normalizedTo = normalizeState(to);
-    if (!this.stageSet.has(normalizedFrom) || !this.stageSet.has(normalizedTo)) {
-      return false;
-    }
     const allowed = this.transitionMap.get(normalizedFrom);
-    if (!allowed) {
-      return normalizedFrom === normalizedTo;
-    }
-    return allowed.has(normalizedTo);
+    return allowed?.has(normalizedTo) ?? false;
   }
 
   assertTransition(from: string, to: string): { ok: true } | { ok: false; reason: string } {
@@ -179,8 +177,5 @@ export class StateMachine {
 }
 
 export function createDefaultStateMachine(): StateMachine {
-  return new StateMachine({
-    activeStates: DEFAULT_ACTIVE_STATES,
-    terminalStates: DEFAULT_TERMINAL_STATES,
-  });
+  return new StateMachine();
 }

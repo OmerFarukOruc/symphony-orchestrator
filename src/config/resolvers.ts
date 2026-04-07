@@ -26,9 +26,6 @@ function resolveEnvBackedString(value: unknown, secretResolver?: (name: string) 
   if (secretMatch) {
     return secretResolver?.(secretMatch[1]) ?? "";
   }
-  if (!value.startsWith("$")) {
-    return value;
-  }
   if (!/^\$[A-Za-z_]\w*$/.test(value)) {
     return value;
   }
@@ -39,12 +36,8 @@ function resolveEnvBackedString(value: unknown, secretResolver?: (name: string) 
 
 /**
  * Expand home directory references (~ or ~/) in a path string.
- * Returns empty string for non-string inputs.
  */
-function expandHomePath(value: unknown): string {
-  if (typeof value !== "string") {
-    return "";
-  }
+function expandHomePath(value: string): string {
   if (value === "~") {
     return process.env.HOME ?? value;
   }
@@ -83,8 +76,5 @@ function expandPathEnvVars(value: string): string {
  * env/secret expansion → home path expansion → tmpdir expansion → remaining env expansion.
  */
 export function resolvePathConfigString(value: unknown, secretResolver?: (name: string) => string | undefined): string {
-  if (typeof value !== "string") {
-    return "";
-  }
   return expandPathEnvVars(resolveTmpDir(expandHomePath(resolveEnvBackedString(value, secretResolver))));
 }

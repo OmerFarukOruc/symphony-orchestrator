@@ -86,10 +86,14 @@ function extractAgentOrUserMessage(item: Record<string, unknown>): string | null
   if (!Array.isArray(item.content)) {
     return null;
   }
-  return item.content
-    .map((c) => asString(asRecord(c).text))
-    .filter(Boolean)
-    .join("");
+  const parts: string[] = [];
+  for (const contentItem of item.content) {
+    const part = asString(asRecord(contentItem).text);
+    if (part) {
+      parts.push(part);
+    }
+  }
+  return parts.join("");
 }
 
 function extractReasoningContent(
@@ -143,7 +147,7 @@ function extractDynamicToolCallContent(item: Record<string, unknown>, verb: "sta
       typeof item.arguments === "string"
         ? sanitizeContent(item.arguments)
         : JSON.stringify(redactSensitiveValue(item.arguments ?? {}));
-    return `${name}(${args ?? "{}"})`;
+    return `${name}(${args})`;
   }
   return asString(item.output) ?? (typeof item.result === "string" ? item.result : JSON.stringify(item.result ?? {}));
 }
