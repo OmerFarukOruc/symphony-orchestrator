@@ -40,6 +40,7 @@ function handlePrefixKey(event: KeyboardEvent, router: Router, options: Keyboard
     ",": "/settings",
     t: "/templates",
     a: "/audit",
+    u: "/setup",
   };
   resetPrefix();
   if (nextKey === "r") {

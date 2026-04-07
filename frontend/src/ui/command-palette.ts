@@ -65,6 +65,8 @@ function renderList(): void {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `palette-item transition-base${index === activeIndex ? " is-active" : ""}`;
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", String(index === activeIndex));
     const iconSpan = createIconSlot(item.icon, { slotClassName: "palette-item-icon", size: 18 });
     const copyWrap = document.createElement("span");
     copyWrap.style.display = "grid";
@@ -119,12 +121,19 @@ export function initCommandPalette(): void {
   overlayEl = document.createElement("div");
   overlayEl.className = "palette-overlay fade-in";
   overlayEl.hidden = true;
+  overlayEl.setAttribute("role", "dialog");
+  overlayEl.setAttribute("aria-modal", "true");
+  overlayEl.setAttribute("aria-label", "Command palette");
 
   const panel = document.createElement("div");
   panel.className = "palette-panel";
   inputEl = document.createElement("input");
   inputEl.className = "palette-input";
   inputEl.placeholder = "Jump to route or action";
+  inputEl.setAttribute("role", "combobox");
+  inputEl.setAttribute("aria-expanded", "true");
+  inputEl.setAttribute("aria-controls", "palette-listbox");
+  inputEl.setAttribute("aria-autocomplete", "list");
   inputEl.addEventListener("input", () => {
     activeIndex = 0;
     renderList();
@@ -132,6 +141,9 @@ export function initCommandPalette(): void {
 
   listEl = document.createElement("div");
   listEl.className = "palette-list";
+  listEl.id = "palette-listbox";
+  listEl.setAttribute("role", "listbox");
+  listEl.setAttribute("aria-label", "Command palette results");
   panel.append(inputEl, listEl);
   overlayEl.append(panel);
   overlayEl.addEventListener("click", (event) => {

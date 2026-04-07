@@ -35,6 +35,15 @@ export function lazyPage(importFn: () => Promise<PageModule>): (params?: Record<
       } else {
         container.replaceChildren(rendered);
       }
+      const titleEl = rendered.querySelector<HTMLElement>(".page-title, .issue-title, h1");
+      const title = titleEl?.textContent?.trim();
+      if (title) {
+        globalThis.dispatchEvent(
+          new CustomEvent("router:navigate", {
+            detail: { path: globalThis.location.pathname, title },
+          }),
+        );
+      }
     });
 
     return container;

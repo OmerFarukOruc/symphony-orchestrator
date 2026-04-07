@@ -18,7 +18,7 @@ const SECTIONS: ShortcutSection[] = [
       { keys: "Ctrl/Cmd + K", description: "Open the command palette" },
       { keys: "g then o / q", description: "Jump to Overview or Board" },
       { keys: "g then , / c / s", description: "Jump to Settings, Advanced, or Credentials" },
-      { keys: "g then m / n / g / d / w", description: "Jump to Observe pages" },
+      { keys: "g then m / n / g / d / w / a / u", description: "Jump to Observe, Audit, or Setup pages" },
       { keys: "g then r", description: "Open runs for the current issue context" },
       { keys: "Esc", description: "Close the active overlay or modal" },
     ],
