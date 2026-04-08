@@ -7,7 +7,8 @@ import { AutomationRunner } from "../automation/runner.js";
 import { AutomationScheduler } from "../automation/scheduler.js";
 import { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
-import type { WebhookConfig } from "../core/types.js";
+import { CodexControlPlane } from "../codex/control-plane.js";
+import type { RisolutoLogger, WebhookConfig } from "../core/types.js";
 import { PromptTemplateStore } from "../prompt/store.js";
 import { createTemplateResolver } from "../prompt/resolver.js";
 import { createGitHubToolProvider, createRepoRouterProvider } from "./runtime-providers.js";
@@ -15,7 +16,6 @@ import type { ConfigOverlayPort } from "../config/overlay.js";
 import type { ConfigStore } from "../config/store.js";
 import { createDispatcher } from "../dispatch/factory.js";
 import { HttpServer } from "../http/server.js";
-import type { createLogger } from "../core/logger.js";
 import { NotificationManager } from "../notification/manager.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { initPersistenceRuntime, type PersistenceRuntime } from "../persistence/sqlite/runtime.js";
@@ -64,8 +64,8 @@ interface EventNotificationPhase {
 }
 
 interface TemplateAuditPhase {
-  templateStore: PromptTemplateStore | undefined;
-  auditLogger: AuditLogger | undefined;
+  templateStore: PromptTemplateStore;
+  auditLogger: AuditLogger;
   issueConfigStore: IssueConfigStore;
   resolveTemplate: (identifier: string) => Promise<string>;
 }
@@ -78,7 +78,7 @@ async function createInfrastructure(
   configStore: ConfigStore,
   secretsStore: SecretsStore,
   archiveDir: string,
-  logger: ReturnType<typeof createLogger>,
+  logger: RisolutoLogger,
   options?: { persistence?: PersistenceRuntime },
 ): Promise<InfrastructurePhase> {
   const metrics = createMetricsCollector();
@@ -102,7 +102,7 @@ function createWorkspaceAndDispatch(
   configStore: ConfigStore,
   infra: InfrastructurePhase,
   archiveDir: string,
-  logger: ReturnType<typeof createLogger>,
+  logger: RisolutoLogger,
 ): WorkspaceDispatchPhase {
   const { tracker, trackerToolProvider, gitManager, repoRouter, metrics } = infra;
 
@@ -144,10 +144,7 @@ function createWorkspaceAndDispatch(
 // Phase 3 — Event + Notification
 // ---------------------------------------------------------------------------
 
-function createEventAndNotification(
-  persistence: PersistenceRuntime,
-  logger: ReturnType<typeof createLogger>,
-): EventNotificationPhase {
+function createEventAndNotification(persistence: PersistenceRuntime, logger: RisolutoLogger): EventNotificationPhase {
   const eventBus = new TypedEventBus<RisolutoEventMap>();
   const notificationStore = NotificationStore.create(persistence.db);
   const automationStore = AutomationStore.create(persistence.db);
@@ -161,6 +158,18 @@ function createEventAndNotification(
   return { eventBus, notificationStore, automationStore, alertHistoryStore, notificationManager };
 }
 
+function createCodexControlPlane(
+  configStore: ConfigStore,
+  eventBus: TypedEventBus<RisolutoEventMap>,
+  logger: RisolutoLogger,
+): CodexControlPlane {
+  return new CodexControlPlane(
+    () => configStore.getConfig().codex,
+    logger.child({ component: "codex-control-plane" }),
+    eventBus,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Phase 5 — Template + Audit
 // ---------------------------------------------------------------------------
@@ -169,12 +178,10 @@ function createTemplateAndAudit(
   configStore: ConfigStore,
   persistence: PersistenceRuntime,
   eventBus: TypedEventBus<RisolutoEventMap>,
-  logger: ReturnType<typeof createLogger>,
+  logger: RisolutoLogger,
 ): TemplateAuditPhase {
-  const templateStore = persistence.db
-    ? new PromptTemplateStore(persistence.db, logger.child({ component: "templates" }))
-    : undefined;
-  const auditLogger = persistence.db ? new AuditLogger(persistence.db, eventBus) : undefined;
+  const templateStore = new PromptTemplateStore(persistence.db, logger.child({ component: "templates" }));
+  const auditLogger = new AuditLogger(persistence.db, eventBus);
   const issueConfigStore = IssueConfigStore.create(persistence.db);
 
   const resolveTemplate = createTemplateResolver({
@@ -198,7 +205,7 @@ function createRuntimeServices(
   events: EventNotificationPhase,
   templateAudit: TemplateAuditPhase,
   webhook: ReturnType<typeof initWebhookInfrastructure>,
-  logger: ReturnType<typeof createLogger>,
+  logger: RisolutoLogger,
 ) {
   const { persistence, tracker, repoRouter, gitManager, metrics, observability } = infra;
   const { workspaceManager, agentRunner } = workspace;
@@ -272,11 +279,12 @@ function createHttpLayer(
   secretsStore: SecretsStore,
   infra: InfrastructurePhase,
   events: EventNotificationPhase,
+  codexControlPlane: CodexControlPlane,
   templateAudit: TemplateAuditPhase,
   runtime: ReturnType<typeof createRuntimeServices>,
   webhook: ReturnType<typeof initWebhookInfrastructure>,
   archiveDir: string,
-  logger: ReturnType<typeof createLogger>,
+  logger: RisolutoLogger,
 ) {
   const { persistence, tracker, metrics, observability } = infra;
   const { eventBus, notificationStore, automationStore, alertHistoryStore } = events;
@@ -287,6 +295,7 @@ function createHttpLayer(
     orchestrator,
     logger: logger.child({ component: "http" }),
     tracker,
+    codexControlPlane,
     configStore,
     configOverlayStore: overlayStore,
     secretsStore,
@@ -331,7 +340,7 @@ export async function createServices(
   overlayStore: ConfigOverlayPort,
   secretsStore: SecretsStore,
   archiveDir: string,
-  logger: ReturnType<typeof createLogger>,
+  logger: RisolutoLogger,
   options?: {
     persistence?: PersistenceRuntime;
   },
@@ -358,6 +367,9 @@ export async function createServices(
   // Phase 5 — Template + Audit
   const templateAudit = createTemplateAndAudit(configStore, infra.persistence, events.eventBus, logger);
 
+  // Phase 5.5 — Host-side Codex control plane
+  const codexControlPlane = createCodexControlPlane(configStore, events.eventBus, logger);
+
   // Phase 6 — Runtime services
   const runtime = createRuntimeServices(configStore, infra, workspace, events, templateAudit, webhook, logger);
 
@@ -368,6 +380,7 @@ export async function createServices(
     secretsStore,
     infra,
     events,
+    codexControlPlane,
     templateAudit,
     runtime,
     webhook,
@@ -378,6 +391,7 @@ export async function createServices(
   return {
     orchestrator: runtime.orchestrator,
     httpServer,
+    codexControlPlane,
     notificationManager: events.notificationManager,
     linearClient: infra.linearClient,
     eventBus: events.eventBus,

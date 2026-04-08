@@ -23,10 +23,6 @@ type AnyHandler = (channel: keyof RisolutoEventMap, payload: RisolutoEventMap[ke
  * On connect the client receives `{"type":"connected"}`. Subsequent frames
  * carry `{"type":"<channel>","payload":{...}}` for every bus emission.
  */
-export function createSSEHandler(eventBus: TypedEventBus<RisolutoEventMap>): (req: Request, res: Response) => void {
-  return createSSEHandlerWithObserver(eventBus);
-}
-
 export function createSSEHandlerWithObserver(
   eventBus: TypedEventBus<RisolutoEventMap>,
   observer?: ComponentObserver,

@@ -15,6 +15,10 @@ import {
   buildWebhookUpdateMutation,
   buildWebhookDeleteMutation,
   buildTeamStatesQuery,
+  buildAttachmentsForUrlQuery,
+  buildAttachmentCreateMutation,
+  buildAttachmentUpdateMutation,
+  buildIssueByIdQuery,
 } from "./queries.js";
 import { fetchCandidateIssues, fetchIssueStatesByIds, fetchIssuesByStates } from "./issue-pagination.js";
 import { LinearClientError } from "./errors.js";
@@ -31,6 +35,26 @@ interface ResolvedWorkflowStates {
   stateIds: string[];
   teamId: string | null;
   unresolvedStates: string[];
+}
+
+export interface LinearAttachmentLookup {
+  id: string;
+  title: string | null;
+  subtitle: string | null;
+  url: string;
+  issue: {
+    id: string;
+    identifier: string | null;
+    title: string | null;
+    stateName: string | null;
+  } | null;
+}
+
+export interface LinearIssueLookup {
+  id: string;
+  identifier: string | null;
+  title: string | null;
+  stateName: string | null;
 }
 
 function buildWorkflowStateLookupQuery(includeTeamFilter: boolean): string {
@@ -329,6 +353,89 @@ export class LinearClient {
       throw new LinearClientError("linear_unknown_payload", "linear issue creation was not confirmed");
     }
     return { issueId, identifier, url };
+  }
+
+  async findAttachmentsForUrl(url: string): Promise<LinearAttachmentLookup[]> {
+    const payload = await this.runGraphQL(buildAttachmentsForUrlQuery(), { url });
+    const nodes = asArray(asRecord(asRecord(payload.data).attachmentsForURL).nodes).map((entry) => asRecord(entry));
+    return nodes.map((node) => {
+      const issueRecord = node.issue && typeof node.issue === "object" ? asRecord(node.issue) : null;
+      const stateRecord = issueRecord ? asRecord(issueRecord.state) : null;
+      return {
+        id: asStringOrNull(node.id) ?? "",
+        title: asStringOrNull(node.title),
+        subtitle: asStringOrNull(node.subtitle),
+        url: asStringOrNull(node.url) ?? url,
+        issue: issueRecord
+          ? {
+              id: asStringOrNull(issueRecord.id) ?? "",
+              identifier: asStringOrNull(issueRecord.identifier),
+              title: asStringOrNull(issueRecord.title),
+              stateName: stateRecord ? asStringOrNull(stateRecord.name) : null,
+            }
+          : null,
+      } satisfies LinearAttachmentLookup;
+    });
+  }
+
+  async createAttachment(input: {
+    issueId: string;
+    title: string;
+    subtitle?: string | null;
+    url: string;
+    iconUrl?: string | null;
+  }): Promise<{ attachmentId: string; url: string }> {
+    const payload = await withRetryReturn(this.logger, "createAttachment", async () => {
+      return this.runGraphQL(buildAttachmentCreateMutation(), {
+        issueId: input.issueId,
+        title: input.title,
+        subtitle: input.subtitle ?? null,
+        url: input.url,
+        iconUrl: input.iconUrl ?? null,
+      });
+    });
+    const attachmentCreate = asRecord(asRecord(payload.data).attachmentCreate);
+    const attachment = asRecord(attachmentCreate.attachment);
+    const attachmentId = asStringOrNull(attachment.id);
+    const createdUrl = asStringOrNull(attachment.url) ?? input.url;
+    if (attachmentCreate.success !== true || !attachmentId) {
+      throw new LinearClientError("linear_unknown_payload", "linear attachment creation was not confirmed");
+    }
+    return { attachmentId, url: createdUrl };
+  }
+
+  async updateAttachment(
+    id: string,
+    input: {
+      title?: string | null;
+      subtitle?: string | null;
+      iconUrl?: string | null;
+    },
+  ): Promise<void> {
+    await withRetry(this.logger, "updateAttachment", async () => {
+      await this.runGraphQL(buildAttachmentUpdateMutation(), {
+        id,
+        title: input.title ?? null,
+        subtitle: input.subtitle ?? null,
+        iconUrl: input.iconUrl ?? null,
+      });
+    });
+  }
+
+  async getIssueById(id: string): Promise<LinearIssueLookup | null> {
+    const payload = await this.runGraphQL(buildIssueByIdQuery(), { id });
+    const issue = asRecord(asRecord(payload.data).issue);
+    const issueId = asStringOrNull(issue.id);
+    if (!issueId) {
+      return null;
+    }
+    const state = asRecord(issue.state);
+    return {
+      id: issueId,
+      identifier: asStringOrNull(issue.identifier),
+      title: asStringOrNull(issue.title),
+      stateName: asStringOrNull(state.name),
+    } satisfies LinearIssueLookup;
   }
 
   async runGraphQL(

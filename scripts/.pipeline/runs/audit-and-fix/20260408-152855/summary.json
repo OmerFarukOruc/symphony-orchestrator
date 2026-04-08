@@ -1,0 +1,12 @@
+{
+  "pipeline": "audit-and-fix",
+  "timestamp": "20260408-152855",
+  "budget_usd": 15,
+  "phases_total": 4,
+  "phases_passed": 4,
+  "phases_failed": 0,
+  "phases_skipped": 0,
+  "success": true,
+  "branch": "nightly-validation-cli",
+  "run_dir": "/home/oruc/Desktop/workspace/risoluto/scripts/.pipeline/runs/audit-and-fix/20260408-152855"
+}

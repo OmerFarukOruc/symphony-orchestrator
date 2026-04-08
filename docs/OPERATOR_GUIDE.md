@@ -6,7 +6,7 @@
 
 ## 🎵 What Risoluto Does
 
-Risoluto polls Linear for candidate issues, creates a workspace per issue, launches `codex app-server` inside that workspace, and keeps a local dashboard plus JSON API up to date with live and archived attempt state.
+Risoluto polls Linear for candidate issues, creates a workspace per issue, launches disposable Docker-backed `codex app-server` worker sessions for automated execution, and keeps a local dashboard plus JSON API up to date with live and archived attempt state. In parallel, Risoluto also maintains a separate host-side Codex control-plane connection for operator-only surfaces such as thread history, MCP diagnostics, account state, and interactive prompt handling.
 
 ---
 
@@ -143,13 +143,13 @@ node dist/cli/index.js --data-dir /var/lib/risoluto --port 4000
 
 Risoluto stores all runtime state in a single directory (default: `~/.risoluto`):
 
-| Path inside `--data-dir` | Purpose                                                             |
-| ------------------------ | ------------------------------------------------------------------- |
-| `config/overlay.yaml`    | Persistent operator config (written by setup wizard and config API) |
-| `master.key`             | Encryption key for the secrets store                                |
-| `secrets.enc`            | AES-256-GCM encrypted credentials                                   |
+| Path inside `--data-dir` | Purpose                                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------------------- |
+| `config/overlay.yaml`    | Persistent operator config (written by setup wizard and config API)                          |
+| `master.key`             | Encryption key for the secrets store                                                         |
+| `secrets.enc`            | AES-256-GCM encrypted credentials                                                            |
 | `risoluto.db`            | SQLite database for attempts, issue state, notifications, automation runs, and alert history |
-| `archives/`              | Per-attempt event archives                                          |
+| `archives/`              | Per-attempt event archives                                                                   |
 
 Override the default with `--data-dir`:
 
@@ -226,6 +226,26 @@ alerts:
 - `GET /api/v1/automations/runs`
 - `POST /api/v1/automations/:automation_name/run`
 - `GET /api/v1/alerts/history`
+
+### Codex Admin in Settings
+
+The `/settings` page now includes a `Codex Admin` block backed by the host-side control plane rather than the per-attempt worker path. This surface is for operator/admin workflows only and does not replace the existing Docker-backed issue execution model.
+
+From this block, operators can:
+
+- inspect the richer app-server model catalog exposed through `GET /api/v1/models`
+- review Codex thread history, loaded-thread state, and thread actions such as rename, fork, archive, and unarchive
+- inspect experimental feature flags and collaboration-mode availability
+- inspect MCP server health, launch MCP OAuth login, and reload MCP configuration
+- view host-side Codex account status and rate limits
+- answer pending `tool/requestUserInput` and `item/tool/requestUserInput` prompts from the dashboard
+
+Current boundary rules:
+
+- automated issue runs still use disposable Docker-backed app-server sessions
+- automated approval requests remain auto-accepted
+- automation-only user-input prompts remain non-blocking unless that execution path is explicitly upgraded later
+- host-side admin actions should be treated as operator tooling, not a substitute for the worker sandbox or retry lifecycle
 
 ### Runtime behavior
 
@@ -385,12 +405,12 @@ When Risoluto starts without a master key configured, it enters **setup mode** a
 
 ### Wizard Steps
 
-| Step                   | What it does                                                                                                                                                                                               | Required?      |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| **1. Protect secrets** | Calls `POST /api/v1/setup/master-key` to generate and persist the encryption key that protects stored credentials on disk.                                                                                 | Yes            |
-| **2. Connect Linear**  | Stores `LINEAR_API_KEY` via `POST /api/v1/secrets/:key`, lists projects with `GET /api/v1/setup/linear-projects`, then saves the selected `tracker.project_slug` with `POST /api/v1/setup/linear-project`. | Yes            |
+| Step                   | What it does                                                                                                                                                                                                                                                                                      | Required?      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| **1. Protect secrets** | Calls `POST /api/v1/setup/master-key` to generate and persist the encryption key that protects stored credentials on disk.                                                                                                                                                                        | Yes            |
+| **2. Connect Linear**  | Stores `LINEAR_API_KEY` via `POST /api/v1/secrets/:key`, lists projects with `GET /api/v1/setup/linear-projects`, then saves the selected `tracker.project_slug` with `POST /api/v1/setup/linear-project`.                                                                                        | Yes            |
 | **3. Add OpenAI**      | Offers three explicit modes: direct API key, browser PKCE sign-in, or proxy / compatible provider. The API-key and proxy paths both use `POST /api/v1/setup/openai-key`; browser sign-in uses `POST /api/v1/setup/pkce-auth/start`, and the manual fallback uses `POST /api/v1/setup/codex-auth`. | Yes            |
-| **4. Add GitHub**      | Optionally validates and stores a GitHub PAT with `POST /api/v1/setup/github-token`.                                                                                                                       | No (skippable) |
+| **4. Add GitHub**      | Optionally validates and stores a GitHub PAT with `POST /api/v1/setup/github-token`.                                                                                                                                                                                                              | No (skippable) |
 
 After completing all steps, click **"Go to Dashboard"** to unlock normal navigation.
 
@@ -537,8 +557,8 @@ curl -s -X POST http://127.0.0.1:4000/api/v1/secrets/SLACK_WEBHOOK_URL \
 
 The workflow can now configure:
 
-- `notifications.slack.webhook_url`
-- `notifications.slack.verbosity`
+- `notifications.channels[].webhookUrl` (Slack channel entry)
+- `notifications.channels[].verbosity`
 - `repos[]` routing entries for identifier-prefix or label-based repository selection
 
 Routing precedence is now explicit: Risoluto checks label routes first, then falls back to identifier-prefix routes. Use labels for per-issue overrides and prefixes for the default team-to-repo mapping.
@@ -579,14 +599,14 @@ When `agent.autoRetryOnReviewFeedback` is `true` (default: `false`), Risoluto re
 
 When `agent.autoMerge.enabled` is `true` (default: `false`), Risoluto calls the GitHub GraphQL `enablePullRequestAutoMerge` mutation after a PR is created and all merge-policy checks pass. The policy engine evaluates:
 
-| Config key                          | Default | Description                                                         |
-| ----------------------------------- | ------- | ------------------------------------------------------------------- |
-| `agent.autoMerge.enabled`           | `false` | Enable auto-merge for agent-authored PRs                            |
-| `agent.autoMerge.allowedPaths`      | `[]`    | Glob patterns — PR must only change files matching these patterns   |
-| `agent.autoMerge.maxChangedFiles`   | `null`  | Reject if PR changes more than this many files (null = no limit)    |
-| `agent.autoMerge.maxDiffLines`      | `null`  | Reject if PR diff exceeds this many lines (null = no limit)         |
-| `agent.autoMerge.requireLabels`     | `[]`    | PR must have all of these labels                                    |
-| `agent.autoMerge.excludeLabels`     | `[]`    | PR must not have any of these labels                                |
+| Config key                        | Default | Description                                                       |
+| --------------------------------- | ------- | ----------------------------------------------------------------- |
+| `agent.autoMerge.enabled`         | `false` | Enable auto-merge for agent-authored PRs                          |
+| `agent.autoMerge.allowedPaths`    | `[]`    | Glob patterns — PR must only change files matching these patterns |
+| `agent.autoMerge.maxChangedFiles` | `null`  | Reject if PR changes more than this many files (null = no limit)  |
+| `agent.autoMerge.maxDiffLines`    | `null`  | Reject if PR diff exceeds this many lines (null = no limit)       |
+| `agent.autoMerge.requireLabels`   | `[]`    | PR must have all of these labels                                  |
+| `agent.autoMerge.excludeLabels`   | `[]`    | PR must not have any of these labels                              |
 
 > [!WARNING]
 > Enabling auto-merge requires a GitHub token with `pull_requests: write` scope and the repository must have auto-merge enabled in GitHub settings.
@@ -600,18 +620,19 @@ The `PrMonitorService` runs a background polling loop that checks every tracked 
 3. On merge, an `attempt_finished` (`pr_merged`) checkpoint is appended to the latest attempt's checkpoint history.
 4. The orchestrator is asked to refresh so in-memory state is reconciled.
 
-| Config key                  | Default  | Description                                      |
-| --------------------------- | -------- | ------------------------------------------------ |
-| `agent.prMonitorIntervalMs` | `60000`  | How often (ms) to poll open PRs against GitHub   |
+| Config key                  | Default | Description                                    |
+| --------------------------- | ------- | ---------------------------------------------- |
+| `agent.prMonitorIntervalMs` | `60000` | How often (ms) to poll open PRs against GitHub |
 
 ### New API Endpoints
 
-| Method | Endpoint                                     | Description                                           |
-| ------ | -------------------------------------------- | ----------------------------------------------------- |
-| `GET`  | `/api/v1/prs`                                | PR status overview — all tracked PRs with status, URL, branch, merge info |
-| `GET`  | `/api/v1/attempts/:attempt_id/checkpoints`   | Ordered checkpoint history for a specific attempt     |
+| Method | Endpoint                                   | Description                                                               |
+| ------ | ------------------------------------------ | ------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/prs`                              | PR status overview — all tracked PRs with status, URL, branch, merge info |
+| `GET`  | `/api/v1/attempts/:attempt_id/checkpoints` | Ordered checkpoint history for a specific attempt                         |
 
 **`GET /api/v1/prs` response shape:**
+
 ```json
 {
   "prs": [
@@ -632,6 +653,7 @@ The `PrMonitorService` runs a background polling loop that checks every tracked 
 ```
 
 **`GET /api/v1/attempts/:attempt_id/checkpoints` response shape:**
+
 ```json
 {
   "checkpoints": [
@@ -655,12 +677,12 @@ The `PrMonitorService` runs a background polling loop that checks every tracked 
 
 ### Troubleshooting
 
-| Problem                                        | Cause / Fix                                                                                             |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Auto-merge not triggering                      | Token needs `pull_requests: write` scope; repository must have auto-merge enabled in GitHub settings    |
-| Review feedback not ingested                   | `agent.autoRetryOnReviewFeedback` must be `true`; token needs `pull_requests: read`                     |
-| PR monitor not detecting merges                | Check GitHub token validity; verify `prMonitorIntervalMs` config; check logs for `pr monitor` component |
-| `/api/v1/prs` returns 503                      | SQLite attempt store not configured — only available when running with the SQLite persistence backend    |
+| Problem                         | Cause / Fix                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Auto-merge not triggering       | Token needs `pull_requests: write` scope; repository must have auto-merge enabled in GitHub settings    |
+| Review feedback not ingested    | `agent.autoRetryOnReviewFeedback` must be `true`; token needs `pull_requests: read`                     |
+| PR monitor not detecting merges | Check GitHub token validity; verify `prMonitorIntervalMs` config; check logs for `pr monitor` component |
+| `/api/v1/prs` returns 503       | SQLite attempt store not configured — only available when running with the SQLite persistence backend   |
 
 ---
 
@@ -1132,7 +1154,6 @@ All `/api/*` and `/metrics` endpoints are rate-limited to **300 requests per 60 
 | `RISOLUTO_ALLOWED_GITHUB_API_HOSTS`    | —            | Extra HTTPS GitHub API hosts allowed beyond `github.com` / `*.github.com`         |
 | `RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS` | —            | Extra HTTPS Slack webhook hosts allowed beyond Slack-owned domains                |
 | `RISOLUTO_LOG_FORMAT`                  | —            | Logger output format (`logfmt` or JSON when unset)                                |
-| `RISOLUTO_PERSISTENCE`                 | `sqlite`     | Persistence backend                                                               |
 | `RISOLUTO_HOST_WORKSPACE_ROOT`         | —            | Host-side workspace root for Docker volume mapping                                |
 | `RISOLUTO_HOST_ARCHIVE_DIR`            | —            | Host-side archive directory for Docker volume mapping                             |
 | `RISOLUTO_CONTAINER_WORKSPACE_ROOT`    | —            | Container-side workspace path                                                     |
@@ -1263,74 +1284,107 @@ When `stages` is empty, Risoluto derives stages from the tracker's workflow conf
 | `token`      | string | —                          | GitHub Personal Access Token                                                                                                         |
 | `apiBaseUrl` | string | `"https://api.github.com"` | Custom GitHub API endpoint (for GitHub Enterprise). Custom domains must also be allowlisted via `RISOLUTO_ALLOWED_GITHUB_API_HOSTS`. |
 
-### `notifications.slack`
+### `notifications.channels[]` — Slack entry
+
+The preferred format is `notifications.channels[]`. The legacy `notifications.slack` shape is still accepted in YAML and is promoted to `channels[]` at parse time.
 
 | Key          | Type   | Default      | Description                                                                                                     |
 | ------------ | ------ | ------------ | --------------------------------------------------------------------------------------------------------------- |
+| `type`       | string | —            | Must be `"slack"`                                                                                               |
+| `name`       | string | `"slack"`    | Display name for the channel                                                                                    |
 | `webhookUrl` | string | —            | Slack incoming webhook URL. Custom domains must also be allowlisted via `RISOLUTO_ALLOWED_SLACK_WEBHOOK_HOSTS`. |
 | `verbosity`  | enum   | `"critical"` | `off`, `critical`, or `verbose`                                                                                 |
+| `enabled`    | bool   | `true`       | Set to `false` to silence without removing the entry                                                            |
 
 ---
 
 ## 📡 JSON API Reference
 
-| Method   | Endpoint                               | Description                                                                           |
-| -------- | -------------------------------------- | ------------------------------------------------------------------------------------- |
-| `GET`    | `/metrics`                             | Prometheus-format service metrics                                                     |
-| `GET`    | `/api/v1/runtime`                      | Runtime metadata such as version, workflow path, data directory, and provider summary |
-| `GET`    | `/api/v1/state`                        | Snapshot — queued, running, retrying, completed, workflow columns, and token totals   |
-| `POST`   | `/api/v1/refresh`                      | Trigger immediate reconciliation pass                                                 |
-| `GET`    | `/api/v1/transitions`                  | List available workflow transitions per issue                                         |
-| `GET`    | `/api/v1/:issue_identifier`            | Issue detail, recent events, and archived attempts                                    |
-| `GET`    | `/api/v1/:issue_identifier/attempts`   | Archived attempts plus current live attempt id                                        |
-| `GET`    | `/api/v1/attempts/:attempt_id`         | Archived per-attempt event timeline                                                   |
-| `GET`    | `/api/v1/attempts/:attempt_id/checkpoints` | Ordered checkpoint history for a specific attempt                                 |
-| `GET`    | `/api/v1/prs`                          | PR status overview — all tracked PRs with status, URL, branch, and merge info         |
-| `POST`   | `/api/v1/:issue_identifier/model`      | Save per-issue model override                                                         |
-| `POST`   | `/api/v1/:issue_identifier/transition` | Transition an issue to another workflow state                                         |
-| `GET`    | `/api/v1/config`                       | Effective merged operator config                                                      |
-| `GET`    | `/api/v1/config/schema`                | Config API schema and example overlay payloads                                        |
-| `GET`    | `/api/v1/config/overlay`               | Persistent overlay values only                                                        |
-| `PUT`    | `/api/v1/config/overlay`               | Apply an overlay patch                                                                |
-| `PATCH`  | `/api/v1/config/overlay/:path`         | Set one overlay path to a specific value                                              |
-| `DELETE` | `/api/v1/config/overlay/:path`         | Remove one overlay path                                                               |
-| `GET`    | `/api/v1/secrets`                      | List configured secret keys                                                           |
-| `POST`   | `/api/v1/secrets/:key`                 | Store one secret                                                                      |
-| `DELETE` | `/api/v1/secrets/:key`                 | Delete one secret                                                                     |
-| `GET`    | `/api/v1/setup/status`                 | Setup wizard completion status for each step                                          |
-| `POST`   | `/api/v1/setup/master-key`             | Set or regenerate the encryption master key                                           |
-| `GET`    | `/api/v1/setup/linear-projects`        | List Linear projects using the configured `LINEAR_API_KEY`                            |
-| `POST`   | `/api/v1/setup/linear-project`         | Save the selected Linear project slug into `tracker.project_slug`                     |
-| `POST`   | `/api/v1/setup/openai-key`             | Validate and store an OpenAI API key                                                  |
-| `POST`   | `/api/v1/setup/codex-auth`             | Upload `auth.json` for Codex Login mode                                               |
-| `POST`   | `/api/v1/setup/pkce-auth/start`        | Start the browser-based PKCE login flow and return the auth URL                       |
-| `GET`    | `/api/v1/setup/pkce-auth/status`       | Poll PKCE authorization status; exchanges code for tokens when the callback arrives   |
-| `POST`   | `/api/v1/setup/pkce-auth/cancel`       | Cancel an active PKCE login flow                                                      |
-| `POST`   | `/api/v1/setup/github-token`           | Validate and store a GitHub PAT                                                       |
-| `POST`   | `/api/v1/setup/create-test-issue`      | Create a smoke test issue in the configured tracker                                   |
-| `POST`   | `/api/v1/setup/create-label`           | Create a workflow label in the tracker                                                |
-| `POST`   | `/api/v1/setup/create-project`         | Create a new tracker project                                                          |
-| `GET`    | `/api/v1/setup/repo-routes`            | List configured repository routing rules                                              |
-| `POST`   | `/api/v1/setup/repo-route`             | Add a repository routing rule                                                         |
-| `DELETE` | `/api/v1/setup/repo-route/:index`      | Remove a repository routing rule by index                                             |
-| `POST`   | `/api/v1/setup/detect-default-branch`  | Detect the default branch of a configured repository                                  |
-| `POST`   | `/api/v1/setup/reset`                  | Clear stored secrets plus auth-mode overlay values and restart setup                  |
-| `GET`    | `/api/v1/events`                       | SSE stream of real-time orchestrator events                                           |
-| `GET`    | `/api/v1/models`                       | List available Codex models from the provider                                         |
-| `POST`   | `/api/v1/:issue_identifier/abort`      | Abort a running issue                                                                 |
-| `POST`   | `/api/v1/:issue_identifier/steer`      | Inject a steering message into a running agent session                                |
-| `GET`    | `/api/v1/git/context`                  | Git repository context and configured repo routes                                     |
-| `GET`    | `/api/v1/workspaces`                   | Workspace inventory with disk usage and lifecycle info                                |
-| `DELETE` | `/api/v1/workspaces/:workspace_key`    | Remove a workspace directory                                                          |
-| `GET`    | `/api/v1/templates`                    | List prompt templates                                                                 |
-| `POST`   | `/api/v1/templates`                    | Create a prompt template                                                              |
-| `GET`    | `/api/v1/templates/:id`                | Get a prompt template by ID                                                           |
-| `PUT`    | `/api/v1/templates/:id`                | Update a prompt template                                                              |
-| `DELETE` | `/api/v1/templates/:id`                | Delete a prompt template                                                              |
-| `POST`   | `/api/v1/templates/:id/preview`        | Preview a rendered template with sample data                                          |
-| `GET`    | `/api/v1/audit`                        | Query audit log entries with optional filters                                         |
-| `GET`    | `/api/v1/openapi.json`                 | OpenAPI 3.1 specification                                                             |
-| `GET`    | `/api/docs`                            | Swagger UI for interactive API exploration                                            |
+| Method   | Endpoint                                   | Description                                                                           |
+| -------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `GET`    | `/metrics`                                 | Prometheus-format service metrics                                                     |
+| `GET`    | `/api/v1/runtime`                          | Runtime metadata such as version, workflow path, data directory, and provider summary |
+| `GET`    | `/api/v1/state`                            | Snapshot — queued, running, retrying, completed, workflow columns, and token totals   |
+| `POST`   | `/api/v1/refresh`                          | Trigger immediate reconciliation pass                                                 |
+| `GET`    | `/api/v1/transitions`                      | List available workflow transitions per issue                                         |
+| `GET`    | `/api/v1/:issue_identifier`                | Issue detail, recent events, and archived attempts                                    |
+| `GET`    | `/api/v1/:issue_identifier/attempts`       | Archived attempts plus current live attempt id                                        |
+| `GET`    | `/api/v1/attempts/:attempt_id`             | Archived per-attempt event timeline                                                   |
+| `GET`    | `/api/v1/attempts/:attempt_id/checkpoints` | Ordered checkpoint history for a specific attempt                                     |
+| `GET`    | `/api/v1/prs`                              | PR status overview — all tracked PRs with status, URL, branch, and merge info         |
+| `POST`   | `/api/v1/:issue_identifier/model`          | Save per-issue model override                                                         |
+| `POST`   | `/api/v1/:issue_identifier/transition`     | Transition an issue to another workflow state                                         |
+| `GET`    | `/api/v1/config`                           | Effective merged operator config                                                      |
+| `GET`    | `/api/v1/config/schema`                    | Config API schema and example overlay payloads                                        |
+| `GET`    | `/api/v1/config/overlay`                   | Persistent overlay values only                                                        |
+| `PUT`    | `/api/v1/config/overlay`                   | Apply an overlay patch                                                                |
+| `PATCH`  | `/api/v1/config/overlay/:path`             | Set one overlay path to a specific value                                              |
+| `DELETE` | `/api/v1/config/overlay/:path`             | Remove one overlay path                                                               |
+| `GET`    | `/api/v1/secrets`                          | List configured secret keys                                                           |
+| `POST`   | `/api/v1/secrets/:key`                     | Store one secret                                                                      |
+| `DELETE` | `/api/v1/secrets/:key`                     | Delete one secret                                                                     |
+| `GET`    | `/api/v1/setup/status`                     | Setup wizard completion status for each step                                          |
+| `POST`   | `/api/v1/setup/master-key`                 | Set or regenerate the encryption master key                                           |
+| `GET`    | `/api/v1/setup/linear-projects`            | List Linear projects using the configured `LINEAR_API_KEY`                            |
+| `POST`   | `/api/v1/setup/linear-project`             | Save the selected Linear project slug into `tracker.project_slug`                     |
+| `POST`   | `/api/v1/setup/openai-key`                 | Validate and store an OpenAI API key                                                  |
+| `POST`   | `/api/v1/setup/codex-auth`                 | Upload `auth.json` for Codex Login mode                                               |
+| `POST`   | `/api/v1/setup/pkce-auth/start`            | Start the browser-based PKCE login flow and return the auth URL                       |
+| `GET`    | `/api/v1/setup/pkce-auth/status`           | Poll PKCE authorization status; exchanges code for tokens when the callback arrives   |
+| `POST`   | `/api/v1/setup/pkce-auth/cancel`           | Cancel an active PKCE login flow                                                      |
+| `POST`   | `/api/v1/setup/github-token`               | Validate and store a GitHub PAT                                                       |
+| `POST`   | `/api/v1/setup/create-test-issue`          | Create a smoke test issue in the configured tracker                                   |
+| `POST`   | `/api/v1/setup/create-label`               | Create a workflow label in the tracker                                                |
+| `POST`   | `/api/v1/setup/create-project`             | Create a new tracker project                                                          |
+| `GET`    | `/api/v1/setup/repo-routes`                | List configured repository routing rules                                              |
+| `POST`   | `/api/v1/setup/repo-route`                 | Add a repository routing rule                                                         |
+| `DELETE` | `/api/v1/setup/repo-route/:index`          | Remove a repository routing rule by index                                             |
+| `POST`   | `/api/v1/setup/detect-default-branch`      | Detect the default branch of a configured repository                                  |
+| `POST`   | `/api/v1/setup/reset`                      | Clear stored secrets plus auth-mode overlay values and restart setup                  |
+| `GET`    | `/api/v1/events`                           | SSE stream of real-time orchestrator events                                           |
+| `GET`    | `/api/v1/models`                           | List available Codex models; returns richer app-server picker metadata when available |
+| `POST`   | `/api/v1/:issue_identifier/abort`          | Abort a running issue                                                                 |
+| `POST`   | `/api/v1/:issue_identifier/steer`          | Inject a steering message into a running agent session                                |
+| `GET`    | `/api/v1/git/context`                      | Git repository context and configured repo routes                                     |
+| `GET`    | `/api/v1/workspaces`                       | Workspace inventory with disk usage and lifecycle info                                |
+| `DELETE` | `/api/v1/workspaces/:workspace_key`        | Remove a workspace directory                                                          |
+| `GET`    | `/api/v1/templates`                        | List prompt templates                                                                 |
+| `POST`   | `/api/v1/templates`                        | Create a prompt template                                                              |
+| `GET`    | `/api/v1/templates/:id`                    | Get a prompt template by ID                                                           |
+| `PUT`    | `/api/v1/templates/:id`                    | Update a prompt template                                                              |
+| `DELETE` | `/api/v1/templates/:id`                    | Delete a prompt template                                                              |
+| `POST`   | `/api/v1/templates/:id/preview`            | Preview a rendered template with sample data                                          |
+| `GET`    | `/api/v1/audit`                            | Query audit log entries with optional filters                                         |
+| `GET`    | `/api/v1/openapi.json`                     | OpenAPI 3.1 specification                                                             |
+| `GET`    | `/api/docs`                                | Swagger UI for interactive API exploration                                            |
+
+### Codex Admin API
+
+These routes are backed by the long-lived host-side Codex control-plane session. They power `/settings` and intentionally stay separate from the disposable Docker-backed worker sessions used for issue execution.
+
+| Method | Endpoint                                               | Description                                                   |
+| ------ | ------------------------------------------------------ | ------------------------------------------------------------- |
+| `GET`  | `/api/v1/codex/capabilities`                           | List detected app-server methods and notification support     |
+| `GET`  | `/api/v1/codex/features`                               | List experimental app-server features with lifecycle metadata |
+| `GET`  | `/api/v1/codex/collaboration-modes`                    | List available collaboration presets                          |
+| `GET`  | `/api/v1/codex/mcp`                                    | List MCP servers, auth state, tools, and resources            |
+| `POST` | `/api/v1/codex/mcp/oauth/login`                        | Start MCP OAuth login for one configured server               |
+| `POST` | `/api/v1/codex/mcp/reload`                             | Reload MCP server config from disk                            |
+| `GET`  | `/api/v1/codex/threads`                                | Paginated thread history with provider/source/archive filters |
+| `GET`  | `/api/v1/codex/threads/loaded`                         | List thread ids currently loaded in the host control plane    |
+| `GET`  | `/api/v1/codex/threads/:threadId`                      | Read one stored thread without resuming it                    |
+| `POST` | `/api/v1/codex/threads/:threadId/fork`                 | Fork a stored thread                                          |
+| `POST` | `/api/v1/codex/threads/:threadId/name`                 | Rename a thread                                               |
+| `POST` | `/api/v1/codex/threads/:threadId/archive`              | Archive a thread rollout                                      |
+| `POST` | `/api/v1/codex/threads/:threadId/unarchive`            | Restore an archived thread rollout                            |
+| `POST` | `/api/v1/codex/threads/:threadId/unsubscribe`          | Unsubscribe the host connection from a loaded thread          |
+| `GET`  | `/api/v1/codex/account`                                | Read host-side Codex auth state                               |
+| `GET`  | `/api/v1/codex/account/rate-limits`                    | Read ChatGPT/Codex quota visibility                           |
+| `POST` | `/api/v1/codex/account/login/start`                    | Start API-key or browser-based Codex login                    |
+| `POST` | `/api/v1/codex/account/login/cancel`                   | Cancel a pending browser login                                |
+| `POST` | `/api/v1/codex/account/logout`                         | Clear host-side Codex auth state                              |
+| `GET`  | `/api/v1/codex/requests/user-input`                    | List pending interactive app-server prompts                   |
+| `POST` | `/api/v1/codex/requests/user-input/:requestId/respond` | Submit an operator response for a pending prompt              |
 
 ---
 

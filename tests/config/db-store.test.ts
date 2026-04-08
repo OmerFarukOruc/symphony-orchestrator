@@ -1,9 +1,10 @@
 import { describe, expect, it, beforeEach } from "vitest";
+import { eq } from "drizzle-orm";
 
 import { openDatabase, closeDatabase, type RisolutoDatabase } from "../../src/persistence/sqlite/database.js";
-import { promptTemplates } from "../../src/persistence/sqlite/schema.js";
+import { config, promptTemplates } from "../../src/persistence/sqlite/schema.js";
 import { DbConfigStore } from "../../src/config/db-store.js";
-import { seedDefaults } from "../../src/config/legacy-import.js";
+import { seedDefaults } from "../../src/persistence/sqlite/runtime.js";
 import { createLogger } from "../../src/core/logger.js";
 
 let db: RisolutoDatabase;
@@ -49,6 +50,10 @@ describe("DbConfigStore — ConfigOverlayPort", () => {
     expect(resources.memory).toBe("8g");
   });
 
+  it("set() rejects an empty path expression", async () => {
+    await expect(store.set("", "value")).rejects.toThrow("overlay path must contain at least one segment");
+  });
+
   it("delete() removes a dot-path value", async () => {
     await store.set("tracker.project_slug", "TEMP");
     const deleted = await store.delete("tracker.project_slug");
@@ -83,6 +88,17 @@ describe("DbConfigStore — ConfigOverlayPort", () => {
     expect(changed).toBe(false);
   });
 
+  it("applyPatch() persists brand-new top-level sections", async () => {
+    const changed = await store.applyPatch({
+      diagnostics: { enabled: true },
+    });
+
+    expect(changed).toBe(true);
+    expect(store.toMap()).toMatchObject({
+      diagnostics: { enabled: true },
+    });
+  });
+
   it("subscribe() notifies on mutations", async () => {
     let notified = false;
     store.subscribe(() => {
@@ -109,6 +125,13 @@ describe("DbConfigStore — ConfigOverlayPort", () => {
 });
 
 describe("DbConfigStore — ConfigStore surface", () => {
+  it("throws when read before refresh", () => {
+    const freshStore = new DbConfigStore(db, createLogger());
+
+    expect(() => freshStore.getWorkflow()).toThrow("DbConfigStore not started");
+    expect(() => freshStore.getConfig()).toThrow("DbConfigStore not started");
+  });
+
   it("getWorkflow() returns WorkflowDefinition with prompt template", () => {
     const workflow = store.getWorkflow();
     expect(workflow.config).toBeDefined();
@@ -154,6 +177,50 @@ describe("DbConfigStore — ConfigStore surface", () => {
     const workflow = store.getWorkflow();
     expect(workflow.promptTemplate).toContain("Custom prompt");
   });
+
+  it("falls back to the first stored template when the selected template is missing", () => {
+    db.delete(promptTemplates).run();
+    db.insert(promptTemplates)
+      .values({
+        id: "fallback",
+        name: "Fallback",
+        body: "Fallback prompt body",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      .run();
+
+    store.refresh();
+
+    expect(store.getWorkflow().promptTemplate).toBe("Fallback prompt body");
+  });
+
+  it("falls back to the hardcoded default template when the prompt table is empty", async () => {
+    db.delete(promptTemplates).run();
+    await store.set("system.selectedTemplateId", "missing-template");
+
+    expect(store.getWorkflow().promptTemplate).toContain("RISOLUTO_STATUS");
+  });
+
+  it("treats invalid config JSON as an empty section during refresh", () => {
+    const trackerRow = db
+      .select()
+      .from(config)
+      .all()
+      .find((row) => row.key === "tracker");
+
+    db.update(config)
+      .set({
+        value: "{not-valid-json",
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(config.key, trackerRow?.key ?? "tracker"))
+      .run();
+
+    store.refresh();
+
+    expect(store.toMap().tracker).toEqual({});
+  });
 });
 
 describe("DbConfigStore — persistence", () => {
@@ -171,5 +238,22 @@ describe("DbConfigStore — persistence", () => {
     await store.set("__proto__.polluted", true);
     const map = store.toMap();
     expect(map).not.toHaveProperty("__proto__");
+  });
+
+  it("removes top-level sections from the database when deleted", async () => {
+    await store.applyPatch({
+      diagnostics: { enabled: true },
+    });
+
+    const deleted = await store.delete("diagnostics");
+
+    expect(deleted).toBe(true);
+    expect(store.toMap()).not.toHaveProperty("diagnostics");
+    const diagnosticsRow = db
+      .select()
+      .from(config)
+      .all()
+      .find((row) => row.key === "diagnostics");
+    expect(diagnosticsRow).toBeUndefined();
   });
 });

@@ -6,7 +6,7 @@ import { ConfigStore } from "../../src/config/store.js";
 import type { TrackerPort } from "../../src/tracker/port.js";
 import { WorkspaceManager } from "../../src/workspace/manager.js";
 import { AgentRunner } from "../../src/agent-runner/index.js";
-import { AttemptStore } from "../../src/core/attempt-store.js";
+import type { AttemptStorePort } from "../../src/core/attempt-store-port.js";
 import type { IssueConfigStore } from "../../src/persistence/sqlite/issue-config-store.js";
 
 export function createIssue(state = "In Progress"): Issue {
@@ -103,8 +103,9 @@ export function createResolveTemplate(): (identifier: string) => Promise<string>
   return async (_identifier: string) => "Prompt";
 }
 
-export function createAttemptStore(): AttemptStore {
+export function createAttemptStore(): AttemptStorePort {
   return {
+    start: vi.fn(async () => undefined),
     createAttempt: vi.fn(async () => undefined),
     updateAttempt: vi.fn(async () => undefined),
     appendEvent: vi.fn(async () => undefined),
@@ -115,7 +116,13 @@ export function createAttemptStore(): AttemptStore {
     sumArchivedSeconds: vi.fn(() => 0),
     sumCostUsd: vi.fn(() => 0),
     sumArchivedTokens: vi.fn(() => ({ inputTokens: 0, outputTokens: 0, totalTokens: 0 })),
-  } as unknown as AttemptStore;
+    upsertPr: vi.fn(async () => undefined),
+    getOpenPrs: vi.fn(async () => []),
+    getAllPrs: vi.fn(async () => []),
+    updatePrStatus: vi.fn(async () => undefined),
+    appendCheckpoint: vi.fn(async () => undefined),
+    listCheckpoints: vi.fn(async () => []),
+  } as unknown as AttemptStorePort;
 }
 
 export function createIssueConfigStore(): IssueConfigStore {
@@ -128,4 +135,4 @@ export function createIssueConfigStore(): IssueConfigStore {
 }
 
 export { createLogger };
-export type { AgentRunner, TrackerPort, WorkspaceManager, Issue, RunOutcome, ServiceConfig };
+export type { AgentRunner, AttemptStorePort, TrackerPort, WorkspaceManager, Issue, RunOutcome, ServiceConfig };

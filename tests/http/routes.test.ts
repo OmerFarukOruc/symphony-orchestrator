@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
+import { beforeEach, describe, expect, it, vi, beforeAll, afterAll } from "vitest";
 import express from "express";
 import http from "node:http";
 import { join } from "node:path";
@@ -133,6 +133,7 @@ async function loadRoutesModuleWithMocks() {
   const createMetricsCollectorSpy = vi.fn(() => ({ record: vi.fn() }));
   const validateHttpDepsSpy = vi.fn();
   const registerSystemRoutesSpy = vi.fn();
+  const registerCodexRoutesSpy = vi.fn();
   const registerExtensionRoutesSpy = vi.fn();
   const registerGitRoutesSpy = vi.fn();
   const registerWorkspaceRoutesSpy = vi.fn();
@@ -157,6 +158,9 @@ async function loadRoutesModuleWithMocks() {
   }));
   vi.doMock("../../src/http/routes/system.js", () => ({
     registerSystemRoutes: registerSystemRoutesSpy,
+  }));
+  vi.doMock("../../src/http/routes/codex.js", () => ({
+    registerCodexRoutes: registerCodexRoutesSpy,
   }));
   vi.doMock("../../src/http/routes/extensions.js", () => ({
     registerExtensionRoutes: registerExtensionRoutesSpy,
@@ -187,6 +191,7 @@ async function loadRoutesModuleWithMocks() {
     createMetricsCollectorSpy,
     validateHttpDepsSpy,
     registerSystemRoutesSpy,
+    registerCodexRoutesSpy,
     registerExtensionRoutesSpy,
     registerGitRoutesSpy,
     registerWorkspaceRoutesSpy,
@@ -197,6 +202,10 @@ async function loadRoutesModuleWithMocks() {
 }
 
 describe("HTTP routes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("GET /api/v1/state returns serialized snapshot", async () => {
     const res = await fetchRoute("/api/v1/state");
     expect(res.status).toBe(200);
@@ -225,7 +234,6 @@ describe("HTTP routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveProperty("provider_summary", "Codex");
-    expect(body).toHaveProperty("feature_flags");
   });
 
   it("POST /api/v1/refresh returns 202", async () => {

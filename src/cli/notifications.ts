@@ -1,15 +1,13 @@
 import type { ConfigStore } from "../config/store.js";
-import type { createLogger } from "../core/logger.js";
-import type { NotificationChannelConfig } from "../core/types.js";
+import type { NotificationChannelConfig, RisolutoLogger } from "../core/types.js";
+import type { NotificationChannel } from "../notification/channel.js";
 import { DesktopNotificationChannel } from "../notification/desktop.js";
 import { NotificationManager } from "../notification/manager.js";
 import { SlackWebhookChannel } from "../notification/slack-webhook.js";
 import { WebhookChannel } from "../notification/webhook-channel.js";
 
-function createChannel(
-  config: NotificationChannelConfig,
-  logger: ReturnType<typeof createLogger>,
-): SlackWebhookChannel | WebhookChannel | DesktopNotificationChannel | null {
+// eslint-disable-next-line sonarjs/function-return-type -- intentional T | null guard
+function createChannel(config: NotificationChannelConfig, logger: RisolutoLogger): NotificationChannel | null {
   if (!config.enabled) {
     return null;
   }
@@ -46,33 +44,15 @@ function createChannel(
   return null;
 }
 
-function legacySlackChannel(configStore: ConfigStore): NotificationChannelConfig[] {
-  const slack = configStore.getConfig().notifications?.slack;
-  if (!slack?.webhookUrl) {
-    return [];
-  }
-  return [
-    {
-      type: "slack",
-      name: "slack",
-      enabled: true,
-      minSeverity: "info",
-      webhookUrl: slack.webhookUrl,
-      verbosity: slack.verbosity,
-    },
-  ];
-}
-
 export function wireNotifications(
   notificationManager: NotificationManager,
   configStore: ConfigStore,
-  logger: ReturnType<typeof createLogger>,
+  logger: RisolutoLogger,
 ): void {
   for (const channelName of notificationManager.listChannels()) {
     notificationManager.removeChannel(channelName);
   }
-  const configuredChannels = configStore.getConfig().notifications?.channels ?? [];
-  const channels = configuredChannels.length > 0 ? configuredChannels : legacySlackChannel(configStore);
+  const channels = configStore.getConfig().notifications?.channels ?? [];
   for (const channelConfig of channels) {
     const channel = createChannel(channelConfig, logger);
     if (channel) {
@@ -85,7 +65,7 @@ export function watchConfigChanges(
   configStore: ConfigStore,
   notificationManager: NotificationManager,
   initialPort: number,
-  logger: ReturnType<typeof createLogger>,
+  logger: RisolutoLogger,
 ): void {
   configStore.subscribe(() => {
     wireNotifications(notificationManager, configStore, logger);

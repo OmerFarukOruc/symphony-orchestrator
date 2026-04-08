@@ -9,6 +9,7 @@ import { DbConfigStore } from "../config/db-store.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import { HttpServer } from "../http/server.js";
 import { createLogger } from "../core/logger.js";
+import type { RisolutoLogger } from "../core/types.js";
 import { getErrorTracker, initErrorTracking } from "../core/error-tracking.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import type { PersistenceRuntime } from "../persistence/sqlite/runtime.js";
@@ -116,7 +117,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
 async function initializeConfigStores(
   archiveDir: string,
-  logger: ReturnType<typeof createLogger>,
+  logger: RisolutoLogger,
 ): Promise<{
   overlayStore: ConfigOverlayStore;
   secretsStore: SecretsStore;
@@ -148,6 +149,11 @@ async function initializeConfigStores(
       throw error;
     }
   }
+  if (process.env.RISOLUTO_PERSISTENCE === "jsonl") {
+    logger.warn(
+      "RISOLUTO_PERSISTENCE=jsonl is no longer supported. SQLite is now the only backend. This env var will be removed in a future release.",
+    );
+  }
   let persistence: PersistenceRuntime;
   try {
     persistence = await initPersistenceRuntime({ dataDir: archiveDir, logger });
@@ -156,37 +162,28 @@ async function initializeConfigStores(
     throw error;
   }
   const dbLogger = logger.child({ component: "config-db" });
-  const dbConfigStore =
-    persistence.db === null
-      ? null
-      : new DbConfigStore(persistence.db, dbLogger, {
-          secretsStore,
-        });
+  const dbConfigStore = new DbConfigStore(persistence.db, dbLogger, { secretsStore });
   const configStore = new ConfigStore(logger.child({ component: "config" }), {
     overlayStore,
     secretsStore,
-    workflowStore:
-      dbConfigStore === null
-        ? undefined
-        : {
-            getWorkflow: () => {
-              try {
-                dbConfigStore.refresh();
-              } catch (error) {
-                dbLogger.warn({ error: toErrorString(error) }, "DB config refresh failed — propagating to caller");
-                throw error;
-              }
-              return dbConfigStore.getWorkflow();
-            },
-          },
+    workflowStore: {
+      getWorkflow: () => {
+        try {
+          dbConfigStore.refresh();
+        } catch (error) {
+          dbLogger.warn({ error: toErrorString(error) }, "DB config refresh failed — propagating to caller");
+          throw error;
+        }
+        return dbConfigStore.getWorkflow();
+      },
+    },
   });
   return { overlayStore, secretsStore, configStore, persistence, needsSetup };
 }
 
+// eslint-disable-next-line sonarjs/function-return-type -- intentional T | undefined guard
 function parsePortValue(rawPort: string | undefined): number | undefined {
-  if (rawPort === undefined) {
-    return undefined;
-  }
+  if (rawPort === undefined) return undefined;
   // Reject empty, non-digit, and leading-zero forms (e.g. "00000004000")
   // which would otherwise pass the old \d+ check and silently coerce. Also
   // enforce a real TCP port range (1–65535) — 0 means "any free port" and
@@ -207,7 +204,7 @@ export function parseCliArgs(argv: string[]): {
   dataDir: string;
   archiveDir: string;
   selectedPort: number | undefined;
-  logger: ReturnType<typeof createLogger>;
+  logger: RisolutoLogger;
 } {
   const parsed = parseArgs({
     args: argv,
@@ -259,7 +256,7 @@ export async function safeStartConfigStore(configStore: ConfigStore): Promise<nu
 
 export function evaluateSetupMode(
   configStore: ConfigStore,
-  logger: ReturnType<typeof createLogger>,
+  logger: RisolutoLogger,
   needsSetup: boolean,
 ): { needsSetup: boolean; exitCode: number | null } {
   if (needsSetup) {
@@ -304,7 +301,7 @@ function buildShutdown({
   prMonitor?: PrMonitorService;
   automationScheduler?: AutomationScheduler;
   alertEngine?: AlertEngine;
-  logger: ReturnType<typeof createLogger>;
+  logger: RisolutoLogger;
 }): () => Promise<void> {
   let shuttingDown = false;
   return async () => {
@@ -341,7 +338,7 @@ function buildShutdown({
   };
 }
 
-async function awaitShutdown(logger: ReturnType<typeof createLogger>, shutdown: () => Promise<void>): Promise<void> {
+async function awaitShutdown(logger: RisolutoLogger, shutdown: () => Promise<void>): Promise<void> {
   await new Promise<void>((resolve) => {
     const handleSignal = (signal: NodeJS.Signals) => {
       logger.info({ signal }, "shutdown signal received");

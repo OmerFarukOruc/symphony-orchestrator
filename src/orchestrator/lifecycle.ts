@@ -127,6 +127,7 @@ export async function refreshQueueViews(
     canDispatchIssue: (issue: Issue) => boolean;
     resolveModelSelection: ModelSelectionResolver;
     setQueuedViews: (views: IssueView[]) => void;
+    markDirty?: () => void;
     pushEvent?: RuntimeEventSink;
   },
   candidateIssues?: Issue[],
@@ -169,13 +170,14 @@ export async function refreshQueueViews(
   }
   ctx.setQueuedViews(queuedViews);
 
-  refreshDetailViews(ctx.detailViews, issues, ctx.resolveModelSelection);
+  refreshDetailViews(ctx.detailViews, issues, ctx.resolveModelSelection, ctx.markDirty);
 }
 
 function refreshDetailViews(
   detailViews: Map<string, IssueView>,
   issues: Issue[],
   resolveModelSelection: ModelSelectionResolver,
+  markDirty?: () => void,
 ): void {
   const nextDetailViews = new Map<string, IssueView>();
   for (const issue of issues) {
@@ -193,8 +195,10 @@ function refreshDetailViews(
       }),
     );
   }
+  const hadEntries = detailViews.size > 0 || nextDetailViews.size > 0;
   detailViews.clear();
   nextDetailViews.forEach((detailView, identifier) => detailViews.set(identifier, detailView));
+  if (hadEntries) markDirty?.();
 }
 export async function cleanupTerminalIssueWorkspaces(ctx: {
   deps: {
@@ -228,6 +232,7 @@ const TERMINAL_ATTEMPT_STATUSES = new Set(["completed", "failed", "timed_out", "
 export function seedCompletedClaims(ctx: {
   claimedIssueIds: Set<string>;
   completedViews: Map<string, ReturnType<typeof issueView>>;
+  markDirty?: () => void;
   deps: {
     attemptStore: { getAllAttempts: () => AttemptRecord[] };
     logger: { info: (meta: Record<string, unknown>, message: string) => void };
@@ -253,6 +258,7 @@ export function seedCompletedClaims(ctx: {
     }
   }
   if (seeded > 0) {
+    ctx.markDirty?.();
     ctx.deps.logger.info({ count: seeded }, "seeded completed views from attempt store");
   }
 }

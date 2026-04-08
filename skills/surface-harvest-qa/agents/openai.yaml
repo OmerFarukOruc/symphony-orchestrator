@@ -1,0 +1,4 @@
+interface:
+  display_name: "Surface Harvest QA"
+  short_description: "Exhaustive desktop UI coverage and surface mapping"
+  default_prompt: "Use $surface-harvest-qa to map every desktop UI surface in this app, test each one with evidence, and report blocked gaps honestly."

@@ -7,6 +7,7 @@ import {
   handleRunAutomation,
 } from "../../src/http/automations-handler.js";
 import { AutomationStore } from "../../src/persistence/sqlite/automation-store.js";
+import { openDatabase } from "../../src/persistence/sqlite/database.js";
 import { makeMockResponse } from "../helpers.js";
 
 function makeRequest(input: { params?: Record<string, string>; query?: Record<string, unknown> }): Request {
@@ -47,7 +48,7 @@ describe("automation handlers", () => {
   });
 
   it("lists persisted automation runs", async () => {
-    const store = AutomationStore.create(null);
+    const store = AutomationStore.create(openDatabase(":memory:"));
     const created = await store.createRun({
       automationName: "nightly-report",
       mode: "report",

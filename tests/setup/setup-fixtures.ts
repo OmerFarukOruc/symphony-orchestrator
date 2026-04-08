@@ -4,13 +4,14 @@ import express from "express";
 import { vi } from "vitest";
 
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
-import { AttemptStore } from "../../src/core/attempt-store.js";
+import type { AttemptStorePort } from "../../src/core/attempt-store-port.js";
 import type { RunAttemptDispatcher } from "../../src/dispatch/types.js";
 import { ConfigStore } from "../../src/config/store.js";
 import { LinearClient } from "../../src/linear/client.js";
 import { LinearTrackerAdapter } from "../../src/tracker/linear-adapter.js";
 import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
 import { IssueConfigStore } from "../../src/persistence/sqlite/issue-config-store.js";
+import { openDatabase } from "../../src/persistence/sqlite/database.js";
 import { SecretsStore } from "../../src/secrets/store.js";
 import { registerSetupApi } from "../../src/setup/api.js";
 import { WorkspaceManager } from "../../src/workspace/manager.js";
@@ -68,10 +69,32 @@ export function createAgentRunnerMock(): RunAttemptDispatcher {
   };
 }
 
+function createAttemptStoreMock(): AttemptStorePort {
+  return {
+    start: vi.fn(async () => undefined),
+    createAttempt: vi.fn(async () => undefined),
+    updateAttempt: vi.fn(async () => undefined),
+    appendEvent: vi.fn(async () => undefined),
+    getAllAttempts: vi.fn(() => []),
+    getAttemptsForIssue: vi.fn(() => []),
+    getAttempt: vi.fn(() => null),
+    getEvents: vi.fn(() => []),
+    sumArchivedSeconds: vi.fn(() => 0),
+    sumCostUsd: vi.fn(() => 0),
+    sumArchivedTokens: vi.fn(() => ({ inputTokens: 0, outputTokens: 0, totalTokens: 0 })),
+    upsertPr: vi.fn(async () => undefined),
+    getOpenPrs: vi.fn(async () => []),
+    getAllPrs: vi.fn(async () => []),
+    updatePrStatus: vi.fn(async () => undefined),
+    appendCheckpoint: vi.fn(async () => undefined),
+    listCheckpoints: vi.fn(async () => []),
+  } as unknown as AttemptStorePort;
+}
+
 export function createOrchestratorMock(): Orchestrator {
   const logger = createMockLogger();
   const orchestrator = new Orchestrator({
-    attemptStore: new AttemptStore("/attempt-store", logger),
+    attemptStore: createAttemptStoreMock(),
     configStore: new ConfigStore(logger),
     tracker: new LinearTrackerAdapter(
       new LinearClient(() => {
@@ -82,7 +105,7 @@ export function createOrchestratorMock(): Orchestrator {
       throw new Error("not used in setup api tests");
     }, logger),
     agentRunner: createAgentRunnerMock(),
-    issueConfigStore: IssueConfigStore.create(null),
+    issueConfigStore: IssueConfigStore.create(openDatabase(":memory:")),
     logger,
     resolveTemplate: async (_identifier: string) => "",
   });

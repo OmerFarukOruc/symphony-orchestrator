@@ -19,9 +19,8 @@
  * ### Operator steps to migrate
  *
  * 1. Stop the running Risoluto service.
- * 2. Ensure `RISOLUTO_PERSISTENCE` is unset (or set to `sqlite`).
- * 3. Restart — migration runs automatically on first boot.
- * 4. Verify data in the dashboard, then optionally archive the legacy
+ * 2. Restart — migration runs automatically on first boot (SQLite is the only backend).
+ * 3. Verify data in the dashboard, then optionally archive the legacy
  *    `attempts/` and `events/` directories.
  *
  * ### Idempotency guarantees

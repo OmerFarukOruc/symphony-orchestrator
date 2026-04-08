@@ -183,7 +183,7 @@ function renderPage(
   },
 ): void {
   body.replaceChildren();
-  body.append(buildStatsRow(snapshot), buildToolbar(snapshot, filter, actions.onFilterChange, actions.onMarkAllRead));
+  body.append(buildStatsRow(snapshot), buildToolbar(snapshot, filter, actions.onFilterChange));
 
   if (snapshot.notifications.length === 0 && snapshot.totalCount === 0) {
     body.append(renderNoNotificationsState());
@@ -196,10 +196,26 @@ function renderPage(
   }
 
   const list = el("section", "notifications-list");
+  let lastGroup = "";
   snapshot.notifications.forEach((notification, index) => {
+    const group = timeGroup(notification.createdAt);
+    if (group !== lastGroup) {
+      lastGroup = group;
+      const separator = el("div", "notifications-time-separator");
+      separator.append(el("span", "notifications-time-label", group));
+      list.append(separator);
+    }
     const row = buildNotificationRow(notification, index, actions.onMarkRead);
     list.append(row);
   });
+
+  if (snapshot.totalCount > snapshot.notifications.length) {
+    const more = el("div", "notifications-load-more");
+    const moreP = el("p", "text-secondary", `Showing ${snapshot.notifications.length} of ${snapshot.totalCount}`);
+    more.append(moreP);
+    list.append(more);
+  }
+
   body.append(list);
 }
 
@@ -228,7 +244,6 @@ function buildToolbar(
   snapshot: NotificationsListResponse,
   filter: NotificationFilter,
   onFilterChange: (filter: NotificationFilter) => void,
-  onMarkAllRead: () => void,
 ): HTMLElement {
   const toolbar = el("section", "mc-toolbar notifications-toolbar");
   const filterGroup = el("div", "notifications-filter-group");
@@ -248,12 +263,7 @@ function buildToolbar(
     filterGroup.append(button);
   }
 
-  const markAllInline = el("button", buttonClassName({ tone: "ghost", size: "sm" }), "Mark all read");
-  markAllInline.type = "button";
-  markAllInline.toggleAttribute("disabled", snapshot.unreadCount === 0);
-  markAllInline.addEventListener("click", onMarkAllRead);
-
-  toolbar.append(summary, filterGroup, markAllInline);
+  toolbar.append(summary, filterGroup);
   return toolbar;
 }
 
@@ -288,7 +298,7 @@ function buildNotificationRow(
   );
   top.append(labels, time);
 
-  const title = el("h2", "notification-row-title", notification.title);
+  const title = el("h3", "notification-row-title", notification.title);
   const message = el("p", "notification-row-message", notification.message);
   const footer = el("div", "notification-row-footer");
   const source = el("p", "notification-row-source", describeSource(notification));
@@ -460,4 +470,22 @@ function metadataString(metadata: Record<string, unknown> | null, key: string): 
 function metadataNumber(metadata: Record<string, unknown> | null, key: string): number | null {
   const value = metadata?.[key];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function timeGroup(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = diffMs / 3_600_000;
+  if (diffHours < 1) return "Last hour";
+  if (diffHours < 24 && date.getDate() === now.getDate()) return "Today";
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (
+    date.getFullYear() === yesterday.getFullYear() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getDate() === yesterday.getDate()
+  )
+    return "Yesterday";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }

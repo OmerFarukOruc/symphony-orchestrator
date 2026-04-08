@@ -109,30 +109,4 @@ describe("AutomationStore", () => {
       close();
     }
   });
-
-  it("falls back to an in-memory store when SQLite is unavailable", async () => {
-    const store = AutomationStore.create(null);
-
-    const created = await store.createRun({
-      automationName: "memory-report",
-      mode: "report",
-      trigger: "manual",
-      repoUrl: "https://github.com/acme/app",
-      startedAt: "2026-04-04T10:20:00.000Z",
-    });
-    await store.finishRun(created.id, {
-      status: "completed",
-      output: "ok",
-      details: null,
-      issueId: null,
-      issueIdentifier: null,
-      issueUrl: null,
-      error: null,
-      finishedAt: "2026-04-04T10:21:00.000Z",
-    });
-
-    const listed = await store.listRuns();
-    expect(listed).toHaveLength(1);
-    expect(listed[0].status).toBe("completed");
-  });
 });

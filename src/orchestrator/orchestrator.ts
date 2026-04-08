@@ -30,62 +30,6 @@ import { toErrorString } from "../utils/type-guards.js";
 import { createMetricsCollector } from "../observability/metrics.js";
 import type { ObservabilityHealthStatus } from "../observability/health.js";
 
-function clearTrackedCollection(size: number, clear: () => void, onDirty: () => void): void {
-  if (size === 0) {
-    return;
-  }
-  clear();
-  onDirty();
-}
-
-class DirtyTrackingMap<K, V> extends Map<K, V> {
-  constructor(private readonly onDirty: () => void) {
-    super();
-  }
-
-  override set(key: K, value: V): this {
-    super.set(key, value);
-    this.onDirty();
-    return this;
-  }
-
-  override delete(key: K): boolean {
-    const deleted = super.delete(key);
-    if (deleted) {
-      this.onDirty();
-    }
-    return deleted;
-  }
-
-  override clear(): void {
-    clearTrackedCollection(this.size, () => super.clear(), this.onDirty);
-  }
-}
-
-class DirtyTrackingSet<T> extends Set<T> {
-  constructor(private readonly onDirty: () => void) {
-    super();
-  }
-
-  override add(value: T): this {
-    super.add(value);
-    this.onDirty();
-    return this;
-  }
-
-  override delete(value: T): boolean {
-    const deleted = super.delete(value);
-    if (deleted) {
-      this.onDirty();
-    }
-    return deleted;
-  }
-
-  override clear(): void {
-    clearTrackedCollection(this.size, () => super.clear(), this.onDirty);
-  }
-}
-
 export class Orchestrator implements OrchestratorPort {
   private readonly _state: OrchestratorState;
   private readonly _ctx: OrchestratorContext;
@@ -106,18 +50,18 @@ export class Orchestrator implements OrchestratorPort {
     const markDirty = () => this.markStateDirty();
     this._state = {
       running: false,
-      runningEntries: new DirtyTrackingMap(markDirty),
-      retryEntries: new DirtyTrackingMap(markDirty),
-      completedViews: new DirtyTrackingMap(markDirty),
-      detailViews: new DirtyTrackingMap(markDirty),
-      claimedIssueIds: new DirtyTrackingSet(markDirty),
+      runningEntries: new Map(),
+      retryEntries: new Map(),
+      completedViews: new Map(),
+      detailViews: new Map(),
+      claimedIssueIds: new Set(),
       queuedViews: [],
       recentEvents: [],
       rateLimits: null,
-      issueModelOverrides: new DirtyTrackingMap(markDirty),
-      issueTemplateOverrides: new DirtyTrackingMap(markDirty),
+      issueModelOverrides: new Map(),
+      issueTemplateOverrides: new Map(),
       operatorAbortSuppressions: new Map(),
-      sessionUsageTotals: new DirtyTrackingMap(markDirty),
+      sessionUsageTotals: new Map(),
       codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0 },
       stallEvents: [],
       markDirty,
@@ -164,6 +108,7 @@ export class Orchestrator implements OrchestratorPort {
     seedCompletedClaims({
       claimedIssueIds: this._state.claimedIssueIds,
       completedViews: this._state.completedViews,
+      markDirty: () => this.markStateDirty(),
       deps: { attemptStore: this.deps.attemptStore, logger: this.deps.logger },
     });
     const configRows = this.deps.issueConfigStore.loadAll();
@@ -177,6 +122,9 @@ export class Orchestrator implements OrchestratorPort {
       if (row.templateId !== null) {
         this._state.issueTemplateOverrides.set(row.identifier, row.templateId);
       }
+    }
+    if (configRows.length > 0) {
+      this.markStateDirty();
     }
     this.scheduleTick(0);
   }
@@ -197,8 +145,14 @@ export class Orchestrator implements OrchestratorPort {
     for (const retry of this._state.retryEntries.values()) {
       if (retry.timer) clearTimeout(retry.timer);
     }
-    this._state.retryEntries.clear();
-    this._state.claimedIssueIds.clear();
+    if (this._state.retryEntries.size > 0) {
+      this._state.retryEntries.clear();
+      this.markStateDirty();
+    }
+    if (this._state.claimedIssueIds.size > 0) {
+      this._state.claimedIssueIds.clear();
+      this.markStateDirty();
+    }
     const workers = [...this._state.runningEntries.values()];
     for (const worker of workers) worker.abortController.abort("shutdown");
     await Promise.allSettled(workers.map((w) => w.promise));
@@ -290,6 +244,7 @@ export class Orchestrator implements OrchestratorPort {
     return detail ? { ...detail } : null;
   }
 
+  // eslint-disable-next-line sonarjs/function-return-type
   abortIssue(
     identifier: string,
   ):
@@ -341,6 +296,7 @@ export class Orchestrator implements OrchestratorPort {
         pushEvent: (event) => this._ctx.pushEvent(event),
         requestRefresh: (r) => this.requestRefresh(r),
         issueConfigStore: this.deps.issueConfigStore,
+        markDirty: () => this.markStateDirty(),
       },
       input,
     );
@@ -362,6 +318,7 @@ export class Orchestrator implements OrchestratorPort {
     const detail = this.getIssueDetail(identifier);
     if (!detail) return false;
     this._state.issueTemplateOverrides.set(identifier, templateId);
+    this.markStateDirty();
     this.deps.issueConfigStore.upsertTemplateId(identifier, templateId);
     return true;
   }
@@ -370,6 +327,7 @@ export class Orchestrator implements OrchestratorPort {
     const detail = this.getIssueDetail(identifier);
     if (!detail) return false;
     this._state.issueTemplateOverrides.delete(identifier);
+    this.markStateDirty();
     this.deps.issueConfigStore.clearTemplateId(identifier);
     return true;
   }
@@ -487,6 +445,7 @@ export class Orchestrator implements OrchestratorPort {
         const h = this.watchdog.getHealth();
         return { status: h.status, checkedAt: h.checkedAt, runningCount: h.runningCount, message: h.message };
       },
+      // eslint-disable-next-line sonarjs/function-return-type
       getWebhookHealth: () => {
         const tracker = this.deps.webhookHealthTracker;
         if (!tracker) return undefined;

@@ -47,6 +47,126 @@ describe("frontend api", () => {
     expect(snapshot).toEqual(snapshotBody);
   });
 
+  it("requests Codex admin threads with query parameters", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ data: [], nextCursor: null }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.getCodexThreads({
+      limit: 10,
+      sortKey: "updated_at",
+      archived: true,
+      cwd: "/tmp/workspace",
+      modelProviders: ["openai"],
+      sourceKinds: ["cli", "appServer"],
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/codex/threads?limit=10&sortKey=updated_at&archived=true&cwd=%2Ftmp%2Fworkspace&modelProviders=openai&sourceKinds=cli%2CappServer",
+      {
+        headers: undefined,
+      },
+    );
+  });
+
+  it("posts Codex thread rename requests to the admin API", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.postCodexThreadRename("thr_123", "Renamed thread");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/codex/threads/thr_123/name", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Renamed thread" }),
+    });
+  });
+
+  it("requests Codex thread detail with turns from the admin API", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ thread: { id: "thr_123", turns: [] } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.getCodexThread("thr_123", true);
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/codex/threads/thr_123?includeTurns=true", {
+      headers: undefined,
+    });
+  });
+
+  it("posts Codex thread unsubscribe requests to the admin API", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ status: "unsubscribed" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.postCodexThreadUnsubscribe("thr_123");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/codex/threads/thr_123/unsubscribe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+  });
+
+  it("posts Codex user-input responses to the admin API", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.postCodexUserInputResponse("req-1", { answers: [{ id: "choice", value: "yes" }] });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/codex/requests/user-input/req-1/respond", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ result: { answers: [{ id: "choice", value: "yes" }] } }),
+    });
+  });
+
+  it("reads Codex account status and rate limits from the admin API", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse({ account: { type: "chatgpt", email: "user@example.com" } }))
+      .mockResolvedValueOnce(createJsonResponse({ rateLimits: { limitId: "codex" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.getCodexAccount();
+    await api.getCodexAccountRateLimits();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/v1/codex/account", {
+      headers: undefined,
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/v1/codex/account/rate-limits", {
+      headers: undefined,
+    });
+  });
+
+  it("posts Codex account login and logout requests to the admin API", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse({ type: "chatgpt", loginId: "login-1", authUrl: "https://chatgpt.com" }),
+      )
+      .mockResolvedValueOnce(createJsonResponse({ ok: true }))
+      .mockResolvedValueOnce(createJsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.postCodexAccountLoginStart({ type: "chatgpt" });
+    await api.postCodexAccountLoginCancel("login-1");
+    await api.postCodexAccountLogout();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/v1/codex/account/login/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "chatgpt" }),
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/v1/codex/account/login/cancel", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ loginId: "login-1" }),
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/v1/codex/account/logout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+  });
+
   it("returns the aggregate observability snapshot from the API", async () => {
     const snapshotBody = createSnapshot("2026-03-20T00:00:00.000Z");
     const observabilityBody = {

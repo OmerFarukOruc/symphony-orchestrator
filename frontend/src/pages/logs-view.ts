@@ -1,13 +1,13 @@
 import { createLogRow } from "../components/log-row";
 import { createEmptyState } from "../components/empty-state";
 import { registerPageCleanup } from "../utils/page";
-import { eventMatchesSearch, eventTypeLabel, stringifyPayload } from "../utils/events";
+import { eventMatchesSearch, stringifyPayload } from "../utils/events";
 import type { RecentEvent } from "../types";
-import { loadArchiveLogs, loadLiveLogs } from "./logs-data";
-import { createIconButton } from "../ui/buttons.js";
-import { createIcon } from "../ui/icons.js";
+import { loadArchiveLogs, loadLiveLogs, shouldDisplayLogsEvent } from "./logs-data";
 import { subscribeIssueLifecycle, subscribeAllEvents, type AgentEventPayload } from "../state/event-source.js";
 import { createLogBuffer, type SortDirection } from "../state/log-buffer.js";
+import { buildLogFilterBar } from "./logs-filter-bar.js";
+import { buildDetailFiltersPanel } from "./logs-detail-panel.js";
 
 type Mode = "live" | "archive";
 type Density = "compact" | "comfortable";
@@ -16,13 +16,8 @@ function rowKey(event: RecentEvent): string {
   return `${event.at}:${event.event}:${event.message}`;
 }
 
-function makeIconBtn(iconName: Parameters<typeof createIconButton>[0]["iconName"], label: string): HTMLButtonElement {
-  return createIconButton({
-    iconName,
-    label,
-    iconSize: 15,
-    className: "logs-icon-btn",
-  });
+function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return count === 1 ? singular : plural;
 }
 
 export function createLogsPage(id: string): HTMLElement {
@@ -30,11 +25,20 @@ export function createLogsPage(id: string): HTMLElement {
   page.className = "page logs-page fade-in";
 
   // ── Header: breadcrumb + mode tabs ───────────────────────────────────────
-  const header = document.createElement("div");
-  header.className = "logs-header";
+  const header = document.createElement("section");
+  header.className = "mc-strip logs-header";
 
-  const breadcrumb = document.createElement("div");
-  breadcrumb.className = "logs-breadcrumb text-secondary";
+  const headerCopy = document.createElement("div");
+  headerCopy.className = "logs-header-copy";
+
+  const breadcrumb = document.createElement("p");
+  breadcrumb.className = "logs-breadcrumb issue-identifier";
+
+  const title = document.createElement("h1");
+  title.className = "page-title logs-title";
+
+  const subtitle = document.createElement("p");
+  subtitle.className = "page-subtitle logs-subtitle";
 
   const modeSegment = document.createElement("div");
   modeSegment.className = "mc-button-segment";
@@ -47,33 +51,13 @@ export function createLogsPage(id: string): HTMLElement {
   archiveBtn.className = "mc-button is-sm";
   archiveBtn.textContent = "History";
   modeSegment.append(liveBtn, archiveBtn);
-  header.append(breadcrumb, modeSegment);
 
-  // ── Filter bar: type chips + search + view icon buttons ──────────────────
-  const controls = document.createElement("section");
-  controls.className = "logs-control";
+  const headerActions = document.createElement("div");
+  headerActions.className = "logs-header-actions";
+  headerActions.append(modeSegment);
 
-  const typeBar = document.createElement("div");
-  typeBar.className = "logs-toolbar-group";
-  const search = Object.assign(document.createElement("input"), {
-    className: "mc-input logs-search",
-    placeholder: "Search logs",
-  });
-  search.setAttribute("aria-label", "Search logs");
-
-  const autoToggle = makeIconBtn("scrollDown", "Follow live");
-  const expandToggle = makeIconBtn("unfold", "Expand payloads");
-  const densityToggle = makeIconBtn("dense", "Compact");
-
-  const copyAllBtn = makeIconBtn("copy", "Copy all logs");
-
-  const sortToggle = makeIconBtn("sort", "Sort order");
-  sortToggle.title = "Newest first";
-
-  const viewActions = document.createElement("div");
-  viewActions.className = "logs-view-actions";
-  viewActions.append(sortToggle, densityToggle, autoToggle, expandToggle, copyAllBtn);
-  controls.append(typeBar, search, viewActions);
+  headerCopy.append(breadcrumb, title, subtitle);
+  header.append(headerCopy, headerActions);
 
   // ── Log scroll area ───────────────────────────────────────────────────────
   const scroll = document.createElement("section");
@@ -84,20 +68,14 @@ export function createLogsPage(id: string): HTMLElement {
   indicator.className = "mc-button is-ghost logs-new-indicator";
   indicator.hidden = true;
   indicator.textContent = "↓ New events";
-  indicator.addEventListener("click", () => {
-    scroll.scrollTop = buffer.direction() === "desc" ? 0 : scroll.scrollHeight;
-    newEventCount = 0;
-    indicator.hidden = true;
-  });
-
-  page.append(header, controls, scroll, indicator);
 
   // ── State ─────────────────────────────────────────────────────────────────
   let mode: Mode = "live";
-  const activeFilters = new Set<string>();
+  const activeKinds = new Set<string>();
   let searchText = "";
   let autoScroll = false;
   let density: Density = "compact";
+  let issueTitle = id;
   let timer = 0;
   let unsubscribeLifecycle: (() => void) | null = null;
   const expandedEvents = new Set<string>();
@@ -105,6 +83,142 @@ export function createLogsPage(id: string): HTMLElement {
   const buffer = createLogBuffer("desc");
   let unsubscribeStream: (() => void) | null = null;
 
+  function eventPassesFilters(event: RecentEvent): boolean {
+    const matchesKind = activeKinds.size === 0 || activeKinds.has(event.event);
+    return matchesKind && eventMatchesSearch(event, searchText);
+  }
+
+  function filtered(): RecentEvent[] {
+    return buffer.events().filter((event) => eventPassesFilters(event));
+  }
+
+  // ── Detail panel ──────────────────────────────────────────────────────────
+  const detailPanel = buildDetailFiltersPanel({
+    activeKinds,
+    getEvents: () => buffer.events(),
+    onClearAll: () => {
+      activeKinds.clear();
+      render();
+    },
+    onToggleKind: (kind) => {
+      if (activeKinds.has(kind)) activeKinds.delete(kind);
+      else activeKinds.add(kind);
+      render();
+    },
+  });
+
+  // ── Filter bar ────────────────────────────────────────────────────────────
+  const filterBar = buildLogFilterBar({
+    activeKinds,
+    onFilterChange: () => render(),
+    onSortToggle: (newDir: SortDirection) => {
+      buffer.setDirection(newDir);
+      render();
+    },
+    onDensityToggle: () => {
+      density = density === "compact" ? "comfortable" : "compact";
+      render();
+    },
+    onAutoScrollToggle: () => {
+      autoScroll = !autoScroll;
+      render();
+    },
+    onExpandToggle: () => {
+      if (expandedEvents.size > 0) {
+        expandedEvents.clear();
+      } else {
+        for (const event of filtered()) {
+          if (stringifyPayload(event.content)) {
+            expandedEvents.add(rowKey(event));
+          }
+        }
+      }
+      render();
+    },
+    onCopyAll: () => {
+      const events = filtered();
+      if (events.length === 0) return;
+      const lines = events.map((event) => {
+        const payload = stringifyPayload(event.content);
+        const header = `[${event.at}] [${event.event}] ${event.message}`;
+        return payload ? `${header}\n${payload}` : header;
+      });
+      const text = lines.join("\n\n");
+      navigator.clipboard?.writeText(text).then(
+        () => {
+          const label = filterBar.copyAllBtn.querySelector(".logs-view-action-label");
+          if (label) label.textContent = "Copied";
+          setTimeout(() => {
+            if (label) label.textContent = "Copy";
+          }, 1200);
+        },
+        () => undefined,
+      );
+    },
+    onOpenDetailPanel: () => {
+      detailPanel.open();
+      syncEscapeListener();
+    },
+    onCloseDetailPanel: () => {
+      detailPanel.close();
+      syncEscapeListener();
+    },
+    getSortDirection: () => buffer.direction(),
+    getEvents: () => buffer.events(),
+  });
+
+  filterBar.detailPanelSlot.append(detailPanel.element);
+
+  filterBar.search.addEventListener("input", () => {
+    searchText = filterBar.search.value;
+  });
+
+  function syncEscapeListener(): void {
+    const shouldListen = filterBar.isDetailPanelOpen();
+    document.removeEventListener("keydown", handleEscape);
+    if (shouldListen) {
+      document.addEventListener("keydown", handleEscape);
+    }
+  }
+
+  function handleEscape(event: KeyboardEvent): void {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (filterBar.isDetailPanelOpen()) {
+        filterBar.closeDetailPanel();
+        syncEscapeListener();
+        filterBar.detailFiltersBtn.focus();
+      }
+    }
+  }
+
+  page.append(header, filterBar.element, scroll, indicator);
+
+  function buildHeaderSummary(visibleCount: number, totalCount: number): string {
+    const summary: string[] = [mode === "live" ? "Live stream" : "History"];
+    if (totalCount === 0) {
+      summary.push(mode === "live" ? "Waiting for activity" : "No archived events");
+    } else if (visibleCount === totalCount) {
+      summary.push(`${totalCount} ${pluralize(totalCount, "event")}`);
+    } else {
+      summary.push(`${visibleCount} of ${totalCount} ${pluralize(totalCount, "event")}`);
+    }
+    if (activeKinds.size > 0) {
+      summary.push(`${activeKinds.size} ${pluralize(activeKinds.size, "kind")} filtered`);
+    }
+    if (searchText.trim()) {
+      summary.push(`Search: "${searchText.trim()}"`);
+    }
+    if (buffer.direction() === "asc") {
+      summary.push("Oldest first");
+    }
+    if (autoScroll) {
+      summary.push("Following");
+    }
+    return summary.join(" · ");
+  }
+
+  // ── Row building ──────────────────────────────────────────────────────────
   function buildRow(event: RecentEvent): HTMLElement {
     const key = rowKey(event);
     return createLogRow({
@@ -119,59 +233,30 @@ export function createLogsPage(id: string): HTMLElement {
     });
   }
 
-  function filtered(): RecentEvent[] {
-    return buffer.events().filter((event) => {
-      const matchesType = activeFilters.size === 0 || activeFilters.has(event.event);
-      return matchesType && eventMatchesSearch(event, searchText);
-    });
-  }
-
-  function renderTypeFilters(): void {
-    const eventTypes = [...new Set(buffer.events().map((event) => event.event))];
-
-    const allBtn = document.createElement("button");
-    allBtn.type = "button";
-    allBtn.className = `mc-chip is-interactive${activeFilters.size === 0 ? " is-active" : ""}`;
-    allBtn.textContent = "All";
-    allBtn.addEventListener("click", () => {
-      activeFilters.clear();
-      renderTypeFilters();
-      render();
-    });
-
-    const chips = eventTypes.map((value) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `mc-chip is-interactive${activeFilters.has(value) ? " is-active" : ""}`;
-      button.textContent = eventTypeLabel(value);
-      button.addEventListener("click", () => {
-        if (activeFilters.has(value)) {
-          activeFilters.delete(value);
-        } else {
-          activeFilters.add(value);
-        }
-        renderTypeFilters();
-        render();
-      });
-      return button;
-    });
-
-    typeBar.replaceChildren(allBtn, ...chips);
-  }
-
-  function render(): void {
-    breadcrumb.textContent = `Queue → ${id} → Logs`;
+  // ── Render ────────────────────────────────────────────────────────────────
+  function render(options: { animate?: boolean } = {}): void {
+    const animate = options.animate ?? false;
+    const events = filtered();
+    const totalEvents = buffer.events().length;
+    breadcrumb.textContent = `Queue · ${id}`;
+    title.textContent = issueTitle && issueTitle !== id ? issueTitle : `${id} logs`;
+    subtitle.textContent = buildHeaderSummary(events.length, totalEvents);
     liveBtn.classList.toggle("is-active", mode === "live");
     archiveBtn.classList.toggle("is-active", mode === "archive");
-    autoToggle.classList.toggle("is-active", autoScroll);
-    densityToggle.classList.toggle("is-active", density === "compact");
-    expandToggle.classList.toggle("is-active", expandedEvents.size > 0);
-    sortToggle.classList.toggle("is-flipped", buffer.direction() === "asc");
-    sortToggle.title = buffer.direction() === "desc" ? "Newest first" : "Oldest first";
+    liveBtn.setAttribute("aria-pressed", String(mode === "live"));
+    archiveBtn.setAttribute("aria-pressed", String(mode === "archive"));
     scroll.classList.toggle("is-compact", density === "compact");
     scroll.classList.toggle("is-comfortable", density === "comfortable");
-    renderTypeFilters();
-    const events = filtered();
+    filterBar.renderCategoryChips();
+    filterBar.updateDetailFiltersBadge();
+    filterBar.syncViewActions({
+      autoScroll,
+      density,
+      expandedCount: expandedEvents.size,
+      sortDirection: buffer.direction(),
+    });
+    if (!detailPanel.element.hidden) detailPanel.render();
+
     if (events.length === 0) {
       scroll.replaceChildren(
         createEmptyState(
@@ -194,17 +279,18 @@ export function createLogsPage(id: string): HTMLElement {
       );
       return;
     }
+
     const total = events.length;
     const isDesc = buffer.direction() === "desc";
     scroll.replaceChildren(
       ...events.map((event, index) => {
         const row = buildRow(event);
-        // Animate the 30 rows visible after auto-scroll:
-        // desc → first 30 (newest, at top), asc → last 30 (newest, at bottom).
-        const staggerPos = isDesc ? index : index - (total - 30);
-        if (staggerPos >= 0 && staggerPos < 30) {
-          row.classList.add("timeline-enter");
-          row.style.setProperty("--stagger-index", String(staggerPos));
+        if (animate) {
+          const staggerPos = isDesc ? index : index - (total - 30);
+          if (staggerPos >= 0 && staggerPos < 30) {
+            row.classList.add("timeline-enter");
+            row.style.setProperty("--stagger-index", String(staggerPos));
+          }
         }
         return row;
       }),
@@ -214,11 +300,13 @@ export function createLogsPage(id: string): HTMLElement {
     }
   }
 
+  // ── Data loading ──────────────────────────────────────────────────────────
   async function refresh(): Promise<void> {
     const fresh = mode === "live" ? await loadLiveLogs(id) : await loadArchiveLogs(id);
+    issueTitle = fresh.title.trim() || id;
     buffer.clear();
     buffer.load(fresh.events);
-    render();
+    render({ animate: true });
   }
 
   /** Count how many visible (filtered) events precede `target` in the buffer. */
@@ -226,26 +314,19 @@ export function createLogsPage(id: string): HTMLElement {
     let index = 0;
     for (const e of buffer.events()) {
       if (e === target) break;
-      const matches = activeFilters.size === 0 || activeFilters.has(e.event);
-      if (matches && eventMatchesSearch(e, searchText)) index++;
+      if (eventPassesFilters(e)) index++;
     }
     return index;
   }
 
   function appendSingleEvent(event: RecentEvent): void {
-    if (!(activeFilters.size === 0 || activeFilters.has(event.event))) return;
-    if (!eventMatchesSearch(event, searchText)) return;
-
-    // Clear the empty-state placeholder before inserting the first real row.
+    if (!eventPassesFilters(event)) return;
     scroll.querySelector(".mc-empty-state")?.remove();
-
     const row = buildRow(event);
     row.classList.add("timeline-enter");
-
     const refNode = scroll.children[domInsertIndex(event)] as Element | undefined;
     if (refNode) refNode.before(row);
     else scroll.appendChild(row);
-
     if (autoScroll) {
       scroll.scrollTop = buffer.direction() === "desc" ? 0 : scroll.scrollHeight;
     } else {
@@ -258,6 +339,7 @@ export function createLogsPage(id: string): HTMLElement {
 
   async function reconcile(): Promise<void> {
     const fresh = mode === "live" ? await loadLiveLogs(id) : await loadArchiveLogs(id);
+    issueTitle = fresh.title.trim() || id;
     const beforeSize = buffer.size();
     buffer.load(fresh.events);
     if (buffer.size() !== beforeSize) {
@@ -265,6 +347,7 @@ export function createLogsPage(id: string): HTMLElement {
     }
   }
 
+  // ── SSE / polling ─────────────────────────────────────────────────────────
   function restartPolling(): void {
     window.clearInterval(timer);
     unsubscribeLifecycle?.();
@@ -284,6 +367,9 @@ export function createLogsPage(id: string): HTMLElement {
             message: p.message ?? "",
             content: p.content ?? null,
           };
+          if (!shouldDisplayLogsEvent(recentEvent)) {
+            return;
+          }
           if (buffer.insert(recentEvent)) {
             appendSingleEvent(recentEvent);
           }
@@ -294,6 +380,7 @@ export function createLogsPage(id: string): HTMLElement {
     }
   }
 
+  // ── Mode button wiring ────────────────────────────────────────────────────
   liveBtn.addEventListener("click", () => {
     if (mode === "live") return;
     mode = "live";
@@ -308,55 +395,14 @@ export function createLogsPage(id: string): HTMLElement {
     restartPolling();
     void refresh();
   });
-  autoToggle.addEventListener("click", () => {
-    autoScroll = !autoScroll;
-    render();
+
+  // ── Scroll / indicator wiring ─────────────────────────────────────────────
+  indicator.addEventListener("click", () => {
+    scroll.scrollTop = buffer.direction() === "desc" ? 0 : scroll.scrollHeight;
+    newEventCount = 0;
+    indicator.hidden = true;
   });
-  densityToggle.addEventListener("click", () => {
-    density = density === "compact" ? "comfortable" : "compact";
-    render();
-  });
-  sortToggle.addEventListener("click", () => {
-    const newDir: SortDirection = buffer.direction() === "desc" ? "asc" : "desc";
-    buffer.setDirection(newDir);
-    render();
-  });
-  expandToggle.addEventListener("click", () => {
-    if (expandedEvents.size > 0) {
-      expandedEvents.clear();
-    } else {
-      for (const event of filtered()) {
-        if (stringifyPayload(event.content)) {
-          expandedEvents.add(rowKey(event));
-        }
-      }
-    }
-    render();
-  });
-  copyAllBtn.addEventListener("click", () => {
-    const events = filtered();
-    if (events.length === 0) return;
-    const lines = events.map((event) => {
-      const payload = stringifyPayload(event.content);
-      const header = `[${event.at}] [${event.event}] ${event.message}`;
-      return payload ? `${header}\n${payload}` : header;
-    });
-    const text = lines.join("\n\n");
-    navigator.clipboard.writeText(text).then(
-      () => {
-        copyAllBtn.textContent = "✓";
-        setTimeout(() => {
-          copyAllBtn.textContent = "";
-          copyAllBtn.append(createIcon("copy", { size: 15 }));
-        }, 1200);
-      },
-      () => undefined,
-    );
-  });
-  search.addEventListener("input", () => {
-    searchText = search.value;
-    render();
-  });
+
   scroll.addEventListener("scroll", () => {
     const isDesc = buffer.direction() === "desc";
     const nearEdge = isDesc
@@ -369,6 +415,7 @@ export function createLogsPage(id: string): HTMLElement {
       indicator.textContent = `${arrow} New events`;
     }
   });
+
   // Make the shell outlet non-scrolling so logs-scroll is the true scroll boundary
   const outlet = document.querySelector(".shell-outlet") as HTMLElement | null;
   if (outlet) {
@@ -385,6 +432,9 @@ export function createLogsPage(id: string): HTMLElement {
     window.clearInterval(timer);
     unsubscribeLifecycle?.();
     unsubscribeStream?.();
+    filterBar.closeDetailPanel();
+    detailPanel.close();
+    syncEscapeListener();
   });
   return page;
 }

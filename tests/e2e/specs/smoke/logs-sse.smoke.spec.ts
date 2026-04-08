@@ -83,4 +83,35 @@ test.describe("Logs SSE & Sort Smoke", () => {
     const newCount = await logs.logRows.count();
     expect(newCount).toBeGreaterThan(initialCount);
   });
+
+  test("streaming placeholder SSE events stay hidden", async ({ page }) => {
+    const logs = new LogsPage(page);
+    await logs.navigateLiveLogs("SYM-42");
+    await expect(logs.logRows.first()).toBeVisible({ timeout: 5000 });
+
+    const initialCount = await logs.logRows.count();
+
+    await page.evaluate(() => {
+      window.dispatchEvent(
+        new CustomEvent("risoluto:any-event", {
+          detail: {
+            type: "agent.event",
+            payload: {
+              issueId: "issue-001",
+              identifier: "SYM-42",
+              type: "agent_streaming",
+              message: "Agent streaming text",
+              sessionId: "sess-001",
+              timestamp: "2026-01-15T12:05:00.000Z",
+              content: null,
+            },
+          },
+        }),
+      );
+    });
+
+    await page.waitForTimeout(200);
+    await expect(page.getByText("Agent streaming text")).toHaveCount(0);
+    expect(await logs.logRows.count()).toBe(initialCount);
+  });
 });

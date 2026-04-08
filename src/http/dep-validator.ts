@@ -3,6 +3,7 @@ import type { HttpRouteDeps } from "./route-types.js";
 const OPTIONAL_ROUTE_DEPS: Array<{ key: keyof HttpRouteDeps; feature: string }> = [
   { key: "eventBus", feature: "/api/v1/events SSE stream" },
   { key: "tracker", feature: "tracker-backed APIs" },
+  { key: "codexControlPlane", feature: "Codex admin APIs" },
   { key: "attemptStore", feature: "attempt and PR APIs" },
   { key: "notificationStore", feature: "notification APIs" },
   { key: "automationStore", feature: "automation run history APIs" },

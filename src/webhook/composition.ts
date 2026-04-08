@@ -10,7 +10,6 @@ import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { RisolutoLogger, WebhookConfig } from "../core/types.js";
 import type { WebhookHandlerDeps } from "../http/webhook-handler.js";
-import type { createLogger } from "../core/logger.js";
 import { DefaultWebhookHealthTracker, type WebhookHealthTracker } from "./health-tracker.js";
 import { WebhookRegistrar } from "./registrar.js";
 import { SqliteWebhookInbox } from "../persistence/sqlite/webhook-inbox.js";
@@ -63,16 +62,15 @@ export function initWebhookInfrastructure(input: {
   linearClient: ReturnType<typeof createTracker>["linearClient"];
   eventBus: TypedEventBus<RisolutoEventMap>;
   secretsStore: SecretsStore;
-  logger: ReturnType<typeof createLogger>;
+  logger: RisolutoLogger;
 }): WebhookInfrastructure {
   const webhookConfig = input.webhookConfig;
   const webhookUrlSet = !!webhookConfig?.webhookUrl;
   const webhookEnabled = evaluateWebhookConfig(webhookConfig, input.logger);
 
-  const webhookInbox =
-    webhookUrlSet && input.persistence.db
-      ? new SqliteWebhookInbox(input.persistence.db, input.logger.child({ component: "webhook-inbox" }))
-      : undefined;
+  const webhookInbox = webhookUrlSet
+    ? new SqliteWebhookInbox(input.persistence.db, input.logger.child({ component: "webhook-inbox" }))
+    : undefined;
 
   const webhookHealthTracker = webhookEnabled
     ? new DefaultWebhookHealthTracker({
@@ -118,7 +116,7 @@ export function buildWebhookHandlerDeps(input: {
   webhookInbox: SqliteWebhookInbox | undefined;
   getWebhookSecret: () => string | null;
   getPreviousWebhookSecret: () => string | null;
-  logger: ReturnType<typeof createLogger>;
+  logger: RisolutoLogger;
 }): WebhookHandlerDeps {
   return {
     getWebhookSecret: input.getWebhookSecret,

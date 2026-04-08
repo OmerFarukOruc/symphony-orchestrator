@@ -3,11 +3,29 @@ import type { QueueFilters } from "./queue-state";
 import { createIcon } from "../ui/icons.js";
 import { createIconButton } from "../ui/buttons.js";
 
-function chip(label: string, onClick: () => void): HTMLButtonElement {
+interface ChipOptions {
+  ariaLabel?: string;
+  classNames?: string[];
+  count?: number;
+}
+
+function chip(label: string, onClick: () => void, options: ChipOptions = {}): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "mc-chip";
-  button.textContent = label;
+  button.classList.add("mc-chip", "is-interactive", ...(options.classNames ?? []));
+  if (options.ariaLabel) {
+    button.setAttribute("aria-label", options.ariaLabel);
+  }
+  const labelSpan = document.createElement("span");
+  labelSpan.className = "queue-chip-label";
+  labelSpan.textContent = label;
+  button.append(labelSpan);
+  if (options.count !== undefined) {
+    const count = document.createElement("span");
+    count.className = "queue-chip-count";
+    count.textContent = String(options.count);
+    button.append(count);
+  }
   button.addEventListener("click", onClick);
   return button;
 }
@@ -38,6 +56,17 @@ function utilityLabel(text: string): HTMLSpanElement {
   label.className = "toolbar-utility-label";
   label.textContent = text;
   return label;
+}
+
+function filterGroup(label: string, className: string, content: HTMLElement): HTMLDivElement {
+  const group = document.createElement("div");
+  group.className = `toolbar-filter-group ${className}`;
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-label", label);
+  const groupLabel = utilityLabel(label);
+  groupLabel.classList.add("toolbar-filter-label");
+  group.append(groupLabel, content);
+  return group;
 }
 
 /**
@@ -120,16 +149,25 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   function renderStages(): void {
     stageBar.replaceChildren(
       ...mergedColumns.map((column) => {
-        const label = column.count > 0 ? `${column.label} ${column.count}` : column.label;
         const active = filters.stages.has(column.key);
-        const button = chip(label, () => {
-          if (filters.stages.has(column.key)) filters.stages.delete(column.key);
-          else filters.stages.add(column.key);
-          renderStages();
-          onChange();
-        });
+        const normalizedKey = normalizeStageKey(column.key);
+        const button = chip(
+          column.label,
+          () => {
+            if (filters.stages.has(column.key)) filters.stages.delete(column.key);
+            else filters.stages.add(column.key);
+            renderStages();
+            onChange();
+          },
+          {
+            ariaLabel: column.count > 0 ? `${column.label}, ${column.count} issues` : `${column.label}, no issues`,
+            classNames: ["queue-stage-chip", `queue-stage-chip-${normalizedKey}`],
+            count: column.count > 0 ? column.count : 0,
+          },
+        );
         button.classList.toggle("is-active", active);
         button.setAttribute("aria-pressed", String(active));
+        button.dataset.stage = normalizedKey;
         return button;
       }),
     );
@@ -138,18 +176,24 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   function renderPriorities(): void {
     priorityBar.replaceChildren(
       ...[
-        ["all", "All priorities"],
+        ["all", "Any priority"],
         ["urgent", "Urgent"],
         ["high", "High"],
         ["medium", "Medium"],
         ["low", "Low"],
-      ].map(([value, _label]) => {
+      ].map(([value, label]) => {
         const active = filters.priority === value;
-        const button = chip(value, () => {
-          filters.priority = value;
-          renderPriorities();
-          onChange();
-        });
+        const button = chip(
+          label,
+          () => {
+            filters.priority = value;
+            renderPriorities();
+            onChange();
+          },
+          {
+            classNames: ["queue-priority-chip", `queue-priority-chip-${value}`],
+          },
+        );
         button.classList.toggle("is-active", active);
         button.setAttribute("aria-pressed", String(active));
         return button;
@@ -159,17 +203,22 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
 
   const filterRow = document.createElement("div");
   filterRow.className = "toolbar-filter-row";
-  filterRow.append(stageBar, priorityBar);
+  filterRow.append(
+    filterGroup("Workflow stages", "toolbar-filter-group-stages", stageBar),
+    filterGroup("Priority", "toolbar-filter-group-priority", priorityBar),
+  );
 
   /* ─── Utility row: view-options (left) │ actions (right) ─── */
 
   const sort = document.createElement("select");
   sort.className = "mc-select";
-  sort.setAttribute("aria-label", "Sort by");
+  sort.classList.add("toolbar-sort-select");
+  sort.setAttribute("aria-label", "Board order");
+  sort.title = "Arrange board lanes";
   [
     ["updated", "Recently updated"],
-    ["priority", "Priority"],
-    ["tokens", "Token usage"],
+    ["priority", "Priority first"],
+    ["tokens", "Highest token usage"],
   ].forEach(([value, label]) => {
     const option = Object.assign(document.createElement("option"), { value, textContent: label });
     option.selected = filters.sort === value;
@@ -177,8 +226,12 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   });
 
   const sortGroup = document.createElement("div");
-  sortGroup.className = "toolbar-utility-group";
-  sortGroup.append(createIcon("sort", { size: 14, className: "toolbar-utility-icon" }), utilityLabel("Sort by"), sort);
+  sortGroup.className = "toolbar-utility-group toolbar-sort-group";
+  sortGroup.append(
+    createIcon("sort", { size: 14, className: "toolbar-utility-icon" }),
+    utilityLabel("Board order"),
+    sort,
+  );
 
   const densityBtn = iconButton(
     filters.density === "comfortable" ? "unfold" : "dense",

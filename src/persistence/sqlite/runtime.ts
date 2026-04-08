@@ -12,17 +12,18 @@ import path from "node:path";
 
 import type { RisolutoLogger } from "../../core/types.js";
 import type { AttemptStorePort } from "../../core/attempt-store-port.js";
-import { AttemptStore } from "../../core/attempt-store.js";
 import { closeDatabase, openDatabase, type RisolutoDatabase } from "./database.js";
 import { SqliteAttemptStore } from "./attempt-store-sqlite.js";
+import { eq } from "drizzle-orm";
+
 import { migrateFromJsonl } from "./migrator.js";
-import { attempts } from "./schema.js";
-import { seedDefaults, importLegacyFiles } from "../../config/legacy-import.js";
+import { attempts, config, promptTemplates } from "./schema.js";
+import { DEFAULT_CONFIG_SECTIONS, DEFAULT_PROMPT_TEMPLATE } from "../../config/defaults.js";
 
 export interface PersistenceRuntime {
-  /** The shared Drizzle database instance. Null in JSONL mode. */
-  db: RisolutoDatabase | null;
-  /** Attempt store — backed by SQLite or JSONL depending on mode. */
+  /** The shared Drizzle database instance. */
+  db: RisolutoDatabase;
+  /** Attempt store — backed by SQLite. */
   attemptStore: AttemptStorePort;
   /** Gracefully close the database connection (WAL checkpoint + release locks). */
   close(): void;
@@ -33,8 +34,51 @@ export interface PersistenceRuntimeOptions {
   dataDir: string;
   /** Logger for persistence-level diagnostics. */
   logger: RisolutoLogger;
-  /** Persistence mode — "sqlite" (default) or "jsonl" (legacy). */
-  mode?: string;
+}
+
+/**
+ * Seed default config sections and prompt template into the DB if their
+ * respective tables are empty. Runs on every boot but is idempotent.
+ */
+export function seedDefaults(db: RisolutoDatabase): void {
+  const now = new Date().toISOString();
+
+  const existing = db.select().from(config).limit(1).all();
+  if (existing.length === 0) {
+    for (const [key, value] of Object.entries(DEFAULT_CONFIG_SECTIONS)) {
+      db.insert(config)
+        .values({ key, value: JSON.stringify(value), updatedAt: now })
+        .onConflictDoNothing()
+        .run();
+    }
+  }
+
+  // Seed default prompt template independently — runs whenever the table is
+  // empty, regardless of whether config rows already exist (e.g. upgraded DBs).
+  const existingTemplates = db.select().from(promptTemplates).limit(1).all();
+  if (existingTemplates.length === 0) {
+    db.insert(promptTemplates)
+      .values({
+        id: "default",
+        name: "Default",
+        body: DEFAULT_PROMPT_TEMPLATE,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing()
+      .run();
+
+    // Set the selected template in system config
+    const systemRow = db.select().from(config).where(eq(config.key, "system")).get();
+    if (systemRow) {
+      const systemConfig = JSON.parse(systemRow.value) as Record<string, unknown>;
+      systemConfig.selectedTemplateId = "default";
+      db.update(config)
+        .set({ value: JSON.stringify(systemConfig), updatedAt: now })
+        .where(eq(config.key, "system"))
+        .run();
+    }
+  }
 }
 
 /**
@@ -44,25 +88,8 @@ export interface PersistenceRuntimeOptions {
  * and constructs the attempt store with the shared connection.
  */
 export async function initPersistenceRuntime(options: PersistenceRuntimeOptions): Promise<PersistenceRuntime> {
-  const { dataDir, logger, mode = process.env.RISOLUTO_PERSISTENCE ?? "sqlite" } = options;
+  const { dataDir, logger } = options;
   const storeLogger = logger.child({ component: "attempt-store" });
-
-  if (mode === "jsonl") {
-    // Legacy JSONL mode — no shared DB, attempt store manages its own files.
-    logger.warn(
-      { mode: "jsonl" },
-      "JSONL persistence mode is deprecated. Set RISOLUTO_PERSISTENCE=sqlite (or unset the variable) to enable full features including PR tracking and checkpoint history.",
-    );
-    const store = new AttemptStore(dataDir, storeLogger);
-    await store.start();
-    return {
-      db: null,
-      attemptStore: store,
-      close() {
-        /* no DB to close in JSONL mode */
-      },
-    };
-  }
 
   const dbPath = path.join(dataDir, "risoluto.db");
   const db = openDatabase(dbPath);
@@ -80,9 +107,8 @@ export async function initPersistenceRuntime(options: PersistenceRuntimeOptions)
     }
   }
 
-  // Seed config defaults + import legacy files (idempotent).
+  // Seed config defaults (idempotent — only populates empty tables).
   seedDefaults(db);
-  await importLegacyFiles(db, dataDir, logger);
 
   const attemptStore = new SqliteAttemptStore(db, storeLogger);
 

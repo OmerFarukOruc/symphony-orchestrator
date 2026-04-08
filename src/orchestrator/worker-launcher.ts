@@ -150,6 +150,7 @@ type LaunchContext = {
   setQueuedViews: (views: ReturnType<typeof issueView>[]) => void;
   claimIssue: (issueId: string) => void;
   releaseIssueClaim: (issueId: string) => void;
+  markDirty: () => void;
   resolveModelSelection: (identifier: string) => ModelSelection;
   notify: (event: NotificationEvent) => void;
   pushEvent: (event: RecentEvent & { usage?: unknown; rateLimits?: unknown }) => void;
@@ -434,6 +435,7 @@ export async function launchWorker(
 
     ctx.runningEntries.set(issue.id, entry);
     ctx.completedViews.delete(issue.identifier);
+    ctx.markDirty();
     ctx.setQueuedViews(ctx.getQueuedViews().filter((view) => view.issueId !== issue.id));
 
     if (options?.recoveredAttempt) {
@@ -456,6 +458,7 @@ export async function launchWorker(
         modelSource: modelSelection.source,
       }),
     );
+    ctx.markDirty();
     emitLaunchNotifications(ctx, issue, workspace, attempt, modelSelection);
 
     const promptTemplate = await ctx.deps.resolveTemplate(issue.identifier);

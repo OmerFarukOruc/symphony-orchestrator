@@ -282,7 +282,6 @@ describe("HttpServer", () => {
     expect(body).toMatchObject({
       version: expect.any(String),
       data_dir: expect.any(String),
-      feature_flags: expect.any(Object),
       provider_summary: expect.any(String),
     });
   });
@@ -336,9 +335,9 @@ describe("HttpServer", () => {
       body: JSON.stringify({ model: "gpt-5.4", reasoning_effort: "ultra" }),
     });
     expect(response.status).toBe(400);
-    const body = (await response.json()) as { error: string; details: Array<{ path: PropertyKey[] }> };
+    const body = (await response.json()) as { error: string; details: Array<{ path: string[] }> };
     expect(body.error).toBe("validation_error");
-    expect(body.details.some((d) => d.path.includes("reasoning_effort"))).toBe(true);
+    expect(body.details.some((d) => d.path.some((p) => p === "reasoning_effort"))).toBe(true);
   });
 
   it("rejects non-string reasoning_effort with 400", async () => {
@@ -362,9 +361,9 @@ describe("HttpServer", () => {
       body: JSON.stringify({ model: "gpt-5.4", reasoning_effort: 123 }),
     });
     expect(response.status).toBe(400);
-    const body = (await response.json()) as { error: string; details: Array<{ path: PropertyKey[] }> };
+    const body = (await response.json()) as { error: string; details: Array<{ path: string[] }> };
     expect(body.error).toBe("validation_error");
-    expect(body.details.some((d) => d.path.includes("reasoning_effort"))).toBe(true);
+    expect(body.details.some((d) => d.path.some((p) => p === "reasoning_effort"))).toBe(true);
   });
 
   it("accepts omitted reasoning_effort", async () => {

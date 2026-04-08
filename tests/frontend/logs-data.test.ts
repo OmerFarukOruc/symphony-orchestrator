@@ -9,9 +9,9 @@ vi.mock("../../frontend/src/api", () => ({
 }));
 
 import { api } from "../../frontend/src/api";
-import { loadArchiveLogs } from "../../frontend/src/pages/logs-data";
+import { loadArchiveLogs, loadLiveLogs } from "../../frontend/src/pages/logs-data";
 import { resolveInitialLogsMode, shouldFallbackToArchive } from "../../frontend/src/pages/logs-route";
-import type { AttemptRecord, AttemptSummary } from "../../frontend/src/types";
+import type { AttemptRecord, AttemptSummary, IssueDetail, RecentEvent } from "../../frontend/src/types";
 
 const mockedApi = vi.mocked(api);
 
@@ -47,6 +47,51 @@ function createAttemptRecord(overrides: Partial<AttemptRecord> = {}): AttemptRec
   };
 }
 
+function createRecentEvent(overrides: Partial<RecentEvent> = {}): RecentEvent {
+  return {
+    at: "2026-03-21T09:45:31.596Z",
+    issue_id: "issue-23",
+    issue_identifier: "NIN-23",
+    session_id: "thread-1-turn-1",
+    event: "agent_message",
+    message: "Agent posted final answer",
+    content: "Final answer",
+    ...overrides,
+  };
+}
+
+function createIssueDetail(overrides: Partial<IssueDetail> = {}): IssueDetail {
+  return {
+    issueId: "issue-23",
+    identifier: "NIN-23",
+    title: "test",
+    state: "In Progress",
+    workspaceKey: "/tmp/NIN-23",
+    workspacePath: "/tmp/NIN-23",
+    message: null,
+    status: "running",
+    updatedAt: "2026-03-21T09:45:31.596Z",
+    attempt: 1,
+    error: null,
+    priority: 1,
+    labels: [],
+    startedAt: "2026-03-21T09:45:02.959Z",
+    lastEventAt: "2026-03-21T09:45:31.596Z",
+    tokenUsage: null,
+    model: "gpt-5.4",
+    reasoningEffort: "high",
+    modelSource: "default",
+    configuredModel: "gpt-5.4",
+    configuredReasoningEffort: "high",
+    configuredModelSource: "default",
+    modelChangePending: false,
+    recentEvents: [createRecentEvent()],
+    attempts: [],
+    currentAttemptId: "attempt-1",
+    ...overrides,
+  };
+}
+
 describe("logs data helpers", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -71,6 +116,41 @@ describe("logs data helpers", () => {
       issueId: "NIN-23",
       title: "detail for attempt-new",
     });
+  });
+
+  it("filters streaming placeholder events from live logs", async () => {
+    mockedApi.getIssue.mockResolvedValue(
+      createIssueDetail({
+        recentEvents: [
+          createRecentEvent({ event: "agent_streaming", message: "Agent streaming text", content: null }),
+          createRecentEvent({ at: "2026-03-21T09:46:00.000Z", message: "Agent posted final answer" }),
+        ],
+      }),
+    );
+
+    const result = await loadLiveLogs("NIN-23");
+
+    expect(result.events).toEqual([expect.objectContaining({ message: "Agent posted final answer" })]);
+  });
+
+  it("filters streaming placeholder events from archived logs", async () => {
+    mockedApi.getAttempts.mockResolvedValue({
+      attempts: [createAttemptSummary({ attemptId: "attempt-new", attemptNumber: null })],
+      current_attempt_id: null,
+    });
+    mockedApi.getAttemptDetail.mockResolvedValue(
+      createAttemptRecord({
+        attemptId: "attempt-new",
+        events: [
+          createRecentEvent({ event: "agent_streaming", message: "Agent streaming text", content: null }),
+          createRecentEvent({ at: "2026-03-21T09:46:00.000Z", message: "Turn diff updated", event: "turn_diff" }),
+        ],
+      }),
+    );
+
+    const result = await loadArchiveLogs("NIN-23");
+
+    expect(result.events).toEqual([expect.objectContaining({ message: "Turn diff updated", event: "turn_diff" })]);
   });
 
   it("defaults issue-scoped logs routes to archive mode", () => {

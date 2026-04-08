@@ -3,29 +3,11 @@ import type { Request, Response } from "express";
 import type { AutomationRunRecord } from "../automation/types.js";
 import type { AutomationScheduler } from "../automation/scheduler.js";
 import type { AutomationStorePort } from "../persistence/sqlite/automation-store.js";
+import { parseLimit, getSingleParam } from "./query-params.js";
 
 interface AutomationHandlerDeps {
   scheduler?: Pick<AutomationScheduler, "listAutomations" | "runNow">;
   automationStore?: AutomationStorePort;
-}
-
-function parseLimit(value: unknown): number | null {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  if (typeof candidate !== "string") {
-    return null;
-  }
-  const parsed = Number.parseInt(candidate, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-  return parsed;
-}
-
-function getSingleParam(value: string | string[] | undefined): string | null {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-  return value ?? null;
 }
 
 function serializeRun(record: AutomationRunRecord): Record<string, unknown> {

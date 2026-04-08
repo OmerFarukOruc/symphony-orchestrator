@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 import type { NotificationDeliveryFailure, NotificationSeverity } from "../core/types.js";
 import type { RisolutoDatabase } from "../persistence/sqlite/database.js";
+import { normalizeLimit } from "../persistence/sqlite/query-helpers.js";
 import { alertHistory } from "../persistence/sqlite/schema.js";
+import { isRecord } from "../utils/type-guards.js";
 
 export type AlertHistoryStatus = "delivered" | "suppressed" | "partial_failure" | "failed";
 
@@ -44,8 +46,8 @@ export interface AlertHistoryStorePort {
 }
 
 export class AlertHistoryStore {
-  static create(db: RisolutoDatabase | null): AlertHistoryStorePort {
-    return db ? new SqliteAlertHistoryStore(db) : new MemoryAlertHistoryStore();
+  static create(db: RisolutoDatabase): AlertHistoryStorePort {
+    return new SqliteAlertHistoryStore(db);
   }
 }
 
@@ -90,63 +92,11 @@ class SqliteAlertHistoryStore implements AlertHistoryStorePort {
         ? this.db.select().from(alertHistory).where(eq(alertHistory.ruleName, options.ruleName))
         : this.db.select().from(alertHistory)
     )
-      .orderBy(desc(alertHistory.createdAt))
+      .orderBy(desc(alertHistory.createdAt), desc(sql`rowid`))
       .limit(limit)
       .all();
     return rows.map(toRecord);
   }
-}
-
-interface MemoryRecord {
-  record: AlertHistoryRecord;
-  sequence: number;
-}
-
-class MemoryAlertHistoryStore implements AlertHistoryStorePort {
-  private readonly records = new Map<string, MemoryRecord>();
-  // Monotonic insertion counter. createdAt alone is not enough to order
-  // records deterministically — two events produced in the same
-  // millisecond land with identical ISO strings, and localeCompare on
-  // ties is engine-dependent. We break ties by insertion order, with
-  // the newest insertion ranked first (matches "most recent" semantics).
-  private nextSequence = 0;
-
-  async create(input: CreateAlertHistoryInput): Promise<AlertHistoryRecord> {
-    const record: AlertHistoryRecord = {
-      id: randomUUID(),
-      ruleName: input.ruleName,
-      eventType: input.eventType,
-      severity: input.severity,
-      status: input.status,
-      channels: [...input.channels],
-      deliveredChannels: [...input.deliveredChannels],
-      failedChannels: input.failedChannels.map((failure) => ({ ...failure })),
-      message: input.message,
-      createdAt: input.createdAt,
-    };
-    this.records.set(record.id, { record: cloneRecord(record), sequence: this.nextSequence++ });
-    return cloneRecord(record);
-  }
-
-  async list(options: ListAlertHistoryOptions = {}): Promise<AlertHistoryRecord[]> {
-    const limit = normalizeLimit(options.limit);
-    return [...this.records.values()]
-      .filter(({ record }) => !options.ruleName || record.ruleName === options.ruleName)
-      .sort((left, right) => {
-        const byTime = right.record.createdAt.localeCompare(left.record.createdAt);
-        if (byTime !== 0) return byTime;
-        return right.sequence - left.sequence;
-      })
-      .slice(0, limit)
-      .map(({ record }) => cloneRecord(record));
-  }
-}
-
-function normalizeLimit(limit: number | undefined): number {
-  if (limit === undefined || Number.isNaN(limit)) {
-    return 100;
-  }
-  return Math.max(1, Math.min(500, Math.trunc(limit)));
 }
 
 function parseStringArray(value: string): string[] {
@@ -163,8 +113,9 @@ function parseFailures(value: string): NotificationDeliveryFailure[] {
     const parsed = JSON.parse(value) as unknown;
     return Array.isArray(parsed)
       ? parsed
+          // eslint-disable-next-line sonarjs/function-return-type -- intentional T | null guard
           .map((entry) => {
-            if (!entry || typeof entry !== "object") {
+            if (!isRecord(entry)) {
               return null;
             }
             const record = entry as Record<string, unknown>;

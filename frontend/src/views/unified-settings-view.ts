@@ -10,6 +10,7 @@ import {
 import { createConfigState } from "./config-state.js";
 import { createConfigPage } from "./config-view.js";
 import { createSettingsPage, createSettingsState } from "../features/settings/index.js";
+import { createCodexAdminSection } from "./settings-codex-admin.js";
 
 interface UnifiedSettingsCache {
   advancedState: ReturnType<typeof createConfigState>;
@@ -111,9 +112,10 @@ export function createUnifiedSettingsPage(): HTMLElement {
   if (innerActions.length > 0) {
     header.append(...innerActions);
   }
+  const codexAdminSection = createCodexAdminSection();
   const devtoolsSection = buildDevtoolsSection(state);
 
-  body.append(generalSection, devtoolsSection);
+  body.append(generalSection, codexAdminSection, devtoolsSection);
   page.append(header, body);
 
   // Scroll to requested section after initial render

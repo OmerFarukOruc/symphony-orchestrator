@@ -1,426 +1,21 @@
 import { router } from "../router";
 import { store } from "../state/store";
 import type { AppState } from "../state/store";
-import type { RuntimeIssueView, WebhookHealth } from "../types";
+import type { WebhookHealth } from "../types";
 import { createEventRow } from "../components/event-row";
 import { createSystemHealthBadge } from "../components/system-health-badge";
 import { createWebhookHealthPanel } from "../components/webhook-health-panel";
 import { createStallEventsTable } from "../components/stall-events-table";
 import { buildAttentionList, latestTerminalIssues } from "../utils/issues";
-import {
-  formatCompactNumber,
-  formatCostUsd,
-  formatDuration,
-  formatRateLimitHeadroom,
-  formatRelativeTime,
-} from "../utils/format";
-import { flashDiff, setTextWithDiff } from "../utils/diff";
+import { formatCompactNumber, formatCostUsd, formatDuration, formatRateLimitHeadroom } from "../utils/format";
+import { setTextWithDiff } from "../utils/diff";
 import { registerPageCleanup } from "../utils/page";
-
-const EMPTY_STATE_DISMISSED_KEY = "risoluto-empty-state-dismissed";
-
-function isGettingStartedDismissed(): boolean {
-  return localStorage.getItem(EMPTY_STATE_DISMISSED_KEY) === "true";
-}
-
-function dismissGettingStarted(): void {
-  localStorage.setItem(EMPTY_STATE_DISMISSED_KEY, "true");
-}
-
-/**
- * Creates a live metric pill for the hero band.
- * Small, inline stat with value and label.
- */
-function createLiveMetric(label: string): { root: HTMLElement; value: HTMLElement } {
-  const root = document.createElement("div");
-  root.className = "overview-live-metric";
-  const value = document.createElement("strong");
-  value.className = "overview-live-value";
-  const caption = document.createElement("span");
-  caption.className = "overview-live-label";
-  caption.textContent = label;
-  root.append(value, caption);
-  return { root, value };
-}
-
-function describeCurrentMoment(
-  snapshot: NonNullable<AppState["snapshot"]>,
-  attentionCount: number,
-): {
-  state: string;
-  detail: string;
-} {
-  const queued = (snapshot.queued ?? []).length;
-  const running = snapshot.counts.running;
-  const completed = (snapshot.completed ?? []).length;
-
-  if (attentionCount > 0) {
-    return {
-      state: attentionCount === 1 ? "1 issue needs intervention" : `${attentionCount} issues need intervention`,
-      detail: "Blocked, retrying, and waiting work is collected here first so the next decision is always obvious.",
-    };
-  }
-
-  if (running > 0) {
-    return {
-      state: running === 1 ? "1 issue is in flight" : `${running} issues are in flight`,
-      detail:
-        queued > 0
-          ? `${queued} more ${queued === 1 ? "issue is" : "issues are"} queued behind the active work.`
-          : "Active work is progressing cleanly without intervention right now.",
-    };
-  }
-
-  if (queued > 0) {
-    return {
-      state: queued === 1 ? "1 issue is queued" : `${queued} issues are queued`,
-      detail: "The queue is ready and waiting for the next poll cycle to pick it up.",
-    };
-  }
-
-  if (completed > 0) {
-    return {
-      state: "Queue is clear",
-      detail: "Everything is handled. Review the latest outcomes and recent activity below.",
-    };
-  }
-
-  return {
-    state: "Ready for the first issue",
-    detail: "Create an issue in Linear and move it to In Progress \u2014 Risoluto will take it from there.",
-  };
-}
-
-function describeAttentionZone(attentionCount: number): string {
-  if (attentionCount === 0) {
-    return "Nothing needs your attention right now. When an issue blocks, retries, or needs a decision, it will surface here.";
-  }
-
-  if (attentionCount === 1) {
-    return "One issue is waiting on a recovery, unblock, or decision. Resolve it here before scanning the rest of the system.";
-  }
-
-  return `${attentionCount} issues are competing for attention. Start with the oldest or most blocked item and work downward.`;
-}
-
-/**
- * Creates the hero metrics band - a strong top strip showing "Now" metrics.
- * Running, Queue Depth, Rate-limit, Attention count inline.
- */
-function createHeroMetricsBand(): {
-  band: HTMLElement;
-  state: HTMLElement;
-  detail: HTMLElement;
-  metrics: {
-    running: HTMLElement;
-    queued: HTMLElement;
-    headroom: HTMLElement;
-    attention: HTMLElement;
-  };
-} {
-  const band = document.createElement("section");
-  band.className = "overview-hero-band";
-
-  const intro = document.createElement("div");
-  intro.className = "overview-hero-intro";
-
-  const label = document.createElement("span");
-  label.className = "overview-hero-label";
-  label.textContent = "Overview";
-
-  const title = document.createElement("h1");
-  title.className = "overview-hero-title";
-  title.textContent = "Calm control of the queue";
-
-  const detail = document.createElement("p");
-  detail.className = "overview-hero-detail";
-
-  const state = document.createElement("div");
-  state.className = "overview-hero-state";
-
-  intro.append(label, title, detail, state);
-
-  const metricsContainer = document.createElement("div");
-  metricsContainer.className = "overview-hero-metrics";
-
-  const running = createLiveMetric("Running");
-  const queued = createLiveMetric("Queue");
-  const headroom = createLiveMetric("Rate limit");
-  const attention = createLiveMetric("Attention");
-
-  metricsContainer.append(running.root, queued.root, headroom.root, attention.root);
-  band.append(intro, metricsContainer);
-
-  return {
-    band,
-    state,
-    detail,
-    metrics: {
-      running: running.value,
-      queued: queued.value,
-      headroom: headroom.value,
-      attention: attention.value,
-    },
-  };
-}
-
-/**
- * Creates a section header with title and optional kicker.
- */
-function createSectionHeader(title: string, kicker?: string): HTMLElement {
-  const header = document.createElement("div");
-  header.className = "overview-section-header";
-
-  const titleEl = document.createElement("h2");
-  titleEl.className = "overview-section-title";
-  titleEl.textContent = title;
-  header.append(titleEl);
-
-  if (kicker) {
-    const kickerEl = document.createElement("span");
-    kickerEl.className = "overview-section-kicker";
-    kickerEl.textContent = kicker;
-    header.append(kickerEl);
-  }
-
-  return header;
-}
-
-const COLLAPSED_KEY = "risoluto-overview-collapsed";
-
-/**
- * Reads the set of collapsed section IDs from localStorage.
- */
-function readCollapsedSections(): Set<string> {
-  try {
-    const raw = localStorage.getItem(COLLAPSED_KEY);
-    if (raw) return new Set(JSON.parse(raw) as string[]);
-  } catch {
-    /* ignore corrupted data */
-  }
-  return new Set<string>();
-}
-
-/**
- * Persists the set of collapsed section IDs to localStorage.
- */
-function saveCollapsedSections(ids: Set<string>): void {
-  localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...ids]));
-}
-
-/**
- * Creates a collapsible section wrapper with a summary line.
- * The section header acts as the disclosure toggle.
- * `summaryEl` is a lightweight element shown next to the header when collapsed.
- */
-function createCollapsibleSection(
-  id: string,
-  title: string,
-  kicker: string,
-  collapsed: Set<string>,
-): {
-  section: HTMLElement;
-  body: HTMLElement;
-  summary: HTMLElement;
-  setExpanded: (expanded: boolean) => void;
-} {
-  const section = document.createElement("div");
-  section.className = "overview-collapsible-section";
-  section.dataset.sectionId = id;
-
-  const header = document.createElement("button");
-  header.type = "button";
-  header.className = "overview-collapsible-header";
-  header.setAttribute("aria-expanded", String(!collapsed.has(id)));
-
-  const titleEl = document.createElement("h2");
-  titleEl.className = "overview-section-title";
-  titleEl.textContent = title;
-
-  const kickerEl = document.createElement("span");
-  kickerEl.className = "overview-section-kicker";
-  kickerEl.textContent = kicker;
-
-  const chevron = document.createElement("span");
-  chevron.className = "overview-collapsible-chevron";
-  chevron.setAttribute("aria-hidden", "true");
-  chevron.textContent = "\u25B8"; // right-pointing triangle
-
-  const summary = document.createElement("span");
-  summary.className = "overview-collapsible-summary";
-
-  header.append(chevron, titleEl, kickerEl, summary);
-
-  const body = document.createElement("div");
-  body.className = "overview-collapsible-body";
-
-  section.append(header, body);
-
-  function setExpanded(expanded: boolean): void {
-    header.setAttribute("aria-expanded", String(expanded));
-    section.classList.toggle("is-collapsed", !expanded);
-    body.hidden = !expanded;
-    summary.hidden = expanded;
-    if (expanded) {
-      collapsed.delete(id);
-    } else {
-      collapsed.add(id);
-    }
-    saveCollapsedSections(collapsed);
-  }
-
-  header.addEventListener("click", () => {
-    const isExpanded = header.getAttribute("aria-expanded") === "true";
-    setExpanded(!isExpanded);
-  });
-
-  // Apply initial collapsed state
-  const isCollapsed = collapsed.has(id);
-  section.classList.toggle("is-collapsed", isCollapsed);
-  body.hidden = isCollapsed;
-  summary.hidden = !isCollapsed;
-
-  return { section, body, summary, setExpanded };
-}
-
-/**
- * Creates an issue row for the attention or terminal list.
- */
-function issueRow(issue: RuntimeIssueView, target: "attention" | "terminal"): HTMLButtonElement {
-  const row = document.createElement("button");
-  row.type = "button";
-  row.className = target === "attention" ? "overview-attention-item" : "overview-terminal-item";
-  row.dataset.status = issue.status;
-
-  const meta = document.createElement("div");
-  meta.className = "overview-row-meta";
-
-  const ident = document.createElement("strong");
-  ident.className = "text-mono";
-  ident.textContent = issue.identifier;
-
-  const time = document.createElement("span");
-  time.className = "overview-small";
-  time.textContent = formatRelativeTime(issue.updatedAt);
-
-  meta.append(ident, time);
-
-  const titleDiv = document.createElement("div");
-  titleDiv.textContent = issue.title;
-
-  row.append(meta, titleDiv);
-  row.addEventListener("click", () => router.navigate(`/queue/${issue.identifier}`));
-
-  return row;
-}
-
-/**
- * Fills a container with new items, applying flash diff animation.
- */
-const listFingerprints = new WeakMap<HTMLElement, string>();
-
-function fillList(container: HTMLElement, items: HTMLElement[]): void {
-  const fingerprint = items.map((el) => el.textContent ?? "").join("\0");
-  if (listFingerprints.get(container) === fingerprint) return;
-  listFingerprints.set(container, fingerprint);
-  container.replaceChildren(...items);
-  for (const item of items) {
-    flashDiff(item);
-  }
-}
-
-function createTeachingEmptyState(
-  title: string,
-  detail: string,
-  actionLabel?: string,
-  onAction?: () => void,
-): HTMLElement {
-  const box = document.createElement("div");
-  box.className = "overview-teaching-empty";
-
-  const heading = document.createElement("h3");
-  heading.className = "overview-teaching-empty-title";
-  heading.textContent = title;
-
-  const text = document.createElement("p");
-  text.className = "overview-teaching-empty-detail";
-  text.textContent = detail;
-
-  box.append(heading, text);
-
-  if (actionLabel && onAction) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "mc-button";
-    button.textContent = actionLabel;
-    button.addEventListener("click", onAction);
-    box.append(button);
-  }
-
-  return box;
-}
-
-function createGettingStartedCard(onDismiss: () => void): HTMLElement {
-  const card = document.createElement("div");
-  card.className = "overview-getting-started";
-
-  const dismiss = document.createElement("button");
-  dismiss.type = "button";
-  dismiss.className = "overview-getting-started-dismiss";
-  dismiss.textContent = "×";
-  dismiss.setAttribute("aria-label", "Dismiss tip");
-  dismiss.addEventListener("click", () => {
-    dismissGettingStarted();
-    onDismiss();
-  });
-
-  const heading = document.createElement("h2");
-  heading.className = "overview-getting-started-title";
-  heading.textContent = "Ready when you are";
-
-  const desc = document.createElement("p");
-  desc.className = "overview-getting-started-desc";
-  desc.textContent =
-    "Create an issue in Linear, move it into progress, and Risoluto picks it up on the next poll. This page becomes your live control room the moment work begins.";
-
-  const steps = document.createElement("div");
-  steps.className = "overview-getting-started-steps";
-
-  const stepItems = [
-    { n: "1", text: "Create an issue in Linear" },
-    { n: "2", text: "Move it to In Progress" },
-    { n: "3", text: "Watch the first run land here" },
-  ];
-
-  for (const s of stepItems) {
-    const step = document.createElement("div");
-    step.className = "overview-getting-started-step delight-stagger";
-    step.style.setProperty("--step-index", s.n);
-    const dot = document.createElement("span");
-    dot.className = "overview-getting-started-step-n";
-    dot.textContent = s.n;
-    const label = document.createElement("span");
-    label.textContent = s.text;
-    step.append(dot, label);
-    steps.append(step);
-  }
-
-  const cta = document.createElement("div");
-  cta.className = "overview-getting-started-actions";
-
-  const setupBtn = document.createElement("button");
-  setupBtn.className = "mc-button is-ghost is-sm";
-  setupBtn.type = "button";
-  setupBtn.textContent = "Review setup";
-  setupBtn.addEventListener("click", () => {
-    router.navigate("/setup");
-  });
-
-  cta.append(setupBtn);
-
-  card.append(dismiss, heading, desc, steps, cta);
-  return card;
-}
+import { createSparkline } from "../components/sparkline";
+import { describeCurrentMoment, describeAttentionZone } from "./overview-descriptions.js";
+import { createHeroMetricsBand, createLiveMetric } from "./overview-hero.js";
+import { readCollapsedSections, createSectionHeader, createCollapsibleSection } from "./overview-sections.js";
+import { issueRow, fillList } from "./overview-rows.js";
+import { isGettingStartedDismissed, createTeachingEmptyState, createGettingStartedCard } from "./overview-empty.js";
 
 export function createOverviewPage(): HTMLElement {
   const page = document.createElement("div");
@@ -553,9 +148,44 @@ export function createOverviewPage(): HTMLElement {
     section.setAttribute("aria-busy", "true");
   }
 
+  /** Token-burn history for the sparkline (ring buffer of last 20 snapshots). */
+  const costHistory: number[] = [];
+  let lastPeekHealth = "";
+  let lastPeekCost = -1;
+  let lastPeekStalls = -1;
+
+  /** Updates always-visible peek lines (guarded to avoid DOM thrash on every tick). */
+  function updatePeekSummaries(healthStatus: string, totalCost: string, stallCount: number): void {
+    if (healthStatus !== lastPeekHealth) {
+      lastPeekHealth = healthStatus;
+      const healthDot = document.createElement("span");
+      healthDot.className = `overview-peek-dot is-${healthStatus}`;
+      const healthLabel = document.createElement("span");
+      healthLabel.textContent = healthStatus;
+      healthCollapsible.peek.replaceChildren(healthDot, healthLabel);
+    }
+
+    const currentCost = costHistory.at(-1) ?? -1;
+    if (currentCost !== lastPeekCost) {
+      lastPeekCost = currentCost;
+      const costLabel = document.createElement("span");
+      costLabel.textContent = currentCost > 0 ? totalCost : "\u2014";
+      const sparkline = createSparkline(costHistory, { width: 60, height: 16, color: "var(--text-accent)" });
+      tokenCollapsible.peek.replaceChildren(costLabel, sparkline);
+    }
+
+    if (stallCount !== lastPeekStalls) {
+      lastPeekStalls = stallCount;
+      const stallLabel = document.createElement("span");
+      stallLabel.textContent = stallCount > 0 ? `${stallCount} event${stallCount === 1 ? "" : "s"}` : "none";
+      stallCollapsible.peek.replaceChildren(stallLabel);
+    }
+  }
+
   /** Updates the one-line summary text on each collapsible section header. */
   function updateCollapsibleSummaries(snapshot: NonNullable<AppState["snapshot"]>, terminalCount?: number): void {
-    healthCollapsible.summary.textContent = snapshot.system_health ? snapshot.system_health.status : "healthy";
+    const healthStatus = snapshot.system_health ? snapshot.system_health.status : "healthy";
+    healthCollapsible.summary.textContent = healthStatus;
 
     const totalCost = formatCostUsd(snapshot.codex_totals.cost_usd);
     const totalRuntime = formatDuration(snapshot.codex_totals.seconds_running);
@@ -571,6 +201,10 @@ export function createOverviewPage(): HTMLElement {
 
     const tc = terminalCount ?? latestTerminalIssues(snapshot.completed ?? []).length;
     terminalCollapsible.summary.textContent = tc > 0 ? `${tc} issue${tc === 1 ? "" : "s"}` : "none";
+
+    costHistory.push(snapshot.codex_totals.cost_usd ?? 0);
+    if (costHistory.length > 20) costHistory.shift();
+    updatePeekSummaries(healthStatus, totalCost, stallCount);
   }
 
   /** Fills empty list containers with teaching empty-state cards. */

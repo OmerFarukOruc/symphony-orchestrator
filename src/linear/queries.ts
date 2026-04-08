@@ -284,3 +284,73 @@ export function buildWebhookDeleteMutation(): string {
     }
   `;
 }
+
+export function buildAttachmentsForUrlQuery(): string {
+  return `
+    query RisolutoAttachmentsForUrl($url: String!) {
+      attachmentsForURL(url: $url) {
+        nodes {
+          id
+          title
+          subtitle
+          url
+          issue {
+            id
+            identifier
+            title
+            state {
+              name
+            }
+          }
+        }
+      }
+    }
+  `;
+}
+
+export function buildAttachmentCreateMutation(): string {
+  return `
+    mutation RisolutoAttachmentCreate($issueId: String!, $title: String!, $subtitle: String, $url: String!, $iconUrl: String) {
+      attachmentCreate(input: { issueId: $issueId, title: $title, subtitle: $subtitle, url: $url, iconUrl: $iconUrl }) {
+        success
+        attachment {
+          id
+          url
+          title
+          subtitle
+        }
+      }
+    }
+  `;
+}
+
+export function buildAttachmentUpdateMutation(): string {
+  return `
+    mutation RisolutoAttachmentUpdate($id: String!, $title: String, $subtitle: String, $iconUrl: String) {
+      attachmentUpdate(id: $id, input: { title: $title, subtitle: $subtitle, iconUrl: $iconUrl }) {
+        success
+        attachment {
+          id
+          url
+          title
+          subtitle
+        }
+      }
+    }
+  `;
+}
+
+export function buildIssueByIdQuery(): string {
+  return `
+    query RisolutoIssueById($id: String!) {
+      issue(id: $id) {
+        id
+        identifier
+        title
+        state {
+          name
+        }
+      }
+    }
+  `;
+}

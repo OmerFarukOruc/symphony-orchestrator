@@ -166,6 +166,12 @@ describe("buildDockerRunArgs", () => {
     expect(execIdx).toBeGreaterThan(readyIdx);
   });
 
+  it("disables bwrap sandbox in container config to avoid double-sandboxing", () => {
+    const result = buildDockerRunArgs(baseInput());
+    const entrypoint = result.args.at(-1)!;
+    expect(entrypoint).toContain("use_linux_sandbox_bwrap = false");
+  });
+
   it("passes through env vars from host", () => {
     process.env.MY_SECRET = "hunter2";
     const cfg = baseSandboxConfig();

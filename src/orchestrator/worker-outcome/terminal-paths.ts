@@ -26,6 +26,7 @@ export function handleServiceStopped(ctx: OutcomeContext, prepared: PreparedWork
       message: outcome.errorMessage ?? "service stopped before the worker completed",
     }),
   );
+  ctx.markDirty();
   ctx.deps.eventBus?.emit("issue.completed", {
     issueId: issue.id,
     identifier: issue.identifier,
@@ -91,6 +92,7 @@ export async function handleTerminalCleanup(ctx: OutcomeContext, prepared: Prepa
         : "workspace cleaned after terminal state",
     }),
   );
+  ctx.markDirty();
   ctx.deps.eventBus?.emit("issue.completed", {
     issueId: issue.id,
     identifier: issue.identifier,
@@ -108,6 +110,7 @@ export function handleInactiveIssue(ctx: OutcomeContext, prepared: PreparedWorke
       message: "issue is no longer active",
     }),
   );
+  ctx.markDirty();
   ctx.deps.eventBus?.emit("issue.completed", {
     issueId: issue.id,
     identifier: issue.identifier,
@@ -136,6 +139,7 @@ export function handleOperatorAbort(ctx: OutcomeContext, prepared: PreparedWorke
       message: outcome.errorMessage ?? "worker cancelled by operator request",
     }),
   );
+  ctx.markDirty();
   ctx.deps.eventBus?.emit("issue.completed", {
     issueId: issue.id,
     identifier: issue.identifier,
@@ -169,6 +173,7 @@ export async function handleCancelledOrHardFailure(
       message: errorReason,
     }),
   );
+  ctx.markDirty();
   ctx.deps.eventBus?.emit("issue.completed", {
     issueId: issue.id,
     identifier: issue.identifier,

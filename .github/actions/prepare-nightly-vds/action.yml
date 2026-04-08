@@ -1,0 +1,16 @@
+name: Prepare Nightly VDS
+description: Establish isolated per-run scratch directories and self-hosted-safe defaults
+runs:
+  using: composite
+  steps:
+    - name: Prepare nightly scratch paths
+      shell: bash
+      run: |
+        set -euo pipefail
+        RUN_ROOT="${RUNNER_TEMP}/risoluto-nightly/${GITHUB_RUN_ID}/${GITHUB_JOB}"
+        rm -rf "$RUN_ROOT"
+        mkdir -p "$RUN_ROOT/artifacts" "$RUN_ROOT/logs"
+        echo "RISOLUTO_NIGHTLY_ROOT=$RUN_ROOT" >> "$GITHUB_ENV"
+        echo "RISOLUTO_NIGHTLY_ARTIFACT_ROOT=$RUN_ROOT/artifacts" >> "$GITHUB_ENV"
+        echo "RISOLUTO_NIGHTLY_LOG_ROOT=$RUN_ROOT/logs" >> "$GITHUB_ENV"
+        echo "PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright" >> "$GITHUB_ENV"

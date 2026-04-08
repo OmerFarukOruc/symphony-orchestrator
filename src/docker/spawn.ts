@@ -157,6 +157,10 @@ function buildEntrypointScript(egressAllowlist: string[], options?: { unsetApiKe
     'rm -rf "$CODEX_HOME"',
     'mkdir -p "$CODEX_HOME"',
     'printf "%s" "$RISOLUTO_CODEX_CONFIG_TOML" > "$CODEX_HOME/config.toml"',
+    // Disable bwrap inside Docker — the container IS the sandbox.
+    // Without this, Codex fails with "bwrap: No permissions to create new namespace"
+    // on kernels that restrict unprivileged user namespaces.
+    'printf "\\n[features]\\nuse_linux_sandbox_bwrap = false\\n" >> "$CODEX_HOME/config.toml"',
     'if [ -n "${RISOLUTO_CODEX_AUTH_JSON_B64:-}" ]; then printf "%s" "$RISOLUTO_CODEX_AUTH_JSON_B64" | base64 -d > "$CODEX_HOME/auth.json"; fi',
   );
 

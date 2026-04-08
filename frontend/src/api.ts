@@ -4,6 +4,18 @@ import type {
   AttemptRecord,
   AttemptSummary,
   AuditRecord,
+  CodexCapabilities,
+  CodexAccountLoginStartResponse,
+  CodexAccountResponse,
+  CodexModelCatalogEntry,
+  CodexCollaborationModeEntry,
+  CodexFeatureListResponse,
+  CodexLoadedThreadsResponse,
+  CodexMcpServerStatusListResponse,
+  CodexRateLimitsResponse,
+  CodexThreadReadResponse,
+  CodexThreadListResponse,
+  CodexUserInputRequestListResponse,
   GitContextResponse,
   IssueDetail,
   LinearProject,
@@ -94,7 +106,65 @@ interface SetupOpenaiKeyPayload {
 }
 
 export const api = {
-  getModels: () => get<{ models: Array<{ id: string; displayName: string; isDefault: boolean }> }>("/api/v1/models"),
+  getModels: () =>
+    get<{
+      models: CodexModelCatalogEntry[];
+      nextCursor?: string | null;
+    }>("/api/v1/models"),
+  getCodexCapabilities: () => get<CodexCapabilities>("/api/v1/codex/capabilities"),
+  getCodexThreads: (params?: {
+    cursor?: string;
+    limit?: number;
+    sortKey?: "created_at" | "updated_at";
+    archived?: boolean;
+    cwd?: string;
+    modelProviders?: string[];
+    sourceKinds?: string[];
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.cursor) qs.set("cursor", params.cursor);
+    if (params?.limit !== undefined) qs.set("limit", String(params.limit));
+    if (params?.sortKey) qs.set("sortKey", params.sortKey);
+    if (params?.archived !== undefined) qs.set("archived", String(params.archived));
+    if (params?.cwd) qs.set("cwd", params.cwd);
+    if (params?.modelProviders?.length) qs.set("modelProviders", params.modelProviders.join(","));
+    if (params?.sourceKinds?.length) qs.set("sourceKinds", params.sourceKinds.join(","));
+    const query = qs.toString();
+    return get<CodexThreadListResponse>(query ? `/api/v1/codex/threads?${query}` : "/api/v1/codex/threads");
+  },
+  getCodexLoadedThreads: () => get<CodexLoadedThreadsResponse>("/api/v1/codex/threads/loaded"),
+  getCodexThread: (threadId: string, includeTurns = false) =>
+    get<CodexThreadReadResponse>(
+      `/api/v1/codex/threads/${encodeURIComponent(threadId)}${includeTurns ? "?includeTurns=true" : ""}`,
+    ),
+  postCodexThreadFork: (threadId: string) =>
+    post<{ thread?: { id?: string } }>(`/api/v1/codex/threads/${encodeURIComponent(threadId)}/fork`, {}),
+  postCodexThreadRename: (threadId: string, name: string) =>
+    post<unknown>(`/api/v1/codex/threads/${encodeURIComponent(threadId)}/name`, { name }),
+  postCodexThreadArchive: (threadId: string) =>
+    post<unknown>(`/api/v1/codex/threads/${encodeURIComponent(threadId)}/archive`, {}),
+  postCodexThreadUnarchive: (threadId: string) =>
+    post<unknown>(`/api/v1/codex/threads/${encodeURIComponent(threadId)}/unarchive`, {}),
+  postCodexThreadUnsubscribe: (threadId: string) =>
+    post<{ status?: string }>(`/api/v1/codex/threads/${encodeURIComponent(threadId)}/unsubscribe`, {}),
+  getCodexFeatures: () => get<CodexFeatureListResponse>("/api/v1/codex/features"),
+  getCodexCollaborationModes: () =>
+    get<{ data?: CodexCollaborationModeEntry[] } | CodexCollaborationModeEntry[]>("/api/v1/codex/collaboration-modes"),
+  getCodexMcp: () => get<CodexMcpServerStatusListResponse>("/api/v1/codex/mcp"),
+  postCodexMcpReload: () => post<unknown>("/api/v1/codex/mcp/reload", {}),
+  postCodexMcpOauthLogin: (name: string) =>
+    post<Record<string, unknown>>("/api/v1/codex/mcp/oauth/login", {
+      name,
+    }),
+  getCodexUserInputRequests: () => get<CodexUserInputRequestListResponse>("/api/v1/codex/requests/user-input"),
+  postCodexUserInputResponse: (requestId: string, result: unknown) =>
+    post<{ ok: boolean }>(`/api/v1/codex/requests/user-input/${encodeURIComponent(requestId)}/respond`, { result }),
+  getCodexAccount: () => get<CodexAccountResponse>("/api/v1/codex/account"),
+  getCodexAccountRateLimits: () => get<CodexRateLimitsResponse>("/api/v1/codex/account/rate-limits"),
+  postCodexAccountLoginStart: (body: Record<string, unknown>) =>
+    post<CodexAccountLoginStartResponse>("/api/v1/codex/account/login/start", body),
+  postCodexAccountLoginCancel: (loginId: string) => post<unknown>("/api/v1/codex/account/login/cancel", { loginId }),
+  postCodexAccountLogout: () => post<unknown>("/api/v1/codex/account/logout", {}),
   getState: () => get<RuntimeSnapshot>("/api/v1/state"),
   getObservability: () => get<ObservabilitySummary>("/api/v1/observability"),
   getRuntime: () => get<RuntimeInfo>("/api/v1/runtime"),

@@ -276,6 +276,26 @@ function buildControl(field: SettingsFieldDefinition, options: SettingsFieldRend
     });
     select.addEventListener("change", () => options.onInput(select.value));
     select.addEventListener("focus", options.onFocus);
+
+    if (field.path === "codex.approval_policy") {
+      const wrapper = document.createElement("div");
+      wrapper.className = "settings-approval-wrapper";
+      const warning = document.createElement("p");
+      warning.className = "settings-approval-warning";
+      warning.textContent = "Auto-approves all agent actions without human review.";
+      warning.hidden = options.value !== "never";
+      wrapper.append(select, warning);
+      select.addEventListener("change", () => {
+        const isDangerous = select.value === "never";
+        warning.hidden = !isDangerous;
+        select.classList.toggle("is-danger", isDangerous);
+      });
+      if (options.value === "never") {
+        select.classList.add("is-danger");
+      }
+      return wrapper;
+    }
+
     return select;
   }
   if (field.kind === "boolean") {

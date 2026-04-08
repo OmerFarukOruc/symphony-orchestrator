@@ -55,6 +55,7 @@ export async function handleStopSignal(
       pullRequestUrl,
     }),
   );
+  ctx.markDirty();
   ctx.notify({
     type: isBlocked ? "worker_failed" : "worker_completed",
     severity: isBlocked ? "critical" : "info",

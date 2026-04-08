@@ -191,6 +191,18 @@ describe("executeTurns", () => {
     );
   });
 
+  it("upgrades workspaceWrite turn sandbox policy to dangerFullAccess inside Docker workers", async () => {
+    const input = makeInput();
+    input.config.codex.turnSandboxPolicy = { type: "workspaceWrite", writableRoots: ["/tmp/other"] };
+    const state = makeState();
+
+    vi.mocked(isActiveState).mockReturnValueOnce(false);
+    await executeTurns(input, state);
+
+    const requestCall = (input.connection as unknown as { request: ReturnType<typeof vi.fn> }).request.mock.calls[0];
+    expect(requestCall[1].sandboxPolicy).toEqual({ type: "dangerFullAccess" });
+  });
+
   it("stops immediately when abort signal is already set", async () => {
     const input = makeInput({ aborted: true });
     const state = makeState();

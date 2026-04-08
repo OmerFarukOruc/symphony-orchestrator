@@ -1,0 +1,60 @@
+200	https://aws.amazon.com/blogs/devops/best-practices-working-with-self-hosted-github-action-runners-at-scale-on-aws/	https://aws.amazon.com/blogs/devops/best-practices-working-with-self-hosted-github-action-runners-at-scale-on-aws/
+ERR:HTTP Error 403: Forbidden	https://dl.acm.org/doi/10.1145/2034574.2034814	
+ERR:HTTP Error 403: Forbidden	https://dl.acm.org/doi/10.1145/2635868.2635920	
+200	https://docs.deque.com/developer-hub/2/en/dh-js-playwright/	https://docs.deque.com/developer-hub/2/en/dh-js-playwright/
+200	https://docs.github.com/actions/concepts/runners/about-runner-groups	https://docs.github.com/en/actions/concepts/runners/runner-groups
+200	https://docs.github.com/actions/hosting-your-own-runners/using-labels-with-self-hosted-runners	https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/apply-labels
+200	https://docs.github.com/en/actions/advanced-guides/storing-workflow-data-as-artifacts	https://docs.github.com/en/actions/tutorials/store-and-share-data
+200	https://docs.github.com/en/actions/concepts/runners/actions-runner-controller	https://docs.github.com/en/actions/concepts/runners/actions-runner-controller
+200	https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/autoscaling-with-self-hosted-runners	https://docs.github.com/en/actions/reference/runners/self-hosted-runners
+200	https://docs.github.com/en/actions/reference/runners/self-hosted-runners	https://docs.github.com/en/actions/reference/runners/self-hosted-runners
+200	https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions	https://docs.github.com/en/actions/reference/security/secure-use
+200	https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs	https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run
+200	https://docs.github.com/en/code-security/secure-coding/setting-up-code-scanning-for-a-repository	https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/configure-code-scanning/configuring-default-setup-for-code-scanning
+200	https://docs.github.com/en/organizations/managing-organization-settings/configuring-the-retention-period-for-github-actions-artifacts-and-logs-in-your-organization	https://docs.github.com/en/organizations/managing-organization-settings/configuring-the-retention-period-for-github-actions-artifacts-and-logs-in-your-organization
+200	https://docs.pact.io/implementation_guides/javascript	https://docs.pact.io/implementation_guides/javascript/readme
+200	https://docs.pact.io/implementation_guides/javascript/docs/provider	https://docs.pact.io/implementation_guides/javascript/docs/provider
+200	https://doi.org/10.1007/s10009-023-00702-5	https://link.springer.com/article/10.1007/s10009-023-00702-5?error=cookies_not_supported&code=b57a580e-164b-4861-8ee4-d7de2b8b36ed
+ERR:HTTP Error 404: Not Found	https://doi.org/10.1007/s10664-022-10246-9	
+200	https://doi.org/10.1016/j.infsof.2016.04.011	https://linkinghub.elsevier.com/retrieve/pii/S0950584916300672
+200	https://doi.org/10.1016/j.infsof.2018.02.005	https://linkinghub.elsevier.com/retrieve/pii/S0950584917300861
+ERR:HTTP Error 418: Unknown Code	https://doi.org/10.1109/ICSE43902.2021.00030	
+ERR:HTTP Error 418: Unknown Code	https://doi.org/10.1109/ICSE43902.2021.00062	
+ERR:HTTP Error 404: Not Found	https://doi.org/10.1109/TR.2018.2815487	
+ERR:HTTP Error 418: Unknown Code	https://doi.org/10.1109/TSE.2006.100	
+ERR:HTTP Error 403: Forbidden	https://doi.org/10.1145/2635868.2635929	
+ERR:HTTP Error 403: Forbidden	https://doi.org/10.1145/3180155.3180164	
+ERR:HTTP Error 403: Forbidden	https://doi.org/10.1145/3180155.3180183	
+ERR:HTTP Error 403: Forbidden	https://doi.org/10.1145/3428270	
+ERR:HTTP Error 403: Forbidden	https://doi.org/10.1145/3476105	
+ERR:HTTP Error 403: Forbidden	https://doi.org/10.1145/3510457.3513041	
+ERR:HTTP Error 403: Forbidden	https://doi.org/10.1145/3597503.3639183	
+ERR:HTTP Error 403: Forbidden	https://doi.org/10.1145/3661167.3661217	
+ERR:HTTP Error 403: Forbidden	https://doi.org/10.1145/3729316	
+200	https://github.blog/changelog/2021-09-20-github-actions-ephemeral-self-hosted-runners-new-webhooks-for-auto-scaling/	https://github.blog/changelog/2021-09-20-github-actions-ephemeral-self-hosted-runners-new-webhooks-for-auto-scaling/
+200	https://github.com/zaproxy/action-api-scan	https://github.com/zaproxy/action-api-scan
+200	https://github.com/zaproxy/action-baseline	https://github.com/zaproxy/action-baseline
+200	https://grafana.com/blog/performance-testing-with-grafana-k6-and-github-actions/	https://grafana.com/blog/performance-testing-with-grafana-k6-and-github-actions/
+200	https://grafana.com/docs/k6/latest/using-k6/thresholds/	https://grafana.com/docs/k6/latest/using-k6/thresholds/
+200	https://linear.app/developers/attachments	https://linear.app/developers/attachments
+200	https://linear.app/developers/graphql	https://linear.app/developers/graphql
+200	https://linear.app/developers/how-to-upload-a-file-to-linear	https://linear.app/developers/how-to-upload-a-file-to-linear
+200	https://linear.app/developers/sdk-fetching-and-modifying-data	https://linear.app/developers/sdk-fetching-and-modifying-data
+ERR:HTTP Error 404: NOT FOUND	https://mediatum.ub.tum.de/doc/1522107/1522107.pdf	
+200	https://playwright.dev/docs/ci	https://playwright.dev/docs/ci
+200	https://playwright.dev/docs/test-reporters	https://playwright.dev/docs/test-reporters
+200	https://playwright.dev/docs/test-sharding	https://playwright.dev/docs/test-sharding
+200	https://playwright.dev/docs/trace-viewer	https://playwright.dev/docs/trace-viewer
+200	https://playwright.dev/docs/videos	https://playwright.dev/docs/videos
+200	https://raw.githubusercontent.com/actions/upload-artifact/main/README.md	https://raw.githubusercontent.com/actions/upload-artifact/main/README.md
+200	https://schemathesis.readthedocs.io/en/stable/guides/cicd/	https://schemathesis.readthedocs.io/en/stable/guides/cicd/
+200	https://semgrep.dev/docs/deployment/add-semgrep-to-ci	https://semgrep.dev/docs/deployment/add-semgrep-to-ci
+200	https://semgrep.dev/docs/kb/semgrep-ci/trigger-diff-scans-env-var	https://semgrep.dev/docs/kb/semgrep-ci/trigger-diff-scans-env-var
+200	https://stryker-mutator.io/docs/General/dashboard/	https://stryker-mutator.io/docs/General/dashboard/
+200	https://stryker-mutator.io/docs/stryker-js/typescript-checker/	https://stryker-mutator.io/docs/stryker-js/typescript-checker/
+200	https://stryker-mutator.io/docs/stryker-js/vitest-runner/	https://stryker-mutator.io/docs/stryker-js/vitest-runner/
+200	https://vitest.dev/guide/browser/	https://vitest.dev/guide/browser/
+200	https://vitest.dev/guide/coverage	https://vitest.dev/guide/coverage
+200	https://vitest.dev/guide/profiling-test-performance	https://vitest.dev/guide/profiling-test-performance
+200	https://vitest.dev/guide/reporters	https://vitest.dev/guide/reporters
+ERR:HTTP Error 403: Forbidden	https://www.npmjs.com/package/@axe-core/playwright	

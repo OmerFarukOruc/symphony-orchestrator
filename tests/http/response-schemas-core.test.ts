@@ -217,20 +217,18 @@ describe("runtimeResponseSchema", () => {
     const result = runtimeResponseSchema.parse({
       version: "0.5.0",
       data_dir: "/tmp/.risoluto",
-      feature_flags: { sse: true },
       provider_summary: "linear",
     });
     expect(result.version).toBe("0.5.0");
     expect(result.data_dir).toBe("/tmp/.risoluto");
-    expect(result.feature_flags).toEqual({ sse: true });
+    expect(result.feature_flags).toEqual({});
     expect(result.provider_summary).toBe("linear");
   });
 
-  it("accepts empty feature_flags record", () => {
+  it("defaults feature_flags to empty object when omitted", () => {
     const result = runtimeResponseSchema.parse({
       version: "1.0.0",
       data_dir: "./data",
-      feature_flags: {},
       provider_summary: "github",
     });
     expect(result.feature_flags).toEqual({});
@@ -245,7 +243,6 @@ describe("runtimeResponseSchema", () => {
     const result = runtimeResponseSchema.safeParse({
       version: 1,
       data_dir: "./data",
-      feature_flags: {},
       provider_summary: "linear",
     });
     expect(result.success).toBe(false);

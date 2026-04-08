@@ -79,6 +79,7 @@ function makeCtx(): OutcomeContext {
     getConfig: () => makeConfig(),
     releaseIssueClaim: vi.fn(),
     suppressIssueDispatch: vi.fn(),
+    markDirty: vi.fn(),
     resolveModelSelection: vi.fn().mockReturnValue(createModelSelection()),
     notify: vi.fn(),
     queueRetry: vi.fn(),

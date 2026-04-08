@@ -7,6 +7,23 @@
  */
 
 export interface RisolutoEventMap {
+  /** A host-side Codex control-plane notification was received. */
+  "codex.event": {
+    method: string;
+    params: Record<string, unknown>;
+    receivedAt: string;
+  };
+
+  /** A host-side Codex server request is awaiting operator input. */
+  "codex.server_request": {
+    requestId: string;
+    method: string;
+    threadId: string | null;
+    turnId: string | null;
+    params: Record<string, unknown>;
+    createdAt: string;
+  };
+
   /** A notification was persisted to the operator timeline. */
   "notification.created": { notification: import("./notification-types.js").NotificationRecord };
 

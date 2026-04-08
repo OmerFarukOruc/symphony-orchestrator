@@ -7,9 +7,20 @@ export interface LogsData {
   events: RecentEvent[];
 }
 
+export function shouldDisplayLogsEvent(event: RecentEvent): boolean {
+  // Stream deltas are transport noise on the logs page. The final assistant
+  // message still appears as its own event, so hiding these avoids duplicate,
+  // low-signal rows without losing operator context.
+  return event.event !== "agent_streaming" && event.message !== "Agent streaming text";
+}
+
+function filterLogsEvents(events: RecentEvent[]): RecentEvent[] {
+  return events.filter((event) => shouldDisplayLogsEvent(event));
+}
+
 export async function loadLiveLogs(issueId: string): Promise<LogsData> {
   const detail: IssueDetail = await api.getIssue(issueId);
-  return { title: detail.title, issueId: detail.identifier, events: detail.recentEvents };
+  return { title: detail.title, issueId: detail.identifier, events: filterLogsEvents(detail.recentEvents) };
 }
 
 export async function loadArchiveLogs(issueId: string): Promise<LogsData> {
@@ -29,6 +40,6 @@ export async function loadArchiveLogs(issueId: string): Promise<LogsData> {
   return {
     title: detail.title ?? detail.issueIdentifier ?? "Archived attempt",
     issueId: detail.issueIdentifier ?? issueId,
-    events: detail.events ?? [],
+    events: filterLogsEvents(detail.events ?? []),
   };
 }

@@ -6,6 +6,7 @@ import { SlackWebhookChannel } from "../notification/slack-webhook.js";
 import type { RisolutoLogger } from "../core/types.js";
 import type { NotificationStorePort } from "../persistence/sqlite/notification-store.js";
 import { toErrorString } from "../utils/type-guards.js";
+import { parseLimit, getSingleParam } from "./query-params.js";
 
 interface NotificationHandlerDeps {
   notificationStore?: NotificationStorePort;
@@ -18,28 +19,9 @@ interface NotificationTestDeps {
   createSlackChannel?: (opts: { webhookUrl: string; logger?: RisolutoLogger }) => NotificationChannel;
 }
 
-function parseLimit(value: unknown): number | null {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  if (typeof candidate !== "string") {
-    return null;
-  }
-  const parsed = Number.parseInt(candidate, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-  return parsed;
-}
-
 function resolveUnreadOnly(value: unknown): boolean {
   const candidate = Array.isArray(value) ? value[0] : value;
   return candidate === "true" || candidate === "1";
-}
-
-function getSingleParam(value: string | string[] | undefined): string | null {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-  return value ?? null;
 }
 
 export async function handleListNotifications(
@@ -212,8 +194,9 @@ export async function handleTestSlackNotification(
     return;
   }
 
-  const slack = deps.configStore.getConfig().notifications?.slack;
-  if (!slack?.webhookUrl) {
+  const channels = deps.configStore.getConfig().notifications?.channels ?? [];
+  const slackChannel = channels.find((ch) => ch.type === "slack" && ch.enabled !== false);
+  if (!slackChannel || slackChannel.type !== "slack" || !slackChannel.webhookUrl) {
     response.status(400).json({
       error: {
         code: "slack_not_configured",
@@ -224,11 +207,11 @@ export async function handleTestSlackNotification(
   }
 
   const channel = deps.createSlackChannel
-    ? deps.createSlackChannel({ webhookUrl: slack.webhookUrl, logger: deps.logger })
+    ? deps.createSlackChannel({ webhookUrl: slackChannel.webhookUrl, logger: deps.logger })
     : // Override verbosity to "verbose" so the test fires even when the saved config is "off".
       new SlackWebhookChannel({
         name: "slack_webhook_test",
-        webhookUrl: slack.webhookUrl,
+        webhookUrl: slackChannel.webhookUrl,
         verbosity: "verbose",
         minSeverity: "info",
         logger: deps.logger,

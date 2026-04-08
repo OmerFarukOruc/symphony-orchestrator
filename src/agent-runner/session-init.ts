@@ -1,6 +1,14 @@
 import type { Liquid } from "liquidjs";
 
-import { asRecord, asString, authIsRequired, extractRateLimits, extractThreadId, hasUsableAccount } from "./helpers.js";
+import {
+  asRecord,
+  asString,
+  authIsRequired,
+  extractRateLimits,
+  extractThreadId,
+  getThreadSandbox,
+  hasUsableAccount,
+} from "./helpers.js";
 import { fetchAvailableModels } from "./model-validation.js";
 import { waitForStartup, StartupTimeoutError, buildDynamicTools } from "./session-helpers.js";
 import type { DockerSession } from "./docker-session.js";
@@ -256,7 +264,7 @@ async function startThread(
     cwd: input.workspace.path,
     model: input.modelSelection.model,
     approvalPolicy: config.codex.approvalPolicy,
-    sandbox: config.codex.threadSandbox,
+    sandbox: getThreadSandbox(config),
     personality: config.codex.personality,
     serviceName: "risoluto",
     dynamicTools: buildDynamicTools(deps.trackerToolProvider, deps.logger),

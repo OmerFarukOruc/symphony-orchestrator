@@ -66,9 +66,11 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1026.0",
     "@codemirror/lang-html": "^6.4.11",
     "@codemirror/state": "^6.6.0",
     "@codemirror/theme-one-dark": "^6.1.3",
+    "@codemirror/view": "^6.41.0",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@commitlint/types": "^20.5.0",
@@ -106,11 +108,13 @@
     "typedoc": "^0.28.17",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.0",
-    "vite": "^8.0.5",
+    "vite": "^8.0.7",
     "vitest": "^4.1.0"
   },
   "overrides": {
     "flatted": ">=3.4.2",
+    "hono": ">=4.12.12",
+    "@hono/node-server": ">=1.19.13",
     "path-to-regexp": ">=8.4.0"
   },
   "pnpm": {
@@ -119,6 +123,8 @@
       "esbuild"
     ],
     "overrides": {
+      "hono": ">=4.12.12",
+      "@hono/node-server": ">=1.19.13",
       "path-to-regexp": ">=8.4.0"
     }
   }

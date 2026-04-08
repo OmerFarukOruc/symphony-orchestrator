@@ -6,7 +6,12 @@
 
 ## 🎵 Risoluto's Role
 
-Risoluto has a narrow job: it launches a local Codex app-server, talks to Linear, manages issue workspaces, and reports state locally. It does **not** choose backing Codex accounts, perform browser login, or implement provider pooling itself.
+Risoluto has a narrow job: it launches the Codex surfaces it needs, talks to Linear, manages issue workspaces, and reports state locally. In practice that now means two separate Codex paths:
+
+- a long-lived host-side `codex app-server` control plane for operator/admin tasks such as auth state, thread history, MCP diagnostics, and dashboard-mediated interactive prompts
+- disposable Docker-backed per-attempt `codex app-server` sessions for automated issue execution
+
+Risoluto still does **not** choose backing Codex accounts, perform browser login inside worker containers, or implement provider pooling itself.
 
 ---
 
@@ -64,6 +69,15 @@ When running inside Docker, the container cannot reach the host's `127.0.0.1` di
 - rewriting host-bound provider URLs such as `127.0.0.1` and `localhost` to `host.docker.internal` in the generated runtime config
 
 This keeps provider routing **below** Risoluto without keeping repo-local launcher scripts or checked-in Codex homes.
+
+## 🧭 Host-side Codex Control Plane
+
+The operator-facing `Codex Admin` surface in `/settings` is intentionally decoupled from the automated worker path.
+
+- The host-side control plane owns thread history reads, thread rename/fork/archive actions, MCP status and OAuth flows, feature/collaboration diagnostics, account login state, and pending interactive prompts.
+- Those actions run over the local loopback HTTP API and dashboard SSE updates, not through the disposable Docker worker session used for issue execution.
+- Automated issue runs still keep their existing behavior: approval requests are auto-accepted, dynamic tools route through Risoluto, and automation-only request-user-input prompts remain non-blocking unless the execution path is explicitly upgraded later.
+- Because the control plane is host-side, browser-based `account/login/start` and MCP OAuth flows remain an operator concern. Worker containers keep using rendered runtime config or injected auth artifacts rather than performing login themselves.
 
 ---
 
@@ -187,6 +201,8 @@ The local loopback HTTP surface now includes operator-only configuration and sec
 - `POST /api/v1/secrets/:key`
 - `DELETE /api/v1/secrets/:key`
 
+It also includes a host-side Codex admin surface under `/api/v1/codex/*` for thread history, MCP diagnostics, account/login flows, and pending interactive prompt responses.
+
 These routes are intentionally loopback-local like the rest of the dashboard/API surface. They are suitable for trusted operator environments, not public exposure.
 
 ### Remote Read / Write Guards
@@ -288,12 +304,12 @@ This matches the recommended tunnel topology where `cloudflared` is the only rev
 
 ## 🔑 Required Credentials
 
-| Credential        | Source                                                                             | Purpose                                   |
-| ----------------- | ---------------------------------------------------------------------------------- | ----------------------------------------- |
-| **Linear access** | `tracker.api_key` (typically `$LINEAR_API_KEY`)                                    | Polling issues from Linear                |
-| **Webhook secret** | `LINEAR_WEBHOOK_SECRET` in the encrypted secrets store, referenced from overlay   | Verifying inbound Linear webhook payloads |
-| **Codex auth**    | Either provider env vars on the host or `auth.json` under `codex.auth.source_home` | Authenticating model calls                |
-| **GitHub PAT**    | Optional, stored via setup wizard or `$GITHUB_TOKEN`                               | Creating pull requests for completed work |
+| Credential         | Source                                                                             | Purpose                                   |
+| ------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------- |
+| **Linear access**  | `tracker.api_key` (typically `$LINEAR_API_KEY`)                                    | Polling issues from Linear                |
+| **Webhook secret** | `LINEAR_WEBHOOK_SECRET` in the encrypted secrets store, referenced from overlay    | Verifying inbound Linear webhook payloads |
+| **Codex auth**     | Either provider env vars on the host or `auth.json` under `codex.auth.source_home` | Authenticating model calls                |
+| **GitHub PAT**     | Optional, stored via setup wizard or `$GITHUB_TOKEN`                               | Creating pull requests for completed work |
 
 ### Credential Entry via Setup Wizard
 
@@ -313,12 +329,12 @@ Risoluto's PR/CI automation pipeline uses a GitHub Personal Access Token (PAT) s
 
 ### Minimum Token Scopes
 
-| Feature                         | Required scope              | Notes                                                                                 |
-| ------------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
-| **PR creation** (always)        | `repo` or `pull_requests: write` | Required for `createPullRequest()` — classic PAT needs `repo`, fine-grained needs `pull_requests: write` |
-| **PR review ingestion**         | `pull_requests: read`       | `PrReviewIngester` reads PR review comments; fine-grained PAT only                   |
-| **PR lifecycle monitoring**     | `pull_requests: read`       | `PrMonitorService` polls PR status via REST; fine-grained PAT only                   |
-| **Auto-merge**                  | `pull_requests: write`      | Calls `enablePullRequestAutoMerge` GraphQL mutation; also requires repository auto-merge setting to be enabled |
+| Feature                     | Required scope                   | Notes                                                                                                          |
+| --------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **PR creation** (always)    | `repo` or `pull_requests: write` | Required for `createPullRequest()` — classic PAT needs `repo`, fine-grained needs `pull_requests: write`       |
+| **PR review ingestion**     | `pull_requests: read`            | `PrReviewIngester` reads PR review comments; fine-grained PAT only                                             |
+| **PR lifecycle monitoring** | `pull_requests: read`            | `PrMonitorService` polls PR status via REST; fine-grained PAT only                                             |
+| **Auto-merge**              | `pull_requests: write`           | Calls `enablePullRequestAutoMerge` GraphQL mutation; also requires repository auto-merge setting to be enabled |
 
 ### Auto-merge Prerequisites
 

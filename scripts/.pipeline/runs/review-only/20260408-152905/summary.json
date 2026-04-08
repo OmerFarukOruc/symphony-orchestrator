@@ -1,0 +1,12 @@
+{
+  "pipeline": "review-only",
+  "timestamp": "20260408-152905",
+  "budget_usd": 8,
+  "phases_total": 2,
+  "phases_passed": 2,
+  "phases_failed": 0,
+  "phases_skipped": 0,
+  "success": true,
+  "branch": "nightly-validation-cli",
+  "run_dir": "/home/oruc/Desktop/workspace/risoluto/scripts/.pipeline/runs/review-only/20260408-152905"
+}

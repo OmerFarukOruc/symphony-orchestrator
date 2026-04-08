@@ -40,7 +40,7 @@ function makeCheckpoint(overrides: Partial<AttemptCheckpointRecord> = {}): Attem
 /*  200 — known attempt with checkpoints                               */
 /* ------------------------------------------------------------------ */
 
-describe.skip("GET /api/v1/attempts/:attempt_id/checkpoints — 200 with data", () => {
+describe("GET /api/v1/attempts/:attempt_id/checkpoints — 200 with data", () => {
   let ctx: TestServerResult;
 
   beforeEach(async () => {

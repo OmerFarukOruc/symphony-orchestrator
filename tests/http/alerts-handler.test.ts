@@ -3,6 +3,7 @@ import type { Request } from "express";
 
 import { handleListAlertHistory } from "../../src/http/alerts-handler.js";
 import { AlertHistoryStore } from "../../src/alerts/history-store.js";
+import { openDatabase } from "../../src/persistence/sqlite/database.js";
 import { makeMockResponse } from "../helpers.js";
 
 function makeRequest(query: Record<string, unknown> = {}): Request {
@@ -11,7 +12,7 @@ function makeRequest(query: Record<string, unknown> = {}): Request {
 
 describe("handleListAlertHistory", () => {
   it("lists stored alert history entries", async () => {
-    const store = AlertHistoryStore.create(null);
+    const store = AlertHistoryStore.create(openDatabase(":memory:"));
     await store.create({
       ruleName: "worker-failures",
       eventType: "worker.failed",

@@ -257,10 +257,13 @@ function buildBranchSection(data: GitContextResponse): HTMLElement {
     section.append(list);
   } else {
     section.append(
-      el(
-        "p",
-        "git-empty-hint",
-        "No active branches right now. Branches appear here when a running issue has an assigned branch name.",
+      createEmptyState(
+        "No active branches",
+        "Branches appear here when a running issue has an assigned branch name in the tracker.",
+        undefined,
+        undefined,
+        "queue",
+        { headingLevel: "h3" },
       ),
     );
   }
@@ -293,10 +296,13 @@ function buildTrackedPrSection(trackedPrs: TrackedPrRecord[]): HTMLElement {
 
   if (trackedPrs.length === 0) {
     section.append(
-      el(
-        "p",
-        "git-empty-hint",
-        "No persisted pull-request lifecycle records yet. Records appear here after Risoluto opens or monitors agent PRs.",
+      createEmptyState(
+        "No tracked PRs yet",
+        "Records appear here after Risoluto opens or monitors agent pull requests.",
+        undefined,
+        undefined,
+        "events",
+        { headingLevel: "h3" },
       ),
     );
     return section;

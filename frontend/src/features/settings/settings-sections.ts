@@ -28,6 +28,10 @@ interface SettingsRenderOptions {
   onSetMode?: (mode: SettingsMode) => void;
   /** Called when a field-level action button is clicked (e.g. "Browse" for project slug). */
   onFieldAction?: (sectionId: string, fieldPath: string, actionKind: string) => void;
+  /** Called by the unified save bar to save all dirty sections at once. */
+  onSaveAllSections?: () => void;
+  /** Called by the unified save bar to revert all draft changes. */
+  onRevertAll?: () => void;
 }
 
 /** AbortController for cleaning up event listeners between renders. */
@@ -122,7 +126,10 @@ export function renderSettingsLayout(
     };
 
     scrollRoot.addEventListener("scroll", onScroll, { signal, passive: true });
-    signal.addEventListener("abort", () => cancelAnimationFrame(rafId));
+    signal.addEventListener("abort", () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(scrollSettleTimer);
+    });
     // Initial sync
     requestAnimationFrame(updateActiveSection);
   });
@@ -347,7 +354,7 @@ function buildSectionCard(
     prevTier = group.tier ?? (group.advanced ? "expert" : "essential");
   });
 
-  card.append(buildSectionActions(section, state, options, signal));
+  card.append(buildSectionActions(section, state));
 
   // Developer tools: only in Advanced mode
   if (state.mode === "advanced") {
@@ -388,19 +395,17 @@ function buildSectionHeader(section: SettingsSectionDefinition): HTMLElement {
   return header;
 }
 
-function buildSectionActions(
-  section: SettingsSectionDefinition,
-  state: SettingsState,
-  options: SettingsRenderOptions,
-  signal: AbortSignal,
-): HTMLElement {
+function buildSectionActions(section: SettingsSectionDefinition, state: SettingsState): HTMLElement {
   const actions = document.createElement("div");
   actions.className = "form-actions settings-actions";
 
-  const save = createSectionAction(state.savingSectionId === section.id ? "Saving\u2026" : section.saveLabel, true);
-  save.disabled = state.savingSectionId === section.id || section.fields.every((field) => field.editable === false);
-  save.addEventListener("click", () => options.onSaveSection(section.id), { signal });
-  actions.append(save);
+  if (state.savingSectionId === section.id) {
+    const saving = document.createElement("span");
+    saving.className = "settings-saving-indicator";
+    saving.textContent = "Saving\u2026";
+    actions.append(saving);
+  }
+
   return actions;
 }
 

@@ -48,6 +48,7 @@ export async function handleContinuationExhausted(ctx: OutcomeContext, prepared:
       message,
     }),
   );
+  ctx.markDirty();
   ctx.deps.eventBus?.emit("issue.completed", {
     issueId: latestIssue.id,
     identifier: latestIssue.identifier,

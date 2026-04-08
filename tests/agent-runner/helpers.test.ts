@@ -10,6 +10,7 @@ import {
   extractThreadId,
   extractTokenUsageSnapshot,
   extractTurnId,
+  getThreadSandbox,
   getTurnSandboxPolicy,
   hasUsableAccount,
 } from "../../src/agent-runner/helpers.js";
@@ -157,6 +158,32 @@ describe("extractTokenUsageSnapshot", () => {
 });
 
 // ---------------------------------------------------------------------------
+// getThreadSandbox
+// ---------------------------------------------------------------------------
+
+describe("getThreadSandbox", () => {
+  it("upgrades workspace-write to danger-full-access inside the Docker worker", () => {
+    const config = {
+      codex: {
+        threadSandbox: "workspace-write",
+      },
+    } as unknown as ServiceConfig;
+
+    expect(getThreadSandbox(config)).toBe("danger-full-access");
+  });
+
+  it("preserves non-workspace sandbox values", () => {
+    const config = {
+      codex: {
+        threadSandbox: "none",
+      },
+    } as unknown as ServiceConfig;
+
+    expect(getThreadSandbox(config)).toBe("none");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // getTurnSandboxPolicy
 // ---------------------------------------------------------------------------
 
@@ -172,32 +199,16 @@ function makeConfig(policyOverrides: Record<string, unknown> = {}): ServiceConfi
 }
 
 describe("getTurnSandboxPolicy", () => {
-  it("adds workspacePath to writableRoots for workspaceWrite policy", () => {
+  it("upgrades workspaceWrite to dangerFullAccess inside the Docker worker", () => {
     const config = makeConfig();
     const result = getTurnSandboxPolicy(config, "/ws/project");
-    expect(result.type).toBe("workspaceWrite");
-    expect(result.writableRoots).toContain("/ws/project");
-    expect(result.readOnlyAccess).toEqual({ type: "fullAccess" });
-    expect(result.networkAccess).toBe(false);
+    expect(result).toEqual({ type: "dangerFullAccess" });
   });
 
-  it("does not duplicate workspacePath if already in writableRoots", () => {
+  it("drops writableRoots metadata when upgrading workspaceWrite", () => {
     const config = makeConfig({ writableRoots: ["/ws/project"] });
     const result = getTurnSandboxPolicy(config, "/ws/project");
-    const roots = result.writableRoots as string[];
-    expect(roots.filter((r: string) => r === "/ws/project")).toHaveLength(1);
-  });
-
-  it("preserves existing writableRoots and appends new path", () => {
-    const config = makeConfig({ writableRoots: ["/existing"] });
-    const result = getTurnSandboxPolicy(config, "/ws/project");
-    expect(result.writableRoots).toEqual(["/existing", "/ws/project"]);
-  });
-
-  it("handles non-array writableRoots gracefully", () => {
-    const config = makeConfig({ writableRoots: "not-an-array" });
-    const result = getTurnSandboxPolicy(config, "/ws/project");
-    expect(result.writableRoots).toEqual(["/ws/project"]);
+    expect(result).toEqual({ type: "dangerFullAccess" });
   });
 
   it("returns policy as-is for non-workspaceWrite types", () => {
@@ -215,7 +226,7 @@ describe("getTurnSandboxPolicy", () => {
   it("spreads additional policy properties for workspaceWrite", () => {
     const config = makeConfig({ extraSetting: true });
     const result = getTurnSandboxPolicy(config, "/ws/project");
-    expect(result.extraSetting).toBe(true);
+    expect(result).toEqual({ type: "dangerFullAccess" });
   });
 
   it("does not mutate the original config policy", () => {

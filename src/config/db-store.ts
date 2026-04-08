@@ -15,7 +15,7 @@ import type { RisolutoDatabase } from "../persistence/sqlite/database.js";
 import { config, promptTemplates } from "../persistence/sqlite/schema.js";
 import type { RisolutoLogger, WorkflowDefinition, ServiceConfig, ValidationError } from "../core/types.js";
 import { deriveServiceConfig } from "./builders.js";
-import { collectDispatchWarnings, validateDispatch } from "./validators.js";
+import { validateDispatch } from "./validators.js";
 import { DEFAULT_PROMPT_TEMPLATE } from "./defaults.js";
 import type { SecretsStore } from "../secrets/store.js";
 import {
@@ -98,10 +98,6 @@ export class DbConfigStore implements ConfigOverlayPort {
     this.cachedConfig = serviceConfig;
     this.cachedWorkflow = workflow;
     this.logger.info("config refreshed from DB");
-
-    for (const warning of collectDispatchWarnings(serviceConfig)) {
-      this.logger.warn({ code: warning.code }, warning.message);
-    }
   }
 
   // --- ConfigStore-compatible surface ---

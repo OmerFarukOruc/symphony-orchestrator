@@ -35,6 +35,7 @@ export async function updateIssueModelSelection(
     pushEvent: (event: RecentEvent) => void;
     requestRefresh: (reason: string) => { queued: boolean; coalesced: boolean; requestedAt: string };
     issueConfigStore: IssueConfigStore;
+    markDirty?: () => void;
   },
   input: {
     identifier: string;
@@ -52,6 +53,7 @@ export async function updateIssueModelSelection(
     model: input.model,
     reasoningEffort: input.reasoningEffort,
   });
+  ctx.markDirty?.();
   ctx.issueConfigStore.upsertModel(identifier, input.model, input.reasoningEffort);
 
   const selection = resolveModelSelection(ctx.issueModelOverrides, ctx.getConfig(), identifier);

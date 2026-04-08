@@ -9,6 +9,7 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 const VISUAL_VIEWPORT_WIDTH = Number(process.env.ANVIL_VISUAL_VIEWPORT_WIDTH ?? 2560);
 const VISUAL_VIEWPORT_HEIGHT = Number(process.env.ANVIL_VISUAL_VIEWPORT_HEIGHT ?? 1440);
 const isCI = !!process.env.CI;
+const enableHtmlReport = process.env.RISOLUTO_NIGHTLY_HTML_REPORT === "true";
 
 export default defineConfig({
   testDir: "tests/e2e/specs",
@@ -16,7 +17,14 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
   workers: isCI ? "50%" : undefined,
-  reporter: isCI ? [["blob"], ["github"]] : [["html", { open: "never" }], ["list"]],
+  reporter: isCI
+    ? [
+        ["blob"],
+        ["github"],
+        ["json", { outputFile: "test-results/playwright-smoke-results.json" }],
+        ...(enableHtmlReport ? [["html", { open: "never" }] as const] : []),
+      ]
+    : [["html", { open: "never" }], ["list"]],
 
   use: {
     baseURL: BASE_URL,

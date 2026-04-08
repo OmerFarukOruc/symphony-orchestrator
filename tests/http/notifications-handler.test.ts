@@ -7,10 +7,16 @@ import type { ConfigStore } from "../../src/config/store.js";
 import type { ServiceConfig } from "../../src/core/types.js";
 import { createJsonResponse, createMockLogger, createTextResponse, makeMockResponse } from "../helpers.js";
 
-function makeConfigStore(slack: ServiceConfig["notifications"] extends infer _U ? unknown : never): ConfigStore {
+function makeConfigStore(
+  notifications: ServiceConfig["notifications"] extends infer _U ? unknown : never,
+): ConfigStore {
   return {
-    getConfig: () => ({ notifications: slack }) as unknown as ServiceConfig,
+    getConfig: () => ({ notifications }) as unknown as ServiceConfig,
   } as unknown as ConfigStore;
+}
+
+function slackChannel(webhookUrl: string, verbosity = "critical"): Record<string, unknown> {
+  return { type: "slack", name: "slack", enabled: true, minSeverity: "info", webhookUrl, verbosity };
 }
 
 function emptyRequest(): Request {
@@ -25,8 +31,8 @@ describe("handleTestSlackNotification", () => {
     expect((res._body as { error: { code: string } }).error.code).toBe("not_configured");
   });
 
-  it("returns 400 when slack webhook is not configured", async () => {
-    const configStore = makeConfigStore({ slack: null, channels: [] });
+  it("returns 400 when channels[] has no slack entry", async () => {
+    const configStore = makeConfigStore({ channels: [] });
     const res = makeMockResponse();
     await handleTestSlackNotification({ configStore, logger: createMockLogger() }, emptyRequest(), res);
     expect(res._status).toBe(400);
@@ -35,13 +41,23 @@ describe("handleTestSlackNotification", () => {
     expect(body.error.message).toContain("Save a Slack webhook URL");
   });
 
-  it("dispatches a test event even when saved verbosity is off", async () => {
+  it("returns 400 when the only slack channel has no webhookUrl", async () => {
+    const configStore = makeConfigStore({
+      channels: [
+        { type: "slack", name: "slack", enabled: true, minSeverity: "info", webhookUrl: "", verbosity: "critical" },
+      ],
+    });
+    const res = makeMockResponse();
+    await handleTestSlackNotification({ configStore, logger: createMockLogger() }, emptyRequest(), res);
+    expect(res._status).toBe(400);
+    expect((res._body as { error: { code: string } }).error.code).toBe("slack_not_configured");
+  });
+
+  it("dispatches a test event and selects first enabled slack channel", async () => {
     const fetchMock = vi.fn().mockResolvedValue(createJsonResponse(200, { ok: true }));
     const configStore = makeConfigStore({
-      slack: { webhookUrl: "https://hooks.slack.com/services/T000/B000/XXXX", verbosity: "off" },
-      channels: [],
+      channels: [slackChannel("https://hooks.slack.com/services/T000/B000/XXXX", "off")],
     });
-    // Inject the fetch via createSlackChannel seam so we can assert payload + verbosity override.
     const logger = createMockLogger();
 
     const res = makeMockResponse();
@@ -74,11 +90,51 @@ describe("handleTestSlackNotification", () => {
     expect(payload.text).toContain("RIS-TEST");
   });
 
+  it("skips disabled channels and selects the first enabled slack channel", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse(200, { ok: true }));
+    const configStore = makeConfigStore({
+      channels: [
+        {
+          type: "slack",
+          name: "disabled-slack",
+          enabled: false,
+          minSeverity: "info",
+          webhookUrl: "https://hooks.slack.com/services/OLD",
+          verbosity: "critical",
+        },
+        slackChannel("https://hooks.slack.com/services/T000/B000/ACTIVE"),
+      ],
+    });
+    const logger = createMockLogger();
+    const res = makeMockResponse();
+
+    await handleTestSlackNotification(
+      {
+        configStore,
+        logger,
+        createSlackChannel: ({ webhookUrl }) =>
+          new SlackWebhookChannel({
+            name: "slack_webhook_test",
+            webhookUrl,
+            verbosity: "verbose",
+            minSeverity: "info",
+            fetchImpl: fetchMock as unknown as typeof fetch,
+            logger,
+          }),
+      },
+      emptyRequest(),
+      res,
+    );
+
+    expect(res._status).toBe(200);
+    const [url] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe("https://hooks.slack.com/services/T000/B000/ACTIVE");
+  });
+
   it("maps Slack 404 response to webhook_invalid", async () => {
     const fetchMock = vi.fn().mockResolvedValue(createTextResponse(404, "invalid_webhook"));
     const configStore = makeConfigStore({
-      slack: { webhookUrl: "https://hooks.slack.com/services/T/B/X", verbosity: "critical" },
-      channels: [],
+      channels: [slackChannel("https://hooks.slack.com/services/T/B/X")],
     });
     const res = makeMockResponse();
     await handleTestSlackNotification(
@@ -103,8 +159,7 @@ describe("handleTestSlackNotification", () => {
   it("maps Slack 500 response to upstream_error 502", async () => {
     const fetchMock = vi.fn().mockResolvedValue(createTextResponse(500, "internal error"));
     const configStore = makeConfigStore({
-      slack: { webhookUrl: "https://hooks.slack.com/services/T/B/X", verbosity: "critical" },
-      channels: [],
+      channels: [slackChannel("https://hooks.slack.com/services/T/B/X")],
     });
     const res = makeMockResponse();
     await handleTestSlackNotification(
@@ -131,8 +186,7 @@ describe("handleTestSlackNotification", () => {
     abortError.name = "AbortError";
     const fetchMock = vi.fn().mockRejectedValue(abortError);
     const configStore = makeConfigStore({
-      slack: { webhookUrl: "https://hooks.slack.com/services/T/B/X", verbosity: "critical" },
-      channels: [],
+      channels: [slackChannel("https://hooks.slack.com/services/T/B/X")],
     });
     const res = makeMockResponse();
     await handleTestSlackNotification(

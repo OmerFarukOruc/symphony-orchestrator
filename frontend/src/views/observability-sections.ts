@@ -63,6 +63,40 @@ export function renderObservabilitySections(
     );
     return;
   }
+  // Golden signals hero row — 4 key cards pinned at top
+  const heroSection = buildSection("Golden signals", [
+    {
+      title: "Active runs",
+      source: "current snapshot",
+      value: `${snapshot.counts.running + snapshot.counts.retrying}`,
+      detail: summarizeActiveCounts(snapshot),
+      sparkline: state.trends.map((point) => point.running + point.retrying),
+    },
+    {
+      title: "Error rate",
+      source: "client trend",
+      value: `${state.trends.at(-1)?.terminalCount ?? 0} terminal`,
+      detail: "Terminal issue count visible in snapshot history.",
+      sparkline: state.trends.map((point) => point.terminalCount),
+      tone: (state.trends.at(-1)?.terminalCount ?? 0) > 0 ? "warning" : "default",
+    },
+    {
+      title: "Token burn",
+      source: "current snapshot",
+      value: summarizeRuntime(snapshot),
+      detail: "In-session client trend across the last 20 polling snapshots.",
+      sparkline: state.trends.map((point) => point.totalTokens),
+    },
+    {
+      title: "Poll freshness",
+      source: "current snapshot",
+      value: formatPollAge(snapshot),
+      detail: formatFreshness(snapshot),
+    },
+  ]);
+  heroSection.classList.add("observability-hero-section");
+  container.append(heroSection);
+
   const sections = [
     buildSection("Service health", [
       {
@@ -78,18 +112,6 @@ export function renderObservabilitySections(
         source: "aggregate snapshot",
         value: summaryData ? `${summaryData.traces.length}` : "0",
         detail: summarizeRecentTraces(summaryData),
-      },
-      {
-        title: "Last poll freshness",
-        source: "current snapshot",
-        value: formatPollAge(snapshot),
-        detail: formatFreshness(snapshot),
-      },
-      {
-        title: "Active / running / retrying",
-        source: "current snapshot",
-        value: `${snapshot.counts.running + snapshot.counts.retrying}`,
-        detail: summarizeActiveCounts(snapshot),
       },
       {
         title: "HTTP health summary",

@@ -95,8 +95,9 @@ describe("config-workflow integration", () => {
     expect(config.agent.maxTurns).toBe(20);
   });
 
-  it("overlay option deep-merges into workflow config", async () => {
+  it("mergedConfigMap overrides workflow config values", async () => {
     const { deriveServiceConfig } = await import("../../src/config/builders.js");
+    const { deepMerge } = await import("../../src/config/merge.js");
 
     const workflow = {
       config: {
@@ -110,13 +111,14 @@ describe("config-workflow integration", () => {
       promptTemplate: "",
     };
 
-    const config = deriveServiceConfig(workflow, {
-      overlay: { polling: { interval_ms: 5000 }, agent: { max_turns: 5 } },
-    });
+    const overlayMap = { polling: { interval_ms: 5000 }, agent: { max_turns: 5 } };
+    const mergedConfigMap = deepMerge(workflow.config, overlayMap) as Record<string, unknown>;
 
-    // Overlay value wins over workflow config
+    const config = deriveServiceConfig(workflow, { mergedConfigMap });
+
+    // mergedConfigMap value wins over workflow config
     expect(config.polling.intervalMs).toBe(5000);
-    // Overlay value fills in a field not in workflow config
+    // mergedConfigMap fills in a field not in workflow config
     expect(config.agent.maxTurns).toBe(5);
     // Unaffected field from workflow config preserved
     expect(config.tracker.projectSlug).toBe("base-slug");

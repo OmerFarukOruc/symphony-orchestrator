@@ -1,4 +1,5 @@
 import type { RecentEvent, RuntimeIssueView } from "../types";
+import { createOutcomeBadge, STATUS_TO_OUTCOME } from "./outcome-badge";
 import { priorityBadge } from "../ui/priority-badge";
 import { statusChip } from "../ui/status-chip";
 import { flashDiff, setTextWithDiff } from "../utils/diff";
@@ -94,6 +95,10 @@ export function createKanbanCard(options: KanbanCardOptions): KanbanCardHandle {
 
     const priBadge = priorityBadge(issue.priority);
     const children: HTMLElement[] = [priBadge, statusChip(issue.status)];
+    const outcome = STATUS_TO_OUTCOME[normalizeStatus(issue.status)];
+    if (outcome) {
+      children.push(createOutcomeBadge(outcome, { iconSize: 12 }));
+    }
     if (issue.modelChangePending) {
       const pending = document.createElement("span");
       pending.className = "mc-badge is-sm";

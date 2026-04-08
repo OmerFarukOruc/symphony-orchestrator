@@ -51,7 +51,6 @@ export function registerSystemRoutes(app: Express, deps: HttpRouteDeps): void {
       res.json({
         version: process.env.npm_package_version ?? "unknown",
         data_dir: process.env.RISOLUTO_DATA_DIR ?? "",
-        feature_flags: {},
         provider_summary: "Codex",
       });
     })
@@ -115,9 +114,22 @@ export function registerSystemRoutes(app: Express, deps: HttpRouteDeps): void {
   app
     .route("/api/v1/models")
     .get(async (_req, res) => {
+      let models: unknown[] | null = null;
+      if (deps.codexControlPlane) {
+        try {
+          const result = (await deps.codexControlPlane.request("model/list", {
+            limit: 50,
+            includeHidden: true,
+          })) as { data?: unknown[] };
+          models = Array.isArray(result.data) ? result.data : [];
+        } catch {
+          models = null;
+        }
+      }
+      const fallback = models === null;
       const apiKey = deps.secretsStore?.get("OPENAI_API_KEY") ?? undefined;
-      const models = await fetchCodexModels(apiKey);
-      res.json({ models });
+      const legacyModels = fallback ? await fetchCodexModels(apiKey) : [];
+      res.json({ models: fallback ? legacyModels : models });
     })
     .all((_req, res) => {
       methodNotAllowed(res);

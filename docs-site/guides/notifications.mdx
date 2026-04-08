@@ -16,9 +16,11 @@ Risoluto integrates with Slack for notifications and GitHub for automated git wo
     <CodeGroup>
     ```yaml Config Overlay
     notifications:
-      slack:
-        webhookUrl: $SECRET:SLACK_WEBHOOK_URL
-        verbosity: critical  # off | critical | verbose
+      channels:
+        - type: slack
+          name: slack
+          webhookUrl: $SECRET:SLACK_WEBHOOK_URL
+          verbosity: critical  # off | critical | verbose
     ```
 
     ```bash API
@@ -27,12 +29,14 @@ Risoluto integrates with Slack for notifications and GitHub for automated git wo
       -H 'Content-Type: application/json' \
       -d '{"value":"https://hooks.slack.com/services/T.../B.../xxx"}'
 
-    # Enable Slack notifications
+    # Enable Slack notifications via channels[]
     curl -s -X PUT http://127.0.0.1:4000/api/v1/config/overlay \
       -H 'Content-Type: application/json' \
-      -d '{"notifications":{"slack":{"webhookUrl":"$SECRET:SLACK_WEBHOOK_URL","verbosity":"critical"}}}'
+      -d '{"notifications":{"channels":[{"type":"slack","name":"slack","webhookUrl":"$SECRET:SLACK_WEBHOOK_URL","verbosity":"critical"}]}}'
     ```
     </CodeGroup>
+
+    <Note>The legacy `notifications.slack.webhookUrl` shape is still accepted and is automatically promoted to `channels[]` at parse time. New configurations should use `channels[]` directly.</Note>
 
     Slack messages are formatted with Block Kit — each notification includes a header, issue context, event details, and a link back to the Linear issue.
   </Tab>

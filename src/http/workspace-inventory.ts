@@ -1,5 +1,6 @@
 import { readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
+import { isWithinRoot } from "../workspace/paths.js";
 
 import type { Request, Response } from "express";
 
@@ -206,11 +207,10 @@ export async function handleWorkspaceRemove(deps: WorkspaceInventoryDeps, req: R
     return;
   }
 
-  const wsPath = path.join(workspaceRoot, workspaceKey);
   const resolvedRoot = path.resolve(workspaceRoot);
-  const resolvedPath = path.resolve(wsPath);
+  const wsPath = path.resolve(workspaceRoot, workspaceKey);
 
-  if (!resolvedPath.startsWith(`${resolvedRoot}${path.sep}`)) {
+  if (wsPath === resolvedRoot || !isWithinRoot(resolvedRoot, wsPath)) {
     res.status(400).json({ error: { code: "bad_request", message: "Invalid workspace key" } });
     return;
   }

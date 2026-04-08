@@ -1,7 +1,66 @@
 import { EditorView, basicSetup } from "codemirror";
-import { Compartment, EditorState } from "@codemirror/state";
+import { Decoration, type DecorationSet, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import { Compartment, EditorState, type Range } from "@codemirror/state";
 import { html } from "@codemirror/lang-html";
 import { oneDark } from "@codemirror/theme-one-dark";
+
+/**
+ * CodeMirror plugin that highlights Jinja2/Liquid template expressions
+ * ({{ ... }} and {% ... %}) with inline mark decorations.
+ */
+const jinja2VarMark = Decoration.mark({ class: "cm-jinja2-var" });
+const jinja2TagMark = Decoration.mark({ class: "cm-jinja2-tag" });
+
+function buildJinja2Decorations(view: EditorView): DecorationSet {
+  const decorations: Range<Decoration>[] = [];
+  const doc = view.state.doc.toString();
+
+  // eslint-disable-next-line sonarjs/slow-regex -- bounded by template size; no user input
+  const varRegex = /\{\{[^}]*\}\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = varRegex.exec(doc)) !== null) {
+    decorations.push(jinja2VarMark.range(match.index, match.index + match[0].length));
+  }
+
+  const tagRegex = /\{%[^%]*%\}/g;
+  while ((match = tagRegex.exec(doc)) !== null) {
+    decorations.push(jinja2TagMark.range(match.index, match.index + match[0].length));
+  }
+
+  return Decoration.set(decorations, true);
+}
+
+const jinja2Highlight = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+    constructor(view: EditorView) {
+      this.decorations = buildJinja2Decorations(view);
+    }
+    update(update: ViewUpdate): void {
+      if (update.docChanged) {
+        this.decorations = buildJinja2Decorations(update.view);
+      }
+    }
+  },
+  { decorations: (plugin) => plugin.decorations },
+);
+
+const jinja2Theme = EditorView.baseTheme({
+  ".cm-jinja2-var": {
+    color: "var(--text-accent)",
+    fontWeight: "600",
+    background: "color-mix(in srgb, var(--text-accent) 10%, transparent)",
+    borderRadius: "2px",
+    padding: "0 2px",
+  },
+  ".cm-jinja2-tag": {
+    color: "var(--status-claimed)",
+    fontWeight: "600",
+    background: "color-mix(in srgb, var(--status-claimed) 10%, transparent)",
+    borderRadius: "2px",
+    padding: "0 2px",
+  },
+});
 
 export interface TemplateEditorOptions {
   parent: HTMLElement;
@@ -26,6 +85,8 @@ export function createTemplateEditor(options: TemplateEditorOptions): TemplateEd
   const extensions = [
     basicSetup,
     html(),
+    jinja2Highlight,
+    jinja2Theme,
     EditorView.lineWrapping,
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {

@@ -183,9 +183,13 @@ function buildLoadingSkeleton(): HTMLElement {
 export function createWorkspacesPage(): HTMLElement {
   const page = el("div", "page ws-page fade-in");
 
+  const cleanStaleBtn = el("button", "mc-button is-sm", "Clean stale");
+  cleanStaleBtn.type = "button";
+
   const header = createPageHeader(
     "Workspaces",
     "Monitor disk usage, inspect workspace state, and identify cleanup targets.",
+    { actions: [cleanStaleBtn] },
   );
 
   const body = el("section", "ws-page-body");
@@ -222,6 +226,17 @@ export function createWorkspacesPage(): HTMLElement {
       await fetchAndRender();
     }
   }
+
+  async function handleCleanStale(): Promise<void> {
+    if (!currentData) return;
+    const stale = currentData.workspaces.filter((ws) => ws.status === "orphaned" || ws.status === "completed");
+    if (stale.length === 0) return;
+    if (!confirm(`Remove ${stale.length} stale workspace${stale.length === 1 ? "" : "s"}?`)) return;
+    await Promise.allSettled(stale.map((ws) => api.removeWorkspace(ws.workspace_key)));
+    await fetchAndRender();
+  }
+
+  cleanStaleBtn.addEventListener("click", () => void handleCleanStale());
 
   void fetchAndRender();
 

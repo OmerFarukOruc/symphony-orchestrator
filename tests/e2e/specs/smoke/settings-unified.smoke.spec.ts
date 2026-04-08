@@ -21,6 +21,20 @@ test.describe("Settings Unified View Smoke", () => {
     await expect(page.locator("h1, .page-title").first()).toContainText("Settings");
   });
 
+  test("settings page renders the Codex Admin operator block", async ({ page }) => {
+    const settings = new ConfigPage(page);
+    await settings.navigateToSettings();
+
+    await expect(page.getByRole("heading", { name: "Codex Admin" })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: "Account" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Model catalog" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Diagnostics" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Threads" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "MCP servers" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "gpt-5.4", exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "github", exact: true })).toBeVisible();
+  });
+
   test("settings page renders sidebar rail with navigation items", async ({ page }) => {
     const settings = new ConfigPage(page);
     await settings.navigateToSettings();

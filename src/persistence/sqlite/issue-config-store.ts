@@ -20,11 +20,10 @@ export interface IssueConfigRow {
 
 export class IssueConfigStore {
   /**
-   * Creates a real store backed by `db`, or a no-op store when `db` is null.
-   * Use this factory in service wiring so callers don't need to branch.
+   * Creates a store backed by `db`.
    */
-  static create(db: RisolutoDatabase | null): IssueConfigStore {
-    return db ? new IssueConfigStore(db) : new NoopIssueConfigStore();
+  static create(db: RisolutoDatabase): IssueConfigStore {
+    return new IssueConfigStore(db);
   }
 
   constructor(private readonly db: RisolutoDatabase) {}
@@ -92,36 +91,5 @@ export class IssueConfigStore {
       .where(eq(issueConfig.identifier, identifier))
       .get();
     return row?.templateId ?? null;
-  }
-}
-
-/**
- * No-op implementation used when SQLite persistence is disabled.
- * All writes are silently discarded; reads return an empty set.
- */
-class NoopIssueConfigStore extends IssueConfigStore {
-  // Bypass the parent constructor's db requirement with a minimal stub.
-  constructor() {
-    super(null as never);
-  }
-
-  override loadAll(): IssueConfigRow[] {
-    return [];
-  }
-
-  override upsertModel(_identifier: string, _model: string, _reasoningEffort: string | null): void {
-    // no-op
-  }
-
-  override upsertTemplateId(_identifier: string, _templateId: string): void {
-    // no-op
-  }
-
-  override clearTemplateId(_identifier: string): void {
-    // no-op
-  }
-
-  override getTemplateId(_identifier: string): string | null {
-    return null;
   }
 }

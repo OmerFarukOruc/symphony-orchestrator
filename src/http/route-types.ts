@@ -6,6 +6,7 @@ import type { ConfigStore } from "../config/store.js";
 import type { AttemptStorePort } from "../core/attempt-store-port.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
+import type { CodexControlPlane } from "../codex/control-plane.js";
 import type { RisolutoLogger } from "../core/types.js";
 import type { AutomationStorePort } from "../persistence/sqlite/automation-store.js";
 import type { NotificationStorePort } from "../persistence/sqlite/notification-store.js";
@@ -21,6 +22,7 @@ export interface HttpRouteDeps {
   orchestrator: OrchestratorPort;
   logger: RisolutoLogger;
   tracker?: TrackerPort;
+  codexControlPlane?: CodexControlPlane;
   configStore?: ConfigStore;
   configOverlayStore?: ConfigOverlayPort;
   secretsStore?: SecretsPort;

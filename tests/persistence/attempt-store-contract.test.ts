@@ -4,7 +4,6 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { AttemptStore } from "../../src/core/attempt-store.js";
 import { createLogger } from "../../src/core/logger.js";
 import { SqliteAttemptStore } from "../../src/persistence/sqlite/attempt-store-sqlite.js";
 import { closeDatabase, openDatabase } from "../../src/persistence/sqlite/database.js";
@@ -19,23 +18,8 @@ async function createTempDir(prefix: string): Promise<string> {
 }
 
 describe("AttemptStorePort contract suites", () => {
-  it("registers shared contract suites for both persistence adapters", () => {
+  it("registers shared contract suite for the SQLite persistence adapter", () => {
     expect(typeof runAttemptStoreContract).toBe("function");
-  });
-
-  runAttemptStoreContract("jsonl", {
-    async create() {
-      const dir = await createTempDir("risoluto-attempt-store-contract-jsonl-");
-      const store = new AttemptStore(dir, createLogger()) as DisposableStore<AttemptStore>;
-      await store.start();
-      store.cleanup = async () => {
-        await rm(dir, { recursive: true, force: true });
-      };
-      return store;
-    },
-    async teardown(store) {
-      await store.cleanup();
-    },
   });
 
   runAttemptStoreContract("sqlite", {

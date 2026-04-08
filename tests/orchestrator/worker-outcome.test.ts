@@ -132,6 +132,7 @@ function makeCtx(
     isRunning: () => isRunning,
     getConfig: () => config,
     releaseIssueClaim: vi.fn(),
+    markDirty: vi.fn(),
     resolveModelSelection: vi.fn().mockReturnValue({
       model: "gpt-4o",
       reasoningEffort: "high",
@@ -630,7 +631,13 @@ describe("handleWorkerFailure", () => {
     const warn = vi.fn();
 
     await handleWorkerFailure(
-      { runningEntries, releaseIssueClaim, pushEvent, deps: { attemptStore: { updateAttempt }, logger: { warn } } },
+      {
+        runningEntries,
+        releaseIssueClaim,
+        markDirty: vi.fn(),
+        pushEvent,
+        deps: { attemptStore: { updateAttempt }, logger: { warn } },
+      },
       makeIssue(),
       entry,
       new Error("unexpected crash"),
@@ -659,6 +666,7 @@ describe("handleWorkerFailure", () => {
       {
         runningEntries,
         releaseIssueClaim: vi.fn(),
+        markDirty: vi.fn(),
         pushEvent,
         deps: { attemptStore: { updateAttempt }, logger: { warn } },
       },

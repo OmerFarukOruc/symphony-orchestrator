@@ -126,6 +126,91 @@ describe("normalizeNotifications", () => {
     const result = normalizeNotifications({ slack: { webhook_url: "https://hooks.slack.com/xxx" } });
     expect(result.slack?.verbosity).toBe("critical");
   });
+
+  it("accepts camelCase webhookUrl in legacy slack config", () => {
+    const result = normalizeNotifications({
+      slack: { webhookUrl: "https://hooks.slack.com/services/T000/B000/camel", verbosity: "verbose" },
+    });
+    expect(result.slack?.webhookUrl).toBe("https://hooks.slack.com/services/T000/B000/camel");
+    expect(result.channels).toHaveLength(1);
+    expect(result.channels[0].type).toBe("slack");
+  });
+
+  it("does not promote legacy slack when channels already has a 'slack' named entry", () => {
+    const result = normalizeNotifications({
+      slack: { webhook_url: "https://hooks.slack.com/services/T000/B000/legacy" },
+      channels: [
+        {
+          type: "slack",
+          name: "slack",
+          webhook_url: "https://hooks.slack.com/services/T000/B000/explicit",
+          enabled: true,
+        },
+      ],
+    });
+    // channels already has name "slack" — legacy must NOT be prepended (no duplication)
+    expect(result.channels).toHaveLength(1);
+    expect(result.channels[0].webhookUrl).toBe("https://hooks.slack.com/services/T000/B000/explicit");
+  });
+
+  it("promotes legacy slack alongside non-Slack channels when no Slack channel exists", () => {
+    const result = normalizeNotifications({
+      slack: { webhook_url: "https://hooks.slack.com/services/T000/B000/XXX", verbosity: "critical" },
+      channels: [{ type: "desktop", name: "desktop-local" }],
+    });
+    // desktop channel should remain; legacy slack should be prepended
+    expect(result.channels).toHaveLength(2);
+    expect(result.channels[0].type).toBe("slack");
+    expect(result.channels[1].type).toBe("desktop");
+  });
+
+  it("preserves all fields from legacy slack config in the promoted channel", () => {
+    const result = normalizeNotifications({
+      slack: { webhook_url: "https://hooks.slack.com/services/T000/B000/XXX", verbosity: "verbose" },
+    });
+    const promoted = result.channels[0];
+    expect(promoted).toEqual({
+      type: "slack",
+      name: "slack",
+      enabled: true,
+      minSeverity: "info",
+      webhookUrl: "https://hooks.slack.com/services/T000/B000/XXX",
+      verbosity: "verbose",
+    });
+  });
+
+  it("passes through multiple channels including a disabled one", () => {
+    const result = normalizeNotifications({
+      channels: [
+        { type: "desktop", name: "desktop-local", enabled: true },
+        { type: "desktop", name: "desktop-disabled", enabled: false },
+      ],
+    });
+    expect(result.channels).toHaveLength(2);
+    expect(result.channels[0].enabled).toBe(true);
+    expect(result.channels[1].enabled).toBe(false);
+    // no legacy slack → slack field is null
+    expect(result.slack).toBe(null);
+  });
+
+  it("returns empty channels when channels array has only invalid entries", () => {
+    const result = normalizeNotifications({
+      channels: [
+        { type: "slack" }, // missing webhookUrl → filtered out
+        { type: "webhook" }, // missing url → filtered out
+      ],
+    });
+    expect(result.channels).toEqual([]);
+  });
+
+  it("returns channels[] with only non-Slack entries when no legacy Slack is configured", () => {
+    const result = normalizeNotifications({
+      channels: [{ type: "desktop", name: "my-desktop" }],
+    });
+    expect(result.channels).toHaveLength(1);
+    expect(result.channels[0].type).toBe("desktop");
+    expect(result.slack).toBe(null);
+  });
 });
 
 describe("normalizeGitHub", () => {

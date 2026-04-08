@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { desc, eq, sql } from "drizzle-orm";
 
 import type { AutomationMode } from "../../core/types.js";
+import { normalizeLimit } from "./query-helpers.js";
 import type { AutomationRunRecord, AutomationRunStatus, AutomationRunTrigger } from "../../automation/types.js";
 import type { RisolutoDatabase } from "./database.js";
 import { automationRuns } from "./schema.js";
@@ -39,8 +40,8 @@ export interface AutomationStorePort {
 }
 
 export class AutomationStore {
-  static create(db: RisolutoDatabase | null): AutomationStorePort {
-    return db ? new SqliteAutomationStore(db) : new MemoryAutomationStore();
+  static create(db: RisolutoDatabase): AutomationStorePort {
+    return new SqliteAutomationStore(db);
   }
 }
 
@@ -131,75 +132,11 @@ class SqliteAutomationStore implements AutomationStorePort {
   }
 }
 
-class MemoryAutomationStore implements AutomationStorePort {
-  private readonly records = new Map<string, AutomationRunRecord>();
-
-  async createRun(input: CreateAutomationRunInput): Promise<AutomationRunRecord> {
-    const record: AutomationRunRecord = {
-      id: randomUUID(),
-      automationName: input.automationName,
-      mode: input.mode,
-      trigger: input.trigger,
-      repoUrl: input.repoUrl,
-      status: "running",
-      output: null,
-      details: null,
-      issueId: null,
-      issueIdentifier: null,
-      issueUrl: null,
-      error: null,
-      startedAt: input.startedAt,
-      finishedAt: null,
-    };
-    this.records.set(record.id, cloneAutomationRun(record));
-    return cloneAutomationRun(record);
-  }
-
-  async finishRun(id: string, input: FinishAutomationRunInput): Promise<AutomationRunRecord | null> {
-    const existing = this.records.get(id);
-    if (!existing) {
-      return null;
-    }
-    const updated: AutomationRunRecord = {
-      ...existing,
-      status: input.status,
-      output: input.output,
-      details: cloneDetails(input.details),
-      issueId: input.issueId,
-      issueIdentifier: input.issueIdentifier,
-      issueUrl: input.issueUrl,
-      error: input.error,
-      finishedAt: input.finishedAt,
-    };
-    this.records.set(id, cloneAutomationRun(updated));
-    return cloneAutomationRun(updated);
-  }
-
-  async listRuns(options: ListAutomationRunsOptions = {}): Promise<AutomationRunRecord[]> {
-    const limit = normalizeLimit(options.limit);
-    return [...this.records.values()]
-      .filter((record) => !options.automationName || record.automationName === options.automationName)
-      .sort((left, right) => right.startedAt.localeCompare(left.startedAt))
-      .slice(0, limit)
-      .map((record) => cloneAutomationRun(record));
-  }
-
-  async countRuns(): Promise<number> {
-    return this.records.size;
-  }
-}
-
-function normalizeLimit(limit: number | undefined): number {
-  if (limit === undefined || Number.isNaN(limit)) {
-    return 100;
-  }
-  return Math.max(1, Math.min(500, Math.trunc(limit)));
-}
-
 function stringifyJson(value: Record<string, unknown> | null): string | null {
   return value === null ? null : JSON.stringify(value);
 }
 
+// eslint-disable-next-line sonarjs/function-return-type -- intentional T | null guard
 function parseJson(value: string | null): Record<string, unknown> | null {
   if (value === null) {
     return null;

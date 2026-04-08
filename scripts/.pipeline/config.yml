@@ -1,0 +1,134 @@
+# Autonomous Pipeline Configuration
+# Each pipeline is a named sequence of phases that can be run headlessly.
+# Skills are invoked via `claude -p` with the Turbo skill system.
+
+# ─────────────────────────────────────────────────────────────────
+# Pipeline: audit-and-fix
+# Purpose: Audit the codebase, evaluate findings, apply P0/P1 fixes
+# When:    Nightly or before a release
+# ─────────────────────────────────────────────────────────────────
+audit-and-fix:
+  description: "Audit the codebase and auto-fix high-priority issues"
+  max_budget_usd: 15.00
+  max_turns_per_phase: 50
+  phases:
+    - name: audit
+      prompt: "Run /audit on the entire codebase. Focus on correctness, security, test coverage, and code quality."
+      on_fail: stop
+      timeout_minutes: 30
+
+    - name: evaluate
+      prompt: "Read .turbo/audit.md and /evaluate-findings — assess each finding, run devil's advocate, reconcile, and output the final prioritized list."
+      on_fail: stop
+      continue_session: true
+      timeout_minutes: 15
+
+    - name: apply
+      prompt: "Run /apply-findings for all P0 and P1 items only. Skip P2 and P3. For skipped items, run /note-improvement."
+      on_fail: continue
+      continue_session: true
+      timeout_minutes: 30
+
+    - name: polish
+      prompt: "Run /polish-code — stage, format, lint, test, simplify, review, smoke-test. Re-run if changes were made, up to 3 cycles."
+      on_fail: continue
+      timeout_minutes: 45
+
+# ─────────────────────────────────────────────────────────────────
+# Pipeline: full-lifecycle
+# Purpose: Complete Turbo lifecycle — audit → fix → polish → ship
+# When:    Weekly or when wrapping up a feature branch
+# ─────────────────────────────────────────────────────────────────
+full-lifecycle:
+  description: "Full audit → fix → polish → changelog → self-improve → ship"
+  max_budget_usd: 25.00
+  max_turns_per_phase: 80
+  phases:
+    - name: audit
+      prompt: "Run /audit on the entire codebase."
+      on_fail: stop
+      timeout_minutes: 30
+
+    - name: evaluate-and-apply
+      prompt: "Read .turbo/audit.md. Run /evaluate-findings, then /apply-findings for P0 and P1 items."
+      on_fail: continue
+      continue_session: true
+      timeout_minutes: 30
+
+    - name: finalize
+      prompt: "Run /finalize — this will run /polish-code (phase 1), /update-changelog (phase 2), /self-improve (phase 3), and commit+PR (phase 4)."
+      on_fail: stop
+      timeout_minutes: 60
+
+# ─────────────────────────────────────────────────────────────────
+# Pipeline: review-only
+# Purpose: Deep code review without making changes
+# When:    Pre-merge check on a feature branch
+# ─────────────────────────────────────────────────────────────────
+review-only:
+  description: "Deep multi-pass code review — no changes, just findings"
+  max_budget_usd: 8.00
+  max_turns_per_phase: 40
+  phases:
+    - name: review
+      prompt: "Run /review-code on all changed files (git diff main). This will fan out to /review-test-coverage, /review-correctness, /review-security, /review-quality, /review-api-usage, and /peer-review."
+      on_fail: stop
+      timeout_minutes: 30
+
+    - name: evaluate
+      prompt: "Run /evaluate-findings on the review results. Assess each finding, devil's advocate, reconcile."
+      on_fail: stop
+      continue_session: true
+      timeout_minutes: 15
+
+# ─────────────────────────────────────────────────────────────────
+# Pipeline: investigate
+# Purpose: Autonomous bug investigation
+# When:    When a bug report comes in
+# ─────────────────────────────────────────────────────────────────
+investigate:
+  description: "Characterize, isolate, hypothesize, and test a bug"
+  max_budget_usd: 10.00
+  max_turns_per_phase: 60
+  phases:
+    - name: investigate
+      prompt: "Run /investigate on the issue described below: ${ISSUE_DESCRIPTION}"
+      on_fail: stop
+      timeout_minutes: 45
+
+# ─────────────────────────────────────────────────────────────────
+# Pipeline: plan-and-implement
+# Purpose: Full planning pipeline → implementation
+# When:    Starting a new feature from a spec
+# ─────────────────────────────────────────────────────────────────
+plan-and-implement:
+  description: "Create spec → review → plan → review → implement → finalize"
+  max_budget_usd: 30.00
+  max_turns_per_phase: 60
+  requires_approval: true # Pause after planning for human review
+  phases:
+    - name: spec
+      prompt: "Run /create-spec for the following feature: ${FEATURE_DESCRIPTION}"
+      on_fail: stop
+      timeout_minutes: 20
+
+    - name: review-spec
+      prompt: "Run /review-spec on the generated spec."
+      on_fail: stop
+      continue_session: true
+      timeout_minutes: 15
+
+    - name: plan
+      prompt: "Run /create-prompt-plan, then /review-prompt-plan, then /pick-next-prompt, then /plan-style, then /review-plan."
+      on_fail: stop
+      continue_session: true
+      timeout_minutes: 30
+
+    # --- APPROVAL GATE ---
+    # Pipeline pauses here if requires_approval is true.
+    # Human reviews the plan, then resumes.
+
+    - name: implement
+      prompt: "Run /code-style to establish style, then implement the plan. When done, run /finalize."
+      on_fail: stop
+      timeout_minutes: 60

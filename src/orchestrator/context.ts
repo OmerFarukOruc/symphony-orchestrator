@@ -44,6 +44,7 @@ export interface OutcomeContext {
   getConfig: () => ServiceConfig;
   releaseIssueClaim: (issueId: string) => void;
   suppressIssueDispatch?: (issue: Issue) => void;
+  markDirty: () => void;
   resolveModelSelection: (identifier: string) => ModelSelection;
   notify: (event: NotificationEvent) => void;
   queueRetry: (
@@ -69,6 +70,7 @@ export interface OrchestratorContext {
   resolveModelSelection: (identifier: string) => ModelSelection;
   releaseIssueClaim: (issueId: string) => void;
   claimIssue: (issueId: string) => void;
+  markDirty: () => void;
   notify: (event: NotificationEvent) => void;
   pushEvent: (event: RuntimeEventRecord) => void;
   queueRetry: (

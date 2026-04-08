@@ -12,6 +12,7 @@ export function clearRetryEntry(
     retryEntries: Map<string, RetryRuntimeEntry>;
     runningEntries: Map<string, RunningEntry>;
     releaseIssueClaim: (issueId: string) => void;
+    markDirty?: () => void;
   },
   issueId: string,
 ): void {
@@ -19,7 +20,8 @@ export function clearRetryEntry(
   if (retryEntry?.timer) {
     clearTimeout(retryEntry.timer);
   }
-  ctx.retryEntries.delete(issueId);
+  const deleted = ctx.retryEntries.delete(issueId);
+  if (deleted) ctx.markDirty?.();
   if (!ctx.runningEntries.has(issueId)) {
     ctx.releaseIssueClaim(issueId);
   }
@@ -31,6 +33,7 @@ export function queueRetry(
     claimIssue: (issueId: string) => void;
     retryEntries: Map<string, RetryRuntimeEntry>;
     detailViews: Map<string, { workspaceKey: string | null }>;
+    markDirty?: () => void;
     notify: (event: NotificationEvent) => void;
     revalidateAndLaunchRetry: (issueId: string, attempt: number) => Promise<void>;
     handleRetryLaunchFailure: (issue: Issue, attempt: number, error: unknown) => Promise<void>;
@@ -67,6 +70,7 @@ export function queueRetry(
     issue,
     workspaceKey: ctx.detailViews.get(issue.identifier)?.workspaceKey ?? null,
   });
+  ctx.markDirty?.();
   ctx.notify({
     type: "worker_retry",
     severity: "critical",
@@ -100,6 +104,7 @@ export async function revalidateAndLaunchRetry(
     isRunning: () => boolean;
     clearRetryEntry: (issueId: string) => void;
     hasAvailableStateSlot: (issue: Issue) => boolean;
+    markDirty?: () => void;
     queueRetry: (
       issue: Issue,
       attempt: number,
@@ -148,6 +153,7 @@ export async function revalidateAndLaunchRetry(
   }
 
   ctx.retryEntries.delete(issueId);
+  ctx.markDirty?.();
   await ctx.launchWorker(latestIssue, attempt, {
     claimHeld: true,
     previousThreadId: retryEntry.threadId,

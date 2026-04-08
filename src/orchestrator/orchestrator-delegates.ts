@@ -11,7 +11,6 @@ import type {
 } from "../core/types.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type { OrchestratorDeps, RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
-import type { LaunchWorkerOptions } from "./runtime-types.js";
 
 import { usageDelta } from "./views.js";
 
@@ -76,10 +75,17 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
     isRunning: () => state.running,
     resolveModelSelection: (identifier) =>
       resolveModelSelectionFromConfig(state.issueModelOverrides, deps.configStore.getConfig(), identifier),
-    releaseIssueClaim: (issueId) => state.claimedIssueIds.delete(issueId),
+    releaseIssueClaim: (issueId) => {
+      const deleted = state.claimedIssueIds.delete(issueId);
+      if (deleted) state.markDirty();
+    },
     suppressIssueDispatch: (issue) =>
       state.operatorAbortSuppressions?.set(issue.id, buildIssueDispatchFingerprint(issue)),
-    claimIssue: (issueId) => state.claimedIssueIds.add(issueId),
+    claimIssue: (issueId) => {
+      state.claimedIssueIds.add(issueId);
+      state.markDirty();
+    },
+    markDirty: () => state.markDirty(),
     notify: (event) => notifyChannel(deps, event),
     pushEvent: (event) => {
       pushRecentEvent(state, event);
@@ -89,7 +95,23 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
     queueRetry: (issue, attempt, delayMs, error, metadata) =>
       queueRetryState(ctx, issue, attempt, delayMs, error, metadata),
     clearRetryEntry: (issueId) => clearRetryEntryState(ctx, issueId),
-    launchWorker: async (issue, attempt, options) => launchWorkerDelegate(deps, ctx, issue, attempt, options),
+    launchWorker: async (issue, attempt, options) => {
+      await launchWorkerState(
+        {
+          ...ctx,
+          handleWorkerPromise: (promise, workerIssue, workspace, entry, workerAttempt) =>
+            handleWorkerPromise(ctx, promise, workerIssue, workspace, entry, workerAttempt),
+        },
+        issue,
+        attempt,
+        options,
+      );
+      deps.eventBus?.emit("issue.started", {
+        issueId: issue.id,
+        identifier: issue.identifier,
+        attempt,
+      });
+    },
     canDispatchIssue: (issue) =>
       canDispatchIssueState(
         issue,
@@ -248,30 +270,6 @@ function applyUsageEvent(
     totalTokens: (entry.tokenUsage?.totalTokens ?? 0) + usage.totalTokens,
   };
   state.markDirty();
-}
-
-async function launchWorkerDelegate(
-  deps: OrchestratorDeps,
-  ctx: OrchestratorContext,
-  issue: Issue,
-  attempt: number | null,
-  options?: LaunchWorkerOptions,
-): Promise<void> {
-  await launchWorkerState(
-    {
-      ...ctx,
-      handleWorkerPromise: (promise, workerIssue, workspace, entry, workerAttempt) =>
-        handleWorkerPromise(ctx, promise, workerIssue, workspace, entry, workerAttempt),
-    },
-    issue,
-    attempt,
-    options,
-  );
-  deps.eventBus?.emit("issue.started", {
-    issueId: issue.id,
-    identifier: issue.identifier,
-    attempt,
-  });
 }
 
 async function handleWorkerPromise(

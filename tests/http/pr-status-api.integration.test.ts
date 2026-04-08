@@ -41,7 +41,7 @@ function makePrRecord(overrides: Partial<OpenPrRecord> = {}): OpenPrRecord {
 /*  Happy path — non-empty PR list                                      */
 /* ------------------------------------------------------------------ */
 
-describe.skip("GET /api/v1/prs — happy path", () => {
+describe("GET /api/v1/prs — happy path", () => {
   let ctx: TestServerResult;
 
   beforeEach(async () => {
@@ -88,7 +88,7 @@ describe.skip("GET /api/v1/prs — happy path", () => {
 /*  Empty list                                                          */
 /* ------------------------------------------------------------------ */
 
-describe.skip("GET /api/v1/prs — empty list", () => {
+describe("GET /api/v1/prs — empty list", () => {
   let ctx: TestServerResult;
 
   beforeEach(async () => {

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TypedEventBus } from "../../src/core/event-bus.js";
 import type { RisolutoEventMap } from "../../src/core/risoluto-events.js";
-import { createSSEHandler } from "../../src/http/sse.js";
+import { createSSEHandlerWithObserver } from "../../src/http/sse.js";
 
 describe("SSE handler", () => {
   let eventBus: TypedEventBus<RisolutoEventMap>;
@@ -16,7 +16,7 @@ describe("SSE handler", () => {
     eventBus = new TypedEventBus<RisolutoEventMap>();
     const app = express();
     app.disable("x-powered-by");
-    app.get("/api/v1/events", createSSEHandler(eventBus));
+    app.get("/api/v1/events", createSSEHandlerWithObserver(eventBus));
 
     await new Promise<void>((resolve) => {
       server = app.listen(0, "127.0.0.1", resolve);
@@ -115,7 +115,7 @@ describe("SSE handler", () => {
       destroyed: false,
     };
 
-    createSSEHandler(eventBus)(req as never, res as never);
+    createSSEHandlerWithObserver(eventBus)(req as never, res as never);
 
     expect(req.once).toHaveBeenCalledWith("close", expect.any(Function));
     expect(res.once).toHaveBeenCalledWith("close", expect.any(Function));
@@ -139,7 +139,7 @@ describe("SSE handler", () => {
         destroyed: state.destroyed,
       };
 
-      createSSEHandler(eventBus)(req as never, res as never);
+      createSSEHandlerWithObserver(eventBus)(req as never, res as never);
 
       expect(res.write).not.toHaveBeenCalled();
     }
@@ -169,7 +169,7 @@ describe("SSE handler", () => {
     };
 
     try {
-      createSSEHandler(eventBus)(req as never, res as never);
+      createSSEHandlerWithObserver(eventBus)(req as never, res as never);
       expect(res.write).toHaveBeenCalledTimes(1);
 
       reqListeners.get("close")?.();

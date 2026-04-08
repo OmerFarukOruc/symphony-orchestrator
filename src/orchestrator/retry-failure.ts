@@ -139,6 +139,7 @@ export async function handleRetryLaunchFailure(
     };
     detailViews: Map<string, ReturnType<typeof issueView>>;
     completedViews: Map<string, ReturnType<typeof issueView>>;
+    markDirty?: () => void;
     pushEvent: (event: RecentEvent) => void;
     resolveModelSelection: (identifier: string) => ModelSelection;
   },
@@ -148,6 +149,7 @@ export async function handleRetryLaunchFailure(
 ): Promise<void> {
   const runningEntry = ctx.runningEntries.get(issue.id) ?? null;
   ctx.runningEntries.delete(issue.id);
+  ctx.markDirty?.();
   ctx.clearRetryEntry(issue.id);
 
   const errorText = toErrorString(error);
@@ -169,6 +171,7 @@ export async function handleRetryLaunchFailure(
   const failureView = buildRetryFailureView(ctx, issue, runningEntry, errorText, attempt);
   ctx.detailViews.set(issue.identifier, failureView);
   ctx.completedViews.set(issue.identifier, failureView);
+  ctx.markDirty?.();
 
   const selection = runningEntry?.modelSelection ?? ctx.resolveModelSelection(issue.identifier);
   await persistRetryFailure({

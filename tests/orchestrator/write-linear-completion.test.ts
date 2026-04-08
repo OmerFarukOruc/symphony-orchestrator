@@ -130,6 +130,7 @@ function makeCtx(
     isRunning: () => true,
     getConfig: () => config,
     releaseIssueClaim: vi.fn(),
+    markDirty: vi.fn(),
     resolveModelSelection: vi
       .fn()
       .mockReturnValue({ model: "gpt-4o", reasoningEffort: "high", source: "default" } as ModelSelection),

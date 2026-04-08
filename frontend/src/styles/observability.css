@@ -70,6 +70,29 @@
   background: color-mix(in srgb, var(--status-blocked) 8%, transparent);
 }
 
+/* ── Golden signals hero section ────────────────────────────────────────── */
+
+.observability-hero-section .observability-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.observability-hero-section .observability-card {
+  min-height: 180px;
+  border-top: 2px solid var(--text-accent);
+}
+
+@media (max-width: 1100px) {
+  .observability-hero-section .observability-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .observability-hero-section .observability-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .observability-shell {
   grid-template-columns: minmax(0, 1fr) minmax(340px, 0.42fr);
   align-items: start;

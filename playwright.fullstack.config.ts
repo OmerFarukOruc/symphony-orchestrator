@@ -12,6 +12,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const isCI = !!process.env.CI;
+const enableHtmlReport = process.env.RISOLUTO_NIGHTLY_HTML_REPORT === "true";
 
 export default defineConfig({
   testDir: "tests/e2e/specs",
@@ -20,7 +21,14 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
   workers: isCI ? "50%" : undefined,
-  reporter: isCI ? [["blob"], ["github"]] : [["html", { open: "never" }], ["list"]],
+  reporter: isCI
+    ? [
+        ["blob"],
+        ["github"],
+        ["json", { outputFile: "test-results/playwright-fullstack-results.json" }],
+        ...(enableHtmlReport ? [["html", { open: "never" }] as const] : []),
+      ]
+    : [["html", { open: "never" }], ["list"]],
 
   globalSetup: "./tests/e2e/setup/fullstack-server.ts",
 

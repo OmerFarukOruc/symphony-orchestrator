@@ -76,7 +76,7 @@ test.describe("Logs Page & Attempt Detail Smoke", () => {
     await gotoAndWait(page, "/issues/SYM-42/runs");
 
     // The drilldown scenario has 2 attempts
-    await expect(page.getByText("Run History")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: /Run History/i })).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("#1").first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("#2").first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("cliproxyapi").first()).toBeVisible({ timeout: 5000 });

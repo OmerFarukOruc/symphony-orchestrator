@@ -59,7 +59,7 @@ function makeConfigStore(repos: unknown[] = []) {
 
 function makeSecretsStore(token: string | null = null) {
   return {
-    get: vi.fn().mockImplementation((key: string) => (key === "GITHUB_TOKEN" ? token : null)),
+    get: vi.fn().mockImplementation((key: string) => (key === "GITHUB_TOKEN" || key === "github_token" ? token : null)),
   };
 }
 
@@ -76,8 +76,10 @@ describe("GET /api/v1/git/context", () => {
   describe("without GitHub token", () => {
     let server: http.Server;
     let port: number;
+    const originalGithubToken = process.env.GITHUB_TOKEN;
 
     beforeAll(async () => {
+      delete process.env.GITHUB_TOKEN;
       const app = createApp({
         orchestrator: makeOrchestrator() as never,
         configStore: makeConfigStore([
@@ -103,6 +105,11 @@ describe("GET /api/v1/git/context", () => {
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
       });
+      if (originalGithubToken === undefined) {
+        delete process.env.GITHUB_TOKEN;
+      } else {
+        process.env.GITHUB_TOKEN = originalGithubToken;
+      }
     });
 
     it("returns repos from config with githubAvailable=false", async () => {

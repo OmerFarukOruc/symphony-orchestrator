@@ -12,6 +12,7 @@ export async function prepareWorkerOutcome(
 
   await entry.flushPersistence();
   ctx.runningEntries.delete(issue.id);
+  ctx.markDirty();
 
   const latestIssue = (await ctx.deps.tracker.fetchIssueStatesByIds([issue.id]).catch(() => [issue]))[0] ?? issue;
 
@@ -39,6 +40,7 @@ export async function prepareWorkerOutcome(
       message: outcome.errorMessage,
     }),
   );
+  ctx.markDirty();
 
   return { ...input, latestIssue, modelSelection };
 }

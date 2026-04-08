@@ -1,0 +1,12 @@
+{
+  "pipeline": "full-lifecycle",
+  "timestamp": "20260408-152905",
+  "budget_usd": 20,
+  "phases_total": 3,
+  "phases_passed": 3,
+  "phases_failed": 0,
+  "phases_skipped": 0,
+  "success": true,
+  "branch": "nightly-validation-cli",
+  "run_dir": "/home/oruc/Desktop/workspace/risoluto/scripts/.pipeline/runs/full-lifecycle/20260408-152905"
+}

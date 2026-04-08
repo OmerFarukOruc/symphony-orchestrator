@@ -68,7 +68,7 @@ The E2E lifecycle test validates Symphony's integration with Linear, GitHub, and
 | `GET /api/v1/{identifier}` | `orchestrator.getIssueDetail()` | `IssueDetailView` -- extends `RuntimeIssueView` + `{ recentEvents[], attempts[], currentAttemptId }` |
 | `GET /api/v1/{identifier}/attempts` | inline | `{ attempts: AttemptSummaryEntry[], current_attempt_id }` |
 | `GET /api/v1/attempts/{attempt_id}` | `handleAttemptDetail` | `AttemptDetailView` -- extends `AttemptSummary` + `{ events[] }` |
-| `GET /api/v1/runtime` | inline | `{ version, workflow_path, data_dir, feature_flags: {}, provider_summary }` |
+| `GET /api/v1/runtime` | inline | `{ version, data_dir, provider_summary }` |
 | `GET /api/v1/models` | inline via `fetchCodexModels` | `{ models: [...] }` |
 | `GET /metrics` | `globalMetrics.serialize()` | Prometheus text format (content-type `text/plain`) |
 | `GET /api/v1/workspaces` | `handleWorkspaceInventory` | `{ workspaces[], generated_at, total, active, orphaned }` -- returns 503 when `workspaceRoot` is falsy |

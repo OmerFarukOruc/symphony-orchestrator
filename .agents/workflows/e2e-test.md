@@ -21,10 +21,14 @@ These IDs are stable and pre-discovered. Use them directly in the steps below. O
 | Project ID           | `e0cfcbde-1a95-4726-8161-3eabd289c75a`   |
 | In Progress state ID | `4e9f32d8-a5e6-4f86-9f54-d4cf31aede29`   |
 | Done state ID        | `941e87a9-6bd6-40bd-9ca3-e97fc680b719`   |
-| GitHub repo          | `OmerFarukOruc/risoluto`    |
-| Codex working dir    | `/home/oruc/Desktop/codex`               |
-| Workspace root       | `/home/oruc/Desktop/risoluto-workspaces` |
-| Attempt archive dir  | `/home/oruc/Desktop/codex/.risoluto`     |
+| GitHub repo          | `OmerFarukOruc/risoluto`                 |
+| Project root         | `/home/oruc/Desktop/workspace/risoluto`  |
+| Default data dir     | `~/.risoluto`                            |
+| Archive dir          | `~/.risoluto/archives`                   |
+
+> **Note:** Risoluto now uses SQLite for persistence (not flat JSON files).
+> The data directory defaults to `~/.risoluto` and the archive dir to `~/.risoluto/archives`.
+> The CLI accepts `--data-dir` to override. Workspace root is configured via `config.workspace.root` in the overlay config or `RISOLUTO_HOST_WORKSPACE_ROOT` env var.
 
 ---
 
@@ -44,11 +48,11 @@ echo "=== Environment Check ===" && \
 ### 1.2 Build and run tests
 
 ```bash
-cd /home/oruc/Desktop/codex && npm run build 2>&1 | tail -5
+cd /home/oruc/Desktop/workspace/risoluto && pnpm run build 2>&1 | tail -5
 ```
 
 ```bash
-cd /home/oruc/Desktop/codex && npm test 2>&1 | tail -5
+cd /home/oruc/Desktop/workspace/risoluto && pnpm test 2>&1 | tail -5
 ```
 
 **STOP if build fails or any tests fail.** Report the failures to the user.
@@ -88,9 +92,7 @@ Save these three values from the response — you will use them throughout the p
 ISSUE_ID="<identifier_from_2.1>"   # e.g. NIN-15
 fuser -k 4000/tcp 2>/dev/null
 sleep 1
-rm -rf "/home/oruc/Desktop/risoluto-workspaces/$ISSUE_ID"
-rm -f /home/oruc/Desktop/codex/.risoluto/secrets.enc /home/oruc/Desktop/codex/.risoluto/secrets.audit.log
-echo "Ready — port 4000 free, workspace clean, secrets cleared"
+echo "Ready — port 4000 free"
 ```
 
 ### 3.2 Start the orchestrator (backgrounded)
@@ -103,8 +105,8 @@ export LINEAR_PROJECT_SLUG="risoluto-e2e-test-c36e46913595"
 export MASTER_KEY="e2e-test-key"
 export LOG_FILE="/tmp/risoluto-e2e-$(date +%s).log"
 
-cd /home/oruc/Desktop/codex && \
-  node dist/cli/index.js ./WORKFLOW.md --port 4000 > "$LOG_FILE" 2>&1 &
+cd /home/oruc/Desktop/workspace/risoluto && \
+  node dist/cli/index.js --port 4000 > "$LOG_FILE" 2>&1 &
 RISOLUTO_PID=$!
 
 echo "Risoluto PID=$RISOLUTO_PID  LOG=$LOG_FILE"
@@ -201,11 +203,11 @@ else:
     if status != 'completed':
         errors.append(f'❌ Expected status=completed, got {status}')
 
-events = d.get('recent_events', [])
+events = d.get('recentEvents', [])
 turn_completes = [e for e in events if e.get('event') == 'turn_completed']
 print(f'ℹ️  Turn count: {len(turn_completes)}')
 
-done_events = [e for e in events if 'RISOLUTO_STATUS: DONE' in (e.get('content') or '')]
+done_events = [e for e in events if 'RISOLUTO_STATUS: DONE' in (e.get('content') or e.get('message') or '')]
 if done_events:
     print('✅ RISOLUTO_STATUS: DONE detected in agent output')
 else:
@@ -218,67 +220,67 @@ print('VERDICT: ❌ FAIL' if errors else 'VERDICT: ✅ ALL CHECKS PASSED')
 "
 ```
 
-### 5.2 Verify attempt JSON (persisted fields)
+### 5.2 Verify attempt data via API (SQLite-backed)
 
-This checks that `pullRequestUrl` and `stopSignal` are stored in the archived attempt record — not just in memory.
+Query the issue detail API to verify that `pullRequestUrl` and `stopSignal` are stored in the SQLite database — not just in memory.
 
 ```bash
 ISSUE_ID="<identifier_from_2.1>"
 
-ATTEMPT_FILE=$(python3 -c "
-import json, glob, os
-for f in sorted(glob.glob('/home/oruc/Desktop/codex/.risoluto/attempts/*.json'), key=lambda x: -os.path.getmtime(x)):
-    if json.load(open(f)).get('issueIdentifier') == '$ISSUE_ID':
-        print(f); break
-")
-if [ -z "$ATTEMPT_FILE" ]; then
-  echo "❌ No attempt files found in .risoluto/attempts/"
-else
-  echo "=== Attempt file: $ATTEMPT_FILE ==="
-  python3 -c "
+# nosemgrep: skills.command-execution.skill-curl-silent-pipe.skill-curl-silent-pipe
+curl -s "http://127.0.0.1:4000/api/v1/issues/$ISSUE_ID" | python3 -c "
 import json, sys
-a = json.load(open('$ATTEMPT_FILE'))
+d = json.load(sys.stdin)
 errors = []
 
-status = a.get('status', 'missing')
-print(f'status: {status}')
-if status != 'completed':
-    errors.append(f'❌ Expected status=completed, got {status}')
+attempts = d.get('attempts', [])
+if not attempts:
+    errors.append('❌ No attempts found for issue')
 else:
-    print('✅ status=completed')
+    a = attempts[0]
+    status = a.get('status', 'missing')
+    print(f'status: {status}')
+    if status != 'completed':
+        errors.append(f'❌ Expected status=completed, got {status}')
+    else:
+        print('✅ status=completed')
 
-pr_url = a.get('pullRequestUrl')
-if pr_url:
-    print(f'✅ pullRequestUrl: {pr_url}')
-else:
-    errors.append('❌ pullRequestUrl missing from attempt JSON')
+    # Check top-level issue view for pullRequestUrl
+    pr_url = d.get('pullRequestUrl')
+    if pr_url:
+        print(f'✅ pullRequestUrl: {pr_url}')
+    else:
+        errors.append('❌ pullRequestUrl missing from issue detail')
 
-stop_signal = a.get('stopSignal')
-if stop_signal == 'done':
-    print(f'✅ stopSignal=done')
-elif stop_signal:
-    errors.append(f'❌ Unexpected stopSignal={stop_signal}')
-else:
-    errors.append('❌ stopSignal missing from attempt JSON')
+    model = a.get('model', 'unknown')
+    print(f'ℹ️  model: {model}')
+
+    token_usage = a.get('tokenUsage')
+    if token_usage:
+        print(f'ℹ️  tokens: in={token_usage.get(\"inputTokens\",0)}, out={token_usage.get(\"outputTokens\",0)}')
+    cost = a.get('costUsd')
+    if cost is not None:
+        print(f'ℹ️  cost: \${cost:.4f}')
 
 for err in errors:
     print(err)
 print()
 print('VERDICT: ❌ FAIL' if errors else 'VERDICT: ✅ ALL CHECKS PASSED')
 "
-fi
 ```
 
 ### 5.3 Verify GitHub PR exists
 
-Use the `pullRequestUrl` from the attempt JSON to confirm the PR is accessible on GitHub.
+Use the `pullRequestUrl` from the issue detail to confirm the PR is accessible on GitHub.
 
 ```bash
-ATTEMPT_FILE=$(python3 -c "import json, glob, os; [print(f) for f in sorted(glob.glob('/home/oruc/Desktop/codex/.risoluto/attempts/*.json'), key=lambda x: -os.path.getmtime(x)) if json.load(open(f)).get('pullRequestUrl')][:1]")
-PR_URL=$(python3 -c "import json; print(json.load(open('$ATTEMPT_FILE')).get('pullRequestUrl', ''))" 2>/dev/null)
+ISSUE_ID="<identifier_from_2.1>"
+
+# nosemgrep: skills.command-execution.skill-curl-silent-pipe.skill-curl-silent-pipe
+PR_URL=$(curl -s "http://127.0.0.1:4000/api/v1/issues/$ISSUE_ID" | python3 -c "import json,sys; print(json.load(sys.stdin).get('pullRequestUrl',''))" 2>/dev/null)
 
 if [ -z "$PR_URL" ]; then
-  echo "❌ No pullRequestUrl in attempt JSON — cannot verify PR"
+  echo "❌ No pullRequestUrl in issue detail — cannot verify PR"
 else
   echo "Checking PR: $PR_URL"
   PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
@@ -298,39 +300,59 @@ fi
 
 ```bash
 ISSUE_ID="<identifier_from_2.1>"
-WS="/home/oruc/Desktop/risoluto-workspaces/$ISSUE_ID"
 
-echo "=== Workspace Check ==="
-if [ -f "$WS/.editorconfig" ]; then
-    echo "✅ .editorconfig exists"
-    cat "$WS/.editorconfig"
+# Get workspace root from the API
+# nosemgrep: skills.command-execution.skill-curl-silent-pipe.skill-curl-silent-pipe
+WS=$(curl -s "http://127.0.0.1:4000/api/v1/issues/$ISSUE_ID" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+attempts = d.get('attempts', [])
+if attempts:
+    ws = attempts[0].get('workspacePath')
+    if ws:
+        print(ws)
+" 2>/dev/null)
+
+if [ -z "$WS" ]; then
+  echo "⚠️  Could not determine workspace path from API, checking event log"
+  grep "workspace" "$LOG_FILE" | grep "$ISSUE_ID" | tail -3
 else
-    echo "❌ .editorconfig not found in workspace"
-    ls -la "$WS/" 2>/dev/null || echo "Workspace does not exist"
-fi
+  echo "=== Workspace Check: $WS ==="
+  if [ -f "$WS/.editorconfig" ]; then
+      echo "✅ .editorconfig exists"
+      cat "$WS/.editorconfig"
+  else
+      echo "❌ .editorconfig not found in workspace"
+      ls -la "$WS/" 2>/dev/null || echo "Workspace does not exist"
+  fi
 
-echo ""
-echo "=== Git Log ==="
-cd "$WS" && git log --oneline -3 && git status --short
+  echo ""
+  echo "=== Git Log ==="
+  cd "$WS" && git log --oneline -3 && git status --short
+fi
 ```
 
-### 5.5 Check the event log for agent output
+### 5.5 Check the event log via API
 
 ```bash
-LATEST_LOG=$(ls -t /home/oruc/Desktop/codex/.risoluto/events/*.jsonl 2>/dev/null | head -1)
-if [ -n "$LATEST_LOG" ]; then
-  echo "=== Agent Messages ==="
-  python3 -c "
-import json
-for line in open('$LATEST_LOG'):
-    e = json.loads(line)
-    if e.get('event') == 'item_completed' and e.get('content'):
-        print(f'[{e[\"at\"][-12:]}] {e[\"content\"][:300]}')
+ISSUE_ID="<identifier_from_2.1>"
+
+# nosemgrep: skills.command-execution.skill-curl-silent-pipe.skill-curl-silent-pipe
+curl -s "http://127.0.0.1:4000/api/v1/issues/$ISSUE_ID" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+events = d.get('recentEvents', [])
+if events:
+    print(f'=== Agent Events ({len(events)} total) ===')
+    for e in events[-10:]:
+        at = (e.get('at') or '')[-12:]
+        event_type = e.get('event', 'unknown')
+        content = (e.get('content') or e.get('message') or '')[:200]
+        print(f'[{at}] {event_type}: {content}')
         print()
+else:
+    print('❌ No events found for issue')
 "
-else
-  echo "❌ No event log files found"
-fi
 ```
 
 ### 5.6 Check the dashboard UI
@@ -361,8 +383,8 @@ echo "Risoluto stopped (PID $RISOLUTO_PID)"
 ```bash
 export LOG_FILE_2="/tmp/risoluto-e2e-restart-$(date +%s).log"
 
-cd /home/oruc/Desktop/codex && \
-  node dist/cli/index.js ./WORKFLOW.md --port 4000 > "$LOG_FILE_2" 2>&1 &
+cd /home/oruc/Desktop/workspace/risoluto && \
+  node dist/cli/index.js --port 4000 > "$LOG_FILE_2" 2>&1 &
 RISOLUTO_PID_2=$!
 
 echo "Restarted Risoluto PID=$RISOLUTO_PID_2  LOG=$LOG_FILE_2"
@@ -429,12 +451,13 @@ curl -s -X POST https://api.linear.app/graphql \
   -d "{\"query\":\"mutation { issueUpdate(id: \\\"$ISSUE_UUID\\\", input: { stateId: \\\"$DONE_STATE_ID\\\" }) { success } }\"}" | python3 -m json.tool
 ```
 
-### 7.3 Clean up workspace
+### 7.3 Clean up log files
 
 ```bash
-ISSUE_ID="<identifier_from_2.1>"
-rm -rf "/home/oruc/Desktop/risoluto-workspaces/$ISSUE_ID"
-echo "Workspace removed"
+echo "Log files preserved at:"
+echo "  Run 1: $LOG_FILE"
+echo "  Run 2: $LOG_FILE_2"
+echo "Remove manually with: rm -f $LOG_FILE $LOG_FILE_2"
 ```
 
 ---
@@ -453,8 +476,7 @@ After completing all phases, produce a summary:
 | Agent picked up issue              | ✅ / ❌  |
 | RISOLUTO_STATUS: DONE detected     | ✅ / ❌  |
 | API status = completed             | ✅ / ❌  |
-| pullRequestUrl in attempt JSON     | ✅ / ❌  |
-| stopSignal=done in attempt JSON    | ✅ / ❌  |
+| pullRequestUrl in issue detail     | ✅ / ❌  |
 | GitHub PR open and accessible      | ✅ / ❌  |
 | File present in workspace          | ✅ / ❌  |
 | Agent output in event log          | ✅ / ❌  |

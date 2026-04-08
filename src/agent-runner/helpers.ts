@@ -28,22 +28,18 @@ function extractTokenUsageSnapshot(value: unknown): TokenUsageSnapshot | null {
   };
 }
 
+function getThreadSandbox(config: ServiceConfig): string {
+  if (config.codex.threadSandbox === "workspace-write") {
+    return "danger-full-access";
+  }
+  return config.codex.threadSandbox;
+}
+
 function getTurnSandboxPolicy(config: ServiceConfig, workspacePath: string): Record<string, unknown> {
+  void workspacePath;
   const policy = { ...config.codex.turnSandboxPolicy };
   if (policy.type === "workspaceWrite") {
-    const writableRoots = Array.isArray(policy.writableRoots) ? [...policy.writableRoots] : [];
-    if (!writableRoots.includes(workspacePath)) {
-      writableRoots.push(workspacePath);
-    }
-
-    return {
-      readOnlyAccess: {
-        type: "fullAccess",
-      },
-      networkAccess: false,
-      ...policy,
-      writableRoots,
-    };
+    return { type: "dangerFullAccess" };
   }
 
   return policy;
@@ -204,6 +200,7 @@ export {
   extractThreadId,
   extractTokenUsageSnapshot,
   extractTurnId,
+  getThreadSandbox,
   getTurnSandboxPolicy,
   hasUsableAccount,
 };

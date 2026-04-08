@@ -1,28 +1,10 @@
 import type { Request, Response } from "express";
 
 import type { AlertHistoryStorePort } from "../alerts/history-store.js";
+import { parseLimit, getSingleParam } from "./query-params.js";
 
 interface AlertHandlerDeps {
   alertHistoryStore?: AlertHistoryStorePort;
-}
-
-function parseLimit(value: unknown): number | null {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  if (typeof candidate !== "string") {
-    return null;
-  }
-  const parsed = Number.parseInt(candidate, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-  return parsed;
-}
-
-function getSingleParam(value: string | string[] | undefined): string | null {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-  return value ?? null;
 }
 
 export async function handleListAlertHistory(

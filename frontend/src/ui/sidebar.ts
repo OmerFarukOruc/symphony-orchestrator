@@ -5,6 +5,7 @@ import { createIcon, createIconSlot, type IconName } from "./icons";
 import { navGroups, navItems } from "./nav-items";
 
 const STORAGE_KEY = "risoluto-sidebar-expanded";
+const GROUP_COLLAPSED_KEY = "risoluto-sidebar-groups-collapsed";
 const MOBILE_BREAKPOINT = "(max-width: 760px)";
 
 let _navHandler: (() => void) | null = null;
@@ -123,12 +124,33 @@ function buildNavItems(groupEl: HTMLElement, groupName: string, onNavigate: () =
   groupEl.append(itemsContainer);
 }
 
+function readCollapsedGroups(): Set<string> {
+  try {
+    const raw = localStorage.getItem(GROUP_COLLAPSED_KEY);
+    if (raw) return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    /* ignore */
+  }
+  return new Set<string>();
+}
+
+function saveCollapsedGroups(groups: Set<string>): void {
+  localStorage.setItem(GROUP_COLLAPSED_KEY, JSON.stringify([...groups]));
+}
+
+const _collapsedGroups = readCollapsedGroups();
+
 function buildGroupHeader(groupName: string, groupEl: HTMLElement): HTMLButtonElement {
+  const isInitiallyCollapsed = _collapsedGroups.has(groupName);
   const header = document.createElement("button");
   header.className = "sidebar-group-header";
   header.type = "button";
-  header.setAttribute("aria-expanded", "true");
+  header.setAttribute("aria-expanded", String(!isInitiallyCollapsed));
   header.setAttribute("aria-controls", `sidebar-group-${groupName.toLowerCase().replaceAll(/\s+/g, "-")}`);
+
+  if (isInitiallyCollapsed) {
+    groupEl.classList.add("is-collapsed");
+  }
 
   const groupLabel = document.createElement("span");
   groupLabel.className = "sidebar-group-label";
@@ -141,10 +163,16 @@ function buildGroupHeader(groupName: string, groupEl: HTMLElement): HTMLButtonEl
 
   header.append(groupLabel, groupToggle);
 
-  // Toggle collapse state and update ARIA
+  // Toggle collapse state, update ARIA, and persist
   header.addEventListener("click", () => {
     const isCollapsed = groupEl.classList.toggle("is-collapsed");
     header.setAttribute("aria-expanded", String(!isCollapsed));
+    if (isCollapsed) {
+      _collapsedGroups.add(groupName);
+    } else {
+      _collapsedGroups.delete(groupName);
+    }
+    saveCollapsedGroups(_collapsedGroups);
   });
 
   return header;

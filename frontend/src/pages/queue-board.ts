@@ -116,14 +116,19 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
       const handle = getColumnHandle(column.key);
       applyColumnStage(handle, column.key);
       handle.section.classList.toggle("is-collapsed", ui.collapsed.has(column.key));
+      handle.section.classList.toggle("is-empty", list.length === 0 && !ui.collapsed.has(column.key));
       handle.section.classList.toggle("is-focused", ui.focusedColumn === columnIndex);
       handle.section.classList.toggle("is-gate", column.kind === "gate");
       handle.section.style.setProperty("--stagger-index", String(columnIndex));
       handle.label.textContent = column.label;
       handle.count.textContent = String(list.length);
       // Show collapse toggle on all columns
+      const collapsed = ui.collapsed.has(column.key);
       handle.toggle.hidden = false;
-      handle.toggle.textContent = ui.collapsed.has(column.key) ? "Expand" : "Collapse";
+      handle.toggle.textContent = collapsed ? "Show lane" : "Hide lane";
+      handle.toggle.title = `${collapsed ? "Show" : "Hide"} ${column.label} lane`;
+      handle.toggle.setAttribute("aria-label", handle.toggle.title);
+      handle.toggle.setAttribute("aria-expanded", String(!collapsed));
 
       if (list.length === 0) {
         const emptyHint = column.terminal

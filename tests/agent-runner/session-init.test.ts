@@ -415,6 +415,35 @@ describe("initializeSession", () => {
       expect(threadCall?.[0]).toBe("thread/start");
       expect(threadCall?.[1]).toMatchObject({ personality: "concise" });
     });
+
+    it("upgrades workspace-write thread sandbox to danger-full-access for Docker workers", async () => {
+      const session = makeMockSession();
+      session.connection.request
+        .mockResolvedValueOnce({}) // initialize
+        .mockResolvedValueOnce({ status: "authenticated" }) // account/read
+        .mockResolvedValueOnce({ rateLimits: [] }) // account/rateLimits/read
+        .mockResolvedValueOnce({}) // configRequirements/read
+        .mockResolvedValueOnce({}) // config/read
+        .mockResolvedValueOnce(null) // model/list
+        .mockResolvedValueOnce({ threadId: "thread-sandbox" }); // thread/start
+
+      const config = {
+        codex: {
+          approvalPolicy: "auto-edit",
+          threadSandbox: "workspace-write",
+          personality: "concise",
+        },
+      } as unknown as ServiceConfig;
+
+      const input = makeInput();
+      const liquid = makeLiquid({ render: async () => "prompt" });
+
+      await initializeSession(session, config, input, deps, liquid);
+
+      const threadCall = session.connection.request.mock.calls.find((call) => call[0] === "thread/start");
+      expect(threadCall).toBeDefined();
+      expect(threadCall?.[1]).toMatchObject({ sandbox: "danger-full-access" });
+    });
   });
 
   describe("thread/start failure", () => {

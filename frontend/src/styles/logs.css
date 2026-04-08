@@ -11,24 +11,41 @@
 
 .logs-header {
   flex: 0 0 auto;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+
+.logs-header-copy {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.logs-header-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-5);
-  border-bottom: 1px solid var(--border-stitch);
-  background: var(--bg-surface);
+  align-items: flex-start;
+  justify-content: flex-end;
+  flex: 0 0 auto;
 }
 
 .logs-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
   color: var(--text-muted);
+  margin: 0;
+}
+
+.logs-title,
+.logs-subtitle {
+  margin: 0;
+}
+
+.logs-subtitle {
+  max-width: 72ch;
+  line-height: var(--leading-normal);
 }
 
 /* Live dot on the active Live button */
@@ -54,58 +71,186 @@
   }
 }
 
-/* ── Filter bar: chips + search + icon actions ───────────────────────────── */
+/* ── Filter bar: two rows (category chips + utility row) ─────────────────── */
 
 .logs-control {
   flex: 0 0 auto;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-5);
+  padding: var(--space-2) var(--space-5) var(--space-3);
   border-bottom: 1px solid var(--border-stitch);
   background: var(--bg-canvas);
-  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
-.logs-toolbar-group {
+/* Row 1: category chips */
+.logs-filter-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.logs-filter-row::-webkit-scrollbar {
+  height: 6px;
+}
+
+.logs-filter-row::-webkit-scrollbar-thumb {
+  background: var(--border-stitch);
+  border-radius: var(--radius-sm);
+}
+
+/* Row 2: search + detail filter button + view actions */
+.logs-utility-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-stitch);
+}
+
+.logs-search.mc-input {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+}
+
+.logs-utility-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
 }
 
 .logs-search {
-  flex: 0 1 200px;
-  min-width: 120px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.logs-utility-right {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.logs-detail-panel {
+  margin-top: 0;
+  padding: var(--space-3) 0 0;
+  border-top: 1px solid var(--border-stitch);
+  animation: detailPanelSlide var(--motion-fast) var(--ease-out-quart);
+}
+
+.logs-detail-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-stitch);
+}
+
+.logs-panel-title,
+.logs-detail-panel-title {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.logs-detail-clear {
+  padding: 2px var(--space-2);
+  font-size: var(--text-2xs);
 }
 
 .logs-view-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  margin-left: auto;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  padding: var(--space-1);
+  border: 1px solid var(--border-stitch);
+  background: var(--bg-surface);
+}
+
+/* Divider between toggle group and action buttons inside view actions */
+.logs-view-actions-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-stitch);
+  margin: 0 var(--space-1);
   flex-shrink: 0;
 }
 
-/* Icon-only toggle buttons */
+/* Icon toggle buttons inside the view actions group */
 .logs-icon-btn {
   color: var(--text-secondary);
+  background: transparent;
+  border-color: transparent;
+}
+
+.logs-icon-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
 }
 
 .logs-icon-btn.is-active {
   color: var(--color-copper-400);
-  background: color-mix(in srgb, var(--color-copper-400) 10%, var(--bg-elevated));
+  background: color-mix(in srgb, var(--color-copper-400) 12%, var(--bg-elevated));
   border-color: color-mix(in srgb, var(--color-copper-400) 35%, var(--border-stitch));
 }
 
 .logs-icon-btn.is-active:hover {
-  background: color-mix(in srgb, var(--color-copper-400) 18%, var(--bg-elevated));
+  background: color-mix(in srgb, var(--color-copper-400) 20%, var(--bg-elevated));
 }
 
 /* Sort direction flip */
 .logs-icon-btn.is-flipped svg {
   transform: scaleY(-1);
   transition: transform var(--motion-fast) var(--ease-out-quart);
+}
+
+/* View action button: icon + optional label, comfortable hit target */
+.logs-view-action,
+.logs-view-action.mc-button.is-icon-only,
+.logs-view-action.mc-button.is-icon-only.is-sm {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+  width: auto;
+  min-width: max-content;
+  padding: 0 var(--space-3);
+  height: 40px;
+  border: 1px solid transparent;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.logs-view-action-label {
+  display: inline;
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-wide);
+  color: inherit;
+  white-space: nowrap;
 }
 
 /* Filter chip active state */
@@ -118,6 +263,195 @@
 .mc-chip.is-interactive.is-active:hover {
   background: var(--color-copper-500);
   border-color: var(--color-copper-500);
+}
+
+/* Chip internal layout: label + count badge */
+.logs-chip-label {
+  display: inline-block;
+}
+
+.logs-chip-count {
+  display: inline-block;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+  background: color-mix(in srgb, currentcolor 10%, transparent);
+  min-width: 16px;
+  text-align: center;
+}
+
+.mc-chip.is-interactive.is-active .logs-chip-count {
+  color: var(--interactive-primary-text);
+  background: color-mix(in srgb, var(--interactive-primary-text) 20%, transparent);
+}
+
+/* ── Category-tinted chips ───────────────────────────────────────────────── */
+/* Each category sets its own --chip-color; the four state rules below use that
+   token so we don't repeat the base/hover/active/active-hover formulas seven
+   times. */
+
+.mc-chip-category-error {
+  --chip-color: var(--status-blocked);
+}
+.mc-chip-category-agent {
+  --chip-color: var(--status-running);
+}
+.mc-chip-category-tool {
+  --chip-color: var(--color-copper-400);
+}
+.mc-chip-category-reasoning {
+  --chip-color: var(--status-retrying);
+}
+.mc-chip-category-state-change {
+  --chip-color: var(--status-queued);
+}
+.mc-chip-category-usage {
+  --chip-color: var(--text-secondary);
+}
+.mc-chip-category-system {
+  --chip-color: var(--text-muted);
+}
+
+[class*="mc-chip-category-"] {
+  color: var(--chip-color);
+  border-color: color-mix(in srgb, var(--chip-color) 40%, var(--border-stitch));
+  background: color-mix(in srgb, var(--chip-color) 6%, var(--bg-surface));
+}
+
+[class*="mc-chip-category-"]:hover {
+  background: color-mix(in srgb, var(--chip-color) 12%, var(--bg-surface));
+}
+
+[class*="mc-chip-category-"].is-active {
+  background: var(--chip-color);
+  border-color: var(--chip-color);
+  color: var(--interactive-primary-text);
+}
+
+[class*="mc-chip-category-"].is-active:hover {
+  background: color-mix(in srgb, var(--chip-color) 85%, #000);
+  border-color: color-mix(in srgb, var(--chip-color) 85%, #000);
+}
+
+/* ── Detail filters button ───────────────────────────────────────────────── */
+
+.logs-detail-filters-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+}
+
+.logs-detail-filters-btn.is-active,
+.logs-detail-filters-btn.is-open {
+  background: color-mix(in srgb, var(--color-copper-400) 10%, var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--color-copper-400) 35%, var(--border-stitch));
+  color: var(--color-copper-400);
+}
+
+.logs-detail-filters-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  border-radius: 9px;
+  background: var(--color-copper-400);
+  color: var(--interactive-primary-text);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  line-height: 1;
+}
+
+.logs-detail-filters-caret {
+  font-size: var(--text-2xs);
+  color: currentcolor;
+  opacity: 0.7;
+}
+
+@keyframes detailPanelSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.logs-detail-clear:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.logs-detail-panel-empty {
+  margin: 0;
+  padding: var(--space-1) 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-align: left;
+}
+
+/* Sections flow horizontally and wrap. Each section claims only the width it
+   needs (no equal-width columns), so dense categories use their space and
+   sparse ones don't waste it. */
+.logs-detail-panel-sections {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2) var(--space-5);
+}
+
+.logs-detail-panel-section {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.logs-detail-panel-section-header {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-left: var(--space-1);
+}
+
+.logs-detail-panel-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* ── Partial state for category chips (some kinds selected, not all) ─────── */
+/* Uses --chip-color from the per-category rules above; the dashed border and
+   bullet marker apply to every category uniformly. */
+
+.mc-chip.is-interactive.is-partial {
+  border-style: dashed;
+}
+
+.mc-chip.is-interactive.is-partial::after {
+  content: "•";
+  margin-left: var(--space-1);
+  font-weight: var(--font-bold);
+  opacity: 0.7;
+}
+
+[class*="mc-chip-category-"].is-partial {
+  background: color-mix(in srgb, var(--chip-color) 14%, var(--bg-surface));
+  border-color: var(--chip-color);
+  color: var(--chip-color);
 }
 
 /* ── Log scroll area ─────────────────────────────────────────────────────── */
@@ -242,11 +576,16 @@
 /* ── Row header layout ───────────────────────────────────────────────────── */
 
 .mc-log-row-header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: 56px minmax(84px, max-content) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
   min-width: 0; /* Allow flex item to shrink below content size */
+}
+
+.mc-log-row.is-collapsible .mc-log-row-header {
+  grid-template-columns: 10px 56px minmax(84px, max-content) minmax(0, 1fr);
 }
 
 /* Chevron: rotates 90° when row is expanded */
@@ -284,7 +623,7 @@
 
 .mc-log-message {
   flex: 1;
-  min-width: 220px;
+  min-width: 0;
   font-family: var(--font-body);
   font-size: var(--text-ui);
   line-height: var(--leading-normal);
@@ -368,7 +707,9 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
   line-height: 1;
-  transition: color var(--motion-fast), background-color var(--motion-fast);
+  transition:
+    color var(--motion-fast),
+    background-color var(--motion-fast);
 }
 
 .mc-log-copy-btn:hover {
@@ -547,4 +888,60 @@
 .logs-new-indicator:hover {
   background: var(--color-copper-500);
   border-color: var(--color-copper-500);
+}
+
+@media (max-width: 960px) {
+  .logs-header {
+    flex-direction: column;
+  }
+
+  .logs-header-actions,
+  .logs-utility-right {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .logs-utility-row {
+    align-items: stretch;
+  }
+
+  .logs-utility-left {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .logs-header,
+  .logs-control {
+    padding-inline: var(--space-3);
+  }
+
+  .logs-utility-left {
+    flex-wrap: wrap;
+  }
+
+  .logs-detail-filters-btn,
+  .logs-search {
+    width: 100%;
+  }
+
+  .mc-log-row,
+  .logs-scroll.is-comfortable .mc-log-row {
+    padding-right: var(--space-3);
+    padding-left: var(--space-3);
+  }
+
+  .logs-scroll.is-compact .mc-log-row {
+    padding-right: var(--space-3);
+    padding-left: var(--space-2);
+  }
+
+  .mc-log-row-header {
+    gap: var(--space-2);
+  }
+
+  .mc-log-message {
+    min-width: 0;
+  }
 }

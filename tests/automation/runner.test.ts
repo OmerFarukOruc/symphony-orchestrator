@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AutomationRunner } from "../../src/automation/runner.js";
 import { AutomationStore } from "../../src/persistence/sqlite/automation-store.js";
+import { openDatabase } from "../../src/persistence/sqlite/database.js";
 import { createMockLogger } from "../helpers.js";
 
 function createSnapshot() {
@@ -28,7 +29,7 @@ describe("AutomationRunner", () => {
         requestTargetedRefresh: vi.fn(),
       },
       notificationManager: notificationManager as never,
-      store: AutomationStore.create(null),
+      store: AutomationStore.create(openDatabase(":memory:")),
       logger: createMockLogger(),
     });
 
@@ -55,7 +56,7 @@ describe("AutomationRunner", () => {
         getSnapshot: vi.fn().mockReturnValue(createSnapshot()),
         requestTargetedRefresh: vi.fn(),
       },
-      store: AutomationStore.create(null),
+      store: AutomationStore.create(openDatabase(":memory:")),
       logger: createMockLogger(),
     });
 
@@ -90,7 +91,7 @@ describe("AutomationRunner", () => {
     const runner = new AutomationRunner({
       orchestrator,
       tracker: tracker as never,
-      store: AutomationStore.create(null),
+      store: AutomationStore.create(openDatabase(":memory:")),
       logger: createMockLogger(),
     });
 

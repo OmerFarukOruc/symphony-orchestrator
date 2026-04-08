@@ -8,7 +8,12 @@
     },
     "agentation": {
       "type": "local",
-      "command": ["npx", "-y", "agentation-mcp", "server"],
+      "command": [
+        "npx",
+        "-y",
+        "agentation-mcp",
+        "server"
+      ],
       "enabled": true,
       "environment": {}
     }

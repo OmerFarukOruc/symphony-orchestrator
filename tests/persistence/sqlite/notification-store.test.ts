@@ -167,25 +167,4 @@ describe("NotificationStore", () => {
       close();
     }
   });
-
-  it("falls back to an in-memory store when SQLite is disabled", async () => {
-    const store = NotificationStore.create(null);
-
-    const created = await store.create({
-      type: "worker_completed",
-      severity: "info",
-      title: "Memory notification",
-      message: "Fallback works",
-      source: "MT-3",
-      href: null,
-      dedupeKey: "memory-1",
-      metadata: { issueIdentifier: "MT-3" },
-      createdAt: "2026-04-04T10:00:00.000Z",
-    });
-
-    const listed = await store.list();
-    expect(listed).toHaveLength(1);
-    expect(listed[0]).toEqual(created);
-    expect(await store.countUnread()).toBe(1);
-  });
 });

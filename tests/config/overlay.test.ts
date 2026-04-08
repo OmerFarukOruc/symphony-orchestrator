@@ -129,6 +129,40 @@ describe("ConfigOverlayStore", () => {
     unsubscribe();
     await store.stop();
   });
+
+  it("serializes concurrent mutations without dropping provider keys", async () => {
+    const dir = await createTempDir();
+    const overlayPath = path.join(dir, "config", "overlay.yaml");
+    const store = new ConfigOverlayStore(overlayPath, createLogger());
+    await store.start();
+
+    await Promise.all([
+      store.set("codex.provider.base_url", "http://localhost:8317/v1"),
+      store.set("codex.provider.env_key", "OPENAI_API_KEY"),
+      store.set("codex.provider.wire_api", "responses"),
+      store.set("codex.provider.name", "CLIProxyAPI"),
+    ]);
+
+    expect(store.toMap()).toEqual({
+      codex: {
+        provider: {
+          base_url: "http://localhost:8317/v1",
+          env_key: "OPENAI_API_KEY",
+          wire_api: "responses",
+          name: "CLIProxyAPI",
+        },
+      },
+    });
+
+    const persisted = await readFile(overlayPath, "utf8");
+    expect(persisted).toContain("base_url: http://localhost:8317/v1");
+    expect(persisted).toContain("env_key: OPENAI_API_KEY");
+    expect(persisted).toContain("wire_api: responses");
+    expect(persisted).toContain("name: CLIProxyAPI");
+
+    await store.stop();
+  });
+
   it("rejects prototype-polluting keys with TypeError", async () => {
     const dir = await createTempDir();
     const overlayPath = path.join(dir, "config", "overlay.yaml");

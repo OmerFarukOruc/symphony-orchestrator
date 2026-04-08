@@ -66,6 +66,7 @@ function makeCtx(overrides: { config?: ServiceConfig } = {}): OutcomeContext {
     isRunning: () => true,
     getConfig: () => config,
     releaseIssueClaim: vi.fn(),
+    markDirty: vi.fn(),
     resolveModelSelection: vi.fn().mockReturnValue(createModelSelection()),
     notify: vi.fn(),
     queueRetry: vi.fn(),

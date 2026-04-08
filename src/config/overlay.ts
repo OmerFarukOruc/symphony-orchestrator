@@ -34,6 +34,8 @@ export class ConfigOverlayStore implements ConfigOverlayPort {
   private overlay: Record<string, unknown> = {};
   private readonly listeners = new Set<() => void>();
   private watcher: FSWatcher | null = null;
+  private mutationChain: Promise<void> = Promise.resolve();
+  private persistSequence = 0;
 
   constructor(
     private readonly overlayPath: string,
@@ -75,37 +77,50 @@ export class ConfigOverlayStore implements ConfigOverlayPort {
   }
 
   async replace(nextMap: Record<string, unknown>): Promise<boolean> {
-    return this.commit(nextMap, "replace");
+    return this.enqueueMutation(async () => this.commit(nextMap, "replace"));
   }
 
   async applyPatch(patch: Record<string, unknown>): Promise<boolean> {
-    return this.commit(mergeOverlayMaps(this.overlay, patch), "patch");
+    return this.enqueueMutation(async () => this.commit(mergeOverlayMaps(this.overlay, patch), "patch"));
   }
 
   async set(pathExpression: string, value: unknown): Promise<boolean> {
-    const segments = normalizePathExpression(pathExpression);
-    if (segments.length === 0) {
-      throw new Error("overlay path must contain at least one segment");
-    }
+    return this.enqueueMutation(async () => {
+      const segments = normalizePathExpression(pathExpression);
+      if (segments.length === 0) {
+        throw new Error("overlay path must contain at least one segment");
+      }
 
-    const next = this.toMap();
-    setOverlayPathValue(next, segments, value, { dangerousKeyMode: "throw" });
-    return this.commit(next, `set:${pathExpression}`);
+      const next = this.toMap();
+      setOverlayPathValue(next, segments, value, { dangerousKeyMode: "throw" });
+      return this.commit(next, `set:${pathExpression}`);
+    });
   }
 
   async delete(pathExpression: string): Promise<boolean> {
-    const segments = normalizePathExpression(pathExpression);
-    if (segments.length === 0) {
-      throw new Error("overlay path must contain at least one segment");
-    }
+    return this.enqueueMutation(async () => {
+      const segments = normalizePathExpression(pathExpression);
+      if (segments.length === 0) {
+        throw new Error("overlay path must contain at least one segment");
+      }
 
-    const next = this.toMap();
-    const removed = removeOverlayPathValue(next, segments, { dangerousKeyMode: "throw" });
-    if (!removed) {
-      return false;
-    }
-    await this.commit(next, `delete:${pathExpression}`);
-    return true;
+      const next = this.toMap();
+      const removed = removeOverlayPathValue(next, segments, { dangerousKeyMode: "throw" });
+      if (!removed) {
+        return false;
+      }
+      await this.commit(next, `delete:${pathExpression}`);
+      return true;
+    });
+  }
+
+  private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.mutationChain.then(operation, operation);
+    this.mutationChain = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   private async commit(nextMap: Record<string, unknown>, reason: string): Promise<boolean> {
@@ -131,7 +146,8 @@ export class ConfigOverlayStore implements ConfigOverlayPort {
     const dir = path.dirname(this.overlayPath);
 
     for (let attempt = 0; attempt < 2; attempt++) {
-      const temporaryPath = `${this.overlayPath}.tmp-${process.pid}-${Date.now()}`;
+      const temporaryPath = `${this.overlayPath}.tmp-${process.pid}-${Date.now()}-${this.persistSequence}`;
+      this.persistSequence += 1;
       try {
         await mkdir(dir, { recursive: true });
         await writeFile(temporaryPath, rendered, "utf8");

@@ -10,6 +10,7 @@ import { registerExtensionRoutes } from "./routes/extensions.js";
 import { registerGitRoutes } from "./routes/git.js";
 import { registerIssueRoutes } from "./routes/issues.js";
 import { registerNotificationRoutes } from "./routes/notifications.js";
+import { registerCodexRoutes } from "./routes/codex.js";
 import { registerSystemRoutes } from "./routes/system.js";
 import { registerWebhookRoutes } from "./routes/webhooks.js";
 import { registerWorkspaceRoutes } from "./routes/workspaces.js";
@@ -30,6 +31,7 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   app.use(express.static(staticRoot));
 
   registerSystemRoutes(app, routeDeps);
+  registerCodexRoutes(app, routeDeps);
   registerExtensionRoutes(app, routeDeps);
   registerGitRoutes(app, routeDeps);
   registerWorkspaceRoutes(app, routeDeps);

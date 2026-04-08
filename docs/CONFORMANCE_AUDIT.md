@@ -685,7 +685,7 @@ Capabilities shipped that go beyond the spec requirements:
 | Completion-stop signals  | `RISOLUTO_STATUS: DONE` / `BLOCKED` detection stops continuation retries                          |
 | Docker container sandbox | Full Docker isolation with resource limits, security hardening, OOM detection                     |
 | Content sanitizer        | Secret redaction (API keys, tokens, PATs) in event content before dashboard/logs                  |
-| ~~Feature flag system~~  | Removed in v0.5.0 — `/api/v1/runtime` returns empty `feature_flags` for backward compatibility   |
+| ~~Feature flag system~~  | Removed in v0.5.0 — `feature_flags` field dropped from `/api/v1/runtime` response in v1.0        |
 | Prometheus metrics       | Counter/histogram collector for HTTP, polls, and agent runs                                       |
 | Request tracing          | `X-Request-ID` middleware for request correlation                                                 |
 | Error tracking           | Sentry-ready error tracker with breadcrumbs and context                                           |

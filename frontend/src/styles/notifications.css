@@ -12,7 +12,7 @@
 
 .notifications-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-3);
   align-items: center;
 }
@@ -128,4 +128,35 @@
     flex: 1;
     justify-content: center;
   }
+}
+
+/* ── Time separators ─────────────────────────────────── */
+
+.notifications-time-separator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.notifications-time-separator::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.notifications-time-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.notifications-load-more {
+  padding: var(--space-4);
+  text-align: center;
 }

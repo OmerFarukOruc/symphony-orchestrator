@@ -555,6 +555,38 @@
   font-feature-settings: var(--font-features-mono-num);
 }
 
+.event-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: var(--text-muted);
+}
+
+.event-row-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.event-row[data-event-class="error"] {
+  background: var(--event-tint-error);
+}
+
+.event-row[data-event-class="error"] .event-row-icon {
+  color: var(--status-blocked);
+}
+
+.event-row[data-event-class="state-change"] {
+  background: var(--event-tint-config);
+}
+
+.event-row[data-event-class="agent"] .event-row-icon,
+.event-row[data-event-class="tool"] .event-row-icon {
+  color: var(--status-running);
+}
+
 /* ============================================
    BADGE/CHIP SYSTEM
    ============================================ */
@@ -971,6 +1003,55 @@
   font-size: var(--text-sm);
   color: var(--text-muted);
   font-feature-settings: var(--font-features-mono-num);
+}
+
+/* ── Outcome badge ────────────────────────────────── */
+
+.outcome-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--outcome-color, var(--text-muted));
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.outcome-badge svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.outcome-badge-label {
+  letter-spacing: 0.01em;
+}
+
+/* ── Sparkline ────────────────────────────────────── */
+
+.sparkline {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 0;
+}
+
+.sparkline-line {
+  fill: none;
+  stroke: var(--sparkline-color, var(--text-accent));
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sparkline-area {
+  fill: var(--sparkline-color, var(--text-accent));
+  opacity: 0.1;
 }
 
 /* Legacy class aliases (for backward compatibility) */

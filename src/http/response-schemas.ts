@@ -241,7 +241,7 @@ export const validationErrorSchema = z.object({
 export const runtimeResponseSchema = z.object({
   version: z.string(),
   data_dir: z.string(),
-  feature_flags: z.record(z.string(), z.unknown()),
+  feature_flags: z.record(z.string(), z.unknown()).optional().default({}),
   provider_summary: z.string(),
 });
 

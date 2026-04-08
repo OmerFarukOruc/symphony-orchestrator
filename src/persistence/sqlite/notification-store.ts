@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { desc, eq, sql } from "drizzle-orm";
 
 import type { NotificationDeliverySummary, NotificationRecord } from "../../core/notification-types.js";
+import { normalizeLimit } from "./query-helpers.js";
 import type { RisolutoDatabase } from "./database.js";
 import { notifications } from "./schema.js";
 
@@ -34,8 +35,8 @@ export interface NotificationStorePort {
 }
 
 export class NotificationStore {
-  static create(db: RisolutoDatabase | null): NotificationStorePort {
-    return db ? new SqliteNotificationStore(db) : new MemoryNotificationStore();
+  static create(db: RisolutoDatabase): NotificationStorePort {
+    return new SqliteNotificationStore(db);
   }
 }
 
@@ -154,107 +155,7 @@ class SqliteNotificationStore implements NotificationStorePort {
   }
 }
 
-class MemoryNotificationStore implements NotificationStorePort {
-  private readonly records = new Map<string, NotificationRecord>();
-
-  async create(input: CreateNotificationInput): Promise<NotificationRecord> {
-    const record: NotificationRecord = {
-      id: randomUUID(),
-      type: input.type,
-      severity: input.severity,
-      title: input.title,
-      message: input.message,
-      source: input.source,
-      href: input.href,
-      read: false,
-      dedupeKey: input.dedupeKey,
-      metadata: cloneMetadata(input.metadata),
-      deliverySummary: null,
-      createdAt: input.createdAt,
-      updatedAt: input.createdAt,
-    };
-    this.records.set(record.id, cloneRecord(record));
-    return cloneRecord(record);
-  }
-
-  async list(options: ListNotificationsOptions = {}): Promise<NotificationRecord[]> {
-    const limit = normalizeLimit(options.limit);
-    return [...this.records.values()]
-      .filter((record) => !options.unreadOnly || !record.read)
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .slice(0, limit)
-      .map((record) => cloneRecord(record));
-  }
-
-  async countAll(): Promise<number> {
-    return this.records.size;
-  }
-
-  async countUnread(): Promise<number> {
-    return [...this.records.values()].filter((record) => !record.read).length;
-  }
-
-  async updateDeliverySummary(
-    id: string,
-    deliverySummary: NotificationDeliverySummary,
-  ): Promise<NotificationRecord | null> {
-    const existing = this.records.get(id);
-    if (!existing) {
-      return null;
-    }
-    const updated: NotificationRecord = {
-      ...existing,
-      deliverySummary: cloneDeliverySummary(deliverySummary),
-      updatedAt: new Date().toISOString(),
-    };
-    this.records.set(id, cloneRecord(updated));
-    return cloneRecord(updated);
-  }
-
-  async markRead(id: string): Promise<NotificationRecord | null> {
-    const existing = this.records.get(id);
-    if (!existing) {
-      return null;
-    }
-    if (existing.read) {
-      return cloneRecord(existing);
-    }
-    const updated: NotificationRecord = {
-      ...existing,
-      read: true,
-      updatedAt: new Date().toISOString(),
-    };
-    this.records.set(id, cloneRecord(updated));
-    return cloneRecord(updated);
-  }
-
-  async markAllRead(): Promise<{ updatedCount: number; unreadCount: number }> {
-    const unread = [...this.records.values()].filter((record) => !record.read);
-    const updatedAt = new Date().toISOString();
-    for (const record of unread) {
-      this.records.set(
-        record.id,
-        cloneRecord({
-          ...record,
-          read: true,
-          updatedAt,
-        }),
-      );
-    }
-    return {
-      updatedCount: unread.length,
-      unreadCount: 0,
-    };
-  }
-}
-
-function normalizeLimit(limit: number | undefined): number {
-  if (limit === undefined || Number.isNaN(limit)) {
-    return 100;
-  }
-  return Math.max(1, Math.min(500, Math.trunc(limit)));
-}
-
+// eslint-disable-next-line sonarjs/function-return-type
 function stringifyJson(value: Record<string, unknown> | NotificationDeliverySummary | null): string | null {
   if (value === null) {
     return null;
@@ -262,6 +163,7 @@ function stringifyJson(value: Record<string, unknown> | NotificationDeliverySumm
   return JSON.stringify(value);
 }
 
+// eslint-disable-next-line sonarjs/function-return-type
 function parseJson<T>(value: string | null): T | null {
   if (value === null) {
     return null;
@@ -303,6 +205,7 @@ function cloneMetadata(metadata: Record<string, unknown> | null): Record<string,
   return metadata ? { ...metadata } : null;
 }
 
+// eslint-disable-next-line sonarjs/function-return-type
 function cloneDeliverySummary(summary: NotificationDeliverySummary | null): NotificationDeliverySummary | null {
   if (summary === null) {
     return null;

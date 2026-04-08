@@ -12,6 +12,9 @@ import {
   buildCreateLabelMutation,
   buildTeamsQuery,
   buildCreateProjectMutation,
+  buildAttachmentsForUrlQuery,
+  buildAttachmentCreateMutation,
+  buildAttachmentUpdateMutation,
 } from "../../src/linear/queries.js";
 
 describe("PAGE_SIZE", () => {
@@ -246,5 +249,30 @@ describe("buildCreateProjectMutation", () => {
 
   it("matches snapshot", () => {
     expect(buildCreateProjectMutation()).toMatchSnapshot();
+  });
+});
+
+describe("attachment queries and mutations", () => {
+  it("buildAttachmentsForUrlQuery queries attachments and linked issue by URL", () => {
+    const query = buildAttachmentsForUrlQuery();
+    expect(query).toContain("attachmentsForURL(url: $url)");
+    expect(query).toContain("issue {");
+    expect(query).toContain("identifier");
+  });
+
+  it("buildAttachmentCreateMutation creates an attachment for an issue", () => {
+    const query = buildAttachmentCreateMutation();
+    expect(query).toContain("mutation RisolutoAttachmentCreate");
+    expect(query).toContain(
+      "attachmentCreate(input: { issueId: $issueId, title: $title, subtitle: $subtitle, url: $url, iconUrl: $iconUrl })",
+    );
+  });
+
+  it("buildAttachmentUpdateMutation updates title and subtitle", () => {
+    const query = buildAttachmentUpdateMutation();
+    expect(query).toContain("mutation RisolutoAttachmentUpdate");
+    expect(query).toContain(
+      "attachmentUpdate(id: $id, input: { title: $title, subtitle: $subtitle, iconUrl: $iconUrl })",
+    );
   });
 });

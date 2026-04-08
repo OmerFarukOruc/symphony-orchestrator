@@ -2079,7 +2079,8 @@
                       "propertyNames": {
                         "type": "string"
                       },
-                      "additionalProperties": {}
+                      "additionalProperties": {},
+                      "default": {}
                     },
                     "provider_summary": {
                       "type": "string"

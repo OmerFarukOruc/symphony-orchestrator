@@ -1,5 +1,5 @@
 import type { RecentEvent } from "../types";
-import { classifyEvent, stringifyPayload } from "../utils/events";
+import { classifyEvent, getEventTooltip, stringifyPayload } from "../utils/events";
 import { eventChip } from "../ui/event-chip";
 import { formatShortTime } from "../utils/format";
 
@@ -194,6 +194,7 @@ export function createLogRow(options: LogRowOptions): HTMLElement {
 
   if (payload && !isInlinePanel) {
     row.classList.add("has-payload");
+    row.classList.add("is-collapsible");
     if (expanded) row.classList.add("is-expanded");
   }
 
@@ -214,7 +215,7 @@ export function createLogRow(options: LogRowOptions): HTMLElement {
   timestamp.textContent = formatShortTime(event.at);
 
   const chip = eventChip(event);
-  chip.title = event.event;
+  chip.title = getEventTooltip(event.event) || event.event;
 
   const message = document.createElement("p");
   message.className = "mc-log-message";

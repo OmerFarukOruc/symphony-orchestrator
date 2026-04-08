@@ -145,6 +145,11 @@ import type { SecretsStore } from "../../src/secrets/store.js";
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
+interface MockTemplateRecord {
+  id: string;
+  body: string;
+}
+
 function makeConfigStore() {
   return {
     getConfig: vi.fn().mockReturnValue({}),
@@ -160,6 +165,10 @@ function makeSecretsStore() {
   return { get: vi.fn().mockReturnValue(null) };
 }
 
+function createTemplateGet(templates: Record<string, MockTemplateRecord>) {
+  return vi.fn().mockImplementation((id: string): MockTemplateRecord | null => templates[id] ?? null);
+}
+
 /* ------------------------------------------------------------------ */
 /*  Tests                                                              */
 /* ------------------------------------------------------------------ */
@@ -170,14 +179,12 @@ describe("createServices", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    const templateGet = createTemplateGet({
+      default: { id: "default", body: "default template body" },
+    });
     mockPromptTemplateStore.mockImplementation(function () {
       return {
-        get: vi.fn().mockImplementation((id: string) => {
-          if (id === "default") {
-            return { id, body: "default template body" };
-          }
-          return null;
-        }),
+        get: templateGet,
       };
     });
     mockIssueConfigStoreCreate.mockReturnValue({
@@ -323,7 +330,31 @@ describe("createServices", () => {
     expect(args).toHaveProperty("archiveDir", archiveDir);
   });
 
-  it("creates PromptTemplateStore and AuditLogger when persistence.db is present", async () => {
+  it("keeps the host-side Codex control plane on the HTTP/admin path only", async () => {
+    const result = await createServices(
+      makeConfigStore() as unknown as ConfigStore,
+      makeOverlayStore() as unknown as ConfigOverlayPort,
+      makeSecretsStore() as unknown as SecretsStore,
+      archiveDir,
+      logger,
+    );
+
+    expect(result).toHaveProperty("codexControlPlane");
+
+    const dispatcherArgs = mockCreateDispatcher.mock.calls[0]?.[1];
+    expect(dispatcherArgs).toBeDefined();
+    expect(dispatcherArgs).not.toHaveProperty("codexControlPlane");
+
+    const orchestratorArgs = mockOrchestrator.mock.calls[0]?.[0];
+    expect(orchestratorArgs).toBeDefined();
+    expect(orchestratorArgs).not.toHaveProperty("codexControlPlane");
+
+    const httpArgs = mockHttpServer.mock.calls[0]?.[0];
+    expect(httpArgs).toBeDefined();
+    expect(httpArgs).toHaveProperty("codexControlPlane", result.codexControlPlane);
+  });
+
+  it("always creates PromptTemplateStore and AuditLogger", async () => {
     await createServices(
       makeConfigStore() as unknown as ConfigStore,
       makeOverlayStore() as unknown as ConfigOverlayPort,
@@ -336,25 +367,7 @@ describe("createServices", () => {
     expect(mockAuditLogger).toHaveBeenCalledTimes(1);
   });
 
-  it("skips PromptTemplateStore and AuditLogger when persistence.db is null", async () => {
-    mockInitPersistenceRuntime.mockResolvedValueOnce({
-      attemptStore: { fake: "attemptStore" },
-      db: null,
-    });
-
-    await createServices(
-      makeConfigStore() as unknown as ConfigStore,
-      makeOverlayStore() as unknown as ConfigOverlayPort,
-      makeSecretsStore() as unknown as SecretsStore,
-      archiveDir,
-      logger,
-    );
-
-    expect(mockPromptTemplateStore).not.toHaveBeenCalled();
-    expect(mockAuditLogger).not.toHaveBeenCalled();
-  });
-
-  it("passes templateStore and auditLogger to HttpServer when db is present", async () => {
+  it("passes templateStore and auditLogger to HttpServer", async () => {
     await createServices(
       makeConfigStore() as unknown as ConfigStore,
       makeOverlayStore() as unknown as ConfigOverlayPort,
@@ -368,25 +381,6 @@ describe("createServices", () => {
     expect(httpArgs).toHaveProperty("auditLogger");
   });
 
-  it("passes undefined templateStore and auditLogger to HttpServer when db is null", async () => {
-    mockInitPersistenceRuntime.mockResolvedValueOnce({
-      attemptStore: { fake: "attemptStore" },
-      db: null,
-    });
-
-    await createServices(
-      makeConfigStore() as unknown as ConfigStore,
-      makeOverlayStore() as unknown as ConfigOverlayPort,
-      makeSecretsStore() as unknown as SecretsStore,
-      archiveDir,
-      logger,
-    );
-
-    const httpArgs = mockHttpServer.mock.calls[0][0];
-    expect(httpArgs.templateStore).toBeUndefined();
-    expect(httpArgs.auditLogger).toBeUndefined();
-  });
-
   it("resolves templates using system.selectedTemplateId before default fallback", async () => {
     const configStore = makeConfigStore();
     configStore.getMergedConfigMap.mockReturnValue({
@@ -394,14 +388,9 @@ describe("createServices", () => {
         selectedTemplateId: "active-template",
       },
     });
-    const templateGet = vi.fn().mockImplementation((id: string) => {
-      if (id === "active-template") {
-        return { id, body: "active template body" };
-      }
-      if (id === "default") {
-        return { id, body: "default template body" };
-      }
-      return null;
+    const templateGet = createTemplateGet({
+      "active-template": { id: "active-template", body: "active template body" },
+      default: { id: "default", body: "default template body" },
     });
     mockPromptTemplateStore.mockImplementation(function () {
       return {
@@ -432,17 +421,10 @@ describe("createServices", () => {
     mockIssueConfigStoreCreate.mockReturnValue({
       getTemplateId: vi.fn().mockReturnValue("issue-template"),
     });
-    const templateGet = vi.fn().mockImplementation((id: string) => {
-      if (id === "issue-template") {
-        return { id, body: "issue template body" };
-      }
-      if (id === "active-template") {
-        return { id, body: "active template body" };
-      }
-      if (id === "default") {
-        return { id, body: "default template body" };
-      }
-      return null;
+    const templateGet = createTemplateGet({
+      "issue-template": { id: "issue-template", body: "issue template body" },
+      "active-template": { id: "active-template", body: "active template body" },
+      default: { id: "default", body: "default template body" },
     });
     mockPromptTemplateStore.mockImplementation(function () {
       return {

@@ -8,7 +8,6 @@
 import path from "node:path";
 import type { ServiceConfig, WorkflowDefinition } from "../core/types.js";
 import { asBoolean, asNumber, asNumberMap, asRecord, asString, asStringArray, asLooseStringArray } from "./coercion.js";
-import { deepMerge } from "./merge.js";
 import { resolveConfigString, resolvePathConfigString } from "./resolvers.js";
 import {
   asCodexAuthMode,
@@ -33,12 +32,9 @@ import { normalizeTrackerEndpoint } from "./url-policy.js";
 interface DeriveServiceConfigOptions {
   /**
    * Pre-merged config map (workflow.config already merged with overlay).
-   * When provided, the overlay field is ignored and no additional merge is performed.
-   * Prefer this over `overlay` to avoid a second deep-merge pass.
+   * When provided, it is used directly instead of workflow.config.
    */
   mergedConfigMap?: Record<string, unknown>;
-  /** Raw overlay map. Ignored when `mergedConfigMap` is present. */
-  overlay?: Record<string, unknown>;
   secretResolver?: (name: string) => string | undefined;
 }
 
@@ -339,15 +335,16 @@ function deriveWebhookConfig(
 ): ServiceConfig["webhook"] | null {
   const norm = normalizeRecord(webhook, WEBHOOK_ALIAS_REGISTRY);
   const webhookUrl = resolveConfigString(norm.webhook_url, secretResolver) || null;
-  if (!webhookUrl) return null;
 
-  return {
-    webhookUrl,
-    webhookSecret: resolveConfigString(norm.webhook_secret, secretResolver) || "",
-    pollingStretchMs: asNumberish(norm.polling_stretch_ms, 120000),
-    pollingBaseMs: asNumberish(norm.polling_base_ms, 15000),
-    healthCheckIntervalMs: asNumberish(norm.health_check_interval_ms, 300000),
-  };
+  return webhookUrl
+    ? {
+        webhookUrl,
+        webhookSecret: resolveConfigString(norm.webhook_secret, secretResolver) || "",
+        pollingStretchMs: asNumberish(norm.polling_stretch_ms, 120000),
+        pollingBaseMs: asNumberish(norm.polling_base_ms, 15000),
+        healthCheckIntervalMs: asNumberish(norm.health_check_interval_ms, 300000),
+      }
+    : null;
 }
 
 /**
@@ -373,14 +370,11 @@ function deriveServerConfig(server: Record<string, unknown>): ServiceConfig["ser
  *
  * This is the main entry point that orchestrates all subsection builders.
  *
- * Pass `mergedConfigMap` (already merged by the caller) to skip the internal
- * deep-merge and avoid double-applying the overlay. The `overlay` option is
- * kept for backward compatibility with call sites that have not been updated yet.
+ * Pass `mergedConfigMap` (workflow.config already merged with any overlay by
+ * the caller) to use a pre-merged config instead of the raw workflow config.
  */
 export function deriveServiceConfig(workflow: WorkflowDefinition, options?: DeriveServiceConfigOptions): ServiceConfig {
-  const mergedConfig =
-    options?.mergedConfigMap ??
-    (options?.overlay ? (deepMerge(workflow.config, options.overlay) as Record<string, unknown>) : workflow.config);
+  const mergedConfig = options?.mergedConfigMap ?? workflow.config;
   const secretResolver = options?.secretResolver;
   const root = asRecord(mergedConfig);
   const tracker = asRecord(root.tracker);

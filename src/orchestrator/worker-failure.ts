@@ -9,6 +9,7 @@ import { TokenRefreshError } from "../codex/token-refresh.js";
 export interface WorkerFailureContext {
   runningEntries: Map<string, RunningEntry>;
   releaseIssueClaim: (issueId: string) => void;
+  markDirty: () => void;
   pushEvent: RuntimeEventSink;
   deps: {
     attemptStore: { updateAttempt: (attemptId: string, patch: Record<string, unknown>) => Promise<void> };
@@ -50,6 +51,7 @@ export async function handleWorkerFailure(
   }
 
   ctx.runningEntries.delete(issue.id);
+  ctx.markDirty();
   ctx.releaseIssueClaim(issue.id);
   ctx.pushEvent({
     at: nowIso(),

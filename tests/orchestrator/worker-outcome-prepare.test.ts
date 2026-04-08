@@ -65,6 +65,7 @@ function makeCtx(overrides?: { latestIssue?: Issue }): OutcomeContext {
         },
       }) as unknown as ReturnType<OutcomeContext["getConfig"]>,
     releaseIssueClaim: vi.fn(),
+    markDirty: vi.fn(),
     resolveModelSelection: vi.fn().mockReturnValue(createModelSelection()),
     notify: vi.fn(),
     queueRetry: vi.fn(),

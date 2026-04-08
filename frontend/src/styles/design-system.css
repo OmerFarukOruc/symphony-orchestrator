@@ -101,6 +101,18 @@
   --status-duplicate: #8a7f94;
   --status-pending-change: #b45837;
 
+  /* Severity scale — used for issue card borders, priority badges */
+  --severity-critical: var(--status-blocked);
+  --severity-high: #d98a1c;
+  --severity-medium: var(--status-queued);
+  --severity-low: var(--text-muted);
+
+  /* Event-type tints — subtle background for activity log rows */
+  --event-tint-config: color-mix(in srgb, var(--status-queued) 8%, transparent);
+  --event-tint-start: color-mix(in srgb, var(--status-running) 8%, transparent);
+  --event-tint-complete: color-mix(in srgb, var(--status-completed) 8%, transparent);
+  --event-tint-error: color-mix(in srgb, var(--status-blocked) 8%, transparent);
+
   /* ============================================
      LIGHT THEME TOKENS
      ============================================ */

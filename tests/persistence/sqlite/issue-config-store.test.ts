@@ -121,18 +121,9 @@ describe("IssueConfigStore — clearTemplateId", () => {
 });
 
 describe("IssueConfigStore — create factory", () => {
-  it("returns a functional store when db is provided", () => {
+  it("returns a functional store backed by the provided db", () => {
     const created = IssueConfigStore.create(db);
     created.upsertModel("MT-99", "test-model", null);
     expect(created.loadAll()).toHaveLength(1);
-  });
-
-  it("returns a no-op store when db is null", () => {
-    const noop = IssueConfigStore.create(null);
-    expect(noop.loadAll()).toEqual([]);
-    expect(() => noop.upsertModel("MT-1", "gpt-5", null)).not.toThrow();
-    expect(() => noop.upsertTemplateId("MT-1", "tmpl")).not.toThrow();
-    expect(() => noop.clearTemplateId("MT-1")).not.toThrow();
-    expect(noop.loadAll()).toEqual([]);
   });
 });

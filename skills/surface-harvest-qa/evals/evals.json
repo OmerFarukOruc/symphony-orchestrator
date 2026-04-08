@@ -1,0 +1,23 @@
+{
+  "skill_name": "surface-harvest-qa",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need a real surface harvest of my local app at http://localhost:3000, not a smoke test. Stay in headed desktop mode, inventory every reachable page, dialog, menu, drawer, tab, table state, and empty or error state you can uncover, then keep going until every discovered surface lands in PASS, FAIL, FLAKY, BLOCKED, or SKIP with evidence.",
+      "expected_output": "Creates the inventory before making broad claims, uses headed desktop browser setup, expands hidden subsurfaces instead of treating each page as one checkbox, and reports blocked or missing coverage explicitly.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Dogfood my authenticated dashboard like a hostile QA pass. I want the full desktop surface area mapped: top nav, row action menus, confirm dialogs, filters, shortcut-driven UI, drawers, and the ugly empty or error states people forget about. Give me one coverage model with screenshots, issues, and honest blocked reasons where something cannot be reached.",
+      "expected_output": "Builds a surface inventory first, expands hidden UI such as row menus and drawers, records parent-child relationships between surfaces, and ties each discovered surface to evidence paths and a terminal status.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Do an exhaustive desktop QA pass on Risoluto running at http://localhost:4000. Use the bundled surface seed, seed test data if the instance is thin, do a deep 2560x1440 interaction pass first, then a 1920x1080 layout pass, and finish with the manifest, issues list, coverage summary, screenshots, and HTML report. I care more about honest gap accounting than a pretty success rate.",
+      "expected_output": "Uses the repo-local Risoluto seed and helper scripts, proves every seeded row is present in the manifest, fails the run if 1920x1080 evidence is shallow, and does not pass closeout unless proof coverage is above the configured floor and BLOCKED rows carry concrete escalation evidence.",
+      "files": []
+    }
+  ]
+}

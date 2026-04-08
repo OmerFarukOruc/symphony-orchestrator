@@ -15,14 +15,11 @@ function makeLogger(): RisolutoLogger {
   } as unknown as RisolutoLogger;
 }
 
-function makeConfigStore(input?: {
-  slack?: { webhookUrl?: string; verbosity?: string };
-  channels?: Array<Record<string, unknown>>;
-}): ConfigStore {
+function makeConfigStore(input?: { channels?: Array<Record<string, unknown>> }): ConfigStore {
   let listener: (() => void) | null = null;
   return {
     getConfig: vi.fn().mockReturnValue({
-      notifications: input ? { slack: input.slack, channels: input.channels ?? [] } : undefined,
+      notifications: input ? { channels: input.channels ?? [] } : undefined,
       server: { port: 4000 },
     }),
     subscribe: vi.fn((fn: () => void) => {
@@ -36,14 +33,25 @@ function makeConfigStore(input?: {
 }
 
 describe("wireNotifications", () => {
-  it("registers a slack channel when webhook is configured", () => {
+  it("registers a slack channel when channels[] contains a slack entry", () => {
     const manager = new NotificationManager({ logger: makeLogger() });
-    const store = makeConfigStore({ slack: { webhookUrl: "https://hooks.slack.com/xxx", verbosity: "critical" } });
+    const store = makeConfigStore({
+      channels: [
+        {
+          type: "slack",
+          name: "slack",
+          enabled: true,
+          minSeverity: "info",
+          webhookUrl: "https://hooks.slack.com/xxx",
+          verbosity: "critical",
+        },
+      ],
+    });
     wireNotifications(manager, store, makeLogger());
     expect(manager.listChannels()).toContain("slack");
   });
 
-  it("does not register slack when no webhook url", () => {
+  it("does not register slack when channels[] is empty", () => {
     const manager = new NotificationManager({ logger: makeLogger() });
     const store = makeConfigStore();
     wireNotifications(manager, store, makeLogger());
@@ -52,11 +60,22 @@ describe("wireNotifications", () => {
 
   it("removes existing channels before rewiring", () => {
     const manager = new NotificationManager({ logger: makeLogger() });
-    const store1 = makeConfigStore({ slack: { webhookUrl: "https://hooks.slack.com/aaa", verbosity: "critical" } });
+    const store1 = makeConfigStore({
+      channels: [
+        {
+          type: "slack",
+          name: "slack",
+          enabled: true,
+          minSeverity: "info",
+          webhookUrl: "https://hooks.slack.com/aaa",
+          verbosity: "critical",
+        },
+      ],
+    });
     wireNotifications(manager, store1, makeLogger());
     expect(manager.listChannels()).toContain("slack");
 
-    // Rewire with no slack → channel removed
+    // Rewire with no channels → channel removed
     const store2 = makeConfigStore();
     wireNotifications(manager, store2, makeLogger());
     expect(manager.listChannels()).not.toContain("slack");
@@ -87,7 +106,18 @@ describe("wireNotifications", () => {
 describe("watchConfigChanges", () => {
   it("re-wires notifications on config change", () => {
     const manager = new NotificationManager({ logger: makeLogger() });
-    const store = makeConfigStore({ slack: { webhookUrl: "https://hooks.slack.com/xxx", verbosity: "critical" } });
+    const store = makeConfigStore({
+      channels: [
+        {
+          type: "slack",
+          name: "slack",
+          enabled: true,
+          minSeverity: "info",
+          webhookUrl: "https://hooks.slack.com/xxx",
+          verbosity: "critical",
+        },
+      ],
+    });
     const logger = makeLogger();
     watchConfigChanges(store, manager, 4000, logger);
 

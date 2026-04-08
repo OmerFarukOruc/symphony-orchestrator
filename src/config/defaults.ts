@@ -2,9 +2,8 @@
  * Canonical raw config defaults for each section.
  *
  * These represent the "empty config" baseline — the values that
- * `deriveServiceConfig()` would produce if WORKFLOW.md and the overlay
- * were both empty objects. Used to seed the DB on first boot and as
- * the base layer for legacy imports.
+ * `deriveServiceConfig()` would produce if the overlay were an empty
+ * object. Used to seed the DB on first boot.
  *
  * Keys match the section names consumed by `deriveServiceConfig()`:
  * tracker, workspace, hooks, agent, codex, server, polling,
@@ -111,12 +110,10 @@ export const DEFAULT_CONFIG_SECTIONS: Record<string, Record<string, unknown>> = 
     ],
   },
 
-  /** System metadata — setup state, import tracking, active template. */
+  /** System metadata — setup state and active template. */
   system: {
     setupCompletedAt: null,
     selectedTemplateId: null,
-    legacyImportVersion: null,
-    lastImportedFrom: null,
   },
 };
 

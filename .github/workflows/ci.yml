@@ -10,6 +10,27 @@ on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
+    inputs:
+      nightly_validation_mode:
+        description: "Intentional validation failure target"
+        required: false
+        default: "none"
+        type: choice
+        options:
+          - none
+          - fullstack-fail
+          - visual-fail
+          - live-fail
+      disable_linear_write:
+        description: "Disable live Linear mutations for this run"
+        required: false
+        default: false
+        type: boolean
+      disable_r2_upload:
+        description: "Disable R2 artifact upload for this run"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -96,6 +117,18 @@ jobs:
           name: coverage-report
           path: coverage/
           retention-days: 7
+
+  frontend-test:
+    name: Frontend Tests
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/restore-build
+      - run: pnpm run test:frontend
 
   knip:
     name: Dead Code Analysis
@@ -283,13 +316,22 @@ jobs:
     name: Fullstack E2E
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ${{ github.event_name == 'schedule' && fromJSON('["self-hosted","linux","nightly","real-data","playwright"]') || 'ubuntu-24.04' }}
     timeout-minutes: 30
     permissions:
       contents: read
+      id-token: write
+    env:
+      RISOLUTO_NIGHTLY_ENV: fullstack-e2e
+      NIGHTLY_VALIDATION_MODE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.nightly_validation_mode || 'none' }}
+      NIGHTLY_VALIDATION_JOB: fullstack-fail
+      RISOLUTO_NIGHTLY_HTML_REPORT: "true"
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/restore-build
+      - uses: ./.github/actions/prepare-nightly-vds
+      - name: Validation fail switch
+        run: node --import tsx scripts/nightly-validation-fail.ts
       - name: Cache Playwright browsers
         id: pw-cache
         uses: actions/cache@v5
@@ -304,25 +346,52 @@ jobs:
         run: pnpm exec playwright install-deps chromium
       - name: Run fullstack E2E tests
         run: pnpm exec playwright test --config playwright.fullstack.config.ts
+      - name: Write nightly manifest
+        if: always()
+        run: |
+          mkdir -p "$RISOLUTO_NIGHTLY_ARTIFACT_ROOT"
+          jq -n \
+            --arg job "fullstack-e2e" \
+            --arg runId "${{ github.run_id }}" \
+            --arg sha "${{ github.sha }}" \
+            --arg ref "$GITHUB_REF_NAME" \
+            --arg runner "${{ runner.name }}" \
+            --arg env "$RISOLUTO_NIGHTLY_ENV" \
+            '{job:$job,runId:$runId,sha:$sha,ref:$ref,runner:$runner,environment:$env}' \
+            > "$RISOLUTO_NIGHTLY_ARTIFACT_ROOT/nightly-manifest.json"
       - name: Upload test results
         if: always()
+        id: upload-fullstack-report
         uses: actions/upload-artifact@v7
         with:
           name: fullstack-e2e-report-${{ github.sha }}
-          path: playwright-report/
-          retention-days: 14
+          path: |
+            playwright-report/
+            test-results/
+            test-results/playwright-fullstack-results.json
+            ${{ env.RISOLUTO_NIGHTLY_ARTIFACT_ROOT }}/nightly-manifest.json
+          retention-days: 30
 
   visual-regression:
     name: Visual Regression
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ${{ github.event_name == 'schedule' && fromJSON('["self-hosted","linux","nightly","real-data","playwright"]') || 'ubuntu-24.04' }}
     timeout-minutes: 20
     permissions:
       contents: read
+      id-token: write
+    env:
+      RISOLUTO_NIGHTLY_ENV: visual-regression
+      NIGHTLY_VALIDATION_MODE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.nightly_validation_mode || 'none' }}
+      NIGHTLY_VALIDATION_JOB: visual-fail
+      RISOLUTO_NIGHTLY_HTML_REPORT: "true"
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/restore-build
+      - uses: ./.github/actions/prepare-nightly-vds
+      - name: Validation fail switch
+        run: node --import tsx scripts/nightly-validation-fail.ts
       - name: Cache Playwright browsers
         id: pw-cache
         uses: actions/cache@v5
@@ -337,36 +406,80 @@ jobs:
         run: pnpm exec playwright install-deps chromium
       - name: Run visual regression tests
         run: pnpm exec playwright test --project=visual
+      - name: Write nightly manifest
+        if: always()
+        run: |
+          mkdir -p "$RISOLUTO_NIGHTLY_ARTIFACT_ROOT"
+          jq -n \
+            --arg job "visual-regression" \
+            --arg runId "${{ github.run_id }}" \
+            --arg sha "${{ github.sha }}" \
+            --arg ref "$GITHUB_REF_NAME" \
+            --arg runner "${{ runner.name }}" \
+            --arg env "$RISOLUTO_NIGHTLY_ENV" \
+            '{job:$job,runId:$runId,sha:$sha,ref:$ref,runner:$runner,environment:$env}' \
+            > "$RISOLUTO_NIGHTLY_ARTIFACT_ROOT/nightly-manifest.json"
       - name: Upload visual diffs
         if: always()
+        id: upload-visual-report
         uses: actions/upload-artifact@v7
         with:
           name: visual-regression-diffs-${{ github.sha }}
           path: |
             playwright-report/
             test-results/
-          retention-days: 14
+            test-results/playwright-smoke-results.json
+            ${{ env.RISOLUTO_NIGHTLY_ARTIFACT_ROOT }}/nightly-manifest.json
+          retention-days: 30
 
   live-provider-smoke:
     name: Live Provider Smoke
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ${{ github.event_name == 'schedule' && fromJSON('["self-hosted","linux","nightly","real-data","providers"]') || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
+      id-token: write
     env:
+      RISOLUTO_NIGHTLY_ENV: live-provider-smoke
+      NIGHTLY_VALIDATION_MODE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.nightly_validation_mode || 'none' }}
+      NIGHTLY_VALIDATION_JOB: live-fail
       LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
       E2E_GITHUB_TOKEN: ${{ secrets.E2E_GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/restore-build
+      - uses: ./.github/actions/prepare-nightly-vds
+      - name: Validation fail switch
+        run: node --import tsx scripts/nightly-validation-fail.ts
       - name: Run live integration tests
         run: pnpm run test:integration:live
+      - name: Write nightly manifest
+        if: always()
+        run: |
+          mkdir -p "$RISOLUTO_NIGHTLY_ARTIFACT_ROOT"
+          jq -n \
+            --arg job "live-provider-smoke" \
+            --arg runId "${{ github.run_id }}" \
+            --arg sha "${{ github.sha }}" \
+            --arg ref "$GITHUB_REF_NAME" \
+            --arg runner "${{ runner.name }}" \
+            --arg env "$RISOLUTO_NIGHTLY_ENV" \
+            '{job:$job,runId:$runId,sha:$sha,ref:$ref,runner:$runner,environment:$env}' \
+            > "$RISOLUTO_NIGHTLY_ARTIFACT_ROOT/nightly-manifest.json"
+      - name: Upload live smoke manifest
+        if: always()
+        id: upload-live-smoke-manifest
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-provider-smoke-${{ github.sha }}
+          path: ${{ env.RISOLUTO_NIGHTLY_ARTIFACT_ROOT }}/nightly-manifest.json
+          retention-days: 30
 
-  # ── Nightly Failure Notifications ────────────────────────────────────
-  nightly-notify:
-    name: Nightly Slack Notification
+  # ── Nightly Failure Intake ───────────────────────────────────────────
+  nightly-linear-intake:
+    name: Nightly Linear Intake
     needs: [fullstack-e2e, visual-regression, live-provider-smoke]
     if: >-
       always() &&
@@ -375,34 +488,204 @@ jobs:
        needs.visual-regression.result == 'failure' ||
        needs.live-provider-smoke.result == 'failure')
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions: {}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      NIGHTLY_JOB_NAMES: fullstack-e2e,visual-regression,live-provider-smoke
+      NIGHTLY_RESULT_FULLSTACK_E2E: ${{ needs.fullstack-e2e.result }}
+      NIGHTLY_RESULT_VISUAL_REGRESSION: ${{ needs.visual-regression.result }}
+      NIGHTLY_RESULT_LIVE_PROVIDER_SMOKE: ${{ needs.live-provider-smoke.result }}
+      NIGHTLY_FAILED_JOB_FULLSTACK_E2E: ${{ needs.fullstack-e2e.result == 'failure' }}
+      NIGHTLY_FAILED_JOB_VISUAL_REGRESSION: ${{ needs.visual-regression.result == 'failure' }}
+      NIGHTLY_FAILED_JOB_LIVE_PROVIDER_SMOKE: ${{ needs.live-provider-smoke.result == 'failure' }}
+      NIGHTLY_DISABLE_LINEAR_WRITE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.disable_linear_write || 'false' }}
+      NIGHTLY_DISABLE_R2_UPLOAD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.disable_r2_upload || 'false' }}
+      LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+      LINEAR_PROJECT_SLUG: ${{ secrets.LINEAR_PROJECT_SLUG }}
+      NIGHTLY_EVIDENCE_BASE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      NIGHTLY_INTAKE_ARTIFACT_NAME: nightly-linear-intake-${{ github.sha }}
+      NIGHTLY_HTML_ARTIFACT_NAME: ${{ needs.fullstack-e2e.result == 'failure' && format('fullstack-e2e-report-{0}', github.sha) || needs.visual-regression.result == 'failure' && format('visual-regression-diffs-{0}', github.sha) || '' }}
+      PLAYWRIGHT_JSON_REPORT_PATHS: test-results/playwright-fullstack-results.json,test-results/playwright-smoke-results.json
+      NIGHTLY_HTML_REPORT_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+      NIGHTLY_TRACE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+      NIGHTLY_VIDEO_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+      NIGHTLY_INTAKE_ARTIFACT_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+      NIGHTLY_LINEAR_HISTORY_PATH: reports/nightly-linear-history.json
+      LINEAR_NIGHTLY_CLOSED_STATE: ${{ secrets.LINEAR_NIGHTLY_CLOSED_STATE }}
+      R2_HISTORY_KEY: nightly/history/linear-history.json
     steps:
-      - name: Build failure summary
-        id: summary
-        run: |
-          FAILED=""
-          if [ "${{ needs.fullstack-e2e.result }}" = "failure" ]; then
-            FAILED="${FAILED}fullstack-e2e, "
-          fi
-          if [ "${{ needs.visual-regression.result }}" = "failure" ]; then
-            FAILED="${FAILED}visual-regression, "
-          fi
-          if [ "${{ needs.live-provider-smoke.result }}" = "failure" ]; then
-            FAILED="${FAILED}live-provider-smoke, "
-          fi
-          # Trim trailing comma and space
-          FAILED="${FAILED%, }"
-          echo "failed_jobs=${FAILED}" >> "$GITHUB_OUTPUT"
-      - name: Notify Slack
-        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 # v3.0.1
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
         with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Restore nightly recurrence history from R2
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.disable_r2_upload != 'true' }}
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_HISTORY_KEY: nightly/history/linear-history.json
+        run: |
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ] || [ -z "$R2_BUCKET" ]; then
+            echo '{"entries":{}}' > reports/nightly-linear-history.json
+            exit 0
+          fi
+          mkdir -p reports
+          node --import tsx scripts/nightly-history-r2.ts download reports/nightly-linear-history.json
+      - name: Download fullstack artifact
+        uses: actions/download-artifact@v8
+        if: ${{ needs.fullstack-e2e.result == 'failure' }}
+        with:
+          name: fullstack-e2e-report-${{ github.sha }}
+          path: reports/downloaded/fullstack
+      - name: Download visual artifact
+        uses: actions/download-artifact@v8
+        if: ${{ needs.visual-regression.result == 'failure' }}
+        with:
+          name: visual-regression-diffs-${{ github.sha }}
+          path: reports/downloaded/visual
+      - name: Resolve downloaded nightly evidence paths
+        run: |
+          mkdir -p reports
+          FULLSTACK_JSON=$(find reports/downloaded/fullstack -type f -name 'playwright-fullstack-results.json' 2>/dev/null | head -n 1 || true)
+          VISUAL_JSON=$(find reports/downloaded/visual -type f -name 'playwright-smoke-results.json' 2>/dev/null | head -n 1 || true)
+          HTML_INDEX=$(find reports/downloaded/fullstack reports/downloaded/visual -type f -path '*/playwright-report/index.html' 2>/dev/null | head -n 1 || true)
+          PLAYWRIGHT_PATHS=""
+          if [ -n "$FULLSTACK_JSON" ]; then
+            PLAYWRIGHT_PATHS="$FULLSTACK_JSON"
+          fi
+          if [ -n "$VISUAL_JSON" ]; then
+            if [ -n "$PLAYWRIGHT_PATHS" ]; then
+              PLAYWRIGHT_PATHS="$PLAYWRIGHT_PATHS,$VISUAL_JSON"
+            else
+              PLAYWRIGHT_PATHS="$VISUAL_JSON"
+            fi
+          fi
+          {
+            echo "NIGHTLY_FULLSTACK_JSON_PATH=$FULLSTACK_JSON"
+            echo "NIGHTLY_VISUAL_JSON_PATH=$VISUAL_JSON"
+            echo "NIGHTLY_DOWNLOADED_HTML_DIR=${HTML_INDEX%/index.html}"
+            echo "PLAYWRIGHT_JSON_REPORT_PATHS=$PLAYWRIGHT_PATHS"
+          } >> "$GITHUB_ENV"
+      - name: Build machine-readable nightly summary
+        run: |
+          mkdir -p reports
+          node --import tsx scripts/nightly-evidence-links.ts reports/nightly-evidence-links.json
+          node --import tsx scripts/nightly-failure-summary.ts reports/nightly-failure-summary.json
+      - name: Publish nightly artifacts to R2
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.disable_r2_upload != 'true' }}
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: |
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ] || [ -z "$R2_BUCKET" ] || [ -z "$R2_PUBLIC_BASE_URL" ]; then
+            echo "R2 secrets not fully configured; skipping upload"
+            exit 0
+          fi
+          mkdir -p reports
+          INPUTS="summary=reports/nightly-failure-summary.json intake-schema=notes/nightly-failure-intake.schema.md"
+          if [ -n "$NIGHTLY_DOWNLOADED_HTML_DIR" ] && [ -d "$NIGHTLY_DOWNLOADED_HTML_DIR" ]; then
+            INPUTS="$INPUTS html=$NIGHTLY_DOWNLOADED_HTML_DIR"
+          fi
+          if [ -n "$NIGHTLY_FULLSTACK_JSON_PATH" ] && [ -f "$NIGHTLY_FULLSTACK_JSON_PATH" ]; then
+            INPUTS="$INPUTS fullstack-json=$NIGHTLY_FULLSTACK_JSON_PATH"
+          fi
+          if [ -n "$NIGHTLY_VISUAL_JSON_PATH" ] && [ -f "$NIGHTLY_VISUAL_JSON_PATH" ]; then
+            INPUTS="$INPUTS visual-json=$NIGHTLY_VISUAL_JSON_PATH"
+          fi
+          TRACE_FILE=$(find reports/downloaded -type f \( -name '*.zip' -o -name '*.trace' \) 2>/dev/null | head -n 1 || true)
+          if [ -n "$TRACE_FILE" ]; then
+            INPUTS="$INPUTS trace=$TRACE_FILE"
+          fi
+          VIDEO_FILE=$(find reports/downloaded -type f -name '*.webm' 2>/dev/null | head -n 1 || true)
+          if [ -n "$VIDEO_FILE" ]; then
+            INPUTS="$INPUTS video=$VIDEO_FILE"
+          fi
+          # shellcheck disable=SC2086
+          node --import tsx scripts/upload-nightly-artifacts-r2.ts reports/nightly-r2-upload.json $INPUTS || true
+          if [ -f reports/nightly-r2-upload.json ]; then
+            NIGHTLY_HTML_REPORT_URL=$(node -e "const m=require('./reports/nightly-r2-upload.json'); const f=m.uploaded.find(x=>x.label==='html' && x.key.endsWith('/index.html')); console.log(f?f.url:'')")
+            NIGHTLY_TRACE_URL=$(node -e "const m=require('./reports/nightly-r2-upload.json'); const f=m.uploaded.find(x=>x.label==='trace'); console.log(f?f.url:'')")
+            NIGHTLY_VIDEO_URL=$(node -e "const m=require('./reports/nightly-r2-upload.json'); const f=m.uploaded.find(x=>x.label==='video'); console.log(f?f.url:'')")
+            NIGHTLY_INTAKE_ARTIFACT_URL=$(node -e "const m=require('./reports/nightly-r2-upload.json'); const f=m.uploaded.find(x=>x.label==='summary'); console.log(f?f.url:'')")
             {
-              "text": ":rotating_light: *Risoluto Nightly Pipeline Failed*\n\n*Failed jobs:* ${{ steps.summary.outputs.failed_jobs }}\n*Run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* `${{ github.ref_name }}`\n*Triggered:* ${{ github.event_name }}"
-            }
+              echo "NIGHTLY_HTML_REPORT_URL=$NIGHTLY_HTML_REPORT_URL"
+              echo "NIGHTLY_TRACE_URL=$NIGHTLY_TRACE_URL"
+              echo "NIGHTLY_VIDEO_URL=$NIGHTLY_VIDEO_URL"
+              echo "NIGHTLY_INTAKE_ARTIFACT_URL=$NIGHTLY_INTAKE_ARTIFACT_URL"
+            } >> "$GITHUB_ENV"
+          fi
+      - name: Refresh nightly summary with resolved evidence URLs
+        run: node --import tsx scripts/nightly-failure-summary.ts reports/nightly-failure-summary.json
+      - name: Sync refreshed summary to R2
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.disable_r2_upload != 'true' }}
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: |
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ] || [ -z "$R2_BUCKET" ] || [ -z "$R2_PUBLIC_BASE_URL" ]; then
+            echo "R2 secrets not fully configured; skipping summary sync"
+            exit 0
+          fi
+          node --import tsx scripts/upload-nightly-artifacts-r2.ts reports/nightly-r2-summary-sync.json summary=reports/nightly-failure-summary.json || true
+      - name: Linear intake summary
+        run: |
+          if [ -n "$LINEAR_API_KEY" ] && [ -n "$LINEAR_PROJECT_SLUG" ]; then
+            node --import tsx scripts/nightly-linear-intake.ts reports/nightly-failure-summary.json | tee reports/nightly-linear-intake.json
+          else
+            NIGHTLY_LINEAR_DRY_RUN=true node --import tsx scripts/nightly-linear-intake.ts reports/nightly-failure-summary.json --dry-run | tee reports/nightly-linear-intake.json
+          fi
+      - name: Persist nightly recurrence history to R2
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.disable_r2_upload != 'true' }}
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_HISTORY_KEY: nightly/history/linear-history.json
+        run: |
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ] || [ -z "$R2_BUCKET" ]; then
+            echo "R2 history secrets not fully configured; skipping history upload"
+            exit 0
+          fi
+          if [ -f reports/nightly-linear-history.json ]; then
+            node --import tsx scripts/nightly-history-r2.ts upload reports/nightly-linear-history.json
+          fi
+      - name: Upload nightly failure intake artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-linear-intake-${{ github.sha }}
+          path: |
+            reports/nightly-evidence-links.json
+            reports/nightly-failure-summary.json
+            reports/nightly-linear-intake.json
+            reports/nightly-linear-history.json
+            notes/nightly-failure-intake.schema.md
+          retention-days: 30
+      - name: Notify Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "Slack webhook not configured; skipping notification"
+            exit 0
+          fi
+          curl -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL" <<'EOF'
+          {
+            "text": ":rotating_light: *Risoluto Nightly Pipeline Failed*\n\n*Failed jobs:* ${{ needs.fullstack-e2e.result == 'failure' && 'fullstack-e2e ' || '' }}${{ needs.visual-regression.result == 'failure' && 'visual-regression ' || '' }}${{ needs.live-provider-smoke.result == 'failure' && 'live-provider-smoke' || '' }}\n*Run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* `${{ github.ref_name }}`\n*Triggered:* ${{ github.event_name }}\n*Intake artifact:* nightly-linear-intake-${{ github.sha }}"
+          }
+          EOF
 
   # ── Nightly Quarantine Healing ───────────────────────────────────────
   # Runs quarantined tests with enforcement disabled, then updates pass
@@ -412,15 +695,17 @@ jobs:
     name: Quarantine Healing
     needs: build
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ github.event_name == 'schedule' && fromJSON('["self-hosted","linux","nightly","real-data"]') || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v6
         with:
-          token: ${{ secrets.QUARANTINE_TOKEN }}
+          token: ${{ secrets.QUARANTINE_TOKEN || github.token }}
       - uses: ./.github/actions/restore-build
+      - uses: ./.github/actions/prepare-nightly-vds
       - name: Run tests with quarantine disabled
         run: |
           mkdir -p reports
@@ -432,8 +717,8 @@ jobs:
           if git diff --quiet quarantine.json; then
             echo "No quarantine changes to commit."
           else
-            git config user.email "ci@risoluto.dev"
-            git config user.name "Risoluto CI"
+            git config --local user.email "ci@risoluto.dev"
+            git config --local user.name "Risoluto CI"
             git add quarantine.json
             git commit -m "chore(ci): update quarantine.json via nightly healing [skip ci]"
             git push || {
@@ -448,7 +733,7 @@ jobs:
             }
           fi
         env:
-          GH_TOKEN: ${{ secrets.QUARANTINE_TOKEN }}
+          GH_TOKEN: ${{ secrets.QUARANTINE_TOKEN || github.token }}
 
   # ── Phase 6: Semantic Release (main only, after gate) ────────────────
   release:
@@ -675,7 +960,8 @@ jobs:
   build-and-test:
     name: build-and-test
     if: always()
-    needs: [build, lint, test, knip, typecheck, gitleaks, semgrep, docker-build, e2e-smoke, integration-pr]
+    needs:
+      [build, lint, test, frontend-test, knip, typecheck, gitleaks, semgrep, docker-build, e2e-smoke, integration-pr]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -685,6 +971,7 @@ jobs:
           echo "build           = ${{ needs.build.result }}"
           echo "lint            = ${{ needs.lint.result }}"
           echo "test            = ${{ needs.test.result }}"
+          echo "frontend-test   = ${{ needs.frontend-test.result }}"
           echo "knip            = ${{ needs.knip.result }}"
           echo "typecheck       = ${{ needs.typecheck.result }}"
           echo "gitleaks        = ${{ needs.gitleaks.result }}"
@@ -704,6 +991,7 @@ jobs:
           if [ "${{ needs.build.result }}" != "success" ] ||
              [ "${{ needs.lint.result }}" != "success" ] ||
              [ "${{ needs.test.result }}" != "success" ] ||
+             [ "${{ needs.frontend-test.result }}" != "success" ] ||
              [ "${{ needs.knip.result }}" != "success" ] ||
              [ "${{ needs.typecheck.result }}" != "success" ] ||
              [ "${{ needs.gitleaks.result }}" != "success" ] ||

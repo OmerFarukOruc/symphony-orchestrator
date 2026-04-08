@@ -33,7 +33,7 @@
 </td>
 <td width="50%" align="center">
   <img src="docs/screenshots/settings.png" alt="Settings" />
-  <br/><sub>Settings — Tracker, provider, and sandbox configuration</sub>
+  <br/><sub>Settings — Tracker, provider, sandbox, and Codex admin controls</sub>
 </td>
 </tr>
 </table>
@@ -100,12 +100,12 @@ Navigate to **http://localhost:4000** — the setup wizard starts automatically.
 
 **3. Complete the wizard** (3–5 min)
 
-| Step                   | What you'll do                                     |
-| ---------------------- | -------------------------------------------------- |
-| 🔐 **Protect secrets** | Generates an encryption master key for credentials |
-| 🗂️ **Connect Linear**  | Paste your API key and select a project            |
+| Step                   | What you'll do                                                           |
+| ---------------------- | ------------------------------------------------------------------------ |
+| 🔐 **Protect secrets** | Generates an encryption master key for credentials                       |
+| 🗂️ **Connect Linear**  | Paste your API key and select a project                                  |
 | 🤖 **Add OpenAI**      | Choose direct API key, browser sign-in, or a proxy / compatible provider |
-| 🐙 **Add GitHub**      | Paste a GitHub PAT _(optional)_                    |
+| 🐙 **Add GitHub**      | Paste a GitHub PAT _(optional)_                                          |
 
 **4. Create an issue and watch it run**
 
@@ -267,46 +267,75 @@ Enable with `DISPATCH_MODE=remote` in your `.env`. See the [Operator Guide](docs
 
 Risoluto exposes a full JSON API at `http://localhost:4000/api/v1/`. Here are the key endpoints:
 
-| Endpoint                      | What it does                                                   |
-| ----------------------------- | -------------------------------------------------------------- |
-| `GET /api/v1/state`           | Runtime snapshot — queued, running, retrying, completed issues |
-| `GET /api/v1/runtime`         | Version, workflow path, provider summary                       |
-| `GET /api/v1/events`          | SSE stream of real-time orchestrator events                    |
-| `GET /api/v1/models`          | List available Codex models                                    |
-| `POST /api/v1/:issue/abort`   | Abort a running issue                                          |
-| `POST /api/v1/:issue/steer`   | Inject steering message into a running agent                   |
-| `POST /api/v1/refresh`        | Trigger immediate orchestration pass                           |
-| `GET /api/v1/:issue/attempts` | Archived attempts + current live attempt                       |
-| `POST /api/v1/:issue/model`   | Save per-issue model override                                  |
-| `GET /metrics`                | Prometheus-format service metrics                              |
+| Endpoint                      | What it does                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `GET /api/v1/state`           | Runtime snapshot — queued, running, retrying, completed issues                                         |
+| `GET /api/v1/runtime`         | Version, workflow path, provider summary                                                               |
+| `GET /api/v1/events`          | SSE stream of real-time orchestrator events                                                            |
+| `GET /api/v1/models`          | List available Codex models, including richer picker metadata when the host control plane is available |
+| `GET /api/v1/codex/*`         | Host-side Codex admin surface — threads, MCP status, auth state, and interactive prompt plumbing       |
+| `POST /api/v1/:issue/abort`   | Abort a running issue                                                                                  |
+| `POST /api/v1/:issue/steer`   | Inject steering message into a running agent                                                           |
+| `POST /api/v1/refresh`        | Trigger immediate orchestration pass                                                                   |
+| `GET /api/v1/:issue/attempts` | Archived attempts + current live attempt                                                               |
+| `POST /api/v1/:issue/model`   | Save per-issue model override                                                                          |
+| `GET /metrics`                | Prometheus-format service metrics                                                                      |
 
 <details>
 <summary>📋 <strong>Full API reference</strong> — 50+ endpoints</summary>
 
 ### Core Endpoints
 
-| Method   | Endpoint                               | Description                                                                                 |
-| -------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `GET`    | `/`                                    | Local operator dashboard                                                                    |
-| `GET`    | `/metrics`                             | Prometheus metrics                                                                          |
-| `GET`    | `/api/v1/runtime`                      | Runtime info — version, workflow path, provider summary                                     |
-| `GET`    | `/api/v1/state`                        | Runtime snapshot — queued, running, retrying, completed, workflow columns, and token totals |
-| `POST`   | `/api/v1/refresh`                      | Trigger immediate orchestration refresh                                                     |
-| `GET`    | `/api/v1/transitions`                  | List available Linear workflow transitions                                                  |
-| `GET`    | `/api/v1/:issue_identifier`            | Issue detail, recent events, archived attempts                                              |
-| `GET`    | `/api/v1/:issue_identifier/attempts`   | Archived attempts + current live attempt id                                                 |
-| `GET`    | `/api/v1/attempts/:attempt_id`         | Archived event stream for a specific attempt                                                |
-| `POST`   | `/api/v1/:issue_identifier/model`      | Save per-issue model override                                                               |
-| `POST`   | `/api/v1/:issue_identifier/transition` | Transition a Linear issue to a new state                                                    |
-| `POST`   | `/api/v1/:issue_identifier/abort`      | Abort a running issue                                                                       |
-| `POST`   | `/api/v1/:issue_identifier/steer`      | Inject a steering message into a running agent                                              |
-| `GET`    | `/api/v1/events`                       | SSE stream of real-time orchestrator events                                                 |
-| `GET`    | `/api/v1/models`                       | List available Codex models from the provider                                               |
-| `GET`    | `/api/v1/git/context`                  | Git repository context and configured repo routes                                           |
-| `GET`    | `/api/v1/workspaces`                   | Workspace inventory with disk usage                                                         |
-| `DELETE` | `/api/v1/workspaces/:workspace_key`    | Remove a workspace directory                                                                |
-| `GET`    | `/api/v1/openapi.json`                 | OpenAPI 3.0 specification                                                                   |
-| `GET`    | `/api/docs`                            | Swagger UI for interactive API exploration                                                  |
+| Method   | Endpoint                               | Description                                                                                              |
+| -------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/`                                    | Local operator dashboard                                                                                 |
+| `GET`    | `/metrics`                             | Prometheus metrics                                                                                       |
+| `GET`    | `/api/v1/runtime`                      | Runtime info — version, workflow path, provider summary                                                  |
+| `GET`    | `/api/v1/state`                        | Runtime snapshot — queued, running, retrying, completed, workflow columns, and token totals              |
+| `POST`   | `/api/v1/refresh`                      | Trigger immediate orchestration refresh                                                                  |
+| `GET`    | `/api/v1/transitions`                  | List available Linear workflow transitions                                                               |
+| `GET`    | `/api/v1/:issue_identifier`            | Issue detail, recent events, archived attempts                                                           |
+| `GET`    | `/api/v1/:issue_identifier/attempts`   | Archived attempts + current live attempt id                                                              |
+| `GET`    | `/api/v1/attempts/:attempt_id`         | Archived event stream for a specific attempt                                                             |
+| `POST`   | `/api/v1/:issue_identifier/model`      | Save per-issue model override                                                                            |
+| `POST`   | `/api/v1/:issue_identifier/transition` | Transition a Linear issue to a new state                                                                 |
+| `POST`   | `/api/v1/:issue_identifier/abort`      | Abort a running issue                                                                                    |
+| `POST`   | `/api/v1/:issue_identifier/steer`      | Inject a steering message into a running agent                                                           |
+| `GET`    | `/api/v1/events`                       | SSE stream of real-time orchestrator events                                                              |
+| `GET`    | `/api/v1/models`                       | List available Codex models; returns richer app-server metadata when the host control plane is available |
+| `GET`    | `/api/v1/git/context`                  | Git repository context and configured repo routes                                                        |
+| `GET`    | `/api/v1/workspaces`                   | Workspace inventory with disk usage                                                                      |
+| `DELETE` | `/api/v1/workspaces/:workspace_key`    | Remove a workspace directory                                                                             |
+| `GET`    | `/api/v1/openapi.json`                 | OpenAPI 3.0 specification                                                                                |
+| `GET`    | `/api/docs`                            | Swagger UI for interactive API exploration                                                               |
+
+### Codex Operator Endpoints
+
+These routes are backed by a long-lived host-side `codex app-server` control-plane connection. They power the `Codex Admin` block in `/settings` and stay separate from the disposable Docker-backed worker sessions used for automated issue execution.
+
+| Method | Endpoint                                               | Description                                                                   |
+| ------ | ------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/codex/capabilities`                           | List detected app-server methods and notification support                     |
+| `GET`  | `/api/v1/codex/features`                               | List experimental app-server features with stage metadata                     |
+| `GET`  | `/api/v1/codex/collaboration-modes`                    | List available collaboration presets                                          |
+| `GET`  | `/api/v1/codex/mcp`                                    | List MCP servers, auth state, tools, and resources                            |
+| `POST` | `/api/v1/codex/mcp/oauth/login`                        | Start MCP OAuth login for one configured server                               |
+| `POST` | `/api/v1/codex/mcp/reload`                             | Reload MCP server config from disk                                            |
+| `GET`  | `/api/v1/codex/threads`                                | Paginated thread history with archived/provider/source filters                |
+| `GET`  | `/api/v1/codex/threads/loaded`                         | List thread ids currently loaded in the host control plane                    |
+| `GET`  | `/api/v1/codex/threads/:threadId`                      | Read a stored thread without resuming it                                      |
+| `POST` | `/api/v1/codex/threads/:threadId/fork`                 | Fork a stored thread                                                          |
+| `POST` | `/api/v1/codex/threads/:threadId/name`                 | Rename a thread                                                               |
+| `POST` | `/api/v1/codex/threads/:threadId/archive`              | Archive a thread rollout                                                      |
+| `POST` | `/api/v1/codex/threads/:threadId/unarchive`            | Restore an archived thread rollout                                            |
+| `POST` | `/api/v1/codex/threads/:threadId/unsubscribe`          | Unsubscribe the host connection from a loaded thread                          |
+| `GET`  | `/api/v1/codex/account`                                | Read host-side Codex auth state                                               |
+| `GET`  | `/api/v1/codex/account/rate-limits`                    | Read ChatGPT/Codex quota visibility                                           |
+| `POST` | `/api/v1/codex/account/login/start`                    | Start API-key or browser-based Codex login                                    |
+| `POST` | `/api/v1/codex/account/login/cancel`                   | Cancel a pending browser login                                                |
+| `POST` | `/api/v1/codex/account/logout`                         | Clear host-side Codex auth state                                              |
+| `GET`  | `/api/v1/codex/requests/user-input`                    | List pending `tool/requestUserInput` and `item/tool/requestUserInput` prompts |
+| `POST` | `/api/v1/codex/requests/user-input/:requestId/respond` | Submit an operator response for a pending interactive prompt                  |
 
 ### Config & Secrets Endpoints
 
