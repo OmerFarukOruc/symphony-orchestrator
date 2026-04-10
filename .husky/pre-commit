@@ -5,4 +5,11 @@
 
 [ "${SKIP_HOOKS:-0}" = "1" ] && exit 0
 
+# ── Gitleaks: scan staged changes for secrets ─────────────────────────
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --config .gitleaks.toml --verbose
+else
+  echo "⚠️  gitleaks not installed — skipping secret scan."
+fi
+
 pnpm exec lint-staged

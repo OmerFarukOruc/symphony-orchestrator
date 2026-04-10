@@ -5,7 +5,7 @@
 #   2. Broken tests (vitest)
 #   3. Type errors (typecheck)
 #
-# Everything else (lint, format, knip, jscpd, playwright, semgrep,
+# Everything else (lint, format, knip, jscpd, playwright,
 # typecheck:coverage) is handled by pre-commit hooks, Claude hooks,
 # or CI — where it runs in parallel on clean containers.
 #
@@ -46,7 +46,7 @@ if [ "${FULL_CHECK:-0}" = "1" ]; then
   pnpm run typecheck:frontend
   pnpm run knip
   pnpm exec playwright test --project=smoke
-  command -v semgrep >/dev/null 2>&1 && semgrep scan --config auto --config p/typescript --error || echo "⚠️  semgrep not installed — skipping."
+  command -v gitleaks >/dev/null 2>&1 && gitleaks detect --config .gitleaks.toml --verbose || echo "⚠️  gitleaks not installed — skipping."
   pnpm run typecheck:coverage
   echo "✅ Full CI-mirror suite passed!"
   exit 0
