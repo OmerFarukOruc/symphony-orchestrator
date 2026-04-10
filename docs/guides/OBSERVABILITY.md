@@ -70,7 +70,7 @@ When `SENTRY_DSN` is not set, a no-op tracker is used with zero overhead.
 
 ## Feature Flags
 
-Feature flags were removed in v0.5.0. The `feature_flags` field has been dropped from the `/api/v1/runtime` response as of v1.0.
+Feature flags were removed as a user-facing feature in v0.5.0. The `feature_flags` field remains as an optional, unpopulated field in the `/api/v1/runtime` response schema for forward compatibility.
 
 ---
 

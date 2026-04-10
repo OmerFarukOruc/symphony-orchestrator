@@ -10,9 +10,9 @@ Confirm each of the following before creating a release tag:
 
 - [ ] `package.json` version matches the intended release
 - [ ] `README.md` describes the current shipped behavior
-- [ ] `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/CONFORMANCE_AUDIT.md`, `docs/TRUST_AND_AUTH.md`, `docs/OBSERVABILITY.md`, and `docs/RUNBOOKS.md` still match the implementation
+- [ ] `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/CONFORMANCE_AUDIT.md`, `docs/TRUST_AND_AUTH.md`, `docs/guides/OBSERVABILITY.md`, and `docs/guides/RUNBOOKS.md` still match the implementation
 - [ ] Workflow examples are safe to publish and contain **no secrets**
-- [ ] `EXECPLAN.md` does not contain stale claims that contradict the codebase
+
 
 ---
 
@@ -24,7 +24,7 @@ Run the following commands and confirm all pass:
 # Minimum validation
 pnpm run build
 pnpm test
-node dist/cli/index.js ./WORKFLOW.example.md   # Dry-start (no credentials needed)
+node dist/cli/index.js --port 4000   # Dry-start (no credentials needed)
 ```
 
 Full CI-mirror validation (recommended — matches `.husky/pre-push`):
@@ -37,7 +37,6 @@ pnpm test
 pnpm run knip
 pnpm run jscpd
 pnpm exec playwright test --project=smoke
-semgrep scan --config auto --config p/typescript --error
 pnpm run typecheck:coverage
 ```
 
