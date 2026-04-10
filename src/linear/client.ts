@@ -328,10 +328,10 @@ export class LinearClient {
    * success from a silent swallow.
    */
   async updateIssueStateStrict(issueId: string, stateId: string): Promise<void> {
-    await withRetryReturn<void>(this.logger, "updateIssueState", async () => {
-      const payload = await this.runGraphQL(buildIssueTransitionMutation(), { issueId, stateId });
-      assertIssueTransitionSucceeded(payload);
+    const payload = await withRetryReturn(this.logger, "updateIssueState", async () => {
+      return this.runGraphQL(buildIssueTransitionMutation(), { issueId, stateId });
     });
+    assertIssueTransitionSucceeded(payload);
   }
 
   /**

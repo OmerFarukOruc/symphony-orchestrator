@@ -164,7 +164,7 @@ describe("LinearClient.updateIssueStateStrict", () => {
     await expect(client.updateIssueStateStrict("issue-1", "state-done")).rejects.toThrow(
       /linear issue transition was not confirmed/,
     );
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 
