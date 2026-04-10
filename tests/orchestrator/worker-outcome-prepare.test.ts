@@ -68,7 +68,10 @@ function makeCtx(overrides?: { latestIssue?: Issue }): OutcomeContext {
     markDirty: vi.fn(),
     resolveModelSelection: vi.fn().mockReturnValue(createModelSelection()),
     notify: vi.fn(),
-    queueRetry: vi.fn(),
+    retryCoordinator: {
+      dispatch: vi.fn().mockResolvedValue(undefined),
+      cancel: vi.fn(),
+    },
   };
 }
 

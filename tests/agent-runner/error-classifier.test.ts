@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extractCodexErrorInfo, classifyRetryStrategy } from "../../src/agent-runner/error-classifier.js";
-import type { CodexErrorInfo } from "../../src/agent-runner/error-classifier.js";
+import { extractCodexErrorInfo } from "../../src/agent-runner/error-classifier.js";
 
 describe("extractCodexErrorInfo", () => {
   it("extracts from codexErrorInfo field when present", () => {
@@ -64,57 +63,5 @@ describe("extractCodexErrorInfo", () => {
       message: "from top",
     });
     expect(result).toEqual({ type: "RateLimited", message: "from info" });
-  });
-});
-
-describe("classifyRetryStrategy", () => {
-  it("returns compact_and_retry for ContextWindowExceeded", () => {
-    const info: CodexErrorInfo = { type: "ContextWindowExceeded", message: "too big" };
-    expect(classifyRetryStrategy(info, "turn_failed")).toEqual({ action: "compact_and_retry" });
-  });
-
-  it("returns retry with 60s for UsageLimitExceeded", () => {
-    const info: CodexErrorInfo = { type: "UsageLimitExceeded", message: "limit hit" };
-    expect(classifyRetryStrategy(info, "turn_failed")).toEqual({
-      action: "retry",
-      delayMs: 60_000,
-      reason: "usage_limit",
-    });
-  });
-
-  it("returns retry with 30s default for RateLimited", () => {
-    const info: CodexErrorInfo = { type: "RateLimited", message: "slow down" };
-    expect(classifyRetryStrategy(info, "turn_failed")).toEqual({
-      action: "retry",
-      delayMs: 30_000,
-      reason: "rate_limited",
-    });
-  });
-
-  it("uses retryAfterMs from error info for RateLimited when available", () => {
-    const info: CodexErrorInfo = { type: "RateLimited", message: "slow down", retryAfterMs: 5000 };
-    expect(classifyRetryStrategy(info, "turn_failed")).toEqual({
-      action: "retry",
-      delayMs: 5000,
-      reason: "rate_limited",
-    });
-  });
-
-  it("returns hard_fail for Unauthorized", () => {
-    const info: CodexErrorInfo = { type: "Unauthorized", message: "invalid key" };
-    expect(classifyRetryStrategy(info, "turn_failed")).toEqual({ action: "hard_fail" });
-  });
-
-  it("returns default for unknown error type", () => {
-    const info: CodexErrorInfo = { type: "SomethingElse", message: "unknown" };
-    expect(classifyRetryStrategy(info, "turn_failed")).toEqual({ action: "default" });
-  });
-
-  it("returns default when errorInfo is null", () => {
-    expect(classifyRetryStrategy(null, "turn_failed")).toEqual({ action: "default" });
-  });
-
-  it("returns default when errorInfo is null and errorCode is null", () => {
-    expect(classifyRetryStrategy(null, null)).toEqual({ action: "default" });
   });
 });

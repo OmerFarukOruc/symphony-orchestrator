@@ -138,7 +138,10 @@ function makeCtx(
       source: "default",
     } as ModelSelection),
     notify: vi.fn(),
-    queueRetry: vi.fn(),
+    retryCoordinator: {
+      dispatch: vi.fn().mockResolvedValue(undefined),
+      cancel: vi.fn(),
+    },
   };
 }
 
@@ -171,13 +174,13 @@ describe("worker-outcome branch invariants", () => {
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, issue, makeWorkspace(), 1);
 
     // The fallback should use the original issue, which is still "In Progress" (active).
-    // With a normal outcome and no stop signal, it queues a continuation retry using that issue.
-    expect(ctx.queueRetry).toHaveBeenCalledWith(
-      expect.objectContaining({ identifier: "MT-1" }),
-      2,
-      1000,
-      "continuation",
-      { threadId: "sess-xyz" },
+    // With a normal outcome and no stop signal, the retry coordinator should receive the original issue.
+    expect(ctx.retryCoordinator.dispatch).toHaveBeenCalledWith(
+      ctx,
+      expect.objectContaining({
+        latestIssue: expect.objectContaining({ identifier: "MT-1" }),
+        attempt: 1,
+      }),
     );
   });
 
@@ -238,8 +241,13 @@ describe("worker-outcome branch invariants", () => {
       3,
     );
 
-    // The code uses `attempt ?? 1` (not `(attempt ?? 0) + 1`), so attempt=3 passes 3 directly.
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 3, 0, "model_override_updated");
+    expect(ctx.retryCoordinator.dispatch).toHaveBeenCalledWith(
+      ctx,
+      expect.objectContaining({
+        attempt: 3,
+        outcome: expect.objectContaining({ errorCode: "model_override_updated" }),
+      }),
+    );
   });
 
   it("fire-and-forget writeback ordering: completedView set synchronously before writeLinearCompletion", async () => {

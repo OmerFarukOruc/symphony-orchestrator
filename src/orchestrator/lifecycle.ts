@@ -5,6 +5,7 @@ import { issueView } from "./views.js";
 import { isActiveState, isTerminalState } from "../state/policy.js";
 import type { AttemptRecord, Issue, ServiceConfig } from "../core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
+import type { RetryCoordinator } from "./retry-coordinator.js";
 
 const VISIBLE_QUEUE_LIMIT = 50;
 
@@ -63,12 +64,12 @@ async function reconcileRetries(ctx: ReconcileContext, byId: Map<string, Issue>,
   for (const retryEntry of ctx.retryEntries.values()) {
     const latest = byId.get(retryEntry.issueId);
     if (!latest) {
-      ctx.clearRetryEntry(retryEntry.issueId);
+      cancelRetryEntry(ctx, retryEntry.issueId);
       continue;
     }
     retryEntry.issue = latest;
     if (isTerminalState(latest.state, config)) {
-      ctx.clearRetryEntry(retryEntry.issueId);
+      cancelRetryEntry(ctx, retryEntry.issueId);
       await ctx.deps.workspaceManager.removeWorkspace(latest.identifier, latest).catch((error: unknown) => {
         ctx.deps.logger.warn(
           { issueId: retryEntry.issueId, identifier: latest.identifier, error: toErrorString(error) },
@@ -76,7 +77,7 @@ async function reconcileRetries(ctx: ReconcileContext, byId: Map<string, Issue>,
         );
       });
     } else if (!isActiveState(latest.state, config)) {
-      ctx.clearRetryEntry(retryEntry.issueId);
+      cancelRetryEntry(ctx, retryEntry.issueId);
     }
   }
 }
@@ -92,8 +93,17 @@ interface ReconcileContext {
     logger: { warn: (meta: Record<string, unknown>, message: string) => void };
   };
   getConfig: () => ServiceConfig;
-  clearRetryEntry: (issueId: string) => void;
+  retryCoordinator?: RetryCoordinator;
+  clearRetryEntry?: (issueId: string) => void;
   pushEvent: RuntimeEventSink;
+}
+
+function cancelRetryEntry(ctx: ReconcileContext, issueId: string): void {
+  if (ctx.retryCoordinator) {
+    ctx.retryCoordinator.cancel(issueId);
+    return;
+  }
+  ctx.clearRetryEntry?.(issueId);
 }
 export async function reconcileRunningAndRetrying(ctx: ReconcileContext): Promise<boolean> {
   const config = ctx.getConfig();

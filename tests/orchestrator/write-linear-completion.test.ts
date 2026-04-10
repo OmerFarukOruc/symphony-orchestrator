@@ -135,7 +135,10 @@ function makeCtx(
       .fn()
       .mockReturnValue({ model: "gpt-4o", reasoningEffort: "high", source: "default" } as ModelSelection),
     notify: vi.fn(),
-    queueRetry: vi.fn(),
+    retryCoordinator: {
+      dispatch: vi.fn().mockResolvedValue(undefined),
+      cancel: vi.fn(),
+    },
   };
 }
 
