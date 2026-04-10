@@ -80,7 +80,7 @@
   .shell-sidebar-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 90;
+    z-index: var(--z-shell-backdrop);
     border: none;
     background: color-mix(in srgb, var(--bg-base) 62%, transparent);
     cursor: pointer;
@@ -101,7 +101,7 @@
   .shell-sidebar.is-mobile {
     position: fixed;
     inset: 0 auto 0 0;
-    z-index: 100;
+    z-index: var(--z-shell-drawer);
     width: min(86vw, var(--sidebar-width-expanded));
     max-width: 340px;
     transform: translateX(-100%);

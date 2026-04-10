@@ -1,15 +1,16 @@
 import { api } from "../api";
 import { createIcon } from "./icons";
+import { MOBILE_BREAKPOINT } from "./breakpoints.js";
 import { toggleTheme } from "./theme";
 import { toast } from "./toast";
 import { createIconButton } from "./buttons.js";
-
-const MOBILE_BREAKPOINT = "(max-width: 760px)";
 
 type SidebarStateDetail = {
   mobile: boolean;
   mobileOpen: boolean;
 };
+
+let sidebarStateHandler: ((event: Event) => void) | null = null;
 
 export function getHeaderNavButtonState(detail: SidebarStateDetail): {
   visible: boolean;
@@ -61,10 +62,15 @@ export function initHeader(headerEl: HTMLElement): void {
     globalThis.dispatchEvent(new CustomEvent("shell:toggle-sidebar"));
   });
 
-  globalThis.addEventListener("shell:sidebar-state", (event) => {
+  if (sidebarStateHandler) {
+    globalThis.removeEventListener("shell:sidebar-state", sidebarStateHandler);
+  }
+
+  sidebarStateHandler = (event) => {
     const detail = (event as CustomEvent<SidebarStateDetail>).detail;
     syncHeaderNavButton(headerEl, navButton, detail);
-  });
+  };
+  globalThis.addEventListener("shell:sidebar-state", sidebarStateHandler);
 
   const brand = document.createElement("div");
   brand.className = "header-brand";

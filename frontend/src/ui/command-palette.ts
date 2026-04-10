@@ -5,13 +5,15 @@ import {
   filterPaletteEntries,
   type PaletteEntry,
 } from "./command-palette-data.js";
+import { createOverlay, type OverlayController } from "./overlay.js";
 
-let overlayEl: HTMLElement | null = null;
 let inputEl: HTMLInputElement | null = null;
 let listEl: HTMLElement | null = null;
 let activeIndex = 0;
 let requestId = 0;
 let dynamicEntries: PaletteEntry[] = [];
+let paletteOpenHandler: (() => void) | null = null;
+let overlayController: OverlayController | null = null;
 
 function resolveRunHistoryPath(): string | null {
   const matchers = [/^\/issues\/([^/]+)\/.+$/, /^\/issues\/([^/]+)$/, /^\/queue\/([^/]+)$/, /^\/logs\/([^/]+)$/];
@@ -31,10 +33,10 @@ function filteredItems(): PaletteEntry[] {
 }
 
 function closePalette(): void {
-  if (!overlayEl) {
+  if (!overlayController) {
     return;
   }
-  overlayEl.hidden = true;
+  overlayController.close();
 }
 
 function renderList(): void {
@@ -69,8 +71,7 @@ function renderList(): void {
     button.setAttribute("aria-selected", String(index === activeIndex));
     const iconSpan = createIconSlot(item.icon, { slotClassName: "palette-item-icon", size: 18 });
     const copyWrap = document.createElement("span");
-    copyWrap.style.display = "grid";
-    copyWrap.style.gap = "2px";
+    copyWrap.className = "palette-item-copy";
     const nameSpan = document.createElement("span");
     nameSpan.className = "palette-item-name";
     nameSpan.textContent = item.name;
@@ -100,16 +101,16 @@ async function refreshDynamicEntries(): Promise<void> {
     }
     dynamicEntries = [];
   }
-  if (nextRequestId === requestId && overlayEl && !overlayEl.hidden) {
+  if (nextRequestId === requestId && overlayController?.isOpen()) {
     renderList();
   }
 }
 
 function openPalette(): void {
-  if (!overlayEl || !inputEl) {
+  if (!overlayController || !inputEl) {
     return;
   }
-  overlayEl.hidden = false;
+  overlayController.open();
   inputEl.value = "";
   activeIndex = 0;
   renderList();
@@ -118,15 +119,13 @@ function openPalette(): void {
 }
 
 export function initCommandPalette(): void {
-  overlayEl = document.createElement("div");
-  overlayEl.className = "palette-overlay fade-in";
-  overlayEl.hidden = true;
-  overlayEl.setAttribute("role", "dialog");
-  overlayEl.setAttribute("aria-modal", "true");
-  overlayEl.setAttribute("aria-label", "Command palette");
+  overlayController?.root.remove();
+  overlayController = createOverlay({ mode: "palette" });
+  overlayController.root.classList.add("fade-in");
+  overlayController.root.setAttribute("role", "dialog");
+  overlayController.root.setAttribute("aria-modal", "true");
+  overlayController.root.setAttribute("aria-label", "Command palette");
 
-  const panel = document.createElement("div");
-  panel.className = "palette-panel";
   inputEl = document.createElement("input");
   inputEl.className = "palette-input";
   inputEl.placeholder = "Jump to route or action";
@@ -144,14 +143,12 @@ export function initCommandPalette(): void {
   listEl.id = "palette-listbox";
   listEl.setAttribute("role", "listbox");
   listEl.setAttribute("aria-label", "Command palette results");
-  panel.append(inputEl, listEl);
-  overlayEl.append(panel);
-  overlayEl.addEventListener("click", (event) => {
-    if (event.target === overlayEl) {
-      closePalette();
-    }
-  });
-  overlayEl.addEventListener("keydown", (event) => {
+
+  const fragment = document.createDocumentFragment();
+  fragment.append(inputEl, listEl);
+  overlayController.render(fragment);
+
+  overlayController.root.addEventListener("keydown", (event) => {
     const items = filteredItems();
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -171,6 +168,9 @@ export function initCommandPalette(): void {
     }
   });
 
-  document.body.append(overlayEl);
-  globalThis.addEventListener("palette:open", () => openPalette());
+  if (paletteOpenHandler) {
+    globalThis.removeEventListener("palette:open", paletteOpenHandler);
+  }
+  paletteOpenHandler = () => openPalette();
+  globalThis.addEventListener("palette:open", paletteOpenHandler);
 }

@@ -14,6 +14,9 @@ export interface OverlayOptions {
 type OverlayContent = DocumentFragment | HTMLElement;
 
 export interface OverlayController {
+  root: HTMLElement;
+  backdrop: HTMLElement | null;
+  surface: HTMLElement;
   open: () => void;
   close: (reason?: OverlayCloseReason) => void;
   render: (content: DocumentFragment | HTMLElement) => HTMLElement;
@@ -98,7 +101,15 @@ export function createOverlay(options: OverlayOptions): OverlayController {
     }
   }
 
-  return { open, close, render, isOpen: () => !elements.root.hidden };
+  return {
+    root: elements.root,
+    backdrop: elements.backdrop,
+    surface: elements.surface,
+    open,
+    close,
+    render,
+    isOpen: () => !elements.root.hidden,
+  };
 }
 
 function createOverlayElements(mode: OverlayMode, position: OverlayPosition): OverlayElements {
@@ -168,6 +179,6 @@ function focusOverlay(surface: HTMLElement): void {
   (focusable ?? surface).focus();
 }
 
-function hasVisibleSharedOverlay(): boolean {
+export function hasVisibleSharedOverlay(): boolean {
   return document.querySelector('[data-shared-overlay-root="true"]:not([hidden])') !== null;
 }

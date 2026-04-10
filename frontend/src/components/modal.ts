@@ -1,3 +1,5 @@
+import { hasVisibleSharedOverlay } from "../ui/overlay.js";
+
 export interface ModalController {
   root: HTMLElement;
   body: HTMLElement;
@@ -24,6 +26,7 @@ export function createModal(options: ModalOptions): ModalController {
   root.className = "modal-root";
   root.hidden = true;
   root.setAttribute("aria-hidden", "true");
+  root.dataset.sharedOverlayRoot = "true";
 
   const backdrop = document.createElement("button");
   backdrop.type = "button";
@@ -149,7 +152,9 @@ export function createModal(options: ModalOptions): ModalController {
       root.setAttribute("aria-hidden", "true");
       root.classList.remove("is-closing");
       globalThis.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      if (!hasVisibleSharedOverlay()) {
+        document.body.style.overflow = "";
+      }
       if (previousFocus) {
         previousFocus.focus();
       }
@@ -170,8 +175,10 @@ export function createModal(options: ModalOptions): ModalController {
   function destroy(): void {
     close();
     globalThis.removeEventListener("keydown", onKey);
-    document.body.style.overflow = "";
     root.remove();
+    if (!hasVisibleSharedOverlay()) {
+      document.body.style.overflow = "";
+    }
   }
 
   function resetContent(): void {

@@ -1,4 +1,4 @@
-import { getOutlet } from "./ui/shell";
+import { getOutlet } from "./ui/shell.js";
 import { decoratePageRoot } from "./ui/page-motion";
 
 interface Route {

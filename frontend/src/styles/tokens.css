@@ -81,6 +81,16 @@
   --stroke-accent: 2px;
   --stroke-emphasis: 3px;
 
+  /* Layering */
+  --z-base: 0;
+  --z-tooltip: 20;
+  --z-toast: 40;
+  --z-drawer-backdrop: 50;
+  --z-drawer: 51;
+  --z-palette: 60;
+  --z-shell-backdrop: 90;
+  --z-shell-drawer: 100;
+
   /* Badge/chip dimensions */
   --badge-dot-size: 6px;
   --badge-padding-default: 3px 8px;
@@ -88,13 +98,13 @@
   --badge-padding-lg: 4px 10px;
 
   /* Status color tint percentages — controls the visual intensity of status color blending */
-  --status-tint-badge-bg: 18%;       /* Badge/chip background mix */
-  --status-tint-badge-border: 34%;   /* Badge/chip border mix */
-  --status-tint-surface: 4%;         /* Strip/container urgent-state background */
+  --status-tint-badge-bg: 18%; /* Badge/chip background mix */
+  --status-tint-badge-border: 34%; /* Badge/chip border mix */
+  --status-tint-surface: 4%; /* Strip/container urgent-state background */
   --status-tint-surface-claimed: 3%; /* Strip/container claimed-state background */
-  --status-tint-list: 6%;            /* List-item urgent-state background */
-  --status-tint-list-claimed: 5%;    /* List-item claimed-state background */
-  --status-tint-interactive: 12%;    /* Active interactive element (copper accent) background */
+  --status-tint-list: 6%; /* List-item urgent-state background */
+  --status-tint-list-claimed: 5%; /* List-item claimed-state background */
+  --status-tint-interactive: 12%; /* Active interactive element (copper accent) background */
 
   /* Shell dimensions */
   --sidebar-width-collapsed: 56px;
@@ -104,6 +114,10 @@
   --dashboard-h3-size: var(--text-sm-plus); /* 15px — sub-panel headings */
   --dashboard-number-lg: clamp(2rem, 3vw, 2.75rem); /* large KPI readout */
   --dashboard-panel-min-height: 15rem;
+
+  --stale-banner-bg: color-mix(in srgb, var(--color-copper-700) 42%, var(--bg-surface));
+  --stale-banner-border: color-mix(in srgb, var(--color-copper-500) 40%, var(--border-stitch));
+  --stale-banner-hover-bg: color-mix(in srgb, var(--color-copper-500) 30%, transparent);
 
   --tone-live-bg: color-mix(in srgb, var(--status-running) 6%, var(--bg-surface));
   --tone-warning-bg: color-mix(in srgb, var(--status-retrying) 8%, var(--bg-surface));

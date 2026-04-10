@@ -1,13 +1,12 @@
 import { api } from "../api";
 import { router } from "../router";
+import { MOBILE_BREAKPOINT } from "./breakpoints.js";
 import { buildSidebarBadgeCounts } from "./sidebar-badges.js";
 import { createIcon, createIconSlot, type IconName } from "./icons";
 import { navGroups, navItems } from "./nav-items";
 
 const STORAGE_KEY = "risoluto-sidebar-expanded";
 const GROUP_COLLAPSED_KEY = "risoluto-sidebar-groups-collapsed";
-const MOBILE_BREAKPOINT = "(max-width: 760px)";
-
 let _navHandler: (() => void) | null = null;
 let _toggleHandler: (() => void) | null = null;
 let _mobileHandler: (() => void) | null = null;

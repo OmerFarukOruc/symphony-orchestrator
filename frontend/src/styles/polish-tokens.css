@@ -26,13 +26,6 @@
   --active-press: 1px;
   --hover-glow-opacity: 0.06;
 
-  /* Z-index scale — explicit layering */
-  --z-dropdown: 100;
-  --z-sticky: 200;
-  --z-overlay: 300;
-  --z-modal: 400;
-  --z-toast: 500;
-
   /* Polish spacing — micro adjustments */
   --space-half: 2px;
   --space-nudge: 6px;
