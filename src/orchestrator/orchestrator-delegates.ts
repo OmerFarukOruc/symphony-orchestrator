@@ -41,49 +41,9 @@ import { toErrorString } from "../utils/type-guards.js";
  */
 
 export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): OrchestratorContext {
-  const ctx = {} as OrchestratorContext;
-  const retryCoordinator = createRetryCoordinator(
-    {
-      tracker: deps.tracker,
-      attemptStore: deps.attemptStore,
-      workspaceManager: deps.workspaceManager,
-      logger: deps.logger,
-    },
-    {
-      runningEntries: state.runningEntries,
-      retryEntries: state.retryEntries,
-      detailViews: state.detailViews,
-      completedViews: state.completedViews,
-      isRunning: () => state.running,
-      getConfig: () => deps.configStore.getConfig(),
-      claimIssue: (issueId) => {
-        state.claimedIssueIds.add(issueId);
-        state.markDirty();
-      },
-      releaseIssueClaim: (issueId) => {
-        const deleted = state.claimedIssueIds.delete(issueId);
-        if (deleted) state.markDirty();
-      },
-      hasAvailableStateSlot: (issue) =>
-        hasAvailableStateSlotState(issue, deps.configStore.getConfig(), state.runningEntries),
-      markDirty: () => state.markDirty(),
-      notify: (event) => notifyChannel(deps, event),
-      pushEvent: (event) => {
-        pushRecentEvent(state, event);
-        state.markDirty();
-        forwardToEventBus(deps, event);
-      },
-      resolveModelSelection: (identifier) =>
-        resolveModelSelectionFromConfig(state.issueModelOverrides, deps.configStore.getConfig(), identifier),
-      launchWorker: async (issue, attempt, options) => {
-        await ctx.launchWorker(issue, attempt, options);
-      },
-    },
-  );
-
   // Build the context object first so closures can reference it directly,
   // avoiding recursive buildCtx() calls inside the returned object.
-  Object.assign(ctx, {
+  const ctx: OrchestratorContext = {
     get running() {
       return state.running;
     },
@@ -127,7 +87,7 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
       state.markDirty();
       forwardToEventBus(deps, event);
     },
-    retryCoordinator,
+    retryCoordinator: undefined as unknown as OrchestratorContext["retryCoordinator"],
     launchWorker: async (issue, attempt, options) => {
       await launchWorkerState(
         {
@@ -188,7 +148,47 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
       return { killed: result.killed };
     },
     eventBus: deps.eventBus,
-  });
+  };
+
+  ctx.retryCoordinator = createRetryCoordinator(
+    {
+      tracker: deps.tracker,
+      attemptStore: deps.attemptStore,
+      workspaceManager: deps.workspaceManager,
+      logger: deps.logger,
+    },
+    {
+      runningEntries: state.runningEntries,
+      retryEntries: state.retryEntries,
+      detailViews: state.detailViews,
+      completedViews: state.completedViews,
+      isRunning: () => state.running,
+      getConfig: () => deps.configStore.getConfig(),
+      claimIssue: (issueId) => {
+        state.claimedIssueIds.add(issueId);
+        state.markDirty();
+      },
+      releaseIssueClaim: (issueId) => {
+        const deleted = state.claimedIssueIds.delete(issueId);
+        if (deleted) state.markDirty();
+      },
+      hasAvailableStateSlot: (issue) =>
+        hasAvailableStateSlotState(issue, deps.configStore.getConfig(), state.runningEntries),
+      markDirty: () => state.markDirty(),
+      notify: (event) => notifyChannel(deps, event),
+      pushEvent: (event) => {
+        pushRecentEvent(state, event);
+        state.markDirty();
+        forwardToEventBus(deps, event);
+      },
+      resolveModelSelection: (identifier) =>
+        resolveModelSelectionFromConfig(state.issueModelOverrides, deps.configStore.getConfig(), identifier),
+      launchWorker: async (issue, attempt, options) => {
+        await ctx.launchWorker(issue, attempt, options);
+      },
+    },
+  );
+
   return ctx;
 }
 
