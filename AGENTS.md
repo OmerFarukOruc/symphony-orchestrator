@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Core source lives in `src/`. Start with `src/cli/index.ts` for process startup and archive directory setup, `src/orchestrator/orchestrator.ts` for polling, retries, runtime state, and model overrides, and `src/agent-runner/index.ts` for Codex worker execution. HTTP and dashboard behavior live in `src/http/server.ts` and `src/http/routes.ts`. Archived run persistence lives in `src/core/attempt-store.ts`, workspace lifecycle in `src/workspace/manager.ts`, and Linear transport in `src/linear/client.ts`.
+Core source lives in `src/`. Start with `src/cli/index.ts` for process startup and archive directory setup, `src/orchestrator/orchestrator.ts` for polling, retries, runtime state, and model overrides, and `src/agent-runner/index.ts` for Codex worker execution. HTTP and dashboard behavior live in `src/http/server.ts` and `src/http/routes/`. Archived run persistence lives in `src/core/attempt-store-port.ts` and `src/persistence/sqlite/`, workspace lifecycle in `src/workspace/manager.ts`, and Linear transport in `src/linear/client.ts`.
 
 Tests live in `tests/` and use fixture data from `tests/fixtures/`. Built artifacts are emitted to `dist/`; treat that directory as generated output, not hand-edited source. Runtime docs and operator guidance live in `README.md`, `docs/OPERATOR_GUIDE.md`, `docs/ROADMAP_AND_STATUS.md`, `docs/CONFORMANCE_AUDIT.md`, `docs/reference/RELEASING.md`, and `docs/TRUST_AND_AUTH.md`.
 
@@ -101,4 +101,6 @@ When I say "watch mode", call agentation_watch_annotations in a loop.
 For each annotation: acknowledge it, make the fix, then resolve it with a summary.
 Continue watching until I say stop or timeout is reached.
 
-When writing complex features or significant refactors, use an ExecPlan (as described in .agents/PLANS.md) from design to implementation.
+## Design System
+
+Frontend design tokens, component vocabulary, and brand guidelines in `.impeccable.md`. Consult before any UI work. `mc-*` prefix for all component classes.
