@@ -127,6 +127,14 @@ describe("LinearClient.updateIssueState", () => {
     await expect(client.updateIssueState("issue-1", "state-done")).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
+
+  it("does not retry when Linear returns an unconfirmed issueUpdate payload", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse({ issueUpdate: { success: false } }));
+    const client = makeClient(fetchMock);
+
+    await expect(client.updateIssueState("issue-1", "state-done")).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("LinearClient.updateIssueStateStrict", () => {

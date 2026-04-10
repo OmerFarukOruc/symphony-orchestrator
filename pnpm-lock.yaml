@@ -142,9 +142,6 @@ importers:
       semantic-release:
         specifier: ^25.0.3
         version: 25.0.3(typescript@6.0.2)
-      slop-scan:
-        specifier: ^0.2.0
-        version: 0.2.0
       tsx:
         specifier: ^4.20.6
         version: 4.21.0
@@ -4535,12 +4532,6 @@ packages:
       { integrity: sha512-stxByr12oeeOyY2BlviTNQlYV5xOj47GirPr4yA1hE9JCtxfQN0+tVbkxwCtYDQWhEKWFHsEK48ORg5jrouCAg== }
     engines: { node: ">=20" }
 
-  slop-scan@0.2.0:
-    resolution:
-      { integrity: sha512-HPMUHIfqA/UAC8ZQ+nacuGnfvJQHaTud8GLXlkC8SJ8jyvk+JJU3BSOp7iv8gXPJVfxVK14XghUobH3lCLC5iQ== }
-    engines: { node: ">=18" }
-    hasBin: true
-
   smol-toml@1.6.1:
     resolution:
       { integrity: sha512-dWUG8F5sIIARXih1DTaQAX4SsiTXhInKf1buxdY9DIg4ZYPZK5nGM1VRIYmEbDbsHt7USo99xSLFu5Q1IqTmsg== }
@@ -4881,12 +4872,6 @@ packages:
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
       typescript: ">=4.8.4 <6.1.0"
-
-  typescript@5.9.3:
-    resolution:
-      { integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw== }
-    engines: { node: ">=14.17" }
-    hasBin: true
 
   typescript@6.0.2:
     resolution:
@@ -7943,15 +7928,6 @@ snapshots:
     dependencies:
       ini: 4.1.1
 
-  globby@16.2.0:
-    dependencies:
-      "@sindresorhus/merge-streams": 4.0.0
-      fast-glob: 3.3.3
-      ignore: 7.0.5
-      is-path-inside: 4.0.0
-      slash: 5.1.0
-      unicorn-magic: 0.4.0
-
   gopd@1.2.0: {}
 
   graceful-fs@4.2.10: {}
@@ -8109,8 +8085,6 @@ snapshots:
   is-number@7.0.0: {}
 
   is-obj@2.0.0: {}
-
-  is-path-inside@4.0.0: {}
 
   is-plain-obj@4.1.0: {}
 
@@ -9057,8 +9031,6 @@ snapshots:
     dependencies:
       unicode-emoji-modifier-base: 1.0.0
 
-  slash@5.1.0: {}
-
   slice-ansi@7.1.2:
     dependencies:
       ansi-styles: 6.2.3
@@ -9068,11 +9040,6 @@ snapshots:
     dependencies:
       ansi-styles: 6.2.3
       is-fullwidth-code-point: 5.1.0
-
-  slop-scan@0.2.0:
-    dependencies:
-      globby: 16.2.0
-      typescript: 5.9.3
 
   smol-toml@1.6.1: {}
 
@@ -9337,8 +9304,6 @@ snapshots:
       typescript: 6.0.2
     transitivePeerDependencies:
       - supports-color
-
-  typescript@5.9.3: {}
 
   typescript@6.0.2: {}
 

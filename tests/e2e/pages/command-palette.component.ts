@@ -72,6 +72,9 @@ export class CommandPaletteComponent {
   }
 
   async isOpen(): Promise<boolean> {
+    if ((await this.overlay.count()) === 0) {
+      return false;
+    }
     const hidden = await this.overlay.getAttribute("hidden");
     return hidden === null;
   }
