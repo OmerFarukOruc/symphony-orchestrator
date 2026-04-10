@@ -8,7 +8,7 @@ const CONTAINER_HOME = "/home/agent";
  * Container-internal path — isolated from host filesystem and kept under
  * HOME so Codex can safely install helper binaries when needed.
  */
-const CONTAINER_CODEX_HOME = "/home/agent/.codex-runtime"; // NOSONAR — container-internal path, not host
+const CONTAINER_CODEX_HOME = "/home/agent/.codex-runtime";
 
 export interface DockerRunInput {
   sandboxConfig: SandboxConfig;

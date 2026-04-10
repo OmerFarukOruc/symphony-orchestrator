@@ -244,7 +244,6 @@ export class Orchestrator implements OrchestratorPort {
     return detail ? { ...detail } : null;
   }
 
-  // eslint-disable-next-line sonarjs/function-return-type
   abortIssue(
     identifier: string,
   ):
@@ -445,7 +444,6 @@ export class Orchestrator implements OrchestratorPort {
         const h = this.watchdog.getHealth();
         return { status: h.status, checkedAt: h.checkedAt, runningCount: h.runningCount, message: h.message };
       },
-      // eslint-disable-next-line sonarjs/function-return-type
       getWebhookHealth: () => {
         const tracker = this.deps.webhookHealthTracker;
         if (!tracker) return undefined;

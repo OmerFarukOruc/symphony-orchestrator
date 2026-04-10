@@ -6,7 +6,6 @@ import { NotificationManager } from "../notification/manager.js";
 import { SlackWebhookChannel } from "../notification/slack-webhook.js";
 import { WebhookChannel } from "../notification/webhook-channel.js";
 
-// eslint-disable-next-line sonarjs/function-return-type -- intentional T | null guard
 function createChannel(config: NotificationChannelConfig, logger: RisolutoLogger): NotificationChannel | null {
   if (!config.enabled) {
     return null;

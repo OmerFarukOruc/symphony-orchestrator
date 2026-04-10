@@ -136,7 +136,6 @@ function stringifyJson(value: Record<string, unknown> | null): string | null {
   return value === null ? null : JSON.stringify(value);
 }
 
-// eslint-disable-next-line sonarjs/function-return-type -- intentional T | null guard
 function parseJson(value: string | null): Record<string, unknown> | null {
   if (value === null) {
     return null;

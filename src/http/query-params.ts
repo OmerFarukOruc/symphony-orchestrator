@@ -1,4 +1,3 @@
-// eslint-disable-next-line sonarjs/function-return-type -- intentional T | null guard
 export function parseLimit(value: unknown): number | null {
   const candidate = Array.isArray(value) ? value[0] : value;
   if (typeof candidate !== "string") return null;

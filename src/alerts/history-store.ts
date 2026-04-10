@@ -113,7 +113,6 @@ function parseFailures(value: string): NotificationDeliveryFailure[] {
     const parsed = JSON.parse(value) as unknown;
     return Array.isArray(parsed)
       ? parsed
-          // eslint-disable-next-line sonarjs/function-return-type -- intentional T | null guard
           .map((entry) => {
             if (!isRecord(entry)) {
               return null;

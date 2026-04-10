@@ -35,7 +35,7 @@ export function createDispatcher(getConfig: () => ServiceConfig, deps: Dispatche
 
   if (dispatchMode === "remote") {
     return new DispatchClient({
-      dispatchUrl: process.env.DISPATCH_URL ?? "http://data-plane:9100/dispatch", // NOSONAR — internal service-to-service on private network
+      dispatchUrl: process.env.DISPATCH_URL ?? "http://data-plane:9100/dispatch",
       secret: process.env.DISPATCH_SHARED_SECRET ?? "",
       getConfig,
       logger: deps.logger.child({ component: "dispatch-client" }),

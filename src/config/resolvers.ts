@@ -52,7 +52,7 @@ function expandHomePath(value: string): string {
  * Falls back to "/tmp" if TMPDIR is not set.
  */
 function resolveTmpDir(value: string): string {
-  return value.replaceAll("$TMPDIR", process.env.TMPDIR ?? os.tmpdir()); // NOSONAR — resolved path used inside sandboxed containers with restricted tmpfs
+  return value.replaceAll("$TMPDIR", process.env.TMPDIR ?? os.tmpdir());
 }
 
 /**

@@ -181,7 +181,6 @@ async function initializeConfigStores(
   return { overlayStore, secretsStore, configStore, persistence, needsSetup };
 }
 
-// eslint-disable-next-line sonarjs/function-return-type -- intentional T | undefined guard
 function parsePortValue(rawPort: string | undefined): number | undefined {
   if (rawPort === undefined) return undefined;
   // Reject empty, non-digit, and leading-zero forms (e.g. "00000004000")

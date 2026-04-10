@@ -155,7 +155,6 @@ class SqliteNotificationStore implements NotificationStorePort {
   }
 }
 
-// eslint-disable-next-line sonarjs/function-return-type
 function stringifyJson(value: Record<string, unknown> | NotificationDeliverySummary | null): string | null {
   if (value === null) {
     return null;
@@ -163,7 +162,6 @@ function stringifyJson(value: Record<string, unknown> | NotificationDeliverySumm
   return JSON.stringify(value);
 }
 
-// eslint-disable-next-line sonarjs/function-return-type
 function parseJson<T>(value: string | null): T | null {
   if (value === null) {
     return null;
@@ -205,7 +203,6 @@ function cloneMetadata(metadata: Record<string, unknown> | null): Record<string,
   return metadata ? { ...metadata } : null;
 }
 
-// eslint-disable-next-line sonarjs/function-return-type
 function cloneDeliverySummary(summary: NotificationDeliverySummary | null): NotificationDeliverySummary | null {
   if (summary === null) {
     return null;

@@ -46,7 +46,6 @@ class LoggerErrorTracker implements ErrorTracker {
     private readonly dsn: string,
     private readonly logger: RisolutoLogger,
   ) {
-    // eslint-disable-next-line sonarjs/slow-regex -- [^@]+ bounded by literal @; safe
     logger.info({ dsn: dsn.replaceAll(/\/\/[^@]+@/g, "//<redacted>@") }, "Sentry error tracking initialized");
   }
 

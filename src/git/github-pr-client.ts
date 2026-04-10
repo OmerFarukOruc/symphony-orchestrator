@@ -117,7 +117,7 @@ function buildGraphqlEndpoint(apiBaseUrl: string): string {
   const parsed = new URL(apiBaseUrl);
   parsed.search = "";
   parsed.hash = "";
-  const normalizedPath = parsed.pathname.replace(/\/+$/u, ""); // eslint-disable-line sonarjs/slow-regex -- safe: trims trailing slashes only
+  const normalizedPath = parsed.pathname.replace(/\/+$/u, "");
 
   if (parsed.hostname === "api.github.com") {
     parsed.pathname = "/graphql";

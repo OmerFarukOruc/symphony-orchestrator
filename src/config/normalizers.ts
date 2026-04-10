@@ -405,7 +405,6 @@ const LEGACY_APPROVAL_ALIASES: Record<string, string> = {
 };
 
 // Codex AskForApproval accepts string | { granular: {...} } — mixed return is intentional.
-// eslint-disable-next-line sonarjs/function-return-type
 export function normalizeApprovalPolicy(value: unknown): string | Record<string, unknown> {
   if (typeof value === "string") {
     return LEGACY_APPROVAL_ALIASES[value] ?? (VALID_APPROVAL_POLICIES.has(value) ? value : "never");

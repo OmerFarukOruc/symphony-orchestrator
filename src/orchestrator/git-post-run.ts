@@ -63,9 +63,7 @@ async function fetchDiffStats(
     const { stdout } = await execFileAsync("git", ["diff", "--shortstat", `${defaultBranch}...HEAD`], {
       cwd: workspaceDir,
     });
-    // eslint-disable-next-line sonarjs/slow-regex -- bounded git --shortstat output; safe
     const addMatch = /(\d+) insertion/.exec(stdout);
-    // eslint-disable-next-line sonarjs/slow-regex -- bounded git --shortstat output; safe
     const delMatch = /(\d+) deletion/.exec(stdout);
     return {
       additions: addMatch ? parseInt(addMatch[1], 10) : 0,
