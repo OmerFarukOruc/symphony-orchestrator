@@ -94,3 +94,7 @@ test("dashboard shows running issues", async ({ page, apiMock }) => {
 - **Visual tests**: `tests/e2e/specs/visual/*.visual.spec.ts` — screenshot comparison. Run with `--project=visual`. Use `--update-snapshots` to regenerate.
 - **Clock freezing**: `freezeClock(page)` from `tests/e2e/support/clock.ts` before visual tests for deterministic timestamps.
 - **Unhandled API guard**: `installUnhandledApiGuard(page)` aborts unmocked API calls — installed automatically by the fixture.
+
+## ESM mocking gotchas
+
+- **Never `vi.doMock` Node built-ins** (`node:path`, `node:fs`, `node:os`, etc.) in ESM — non-deterministic under Vitest's ESM loader. Inject function parameters instead (e.g. `relativeFn`, `resolveFn`) and pass real impls from call sites. Surfaced in the paths.ts test flake fixed during the v1 rewrite (2026-04-09).

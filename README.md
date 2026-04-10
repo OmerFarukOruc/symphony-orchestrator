@@ -14,7 +14,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-blue?style=flat-square&logo=typescript" />
   <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker" />
   <img alt="Status" src="https://img.shields.io/badge/status-v0.6.0-orange?style=flat-square" />
-  <img alt="Tests" src="https://img.shields.io/badge/tests-2904%20passing-brightgreen?style=flat-square" />
+
 </p>
 
 <br/>
@@ -92,7 +92,7 @@ docker compose up --build
 ```
 
 > [!TIP]
-> Enable real-time Linear webhooks by starting with the tunnel profile: `docker compose --profile tunnel up -d`. Webhooks are the fast path; Risoluto still keeps a slower polling sweep as anti-entropy. See the [Cloudflare Tunnel Guide](docs/CLOUDFLARE_TUNNEL.md).
+> Enable real-time Linear webhooks by starting with the tunnel profile: `docker compose --profile tunnel up -d`. Webhooks are the fast path; Risoluto still keeps a slower polling sweep as anti-entropy. See the [Cloudflare Tunnel Guide](docs/guides/CLOUDFLARE_TUNNEL.md).
 
 **2. Open the dashboard**
 
@@ -389,17 +389,17 @@ Risoluto stores all config in `~/.risoluto/` (or the directory passed via `--dat
 ## 🧪 Testing
 
 ```bash
-pnpm test                  # Deterministic unit tests (Vitest, 2904 tests)
+pnpm test                  # Deterministic unit tests (Vitest)
 pnpm run test:watch        # Watch mode for local iteration
 pnpm run test:integration  # Opt-in live integration (requires credentials)
 ```
 
 ### Playwright E2E Tests
 
-The dashboard has a full Playwright E2E suite with 119 smoke tests across 17 spec files and 4 visual regression baselines. Tests run against a Vite dev server with fully mocked API routes — no backend needed.
+The dashboard has a full Playwright E2E suite with smoke tests across 21 spec files and 4 visual regression baselines. Tests run against a Vite dev server with fully mocked API routes — no backend needed.
 
 ```bash
-pnpm exec playwright test --project=smoke   # Smoke tests (119 tests, ~7s)
+pnpm exec playwright test --project=smoke   # Smoke tests (~7s)
 pnpm exec playwright test --project=visual  # Visual regression (4 baselines)
 pnpm exec playwright test --project=visual --update-snapshots  # Regenerate baselines
 ```
@@ -414,7 +414,7 @@ cp scripts/e2e-config.example.yaml scripts/e2e-config.yaml
 ./scripts/run-e2e.sh
 ```
 
-Runs 12 phases: preflight, start, setup wizard, issue creation, agent monitoring, PR verification, restart resilience, and cleanup. Produces a structured report in `e2e-reports/`. See **[E2E Testing Guide](docs/E2E_TESTING.md)** for full setup and config reference.
+Runs 12 phases: preflight, start, setup wizard, issue creation, agent monitoring, PR verification, restart resilience, and cleanup. Produces a structured report in `e2e-reports/`. See **[E2E Testing Guide](docs/guides/E2E_TESTING.md)** for full setup and config reference.
 
 > [!TIP]
 > The integration suite skips cleanly when required credentials are absent — safe to run without API keys. E2E smoke tests require Playwright browsers (`pnpm exec playwright install chromium`). The lifecycle test requires Linear/GitHub credentials and Docker.
@@ -432,13 +432,13 @@ Runs 12 phases: preflight, start, setup wizard, issue creation, agent monitoring
 
 ### 🔧 Operating & Monitoring
 
-| Document                                           | What it covers                                                            |
-| -------------------------------------------------- | ------------------------------------------------------------------------- |
-| **[Runbooks](docs/RUNBOOKS.md)**                   | Troubleshooting playbooks for common failures                             |
-| **[Observability](docs/OBSERVABILITY.md)**         | Prometheus metrics, request tracing, error tracking, alert rules          |
-| **[E2E Testing](docs/E2E_TESTING.md)**             | Automated lifecycle test: setup, config, phases, diagnostics              |
-| **[Releasing](docs/RELEASING.md)**                 | Release preparation checklist                                             |
-| **[Cloudflare Tunnel](docs/CLOUDFLARE_TUNNEL.md)** | Expose webhook endpoint via Cloudflare Tunnel for real-time Linear events |
+| Document                                                  | What it covers                                                            |
+| --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **[Runbooks](docs/guides/RUNBOOKS.md)**                   | Troubleshooting playbooks for common failures                             |
+| **[Observability](docs/guides/OBSERVABILITY.md)**         | Prometheus metrics, request tracing, error tracking, alert rules          |
+| **[E2E Testing](docs/guides/E2E_TESTING.md)**             | Automated lifecycle test: setup, config, phases, diagnostics              |
+| **[Releasing](docs/reference/RELEASING.md)**              | Release preparation checklist                                             |
+| **[Cloudflare Tunnel](docs/guides/CLOUDFLARE_TUNNEL.md)** | Expose webhook endpoint via Cloudflare Tunnel for real-time Linear events |
 
 ### 🏛️ Architecture & Security
 
@@ -452,7 +452,6 @@ Runs 12 phases: preflight, start, setup wizard, issue creation, agent monitoring
 
 | Document                                                 | What it covers                               |
 | -------------------------------------------------------- | -------------------------------------------- |
-| **[EXECPLAN.md](EXECPLAN.md)**                           | Internal implementation log                  |
 | **[Visual Verify Skill](skills/visual-verify/SKILL.md)** | Dashboard screenshot diffing and QA workflow |
 
 ---

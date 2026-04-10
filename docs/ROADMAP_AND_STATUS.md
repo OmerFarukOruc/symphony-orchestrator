@@ -82,7 +82,7 @@ The following roadmap issues were completed and should no longer be counted as o
 | [#307](https://github.com/OmerFarukOruc/risoluto/issues/307) | PR lifecycle monitoring with auto-archive on merge | PR / CI | Shipped 2026-04-03 |
 | [#375](https://github.com/OmerFarukOruc/risoluto/issues/375) | Attempt checkpoint history with timeline listing for recovery and replay | Persistence / State | Shipped 2026-04-03 |
 
-For audit evidence and implementation detail, see [roadmap-implementation-audit-2026-04-03.md](roadmap-implementation-audit-2026-04-03.md), [EXECPLAN.md](../EXECPLAN.md), and [CONFORMANCE_AUDIT.md](CONFORMANCE_AUDIT.md#prci-automation-bundle-2026-04-03).
+For audit evidence and implementation detail, see [roadmap-implementation-audit-2026-04-03.md](archive/roadmap-implementation-audit-2026-04-03.md) and [CONFORMANCE_AUDIT.md](CONFORMANCE_AUDIT.md#prci-automation-bundle-2026-04-03).
 
 ---
 
