@@ -1,5 +1,5 @@
 import type { WorkflowColumn } from "../types";
-import { filterColumn, type QueueFilters, type QueueUiState } from "./queue-state";
+import { filterColumn, hasActiveFilters, type QueueFilters, type QueueUiState } from "./queue-state";
 
 interface QueueKeyboardOptions {
   columns: WorkflowColumn[];
@@ -9,6 +9,7 @@ interface QueueKeyboardOptions {
   filterButton?: HTMLButtonElement;
   onSelect: (issueId: string, fullPage: boolean) => void;
   onClose: () => void;
+  onClearFilters: () => void;
   onRender: () => void;
 }
 
@@ -16,7 +17,7 @@ export function handleQueueKeyboard(event: KeyboardEvent, options: QueueKeyboard
   if (event.target instanceof HTMLElement && ["INPUT", "SELECT", "TEXTAREA"].includes(event.target.tagName)) {
     return;
   }
-  const { columns, filters, ui, search, filterButton, onSelect, onClose, onRender } = options;
+  const { columns, filters, ui, search, filterButton, onSelect, onClose, onClearFilters, onRender } = options;
   const visible = columns.filter((column) => filterColumn(column, filters).length > 0);
   if (event.key === "/") {
     event.preventDefault();
@@ -57,6 +58,10 @@ export function handleQueueKeyboard(event: KeyboardEvent, options: QueueKeyboard
     return;
   }
   if (event.key === "Escape") {
+    if (hasActiveFilters(filters)) {
+      onClearFilters();
+      return;
+    }
     onClose();
   }
 }

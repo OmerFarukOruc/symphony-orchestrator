@@ -27,6 +27,21 @@ export function createFilters(): QueueFilters {
   };
 }
 
+export function isDefaultFilters(filters: QueueFilters): boolean {
+  return (
+    filters.search === "" &&
+    filters.stages.size === 0 &&
+    filters.priority === "all" &&
+    filters.sort === "updated" &&
+    filters.density === "comfortable" &&
+    filters.showCompleted === true
+  );
+}
+
+export function hasActiveFilters(filters: QueueFilters): boolean {
+  return filters.search !== "" || filters.stages.size > 0 || filters.priority !== "all";
+}
+
 export function createUiState(_columns: WorkflowColumn[]): QueueUiState {
   return {
     focusedColumn: 0,

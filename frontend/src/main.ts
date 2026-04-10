@@ -15,7 +15,6 @@ import "./styles/forms.css";
 import "./styles/modal.css";
 import "./styles/hardening.css";
 import "./styles/kanban.css";
-import "./styles/state-guide.css";
 import "./styles/container-queries.css";
 import "./styles/git.css";
 

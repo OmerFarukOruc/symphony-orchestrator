@@ -1,5 +1,6 @@
 import type { WorkflowColumn } from "../types";
-import type { QueueFilters } from "./queue-state";
+import { getStageDescription } from "../components/state-guide.js";
+import { hasActiveFilters, type QueueFilters } from "./queue-state";
 import { createIcon } from "../ui/icons.js";
 import { createIconButton } from "../ui/buttons.js";
 
@@ -7,6 +8,7 @@ interface ChipOptions {
   ariaLabel?: string;
   classNames?: string[];
   count?: number;
+  title?: string;
 }
 
 function chip(label: string, onClick: () => void, options: ChipOptions = {}): HTMLButtonElement {
@@ -15,6 +17,9 @@ function chip(label: string, onClick: () => void, options: ChipOptions = {}): HT
   button.classList.add("mc-chip", "is-interactive", ...(options.classNames ?? []));
   if (options.ariaLabel) {
     button.setAttribute("aria-label", options.ariaLabel);
+  }
+  if (options.title) {
+    button.title = options.title;
   }
   const labelSpan = document.createElement("span");
   labelSpan.className = "queue-chip-label";
@@ -48,14 +53,8 @@ function utilitySep(): HTMLSpanElement {
   const sep = document.createElement("span");
   sep.className = "toolbar-utility-sep";
   sep.setAttribute("role", "separator");
+  sep.setAttribute("aria-orientation", "vertical");
   return sep;
-}
-
-function utilityLabel(text: string): HTMLSpanElement {
-  const label = document.createElement("span");
-  label.className = "toolbar-utility-label";
-  label.textContent = text;
-  return label;
 }
 
 function filterGroup(label: string, className: string, content: HTMLElement): HTMLDivElement {
@@ -63,9 +62,7 @@ function filterGroup(label: string, className: string, content: HTMLElement): HT
   group.className = `toolbar-filter-group ${className}`;
   group.setAttribute("role", "group");
   group.setAttribute("aria-label", label);
-  const groupLabel = utilityLabel(label);
-  groupLabel.classList.add("toolbar-filter-label");
-  group.append(groupLabel, content);
+  group.append(content);
   return group;
 }
 
@@ -115,6 +112,7 @@ interface QueueToolbarOptions {
   filters: QueueFilters;
   columns: WorkflowColumn[];
   onRefresh: () => void;
+  onReset: () => void;
   onChange: () => void;
 }
 
@@ -124,7 +122,7 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   firstStageChip: () => HTMLButtonElement | null;
   refreshLabels: () => void;
 } {
-  const { toolbar, filters, columns, onRefresh, onChange } = options;
+  const { toolbar, filters, columns, onRefresh, onReset, onChange } = options;
   toolbar.replaceChildren();
 
   const search = Object.assign(document.createElement("input"), {
@@ -134,9 +132,26 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   search.setAttribute("aria-label", "Search issues");
   search.value = filters.search;
 
+  const searchHint = document.createElement("kbd");
+  searchHint.className = "mc-button-hint queue-search-hint";
+  searchHint.textContent = "/";
+  searchHint.title = "Press / to focus search";
+
   const searchRow = document.createElement("div");
   searchRow.className = "toolbar-search-row";
-  searchRow.append(search);
+  searchRow.append(search, searchHint);
+
+  const resetBtn = document.createElement("button");
+  resetBtn.type = "button";
+  resetBtn.className = "mc-button is-ghost is-sm queue-toolbar-reset";
+  resetBtn.textContent = "Reset";
+  resetBtn.title = "Clear all filters (Esc)";
+  resetBtn.hidden = !hasActiveFilters(filters);
+  resetBtn.addEventListener("click", onReset);
+
+  function updateResetVisibility(): void {
+    resetBtn.hidden = !hasActiveFilters(filters);
+  }
 
   const stageBar = document.createElement("div");
   stageBar.className = "mc-toolbar-group";
@@ -157,12 +172,14 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
             if (filters.stages.has(column.key)) filters.stages.delete(column.key);
             else filters.stages.add(column.key);
             renderStages();
+            updateResetVisibility();
             onChange();
           },
           {
             ariaLabel: column.count > 0 ? `${column.label}, ${column.count} issues` : `${column.label}, no issues`,
             classNames: ["queue-stage-chip", `queue-stage-chip-${normalizedKey}`],
-            count: column.count > 0 ? column.count : 0,
+            count: column.count > 0 ? column.count : undefined,
+            title: getStageDescription(column.key),
           },
         );
         button.classList.toggle("is-active", active);
@@ -188,6 +205,7 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
           () => {
             filters.priority = value;
             renderPriorities();
+            updateResetVisibility();
             onChange();
           },
           {
@@ -225,14 +243,6 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
     sort.append(option);
   });
 
-  const sortGroup = document.createElement("div");
-  sortGroup.className = "toolbar-utility-group toolbar-sort-group";
-  sortGroup.append(
-    createIcon("sort", { size: 14, className: "toolbar-utility-icon" }),
-    utilityLabel("Board order"),
-    sort,
-  );
-
   const densityBtn = iconButton(
     filters.density === "comfortable" ? "unfold" : "dense",
     filters.density === "comfortable" ? "Switch to compact view" : "Switch to comfortable view",
@@ -245,7 +255,7 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
 
   const viewGroup = document.createElement("div");
   viewGroup.className = "toolbar-utility-group";
-  viewGroup.append(sortGroup, densityBtn);
+  viewGroup.append(sort, densityBtn);
 
   const completedBtn = iconButton(
     filters.showCompleted ? "eye" : "eyeOff",
@@ -257,19 +267,11 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   );
   completedBtn.classList.toggle("is-active", filters.showCompleted);
 
-  const completedLabel = document.createElement("span");
-  completedLabel.className = "toolbar-icon-btn-label";
-  completedLabel.textContent = "Completed";
-
-  const completedGroup = document.createElement("div");
-  completedGroup.className = "toolbar-utility-group";
-  completedGroup.append(completedBtn, completedLabel);
-
   const refreshBtn = iconButton("refresh", "Refresh queue", onRefresh);
 
   const actionsGroup = document.createElement("div");
   actionsGroup.className = "toolbar-utility-group";
-  actionsGroup.append(completedGroup, refreshBtn);
+  actionsGroup.append(completedBtn, resetBtn, refreshBtn);
 
   function syncControls(): void {
     /* density */
@@ -289,6 +291,7 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
 
   search.addEventListener("input", () => {
     filters.search = search.value;
+    updateResetVisibility();
     onChange();
   });
   sort.addEventListener("change", () => {

@@ -461,17 +461,11 @@
   flex-wrap: wrap;
 }
 
-.toolbar-filter-label {
-  padding-left: 1px;
-}
-
 .toolbar-utility-row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border-default);
   justify-content: space-between;
 }
 
@@ -491,29 +485,12 @@
   flex-shrink: 0;
 }
 
-/* Small uppercase label */
-.toolbar-utility-label {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  letter-spacing: var(--tracking-wider);
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  user-select: none;
-}
-
-/* Static icon hint next to label */
-.toolbar-utility-icon {
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-
-/* Icon-only button — meets 44px touch target minimum */
+/* Icon-only button — 32px on fine pointer, 44px on coarse */
 .toolbar-icon-btn {
   display: grid;
   place-items: center;
-  width: var(--control-height-xl);
-  height: var(--control-height-xl);
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
   padding: 0;
   border: 1px solid var(--border-stitch);
   border-radius: var(--radius-md);
@@ -525,6 +502,13 @@
     background-color var(--motion-fast) var(--ease-out-quart),
     border-color var(--motion-fast) var(--ease-out-quart),
     box-shadow var(--motion-fast) var(--ease-out-quart);
+}
+
+@media (pointer: coarse) {
+  .toolbar-icon-btn {
+    width: var(--control-height-xl);
+    height: var(--control-height-xl);
+  }
 }
 
 .toolbar-icon-btn:hover {
@@ -547,24 +531,26 @@
   background: color-mix(in srgb, var(--color-copper-400) 18%, var(--bg-elevated));
 }
 
-/* Small label next to an icon button */
-.toolbar-icon-btn-label {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  color: var(--text-secondary);
-  user-select: none;
-}
-
 .toolbar-search-row .mc-input {
   flex: 1 1 320px;
   min-width: 200px;
+  max-width: 28rem;
+}
+
+.queue-search-hint {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.queue-toolbar-reset[hidden] {
+  display: none;
 }
 
 /* Stage filter chips with clear toggle states */
 .queue-toolbar .mc-toolbar-group .mc-chip {
   cursor: pointer;
   padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
@@ -826,51 +812,34 @@
 }
 
 @media (min-width: 1181px) {
-  .toolbar-filter-row {
-    align-items: flex-start;
+  .queue-toolbar {
+    display: grid;
+    grid-template-columns: minmax(16rem, 28rem) minmax(0, 1fr) auto;
+    align-items: center;
     gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
   }
 
-  .toolbar-filter-group {
-    padding: var(--space-3);
-    border: 1px solid color-mix(in srgb, var(--border-stitch) 55%, transparent);
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-elevated) 82%, transparent) 0%,
-      color-mix(in srgb, var(--bg-surface) 92%, transparent) 100%
-    );
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-elevated) 45%, transparent);
+  .queue-toolbar .toolbar-search-row,
+  .queue-toolbar .toolbar-filter-row,
+  .queue-toolbar .toolbar-utility-row {
+    display: flex;
+    align-items: center;
+    min-width: 0;
   }
 
-  .toolbar-filter-group-stages {
-    flex: 2 1 40rem;
+  .queue-toolbar .toolbar-filter-row {
+    gap: var(--space-3);
+    flex-wrap: wrap;
   }
 
-  .toolbar-filter-group-priority {
-    flex: 1 1 18rem;
-  }
-
-  .toolbar-filter-group .toolbar-utility-label.toolbar-filter-label {
-    color: var(--text-muted);
-  }
-
-  .toolbar-utility-row {
-    align-items: flex-start;
-  }
-
-  .toolbar-sort-group {
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid color-mix(in srgb, var(--border-stitch) 58%, transparent);
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-copper-400) 5%, var(--bg-elevated)) 0%,
-      var(--bg-surface) 100%
-    );
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-elevated) 45%, transparent);
+  .queue-toolbar .toolbar-utility-row {
+    gap: var(--space-2);
+    justify-content: flex-end;
   }
 
   .toolbar-sort-select {
-    min-width: 13rem;
+    min-width: 10rem;
     background: var(--bg-surface);
   }
 
@@ -878,8 +847,6 @@
   .queue-toolbar .mc-toolbar-group .queue-priority-chip {
     position: relative;
     min-height: var(--control-height-xl);
-    border-radius: 999px;
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-elevated) 38%, transparent);
   }
 
   .queue-toolbar .mc-toolbar-group .queue-stage-chip {
@@ -916,9 +883,7 @@
     color: var(--interactive-primary-text);
     border-color: var(--queue-chip-accent);
     background: var(--queue-chip-accent);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.18),
-      0 8px 18px -12px color-mix(in srgb, var(--queue-chip-accent) 80%, transparent);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
   }
 
   .queue-toolbar .mc-toolbar-group .queue-stage-chip.is-active:hover {
@@ -940,9 +905,7 @@
     color: var(--interactive-primary-text);
     border-color: var(--queue-chip-accent);
     background: color-mix(in srgb, var(--queue-chip-accent) 84%, black);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.16),
-      0 8px 18px -12px color-mix(in srgb, var(--queue-chip-accent) 80%, transparent);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16);
   }
 
   .queue-toolbar .mc-toolbar-group .queue-priority-chip.is-active:hover {

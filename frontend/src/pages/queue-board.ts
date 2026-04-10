@@ -158,6 +158,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
             hasFilters ? "Clear filters" : "Open overview",
             hasFilters ? options.clearFilters : () => router.navigate("/"),
             emptyVariant,
+            { headingLevel: "h2" },
           ),
         );
         return handle.section;

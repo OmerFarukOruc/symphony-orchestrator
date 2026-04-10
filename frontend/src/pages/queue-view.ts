@@ -1,6 +1,5 @@
 import { api } from "../api.js";
 import { createIssueInspector } from "../components/issue-inspector.js";
-import { createStateGuide } from "../components/state-guide.js";
 import { router } from "../router.js";
 import { store } from "../state/store.js";
 import type { AppState } from "../state/store.js";
@@ -36,7 +35,7 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
   mainPane.className = "queue-main-pane";
   const toolbar = document.createElement("section");
   toolbar.className = "mc-toolbar queue-toolbar";
-  const stateGuide = createStateGuide();
+  toolbar.setAttribute("aria-label", "Queue filters");
   const layout = document.createElement("section");
   layout.className = "queue-layout";
   const boardWrap = document.createElement("div");
@@ -54,7 +53,7 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
   pageHeading.className = "sr-only";
   pageHeading.textContent = "Board";
 
-  boardWrap.append(stateGuide.element, board);
+  boardWrap.append(board);
   mainPane.append(toolbar, boardWrap);
   layout.append(mainPane, inspector.element);
   page.append(pageHeading, layout);
@@ -93,6 +92,7 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
       filters,
       columns,
       onRefresh,
+      onReset: clearFilters,
       onChange: renderBoard,
     });
     searchInput = built.search;
@@ -153,6 +153,7 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
           router.navigate("/queue");
         }
       },
+      onClearFilters: clearFilters,
       onRender: renderBoard,
     });
   }

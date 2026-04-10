@@ -33,8 +33,8 @@ test.describe("Queue / Issue Smoke", () => {
     const queue = new QueuePage(page);
     await queue.navigate();
 
-    await expect(page.getByText("Workflow stages")).toBeVisible({ timeout: 5000 });
-    await expect(page.locator(".toolbar-filter-group-priority .toolbar-filter-label")).toHaveText("Priority");
+    await expect(page.getByRole("group", { name: "Workflow stages" })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("group", { name: "Priority" })).toBeVisible();
     await expect(page.getByLabel("Board order")).toBeVisible();
     await expect(page.getByRole("button", { name: "Hide Backlog lane" })).toBeVisible();
   });
