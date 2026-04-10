@@ -3,6 +3,8 @@ date: 2026-04-06
 topic: testing-infrastructure-systematization
 ---
 
+> **⚠️ ARCHIVED** — This is a historical planning artifact from April 2026. It is preserved for context but does not reflect current project state. See [ROADMAP_AND_STATUS.md](../ROADMAP_AND_STATUS.md) for the active roadmap.
+
 # Testing Infrastructure & PR Readiness System
 
 ## Problem Frame

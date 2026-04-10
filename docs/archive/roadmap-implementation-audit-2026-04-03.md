@@ -1,3 +1,5 @@
+> **⚠️ ARCHIVED** — This is a historical planning artifact from April 2026. It is preserved for context but does not reflect current project state. See [ROADMAP_AND_STATUS.md](../ROADMAP_AND_STATUS.md) for the active roadmap.
+
 # Roadmap Implementation Audit — 2026-04-03
 
 This audit reconciles every roadmap issue listed in GitHub epic `#354` against the current Risoluto codebase (`src/`, `frontend/`, `tests/`) plus shipped implementation docs where they explicitly point to code.

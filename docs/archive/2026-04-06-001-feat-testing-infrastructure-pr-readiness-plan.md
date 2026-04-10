@@ -1,11 +1,13 @@
 ---
 title: "feat: Testing Infrastructure & PR Readiness System"
 type: feat
-status: active
+status: archived
 date: 2026-04-06
 origin: docs/brainstorms/2026-04-06-testing-infrastructure-requirements.md
 deepened: 2026-04-06
 ---
+
+> **⚠️ ARCHIVED** — This is a historical planning artifact from April 2026. It is preserved for context but does not reflect current project state. See [ROADMAP_AND_STATUS.md](../ROADMAP_AND_STATUS.md) for the active roadmap.
 
 # Testing Infrastructure & PR Readiness System
 
