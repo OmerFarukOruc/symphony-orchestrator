@@ -1668,7 +1668,6 @@ Runs daily at **02:00 UTC** (`cron: "0 2 * * *"`), plus on `workflow_dispatch` f
 
 | Job                   | Description                                                                                                                       |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `mutation`            | Full mutation testing with Stryker across `src/`.                                                                                 |
 | `fullstack-e2e`       | Runs the fullstack Playwright suite against the real backend started by CI.                                                       |
 | `visual-regression`   | Runs the Playwright visual regression suite and uploads diffs on failure.                                                         |
 | `live-provider-smoke` | Runs credential-backed live-provider smoke coverage using real external integrations.                                             |
@@ -1676,7 +1675,7 @@ Runs daily at **02:00 UTC** (`cron: "0 2 * * *"`), plus on `workflow_dispatch` f
 | `nightly-notify`      | Sends a Slack alert if any nightly-only validation job fails.                                                                     |
 
 > [!NOTE]
-> PR-triggered jobs (`e2e-smoke`, `docker-build`, `integration-pr`) are skipped on schedule runs. Nightly-only jobs (`mutation`, `quarantine-heal`) are skipped on PR runs.
+> PR-triggered jobs (`e2e-smoke`, `docker-build`, `integration-pr`) are skipped on schedule runs. Nightly-only jobs (`quarantine-heal`) are skipped on PR runs.
 
 ### Slack Notifications
 

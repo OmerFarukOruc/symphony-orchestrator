@@ -60,6 +60,49 @@ This repo uses strict ESM TypeScript with `moduleResolution: "NodeNext"`. Follow
 
 Match the current import pattern by using `.js` extensions in local TypeScript imports, for example `import { Orchestrator } from "./orchestrator.js";`.
 
+## Refactoring & Modularity Guidelines
+
+Keep classes, modules, and functions focused on a single responsibility. Prefer modular, structured composition that is easy to read, test, and change. Extract well-named helpers or smaller modules when doing so improves testability, reuse, or readability — not solely to reduce line count.
+
+**Cohesion over smallness.** A coherent 280-line file with one clear concern is better than three 90-line files that fragment a single concept. Optimize for how easy a module is to understand, not how short it is.
+
+### Extraction Decision Tree
+
+Before extracting code from a file, walk this checklist in order. Extract only if you reach the "extract" outcome.
+
+1. Does the file mix multiple concerns? If yes → extract the secondary concern into its own module. If no → continue.
+2. Is the candidate code called from more than one site, OR does it have independent testability value? If no to both → keep it inline (a named local function is fine). Stop.
+3. Would extracting force the reader to jump between files to understand a single linear flow? If yes → keep it inline. Stop.
+4. Would the extracted module be under ~30 lines with no realistic reuse? If yes → keep it as a named local function inside the file. Stop.
+5. Is it a tightly coupled read-modify-write sequence sharing closure state? If yes → keep it as one block. Stop.
+6. All checks passed → extract. Create a well-named module, export the function, and import it from the original file.
+
+The 300-line mark is where mixed concerns typically become painful. Use it as a prompt to run the decision tree above — but a single-concern 400-line file that passes step 1 is fine as-is.
+
+Files containing only type definitions, query strings, or pure constants are exempt from size review.
+
+### Extraction Patterns
+
+- Prefer standalone functions over sub-classes. Extract logic into exported functions that receive dependencies through typed context objects, not through class inheritance. Example: `export async function handleWorkerOutcome(ctx: WorkerOutcomeContext, ...): Promise<void>`.
+- Use a context interface when an extracted function needs access to multiple pieces of parent state. Define the interface in a dedicated `context.ts` file. The parent class provides a `ctx()` method that bundles `this.*` references. Keep context interfaces narrow — 6 fields or fewer. If a context is growing beyond that, the extracted function likely needs further decomposition.
+- Consolidate shared utilities deliberately. Utilities over ~10 lines appearing in 2+ files should be moved to `src/utils/` and imported from there. Shorter utilities (under ~10 lines) may stay duplicated if they are stable and context-specific — premature consolidation of trivial helpers creates coupling without benefit.
+
+### Long Functions
+
+Long functions must be broken into named helper functions. If a function has multiple phases (e.g., setup → execute → cleanup), each phase should be its own function. Prefer local named functions within the file unless the helper meets the extraction criteria above.
+
+### Module Directory Structure
+
+When a module is large enough to warrant extraction, create a directory for its sub-modules. Cap directory nesting at 3 levels from `src/` (e.g., `src/orchestrator/dispatch/handlers/` is the maximum depth). Deeper nesting signals over-fragmentation — flatten or rethink the decomposition.
+
+Each extracted directory should have an `index.ts` barrel file that re-exports the public API. Internal helpers should not be exported from the barrel. Import convention: external consumers import from the barrel (`./dispatch/index.js`); files within the same directory import directly from the source file (`./handlers/worker.js`) to avoid circular references.
+
+### When Adding New Code
+
+- Before adding code to an existing file, run the extraction decision tree above. If the file already mixes concerns, extract the secondary concern before adding more.
+- When implementing a new feature that spans multiple concerns, start by creating separate modules — do not add everything to a single file and plan to "refactor later."
+- PRs adding code to files already over 300 lines that mix concerns should include the extraction, not defer it.
+
 ## Testing Guidelines
 
 Add or update Vitest coverage for every behavior change. Prefer deterministic unit tests in `tests/*.test.ts`; use fixtures in `tests/fixtures/` instead of live services where possible. Reserve `tests/live.integration.test.ts` for environment-dependent checks that should skip cleanly when credentials are absent.

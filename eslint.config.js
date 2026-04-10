@@ -27,6 +27,12 @@ export default tseslint.config(
       // Signal 5 — Cyclomatic complexity cap (AGENTS.md: keep functions focused)
       complexity: ["error", { max: 15 }],
 
+      // Signal 6 — File length gate (AGENTS.md: 300-line extraction decision tree trigger)
+      // Warns at 300 lines; type-only files and constants are exempt (review manually).
+      "max-lines": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
+
+      // Signal 6b — Function length gate (AGENTS.md: break long functions into named helpers)
+      "max-lines-per-function": ["warn", { max: 50, skipBlankLines: true, skipComments: true }],
 
       // Signal 7 — Dead code (lint-level)
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
@@ -45,6 +51,21 @@ export default tseslint.config(
     // Test files are naturally longer (setup + teardown + assertions in describe blocks)
     files: ["tests/**/*.ts"],
     rules: {
+      "max-lines": "off",
+      "max-lines-per-function": "off",
+    },
+  },
+  {
+    // AGENTS.md exemption: "Files containing only type definitions, query strings,
+    // or pure constants are exempt from size review."
+    files: [
+      "src/**/types.ts",
+      "src/**/types/**/*.ts",
+      "src/**/queries.ts",
+      "src/**/constants.ts",
+    ],
+    rules: {
+      "max-lines": "off",
     },
   },
   {
