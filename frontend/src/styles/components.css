@@ -7,7 +7,7 @@
 
 .surface-primary {
   border: var(--surface-primary-border-width) solid var(--surface-primary-border);
-  border-left: var(--surface-primary-accent-width) solid var(--surface-primary-border-accent);
+  border-top: 2px solid var(--surface-primary-border-accent);
   background: var(--surface-primary-bg);
   box-shadow: var(--surface-primary-shadow);
   color: var(--surface-primary-text);
@@ -36,7 +36,7 @@
 .mc-live-panel,
 .mc-status-primary {
   border: var(--stroke-default) solid var(--surface-primary-border);
-  border-left: var(--stroke-emphasis) solid var(--text-accent);
+  border-top: 1px solid color-mix(in srgb, var(--text-accent) 38%, var(--surface-primary-border));
   background: var(--surface-primary-bg);
   box-shadow: var(--surface-primary-shadow);
   color: var(--surface-primary-text);
@@ -56,7 +56,8 @@
 
 /* Primary variant for stat cards */
 .mc-stat-card.is-primary {
-  border-left: var(--stroke-emphasis) solid var(--text-accent);
+  border-color: color-mix(in srgb, var(--text-accent) 28%, var(--border-stitch));
+  border-top: 1px solid color-mix(in srgb, var(--text-accent) 34%, var(--border-stitch));
   background: var(--surface-primary-bg);
   padding: var(--space-5);
 }
@@ -114,7 +115,8 @@
 }
 
 .mc-strip.is-primary {
-  border-left: var(--stroke-emphasis) solid var(--text-accent);
+  border-color: color-mix(in srgb, var(--text-accent) 28%, var(--border-stitch));
+  border-top: 1px solid color-mix(in srgb, var(--text-accent) 34%, var(--border-stitch));
 }
 
 /* ============================================
@@ -124,17 +126,17 @@
    Status hierarchy based on operational urgency:
 
    URGENT/LIVE STATES (running, blocked, retrying):
-   - Strong border-left accent (3px)
+   - Full border emphasis with a semantic tint
    - Background tint for visibility
-   - Running: animated pulse indicator
+   - Running: semantic color, not decorative glow
 
    ACTIVE STATES (claimed):
-   - Medium border-left accent (2px)
+   - Medium border emphasis
    - Subtle background tint
-   - Animated pulse indicator (agent preparing)
+   - No directional stripe
 
    NON-URGENT STATES (queued, completed):
-   - No border-left accent
+   - No edge accent
    - No background tint
    - Rely on status chip/badge for identification
    ============================================ */
@@ -143,23 +145,23 @@
 
 /* Urgent states - strong visual treatment */
 .mc-strip.is-status-running {
-  border-left: var(--stroke-emphasis) solid var(--status-running);
+  border-color: color-mix(in srgb, var(--status-running) 32%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-running) var(--status-tint-surface), var(--bg-surface));
 }
 
 .mc-strip.is-status-blocked {
-  border-left: var(--stroke-emphasis) solid var(--status-blocked);
+  border-color: color-mix(in srgb, var(--status-blocked) 34%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-blocked) var(--status-tint-surface), var(--bg-surface));
 }
 
 .mc-strip.is-status-retrying {
-  border-left: var(--stroke-accent) solid var(--status-retrying);
+  border-color: color-mix(in srgb, var(--status-retrying) 36%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-retrying) var(--status-tint-surface), var(--bg-surface));
 }
 
 /* Active state - medium treatment */
 .mc-strip.is-status-claimed {
-  border-left: var(--stroke-accent) solid var(--status-claimed);
+  border-color: color-mix(in srgb, var(--status-claimed) 34%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-claimed) var(--status-tint-surface-claimed), var(--bg-surface));
 }
 
@@ -184,23 +186,23 @@
 
 /* Urgent states - strong visual treatment */
 .mc-container.is-status-running {
-  border-left: var(--stroke-emphasis) solid var(--status-running);
+  border-color: color-mix(in srgb, var(--status-running) 32%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-running) var(--status-tint-surface), var(--bg-surface));
 }
 
 .mc-container.is-status-blocked {
-  border-left: var(--stroke-emphasis) solid var(--status-blocked);
+  border-color: color-mix(in srgb, var(--status-blocked) 34%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-blocked) var(--status-tint-surface), var(--bg-surface));
 }
 
 .mc-container.is-status-retrying {
-  border-left: var(--stroke-accent) solid var(--status-retrying);
+  border-color: color-mix(in srgb, var(--status-retrying) 36%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-retrying) var(--status-tint-surface), var(--bg-surface));
 }
 
 /* Active state - medium treatment */
 .mc-container.is-status-claimed {
-  border-left: var(--stroke-accent) solid var(--status-claimed);
+  border-color: color-mix(in srgb, var(--status-claimed) 34%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-claimed) var(--status-tint-surface-claimed), var(--bg-surface));
 }
 
@@ -215,26 +217,26 @@
 /* Urgent states - strong visual treatment */
 .mc-list-item.is-status-running,
 .mc-rail-item.is-status-running {
-  border-left: var(--stroke-emphasis) solid var(--status-running);
+  border-color: color-mix(in srgb, var(--status-running) 34%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-running) var(--status-tint-list), var(--bg-elevated));
 }
 
 .mc-list-item.is-status-blocked,
 .mc-rail-item.is-status-blocked {
-  border-left: var(--stroke-emphasis) solid var(--status-blocked);
+  border-color: color-mix(in srgb, var(--status-blocked) 36%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-blocked) var(--status-tint-list), var(--bg-elevated));
 }
 
 .mc-list-item.is-status-retrying,
 .mc-rail-item.is-status-retrying {
-  border-left: var(--stroke-accent) solid var(--status-retrying);
+  border-color: color-mix(in srgb, var(--status-retrying) 38%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-retrying) var(--status-tint-list), var(--bg-elevated));
 }
 
 /* Active state - medium treatment */
 .mc-list-item.is-status-claimed,
 .mc-rail-item.is-status-claimed {
-  border-left: var(--stroke-accent) solid var(--status-claimed);
+  border-color: color-mix(in srgb, var(--status-claimed) 36%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-claimed) var(--status-tint-list-claimed), var(--bg-elevated));
 }
 
@@ -244,49 +246,6 @@
 .mc-list-item.is-status-completed,
 .mc-rail-item.is-status-completed {
   /* Status conveyed through badge/chip only, no border accent */
-}
-
-/* Live indicator animation for running/claimed states */
-@keyframes pulse-live {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.65;
-  }
-}
-
-/* Animated pulse indicator - running state (strongest) */
-.mc-list-item.is-status-running::before,
-.mc-rail-item.is-status-running::before,
-.mc-strip.is-status-running::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 60%;
-  background: var(--status-running);
-  border-radius: 0 2px 2px 0;
-  animation: pulse-live 2s ease-in-out infinite;
-}
-
-/* Animated pulse indicator - claimed state (active agent preparing) */
-.mc-list-item.is-status-claimed::before,
-.mc-rail-item.is-status-claimed::before,
-.mc-strip.is-status-claimed::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2px;
-  height: 50%;
-  background: var(--status-claimed);
-  border-radius: 0 2px 2px 0;
-  animation: pulse-live 2s ease-in-out infinite;
 }
 
 .mc-actions,
@@ -963,7 +922,8 @@
   display: block;
   padding: var(--space-3);
   background: var(--bg-muted);
-  border-left: var(--stroke-accent) solid var(--border-stitch);
+  border: 1px solid var(--border-stitch);
+  border-top: 1px solid color-mix(in srgb, var(--border-strong) 70%, var(--border-stitch));
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.6;

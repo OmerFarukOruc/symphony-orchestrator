@@ -1,3 +1,8 @@
+.notifications-loading {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .notifications-page-body {
   display: flex;
   flex-direction: column;
@@ -8,6 +13,10 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
+}
+
+.notifications-stats-row .mc-stat-card {
+  min-height: 92px;
 }
 
 .notifications-toolbar {

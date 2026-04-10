@@ -25,11 +25,13 @@
 }
 
 .mc-stat-card.is-live {
-  border-left: var(--stroke-emphasis) solid var(--status-running);
+  border-color: color-mix(in srgb, var(--status-running) 34%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-running) 6%, var(--bg-surface));
 }
 
 .mc-stat-card.is-warning {
-  border-left: var(--stroke-emphasis) solid var(--status-retrying);
+  border-color: color-mix(in srgb, var(--status-retrying) 34%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-retrying) 6%, var(--bg-surface));
 }
 
 .mc-stat-card-label {
@@ -70,21 +72,21 @@
 }
 
 .ws-row.is-status-running {
-  border-left: var(--stroke-emphasis) solid var(--status-running);
+  border-color: color-mix(in srgb, var(--status-running) 34%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-running) 4%, var(--bg-surface));
 }
 
 .ws-row.is-status-retrying {
-  border-left: var(--stroke-accent) solid var(--status-retrying);
+  border-color: color-mix(in srgb, var(--status-retrying) 34%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-retrying) 4%, var(--bg-surface));
 }
 
 .ws-row.is-status-completed {
-  border-left: var(--stroke-default) solid var(--border-default);
+  border-color: var(--border-default);
 }
 
 .ws-row.is-status-blocked {
-  border-left: var(--stroke-accent) solid var(--status-blocked);
+  border-color: color-mix(in srgb, var(--status-blocked) 34%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-blocked) 4%, var(--bg-surface));
 }
 

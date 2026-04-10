@@ -24,6 +24,10 @@ interface QueueBoardRendererOptions {
   dragManager?: DragStateManager;
 }
 
+const ATTENTION_LANE_KEYS = new Set(["review", "in_review", "blocked", "retrying"]);
+const LIVE_LANE_KEYS = new Set(["in_progress"]);
+const TERMINAL_LANE_KEYS = new Set(["done", "completed", "closed", "cancelled", "canceled", "duplicate"]);
+
 function makeMoveHandler(
   options: QueueBoardRendererOptions,
   issueId: string,
@@ -119,6 +123,9 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
       handle.section.classList.toggle("is-empty", list.length === 0 && !ui.collapsed.has(column.key));
       handle.section.classList.toggle("is-focused", ui.focusedColumn === columnIndex);
       handle.section.classList.toggle("is-gate", column.kind === "gate");
+      handle.section.classList.toggle("is-attention-lane", ATTENTION_LANE_KEYS.has(column.key));
+      handle.section.classList.toggle("is-live-lane", LIVE_LANE_KEYS.has(column.key));
+      handle.section.classList.toggle("is-terminal-lane", TERMINAL_LANE_KEYS.has(column.key) || column.terminal);
       handle.section.style.setProperty("--stagger-index", String(columnIndex));
       handle.label.textContent = column.label;
       handle.count.textContent = String(list.length);
@@ -133,7 +140,12 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
       if (list.length === 0) {
         const emptyHint = column.terminal
           ? "Finished work will collect here as issues complete."
-          : "Issues will appear here as Linear syncs new work.";
+          : ATTENTION_LANE_KEYS.has(column.key)
+            ? "If work needs a retry, unblock, or decision, it will surface here first."
+            : LIVE_LANE_KEYS.has(column.key)
+              ? "Active work appears here while agents are running."
+              : "Issues will appear here as Linear syncs new work.";
+        const emptyVariant = column.terminal ? "terminal" : ATTENTION_LANE_KEYS.has(column.key) ? "attention" : "queue";
         const hasFilters =
           options.filters.search.trim().length > 0 ||
           options.filters.stages.size > 0 ||
@@ -145,7 +157,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
             hasFilters ? `${emptyHint} Try clearing filters to see the full board.` : emptyHint,
             hasFilters ? "Clear filters" : "Open overview",
             hasFilters ? options.clearFilters : () => router.navigate("/"),
-            column.terminal ? "terminal" : "queue",
+            emptyVariant,
           ),
         );
         return handle.section;

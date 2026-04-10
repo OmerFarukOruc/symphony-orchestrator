@@ -31,11 +31,18 @@ export function createSettingsPage(options: SettingsPageOptions = {}): HTMLEleme
   const schemaBadge = document.createElement("span");
   schemaBadge.className = "mc-badge";
   const header = createPageHeader("Settings", "", { actions: schemaBadge });
-  const subtitleElement = header.querySelector(".page-subtitle");
-  if (!(subtitleElement instanceof HTMLElement)) {
-    throw new TypeError("Settings page header is missing a subtitle element.");
-  }
-  const subtitle = subtitleElement;
+  const subtitle =
+    header.querySelector<HTMLElement>(".page-subtitle") ??
+    (() => {
+      const text = header.querySelector<HTMLElement>(".page-header-text");
+      if (!(text instanceof HTMLElement)) {
+        throw new TypeError("Settings page header is missing a text wrapper.");
+      }
+      const subtitleElement = document.createElement("p");
+      subtitleElement.className = "page-subtitle";
+      text.append(subtitleElement);
+      return subtitleElement;
+    })();
   const shell = document.createElement("section");
   shell.className = "settings-layout";
   const rail = document.createElement("aside");

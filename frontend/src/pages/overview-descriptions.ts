@@ -17,18 +17,19 @@ export function describeCurrentMoment(
 
   if (attentionCount > 0) {
     return {
-      state: attentionCount === 1 ? "1 issue needs intervention" : `${attentionCount} issues need intervention`,
-      detail: "Blocked, retrying, and waiting work is collected here first so the next decision is always obvious.",
+      state: attentionCount === 1 ? "1 issue needs review" : `${attentionCount} issues need review`,
+      detail:
+        "Start in the review lane first. Blocked, retrying, and decision-ready work is grouped there before everything else.",
     };
   }
 
   if (running > 0) {
     return {
-      state: running === 1 ? "1 issue is in flight" : `${running} issues are in flight`,
+      state: running === 1 ? "1 issue is running" : `${running} issues are running`,
       detail:
         queued > 0
           ? `${queued} more ${queued === 1 ? "issue is" : "issues are"} queued behind the active work.`
-          : "Active work is progressing cleanly without intervention right now.",
+          : "Active work is progressing cleanly and nothing needs review right now.",
     };
   }
 
@@ -42,7 +43,7 @@ export function describeCurrentMoment(
   if (completed > 0) {
     return {
       state: "Queue is clear",
-      detail: "Everything is handled. Review the latest outcomes and recent activity below.",
+      detail: "Everything is handled. Scan finished runs and recent activity below if you want the latest context.",
     };
   }
 
@@ -58,12 +59,12 @@ export function describeCurrentMoment(
  */
 export function describeAttentionZone(attentionCount: number): string {
   if (attentionCount === 0) {
-    return "Nothing needs your attention right now. When an issue blocks, retries, or needs a decision, it will surface here.";
+    return "Nothing needs review right now. If a run stalls, retries, or needs your decision, it will appear here first.";
   }
 
   if (attentionCount === 1) {
-    return "One issue is waiting on a recovery, unblock, or decision. Resolve it here before scanning the rest of the system.";
+    return "One issue is waiting on a retry, unblock, or decision. Review it here before you scan the rest of the system.";
   }
 
-  return `${attentionCount} issues are competing for attention. Start with the oldest or most blocked item and work downward.`;
+  return `${attentionCount} issues are waiting on retries, unblocks, or decisions. Start with the oldest blocked item and work downward.`;
 }

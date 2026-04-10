@@ -4,6 +4,23 @@ import { formatRelativeTime } from "../utils/format";
 import { createOutcomeBadge, formatDurationCompact, STATUS_TO_OUTCOME } from "../components/outcome-badge";
 import { flashDiff } from "../utils/diff";
 
+function formatAttentionStatus(status: string): string {
+  switch (status) {
+    case "blocked":
+      return "Blocked";
+    case "retrying":
+      return "Retrying";
+    case "running":
+      return "Running";
+    case "claimed":
+      return "Claimed";
+    case "queued":
+      return "Queued";
+    default:
+      return status.replaceAll("_", " ");
+  }
+}
+
 /**
  * Creates an issue row for the attention or terminal list.
  * Terminal rows include an outcome badge and optional duration.
@@ -22,12 +39,25 @@ export function issueRow(issue: RuntimeIssueView, target: "attention" | "termina
   ident.textContent = issue.identifier;
 
   const time = document.createElement("span");
-  time.className = "overview-small";
+  time.className = "overview-small overview-row-time";
   time.textContent = formatRelativeTime(issue.updatedAt);
 
-  meta.append(ident, time);
+  const metaTail = document.createElement("div");
+  metaTail.className = "overview-row-meta-tail";
+
+  if (target === "attention") {
+    const status = document.createElement("span");
+    status.className = "overview-row-status";
+    status.dataset.status = issue.status;
+    status.textContent = formatAttentionStatus(issue.status);
+    metaTail.append(status);
+  }
+
+  metaTail.append(time);
+  meta.append(ident, metaTail);
 
   const titleDiv = document.createElement("div");
+  titleDiv.className = "overview-row-title";
   titleDiv.textContent = issue.title;
 
   row.append(meta, titleDiv);

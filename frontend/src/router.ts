@@ -33,7 +33,6 @@ function compileRoute(path: string): Pick<InternalRoute, "pattern" | "keys"> {
     })
     .join("\\/");
 
-  // nosemgrep: detect-non-literal-regexp
   return { pattern: new RegExp(`^${source}$`), keys };
 }
 

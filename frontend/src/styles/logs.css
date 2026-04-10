@@ -722,7 +722,7 @@
 .mc-log-thinking {
   margin-top: var(--space-2);
   border: 1px solid color-mix(in srgb, var(--status-retrying) 30%, var(--border-stitch));
-  border-left: 3px solid var(--status-retrying);
+  border-top: 1px solid color-mix(in srgb, var(--status-retrying) 40%, var(--border-stitch));
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--status-retrying) 5%, var(--bg-elevated));
   overflow: hidden;
@@ -781,7 +781,7 @@
   margin-top: var(--space-2);
   padding: var(--space-3);
   border: 1px solid color-mix(in srgb, var(--status-running) 25%, var(--border-stitch));
-  border-left: 3px solid var(--status-running);
+  border-top: 1px solid color-mix(in srgb, var(--status-running) 36%, var(--border-stitch));
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--status-running) 4%, var(--bg-elevated));
 }
@@ -808,7 +808,7 @@
   position: relative;
   margin-top: var(--space-2);
   border: 1px solid var(--border-stitch);
-  border-left: 3px solid var(--color-copper-400);
+  border-top: 1px solid color-mix(in srgb, var(--color-copper-400) 40%, var(--border-stitch));
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   overflow: hidden;
@@ -858,7 +858,7 @@
   margin-left: calc(var(--space-4) + 10px); /* Align with message, account for chevron */
   padding: var(--space-3);
   border: 1px solid var(--border-stitch);
-  border-left: 3px solid var(--border-default);
+  border-top: 1px solid var(--border-default);
   background: var(--bg-surface);
   overflow: auto;
   white-space: pre-wrap;

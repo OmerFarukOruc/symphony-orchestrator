@@ -10,7 +10,7 @@ import { registerPageCleanup } from "../utils/page";
 import { handleObservabilityKeyboard } from "./observability-keyboard";
 import { createRawMetricsDrawer } from "./observability-raw-drawer";
 import { renderObservabilitySections } from "./observability-sections";
-import { createObservabilityState, pushSnapshotTrend } from "./observability-state";
+import { createObservabilityState } from "./observability-state";
 
 export function createObservabilityPage(): HTMLElement {
   const state = createObservabilityState();
@@ -18,15 +18,12 @@ export function createObservabilityPage(): HTMLElement {
   page.className = "page observability-page fade-in";
   const actions = document.createElement("div");
   actions.className = "mc-actions";
-  const sourceBadge = document.createElement("span");
-  sourceBadge.className = "mc-badge";
-  sourceBadge.textContent = "Unified snapshot + raw metrics";
   const drawerButton = createButton("Raw metrics (x)");
   const refreshButton = createButton("Refresh (r)", "primary");
-  actions.append(sourceBadge, drawerButton, refreshButton);
+  actions.append(drawerButton, refreshButton);
   const header = createPageHeader(
     "Observability",
-    "Correlate current snapshot health, Prometheus counters, and in-session client trends without leaving the browser.",
+    "Flight recorder for the Risoluto runtime — every health surface, component counter, and trace in chronological order.",
     { actions },
   );
   const content = document.createElement("div");
@@ -87,11 +84,7 @@ export function createObservabilityPage(): HTMLElement {
     }
   }
 
-  function sync(appState: AppState): void {
-    const snapshot = state.summary?.runtime_state ?? appState.snapshot;
-    if (snapshot) {
-      pushSnapshotTrend(state, snapshot);
-    }
+  function sync(_appState: AppState): void {
     if (Date.now() - state.metricsFetchedAt > 4_000 && !state.refreshing) {
       void loadObservability();
     }

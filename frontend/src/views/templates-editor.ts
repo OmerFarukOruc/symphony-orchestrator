@@ -15,7 +15,7 @@ function buildJinja2Decorations(view: EditorView): DecorationSet {
   const decorations: Range<Decoration>[] = [];
   const doc = view.state.doc.toString();
 
-  // eslint-disable-next-line sonarjs/slow-regex -- bounded by template size; no user input
+  // bounded by template size; no user input
   const varRegex = /\{\{[^}]*\}\}/g;
   let match: RegExpExecArray | null;
   while ((match = varRegex.exec(doc)) !== null) {

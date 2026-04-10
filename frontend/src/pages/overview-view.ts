@@ -54,7 +54,7 @@ export function createOverviewPage(): HTMLElement {
   // Primary attention zone - dominant area
   const attentionZone = document.createElement("article");
   attentionZone.className = "overview-attention-zone";
-  const attentionHeader = createSectionHeader("Needs action", "Focus now");
+  const attentionHeader = createSectionHeader("Needs review", "Review first");
   const attentionCount = document.createElement("span");
   attentionCount.className = "overview-attention-count";
   attentionCount.hidden = true;
@@ -76,7 +76,7 @@ export function createOverviewPage(): HTMLElement {
   const collapsedSections = readCollapsedSections();
 
   // System health section — collapsible
-  const healthCollapsible = createCollapsibleSection("health", "System health", "Watchdog", collapsedSections);
+  const healthCollapsible = createCollapsibleSection("health", "System health", "Live checks", collapsedSections);
   healthCollapsible.section.classList.add("overview-health-section");
   const { root: healthBadge, update: updateHealthBadge } = createSystemHealthBadge();
   const { root: webhookPanel, update: updateWebhookPanel } = createWebhookHealthPanel();
@@ -84,7 +84,7 @@ export function createOverviewPage(): HTMLElement {
   secondary.append(healthCollapsible.section);
 
   // Token burn section — collapsible
-  const tokenCollapsible = createCollapsibleSection("tokens", "Token burn", "This session", collapsedSections);
+  const tokenCollapsible = createCollapsibleSection("tokens", "Session usage", "This session", collapsedSections);
   tokenCollapsible.section.classList.add("overview-token-section");
 
   const tokenGrid = document.createElement("div");
@@ -101,14 +101,14 @@ export function createOverviewPage(): HTMLElement {
   secondary.append(tokenCollapsible.section);
 
   // Stall events section — collapsible
-  const stallCollapsible = createCollapsibleSection("stalls", "Recovered stalls", "Watchdog", collapsedSections);
+  const stallCollapsible = createCollapsibleSection("stalls", "Recovered stalls", "Recovery log", collapsedSections);
   stallCollapsible.section.classList.add("overview-stall-section");
   const { root: stallList, update: updateStallEvents } = createStallEventsTable();
   stallCollapsible.body.append(stallList);
   secondary.append(stallCollapsible.section);
 
   // Recent events section — collapsible
-  const recentCollapsible = createCollapsibleSection("recent", "Latest activity", "Events", collapsedSections);
+  const recentCollapsible = createCollapsibleSection("recent", "Latest activity", "Live feed", collapsedSections);
   recentCollapsible.section.classList.add("overview-recent-section");
 
   const recentList = document.createElement("div");
@@ -119,7 +119,7 @@ export function createOverviewPage(): HTMLElement {
   recentCollapsible.body.append(recentList);
 
   // Terminal issues section — collapsible
-  const terminalCollapsible = createCollapsibleSection("terminal", "Recently finished", "Outcomes", collapsedSections);
+  const terminalCollapsible = createCollapsibleSection("terminal", "Finished recently", "Last runs", collapsedSections);
   terminalCollapsible.section.classList.add("overview-terminal-section");
 
   const terminalList = document.createElement("div");
@@ -213,8 +213,8 @@ export function createOverviewPage(): HTMLElement {
       attentionList.replaceChildren(
         createTeachingEmptyState(
           "All clear",
-          "Blocked, retrying, or stalled work will appear here the moment it needs your attention.",
-          "Open queue",
+          "Blocked, retrying, or decision-ready work will appear here the moment it needs review.",
+          "Open board",
           () => router.navigate("/queue"),
         ),
       );
@@ -224,7 +224,7 @@ export function createOverviewPage(): HTMLElement {
       recentList.replaceChildren(
         createTeachingEmptyState(
           "No activity yet",
-          "Workflow events will stream in here once Risoluto starts processing issues.",
+          "Workflow events will stream in here once Risoluto starts processing work.",
         ),
       );
     }
@@ -232,8 +232,8 @@ export function createOverviewPage(): HTMLElement {
     if (terminalList.childElementCount === 0) {
       terminalList.replaceChildren(
         createTeachingEmptyState(
-          "No finished issues yet",
-          "Completed and failed issues will appear here after the first run finishes.",
+          "No finished runs yet",
+          "Completed and failed runs will appear here after the first issue finishes.",
         ),
       );
     }
@@ -275,7 +275,7 @@ export function createOverviewPage(): HTMLElement {
       attentionCount.textContent = "";
     } else {
       attentionCount.hidden = false;
-      setTextWithDiff(attentionCount, `${attentionIssues.length} live`);
+      setTextWithDiff(attentionCount, `${attentionIssues.length} waiting`);
     }
 
     // Token burn metrics

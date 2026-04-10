@@ -270,8 +270,7 @@
   padding: var(--space-3);
   text-align: left;
   cursor: pointer;
-  border: var(--stroke-default) solid transparent;
-  border-left: var(--stroke-accent) solid var(--text-muted);
+  border: var(--stroke-default) solid color-mix(in srgb, var(--text-muted) 24%, var(--border-stitch));
   background: var(--bg-elevated);
   transition:
     transform var(--motion-fast) var(--ease-out-quart),
@@ -280,35 +279,40 @@
     background-color var(--motion-fast) var(--ease-out-quart);
 }
 
-/* Status left-border colors */
+/* Status tint treatments */
 .kanban-card[data-status="queued"] {
-  border-left-color: var(--status-queued);
+  border-color: color-mix(in srgb, var(--status-queued) 34%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-queued) 5%, var(--bg-elevated));
 }
 .kanban-card[data-status="claimed"] {
-  border-left-color: var(--status-claimed);
+  border-color: color-mix(in srgb, var(--status-claimed) 34%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-claimed) 5%, var(--bg-elevated));
 }
 .kanban-card[data-status="running"] {
-  border-left-color: var(--status-running);
+  border-color: color-mix(in srgb, var(--status-running) 34%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-running) 5%, var(--bg-elevated));
 }
 .kanban-card[data-status="retrying"] {
-  border-left-color: var(--status-retrying);
+  border-color: color-mix(in srgb, var(--status-retrying) 36%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-retrying) 6%, var(--bg-elevated));
 }
 .kanban-card[data-status="blocked"] {
-  border-left-color: var(--status-blocked);
+  border-color: color-mix(in srgb, var(--status-blocked) 36%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-blocked) 6%, var(--bg-elevated));
 }
 .kanban-card[data-status="completed"] {
-  border-left-color: var(--status-completed);
+  border-color: color-mix(in srgb, var(--status-completed) 26%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-completed) 4%, var(--bg-elevated));
 }
 .kanban-card[data-status="pending_change"] {
-  border-left-color: var(--status-pending-change);
+  border-color: color-mix(in srgb, var(--status-pending-change) 32%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-pending-change) 5%, var(--bg-elevated));
 }
 
 /* Hover — lift + shadow */
 .kanban-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: var(--border-stitch);
-  border-left-color: inherit;
 }
 
 /* Focus — copper outline */
@@ -414,8 +418,7 @@
   padding: var(--space-3);
   border-radius: var(--radius-full);
   border: 1px solid color-mix(in srgb, var(--border-stitch) 70%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 88%, transparent), var(--bg-muted));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 88%, transparent), var(--bg-muted));
 }
 
 .kanban-card-lifecycle.is-collapsed {
@@ -526,10 +529,14 @@
 @keyframes kanban-border-pulse {
   0%,
   100% {
-    box-shadow: var(--shadow-sm), inset 3px 0 8px -4px var(--status-running);
+    box-shadow:
+      var(--shadow-sm),
+      inset 3px 0 8px -4px var(--status-running);
   }
   50% {
-    box-shadow: var(--shadow-sm), inset 3px 0 2px -2px transparent;
+    box-shadow:
+      var(--shadow-sm),
+      inset 3px 0 2px -2px transparent;
   }
 }
 

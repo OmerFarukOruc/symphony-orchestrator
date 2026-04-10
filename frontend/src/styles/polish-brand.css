@@ -59,8 +59,15 @@
 }
 
 .sidebar-item.is-active {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--text-accent) 14%, var(--bg-surface)) 0%,
+    color-mix(in srgb, var(--text-accent) 8%, var(--bg-surface)) 100%
+  );
   box-shadow:
-    inset 3px 0 0 var(--text-accent),
+    inset 0 1px 0 color-mix(in srgb, var(--text-accent) 30%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--text-accent) 34%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--text-accent) 16%, transparent),
     inset 0 0 12px -4px color-mix(in srgb, var(--text-accent) 10%, transparent);
 }
 

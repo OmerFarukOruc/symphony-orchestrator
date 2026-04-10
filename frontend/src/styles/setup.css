@@ -129,8 +129,8 @@
 
 /* Callout / warning */
 .setup-callout {
-  background: var(--bg-muted);
-  border-left: var(--stroke-accent) solid var(--status-retrying);
+  border: 1px solid color-mix(in srgb, var(--status-retrying) 30%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-retrying) 8%, var(--bg-muted));
   padding: var(--space-3) var(--space-4);
   margin-bottom: var(--space-4);
   font-family: var(--font-body);
@@ -144,7 +144,7 @@
 
 .setup-callout-success {
   margin-top: var(--space-4);
-  border-left-color: var(--status-running);
+  border-color: color-mix(in srgb, var(--status-running) 30%, var(--border-stitch));
   background: color-mix(in srgb, var(--status-running) 7%, var(--bg-muted));
 }
 

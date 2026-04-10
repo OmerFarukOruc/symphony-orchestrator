@@ -16,7 +16,12 @@
 
 .overview-terminal-item[data-status="completed"],
 .overview-terminal-item[data-status="closed"] {
-  border-left: 3px solid color-mix(in srgb, var(--status-completed) 50%, var(--border-stitch));
+  border-color: color-mix(in srgb, var(--status-completed) 30%, var(--border-stitch));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--status-completed) 8%, var(--bg-elevated)) 0%,
+    color-mix(in srgb, var(--status-completed) 3%, var(--bg-elevated)) 100%
+  );
   position: relative;
 }
 
@@ -27,10 +32,8 @@
 .overview-terminal-item.delight-entered::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: -3px;
-  width: 3px;
-  height: 100%;
+  inset: 0 0 auto 0;
+  height: 2px;
   background: var(--status-running);
   pointer-events: none;
   will-change: opacity;

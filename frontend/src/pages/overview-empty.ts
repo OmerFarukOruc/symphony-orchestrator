@@ -71,7 +71,7 @@ export function createGettingStartedCard(onDismiss: () => void): HTMLElement {
   const desc = document.createElement("p");
   desc.className = "overview-getting-started-desc";
   desc.textContent =
-    "Create an issue in Linear, move it into progress, and Risoluto picks it up on the next poll. This page becomes your live control room the moment work begins.";
+    "Create an issue in Linear, move it into progress, and Risoluto picks it up on the next poll. This page turns into a live readout the moment work begins.";
 
   const steps = document.createElement("div");
   steps.className = "overview-getting-started-steps";

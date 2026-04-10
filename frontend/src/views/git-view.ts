@@ -229,7 +229,7 @@ function repoLabel(repo: GitRepoView): string {
 }
 
 function buildRepoSection(data: GitContextResponse): HTMLElement {
-  const section = el("section", "git-section");
+  const section = el("section", "git-section git-section--repos");
   const configured = data.repos.filter((r) => r.configured);
   const discovered = data.repos.filter((r) => !r.configured);
 
@@ -247,7 +247,7 @@ function buildRepoSection(data: GitContextResponse): HTMLElement {
 }
 
 function buildBranchSection(data: GitContextResponse): HTMLElement {
-  const section = el("section", "git-section");
+  const section = el("section", "git-section git-section--branches");
   section.append(sectionHeader("Active branches", data.activeBranches.length));
   if (data.activeBranches.length > 0) {
     const list = el("div", "git-branch-list");
@@ -272,7 +272,7 @@ function buildBranchSection(data: GitContextResponse): HTMLElement {
 
 function buildPrSection(pulls: GitPullView[]): HTMLElement | null {
   if (pulls.length === 0) return null;
-  const section = el("section", "git-section");
+  const section = el("section", "git-section git-section--prs");
   section.append(sectionHeader("Open pull requests", pulls.length));
   const list = el("div", "git-pr-list");
   for (const pr of pulls) {
@@ -283,7 +283,7 @@ function buildPrSection(pulls: GitPullView[]): HTMLElement | null {
 }
 
 function buildTrackedPrSection(trackedPrs: TrackedPrRecord[]): HTMLElement {
-  const section = el("section", "git-section");
+  const section = el("section", "git-section git-section--tracked");
   section.append(sectionHeader("Tracked PR lifecycle", trackedPrs.length));
 
   const summary = el("div", "git-tracked-pr-summary");
@@ -320,7 +320,7 @@ function buildCommitRail(data: GitContextResponse): HTMLElement[] {
   const sections: HTMLElement[] = [];
   for (const repo of data.repos) {
     if (!repo.github?.recentCommits?.length) continue;
-    const railSection = el("div", "git-rail-section");
+    const railSection = el("div", "git-rail-section git-rail-section--activity");
     railSection.append(el("h3", "git-rail-title", `Recent commits — ${repoLabel(repo)}`));
     const commitList = el("div", "git-commit-list");
     for (const commit of repo.github.recentCommits) {
@@ -335,7 +335,7 @@ function buildCommitRail(data: GitContextResponse): HTMLElement[] {
 function buildQuickLinksRail(githubAvailable: boolean): HTMLElement[] {
   const items: HTMLElement[] = [];
 
-  const ghSection = el("div", "git-rail-section");
+  const ghSection = el("div", "git-rail-section git-rail-section--status");
   ghSection.append(el("h3", "git-rail-title", "GitHub API"));
   if (githubAvailable) {
     const connected = el("div", "git-gh-status git-gh-status--ok");
@@ -352,11 +352,12 @@ function buildQuickLinksRail(githubAvailable: boolean): HTMLElement[] {
   }
   items.push(ghSection);
 
-  const linksSection = el("div", "git-rail-section");
+  const linksSection = el("div", "git-rail-section git-rail-section--actions");
   linksSection.append(el("h3", "git-rail-title", "Quick links"));
   const links = el("div", "git-quick-links");
   const queueBtn = el("button", "git-quick-link-btn", "View queue board");
   queueBtn.type = "button";
+  queueBtn.classList.add("is-primary-action");
   queueBtn.addEventListener("click", () => router.navigate("/queue"));
   links.append(queueBtn);
   const configBtn = el("button", "git-quick-link-btn", "Advanced settings");
@@ -382,6 +383,7 @@ function countOpenPrs(data: GitContextResponse): number {
 }
 
 function buildSummaryStrip(data: GitContextResponse, trackedPrs: TrackedPrRecord[]): HTMLElement {
+  const shell = el("section", "git-summary-shell");
   const strip = el("div", "summary-strip git-summary-strip");
   const items: Array<{ label: string; value: string }> = [
     { label: "Repos", value: String(data.repos.length) },
@@ -396,7 +398,8 @@ function buildSummaryStrip(data: GitContextResponse, trackedPrs: TrackedPrRecord
     item.append(el("span", "summary-strip-label", label), el("span", "summary-strip-value", value));
     strip.append(item);
   }
-  return strip;
+  shell.append(strip);
+  return shell;
 }
 
 function renderGitContext(page: HTMLElement, data: GitPageData): void {
@@ -408,22 +411,24 @@ function renderGitContext(page: HTMLElement, data: GitPageData): void {
   body.append(buildSummaryStrip(data.context, data.trackedPrs));
 
   if (data.context.repos.length === 0 && data.context.activeBranches.length === 0 && data.trackedPrs.length === 0) {
-    body.append(
+    const emptyShell = el("section", "git-empty-shell");
+    emptyShell.append(
       createEmptyState(
         "No repositories linked yet",
-        "Repositories connect your Linear issues to GitHub. Add one under Settings \u2192 Repositories \u2014 each entry maps a Linear identifier prefix to a GitHub repo so Risoluto knows where to commit.",
+        "Repositories connect your Linear issues to GitHub. Add one under Settings \u2192 Repositories so Risoluto knows where each issue should commit.",
         "Open repository settings",
         () => router.navigate("/settings#devtools"),
         "default",
         { headingLevel: "h2" },
       ),
     );
+    body.append(emptyShell);
     return;
   }
 
   const layout = el("div", "git-layout");
-  const mainPanel = el("div", "git-main-panel");
-  const activityRail = el("div", "git-activity-rail");
+  const mainPanel = el("div", "git-main-panel git-main-panel--stack");
+  const activityRail = el("div", "git-activity-rail git-activity-rail--stack");
 
   if (data.context.repos.length > 0) {
     mainPanel.append(buildRepoSection(data.context));

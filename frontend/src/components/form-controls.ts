@@ -68,7 +68,6 @@ function validateField(control: FieldControl): { valid: boolean; error?: string 
   if (control instanceof HTMLInputElement && control.pattern) {
     let re = patternCache.get(control.pattern);
     if (!re) {
-      // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
       re = new RegExp(control.pattern);
       patternCache.set(control.pattern, re);
     }

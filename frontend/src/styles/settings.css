@@ -86,12 +86,11 @@
   gap: var(--space-1);
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: none;
-  border-left: var(--stroke-accent) solid transparent;
+  border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
   text-align: left;
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-radius: var(--radius-md);
   transition:
     background-color var(--motion-instant) var(--ease-out-quart),
     border-color var(--motion-instant) var(--ease-out-quart),
@@ -105,7 +104,7 @@
 }
 
 .settings-nav-item.is-selected {
-  border-left-color: var(--interactive-primary);
+  border-color: color-mix(in srgb, var(--interactive-primary) 34%, var(--border-stitch));
   background: color-mix(in srgb, var(--interactive-primary) 6%, var(--bg-surface));
   color: var(--text-primary);
 }
@@ -713,7 +712,7 @@
   font-weight: var(--font-medium);
   color: var(--status-blocked);
   background: color-mix(in srgb, var(--status-blocked) 8%, transparent);
-  border-left: 3px solid var(--status-blocked);
+  border: 1px solid color-mix(in srgb, var(--status-blocked) 30%, var(--border-stitch));
 }
 
 .settings-approval-warning[hidden] {

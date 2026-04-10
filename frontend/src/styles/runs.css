@@ -50,8 +50,9 @@
 }
 
 .runs-row.is-active {
-  background: var(--bg-elevated);
-  border-left: 3px solid var(--text-accent);
+  background: color-mix(in srgb, var(--text-accent) 6%, var(--bg-elevated));
+  outline: 1px solid color-mix(in srgb, var(--text-accent) 36%, var(--border-stitch));
+  outline-offset: -1px;
 }
 
 .runs-row.is-compared {

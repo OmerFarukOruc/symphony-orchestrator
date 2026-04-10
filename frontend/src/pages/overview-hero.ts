@@ -16,7 +16,7 @@ export function createLiveMetric(label: string): { root: HTMLElement; value: HTM
 
 /**
  * Creates the hero metrics band — a strong top strip showing "Now" metrics.
- * Running, Queue Depth, Rate-limit, Attention count inline.
+ * Running, queued work, request headroom, and review count inline.
  */
 export function createHeroMetricsBand(): {
   band: HTMLElement;
@@ -55,9 +55,9 @@ export function createHeroMetricsBand(): {
   metricsContainer.className = "overview-hero-metrics";
 
   const running = createLiveMetric("Running");
-  const queued = createLiveMetric("Queue");
-  const headroom = createLiveMetric("Rate limit");
-  const attention = createLiveMetric("Attention");
+  const queued = createLiveMetric("Queued");
+  const headroom = createLiveMetric("API headroom");
+  const attention = createLiveMetric("Needs review");
 
   metricsContainer.append(running.root, queued.root, headroom.root, attention.root);
   band.append(intro, metricsContainer);
