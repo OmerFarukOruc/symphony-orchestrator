@@ -13,14 +13,6 @@ import {
   handleOperatorAbort,
   handleCancelledOrHardFailure,
 } from "./terminal-paths.js";
-import {
-  handleContinuationRetry,
-  handleContinuationExhausted,
-  handleErrorRetry,
-  handleModelOverrideRetry,
-  queueRetryWithDelay,
-} from "./retry-paths.js";
-import { classifyRetryStrategy } from "../../agent-runner/error-classifier.js";
 import { handleStopSignal } from "./stop-signal.js";
 
 export async function handleWorkerOutcome(
@@ -48,15 +40,14 @@ export async function handleWorkerOutcome(
     handleInactiveIssue(ctx, prepared);
     return;
   }
-  if (outcome.errorCode === "model_override_updated") {
-    handleModelOverrideRetry(ctx, prepared);
-    return;
-  }
   if (outcome.errorCode === "operator_abort") {
     handleOperatorAbort(ctx, prepared);
     return;
   }
-  if (outcome.kind === "cancelled" || isHardFailure(outcome.errorCode)) {
+  if (
+    outcome.errorCode !== "model_override_updated" &&
+    (outcome.kind === "cancelled" || isHardFailure(outcome.errorCode))
+  ) {
     await handleCancelledOrHardFailure(ctx, prepared);
     return;
   }
@@ -86,29 +77,5 @@ async function dispatchPostReconciliation(ctx: OutcomeContext, prepared: Prepare
     await handleStopSignal(ctx, stopSignal, prepared, outcome.turnCount ?? null);
     return;
   }
-
-  if (outcome.kind === "normal") {
-    const maxContinuations = ctx.getConfig().agent.maxContinuationAttempts;
-    const nextAttempt = (prepared.attempt ?? 0) + 1;
-    if (nextAttempt > maxContinuations) {
-      await handleContinuationExhausted(ctx, prepared);
-      return;
-    }
-    handleContinuationRetry(ctx, prepared);
-    return;
-  }
-
-  const strategy = classifyRetryStrategy(outcome.codexErrorInfo ?? null, outcome.errorCode);
-  switch (strategy.action) {
-    case "hard_fail":
-      await handleCancelledOrHardFailure(ctx, prepared);
-      return;
-    case "retry":
-      queueRetryWithDelay(ctx, prepared, strategy.delayMs, strategy.reason);
-      return;
-    case "compact_and_retry":
-    case "default":
-      handleErrorRetry(ctx, prepared);
-      return;
-  }
+  await ctx.retryCoordinator.dispatch(ctx, prepared);
 }

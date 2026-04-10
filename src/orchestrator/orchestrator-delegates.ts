@@ -13,15 +13,10 @@ import type { NotificationEvent } from "../notification/channel.js";
 import type { OrchestratorDeps, RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
 
 import { usageDelta } from "./views.js";
+import { createRetryCoordinator } from "./retry-coordinator.js";
 
 const MAX_RECENT_EVENTS = 250;
 import { resolveModelSelection as resolveModelSelectionFromConfig } from "./model-selection.js";
-import {
-  clearRetryEntry as clearRetryEntryState,
-  handleRetryLaunchFailure as handleRetryLaunchFailureState,
-  queueRetry as queueRetryState,
-  revalidateAndLaunchRetry as revalidateAndLaunchRetryState,
-} from "./retry-manager.js";
 import { cleanupTerminalIssueWorkspaces as cleanupTerminalIssueWorkspacesState } from "./lifecycle.js";
 import {
   buildIssueDispatchFingerprint,
@@ -46,9 +41,49 @@ import { toErrorString } from "../utils/type-guards.js";
  */
 
 export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): OrchestratorContext {
+  const ctx = {} as OrchestratorContext;
+  const retryCoordinator = createRetryCoordinator(
+    {
+      tracker: deps.tracker,
+      attemptStore: deps.attemptStore,
+      workspaceManager: deps.workspaceManager,
+      logger: deps.logger,
+    },
+    {
+      runningEntries: state.runningEntries,
+      retryEntries: state.retryEntries,
+      detailViews: state.detailViews,
+      completedViews: state.completedViews,
+      isRunning: () => state.running,
+      getConfig: () => deps.configStore.getConfig(),
+      claimIssue: (issueId) => {
+        state.claimedIssueIds.add(issueId);
+        state.markDirty();
+      },
+      releaseIssueClaim: (issueId) => {
+        const deleted = state.claimedIssueIds.delete(issueId);
+        if (deleted) state.markDirty();
+      },
+      hasAvailableStateSlot: (issue) =>
+        hasAvailableStateSlotState(issue, deps.configStore.getConfig(), state.runningEntries),
+      markDirty: () => state.markDirty(),
+      notify: (event) => notifyChannel(deps, event),
+      pushEvent: (event) => {
+        pushRecentEvent(state, event);
+        state.markDirty();
+        forwardToEventBus(deps, event);
+      },
+      resolveModelSelection: (identifier) =>
+        resolveModelSelectionFromConfig(state.issueModelOverrides, deps.configStore.getConfig(), identifier),
+      launchWorker: async (issue, attempt, options) => {
+        await ctx.launchWorker(issue, attempt, options);
+      },
+    },
+  );
+
   // Build the context object first so closures can reference it directly,
   // avoiding recursive buildCtx() calls inside the returned object.
-  const ctx: OrchestratorContext = {
+  Object.assign(ctx, {
     get running() {
       return state.running;
     },
@@ -92,9 +127,7 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
       state.markDirty();
       forwardToEventBus(deps, event);
     },
-    queueRetry: (issue, attempt, delayMs, error, metadata) =>
-      queueRetryState(ctx, issue, attempt, delayMs, error, metadata),
-    clearRetryEntry: (issueId) => clearRetryEntryState(ctx, issueId),
+    retryCoordinator,
     launchWorker: async (issue, attempt, options) => {
       await launchWorkerState(
         {
@@ -127,8 +160,6 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
         pendingStateCounts,
         runningStateCounts,
       ),
-    revalidateAndLaunchRetry: (issueId, attempt) => revalidateAndLaunchRetryState(ctx, issueId, attempt),
-    handleRetryLaunchFailure: (issue, attempt, error) => handleRetryLaunchFailureState(ctx, issue, attempt, error),
     getQueuedViews: () => state.queuedViews,
     setQueuedViews: (views) => {
       state.queuedViews = views;
@@ -157,7 +188,7 @@ export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): Orch
       return { killed: result.killed };
     },
     eventBus: deps.eventBus,
-  };
+  });
   return ctx;
 }
 

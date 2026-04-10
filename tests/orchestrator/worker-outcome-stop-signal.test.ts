@@ -80,7 +80,10 @@ function makeCtx(
     markDirty: vi.fn(),
     resolveModelSelection: vi.fn().mockReturnValue(createModelSelection()),
     notify: vi.fn(),
-    queueRetry: vi.fn(),
+    retryCoordinator: {
+      dispatch: vi.fn().mockResolvedValue(undefined),
+      cancel: vi.fn(),
+    },
   } as unknown as OutcomeContext;
 }
 

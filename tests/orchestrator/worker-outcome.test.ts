@@ -11,7 +11,10 @@ import type {
   Workspace,
 } from "../../src/core/types.js";
 import type { OutcomeContext } from "../../src/orchestrator/context.js";
-import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
+import type { RetryRuntimeEntry, RunningEntry } from "../../src/orchestrator/runtime-types.js";
+import { createRetryCoordinator } from "../../src/orchestrator/retry-coordinator.js";
+
+type TestOutcomeContext = OutcomeContext & { retryEntries: Map<string, RetryRuntimeEntry> };
 
 function makeIssue(overrides: Partial<Issue> = {}): Issue {
   return {
@@ -99,17 +102,36 @@ function makeCtx(
     latestIssue?: Issue | null;
     config?: ServiceConfig;
   } = {},
-): OutcomeContext {
+): TestOutcomeContext {
   const { isRunning = true, latestIssue = makeIssue(), config = makeConfig() } = overrides;
 
   const runningEntries = new Map<string, RunningEntry>();
+  const retryEntries = new Map<string, RetryRuntimeEntry>();
   const completedViews = new Map<string, RuntimeIssueView>();
   const detailViews = new Map<string, RuntimeIssueView>();
+  const notify = vi.fn();
+  const releaseIssueClaim = vi.fn();
+  const markDirty = vi.fn();
+  const attemptStore = {
+    updateAttempt: vi.fn().mockResolvedValue(undefined),
+    createAttempt: vi.fn().mockResolvedValue(undefined),
+  };
+  const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+  const resolveModelSelection = vi.fn().mockReturnValue({
+    model: "gpt-4o",
+    reasoningEffort: "high",
+    source: "default",
+  } as ModelSelection);
+  const pushEvent = vi.fn();
+  const launchWorker = vi.fn().mockResolvedValue(undefined);
+  const hasAvailableStateSlot = vi.fn().mockReturnValue(true);
+  const claimIssue = vi.fn();
 
-  return {
+  const ctx = {
     runningEntries,
     completedViews,
     detailViews,
+    retryEntries,
     deps: {
       tracker: {
         fetchIssueStatesByIds: vi.fn().mockResolvedValue(latestIssue ? [latestIssue] : [makeIssue()]),
@@ -117,9 +139,7 @@ function makeCtx(
         updateIssueState: vi.fn().mockResolvedValue(undefined),
         createComment: vi.fn().mockResolvedValue(undefined),
       },
-      attemptStore: {
-        updateAttempt: vi.fn().mockResolvedValue(undefined),
-      },
+      attemptStore,
       workspaceManager: {
         removeWorkspace: vi.fn().mockResolvedValue(undefined),
       },
@@ -127,26 +147,67 @@ function makeCtx(
         commitAndPush: vi.fn().mockResolvedValue({ pushed: false, branchName: "mt-1" }),
         createPullRequest: vi.fn().mockResolvedValue({ html_url: "https://github.com/org/repo/pull/1" }),
       },
-      logger: { info: vi.fn(), warn: vi.fn() },
+      logger,
     },
     isRunning: () => isRunning,
     getConfig: () => config,
-    releaseIssueClaim: vi.fn(),
-    markDirty: vi.fn(),
-    resolveModelSelection: vi.fn().mockReturnValue({
-      model: "gpt-4o",
-      reasoningEffort: "high",
-      source: "default",
-    } as ModelSelection),
-    notify: vi.fn(),
-    queueRetry: vi.fn(),
-  };
+    releaseIssueClaim,
+    markDirty,
+    resolveModelSelection,
+    notify,
+  } as TestOutcomeContext;
+
+  ctx.retryCoordinator = createRetryCoordinator(
+    {
+      tracker: ctx.deps.tracker,
+      attemptStore,
+      workspaceManager: ctx.deps.workspaceManager,
+      logger,
+    },
+    {
+      runningEntries,
+      retryEntries,
+      detailViews,
+      completedViews,
+      isRunning: () => isRunning,
+      getConfig: () => config,
+      claimIssue,
+      releaseIssueClaim,
+      hasAvailableStateSlot,
+      markDirty,
+      notify,
+      pushEvent,
+      resolveModelSelection,
+      launchWorker,
+    },
+  );
+
+  return ctx;
 }
 
 function getCompletedView(ctx: OutcomeContext, identifier = "MT-1"): RuntimeIssueView {
   const view = ctx.completedViews.get(identifier);
   expect(view).toBeDefined();
   return view!;
+}
+
+function getRetryEntry(ctx: TestOutcomeContext, issueId = "issue-1"): RetryRuntimeEntry {
+  const retryEntry = ctx.retryEntries.get(issueId);
+  expect(retryEntry).toBeDefined();
+  return retryEntry!;
+}
+
+function expectRetryDelay(
+  ctx: TestOutcomeContext,
+  startedAtMs: number,
+  expectedDelayMs: number,
+  issueId = "issue-1",
+): RetryRuntimeEntry {
+  const retryEntry = getRetryEntry(ctx, issueId);
+  const actualDelay = retryEntry.dueAtMs - startedAtMs;
+  expect(actualDelay).toBeGreaterThanOrEqual(expectedDelayMs);
+  expect(actualDelay).toBeLessThanOrEqual(expectedDelayMs + 25);
+  return retryEntry;
 }
 
 describe("handleWorkerOutcome - service stopped path", () => {
@@ -183,7 +244,7 @@ describe("handleWorkerOutcome - terminal state path", () => {
       expect.objectContaining({ identifier: "MT-1", state: "Done" }),
     );
     expect(ctx.releaseIssueClaim).toHaveBeenCalledWith("issue-1");
-    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(0);
   });
 
   it("removes workspace when cleanupOnExit is true regardless of issue state", async () => {
@@ -210,7 +271,7 @@ describe("handleWorkerOutcome - inactive (non-terminal) state", () => {
 
     expect(ctx.deps.workspaceManager.removeWorkspace).not.toHaveBeenCalled();
     expect(ctx.releaseIssueClaim).toHaveBeenCalledWith("issue-1");
-    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(0);
     const view = getCompletedView(ctx);
     expect(view.status).toBe("paused");
   });
@@ -231,7 +292,7 @@ describe("handleWorkerOutcome - hard failure path", () => {
       1,
     );
 
-    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(0);
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_failed" }));
   });
 
@@ -249,7 +310,7 @@ describe("handleWorkerOutcome - hard failure path", () => {
       1,
     );
 
-    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(0);
   });
 });
 
@@ -258,6 +319,7 @@ describe("handleWorkerOutcome - model_override_updated path", () => {
     const ctx = makeCtx();
     const entry = makeEntry();
     ctx.runningEntries.set("issue-1", entry);
+    const before = Date.now();
 
     await handleWorkerOutcome(
       ctx,
@@ -268,7 +330,9 @@ describe("handleWorkerOutcome - model_override_updated path", () => {
       1,
     );
 
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 1, 0, "model_override_updated");
+    const retryEntry = expectRetryDelay(ctx, before, 0);
+    expect(retryEntry.attempt).toBe(1);
+    expect(retryEntry.error).toBe("model_override_updated");
   });
 });
 
@@ -292,7 +356,7 @@ describe("handleWorkerOutcome - stop signal detection", () => {
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
 
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
-    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(0);
     const view = getCompletedView(ctx);
     expect(view.status).toBe("completed");
   });
@@ -360,13 +424,15 @@ describe("handleWorkerOutcome - stop signal detection", () => {
       lastAgentMessageContent: "I am done with the work and everything looks complete.",
     });
     ctx.runningEntries.set("issue-1", entry);
+    const before = Date.now();
 
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
 
     // Should queue continuation retry, not mark as done
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 1000, "continuation", {
-      threadId: "sess-xyz",
-    });
+    const retryEntry = expectRetryDelay(ctx, before, 1000);
+    expect(retryEntry.attempt).toBe(2);
+    expect(retryEntry.error).toBe("continuation");
+    expect(retryEntry.threadId).toBe("sess-xyz");
   });
 });
 
@@ -389,7 +455,7 @@ describe("handleWorkerOutcome - smart retry routing via codexErrorInfo", () => {
       1,
     );
 
-    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(0);
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_failed" }));
   });
 
@@ -397,6 +463,7 @@ describe("handleWorkerOutcome - smart retry routing via codexErrorInfo", () => {
     const ctx = makeCtx();
     const entry = makeEntry();
     ctx.runningEntries.set("issue-1", entry);
+    const before = Date.now();
 
     await handleWorkerOutcome(
       ctx,
@@ -411,13 +478,17 @@ describe("handleWorkerOutcome - smart retry routing via codexErrorInfo", () => {
       1,
     );
 
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 30_000, "rate_limited", undefined);
+    const retryEntry = expectRetryDelay(ctx, before, 30_000);
+    expect(retryEntry.attempt).toBe(2);
+    expect(retryEntry.error).toBe("rate_limited");
+    expect(retryEntry.threadId).toBeNull();
   });
 
   it("routes RateLimited with custom retryAfterMs", async () => {
     const ctx = makeCtx();
     const entry = makeEntry();
     ctx.runningEntries.set("issue-1", entry);
+    const before = Date.now();
 
     await handleWorkerOutcome(
       ctx,
@@ -432,13 +503,16 @@ describe("handleWorkerOutcome - smart retry routing via codexErrorInfo", () => {
       1,
     );
 
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 5000, "rate_limited", undefined);
+    const retryEntry = expectRetryDelay(ctx, before, 5000);
+    expect(retryEntry.attempt).toBe(2);
+    expect(retryEntry.error).toBe("rate_limited");
   });
 
   it("routes UsageLimitExceeded to retry with 60s delay", async () => {
     const ctx = makeCtx();
     const entry = makeEntry();
     ctx.runningEntries.set("issue-1", entry);
+    const before = Date.now();
 
     await handleWorkerOutcome(
       ctx,
@@ -453,13 +527,16 @@ describe("handleWorkerOutcome - smart retry routing via codexErrorInfo", () => {
       1,
     );
 
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 60_000, "usage_limit", undefined);
+    const retryEntry = expectRetryDelay(ctx, before, 60_000);
+    expect(retryEntry.attempt).toBe(2);
+    expect(retryEntry.error).toBe("usage_limit");
   });
 
   it("routes ContextWindowExceeded to default retry (compact not yet implemented)", async () => {
     const ctx = makeCtx();
     const entry = makeEntry();
     ctx.runningEntries.set("issue-1", entry);
+    const before = Date.now();
 
     await handleWorkerOutcome(
       ctx,
@@ -475,10 +552,8 @@ describe("handleWorkerOutcome - smart retry routing via codexErrorInfo", () => {
     );
 
     // compact_and_retry falls through to handleErrorRetry with exponential backoff
-    expect(ctx.queueRetry).toHaveBeenCalled();
-    const queueRetryMock = ctx.queueRetry as unknown as ReturnType<typeof vi.fn>;
-    const [, , , reason] = queueRetryMock.mock.calls[0] as [unknown, number, number, string];
-    expect(reason).toBe("turn_failed");
+    const retryEntry = expectRetryDelay(ctx, before, 20_000);
+    expect(retryEntry.error).toBe("turn_failed");
   });
 
   it("falls back to default retry when no codexErrorInfo is present", async () => {
@@ -495,7 +570,7 @@ describe("handleWorkerOutcome - smart retry routing via codexErrorInfo", () => {
       1,
     );
 
-    expect(ctx.queueRetry).toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(1);
   });
 });
 
@@ -504,18 +579,21 @@ describe("handleWorkerOutcome - continuation retry", () => {
     const ctx = makeCtx();
     const entry = makeEntry({ lastAgentMessageContent: null });
     ctx.runningEntries.set("issue-1", entry);
+    const before = Date.now();
 
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 1);
 
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 2, 1000, "continuation", {
-      threadId: "sess-xyz",
-    });
+    const retryEntry = expectRetryDelay(ctx, before, 1000);
+    expect(retryEntry.attempt).toBe(2);
+    expect(retryEntry.error).toBe("continuation");
+    expect(retryEntry.threadId).toBe("sess-xyz");
   });
 
   it("queues retry with exponential backoff for failure outcomes", async () => {
     const ctx = makeCtx();
     const entry = makeEntry();
     ctx.runningEntries.set("issue-1", entry);
+    const before = Date.now();
 
     await handleWorkerOutcome(
       ctx,
@@ -526,10 +604,8 @@ describe("handleWorkerOutcome - continuation retry", () => {
       1, // attempt 1 → next attempt is 2, delay = 10000 * 2^(2-1) = 20000
     );
 
-    const queueRetryMock = ctx.queueRetry as unknown as ReturnType<typeof vi.fn>;
-    const [, nextAttempt, delayMs] = queueRetryMock.mock.calls[0] as [unknown, number, number, unknown];
-    expect(nextAttempt).toBe(2);
-    expect(delayMs).toBe(20000);
+    const retryEntry = expectRetryDelay(ctx, before, 20_000);
+    expect(retryEntry.attempt).toBe(2);
   });
 
   it("caps retry delay at maxRetryBackoffMs", async () => {
@@ -538,6 +614,7 @@ describe("handleWorkerOutcome - continuation retry", () => {
     const ctx = makeCtx({ config });
     const entry = makeEntry();
     ctx.runningEntries.set("issue-1", entry);
+    const before = Date.now();
 
     await handleWorkerOutcome(
       ctx,
@@ -548,9 +625,7 @@ describe("handleWorkerOutcome - continuation retry", () => {
       10, // very high attempt → would be huge delay, but capped
     );
 
-    const queueRetryMock = ctx.queueRetry as unknown as ReturnType<typeof vi.fn>;
-    const [, , delayMs] = queueRetryMock.mock.calls[0] as [unknown, number, number, unknown];
-    expect(delayMs).toBe(5000);
+    expectRetryDelay(ctx, before, 5000);
   });
 });
 
@@ -565,7 +640,7 @@ describe("handleWorkerOutcome - max continuation cap", () => {
     // attempt=3 → nextAttempt=4 > maxContinuationAttempts=3 → should stop
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 3);
 
-    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(0);
     expect(ctx.releaseIssueClaim).toHaveBeenCalledWith("issue-1");
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_failed" }));
     const view = getCompletedView(ctx);
@@ -579,13 +654,14 @@ describe("handleWorkerOutcome - max continuation cap", () => {
     const ctx = makeCtx({ config });
     const entry = makeEntry({ lastAgentMessageContent: null });
     ctx.runningEntries.set("issue-1", entry);
+    const before = Date.now();
 
     // attempt=2 → nextAttempt=3 <= maxContinuationAttempts=3 → should retry
     await handleWorkerOutcome(ctx, makeOutcome({ kind: "normal" }), entry, makeIssue(), makeWorkspace(), 2);
 
-    expect(ctx.queueRetry).toHaveBeenCalledWith(expect.any(Object), 3, 1000, "continuation", {
-      threadId: "sess-xyz",
-    });
+    const retryEntry = expectRetryDelay(ctx, before, 1000);
+    expect(retryEntry.attempt).toBe(3);
+    expect(retryEntry.error).toBe("continuation");
   });
 });
 
@@ -704,7 +780,7 @@ describe("handleWorkerOutcome - git post-run failure", () => {
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
     const view = getCompletedView(ctx);
     expect(view.status).toBe("completed");
-    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(0);
     // Logs the git failure
     expect(ctx.deps.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({ issue_identifier: "MT-1", error: "push rejected" }),
@@ -781,7 +857,7 @@ describe("detectStopSignal edge cases", () => {
 
     // Agent said DONE before timeout — should complete, not retry
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
-    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(0);
   });
 
   it("detects stop signal even from failed outcomes", async () => {
@@ -802,6 +878,6 @@ describe("detectStopSignal edge cases", () => {
 
     // Agent said DONE before failure — should complete, not retry
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ type: "worker_completed" }));
-    expect(ctx.queueRetry).not.toHaveBeenCalled();
+    expect(ctx.retryEntries.size).toBe(0);
   });
 });

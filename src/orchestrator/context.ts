@@ -8,6 +8,7 @@ import type { NotificationEvent } from "../notification/channel.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { WorkspaceRemovalResult } from "../workspace/manager.js";
+import type { RetryCoordinator } from "./retry-coordinator.js";
 
 /** Shared context type for outcome handlers. Used internally by worker-outcome.ts. */
 export interface OutcomeContext {
@@ -47,13 +48,7 @@ export interface OutcomeContext {
   markDirty: () => void;
   resolveModelSelection: (identifier: string) => ModelSelection;
   notify: (event: NotificationEvent) => void;
-  queueRetry: (
-    issue: Issue,
-    attempt: number,
-    delayMs: number,
-    error: string | null,
-    metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
-  ) => void;
+  retryCoordinator: RetryCoordinator;
 }
 
 export interface OrchestratorContext {
@@ -73,14 +68,7 @@ export interface OrchestratorContext {
   markDirty: () => void;
   notify: (event: NotificationEvent) => void;
   pushEvent: (event: RuntimeEventRecord) => void;
-  queueRetry: (
-    issue: Issue,
-    attempt: number,
-    delayMs: number,
-    error: string | null,
-    metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
-  ) => void;
-  clearRetryEntry: (issueId: string) => void;
+  retryCoordinator: RetryCoordinator;
   launchWorker: (issue: Issue, attempt: number | null, options?: LaunchWorkerOptions) => Promise<void>;
   canDispatchIssue: (issue: Issue) => boolean;
   hasAvailableStateSlot: (
@@ -88,8 +76,6 @@ export interface OrchestratorContext {
     pendingStateCounts?: Map<string, number>,
     runningStateCounts?: Map<string, number>,
   ) => boolean;
-  revalidateAndLaunchRetry: (issueId: string, attempt: number) => Promise<void>;
-  handleRetryLaunchFailure: (issue: Issue, attempt: number, error: unknown) => Promise<void>;
   getQueuedViews: () => RuntimeIssueView[];
   setQueuedViews: (views: RuntimeIssueView[]) => void;
   suppressIssueDispatch?: (issue: Issue) => void;
