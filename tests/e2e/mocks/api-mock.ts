@@ -416,6 +416,12 @@ async function registerCoreRoutes(page: Page, data: PreparedApiMockData): Promis
 
 async function registerCodexRoutes(page: Page, data: PreparedApiMockData): Promise<void> {
   await page.route("**/api/v1/codex/capabilities", (route) => json(route, data.codexCapabilities));
+  await page.route("**/api/v1/codex/threads?*", (route) => {
+    if (route.request().method() === "GET") {
+      return json(route, data.codexThreads);
+    }
+    return route.fallback();
+  });
   await page.route("**/api/v1/codex/threads", (route) => {
     if (route.request().method() === "GET") {
       return json(route, data.codexThreads);

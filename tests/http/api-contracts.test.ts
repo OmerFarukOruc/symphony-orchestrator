@@ -226,6 +226,7 @@ describe("API Contract Snapshots", () => {
       expect(structure).toMatchInlineSnapshot(`
         {
           "data_dir": "string",
+          "feature_flags": {},
           "provider_summary": "string",
           "version": "string",
         }

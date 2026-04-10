@@ -75,6 +75,6 @@ test.describe("Setup Gate", () => {
 
     // Wait for metric card content to render from mocked state data
     // The snapshot factory provides 1 running, 0 retrying
-    await expect(page.getByText("RUNNING")).toBeVisible({ timeout: 5000 });
+    await expect(page.locator(".overview-live-label").filter({ hasText: "Running" })).toBeVisible({ timeout: 5000 });
   });
 });

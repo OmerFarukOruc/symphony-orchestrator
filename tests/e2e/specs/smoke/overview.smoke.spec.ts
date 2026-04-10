@@ -45,7 +45,7 @@ test.describe("Overview Smoke", () => {
   });
 
   test("shows recently finished section", async ({ page }) => {
-    await expect(page.getByText("Recently finished")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: "Finished recently" })).toBeVisible({ timeout: 5000 });
   });
 
   test("sidebar shows correct active state for overview", async ({ page }) => {

@@ -51,6 +51,7 @@ export function registerSystemRoutes(app: Express, deps: HttpRouteDeps): void {
       res.json({
         version: process.env.npm_package_version ?? "unknown",
         data_dir: process.env.RISOLUTO_DATA_DIR ?? "",
+        feature_flags: {},
         provider_summary: "Codex",
       });
     })

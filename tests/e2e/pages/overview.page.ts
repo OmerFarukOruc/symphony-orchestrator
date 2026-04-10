@@ -22,17 +22,17 @@ export class OverviewPage extends BasePage {
   }
 
   get runningCount(): Locator {
-    return this.page.getByText("RUNNING");
+    return this.page.locator(".overview-live-label").filter({ hasText: "Running" });
   }
 
   get queueCount(): Locator {
-    return this.page.locator(".overview-live-label").filter({ hasText: "Queue" });
+    return this.page.locator(".overview-live-label").filter({ hasText: "Queued" });
   }
 
   // ── Attention Queue ──────────────────────────────────────────────────
 
   get attentionSection(): Locator {
-    return this.page.locator("text=Attention").first();
+    return this.page.getByRole("heading", { name: "Needs review" });
   }
 
   get issueCards(): Locator {
@@ -42,7 +42,7 @@ export class OverviewPage extends BasePage {
   // ── Token Burn ───────────────────────────────────────────────────────
 
   get tokenBurnSection(): Locator {
-    return this.page.getByText("TOKEN BURN");
+    return this.page.getByRole("heading", { name: "Session usage" });
   }
 
   // ── Recent Events ────────────────────────────────────────────────────
