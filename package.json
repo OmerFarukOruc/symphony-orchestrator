@@ -52,7 +52,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "better-sqlite3": "^12.8.0",
+    "better-sqlite3": "^12.9.0",
     "chokidar": "^5.0.0",
     "drizzle-orm": "^0.45.2",
     "express": "^5.1.0",
