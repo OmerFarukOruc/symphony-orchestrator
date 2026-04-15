@@ -11,10 +11,6 @@ export function subscribeIssueEvents(identifier: string, handler: (event: AgentE
   return getRuntimeClient().subscribeIssueEvents(identifier, handler);
 }
 
-export function subscribeIssueLifecycle(identifier: string, handler: () => void): () => void {
-  return getRuntimeClient().subscribeIssueLifecycle(identifier, handler);
-}
-
 export function subscribeAllEvents(
   identifier: string,
   handler: (event: { type: string; payload: Record<string, unknown> }) => void,
