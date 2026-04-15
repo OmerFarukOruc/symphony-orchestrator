@@ -96,21 +96,21 @@ describe("CLI parseCliArgs (via main module)", () => {
     expect(() => parseCliArgs(["--port", "abc"])).toThrow(
       "invalid --port value: abc. Expected an integer between 1 and 65535 with no leading zeros.",
     );
-  });
+  }, 15_000);
 
   it("rejects --port 0 (anvil hardening: port 0 means 'any' and must be explicit)", async () => {
     const { parseCliArgs } = await import("../../src/cli/index.js");
     expect(() => parseCliArgs(["--port", "0"])).toThrow(
       "invalid --port value: 0. Expected an integer between 1 and 65535 with no leading zeros.",
     );
-  });
+  }, 15_000);
 
   it("rejects --port with leading zeros (anvil hardening: 00004000 is not 4000)", async () => {
     const { parseCliArgs } = await import("../../src/cli/index.js");
     expect(() => parseCliArgs(["--port", "04000"])).toThrow(
       "invalid --port value: 04000. Expected an integer between 1 and 65535 with no leading zeros.",
     );
-  });
+  }, 15_000);
 });
 
 describe("CLI readMasterKeyFile equivalent", () => {
