@@ -10,7 +10,7 @@ linear:
 codex:
   auth_mode: "openai_login"
   source_home: "/tmp/codex-auth"
-  model: "gpt-5-codex-mini"
+  model: "gpt-5.4-mini"
   reasoning_effort: "low"
 
 github:
