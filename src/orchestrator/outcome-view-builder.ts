@@ -1,6 +1,6 @@
-import { issueView } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
-import type { Issue, ModelSelection, Workspace } from "../core/types.js";
+import type { Issue, ModelSelection, RuntimeIssueView, Workspace } from "../core/types.js";
+import { projectOutcomeIssueView } from "./core/snapshot-projection.js";
 
 export interface OutcomeViewInput {
   issue: Issue;
@@ -28,26 +28,6 @@ export function buildOutcomeView(
     message?: string | null;
     pullRequestUrl?: string | null;
   },
-): ReturnType<typeof issueView> {
-  const lastEventIso = new Date(entry.lastEventAtMs).toISOString();
-  return issueView(issue, {
-    workspaceKey: workspace.workspaceKey,
-    workspacePath: workspace.path,
-    status: overrides.status,
-    attempt: overrides.attempt,
-    error: overrides.error,
-    message: overrides.message,
-    startedAt: new Date(entry.startedAtMs).toISOString(),
-    updatedAt: lastEventIso,
-    lastEventAt: lastEventIso,
-    tokenUsage: entry.tokenUsage,
-    configuredModel: configuredSelection.model,
-    configuredReasoningEffort: configuredSelection.reasoningEffort,
-    configuredModelSource: configuredSelection.source,
-    modelChangePending: false,
-    model: entry.modelSelection.model,
-    reasoningEffort: entry.modelSelection.reasoningEffort,
-    modelSource: entry.modelSelection.source,
-    pullRequestUrl: overrides.pullRequestUrl,
-  });
+): RuntimeIssueView {
+  return projectOutcomeIssueView(issue, workspace, entry, configuredSelection, overrides);
 }

@@ -22,10 +22,10 @@ import type { FullConfig } from "@playwright/test";
 import { TypedEventBus } from "../../../src/core/event-bus.js";
 import type { RisolutoEventMap } from "../../../src/core/risoluto-events.js";
 import type { Issue, RecentEvent, RisolutoLogger, RuntimeIssueView, RuntimeSnapshot } from "../../../src/core/types.js";
-import { serializeSnapshot } from "../../../src/http/route-helpers.js";
 import { HttpServer } from "../../../src/http/server.js";
 import type { LinearWebhookPayload } from "../../../src/http/webhook-types.js";
 import type { AttemptDetailView, AttemptSummary, IssueDetailView } from "../../../src/orchestrator/snapshot-builder.js";
+import { serializeSnapshot } from "../../../src/orchestrator/snapshot-serialization.js";
 
 const WEBHOOK_SECRET = "fullstack-test-webhook-secret";
 const RECENT_EVENT_LIMIT = 50;

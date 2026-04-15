@@ -1,11 +1,15 @@
-import { sortIssuesForDispatch } from "./dispatch.js";
-import { createLifecycleEvent, type RuntimeEventSink } from "../core/lifecycle-events.js";
+import type { RuntimeEventSink } from "../core/lifecycle-events.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { issueView } from "./views.js";
 import { isActiveState, isTerminalState } from "../state/policy.js";
 import type { AttemptRecord, Issue, ServiceConfig } from "../core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
 import type { RetryCoordinator } from "./retry-coordinator.js";
+import {
+  planRunningEntryReconciliation,
+  projectQueueAndDetailViews,
+  seedCompletedClaimsFromAttempts,
+} from "./core/lifecycle-state.js";
 
 const VISIBLE_QUEUE_LIMIT = 50;
 
@@ -15,48 +19,26 @@ function reconcileRunning(
   config: ServiceConfig,
 ): boolean {
   let changed = false;
-  for (const entry of entries.values()) {
-    const latest = byId.get(entry.issue.id);
-    if (!latest) {
+  for (const plan of planRunningEntryReconciliation(entries, byId, config)) {
+    const entry = entries.get(plan.issueId);
+    if (!entry || !plan.latestIssue) {
       continue;
     }
-    changed = syncRunningEntry(entry, latest, config) || changed;
-  }
-  return changed;
-}
-
-function syncRunningEntry(entry: RunningEntry, latest: Issue, config: ServiceConfig): boolean {
-  let changed = false;
-  if (entry.issue !== latest) {
-    entry.issue = latest;
-    changed = true;
-  }
-
-  if (isTerminalState(latest.state, config)) {
-    return markRunningEntryStopping(entry, "terminal", true) || changed;
-  }
-  if (!isActiveState(latest.state, config) && !entry.abortController.signal.aborted) {
-    return markRunningEntryStopping(entry, "inactive", false) || changed;
-  }
-  return changed;
-}
-
-function markRunningEntryStopping(
-  entry: RunningEntry,
-  reason: "terminal" | "inactive",
-  cleanupOnExit: boolean,
-): boolean {
-  let changed = false;
-  if (cleanupOnExit && !entry.cleanupOnExit) {
-    entry.cleanupOnExit = true;
-    changed = true;
-  }
-  if (!entry.abortController.signal.aborted) {
-    entry.abortController.abort(reason);
-  }
-  if (entry.status !== "stopping") {
-    entry.status = "stopping";
-    changed = true;
+    if (plan.issueChanged) {
+      entry.issue = plan.latestIssue;
+      changed = true;
+    }
+    if (plan.cleanupOnExit && !entry.cleanupOnExit) {
+      entry.cleanupOnExit = true;
+      changed = true;
+    }
+    if (plan.abortReason) {
+      entry.abortController.abort(plan.abortReason);
+    }
+    if (entry.status !== plan.nextStatus) {
+      entry.status = plan.nextStatus;
+      changed = true;
+    }
   }
   return changed;
 }
@@ -142,69 +124,30 @@ export async function refreshQueueViews(
   },
   candidateIssues?: Issue[],
 ): Promise<void> {
-  const issues = candidateIssues ?? sortIssuesForDispatch(await ctx.deps.tracker.fetchCandidateIssues());
-  const dispatchableIssues = issues.filter((issue) => ctx.canDispatchIssue(issue));
-  const previousQueuedIssueIds = new Set(ctx.queuedViews.map((view) => view.issueId));
-  const visibleQueuedIssues = dispatchableIssues.slice(0, VISIBLE_QUEUE_LIMIT);
-  const queuedViews = visibleQueuedIssues.map((issue) => {
-    const selection = ctx.resolveModelSelection(issue.identifier);
-    return issueView(issue, {
-      status: "queued",
-      configuredModel: selection.model,
-      configuredReasoningEffort: selection.reasoningEffort,
-      configuredModelSource: selection.source,
-      modelChangePending: false,
-      model: selection.model,
-      reasoningEffort: selection.reasoningEffort,
-      modelSource: selection.source,
-    });
+  const issues = candidateIssues ?? (await ctx.deps.tracker.fetchCandidateIssues());
+  const projection = projectQueueAndDetailViews({
+    issues,
+    canDispatchIssue: ctx.canDispatchIssue,
+    resolveModelSelection: ctx.resolveModelSelection,
+    previousQueuedIssueIds: new Set(ctx.queuedViews.map((view) => view.issueId)),
+    visibleQueueLimit: VISIBLE_QUEUE_LIMIT,
   });
 
   if (ctx.pushEvent) {
-    for (const issue of visibleQueuedIssues) {
-      if (previousQueuedIssueIds.has(issue.id)) {
-        continue;
-      }
-      ctx.pushEvent(
-        createLifecycleEvent({
-          issue,
-          event: "issue_queued",
-          message: "Issue queued for dispatch",
-          metadata: {
-            state: issue.state,
-            priority: issue.priority,
-          },
-        }),
-      );
+    for (const event of projection.queuedEvents) {
+      ctx.pushEvent(event);
     }
   }
-  ctx.setQueuedViews(queuedViews);
 
-  refreshDetailViews(ctx.detailViews, issues, ctx.resolveModelSelection, ctx.markDirty);
+  ctx.setQueuedViews(projection.queuedViews);
+  refreshDetailViews(ctx.detailViews, projection.detailViews, ctx.markDirty);
 }
 
 function refreshDetailViews(
   detailViews: Map<string, IssueView>,
-  issues: Issue[],
-  resolveModelSelection: ModelSelectionResolver,
+  nextDetailViews: Map<string, IssueView>,
   markDirty?: () => void,
 ): void {
-  const nextDetailViews = new Map<string, IssueView>();
-  for (const issue of issues) {
-    const selection = resolveModelSelection(issue.identifier);
-    nextDetailViews.set(
-      issue.identifier,
-      issueView(issue, {
-        configuredModel: selection.model,
-        configuredReasoningEffort: selection.reasoningEffort,
-        configuredModelSource: selection.source,
-        modelChangePending: false,
-        model: selection.model,
-        reasoningEffort: selection.reasoningEffort,
-        modelSource: selection.source,
-      }),
-    );
-  }
   const hadEntries = detailViews.size > 0 || nextDetailViews.size > 0;
   detailViews.clear();
   nextDetailViews.forEach((detailView, identifier) => detailViews.set(identifier, detailView));
@@ -237,8 +180,6 @@ export async function cleanupTerminalIssueWorkspaces(ctx: {
 
 type IssueView = ReturnType<typeof issueView>;
 
-const TERMINAL_ATTEMPT_STATUSES = new Set(["completed", "failed", "timed_out", "stalled", "cancelled", "paused"]);
-
 export function seedCompletedClaims(ctx: {
   claimedIssueIds: Set<string>;
   completedViews: Map<string, ReturnType<typeof issueView>>;
@@ -248,63 +189,12 @@ export function seedCompletedClaims(ctx: {
     logger: { info: (meta: Record<string, unknown>, message: string) => void };
   };
 }): void {
-  const attempts = ctx.deps.attemptStore.getAllAttempts();
-  const latestByIssue = new Map<string, AttemptRecord>();
-  for (const attempt of attempts) {
-    const key = attempt.issueIdentifier;
-    const existing = latestByIssue.get(key);
-    if (!existing || attempt.startedAt > existing.startedAt) {
-      latestByIssue.set(key, attempt);
-    }
-  }
-  let seeded = 0;
-  for (const [, attempt] of latestByIssue) {
-    if (attempt.status === "completed") {
-      ctx.claimedIssueIds.add(attempt.issueId);
-    }
-    if (TERMINAL_ATTEMPT_STATUSES.has(attempt.status)) {
-      ctx.completedViews.set(attempt.issueIdentifier, attemptToCompletedView(attempt));
-      seeded++;
-    }
-  }
-  if (seeded > 0) {
+  const projection = seedCompletedClaimsFromAttempts(ctx.deps.attemptStore.getAllAttempts());
+  projection.claimedIssueIds.forEach((issueId) => ctx.claimedIssueIds.add(issueId));
+  projection.completedViews.forEach((view, identifier) => ctx.completedViews.set(identifier, view));
+
+  if (projection.seededCount > 0) {
     ctx.markDirty?.();
-    ctx.deps.logger.info({ count: seeded }, "seeded completed views from attempt store");
+    ctx.deps.logger.info({ count: projection.seededCount }, "seeded completed views from attempt store");
   }
-}
-
-function attemptStatusToLinearState(status: string): string {
-  switch (status) {
-    case "completed":
-      return "Done";
-    case "failed":
-    case "timed_out":
-    case "stalled":
-    case "cancelled":
-      return "Canceled";
-    default:
-      return status;
-  }
-}
-
-function attemptToCompletedView(attempt: AttemptRecord): ReturnType<typeof issueView> {
-  return {
-    issueId: attempt.issueId,
-    identifier: attempt.issueIdentifier,
-    title: attempt.title,
-    state: attemptStatusToLinearState(attempt.status),
-    workspaceKey: attempt.workspaceKey,
-    workspacePath: attempt.workspacePath,
-    message: attempt.errorMessage,
-    status: attempt.status,
-    updatedAt: attempt.endedAt ?? attempt.startedAt,
-    attempt: attempt.attemptNumber,
-    error: attempt.errorCode,
-    model: attempt.model,
-    reasoningEffort: attempt.reasoningEffort,
-    modelSource: attempt.modelSource,
-    tokenUsage: attempt.tokenUsage,
-    startedAt: attempt.startedAt,
-    pullRequestUrl: attempt.pullRequestUrl,
-  };
 }

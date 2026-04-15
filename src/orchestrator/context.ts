@@ -1,5 +1,5 @@
 import type { Issue, ModelSelection, RuntimeIssueView, ServiceConfig, TokenUsageSnapshot } from "../core/types.js";
-import type { OrchestratorDeps, RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
+import type { OrchestratorDeps, RunningEntry } from "./runtime-types.js";
 import type { LaunchWorkerOptions } from "./runtime-types.js";
 import type { StallEvent } from "./stall-detector.js";
 import type { RuntimeEventRecord } from "../core/lifecycle-events.js";
@@ -11,6 +11,7 @@ import type { WorkspaceRemovalResult } from "../workspace/manager.js";
 import type { OutcomeViewInput } from "./outcome-view-builder.js";
 import type { StopSignal } from "../core/signal-detection.js";
 import type { PreparedWorkerOutcome, TerminalPathKind } from "./worker-outcome/types.js";
+import type { LifecycleState } from "./core/lifecycle-state.js";
 
 /**
  * Retry coordination contract. Defined here (rather than retry-coordinator.ts)
@@ -73,13 +74,13 @@ export interface OutcomeContext {
 }
 
 export interface OrchestratorContext {
-  running: boolean;
-  runningEntries: Map<string, RunningEntry>;
-  retryEntries: Map<string, RetryRuntimeEntry>;
-  completedViews: Map<string, RuntimeIssueView>;
-  detailViews: Map<string, RuntimeIssueView>;
-  claimedIssueIds: Set<string>;
-  queuedViews: RuntimeIssueView[];
+  running: LifecycleState["running"];
+  runningEntries: LifecycleState["runningEntries"];
+  retryEntries: LifecycleState["retryEntries"];
+  completedViews: LifecycleState["completedViews"];
+  detailViews: LifecycleState["detailViews"];
+  claimedIssueIds: LifecycleState["claimedIssueIds"];
+  queuedViews: LifecycleState["queuedViews"];
   deps: OrchestratorDeps;
   getConfig: () => ServiceConfig;
   isRunning: () => boolean;
