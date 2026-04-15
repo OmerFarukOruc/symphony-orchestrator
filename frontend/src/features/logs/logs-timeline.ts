@@ -7,6 +7,16 @@ import { loadArchiveLogs, loadLiveLogs, shouldDisplayLogsEvent } from "../../pag
 export type LogsMode = "live" | "archive";
 export type LogsDensity = "compact" | "comfortable";
 
+export interface LogsAppendEvent {
+  event: RecentEvent;
+  index: number;
+}
+
+export interface LogsRenderOptions {
+  animate?: boolean;
+  appendEvent?: LogsAppendEvent;
+}
+
 export interface LogsTimelineState {
   mode: LogsMode;
   density: LogsDensity;
@@ -30,7 +40,7 @@ interface LogsTimelineDeps {
 
 interface LogsTimelineOptions {
   id: string;
-  rerender: (options?: { animate?: boolean }) => void;
+  rerender: (options?: LogsRenderOptions) => void;
   deps?: Partial<LogsTimelineDeps>;
 }
 
@@ -123,8 +133,21 @@ export function createLogsTimeline(options: LogsTimelineOptions): LogsTimeline {
   let unsubscribeLifecycle: (() => void) | null = null;
   let unsubscribeStream: (() => void) | null = null;
 
-  function rerender(renderOptions?: { animate?: boolean }): void {
+  function rerender(renderOptions?: LogsRenderOptions): void {
     options.rerender(renderOptions);
+  }
+
+  function visibleInsertIndex(target: RecentEvent): number {
+    let index = 0;
+    for (const event of buffer.events()) {
+      if (event === target) {
+        break;
+      }
+      if (eventPassesFilters(event)) {
+        index += 1;
+      }
+    }
+    return index;
   }
 
   function eventPassesFilters(event: RecentEvent): boolean {
@@ -193,10 +216,14 @@ export function createLogsTimeline(options: LogsTimelineOptions): LogsTimeline {
     if (!buffer.insert(recentEvent) || !eventPassesFilters(recentEvent)) {
       return;
     }
+    const appendEvent: LogsAppendEvent = {
+      event: recentEvent,
+      index: visibleInsertIndex(recentEvent),
+    };
     if (!state.autoScroll) {
       state.newEventCount += 1;
     }
-    rerender();
+    rerender({ appendEvent });
   }
 
   function stopLiveSubscriptions(): void {

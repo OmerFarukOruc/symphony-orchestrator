@@ -3,7 +3,8 @@ import { createEmptyState } from "../components/empty-state";
 import { registerPageCleanup } from "../utils/page";
 import { buildLogFilterBar } from "./logs-filter-bar.js";
 import { buildDetailFiltersPanel } from "./logs-detail-panel.js";
-import { createLogsTimeline } from "../features/logs/logs-timeline.js";
+import { createLogsTimeline, type LogsAppendEvent, type LogsRenderOptions } from "../features/logs/logs-timeline.js";
+import type { RecentEvent } from "../types";
 
 export function createLogsPage(id: string): HTMLElement {
   const page = document.createElement("div");
@@ -52,11 +53,17 @@ export function createLogsPage(id: string): HTMLElement {
   indicator.hidden = true;
   indicator.textContent = "↓ New events";
 
-  function render(renderOptions: { animate?: boolean } = {}): void {
-    const animate = renderOptions.animate ?? false;
-    const events = timeline.getVisibleEvents();
-    const state = timeline.state;
+  function renderRow(event: RecentEvent): HTMLElement {
+    return createLogRow({
+      event,
+      expanded: timeline.isExpanded(event),
+      highlightedText: timeline.state.searchText,
+      onToggle: () => timeline.toggleExpanded(event),
+    });
+  }
 
+  function syncChrome(): void {
+    const state = timeline.state;
     breadcrumb.textContent = `Queue · ${id}`;
     title.textContent = state.issueTitle && state.issueTitle !== id ? state.issueTitle : `${id} logs`;
     subtitle.textContent = timeline.getHeaderSummary();
@@ -80,6 +87,30 @@ export function createLogsPage(id: string): HTMLElement {
 
     indicator.textContent = timeline.getIndicatorLabel();
     indicator.hidden = state.autoScroll || state.newEventCount === 0;
+  }
+
+  function appendEventRow(appendEvent: LogsAppendEvent): void {
+    const row = renderRow(appendEvent.event);
+    row.classList.add("timeline-enter");
+    const refNode = scroll.children[appendEvent.index] as Element | undefined;
+    scroll.querySelector(".mc-empty-state")?.remove();
+    if (refNode) {
+      refNode.before(row);
+    } else {
+      scroll.appendChild(row);
+    }
+    if (timeline.state.autoScroll) {
+      scroll.scrollTop = timeline.getSortDirection() === "desc" ? 0 : scroll.scrollHeight;
+    }
+  }
+
+  function render(renderOptions: LogsRenderOptions = {}): void {
+    const animate = renderOptions.animate ?? false;
+    const appendEvent = renderOptions.appendEvent;
+    const events = timeline.getVisibleEvents();
+    const state = timeline.state;
+
+    syncChrome();
 
     if (events.length === 0) {
       scroll.replaceChildren(
@@ -101,16 +132,16 @@ export function createLogsPage(id: string): HTMLElement {
       return;
     }
 
+    if (appendEvent) {
+      appendEventRow(appendEvent);
+      return;
+    }
+
     const total = events.length;
     const isDesc = timeline.getSortDirection() === "desc";
     scroll.replaceChildren(
       ...events.map((event, index) => {
-        const row = createLogRow({
-          event,
-          expanded: timeline.isExpanded(event),
-          highlightedText: state.searchText,
-          onToggle: () => timeline.toggleExpanded(event),
-        });
+        const row = renderRow(event);
         if (animate) {
           const staggerPos = isDesc ? index : index - (total - 30);
           if (staggerPos >= 0 && staggerPos < 30) {

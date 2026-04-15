@@ -97,10 +97,11 @@ describe("logs-timeline", () => {
 
   it("merges live stream events and tracks unseen-event count behind the timeline boundary", async () => {
     let streamHandler: ((event: { type: string; payload: Record<string, unknown> }) => void) | null = null;
+    const rerender = vi.fn();
 
     const timeline = createLogsTimeline({
       id: "NIN-1",
-      rerender: vi.fn(),
+      rerender,
       deps: {
         loadLiveLogs: vi.fn(async () => createLogsData()),
         loadArchiveLogs: vi.fn(async () => createLogsData()),
@@ -124,6 +125,15 @@ describe("logs-timeline", () => {
     expect(timeline.getVisibleEvents()).toHaveLength(2);
     expect(timeline.state.newEventCount).toBe(1);
     expect(timeline.getIndicatorLabel()).toBe("↑ 1 new");
+    expect(rerender).toHaveBeenLastCalledWith({
+      appendEvent: expect.objectContaining({
+        index: 0,
+        event: expect.objectContaining({
+          message: "Ran command",
+          event: "tool_exec",
+        }),
+      }),
+    });
 
     timeline.acknowledgeNewEvents();
     expect(timeline.state.newEventCount).toBe(0);
