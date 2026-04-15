@@ -88,4 +88,34 @@ describe("WebhookDeliveryWorkflow", () => {
       }),
     ).resolves.toBe(true);
   });
+
+  it("ensureNew logs and proceeds when durable inbox insert fails", async () => {
+    const logger = createMockLogger();
+    const workflow = new WebhookDeliveryWorkflow(logger, {
+      insertVerified: vi.fn().mockRejectedValue(new Error("sqlite busy")),
+    });
+
+    await expect(
+      workflow.ensureNew({
+        deliveryId: "delivery-error",
+        type: "Issue",
+        action: "update",
+        entityId: "entity-1",
+        issueId: "issue-1",
+        issueIdentifier: "ENG-1",
+        webhookTimestamp: Date.now(),
+        payloadJson: '{"ok":true}',
+      }),
+    ).resolves.toBe(true);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      {
+        deliveryId: "delivery-error",
+        type: "Issue",
+        action: "update",
+        error: "sqlite busy",
+      },
+      "webhook inbox insert failed — proceeding without durable dedupe",
+    );
+  });
 });

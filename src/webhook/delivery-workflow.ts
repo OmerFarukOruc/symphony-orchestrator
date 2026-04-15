@@ -1,6 +1,7 @@
 import type { Response } from "express";
 
 import type { RisolutoLogger } from "../core/types.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 export interface VerifiedWebhookDelivery {
   deliveryId: string;
@@ -72,7 +73,7 @@ export class WebhookDeliveryWorkflow {
         this.logger.error(
           {
             ...deliveryLogContext(options.delivery),
-            error: error instanceof Error ? error.message : String(error),
+            error: toErrorString(error),
           },
           options.errorMessage ?? "webhook delivery processing failed",
         );
@@ -84,7 +85,18 @@ export class WebhookDeliveryWorkflow {
       return true;
     }
 
-    const result = await this.store.insertVerified(delivery);
-    return result.isNew;
+    try {
+      const result = await this.store.insertVerified(delivery);
+      return result.isNew;
+    } catch (error) {
+      this.logger.error(
+        {
+          ...deliveryLogContext(delivery),
+          error: toErrorString(error),
+        },
+        "webhook inbox insert failed — proceeding without durable dedupe",
+      );
+      return true;
+    }
   }
 }
