@@ -1,3 +1,8 @@
+// WHY divergent from src/core/types/runtime.ts: the backend domain model uses camelCase
+// field names and is serialized to snake_case by serializeSnapshot() in
+// src/http/route-helpers.ts before being sent over the wire. These frontend types
+// reflect the wire format (snake_case). The frontend and backend are separate build
+// targets (NodeNext vs Bundler module resolution) and cannot share imports directly.
 export interface RuntimeIssueView {
   issueId: string;
   identifier: string;
