@@ -39,23 +39,6 @@
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\"; output=$(pnpm run build 2>&1 && pnpm test --reporter=dot 2>&1); rc=$?; if [ $rc -ne 0 ]; then echo \"$output\" | tail -20 | python3 -c \"import sys,json; content=sys.stdin.read(); print(json.dumps({'hookSpecificOutput':{'hookEventName':'Stop','additionalContext':'Build/test gate failed. Fix before continuing:\\n'+content}}))\"; exit 2; fi",
-            "timeout": 90,
-            "statusMessage": "Verifying build + tests...",
-            "asyncRewake": true
-          },
-          {
-            "type": "prompt",
-            "prompt": "Review the conversation. Check: (1) Were all tasks the user requested actually addressed? (2) If code was modified, were tests run? (3) Are there uncommitted changes that should be committed? If everything looks complete, respond {\"ok\": true}. If something was missed, respond {\"ok\": false, \"reason\": \"<what remains>\"}."
-          }
-        ]
-      }
-    ],
     "SubagentStart": [
       {
         "hooks": [

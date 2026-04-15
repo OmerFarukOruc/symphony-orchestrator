@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { describeCurrentMoment, describeAttentionZone } from "../../frontend/src/pages/overview-descriptions.js";
+import { describeCurrentMoment } from "../../frontend/src/pages/overview-descriptions.js";
 import type { AppState } from "../../frontend/src/state/store.js";
 
 type Snapshot = NonNullable<AppState["snapshot"]>;
@@ -73,24 +73,5 @@ describe("describeCurrentMoment", () => {
     const result = describeCurrentMoment(snapshot, 0);
     expect(result.state).toBe("Ready for the first issue");
     expect(result.detail).toContain("Linear");
-  });
-});
-
-describe("describeAttentionZone", () => {
-  it("returns all-clear message when count is 0", () => {
-    const result = describeAttentionZone(0);
-    expect(result).toContain("Nothing needs review");
-  });
-
-  it("returns singular message for 1 item", () => {
-    const result = describeAttentionZone(1);
-    expect(result).toContain("One issue");
-    expect(result).toContain("decision");
-  });
-
-  it("returns plural message with count for multiple items", () => {
-    const result = describeAttentionZone(5);
-    expect(result).toContain("5 issues");
-    expect(result).toContain("retries");
   });
 });

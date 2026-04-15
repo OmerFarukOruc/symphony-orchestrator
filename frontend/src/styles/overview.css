@@ -79,7 +79,7 @@
 
 .overview-hero-metrics {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
@@ -176,15 +176,6 @@
   color: var(--text-accent);
   border-color: color-mix(in srgb, var(--text-accent) 50%, var(--border-stitch));
   background: color-mix(in srgb, var(--text-accent) 7%, var(--bg-surface));
-}
-
-.overview-attention-context {
-  margin: 0;
-  max-width: 60ch;
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
-  color: var(--text-secondary);
 }
 
 .overview-attention-list {
@@ -290,8 +281,18 @@
 
 .overview-token-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.overview-token-grid .overview-live-metric {
+  padding: var(--space-2) var(--space-3);
+  gap: 2px;
+}
+
+.overview-token-grid .overview-live-value {
+  font-size: var(--text-lg);
+  line-height: 1.1;
 }
 
 .overview-events,
@@ -476,41 +477,6 @@
   font-family: var(--font-body);
   font-size: var(--text-xs);
   color: var(--text-secondary);
-}
-
-/* ---- Collapsible peek summary (always visible) ---- */
-
-.overview-collapsible-peek {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 0 var(--space-4) var(--space-3);
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  font-weight: var(--font-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  color: var(--text-muted);
-}
-
-.overview-collapsible-peek .sparkline {
-  flex-shrink: 0;
-}
-
-.overview-peek-dot {
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-}
-
-.overview-peek-dot.is-healthy {
-  background: var(--status-running);
-}
-.overview-peek-dot.is-degraded {
-  background: var(--status-retrying);
-}
-.overview-peek-dot.is-critical {
-  background: var(--status-blocked);
 }
 
 .overview-teaching-empty {

@@ -993,27 +993,6 @@
   letter-spacing: 0.01em;
 }
 
-/* ── Sparkline ────────────────────────────────────── */
-
-.sparkline {
-  display: inline-block;
-  vertical-align: middle;
-  line-height: 0;
-}
-
-.sparkline-line {
-  fill: none;
-  stroke: var(--sparkline-color, var(--text-accent));
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.sparkline-area {
-  fill: var(--sparkline-color, var(--text-accent));
-  opacity: 0.1;
-}
-
 /* Legacy class aliases (for backward compatibility) */
 .config-code {
   padding: var(--space-4);

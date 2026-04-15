@@ -1,0 +1,13 @@
+{
+  "slug": "epic-404-architecture-deepening",
+  "phase": "planning",
+  "phase_status": "completed",
+  "active": false,
+  "blocked": false,
+  "loop_state": "paused",
+  "planning_only": true,
+  "branch": "architecture-deepening-closeout",
+  "commit": "3f723ea",
+  "next_action": "Create a clean dedicated worktree, open the durable docs in the documented order, and begin Unit 0.",
+  "updated_at": "2026-04-15T14:36:00Z"
+}
