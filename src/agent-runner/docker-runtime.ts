@@ -6,13 +6,13 @@ import { createDockerSession, type DockerSession, type DockerSessionDeps } from 
 import { initializeSession } from "./session-init.js";
 import { runSelfReview, type SelfReviewResult } from "./self-review.js";
 import type {
-  CodexRuntimePort,
-  CodexRuntimeSession,
-  RuntimeExecuteInput,
-  RuntimeInitInput,
-  RuntimeInitResult,
-  RuntimeStartInput,
-} from "./codex-runtime-port.js";
+  AgentSession,
+  AgentSessionExecuteInput,
+  AgentSessionInitializeInput,
+  AgentSessionInitializeResult,
+  AgentSessionPort,
+  AgentSessionStartInput,
+} from "./session-port.js";
 import type { GithubApiToolClient } from "../git/github-api-tool.js";
 import type { TrackerToolProvider } from "../tracker/tool-provider.js";
 import type { TrackerPort } from "../tracker/port.js";
@@ -32,10 +32,10 @@ interface DockerCodexRuntimePortDeps {
   metrics?: MetricsCollector;
 }
 
-export class DockerCodexRuntimePort implements CodexRuntimePort {
+export class DockerCodexRuntimePort implements AgentSessionPort {
   constructor(private readonly deps: DockerCodexRuntimePortDeps) {}
 
-  async start(input: RuntimeStartInput): Promise<CodexRuntimeSession> {
+  async start(input: AgentSessionStartInput): Promise<AgentSession> {
     const config = this.deps.getConfig();
     const turnState = createTurnState();
     const dockerSession = await createDockerSession(
@@ -68,7 +68,7 @@ export class DockerCodexRuntimePort implements CodexRuntimePort {
   }
 }
 
-class DockerCodexRuntimeSession implements CodexRuntimeSession {
+class DockerCodexRuntimeSession implements AgentSession {
   private readonly liquid = new Liquid({ strictFilters: true, strictVariables: true });
 
   constructor(
@@ -82,7 +82,7 @@ class DockerCodexRuntimeSession implements CodexRuntimeSession {
     },
   ) {}
 
-  async initialize(input: RuntimeInitInput): Promise<RuntimeInitResult> {
+  async initialize(input: AgentSessionInitializeInput): Promise<AgentSessionInitializeResult> {
     return initializeSession(
       this.session,
       this.config,
@@ -100,7 +100,7 @@ class DockerCodexRuntimeSession implements CodexRuntimeSession {
     );
   }
 
-  async execute(input: RuntimeExecuteInput) {
+  async execute(input: AgentSessionExecuteInput) {
     return executeTurns(
       {
         connection: this.session.connection,
