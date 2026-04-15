@@ -12,7 +12,3 @@ export type { OrchestratorState } from "./run-lifecycle-coordinator.js";
 export function buildCtx(state: OrchestratorState, deps: OrchestratorDeps): OrchestratorContext {
   return createRunLifecycleCoordinator(state, deps).getContext();
 }
-
-export async function cleanupTerminalWorkspaces(state: OrchestratorState, deps: OrchestratorDeps): Promise<void> {
-  await createRunLifecycleCoordinator(state, deps).cleanupTerminalWorkspaces();
-}
