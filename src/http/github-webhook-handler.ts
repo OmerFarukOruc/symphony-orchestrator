@@ -5,6 +5,8 @@ import type { Response } from "express";
 import type { ConfigStore } from "../config/store.js";
 import type { RisolutoLogger } from "../core/types.js";
 import { asRecord, asStringOrNull } from "../utils/type-guards.js";
+import type { VerifiedWebhookDeliveryStore } from "../webhook/delivery-workflow.js";
+import { WebhookDeliveryWorkflow } from "../webhook/delivery-workflow.js";
 import type { ApiErrorResponse } from "./service-errors.js";
 import type { WebhookRequest } from "./webhook-types.js";
 
@@ -14,18 +16,7 @@ export interface GitHubWebhookHandlerDeps {
   configStore?: ConfigStore;
   requestTargetedRefresh?: (issueId: string, issueIdentifier: string, reason: string) => void;
   stopWorkerForIssue?: (issueIdentifier: string, reason: string) => void;
-  webhookInbox?: {
-    insertVerified: (delivery: {
-      deliveryId: string;
-      type: string;
-      action: string;
-      entityId: string | null;
-      issueId: string | null;
-      issueIdentifier: string | null;
-      webhookTimestamp: number | null;
-      payloadJson: string | null;
-    }) => Promise<{ isNew: boolean }>;
-  };
+  webhookInbox?: VerifiedWebhookDeliveryStore;
   logger: RisolutoLogger;
 }
 
@@ -119,30 +110,28 @@ function buildGitHubWebhookContext(
   };
 }
 
-function queueGitHubWebhookProcessing(deps: GitHubWebhookHandlerDeps, context: GitHubWebhookContext): void {
-  const insertPromise = deps.webhookInbox
-    ? deps.webhookInbox.insertVerified({
-        deliveryId: context.deliveryId,
-        type: context.event,
-        action: context.action,
-        entityId: context.issueId,
-        issueId: context.issueId,
-        issueIdentifier: context.issueIdentifier,
-        webhookTimestamp: null,
-        payloadJson: JSON.stringify(context.payload),
-      })
-    : Promise.resolve({ isNew: true } as const);
+export function handleWebhookGitHub(deps: GitHubWebhookHandlerDeps, req: WebhookRequest, res: Response): void {
+  const validated = validateGitHubWebhookRequest(deps, req, res);
+  if (!validated) {
+    return;
+  }
 
-  void insertPromise
-    .then((result) => {
-      if (!result.isNew) {
-        deps.logger.debug(
-          { deliveryId: context.deliveryId, event: context.event, action: context.action },
-          "duplicate github webhook delivery skipped",
-        );
-        return;
-      }
-
+  const context = buildGitHubWebhookContext(req, validated);
+  const workflow = new WebhookDeliveryWorkflow(deps.logger, deps.webhookInbox);
+  workflow.respondAccepted(res, {
+    delivery: {
+      deliveryId: context.deliveryId,
+      type: context.event,
+      action: context.action,
+      entityId: context.issueId,
+      issueId: context.issueId,
+      issueIdentifier: context.issueIdentifier,
+      webhookTimestamp: null,
+      payloadJson: JSON.stringify(context.payload),
+    },
+    duplicateMessage: "duplicate github webhook delivery skipped",
+    errorMessage: "github webhook processing failed",
+    process: () =>
       processGitHubWebhook(
         deps,
         context.config,
@@ -151,30 +140,8 @@ function queueGitHubWebhookProcessing(deps: GitHubWebhookHandlerDeps, context: G
         context.repoFullName,
         context.issueId,
         context.issueIdentifier,
-      );
-    })
-    .catch((error) => {
-      deps.logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          deliveryId: context.deliveryId,
-          event: context.event,
-          action: context.action,
-        },
-        "github webhook processing failed",
-      );
-    });
-}
-
-export function handleWebhookGitHub(deps: GitHubWebhookHandlerDeps, req: WebhookRequest, res: Response): void {
-  const validated = validateGitHubWebhookRequest(deps, req, res);
-  if (!validated) {
-    return;
-  }
-
-  const context = buildGitHubWebhookContext(req, validated);
-  res.status(200).json({ ok: true });
-  queueGitHubWebhookProcessing(deps, context);
+      ),
+  });
 }
 
 function processGitHubWebhook(

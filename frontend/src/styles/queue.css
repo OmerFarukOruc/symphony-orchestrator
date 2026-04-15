@@ -547,6 +547,12 @@
   right: var(--space-3);
   transform: translateY(-50%);
   pointer-events: none;
+  opacity: 0.9;
+  transition: opacity var(--motion-fast) var(--ease-out-quart);
+}
+
+.queue-toolbar-search:focus-within .queue-search-hint {
+  opacity: 0;
 }
 
 .queue-toolbar-reset[hidden] {
@@ -652,10 +658,6 @@
 
 .queue-stage-chip-duplicate {
   --queue-chip-accent: var(--status-duplicate);
-}
-
-.queue-priority-chip-all {
-  --queue-chip-accent: var(--text-secondary);
 }
 
 .queue-priority-chip-urgent,

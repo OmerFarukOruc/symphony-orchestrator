@@ -1,13 +1,11 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-
 import type { Request, Response } from "express";
 
-import { normalizeCodexAuthJson } from "../../codex/auth-file.js";
 import { isRecord, toErrorString } from "../../utils/type-guards.js";
+import { resolveSetupService, type SetupService } from "../setup-service.js";
 import type { SetupApiDeps } from "./shared.js";
 
-export function handlePostCodexAuth(deps: SetupApiDeps) {
+export function handlePostCodexAuth(deps: SetupApiDeps | SetupService) {
+  const service = resolveSetupService(deps);
   return async (req: Request, res: Response) => {
     const body = req.body;
     const authJson = isRecord(body) && typeof body.authJson === "string" ? body.authJson : null;
@@ -24,18 +22,7 @@ export function handlePostCodexAuth(deps: SetupApiDeps) {
     }
 
     try {
-      const normalizedAuthJson = normalizeCodexAuthJson(authJson);
-      const authDir = path.join(deps.archiveDir, "codex-auth");
-      await mkdir(authDir, { recursive: true });
-      await writeFile(path.join(authDir, "auth.json"), normalizedAuthJson, { encoding: "utf8", mode: 0o600 });
-
-      await Promise.all([
-        deps.configOverlayStore.set("codex.auth.mode", "openai_login"),
-        deps.configOverlayStore.set("codex.auth.source_home", authDir),
-        deps.configOverlayStore.delete("codex.provider"),
-      ]);
-
-      res.json({ ok: true });
+      res.json(await service.saveCodexAuth(authJson));
     } catch (error) {
       res.status(500).json({ error: { code: "save_error", message: toErrorString(error) } });
     }

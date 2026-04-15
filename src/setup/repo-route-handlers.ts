@@ -1,135 +1,69 @@
 import type { Request, Response } from "express";
 
-import type { ConfigOverlayPort } from "../config/overlay.js";
-import type { SecretsPort } from "../secrets/port.js";
-import { isRecord } from "../utils/type-guards.js";
+import { isRecord, toErrorString } from "../utils/type-guards.js";
+import { SetupServiceError, resolveSetupService, type SetupService } from "./setup-service.js";
+import type { SetupApiDeps } from "./handlers/shared.js";
 
-const GITHUB_URL_RE = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(?:\.git)?$/u;
-
-export interface RepoRouteApiDeps {
-  configOverlayStore: ConfigOverlayPort;
-  secretsStore: SecretsPort;
-}
-
-interface RepoEntry {
-  repo_url: string;
-  default_branch: string;
-  identifier_prefix: string;
-  label?: string;
-}
-
-function readRepos(overlay: Record<string, unknown>): RepoEntry[] {
-  const raw = overlay.repos;
-  if (!Array.isArray(raw)) {
-    return [];
+function parseRepoRouteBody(body: unknown): {
+  repoUrl: string | null;
+  defaultBranch: string | null;
+  identifierPrefix: string | null;
+  label: string | null;
+} {
+  if (!isRecord(body)) {
+    return { repoUrl: null, defaultBranch: null, identifierPrefix: null, label: null };
   }
-  return raw.filter(
-    (entry): entry is RepoEntry =>
-      isRecord(entry) && typeof entry.repo_url === "string" && typeof entry.identifier_prefix === "string",
-  );
+
+  return {
+    repoUrl: typeof body.repoUrl === "string" ? body.repoUrl : null,
+    defaultBranch: typeof body.defaultBranch === "string" ? body.defaultBranch : null,
+    identifierPrefix: typeof body.identifierPrefix === "string" ? body.identifierPrefix : null,
+    label: typeof body.label === "string" ? body.label : null,
+  };
 }
 
-function parseRepoUrl(body: unknown): string | null {
-  if (!isRecord(body) || typeof body.repoUrl !== "string") {
-    return null;
+function respondWithSetupError(res: Response, error: unknown): void {
+  if (error instanceof SetupServiceError) {
+    res.status(error.status).json({ error: { code: error.code, message: error.message } });
+    return;
   }
-  const url = body.repoUrl.trim();
-  if (!GITHUB_URL_RE.test(url)) {
-    return null;
-  }
-  return url;
+
+  res.status(500).json({
+    error: {
+      code: "repo_route_error",
+      message: toErrorString(error),
+    },
+  });
 }
 
-function parseDefaultBranch(body: unknown): string {
-  if (isRecord(body) && typeof body.defaultBranch === "string" && body.defaultBranch.trim()) {
-    return body.defaultBranch.trim();
-  }
-  return "main";
-}
-
-function parseIdentifierPrefix(body: unknown): string | null {
-  if (isRecord(body) && typeof body.identifierPrefix === "string" && body.identifierPrefix.trim()) {
-    return body.identifierPrefix.trim().toUpperCase();
-  }
-  return null;
-}
-
-function parseLabel(body: unknown): string | undefined {
-  if (isRecord(body) && typeof body.label === "string" && body.label.trim()) {
-    return body.label.trim();
-  }
-  return undefined;
-}
-
-export function handlePostRepoRoute(deps: RepoRouteApiDeps) {
+export function handlePostRepoRoute(deps: SetupApiDeps | SetupService) {
+  const service = resolveSetupService(deps);
   return async (req: Request, res: Response) => {
-    const repoUrl = parseRepoUrl(req.body);
-    if (!repoUrl) {
-      res.status(400).json({
-        error: {
-          code: "invalid_repo_url",
-          message: "repoUrl must be a valid GitHub URL (https://github.com/org/repo)",
-        },
-      });
-      return;
+    try {
+      res.json(await service.saveRepoRoute(parseRepoRouteBody(req.body)));
+    } catch (error) {
+      respondWithSetupError(res, error);
     }
-
-    const identifierPrefix = parseIdentifierPrefix(req.body);
-    if (!identifierPrefix) {
-      res.status(400).json({
-        error: { code: "missing_prefix", message: "identifierPrefix is required" },
-      });
-      return;
-    }
-
-    const defaultBranch = parseDefaultBranch(req.body);
-    const label = parseLabel(req.body);
-
-    const overlay = deps.configOverlayStore.toMap();
-    const existing = readRepos(overlay);
-
-    const filtered = existing.filter((r) => r.identifier_prefix !== identifierPrefix);
-
-    const entry: RepoEntry = {
-      repo_url: repoUrl,
-      default_branch: defaultBranch,
-      identifier_prefix: identifierPrefix,
-      ...(label ? { label } : {}),
-    };
-    filtered.push(entry);
-
-    await deps.configOverlayStore.set("repos", filtered);
-
-    res.json({ ok: true, route: entry });
   };
 }
 
-export function handleGetRepoRoutes(deps: RepoRouteApiDeps) {
+export function handleGetRepoRoutes(deps: SetupApiDeps | SetupService) {
+  const service = resolveSetupService(deps);
   return (_req: Request, res: Response) => {
-    const overlay = deps.configOverlayStore.toMap();
-    const routes = readRepos(overlay);
-    res.json({ routes });
+    res.json(service.getRepoRoutes());
   };
 }
 
-export function handleDeleteRepoRoute(deps: RepoRouteApiDeps) {
+export function handleDeleteRepoRoute(deps: SetupApiDeps | SetupService) {
+  const service = resolveSetupService(deps);
   return async (req: Request, res: Response) => {
     const rawIndex = Array.isArray(req.params.index) ? req.params.index[0] : req.params.index;
     const index = rawIndex !== undefined && /^\d+$/.test(rawIndex) ? Number(rawIndex) : Number.NaN;
 
-    const overlay = deps.configOverlayStore.toMap();
-    const existing = readRepos(overlay);
-
-    if (!Number.isInteger(index) || index < 0 || index >= existing.length) {
-      res.status(400).json({
-        error: { code: "invalid_index", message: `index must be between 0 and ${existing.length - 1}` },
-      });
-      return;
+    try {
+      res.json(await service.deleteRepoRoute(index));
+    } catch (error) {
+      respondWithSetupError(res, error);
     }
-
-    existing.splice(index, 1);
-    await deps.configOverlayStore.set("repos", existing);
-
-    res.json({ ok: true, routes: existing });
   };
 }

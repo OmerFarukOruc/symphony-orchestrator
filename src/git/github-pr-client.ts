@@ -1,4 +1,5 @@
 import type { Issue } from "../core/types.js";
+import { GitHubApiError, GitHubTransport } from "../github/transport.js";
 import type { GithubApiToolClient } from "./github-api-tool.js";
 import type { PrCreateResult } from "./git-types.js";
 import type { RepoMatch } from "./repo-router.js";
@@ -45,16 +46,6 @@ export interface GitHubPrClientDeps {
   env?: NodeJS.ProcessEnv;
   apiBaseUrl?: string;
   defaultGithubTokenEnv?: string;
-}
-
-class GitHubApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly payload: unknown,
-  ) {
-    super(`github request failed with status ${status}: ${JSON.stringify(payload)}`, { cause: payload });
-    this.name = "GitHubApiError";
-  }
 }
 
 function isDuplicatePrError(error: unknown): boolean {
@@ -113,37 +104,23 @@ function parseGithubRepo(repoUrl: string): { owner: string; repo: string } | nul
   return null;
 }
 
-function buildGraphqlEndpoint(apiBaseUrl: string): string {
-  const parsed = new URL(apiBaseUrl);
-  parsed.search = "";
-  parsed.hash = "";
-  const normalizedPath = parsed.pathname.replace(/\/+$/u, "");
-
-  if (parsed.hostname === "api.github.com") {
-    parsed.pathname = "/graphql";
-    return parsed.toString();
-  }
-
-  if (normalizedPath === "/api/v3") {
-    parsed.pathname = "/api/graphql";
-    return parsed.toString();
-  }
-
-  parsed.pathname = `${normalizedPath}/graphql`;
-  return parsed.toString();
-}
-
 export class GitHubPrClient implements GithubApiToolClient {
-  private readonly fetchImpl: typeof fetch;
-  private readonly env: NodeJS.ProcessEnv;
-  private readonly apiBaseUrl: string;
   private readonly defaultGithubTokenEnv: string;
+  private readonly transport: GitHubTransport;
 
   constructor(deps: GitHubPrClientDeps = {}) {
-    this.fetchImpl = deps.fetch ?? fetch;
-    this.env = deps.env ?? process.env;
-    this.apiBaseUrl = deps.apiBaseUrl ?? "https://api.github.com";
     this.defaultGithubTokenEnv = deps.defaultGithubTokenEnv ?? "GITHUB_TOKEN";
+    this.transport = new GitHubTransport({
+      fetch: deps.fetch,
+      env: deps.env,
+      apiBaseUrl: deps.apiBaseUrl,
+      defaultTokenEnv: this.defaultGithubTokenEnv,
+      authorizationHeaderName: "authorization",
+      defaultHeaders: {
+        "content-type": "application/json",
+        "user-agent": "risoluto",
+      },
+    });
   }
 
   async createPullRequest(
@@ -283,11 +260,6 @@ export class GitHubPrClient implements GithubApiToolClient {
     tokenEnvName?: string,
   ): Promise<void> {
     const resolvedTokenEnv = tokenEnvName ?? this.defaultGithubTokenEnv;
-    const token = this.env[resolvedTokenEnv];
-    if (!token) {
-      throw new Error(`missing GitHub token env var: ${resolvedTokenEnv}`);
-    }
-
     // The GraphQL mutation requires the PR's global node ID — fetch it first.
     const prData = await this.githubRequest(
       `/repos/${owner}/${repo}/pulls/${pullNumber}`,
@@ -319,28 +291,11 @@ export class GitHubPrClient implements GithubApiToolClient {
       }
     `;
 
-    const response = await this.fetchImpl(buildGraphqlEndpoint(this.apiBaseUrl), {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${token}`,
-        "user-agent": "risoluto",
-      },
-      body: JSON.stringify({
-        query: mutation,
-        variables: { pullRequestId, mergeMethod: mergeMethod.toUpperCase() },
-      }),
+    const { response, payload } = await this.transport.graphql({
+      query: mutation,
+      variables: { pullRequestId, mergeMethod: mergeMethod.toUpperCase() },
+      tokenEnvName: resolvedTokenEnv,
     });
-
-    const text = await response.text();
-    let payload: unknown = null;
-    if (text.length > 0) {
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        payload = text;
-      }
-    }
 
     // 422 means the repository does not have auto-merge enabled — non-fatal.
     if (response.status === 422) {
@@ -361,32 +316,11 @@ export class GitHubPrClient implements GithubApiToolClient {
     init: { method: string; body?: string },
     tokenEnvName = this.defaultGithubTokenEnv,
   ): Promise<unknown> {
-    const token = this.env[tokenEnvName];
-    if (!token) {
-      throw new Error(`missing GitHub token env var: ${tokenEnvName}`);
-    }
-
-    const response = await this.fetchImpl(`${this.apiBaseUrl}${pathName}`, {
+    return this.transport.request({
+      pathName,
       method: init.method,
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${token}`,
-        "user-agent": "risoluto",
-      },
       body: init.body,
+      tokenEnvName,
     });
-    const text = await response.text();
-    let payload: unknown = null;
-    if (text.length > 0) {
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        payload = text;
-      }
-    }
-    if (!response.ok) {
-      throw new GitHubApiError(response.status, payload);
-    }
-    return payload;
   }
 }

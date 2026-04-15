@@ -1,4 +1,5 @@
 import type { Issue, ServiceConfig, RisolutoLogger } from "../core/types.js";
+import { GitHubTransport } from "./transport.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { withRetry as sharedWithRetry, withRetryReturn as sharedWithRetryReturn } from "../utils/retry.js";
 
@@ -102,19 +103,28 @@ export class GitHubIssuesClient {
     return config.tracker.endpoint || "https://api.github.com";
   }
 
+  private createTransport(): GitHubTransport {
+    return new GitHubTransport({
+      apiBaseUrl: this.getApiBaseUrl(),
+      authorizationHeaderName: "Authorization",
+      defaultHeaders: {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json",
+      },
+    });
+  }
+
   private async request<T>(path: string, options?: RequestInit): Promise<T> {
     const url = `${this.getApiBaseUrl()}${path}`;
     let response: Response;
     try {
-      response = await fetch(url, {
-        ...options,
-        headers: {
-          Authorization: `Bearer ${this.getToken()}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "Content-Type": "application/json",
-          ...options?.headers,
-        },
+      response = await this.createTransport().send({
+        pathName: path,
+        method: options?.method ?? "GET",
+        body: typeof options?.body === "string" ? options.body : undefined,
+        token: this.getToken(),
+        headers: (options?.headers ?? undefined) as Record<string, string> | undefined,
       });
     } catch (error) {
       this.logger.error({ error: toErrorString(error), url }, "github api transport failed");

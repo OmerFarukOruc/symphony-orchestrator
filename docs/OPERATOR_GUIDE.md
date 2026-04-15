@@ -143,13 +143,13 @@ node dist/cli/index.js --data-dir /var/lib/risoluto --port 4000
 
 Risoluto stores all runtime state in a single directory (default: `~/.risoluto`):
 
-| Path inside `--data-dir` | Purpose                                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------------------- |
-| `config/overlay.yaml`    | Persistent operator config (written by setup wizard and config API)                          |
-| `master.key`             | Encryption key for the secrets store                                                         |
-| `secrets.enc`            | AES-256-GCM encrypted credentials                                                            |
-| `risoluto.db`            | SQLite database for attempts, issue state, notifications, automation runs, and alert history |
-| `archives/`              | Per-attempt event archives                                                                   |
+| Path inside `--data-dir` | Purpose                                                                                                                      |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `config/overlay.yaml`    | Persistent operator config (written by setup wizard and config API)                                                          |
+| `master.key`             | Encryption key for the secrets store                                                                                         |
+| `secrets.enc`            | AES-256-GCM encrypted credentials                                                                                            |
+| `risoluto.db`            | SQLite database for attempts, issue state, webhook delivery inbox/history, notifications, automation runs, and alert history |
+| `archives/`              | Per-attempt event archives                                                                                                   |
 
 Override the default with `--data-dir`:
 

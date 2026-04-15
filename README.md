@@ -194,7 +194,7 @@ For OpenAI-compatible proxies such as CLIProxyAPI or LiteLLM, use the setup wiza
 
 ### 🛡️ Operations
 
-- **💾 Archived attempts** — SQLite-backed attempt and event history in `.risoluto/`
+- **💾 Archived runtime state** — SQLite-backed attempt history, webhook delivery inbox state, notifications, and alert/automation records in `.risoluto/`
 - **🔎 `risoluto-logs` CLI** — Archive-first issue and attempt inspection
 - **🔐 Encrypted secrets** — AES-encrypted credential storage
 - **🔥 Workflow hot-reload** — Chokidar-based config reload without restart
