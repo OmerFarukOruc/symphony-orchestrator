@@ -1,12 +1,12 @@
 import type { Express } from "express";
 
-import { registerConfigApi } from "../../config/api.js";
-import { registerSecretsApi } from "../../secrets/api.js";
-import { registerSetupApi } from "../../setup/api.js";
-import { registerTemplateApi } from "../../prompt/api.js";
-import { registerAuditApi } from "../../audit/api.js";
 import type { HttpRouteDeps } from "../route-types.js";
 import { sanitizeConfigValue } from "../route-helpers.js";
+import { registerConfigApi } from "./config.js";
+import { registerSecretsApi } from "./secrets.js";
+import { registerSetupApi } from "./setup.js";
+import { registerTemplateApi } from "./prompt.js";
+import { registerAuditApi } from "./audit.js";
 
 function warnMissing(deps: HttpRouteDeps, feature: string): void {
   deps.logger.warn({ msg: `${feature} not provided — skipping registration` });
@@ -29,15 +29,16 @@ export function registerExtensionRoutes(app: Express, deps: HttpRouteDeps): void
     warnMissing(deps, "secretsStore");
   }
 
-  if (deps.secretsStore && deps.configOverlayStore && deps.archiveDir) {
+  if (deps.secretsStore && deps.configOverlayStore && deps.archiveDir && deps.tracker) {
     registerSetupApi(app, {
       secretsStore: deps.secretsStore,
       configOverlayStore: deps.configOverlayStore,
       orchestrator: deps.orchestrator,
       archiveDir: deps.archiveDir,
+      tracker: deps.tracker,
     });
   } else {
-    warnMissing(deps, "secretsStore, configOverlayStore, or archiveDir");
+    warnMissing(deps, "secretsStore, configOverlayStore, archiveDir, or tracker");
   }
 
   if (deps.templateStore) {

@@ -19,7 +19,7 @@ describe("config-workflow integration", () => {
   });
 
   it("overlay map with tracker config produces a valid config structure", async () => {
-    const { deriveServiceConfig } = await import("../../src/config/builders.js");
+    const { deriveServiceConfig } = await import("../../src/config/derivation-pipeline.js");
 
     const workflow = {
       config: {
@@ -46,7 +46,7 @@ describe("config-workflow integration", () => {
   });
 
   it("overlay map with codex config preserves all codex fields", async () => {
-    const { deriveServiceConfig } = await import("../../src/config/builders.js");
+    const { deriveServiceConfig } = await import("../../src/config/derivation-pipeline.js");
 
     const workflow = {
       config: {
@@ -74,7 +74,7 @@ describe("config-workflow integration", () => {
   });
 
   it("defaults apply when optional fields are omitted", async () => {
-    const { deriveServiceConfig } = await import("../../src/config/builders.js");
+    const { deriveServiceConfig } = await import("../../src/config/derivation-pipeline.js");
 
     const workflow = {
       config: {
@@ -96,7 +96,7 @@ describe("config-workflow integration", () => {
   });
 
   it("mergedConfigMap overrides workflow config values", async () => {
-    const { deriveServiceConfig } = await import("../../src/config/builders.js");
+    const { deriveServiceConfig } = await import("../../src/config/derivation-pipeline.js");
     const { deepMerge } = await import("../../src/config/merge.js");
 
     const workflow = {

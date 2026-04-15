@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { deriveServiceConfig } from "../../src/config/builders.js";
+import { deriveServiceConfig } from "../../src/config/derivation-pipeline.js";
 import { normalizeGitHub, normalizeNotifications } from "../../src/config/normalizers.js";
 import {
   normalizeGitHubApiBaseUrl,

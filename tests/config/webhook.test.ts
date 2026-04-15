@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { webhookConfigSchema } from "../../src/config/schemas/index.js";
-import { deriveServiceConfig } from "../../src/config/builders.js";
+import { deriveServiceConfig } from "../../src/config/derivation-pipeline.js";
 import type { WorkflowDefinition } from "../../src/core/types.js";
 
 function createWorkflow(config: Record<string, unknown>): WorkflowDefinition {

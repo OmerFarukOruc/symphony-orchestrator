@@ -1,9 +1,9 @@
 import type { Express } from "express";
 
-import type { ConfigOverlayPort } from "./overlay.js";
-import { mergeOverlayMaps, normalizePathExpression, setOverlayPathValue } from "./overlay-helpers.js";
-import { methodNotAllowed } from "../http/route-helpers.js";
-import { isRecord } from "../utils/type-guards.js";
+import type { ConfigOverlayPort } from "../../config/overlay.js";
+import { mergeOverlayMaps, normalizePathExpression, setOverlayPathValue } from "../../config/overlay-helpers.js";
+import { methodNotAllowed } from "../errors.js";
+import { isRecord } from "../../utils/type-guards.js";
 
 const DEFAULT_CONFIG_SCHEMA = {
   overlay_put_body_examples: [
@@ -64,13 +64,6 @@ function normalizeOverlayPatch(patch: Record<string, unknown>): Record<string, u
 }
 
 export function registerConfigApi(app: Express, deps: ConfigApiDeps): void {
-  registerConfigRoute(app, deps);
-  registerSchemaRoute(app, deps);
-  registerOverlayRoute(app, deps);
-  registerOverlayDeleteRoute(app, deps);
-}
-
-function registerConfigRoute(app: Express, deps: ConfigApiDeps): void {
   app
     .route("/api/v1/config")
     .get((_request, response) => {
@@ -79,9 +72,7 @@ function registerConfigRoute(app: Express, deps: ConfigApiDeps): void {
     .all((_request, response) => {
       methodNotAllowed(response);
     });
-}
 
-function registerSchemaRoute(app: Express, deps: ConfigApiDeps): void {
   app
     .route("/api/v1/config/schema")
     .get((_request, response) => {
@@ -90,9 +81,7 @@ function registerSchemaRoute(app: Express, deps: ConfigApiDeps): void {
     .all((_request, response) => {
       methodNotAllowed(response);
     });
-}
 
-function registerOverlayRoute(app: Express, deps: ConfigApiDeps): void {
   app
     .route("/api/v1/config/overlay")
     .get((_request, response) => {
@@ -122,9 +111,7 @@ function registerOverlayRoute(app: Express, deps: ConfigApiDeps): void {
     .all((_request, response) => {
       methodNotAllowed(response, ["GET", "PUT"]);
     });
-}
 
-function registerOverlayDeleteRoute(app: Express, deps: ConfigApiDeps): void {
   app
     .route("/api/v1/config/overlay/:path")
     .patch(async (request, response) => {

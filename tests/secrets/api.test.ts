@@ -7,7 +7,7 @@ import express, { type Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createLogger } from "../../src/core/logger.js";
-import { registerSecretsApi } from "../../src/secrets/api.js";
+import { registerSecretsApi } from "../../src/http/routes/secrets.js";
 import { SecretsStore } from "../../src/secrets/store.js";
 
 const tempDirs: string[] = [];

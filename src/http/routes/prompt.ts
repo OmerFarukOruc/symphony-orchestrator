@@ -1,20 +1,9 @@
-/**
- * HTTP routes for prompt template CRUD + preview.
- *
- * GET    /api/v1/templates           — list all templates
- * GET    /api/v1/templates/:id       — get one template
- * POST   /api/v1/templates           — create template
- * PUT    /api/v1/templates/:id       — update template
- * DELETE /api/v1/templates/:id       — delete template
- * POST   /api/v1/templates/:id/preview — render with sample data
- */
-
 import type { Express } from "express";
 
-import { methodNotAllowed } from "../http/route-helpers.js";
-import type { TemplateStorePort } from "./port.js";
-import { PromptTemplateValidationError } from "./template-policy.js";
-import { isRecord } from "../utils/type-guards.js";
+import type { TemplateStorePort } from "../../prompt/port.js";
+import { PromptTemplateValidationError } from "../../prompt/template-policy.js";
+import { methodNotAllowed } from "../errors.js";
+import { isRecord } from "../../utils/type-guards.js";
 
 interface TemplateApiDeps {
   templateStore: TemplateStorePort;

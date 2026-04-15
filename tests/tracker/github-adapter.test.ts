@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GitHubTrackerAdapter } from "../../src/tracker/github-adapter.js";
 import type { GitHubIssuesClient } from "../../src/github/issues-client.js";
@@ -111,6 +111,10 @@ describe("GitHubTrackerAdapter", () => {
   beforeEach(() => {
     client = createMockClient();
     adapter = new GitHubTrackerAdapter(client, createConfig);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe("fetchCandidateIssues", () => {
@@ -261,6 +265,83 @@ describe("GitHubTrackerAdapter", () => {
 
       expect(ops).toContain("addLabel");
       expect(ops).toContain("reopenIssue");
+    });
+  });
+
+  describe("provision", () => {
+    it("creates a setup smoke-test issue through the tracker boundary", async () => {
+      vi.mocked(client.createIssue).mockResolvedValue(
+        makeRawIssue({
+          number: 15,
+          title: "Risoluto smoke test",
+          html_url: "https://github.com/acme/awesome/issues/15",
+        }),
+      );
+
+      const result = await adapter.provision({ type: "create_test_issue" });
+
+      expect(client.createIssue).toHaveBeenCalledWith({
+        title: "Risoluto smoke test",
+        body:
+          "This issue was created automatically to verify your Risoluto setup. " +
+          "Risoluto should pick it up within one poll cycle and run a sandboxed agent.",
+        labels: ["in-progress"],
+      });
+      expect(result).toEqual({
+        ok: true,
+        issueIdentifier: "acme/awesome#15",
+        issueUrl: "https://github.com/acme/awesome/issues/15",
+      });
+    });
+
+    it("creates the risoluto label for GitHub-backed setup", async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ id: 9, name: "risoluto" }), {
+          status: 201,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await adapter.provision({ type: "create_label" });
+
+      expect(result).toEqual({
+        ok: true,
+        labelId: "9",
+        labelName: "risoluto",
+        alreadyExists: false,
+      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://api.github.com/repos/acme/awesome/labels",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+
+    it("treats existing GitHub labels as already provisioned", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: "already exists" }), { status: 422 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 9, name: "risoluto" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await adapter.provision({ type: "create_label" });
+
+      expect(result).toEqual({
+        ok: true,
+        labelId: "9",
+        labelName: "risoluto",
+        alreadyExists: true,
+      });
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        "https://api.github.com/repos/acme/awesome/labels/risoluto",
+        expect.objectContaining({ method: "GET" }),
+      );
     });
   });
 });

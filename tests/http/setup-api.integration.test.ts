@@ -113,6 +113,19 @@ describe("GET /api/v1/setup/status", () => {
     expect(body.steps.linearProject.done).toBe(true);
   });
 
+  it("does not require tracker.project_slug when tracker.kind is github", async () => {
+    await configOverlayStore.set("tracker.kind", "github");
+
+    const response = await fetch(`${ctx.baseUrl}/api/v1/setup/status`);
+    const body = (await response.json()) as {
+      configured: boolean;
+      steps: { linearProject: { done: boolean } };
+    };
+
+    expect(body.steps.linearProject.done).toBe(true);
+    expect(body.configured).toBe(true);
+  });
+
   it("reflects repoRoute done after adding a repo to the overlay", async () => {
     await configOverlayStore.set("repos", [
       { repo_url: "https://github.com/test/repo", identifier_prefix: "TST", default_branch: "main" },

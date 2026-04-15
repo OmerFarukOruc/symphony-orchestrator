@@ -3,7 +3,7 @@ import { collectDispatchWarnings, validateDispatch } from "./validators.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { toErrorString } from "../utils/type-guards.js";
 import type { RisolutoLogger, ValidationError, WorkflowDefinition, ServiceConfig } from "../core/types.js";
-import { deriveServiceConfig } from "./builders.js";
+import { deriveServiceConfig } from "./derivation-pipeline.js";
 import { cloneConfigMap, deepMerge } from "./merge.js";
 
 export class ConfigStore {

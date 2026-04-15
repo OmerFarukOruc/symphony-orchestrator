@@ -12,7 +12,7 @@ import type { ApiErrorResponse } from "./service-errors.js";
 export interface TriggerHandlerDeps {
   configStore?: ConfigStore;
   tracker?: TrackerPort;
-  orchestrator: Pick<OrchestratorPort, "requestRefresh" | "requestTargetedRefresh">;
+  orchestrator: Pick<OrchestratorPort, "executeCommand" | "requestRefresh" | "requestTargetedRefresh">;
   webhookInbox?: VerifiedWebhookDeliveryStore;
   logger: RisolutoLogger;
 }
@@ -152,29 +152,55 @@ async function handleDuplicateTriggerDelivery(
   return true;
 }
 
-function handleRePollTrigger(deps: TriggerHandlerDeps, response: Response): void {
-  const refresh = deps.orchestrator.requestRefresh("trigger:re_poll");
+async function handleRePollTrigger(deps: TriggerHandlerDeps, response: Response): Promise<void> {
+  const refresh =
+    typeof deps.orchestrator.executeCommand === "function"
+      ? await deps.orchestrator.executeCommand({ type: "refresh", reason: "trigger:re_poll" })
+      : deps.orchestrator.requestRefresh("trigger:re_poll");
   response.status(202).json({ ok: true, action: "re_poll", queued: refresh.queued, coalesced: refresh.coalesced });
 }
 
-function handleRefreshIssueTrigger(
+async function handleRefreshIssueTrigger(
   deps: TriggerHandlerDeps,
   response: Response,
   dispatch: Pick<TriggerDispatchContext, "action" | "issueId" | "issueIdentifier">,
-): void {
+): Promise<void> {
   if (dispatch.issueId && dispatch.issueIdentifier) {
-    deps.orchestrator.requestTargetedRefresh(dispatch.issueId, dispatch.issueIdentifier, "trigger:refresh_issue");
+    const refresh =
+      typeof deps.orchestrator.executeCommand === "function"
+        ? await deps.orchestrator.executeCommand({
+            type: "refresh",
+            issueId: dispatch.issueId,
+            issueIdentifier: dispatch.issueIdentifier,
+            reason: "trigger:refresh_issue",
+          })
+        : (deps.orchestrator.requestTargetedRefresh(
+            dispatch.issueId,
+            dispatch.issueIdentifier,
+            "trigger:refresh_issue",
+          ),
+          {
+            queued: true,
+            coalesced: false,
+            requestedAt: new Date().toISOString(),
+            targeted: true,
+            issueId: dispatch.issueId,
+            issueIdentifier: dispatch.issueIdentifier,
+          });
     response.status(202).json({
       ok: true,
       action: dispatch.action,
-      targeted: true,
-      issueId: dispatch.issueId,
-      issueIdentifier: dispatch.issueIdentifier,
+      targeted: refresh.targeted,
+      issueId: refresh.issueId,
+      issueIdentifier: refresh.issueIdentifier,
     });
     return;
   }
 
-  const refresh = deps.orchestrator.requestRefresh("trigger:refresh_issue");
+  const refresh =
+    typeof deps.orchestrator.executeCommand === "function"
+      ? await deps.orchestrator.executeCommand({ type: "refresh", reason: "trigger:refresh_issue" })
+      : deps.orchestrator.requestRefresh("trigger:refresh_issue");
   response.status(202).json({
     ok: true,
     action: dispatch.action,
@@ -206,7 +232,16 @@ async function handleCreateIssueTrigger(
     stateName: pickString(body, "state_name", "stateName"),
   };
   const created = await deps.tracker.createIssue(input);
-  deps.orchestrator.requestTargetedRefresh(created.issueId, created.identifier, "trigger:create_issue");
+  if (typeof deps.orchestrator.executeCommand === "function") {
+    await deps.orchestrator.executeCommand({
+      type: "refresh",
+      issueId: created.issueId,
+      issueIdentifier: created.identifier,
+      reason: "trigger:create_issue",
+    });
+  } else {
+    deps.orchestrator.requestTargetedRefresh(created.issueId, created.identifier, "trigger:create_issue");
+  }
   response.status(202).json({
     ok: true,
     action: "create_issue",
@@ -223,10 +258,10 @@ async function dispatchTriggerAction(
 ): Promise<void> {
   switch (dispatch.action) {
     case "re_poll":
-      handleRePollTrigger(deps, response);
+      await handleRePollTrigger(deps, response);
       return;
     case "refresh_issue":
-      handleRefreshIssueTrigger(deps, response, dispatch);
+      await handleRefreshIssueTrigger(deps, response, dispatch);
       return;
     case "create_issue":
       await handleCreateIssueTrigger(deps, response, dispatch.body);

@@ -13,12 +13,12 @@ import { issueNotFound } from "./route-helpers.js";
  *
  * Returns 202 on success, 404 if the identifier or template is unknown.
  */
-export function handleTemplateOverride(
+export async function handleTemplateOverride(
   orchestrator: OrchestratorPort,
   templateStore: TemplateStorePort,
   request: Request,
   response: Response,
-): void {
+): Promise<void> {
   const body = request.body as TemplateOverrideBody;
   const identifier = String(request.params.issue_identifier);
   const templateId = body.template_id;
@@ -34,7 +34,16 @@ export function handleTemplateOverride(
     return;
   }
 
-  const updated = orchestrator.updateIssueTemplateOverride(identifier, templateId);
+  const updated =
+    typeof orchestrator.executeCommand === "function"
+      ? await orchestrator.executeCommand({
+          type: "set_issue_template_override",
+          identifier,
+          templateId,
+        })
+      : orchestrator.updateIssueTemplateOverride(identifier, templateId)
+        ? { updated: true, appliesNextAttempt: true }
+        : null;
   if (!updated) {
     issueNotFound(response);
     return;
@@ -51,14 +60,26 @@ export function handleTemplateOverride(
  *
  * Returns 200 on success, 404 if the identifier is unknown.
  */
-export function handleTemplateClear(orchestrator: OrchestratorPort, request: Request, response: Response): void {
+export async function handleTemplateClear(
+  orchestrator: OrchestratorPort,
+  request: Request,
+  response: Response,
+): Promise<void> {
   const identifier = String(request.params.issue_identifier);
 
-  const cleared = orchestrator.clearIssueTemplateOverride(identifier);
+  const cleared =
+    typeof orchestrator.executeCommand === "function"
+      ? await orchestrator.executeCommand({
+          type: "clear_issue_template_override",
+          identifier,
+        })
+      : orchestrator.clearIssueTemplateOverride(identifier)
+        ? { cleared: true }
+        : null;
   if (!cleared) {
     issueNotFound(response);
     return;
   }
 
-  response.status(200).json({ cleared: true });
+  response.status(200).json(cleared);
 }

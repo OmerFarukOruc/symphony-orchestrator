@@ -46,6 +46,6 @@ export function createTracker(getConfig: () => ServiceConfig, logger: RisolutoLo
   }
 
   const linearClient = new LinearClient(getConfig, logger.child({ component: "linear" }));
-  const tracker = new LinearTrackerAdapter(linearClient);
+  const tracker = new LinearTrackerAdapter(linearClient, getConfig);
   return { tracker, trackerToolProvider: new LinearTrackerToolProvider(linearClient), linearClient };
 }

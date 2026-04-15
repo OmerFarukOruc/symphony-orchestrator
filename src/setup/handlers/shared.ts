@@ -1,14 +1,7 @@
 import { buildProjectLookupQuery } from "../../linear/queries.js";
-import type { ConfigOverlayPort } from "../../config/overlay.js";
-import type { OrchestratorPort } from "../../orchestrator/port.js";
-import type { SecretsPort } from "../../secrets/port.js";
+import type { SetupApiDeps as SetupPortDeps } from "../port.js";
 
-export interface SetupApiDeps {
-  secretsStore: SecretsPort;
-  configOverlayStore: ConfigOverlayPort;
-  orchestrator: OrchestratorPort;
-  archiveDir: string;
-}
+export type SetupApiDeps = SetupPortDeps;
 
 const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
 

@@ -14,7 +14,7 @@ import type { ConfigOverlayPort } from "./overlay.js";
 import type { RisolutoDatabase } from "../persistence/sqlite/database.js";
 import { config, promptTemplates } from "../persistence/sqlite/schema.js";
 import type { RisolutoLogger, WorkflowDefinition, ServiceConfig, ValidationError } from "../core/types.js";
-import { deriveServiceConfig } from "./builders.js";
+import { deriveServiceConfig } from "./derivation-pipeline.js";
 import { validateDispatch } from "./validators.js";
 import { DEFAULT_PROMPT_TEMPLATE } from "./defaults.js";
 import type { SecretsStore } from "../secrets/store.js";

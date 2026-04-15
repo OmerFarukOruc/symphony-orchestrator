@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveServiceConfig, deriveTrackerConfig } from "../../src/config/builders.js";
+import { deriveServiceConfig } from "../../src/config/derivation-pipeline.js";
+import { deriveTrackerConfig } from "../../src/config/section-builders.js";
 import type { WorkflowDefinition } from "../../src/core/types.js";
 
 function createWorkflow(config: Record<string, unknown>): WorkflowDefinition {

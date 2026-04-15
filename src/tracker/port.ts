@@ -12,6 +12,76 @@ export interface TrackerIssueCreateResult {
   url: string | null;
 }
 
+export interface TrackerProvisionProjectOption {
+  id: unknown;
+  name: unknown;
+  slugId: unknown;
+  teamKey: string | null;
+}
+
+export interface TrackerProvisionProjectRecord {
+  id?: string;
+  name?: string;
+  slugId?: string;
+  url: string | null;
+  teamKey: string | null;
+}
+
+export interface TrackerProvisionListProjectsInput {
+  type: "list_projects";
+}
+
+export interface TrackerProvisionSelectProjectInput {
+  type: "select_project";
+  slugId: string;
+}
+
+export interface TrackerProvisionCreateProjectInput {
+  type: "create_project";
+  name: string;
+}
+
+export interface TrackerProvisionCreateTestIssueInput {
+  type: "create_test_issue";
+}
+
+export interface TrackerProvisionCreateLabelInput {
+  type: "create_label";
+}
+
+export type TrackerProvisionInput =
+  | TrackerProvisionListProjectsInput
+  | TrackerProvisionSelectProjectInput
+  | TrackerProvisionCreateProjectInput
+  | TrackerProvisionCreateTestIssueInput
+  | TrackerProvisionCreateLabelInput;
+
+export interface TrackerProvisionListProjectsResult {
+  projects: TrackerProvisionProjectOption[];
+}
+
+export interface TrackerProvisionSelectProjectResult {
+  ok: true;
+}
+
+export interface TrackerProvisionCreateProjectResult {
+  ok: true;
+  project: TrackerProvisionProjectRecord;
+}
+
+export interface TrackerProvisionCreateTestIssueResult {
+  ok: true;
+  issueIdentifier: string;
+  issueUrl: string;
+}
+
+export interface TrackerProvisionCreateLabelResult {
+  ok: true;
+  labelId: string;
+  labelName: string;
+  alreadyExists: boolean;
+}
+
 /**
  * Tracker abstraction that decouples orchestration logic from any specific
  * issue tracker (Linear, GitHub Issues, GitLab, Jira, etc.).
@@ -50,4 +120,11 @@ export interface TrackerPort {
    * Combines state-id resolution and the actual mutation in one call.
    */
   transitionIssue(issueId: string, stateId: string): Promise<{ success: boolean }>;
+
+  /** Perform tracker-owned setup provisioning without leaking provider specifics into setup routes. */
+  provision(input: TrackerProvisionListProjectsInput): Promise<TrackerProvisionListProjectsResult>;
+  provision(input: TrackerProvisionSelectProjectInput): Promise<TrackerProvisionSelectProjectResult>;
+  provision(input: TrackerProvisionCreateProjectInput): Promise<TrackerProvisionCreateProjectResult>;
+  provision(input: TrackerProvisionCreateTestIssueInput): Promise<TrackerProvisionCreateTestIssueResult>;
+  provision(input: TrackerProvisionCreateLabelInput): Promise<TrackerProvisionCreateLabelResult>;
 }

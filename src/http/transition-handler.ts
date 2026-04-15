@@ -73,6 +73,10 @@ export async function handleTransition(deps: TransitionDeps, req: Request, res: 
     return;
   }
 
-  deps.orchestrator.requestRefresh("manual-transition");
+  if (typeof deps.orchestrator.executeCommand === "function") {
+    await deps.orchestrator.executeCommand({ type: "refresh", reason: "manual-transition" });
+  } else {
+    deps.orchestrator.requestRefresh("manual-transition");
+  }
   res.json({ ok: true, from: currentState, to: targetState });
 }

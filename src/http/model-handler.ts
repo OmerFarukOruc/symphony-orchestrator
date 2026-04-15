@@ -17,11 +17,19 @@ export async function handleModelUpdate(
   const body = request.body as ModelUpdateBody;
   const reasoningEffort = body.reasoning_effort ?? body.reasoningEffort ?? null;
 
-  const updated = await orchestrator.updateIssueModelSelection({
-    identifier: String(request.params.issue_identifier),
-    model: body.model,
-    reasoningEffort,
-  });
+  const updated =
+    typeof orchestrator.executeCommand === "function"
+      ? await orchestrator.executeCommand({
+          type: "update_issue_model_selection",
+          identifier: String(request.params.issue_identifier),
+          model: body.model,
+          reasoningEffort,
+        })
+      : await orchestrator.updateIssueModelSelection({
+          identifier: String(request.params.issue_identifier),
+          model: body.model,
+          reasoningEffort,
+        });
   if (!updated) {
     response.status(404).json({
       error: {
