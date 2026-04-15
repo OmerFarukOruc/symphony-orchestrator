@@ -24,13 +24,13 @@
      design-system defaults with tighter values suited to
      dashboard density.
 
-     10 · 11 · 12 · 13 · 14 · 15 · 16 · 18 · 20 · fluid · fluid */
-  --text-2xs: 0.625rem; /* 10px — group headers, type badges */
-  --text-xxs: 0.6875rem; /* 11px — toolbar labels, table headers */
-  --text-xs: 0.75rem; /* 12px — secondary labels */
-  --text-ui: 0.8125rem; /* 13px — secondary UI text, descriptions */
-  --text-sm: 0.875rem; /* 14px — base UI text */
-  --text-sm-plus: 0.9375rem; /* 15px — subsection headings */
+     11 · 12 · 13 · 14 · 15 · 16 · 16 · 18 · 20 · fluid · fluid */
+  --text-2xs: 0.6875rem; /* 11px — micro labels that still need to read cleanly */
+  --text-xxs: 0.75rem; /* 12px — toolbar labels, table headers */
+  --text-xs: 0.8125rem; /* 13px — secondary labels */
+  --text-ui: 0.875rem; /* 14px — secondary UI text, descriptions */
+  --text-sm: 0.9375rem; /* 15px — base dense UI text */
+  --text-sm-plus: 1rem; /* 16px — subsection headings */
   --text-base: 1rem; /* 16px — default body / fallback */
   --text-md: 1.125rem; /* 18px — section titles */
   --text-lg: 1.25rem; /* 20px — lane titles */
@@ -53,8 +53,8 @@
   --leading-tight: 1.2; /* display numbers, KPI values, hero headings */
   --leading-snug: 1.35; /* card titles */
   --leading-normal: 1.5; /* body text */
-  --leading-relaxed: 1.6; /* code panels, log output */
-  --leading-loose: 1.65; /* long-form reading content */
+  --leading-relaxed: 1.62; /* code panels, log output */
+  --leading-loose: 1.7; /* long-form reading content */
 
   /* Font feature tokens */
   --font-features-default: "kern" 1, "liga" 1, "calt" 1;

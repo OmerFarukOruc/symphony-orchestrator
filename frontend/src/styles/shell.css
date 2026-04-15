@@ -72,12 +72,12 @@
   margin-bottom: var(--space-1);
   border: none;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-family: var(--font-mono);
-  text-transform: uppercase;
   font-size: var(--text-2xs);
   font-weight: var(--font-semibold);
   letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
   text-align: left;
   cursor: pointer;
   user-select: none;
@@ -116,7 +116,7 @@
 }
 
 .sidebar-group-toggle {
-  font-size: var(--text-2xs);
+  font-size: var(--text-xxs);
   transition: transform var(--motion-fast) var(--ease-out-quart);
 }
 
@@ -415,6 +415,8 @@
 }
 
 .shell-header {
+  position: relative;
+  z-index: 2;
   height: var(--header-height);
   border-bottom: 1px solid var(--border-stitch);
   background: var(--bg-surface);
