@@ -3,10 +3,6 @@ import { GitHubTransport } from "./transport.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { withRetry as sharedWithRetry, withRetryReturn as sharedWithRetryReturn } from "../utils/retry.js";
 
-// ---------------------------------------------------------------------------
-// Error type
-// ---------------------------------------------------------------------------
-
 type GitHubErrorCode = "github_transport_error" | "github_http_error" | "github_unknown_payload";
 
 export class GitHubIssuesClientError extends Error {
@@ -20,10 +16,6 @@ export class GitHubIssuesClientError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Raw GitHub API shape
-// ---------------------------------------------------------------------------
-
 export interface RawGitHubIssue {
   number: number;
   title: string;
@@ -34,10 +26,6 @@ export interface RawGitHubIssue {
   created_at: string;
   updated_at: string;
 }
-
-// ---------------------------------------------------------------------------
-// Issue normalizer (exported for tests)
-// ---------------------------------------------------------------------------
 
 /**
  * Map a raw GitHub API issue to Risoluto's canonical {@link Issue} shape.
@@ -71,19 +59,11 @@ export function normalizeGitHubIssue(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Client
-// ---------------------------------------------------------------------------
-
 export class GitHubIssuesClient {
   constructor(
     private readonly getConfig: () => ServiceConfig,
     private readonly logger: RisolutoLogger,
   ) {}
-
-  // -------------------------------------------------------------------------
-  // Private helpers
-  // -------------------------------------------------------------------------
 
   private getOwnerRepo(): { owner: string; repo: string } {
     const config = this.getConfig();
@@ -161,10 +141,6 @@ export class GitHubIssuesClient {
   async withRetryReturn<T>(operation: string, fn: () => Promise<T>): Promise<T> {
     return sharedWithRetryReturn(this.logger, operation, fn);
   }
-
-  // -------------------------------------------------------------------------
-  // Public API
-  // -------------------------------------------------------------------------
 
   async fetchOpenIssues(labels?: string[]): Promise<RawGitHubIssue[]> {
     const { owner, repo } = this.getOwnerRepo();

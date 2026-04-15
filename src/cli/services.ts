@@ -30,14 +30,8 @@ import { WorkspaceManager } from "../workspace/manager.js";
 import { PrMonitorService, type PrMonitorGhClient } from "../git/pr-monitor.js";
 import { initWebhookInfrastructure, buildWebhookHandlerDeps } from "../webhook/composition.js";
 
-// Re-export for consumers that import evaluateWebhookConfig from this module
-// (e.g. tests/webhook/manual-mode.test.ts).
 export { evaluateWebhookConfig } from "../webhook/composition.js";
 export type { WebhookConfig };
-
-// ---------------------------------------------------------------------------
-// Phase types
-// ---------------------------------------------------------------------------
 
 interface InfrastructurePhase {
   persistence: PersistenceRuntime;

@@ -111,8 +111,6 @@ export function createRuntimeReadModel(
   };
 }
 
-// Builds a runtime snapshot from orchestrator state.
-// Pure read-path logic extracted for testability and modularity.
 export function buildSnapshot(deps: SnapshotBuilderDeps, callbacks: SnapshotBuilderCallbacks): RuntimeSnapshot {
   return buildSnapshotInternal(deps, callbacks);
 }
@@ -213,7 +211,6 @@ function enrichFromArchive(detail: RuntimeIssueView, archivedAttempts: AttemptRe
   return enriched;
 }
 
-// Builds issue detail view including archived attempts.
 export function buildIssueDetail(
   identifier: string,
   deps: SnapshotBuilderDeps,
@@ -298,7 +295,6 @@ function buildAttemptDetailInternal(attemptId: string, deps: SnapshotBuilderDeps
   };
 }
 
-// Computes total seconds running from archived attempts and live entries.
 export function computeSecondsRunning(
   attemptStore: SnapshotBuilderDeps["attemptStore"],
   getRunningEntries: () => Map<string, RunningEntry>,

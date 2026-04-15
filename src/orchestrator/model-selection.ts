@@ -59,7 +59,6 @@ export async function updateIssueModelSelection(
   const selection = resolveModelSelection(ctx.issueModelOverrides, ctx.getConfig(), identifier);
   const effortSuffix = selection.reasoningEffort ? ` (${selection.reasoningEffort})` : "";
 
-  // Use locator to find running or retry entry
   const locatorCallbacks: IssueLocatorCallbacks = {
     getRunningEntries: () => ctx.runningEntries,
     getRetryEntries: () => ctx.retryEntries,
