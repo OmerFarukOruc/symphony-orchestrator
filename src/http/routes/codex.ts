@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 
+import { createCodexAdminService } from "../../codex/admin-service.js";
 import { CodexControlPlaneMethodUnsupportedError } from "../../codex/control-plane.js";
 import { methodNotAllowed } from "../route-helpers.js";
 import type { HttpRouteDeps } from "../route-types.js";
@@ -63,6 +64,26 @@ function withControlPlane(
 }
 
 export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
+  function adminService(controlPlane: NonNullable<HttpRouteDeps["codexControlPlane"]>) {
+    return createCodexAdminService({
+      controlPlane,
+      secretsStore: deps.secretsStore,
+    });
+  }
+
+  function threadIdParam(req: Request): string {
+    return typeof req.params.threadId === "string" ? req.params.threadId : String(req.params.threadId ?? "");
+  }
+
+  app
+    .route("/api/v1/codex/admin")
+    .get(
+      withControlPlane(deps, async (controlPlane, _req, res) => {
+        res.json(await adminService(controlPlane).readSnapshot());
+      }),
+    )
+    .all((_req, res) => methodNotAllowed(res));
+
   app
     .route("/api/v1/codex/capabilities")
     .get(
@@ -76,10 +97,10 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/features")
     .get(
       withControlPlane(deps, async (controlPlane, req, res) => {
-        const result = await controlPlane.request("experimentalFeature/list", {
-          limit: parsePositiveInteger(req.query.limit, 50),
-          cursor: typeof req.query.cursor === "string" ? req.query.cursor : null,
-        });
+        const result = await adminService(controlPlane).readFeatures(
+          parsePositiveInteger(req.query.limit, 50),
+          typeof req.query.cursor === "string" ? req.query.cursor : null,
+        );
         res.json(result);
       }),
     )
@@ -89,7 +110,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/collaboration-modes")
     .get(
       withControlPlane(deps, async (controlPlane, _req, res) => {
-        res.json(await controlPlane.request("collaborationMode/list", {}));
+        res.json(await adminService(controlPlane).readCollaborationModes());
       }),
     )
     .all((_req, res) => methodNotAllowed(res));
@@ -98,10 +119,10 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/mcp")
     .get(
       withControlPlane(deps, async (controlPlane, req, res) => {
-        const result = await controlPlane.request("mcpServerStatus/list", {
-          limit: parsePositiveInteger(req.query.limit, 50),
-          cursor: typeof req.query.cursor === "string" ? req.query.cursor : null,
-        });
+        const result = await adminService(controlPlane).readMcpServers(
+          parsePositiveInteger(req.query.limit, 50),
+          typeof req.query.cursor === "string" ? req.query.cursor : null,
+        );
         res.json(result);
       }),
     )
@@ -112,7 +133,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .post(
       withControlPlane(deps, async (controlPlane, req, res) => {
         const name = typeof req.body?.name === "string" ? req.body.name : "";
-        res.json(await controlPlane.request("mcpServer/oauth/login", { name }));
+        res.json(await adminService(controlPlane).startMcpOauthLogin(name));
       }),
     )
     .all((_req, res) => methodNotAllowed(res, ["POST"]));
@@ -121,7 +142,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/mcp/reload")
     .post(
       withControlPlane(deps, async (controlPlane, _req, res) => {
-        res.json(await controlPlane.request("config/mcpServer/reload", {}));
+        res.json(await adminService(controlPlane).reloadMcpServers());
       }),
     )
     .all((_req, res) => methodNotAllowed(res, ["POST"]));
@@ -145,7 +166,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
                 .filter((part) => part.length > 0)
             : [];
         const archived = req.query.archived === "true" ? true : req.query.archived === "false" ? false : undefined;
-        const result = await controlPlane.request("thread/list", {
+        const result = await adminService(controlPlane).readThreads({
           cursor: typeof req.query.cursor === "string" ? req.query.cursor : null,
           limit: parsePositiveInteger(req.query.limit, 25),
           sortKey: req.query.sortKey === "updated_at" ? "updated_at" : "created_at",
@@ -163,7 +184,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/threads/loaded")
     .get(
       withControlPlane(deps, async (controlPlane, _req, res) => {
-        res.json(await controlPlane.request("thread/loaded/list", {}));
+        res.json(await adminService(controlPlane).readLoadedThreads());
       }),
     )
     .all((_req, res) => methodNotAllowed(res));
@@ -173,12 +194,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .get(
       withControlPlane(deps, async (controlPlane, req, res) => {
         const includeTurns = req.query.includeTurns === "true";
-        res.json(
-          await controlPlane.request("thread/read", {
-            threadId: req.params.threadId,
-            includeTurns,
-          }),
-        );
+        res.json(await adminService(controlPlane).readThread(threadIdParam(req), includeTurns));
       }),
     )
     .all((_req, res) => methodNotAllowed(res));
@@ -187,7 +203,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/threads/:threadId/fork")
     .post(
       withControlPlane(deps, async (controlPlane, req, res) => {
-        res.json(await controlPlane.request("thread/fork", { threadId: req.params.threadId }));
+        res.json(await adminService(controlPlane).forkThread(threadIdParam(req)));
       }),
     )
     .all((_req, res) => methodNotAllowed(res, ["POST"]));
@@ -197,7 +213,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .post(
       withControlPlane(deps, async (controlPlane, req, res) => {
         const name = typeof req.body?.name === "string" ? req.body.name : "";
-        res.json(await controlPlane.request("thread/name/set", { threadId: req.params.threadId, name }));
+        res.json(await adminService(controlPlane).renameThread(threadIdParam(req), name));
       }),
     )
     .all((_req, res) => methodNotAllowed(res, ["POST"]));
@@ -206,7 +222,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/threads/:threadId/archive")
     .post(
       withControlPlane(deps, async (controlPlane, req, res) => {
-        res.json(await controlPlane.request("thread/archive", { threadId: req.params.threadId }));
+        res.json(await adminService(controlPlane).archiveThread(threadIdParam(req)));
       }),
     )
     .all((_req, res) => methodNotAllowed(res, ["POST"]));
@@ -215,7 +231,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/threads/:threadId/unarchive")
     .post(
       withControlPlane(deps, async (controlPlane, req, res) => {
-        res.json(await controlPlane.request("thread/unarchive", { threadId: req.params.threadId }));
+        res.json(await adminService(controlPlane).unarchiveThread(threadIdParam(req)));
       }),
     )
     .all((_req, res) => methodNotAllowed(res, ["POST"]));
@@ -224,7 +240,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/threads/:threadId/unsubscribe")
     .post(
       withControlPlane(deps, async (controlPlane, req, res) => {
-        res.json(await controlPlane.request("thread/unsubscribe", { threadId: req.params.threadId }));
+        res.json(await adminService(controlPlane).unsubscribeThread(threadIdParam(req)));
       }),
     )
     .all((_req, res) => methodNotAllowed(res, ["POST"]));
@@ -233,7 +249,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/account")
     .get(
       withControlPlane(deps, async (controlPlane, _req, res) => {
-        res.json(await controlPlane.request("account/read", { refreshToken: false }));
+        res.json(await adminService(controlPlane).readAccount());
       }),
     )
     .all((_req, res) => methodNotAllowed(res));
@@ -242,7 +258,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/account/rate-limits")
     .get(
       withControlPlane(deps, async (controlPlane, _req, res) => {
-        res.json(await controlPlane.request("account/rateLimits/read", {}));
+        res.json(await adminService(controlPlane).readAccountRateLimits());
       }),
     )
     .all((_req, res) => methodNotAllowed(res));
@@ -252,10 +268,12 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .post(
       withControlPlane(deps, async (controlPlane, req, res) => {
         const body = req.body ?? {};
-        const payload: Record<string, unknown> = {};
-        if (typeof body.type === "string") payload.type = body.type;
-        if (typeof body.apiKey === "string") payload.apiKey = body.apiKey;
-        res.json(await controlPlane.request("account/login/start", payload));
+        res.json(
+          await adminService(controlPlane).startAccountLogin({
+            type: typeof body.type === "string" ? body.type : undefined,
+            apiKey: typeof body.apiKey === "string" ? body.apiKey : undefined,
+          }),
+        );
       }),
     )
     .all((_req, res) => methodNotAllowed(res, ["POST"]));
@@ -265,7 +283,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .post(
       withControlPlane(deps, async (controlPlane, req, res) => {
         const loginId = typeof req.body?.loginId === "string" ? req.body.loginId : "";
-        res.json(await controlPlane.request("account/login/cancel", { loginId }));
+        res.json(await adminService(controlPlane).cancelAccountLogin(loginId));
       }),
     )
     .all((_req, res) => methodNotAllowed(res, ["POST"]));
@@ -274,7 +292,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/account/logout")
     .post(
       withControlPlane(deps, async (controlPlane, _req, res) => {
-        res.json(await controlPlane.request("account/logout", {}));
+        res.json(await adminService(controlPlane).logoutAccount());
       }),
     )
     .all((_req, res) => methodNotAllowed(res, ["POST"]));
@@ -283,7 +301,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
     .route("/api/v1/codex/requests/user-input")
     .get(
       withControlPlane(deps, async (controlPlane, _req, res) => {
-        res.json({ data: controlPlane.listPendingUserInputRequests() });
+        res.json(adminService(controlPlane).listPendingUserInputRequests());
       }),
     )
     .all((_req, res) => methodNotAllowed(res));
@@ -294,7 +312,7 @@ export function registerCodexRoutes(app: Express, deps: HttpRouteDeps): void {
       withControlPlane(deps, async (controlPlane, req, res) => {
         const requestId =
           typeof req.params.requestId === "string" ? req.params.requestId : String(req.params.requestId ?? "");
-        const accepted = await controlPlane.respondToRequest(requestId, req.body?.result ?? null);
+        const accepted = await adminService(controlPlane).respondToUserInput(requestId, req.body?.result ?? null);
         if (!accepted) {
           res.status(404).json({ error: { code: "not_found", message: "Pending request not found" } });
           return;

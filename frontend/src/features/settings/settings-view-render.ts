@@ -3,8 +3,7 @@ import type { AsyncState } from "../../utils/async-state.js";
 import { api } from "../../api.js";
 import { router } from "../../router.js";
 import { toast } from "../../ui/toast.js";
-import { buildSettingsSections, formatFieldDraft, isSchemaLimited } from "./settings-helpers.js";
-import { getValueAtPath } from "./settings-paths.js";
+import { buildSettingsSections, isSchemaLimited, sectionHasUnsavedDrafts } from "./settings-helpers.js";
 import { renderSettingsLayout } from "./settings-sections.js";
 import type { SettingsState } from "./settings-state.js";
 import type { SettingsMode } from "./settings-types.js";
@@ -21,7 +20,10 @@ interface RenderLoadedSettingsOptions {
   onToggleDiff: (sectionId: string) => void;
   onTogglePaths: (sectionId: string) => void;
   onSaveSection: (sectionId: string) => void;
+  onRevertSection: (sectionId: string) => void;
   onSetMode?: (mode: SettingsMode) => void;
+  onDraftChange: (sectionId: string, fieldPath: string, value: string) => void;
+  onFocusSection: (sectionId: string) => void;
   onBrowseLinearProjects: (fieldPath: string) => void;
 }
 
@@ -32,7 +34,7 @@ export function isSettingsPageData(value: unknown): value is Record<string, unkn
 export function updateSettingsHeader(
   subtitle: HTMLElement,
   schemaBadge: HTMLElement,
-  state: SettingsState,
+  _state: SettingsState,
   loadState: AsyncState<SettingsPageData>,
 ): void {
   if (loadState.loading) {
@@ -50,8 +52,7 @@ export function updateSettingsHeader(
     schemaBadge.textContent = "No data";
     return;
   }
-  syncLoadedData(state, loadState.data);
-  const schemaLimited = isSchemaLimited(state.schema);
+  const schemaLimited = isSchemaLimited(loadState.data.schema);
   subtitle.textContent = schemaLimited
     ? "Risoluto is using guided defaults. Start with Tracker, then choose a provider and confirm sandbox settings."
     : "Risoluto loaded the full schema. Start with Tracker, then review provider, sandbox, and advanced settings.";
@@ -63,10 +64,9 @@ export function renderLoadedSettings(
   content: HTMLElement,
   searchInput: HTMLInputElement,
   state: SettingsState,
-  data: SettingsPageData,
+  _data: SettingsPageData,
   options: RenderLoadedSettingsOptions,
 ): HTMLElement[] {
-  syncLoadedData(state, data);
   const sections = buildSettingsSections(state.schema, state.effective);
   if (!sections.some((section) => section.id === state.selectedSectionId)) {
     state.selectedSectionId = sections[0]?.id ?? "tracker";
@@ -77,7 +77,10 @@ export function renderLoadedSettings(
     onToggleDiff: options.onToggleDiff,
     onTogglePaths: options.onTogglePaths,
     onSaveSection: options.onSaveSection,
+    onRevertSection: options.onRevertSection,
     onSetMode: options.onSetMode,
+    onDraftChange: options.onDraftChange,
+    onFocusSection: options.onFocusSection,
     onFieldAction: (sectionId, fieldPath, actionKind) => {
       if (actionKind === "browse-linear-projects") {
         options.onBrowseLinearProjects(fieldPath);
@@ -120,21 +123,8 @@ async function sendTestSlack(state: SettingsState, sectionId: string): Promise<v
  * test button uses the same truth as the UI badge.
  */
 function isSectionDirty(state: SettingsState, sectionId: string): boolean {
-  const sectionDrafts = state.drafts[sectionId];
-  if (!sectionDrafts) return false;
   const sections = buildSettingsSections(state.schema, state.effective);
   const section = sections.find((s) => s.id === sectionId);
   if (!section) return false;
-  return Object.entries(sectionDrafts).some(([path, draftValue]) => {
-    const field = section.fields.find((f) => f.path === path);
-    if (!field) return false;
-    const effectiveValue = getValueAtPath(state.effective, path);
-    return draftValue !== formatFieldDraft(field, effectiveValue);
-  });
-}
-
-function syncLoadedData(state: SettingsState, data: SettingsPageData): void {
-  state.effective = data.effective;
-  state.overlay = data.overlay;
-  state.schema = data.schema;
+  return sectionHasUnsavedDrafts(section, state.drafts[sectionId], state.effective);
 }

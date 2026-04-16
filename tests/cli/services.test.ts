@@ -9,6 +9,19 @@ const mockInitPersistenceRuntime = vi.hoisted(() =>
   vi.fn().mockResolvedValue({
     attemptStore: { fake: "attemptStore" },
     db: { fake: "db" },
+    operator: {
+      notificationStore: { fake: "notificationStore" },
+      automationStore: { fake: "automationStore" },
+      alertHistoryStore: { fake: "alertHistoryStore" },
+    },
+    webhook: {
+      inbox: { fake: "webhookInbox" },
+      getSnapshot: vi.fn().mockResolvedValue({ stats: null, recent: [] }),
+      getRecentDeliveries: vi.fn().mockResolvedValue([]),
+      getStats: vi.fn().mockResolvedValue(null),
+      getRetryDeliveries: vi.fn().mockResolvedValue([]),
+    },
+    close: vi.fn(),
   }),
 );
 

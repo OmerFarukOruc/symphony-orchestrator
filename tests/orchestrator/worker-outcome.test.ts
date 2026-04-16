@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { handleWorkerOutcome } from "../../src/orchestrator/worker-outcome/index.js";
 import { handleWorkerFailure } from "../../src/orchestrator/worker-failure.js";
+import { buildOutcomeView } from "../../src/orchestrator/outcome-view-builder.js";
 import type {
   Issue,
   ModelSelection,
@@ -13,6 +14,7 @@ import type {
 import type { OutcomeContext } from "../../src/orchestrator/context.js";
 import type { RetryRuntimeEntry, RunningEntry } from "../../src/orchestrator/runtime-types.js";
 import { createRetryCoordinator } from "../../src/orchestrator/retry-coordinator.js";
+import { attachOutcomeRuntimeFinalizers } from "./outcome-runtime-finalizers.js";
 
 type TestOutcomeContext = OutcomeContext & { retryEntries: Map<string, RetryRuntimeEntry> };
 
@@ -153,9 +155,23 @@ function makeCtx(
     getConfig: () => config,
     releaseIssueClaim,
     markDirty,
+    buildOutcomeView: (input) =>
+      buildOutcomeView(input.issue, input.workspace, input.entry, input.configuredSelection, input.overrides),
+    setDetailView: (identifier, view) => {
+      detailViews.set(identifier, view);
+      markDirty();
+      return view;
+    },
+    setCompletedView: (identifier, view) => {
+      completedViews.set(identifier, view);
+      markDirty();
+      return view;
+    },
     resolveModelSelection,
     notify,
   } as TestOutcomeContext;
+
+  attachOutcomeRuntimeFinalizers(ctx, { retryEntries });
 
   ctx.retryCoordinator = createRetryCoordinator(
     {
@@ -178,6 +194,16 @@ function makeCtx(
       notify,
       pushEvent,
       resolveModelSelection,
+      setDetailView: (identifier, view) => {
+        detailViews.set(identifier, view);
+        markDirty();
+        return view;
+      },
+      setCompletedView: (identifier, view) => {
+        completedViews.set(identifier, view);
+        markDirty();
+        return view;
+      },
       launchWorker,
     },
   );

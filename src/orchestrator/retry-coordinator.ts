@@ -1,22 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import type { AttemptStorePort } from "../core/attempt-store-port.js";
-import type { RuntimeEventRecord } from "../core/lifecycle-events.js";
-import type {
-  AttemptRecord,
-  Issue,
-  ModelSelection,
-  RisolutoLogger,
-  RuntimeIssueView,
-  ServiceConfig,
-} from "../core/types.js";
-import type { RetryRuntimeEntry, RunningEntry, LaunchWorkerOptions } from "./runtime-types.js";
-import type { NotificationEvent } from "../notification/channel.js";
+import type { AttemptRecord, Issue, ModelSelection, RisolutoLogger, RuntimeIssueView } from "../core/types.js";
+import type { RunningEntry } from "./runtime-types.js";
 import type { WorkspaceManager } from "../workspace/manager.js";
 import type { TrackerPort } from "../tracker/port.js";
-import type { OutcomeContext } from "./context.js";
+import type { OutcomeContext, RetryCoordinator, RetryRuntimeContext } from "./context.js";
 import type { PreparedWorkerOutcome } from "./worker-outcome/types.js";
-import { buildOutcomeView } from "./outcome-view-builder.js";
 import { writeFailureWriteback } from "./worker-outcome/completion-writeback.js";
 import { issueRef } from "./worker-outcome/types.js";
 import { handleCancelledOrHardFailure } from "./worker-outcome/terminal-paths.js";
@@ -25,10 +15,7 @@ import { isActiveState, isTerminalState } from "../state/policy.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { classifyRetryStrategy } from "./retry-policy.js";
 
-export interface RetryCoordinator {
-  dispatch(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): Promise<void>;
-  cancel(issueId: string): void;
-}
+export type { RetryCoordinator };
 
 export interface RetryCoordinatorDeps {
   tracker: Pick<TrackerPort, "fetchIssueStatesByIds">;
@@ -37,36 +24,19 @@ export interface RetryCoordinatorDeps {
   logger: Pick<RisolutoLogger, "info" | "warn" | "error">;
 }
 
-export interface RetryStateHandle {
-  runningEntries: Map<string, RunningEntry>;
-  retryEntries: Map<string, RetryRuntimeEntry>;
-  detailViews: Map<string, RuntimeIssueView>;
-  completedViews: Map<string, RuntimeIssueView>;
-  isRunning: () => boolean;
-  getConfig: () => ServiceConfig;
-  claimIssue: (issueId: string) => void;
-  releaseIssueClaim: (issueId: string) => void;
-  hasAvailableStateSlot: (issue: Issue) => boolean;
-  markDirty: () => void;
-  notify: (event: NotificationEvent) => void;
-  pushEvent: (event: RuntimeEventRecord) => void;
-  resolveModelSelection: (identifier: string) => ModelSelection;
-  launchWorker: (issue: Issue, attempt: number, options?: LaunchWorkerOptions) => Promise<void>;
-}
-
 export function computeBackoffForAttempt(currentAttempt: number, maxBackoffMs: number): number {
   const nextAttempt = currentAttempt + 1;
   return Math.min(10_000 * 2 ** Math.max(0, nextAttempt - 1), maxBackoffMs);
 }
 
-export function createRetryCoordinator(deps: RetryCoordinatorDeps, state: RetryStateHandle): RetryCoordinator {
-  return new RetryCoordinatorImpl(deps, state);
+export function createRetryCoordinator(deps: RetryCoordinatorDeps, runtime: RetryRuntimeContext): RetryCoordinator {
+  return new RetryCoordinatorImpl(deps, runtime);
 }
 
 class RetryCoordinatorImpl implements RetryCoordinator {
   constructor(
     private readonly deps: RetryCoordinatorDeps,
-    private readonly state: RetryStateHandle,
+    private readonly runtime: RetryRuntimeContext,
   ) {}
 
   async dispatch(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): Promise<void> {
@@ -109,24 +79,24 @@ class RetryCoordinatorImpl implements RetryCoordinator {
   }
 
   cancel(issueId: string): void {
-    const retryEntry = this.state.retryEntries.get(issueId);
+    const retryEntry = this.runtime.retryEntries.get(issueId);
     if (retryEntry?.timer) {
       clearTimeout(retryEntry.timer);
     }
 
-    const deleted = this.state.retryEntries.delete(issueId);
+    const deleted = this.runtime.retryEntries.delete(issueId);
     if (deleted) {
-      this.state.markDirty();
+      this.runtime.markDirty();
     }
-    if (!this.state.runningEntries.has(issueId)) {
-      this.state.releaseIssueClaim(issueId);
+    if (!this.runtime.runningEntries.has(issueId)) {
+      this.runtime.releaseIssueClaim(issueId);
     }
   }
 
   private handleErrorRetry(prepared: PreparedWorkerOutcome): void {
     const { outcome, entry } = prepared;
     const currentAttempt = prepared.attempt ?? 0;
-    const delayMs = computeBackoffForAttempt(currentAttempt, this.state.getConfig().agent.maxRetryBackoffMs);
+    const delayMs = computeBackoffForAttempt(currentAttempt, this.runtime.getConfig().agent.maxRetryBackoffMs);
 
     this.queuePreparedRetry(prepared, delayMs, outcome.errorCode ?? "turn_failed", {
       threadId: entry.sessionId ?? outcome.threadId,
@@ -158,12 +128,12 @@ class RetryCoordinatorImpl implements RetryCoordinator {
     error: string | null,
     metadata?: { threadId?: string | null; previousPrFeedback?: string | null },
   ): void {
-    if (!this.state.isRunning()) {
+    if (!this.runtime.isRunning()) {
       return;
     }
 
-    this.state.claimIssue(issue.id);
-    const existing = this.state.retryEntries.get(issue.id);
+    this.runtime.claimIssue(issue.id);
+    const existing = this.runtime.retryEntries.get(issue.id);
     if (existing?.timer) {
       clearTimeout(existing.timer);
     }
@@ -175,7 +145,7 @@ class RetryCoordinatorImpl implements RetryCoordinator {
       });
     }, delayMs);
 
-    this.state.retryEntries.set(issue.id, {
+    this.runtime.retryEntries.set(issue.id, {
       issueId: issue.id,
       identifier: issue.identifier,
       attempt,
@@ -185,10 +155,10 @@ class RetryCoordinatorImpl implements RetryCoordinator {
       threadId: metadata?.threadId ?? null,
       previousPrFeedback: metadata?.previousPrFeedback ?? null,
       issue,
-      workspaceKey: this.state.detailViews.get(issue.identifier)?.workspaceKey ?? null,
+      workspaceKey: this.runtime.detailViews.get(issue.identifier)?.workspaceKey ?? null,
     });
-    this.state.markDirty();
-    this.state.notify({
+    this.runtime.markDirty();
+    this.runtime.notify({
       type: "worker_retry",
       severity: "critical",
       timestamp: nowIso(),
@@ -203,13 +173,13 @@ class RetryCoordinatorImpl implements RetryCoordinator {
   }
 
   private async revalidateAndLaunch(issueId: string, attempt: number): Promise<void> {
-    const retryEntry = this.state.retryEntries.get(issueId);
-    if (!retryEntry || !this.state.isRunning()) {
+    const retryEntry = this.runtime.retryEntries.get(issueId);
+    if (!retryEntry || !this.runtime.isRunning()) {
       return;
     }
 
     const [latestIssue] = await this.deps.tracker.fetchIssueStatesByIds([issueId]);
-    const config = this.state.getConfig();
+    const config = this.runtime.getConfig();
 
     if (!latestIssue) {
       this.cancel(issueId);
@@ -234,8 +204,8 @@ class RetryCoordinatorImpl implements RetryCoordinator {
     }
 
     if (
-      this.state.runningEntries.size >= config.agent.maxConcurrentAgents ||
-      !this.state.hasAvailableStateSlot(latestIssue)
+      this.runtime.runningEntries.size >= config.agent.maxConcurrentAgents ||
+      !this.runtime.hasAvailableStateSlot(latestIssue)
     ) {
       this.queueRetry(latestIssue, attempt, 1_000, retryEntry.error, {
         threadId: retryEntry.threadId,
@@ -244,9 +214,9 @@ class RetryCoordinatorImpl implements RetryCoordinator {
       return;
     }
 
-    this.state.retryEntries.delete(issueId);
-    this.state.markDirty();
-    await this.state.launchWorker(latestIssue, attempt, {
+    this.runtime.retryEntries.delete(issueId);
+    this.runtime.markDirty();
+    await this.runtime.launchWorker(latestIssue, attempt, {
       claimHeld: true,
       previousThreadId: retryEntry.threadId,
       previousPrFeedback: retryEntry.previousPrFeedback,
@@ -254,9 +224,9 @@ class RetryCoordinatorImpl implements RetryCoordinator {
   }
 
   private async handleRetryLaunchFailure(issue: Issue, attempt: number, error: unknown): Promise<void> {
-    const runningEntry = this.state.runningEntries.get(issue.id) ?? null;
-    this.state.runningEntries.delete(issue.id);
-    this.state.markDirty();
+    const runningEntry = this.runtime.runningEntries.get(issue.id) ?? null;
+    this.runtime.runningEntries.delete(issue.id);
+    this.runtime.markDirty();
     this.cancel(issue.id);
 
     const errorText = toErrorString(error);
@@ -266,7 +236,7 @@ class RetryCoordinatorImpl implements RetryCoordinator {
       { issue_id: issue.id, issue_identifier: issue.identifier, error: errorText },
       "retry-launched worker startup failed",
     );
-    this.state.pushEvent({
+    this.runtime.pushEvent({
       at: nowIso(),
       issueId: issue.id,
       issueIdentifier: issue.identifier,
@@ -275,12 +245,11 @@ class RetryCoordinatorImpl implements RetryCoordinator {
       message,
     });
 
-    const failureView = buildRetryFailureView(this.state, issue, runningEntry, errorText, attempt);
-    this.state.detailViews.set(issue.identifier, failureView);
-    this.state.completedViews.set(issue.identifier, failureView);
-    this.state.markDirty();
+    const failureView = buildRetryFailureView(this.runtime, issue, runningEntry, errorText, attempt);
+    this.runtime.setDetailView(issue.identifier, failureView);
+    this.runtime.setCompletedView(issue.identifier, failureView);
 
-    const selection = runningEntry?.modelSelection ?? this.state.resolveModelSelection(issue.identifier);
+    const selection = runningEntry?.modelSelection ?? this.runtime.resolveModelSelection(issue.identifier);
     await persistRetryFailure({
       attemptStore: this.deps.attemptStore,
       runningEntry,
@@ -306,16 +275,21 @@ class RetryCoordinatorImpl implements RetryCoordinator {
       issue: issueRef(latestIssue),
       attempt,
     });
-    ctx.completedViews.set(
+    ctx.setCompletedView(
       latestIssue.identifier,
-      buildOutcomeView(latestIssue, workspace, entry, modelSelection, {
-        status: "failed",
-        attempt,
-        error: "max_continuations_exceeded",
-        message,
+      ctx.buildOutcomeView({
+        issue: latestIssue,
+        workspace,
+        entry,
+        configuredSelection: modelSelection,
+        overrides: {
+          status: "failed",
+          attempt,
+          error: "max_continuations_exceeded",
+          message,
+        },
       }),
     );
-    ctx.markDirty();
     ctx.deps.eventBus?.emit("issue.completed", {
       issueId: latestIssue.id,
       identifier: latestIssue.identifier,
@@ -338,16 +312,16 @@ class RetryCoordinatorImpl implements RetryCoordinator {
 }
 
 function buildRetryFailureView(
-  state: Pick<RetryStateHandle, "detailViews" | "resolveModelSelection">,
+  runtime: Pick<RetryRuntimeContext, "detailViews" | "resolveModelSelection">,
   issue: Issue,
   runningEntry: RunningEntry | null,
   errorText: string,
   attempt: number,
 ): RuntimeIssueView {
-  const selection = runningEntry?.modelSelection ?? state.resolveModelSelection(issue.identifier);
-  const configuredSelection = state.resolveModelSelection(issue.identifier);
+  const selection = runningEntry?.modelSelection ?? runtime.resolveModelSelection(issue.identifier);
+  const configuredSelection = runtime.resolveModelSelection(issue.identifier);
   const workspaceKey =
-    runningEntry?.workspace.workspaceKey ?? state.detailViews.get(issue.identifier)?.workspaceKey ?? null;
+    runningEntry?.workspace.workspaceKey ?? runtime.detailViews.get(issue.identifier)?.workspaceKey ?? null;
 
   return issueView(issue, {
     workspaceKey,

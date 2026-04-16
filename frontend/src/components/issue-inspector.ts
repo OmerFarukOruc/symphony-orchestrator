@@ -19,7 +19,7 @@ import {
 } from "./issue-inspector-sections";
 import { createIssueAbortAction } from "./issue-inspector-abort";
 import { createLiveLog } from "./live-log.js";
-import { subscribeIssueEvents, subscribeIssueLifecycle } from "../state/event-source.js";
+import { getRuntimeClient } from "../state/runtime-client.js";
 
 interface IssueInspectorOptions {
   mode: "page" | "drawer";
@@ -40,6 +40,7 @@ export function createIssueInspector(options: IssueInspectorOptions): {
   load: (id: string) => Promise<void>;
   destroy: () => void;
 } {
+  const runtimeClient = getRuntimeClient();
   const root = document.createElement("div");
   root.className =
     options.mode === "drawer"
@@ -139,17 +140,67 @@ export function createIssueInspector(options: IssueInspectorOptions): {
   function renderError(message: string): void {
     header.hidden = true;
     summary.hidden = true;
+    const classified = classifyFetchError(message);
     content.replaceChildren(
       createEmptyState(
-        "Issue unavailable",
-        message || "This issue could not be loaded. It may have been removed, or the identifier may be incorrect.",
-        "Retry",
+        classified.title,
+        classified.detail,
+        classified.action,
         () => {
-          void refresh();
+          if (classified.action === "Open board") {
+            router.navigate("/queue");
+          } else {
+            void refresh();
+          }
         },
-        "error",
+        classified.variant,
       ),
     );
+  }
+
+  /**
+   * Map a raw fetch error message to a differentiated recovery. 404 and
+   * serverError need different operator actions — retry is pointless on a
+   * missing resource, and the generic "Needs attention" eyebrow hid that.
+   */
+  function classifyFetchError(message: string): {
+    title: string;
+    detail: string;
+    action: string;
+    variant: "notFound" | "serverError" | "timeout" | "error";
+  } {
+    const lower = (message ?? "").toLowerCase();
+    if (lower.includes("404") || lower.includes("not found")) {
+      return {
+        title: "Issue not found",
+        detail: "Check the identifier or return to the board. The issue may have been removed or deduped.",
+        action: "Open board",
+        variant: "notFound",
+      };
+    }
+    if (lower.includes("timeout") || lower.includes("timed out")) {
+      return {
+        title: "Request timed out",
+        detail: "The backend did not respond in time. Retry, or check Observability if this keeps happening.",
+        action: "Retry",
+        variant: "timeout",
+      };
+    }
+    if (lower.includes("500") || lower.includes("server error") || lower.includes("internal")) {
+      return {
+        title: "Server error",
+        detail: "The API returned an error. Retry once — if it persists, check Observability for degraded components.",
+        action: "Retry",
+        variant: "serverError",
+      };
+    }
+    return {
+      title: "Issue unavailable",
+      detail:
+        message || "This issue could not be loaded. It may have been removed, or the identifier may be incorrect.",
+      action: "Retry",
+      variant: "error",
+    };
   }
 
   function render(detail: IssueDetail, preserveScroll = false): void {
@@ -235,9 +286,9 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     content.scrollTop = 0;
     liveLog.clear();
     unsubscribeEvents?.();
-    unsubscribeEvents = subscribeIssueEvents(id, (entry) => liveLog.append(entry));
+    unsubscribeEvents = runtimeClient.subscribeIssueEvents(id, (entry) => liveLog.append(entry));
     unsubscribeLifecycle?.();
-    unsubscribeLifecycle = subscribeIssueLifecycle(id, () => void refresh());
+    unsubscribeLifecycle = runtimeClient.subscribeIssueLifecycle(id, () => void refresh());
     await refresh();
   }
 

@@ -1,5 +1,5 @@
 import { router } from "../router";
-import type { RuntimeIssueView } from "../types";
+import type { RuntimeIssueView } from "../types/runtime.js";
 import { formatRelativeTime } from "../utils/format";
 import { createOutcomeBadge, formatDurationCompact, STATUS_TO_OUTCOME } from "../components/outcome-badge";
 import { flashDiff } from "../utils/diff";

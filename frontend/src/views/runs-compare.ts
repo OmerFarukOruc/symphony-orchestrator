@@ -1,4 +1,4 @@
-import type { AttemptSummary } from "../types";
+import type { AttemptSummary } from "../types/issues.js";
 import { statusChip } from "../ui/status-chip";
 import { computeDurationSeconds, formatCompactNumber, formatDuration } from "../utils/format";
 

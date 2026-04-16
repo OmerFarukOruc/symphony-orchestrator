@@ -76,6 +76,14 @@ function providerIdFor(provider: CodexProviderConfig): string {
   return provider.id || (provider.requiresOpenaiAuth ? "risoluto_openai_auth" : "risoluto_custom_provider");
 }
 
+function providerDisplayName(provider: CodexProviderConfig, providerId: string): string {
+  const trimmedName = provider.name?.trim();
+  if (trimmedName) {
+    return trimmedName;
+  }
+  return providerId;
+}
+
 function appendStringMap(lines: string[], tableName: string, values: Record<string, string>): void {
   const entries = Object.entries(values);
   if (entries.length === 0) {
@@ -89,9 +97,7 @@ function appendStringMap(lines: string[], tableName: string, values: Record<stri
 }
 
 function appendProviderFields(lines: string[], provider: CodexProviderConfig, providerId: string): void {
-  if (provider.name) {
-    lines.push(`name = ${formatTomlString(provider.name)}`);
-  }
+  lines.push(`name = ${formatTomlString(providerDisplayName(provider, providerId))}`);
   if (provider.baseUrl) {
     lines.push(`base_url = ${formatTomlString(provider.baseUrl)}`);
   }

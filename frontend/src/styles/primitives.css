@@ -102,9 +102,10 @@
 .page-subtitle {
   color: var(--text-secondary);
   font-family: var(--font-body);
-  max-width: 70ch;
-  font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
+  max-width: 64ch;
+  font-size: var(--text-base);
+  line-height: var(--leading-loose);
+  font-feature-settings: var(--font-features-default);
   margin: 0;
 }
 

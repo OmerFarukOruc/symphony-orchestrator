@@ -19,7 +19,7 @@ export function methodNotAllowed(response: Response, allowedMethods: string[] = 
   });
 }
 
-export function serializeSnapshot(snapshot: RuntimeSnapshot & Record<string, unknown>): Record<string, unknown> {
+export function serializeSnapshot(snapshot: RuntimeSnapshot): Record<string, unknown> {
   return {
     generated_at: snapshot.generatedAt,
     counts: snapshot.counts,

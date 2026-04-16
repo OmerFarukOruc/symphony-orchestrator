@@ -4,6 +4,11 @@ export interface RuntimeInfo {
   provider_summary: string;
 }
 
+// WHY divergent from src/prompt/types.ts and src/audit/types.ts: the frontend and
+// backend are separate build targets that cannot share imports. PromptTemplate and
+// AuditRecord are small interfaces (5-6 fields each) whose shapes are governed by
+// the camelCase wire format returned by /api/v1/templates and /api/v1/audit.
+// AGENTS.md explicitly allows duplicating small interfaces across the boundary.
 export interface PromptTemplate {
   id: string;
   name: string;

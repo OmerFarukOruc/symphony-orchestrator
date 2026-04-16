@@ -1,483 +1,114 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import type { OutcomeContext } from "../../src/orchestrator/context.js";
 import {
-  handleServiceStopped,
-  handleTerminalCleanup,
+  handleCancelledOrHardFailure,
   handleInactiveIssue,
   handleOperatorAbort,
-  handleCancelledOrHardFailure,
+  handleServiceStopped,
+  handleTerminalCleanup,
 } from "../../src/orchestrator/worker-outcome/terminal-paths.js";
-import type {
-  Issue,
-  ModelSelection,
-  RunOutcome,
-  RuntimeIssueView,
-  ServiceConfig,
-  Workspace,
-} from "../../src/core/types.js";
-import type { OutcomeContext } from "../../src/orchestrator/context.js";
-import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
-import type { PreparedWorkerOutcome } from "../../src/orchestrator/worker-outcome/types.js";
-import { createIssue, createWorkspace, createModelSelection, createRunningEntry } from "./issue-test-factories.js";
+import type { PreparedWorkerOutcome, TerminalPathKind } from "../../src/orchestrator/worker-outcome/types.js";
+import { createIssue, createModelSelection, createRunningEntry, createWorkspace } from "./issue-test-factories.js";
 
-function makeConfig(): ServiceConfig {
+function makePrepared(): PreparedWorkerOutcome {
+  const issue = createIssue();
+  const workspace = createWorkspace();
   return {
-    tracker: {
-      kind: "linear",
-      apiKey: "key",
-      endpoint: "https://api.linear.app/graphql",
-      projectSlug: "MT",
-      activeStates: ["In Progress"],
-      terminalStates: ["Done", "Canceled"],
+    outcome: {
+      kind: "failed",
+      errorCode: "turn_failed",
+      errorMessage: "boom",
+      threadId: null,
+      turnId: "turn-1",
+      turnCount: 2,
     },
-    agent: {
-      maxConcurrentAgents: 5,
-      maxConcurrentAgentsByState: {},
-      maxTurns: 10,
-      maxRetryBackoffMs: 300_000,
-      maxContinuationAttempts: 5,
-      successState: null,
-      stallTimeoutMs: 1_200_000,
-    },
-  } as unknown as ServiceConfig;
-}
-
-function makeOutcome(overrides: Partial<RunOutcome> = {}): RunOutcome {
-  return {
-    kind: "normal",
-    errorCode: null,
-    errorMessage: null,
-    threadId: null,
-    turnId: null,
-    turnCount: 1,
-    ...overrides,
+    entry: createRunningEntry({ issue, workspace }),
+    issue,
+    latestIssue: issue,
+    workspace,
+    attempt: 2,
+    modelSelection: createModelSelection(),
   };
 }
 
-function makeCtx(): OutcomeContext {
+function makeCtx(finalizeTerminalPath?: OutcomeContext["finalizeTerminalPath"]): OutcomeContext {
   return {
-    runningEntries: new Map<string, RunningEntry>(),
-    completedViews: new Map<string, RuntimeIssueView>(),
-    detailViews: new Map<string, RuntimeIssueView>(),
+    runningEntries: new Map(),
+    completedViews: new Map(),
+    detailViews: new Map(),
     deps: {
       tracker: {
-        fetchIssueStatesByIds: vi.fn().mockResolvedValue([]),
-        resolveStateId: vi.fn().mockResolvedValue(null),
-        updateIssueState: vi.fn().mockResolvedValue(undefined),
-        createComment: vi.fn().mockResolvedValue(undefined),
+        fetchIssueStatesByIds: vi.fn(),
+        resolveStateId: vi.fn(),
+        updateIssueState: vi.fn(),
+        createComment: vi.fn(),
       },
       attemptStore: {
-        updateAttempt: vi.fn().mockResolvedValue(undefined),
+        updateAttempt: vi.fn(),
       },
       workspaceManager: {
-        removeWorkspace: vi.fn().mockResolvedValue(undefined),
+        removeWorkspace: vi.fn(),
       },
-      eventBus: { emit: vi.fn() },
       logger: { info: vi.fn(), warn: vi.fn() },
     },
     isRunning: () => true,
-    getConfig: () => makeConfig(),
+    getConfig: vi.fn() as OutcomeContext["getConfig"],
     releaseIssueClaim: vi.fn(),
-    suppressIssueDispatch: vi.fn(),
     markDirty: vi.fn(),
-    resolveModelSelection: vi.fn().mockReturnValue(createModelSelection()),
+    resolveModelSelection: vi.fn(),
+    buildOutcomeView: vi.fn(),
+    setDetailView: vi.fn(),
+    setCompletedView: vi.fn(),
+    finalizeTerminalPath,
     notify: vi.fn(),
     retryCoordinator: {
-      dispatch: vi.fn().mockResolvedValue(undefined),
+      dispatch: vi.fn(),
       cancel: vi.fn(),
     },
   } as unknown as OutcomeContext;
 }
 
-function makePrepared(
-  outcome: RunOutcome,
-  entry: RunningEntry,
-  issue: Issue,
-  workspace: Workspace,
-  modelSelection: ModelSelection,
-  attempt: number | null,
-  overrides: Partial<PreparedWorkerOutcome> = {},
-): PreparedWorkerOutcome {
-  return { outcome, entry, issue, latestIssue: issue, workspace, attempt, modelSelection, ...overrides };
-}
+describe("worker-outcome terminal-path adapters", () => {
+  it.each([
+    ["service_stopped", handleServiceStopped],
+    ["inactive_issue", handleInactiveIssue],
+    ["operator_abort", handleOperatorAbort],
+  ] satisfies Array<[TerminalPathKind, (ctx: OutcomeContext, prepared: PreparedWorkerOutcome) => void]>)(
+    "delegates %s through OutcomeContext.finalizeTerminalPath",
+    (kind, handler) => {
+      const finalizeTerminalPath = vi.fn();
+      const ctx = makeCtx(finalizeTerminalPath);
+      const prepared = makePrepared();
 
-describe("handleServiceStopped", () => {
-  let ctx: OutcomeContext;
-  let issue: Issue;
-  let entry: RunningEntry;
-  let workspace: Workspace;
-  let modelSelection: ModelSelection;
+      handler(ctx, prepared);
 
-  beforeEach(() => {
-    ctx = makeCtx();
-    issue = createIssue();
-    entry = createRunningEntry();
-    workspace = createWorkspace();
-    modelSelection = createModelSelection();
-  });
+      expect(finalizeTerminalPath).toHaveBeenCalledWith(kind, prepared);
+    },
+  );
 
-  it("sends worker_failed notification with critical severity", () => {
-    const outcome = makeOutcome({ errorMessage: "service shutting down" });
+  it.each([
+    ["terminal_cleanup", handleTerminalCleanup],
+    ["cancelled_or_hard_failure", handleCancelledOrHardFailure],
+  ] satisfies Array<[TerminalPathKind, (ctx: OutcomeContext, prepared: PreparedWorkerOutcome) => Promise<void>]>)(
+    "awaits %s through OutcomeContext.finalizeTerminalPath",
+    async (kind, handler) => {
+      const finalizeTerminalPath = vi.fn().mockResolvedValue(undefined);
+      const ctx = makeCtx(finalizeTerminalPath);
+      const prepared = makePrepared();
 
-    handleServiceStopped(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
+      await handler(ctx, prepared);
 
-    expect(ctx.notify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "worker_failed",
-        severity: "critical",
-        message: "service shutting down",
-      }),
+      expect(finalizeTerminalPath).toHaveBeenCalledWith(kind, prepared);
+    },
+  );
+
+  it("fails fast when terminal finalization is missing", async () => {
+    const prepared = makePrepared();
+
+    expect(() => handleServiceStopped(makeCtx(), prepared)).toThrow("OutcomeContext.finalizeTerminalPath is required");
+    await expect(handleTerminalCleanup(makeCtx(), prepared)).rejects.toThrow(
+      "OutcomeContext.finalizeTerminalPath is required",
     );
-  });
-
-  it("uses default message when errorMessage is null", () => {
-    const outcome = makeOutcome({ errorMessage: null });
-
-    handleServiceStopped(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.notify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: "service stopped before the worker completed",
-      }),
-    );
-  });
-
-  it("releases the issue claim", () => {
-    handleServiceStopped(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
-  });
-
-  it("sets completed view with cancelled status", () => {
-    const outcome = makeOutcome({ errorMessage: "shutdown" });
-
-    handleServiceStopped(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 2));
-
-    const view = ctx.completedViews.get(issue.identifier);
-    expect(view).toBeDefined();
-    expect(view!.status).toBe("cancelled");
-    expect(view!.attempt).toBe(2);
-  });
-
-  it("emits issue.completed event with cancelled outcome", () => {
-    handleServiceStopped(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
-      issueId: issue.id,
-      identifier: issue.identifier,
-      outcome: "cancelled",
-    });
-  });
-});
-
-describe("handleTerminalCleanup", () => {
-  let ctx: OutcomeContext;
-  let issue: Issue;
-  let entry: RunningEntry;
-  let workspace: Workspace;
-  let modelSelection: ModelSelection;
-
-  beforeEach(() => {
-    ctx = makeCtx();
-    issue = createIssue();
-    entry = createRunningEntry();
-    workspace = createWorkspace();
-    modelSelection = createModelSelection();
-  });
-
-  it("removes workspace", async () => {
-    const outcome = makeOutcome({ kind: "normal" });
-
-    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.deps.workspaceManager.removeWorkspace).toHaveBeenCalledWith(issue.identifier, issue);
-  });
-
-  it("swallows workspace removal errors gracefully", async () => {
-    const removeWorkspace = ctx.deps.workspaceManager.removeWorkspace as ReturnType<typeof vi.fn>;
-    removeWorkspace.mockRejectedValue(new Error("permission denied"));
-    const outcome = makeOutcome({ kind: "normal" });
-
-    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.deps.logger.info).toHaveBeenCalledWith(
-      expect.objectContaining({ issue_identifier: issue.identifier, error: "permission denied" }),
-      expect.stringContaining("workspace cleanup failed"),
-    );
-    // Still proceeds with rest of flow
-    expect(ctx.completedViews.has(issue.identifier)).toBe(true);
-  });
-
-  it("sets completed view with status based on outcome kind", async () => {
-    const outcome = makeOutcome({ kind: "cancelled", errorMessage: "user cancelled" });
-
-    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    const view = ctx.completedViews.get(issue.identifier);
-    expect(view).toMatchObject({
-      status: "cancelled",
-      message: "workspace cleaned after terminal state",
-    });
-  });
-
-  it("maps failed outcome kind to failed status", async () => {
-    const outcome = makeOutcome({ kind: "failed", errorCode: "turn_failed", errorMessage: "oops" });
-
-    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 2));
-
-    const view = ctx.completedViews.get(issue.identifier);
-    expect(view!.status).toBe("failed");
-    expect(view!.error).toBe("oops");
-  });
-
-  it("uses errorCode as error when errorMessage is null", async () => {
-    const outcome = makeOutcome({ kind: "failed", errorCode: "sandbox_error", errorMessage: null });
-
-    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    const view = ctx.completedViews.get(issue.identifier);
-    expect(view!.error).toBe("sandbox_error");
-  });
-
-  it("emits issue.completed event with mapped outcome", async () => {
-    const outcome = makeOutcome({ kind: "timed_out" });
-
-    await handleTerminalCleanup(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
-      issueId: issue.id,
-      identifier: issue.identifier,
-      outcome: "timed_out",
-    });
-  });
-
-  it("releases the issue claim", async () => {
-    await handleTerminalCleanup(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
-  });
-});
-
-describe("handleInactiveIssue", () => {
-  let ctx: OutcomeContext;
-  let issue: Issue;
-  let entry: RunningEntry;
-  let workspace: Workspace;
-  let modelSelection: ModelSelection;
-
-  beforeEach(() => {
-    ctx = makeCtx();
-    issue = createIssue();
-    entry = createRunningEntry();
-    workspace = createWorkspace();
-    modelSelection = createModelSelection();
-  });
-
-  it("sets completed view with paused status", () => {
-    handleInactiveIssue(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, null));
-
-    const view = ctx.completedViews.get(issue.identifier);
-    expect(view).toMatchObject({
-      status: "paused",
-      message: "issue is no longer active",
-    });
-  });
-
-  it("emits issue.completed event with paused outcome", () => {
-    handleInactiveIssue(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
-      issueId: issue.id,
-      identifier: issue.identifier,
-      outcome: "paused",
-    });
-  });
-
-  it("releases the issue claim", () => {
-    handleInactiveIssue(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
-  });
-
-  it("does not send any notifications", () => {
-    handleInactiveIssue(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.notify).not.toHaveBeenCalled();
-  });
-});
-
-describe("handleOperatorAbort", () => {
-  let ctx: OutcomeContext;
-  let issue: Issue;
-  let entry: RunningEntry;
-  let workspace: Workspace;
-  let modelSelection: ModelSelection;
-
-  beforeEach(() => {
-    ctx = makeCtx();
-    issue = createIssue();
-    entry = createRunningEntry();
-    workspace = createWorkspace();
-    modelSelection = createModelSelection();
-  });
-
-  it("sends worker_failed notification with info severity", () => {
-    const outcome = makeOutcome({ errorMessage: "operator stopped this", errorCode: "operator_abort" });
-
-    handleOperatorAbort(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.notify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "worker_failed",
-        severity: "info",
-        message: "operator stopped this",
-        metadata: expect.objectContaining({ errorCode: "operator_abort" }),
-      }),
-    );
-  });
-
-  it("uses default message when errorMessage is null", () => {
-    const outcome = makeOutcome({ errorMessage: null, errorCode: "operator_abort" });
-
-    handleOperatorAbort(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.notify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: "worker cancelled by operator request",
-      }),
-    );
-  });
-
-  it("sets completed view with cancelled status", () => {
-    const outcome = makeOutcome({ errorCode: "operator_abort" });
-
-    handleOperatorAbort(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 3));
-
-    const view = ctx.completedViews.get(issue.identifier);
-    expect(view).toBeDefined();
-    expect(view!.status).toBe("cancelled");
-    expect(view!.error).toBe("operator_abort");
-    expect(view!.attempt).toBe(3);
-  });
-
-  it("emits issue.completed event with cancelled outcome", () => {
-    handleOperatorAbort(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
-      issueId: issue.id,
-      identifier: issue.identifier,
-      outcome: "cancelled",
-    });
-  });
-
-  it("calls suppressIssueDispatch", () => {
-    handleOperatorAbort(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.suppressIssueDispatch).toHaveBeenCalledWith(issue);
-  });
-
-  it("releases the issue claim", () => {
-    handleOperatorAbort(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
-  });
-});
-
-describe("handleCancelledOrHardFailure", () => {
-  let ctx: OutcomeContext;
-  let issue: Issue;
-  let entry: RunningEntry;
-  let workspace: Workspace;
-  let modelSelection: ModelSelection;
-
-  beforeEach(() => {
-    ctx = makeCtx();
-    issue = createIssue();
-    entry = createRunningEntry();
-    workspace = createWorkspace();
-    modelSelection = createModelSelection();
-  });
-
-  it("sends worker_failed notification with critical severity", () => {
-    const outcome = makeOutcome({ kind: "failed", errorMessage: "startup crashed", errorCode: "startup_failed" });
-
-    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.notify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "worker_failed",
-        severity: "critical",
-        message: "startup crashed",
-        metadata: expect.objectContaining({ errorCode: "startup_failed" }),
-      }),
-    );
-  });
-
-  it("uses default message when errorMessage is null", () => {
-    const outcome = makeOutcome({ kind: "failed", errorMessage: null });
-
-    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.notify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: "worker stopped without a retry",
-      }),
-    );
-  });
-
-  it("maps cancelled kind to cancelled status in view", () => {
-    const outcome = makeOutcome({ kind: "cancelled", errorCode: "shutdown" });
-
-    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 2));
-
-    const view = ctx.completedViews.get(issue.identifier);
-    expect(view).toBeDefined();
-    expect(view!.status).toBe("cancelled");
-    expect(view!.error).toBe("shutdown");
-  });
-
-  it("maps non-cancelled kind to failed status in view", () => {
-    const outcome = makeOutcome({ kind: "failed", errorCode: "startup_failed" });
-
-    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    const view = ctx.completedViews.get(issue.identifier);
-    expect(view!.status).toBe("failed");
-  });
-
-  it("emits issue.completed event with cancelled outcome for cancelled kind", () => {
-    const outcome = makeOutcome({ kind: "cancelled" });
-
-    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
-      issueId: issue.id,
-      identifier: issue.identifier,
-      outcome: "cancelled",
-    });
-  });
-
-  it("emits issue.completed event with failed outcome for non-cancelled kind", () => {
-    const outcome = makeOutcome({ kind: "failed" });
-
-    handleCancelledOrHardFailure(ctx, makePrepared(outcome, entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.deps.eventBus?.emit).toHaveBeenCalledWith("issue.completed", {
-      issueId: issue.id,
-      identifier: issue.identifier,
-      outcome: "failed",
-    });
-  });
-
-  it("releases the issue claim", () => {
-    handleCancelledOrHardFailure(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.releaseIssueClaim).toHaveBeenCalledWith(issue.id);
-  });
-
-  it("does not call suppressIssueDispatch", () => {
-    handleCancelledOrHardFailure(ctx, makePrepared(makeOutcome(), entry, issue, workspace, modelSelection, 1));
-
-    expect(ctx.suppressIssueDispatch).not.toHaveBeenCalled();
   });
 });

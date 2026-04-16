@@ -1,4 +1,4 @@
-import type { RecentEvent } from "./runtime-snapshot";
+import type { RecentEvent } from "../../../../src/core/types.js";
 
 export interface IssueDetail {
   issueId: string;
@@ -72,10 +72,10 @@ export function buildIssueDetail(overrides?: Partial<IssueDetail>): IssueDetail 
     tokenUsage: { inputTokens: 5000, outputTokens: 3000, totalTokens: 8000 },
     model: "o3-mini",
     reasoningEffort: "medium",
-    modelSource: "config",
+    modelSource: "default",
     configuredModel: "o3-mini",
     configuredReasoningEffort: "medium",
-    configuredModelSource: "config",
+    configuredModelSource: "default",
     modelChangePending: false,
     url: "https://linear.app/team/SYM-42",
     description: "Users cannot log in after password reset",
@@ -85,27 +85,27 @@ export function buildIssueDetail(overrides?: Partial<IssueDetail>): IssueDetail 
     recentEvents: [
       {
         at: "2026-01-15T12:00:00.000Z",
-        issue_id: "issue-001",
-        issue_identifier: "SYM-42",
-        session_id: "sess-001",
+        issueId: "issue-001",
+        issueIdentifier: "SYM-42",
+        sessionId: "sess-001",
         event: "agent_started",
         message: "Agent started working on SYM-42",
         content: null,
       },
       {
         at: "2026-01-15T12:01:00.000Z",
-        issue_id: "issue-001",
-        issue_identifier: "SYM-42",
-        session_id: "sess-001",
+        issueId: "issue-001",
+        issueIdentifier: "SYM-42",
+        sessionId: "sess-001",
         event: "tool_use",
         message: "Reading file src/auth.ts",
         content: null,
       },
       {
         at: "2026-01-15T12:02:00.000Z",
-        issue_id: "issue-001",
-        issue_identifier: "SYM-42",
-        session_id: "sess-001",
+        issueId: "issue-001",
+        issueIdentifier: "SYM-42",
+        sessionId: "sess-001",
         event: "reasoning",
         message: "Analyzing authentication flow",
         content: null,

@@ -1,7 +1,7 @@
 import { api } from "../api";
 import { createButton } from "../components/forms";
 import { createPageHeader } from "../components/page-header";
-import { APP_STATE_HEARTBEAT_EVENT, APP_STATE_UPDATE_EVENT, store } from "../state/store";
+import { getRuntimeClient } from "../state/runtime-client";
 import type { AppState } from "../state/store";
 import { toast } from "../ui/toast";
 import { flashDiff } from "../utils/diff";
@@ -13,6 +13,7 @@ import { renderObservabilitySections } from "./observability-sections";
 import { createObservabilityState } from "./observability-state";
 
 export function createObservabilityPage(): HTMLElement {
+  const runtimeClient = getRuntimeClient();
   const state = createObservabilityState();
   const page = document.createElement("div");
   page.className = "page observability-page fade-in";
@@ -47,7 +48,7 @@ export function createObservabilityPage(): HTMLElement {
       state.summary = await api.getObservability();
       state.metricsRaw = state.summary.raw_metrics;
       state.metricsFetchedAt = Date.now();
-      store.mergeSnapshot(state.summary.runtime_state);
+      runtimeClient.mergeSnapshot(state.summary.runtime_state);
       state.error = null;
     } catch (error) {
       state.error = error instanceof Error ? error.message : "Failed to load observability.";
@@ -69,7 +70,7 @@ export function createObservabilityPage(): HTMLElement {
     try {
       await api.postRefresh().catch(() => undefined);
       state.summary = await api.getObservability();
-      store.mergeSnapshot(state.summary.runtime_state, { resetStale: true });
+      runtimeClient.mergeSnapshot(state.summary.runtime_state, { resetStale: true });
       state.metricsRaw = state.summary.raw_metrics;
       state.metricsFetchedAt = Date.now();
       state.error = null;
@@ -97,8 +98,8 @@ export function createObservabilityPage(): HTMLElement {
     drawerButton.textContent = state.rawDrawerOpen ? "Hide raw metrics (x)" : "Raw metrics (x)";
     renderObservabilitySections(
       body,
-      state.summary?.runtime_state ?? store.getState().snapshot,
-      store.getState().staleCount,
+      state.summary?.runtime_state ?? runtimeClient.getAppState().snapshot,
+      runtimeClient.getAppState().staleCount,
       state,
       {
         onRefresh: () => void refreshAll(),
@@ -113,7 +114,7 @@ export function createObservabilityPage(): HTMLElement {
   });
   refreshButton.addEventListener("click", () => void refreshAll());
 
-  const onState = (event: Event): void => sync((event as CustomEvent<AppState>).detail);
+  const onState = (nextState: AppState): void => sync(nextState);
   const onKey = (event: KeyboardEvent): void => {
     handleObservabilityKeyboard(event, {
       onRefresh: () => void refreshAll(),
@@ -128,16 +129,14 @@ export function createObservabilityPage(): HTMLElement {
     void loadObservability().then(() => flashDiff(body));
   };
 
-  window.addEventListener(APP_STATE_UPDATE_EVENT, onState);
-  window.addEventListener(APP_STATE_HEARTBEAT_EVENT, onState);
-  window.addEventListener("risoluto:poll-complete", onPollComplete);
+  const unsubscribeState = runtimeClient.subscribeState(onState, { includeHeartbeat: true });
+  const unsubscribePollComplete = runtimeClient.subscribePollComplete(onPollComplete);
   window.addEventListener("keydown", onKey);
-  sync(store.getState());
+  sync(runtimeClient.getAppState());
   void loadObservability();
   registerPageCleanup(page, () => {
-    window.removeEventListener(APP_STATE_UPDATE_EVENT, onState);
-    window.removeEventListener(APP_STATE_HEARTBEAT_EVENT, onState);
-    window.removeEventListener("risoluto:poll-complete", onPollComplete);
+    unsubscribeState();
+    unsubscribePollComplete();
     window.removeEventListener("keydown", onKey);
   });
   return page;

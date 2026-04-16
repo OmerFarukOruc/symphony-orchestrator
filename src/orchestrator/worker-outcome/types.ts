@@ -14,6 +14,13 @@ export interface PreparedWorkerOutcome extends WorkerOutcomeInput {
   modelSelection: ModelSelection;
 }
 
+export type TerminalPathKind =
+  | "service_stopped"
+  | "terminal_cleanup"
+  | "inactive_issue"
+  | "operator_abort"
+  | "cancelled_or_hard_failure";
+
 export function issueRef(issue: Issue) {
   return { id: issue.id, identifier: issue.identifier, title: issue.title, state: issue.state, url: issue.url };
 }

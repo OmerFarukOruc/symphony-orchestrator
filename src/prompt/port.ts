@@ -6,7 +6,7 @@
  * and Liquid rendering implementation.
  */
 
-import type { PromptTemplate, PreviewResult } from "./store.js";
+import type { PromptTemplate, PreviewResult } from "./types.js";
 
 export interface TemplateStorePort {
   /** Return all stored prompt templates. */

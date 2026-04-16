@@ -40,13 +40,36 @@
 }
 
 .audit-filters select,
-.audit-filters input {
-  padding: var(--space-1) var(--space-2);
+.audit-filters input,
+.audit-select,
+.audit-input {
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-primary);
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
+  line-height: 1.2;
+  transition:
+    border-color var(--motion-fast) var(--ease-out-quart),
+    box-shadow var(--motion-fast) var(--ease-out-quart);
+}
+
+.audit-select:focus-visible,
+.audit-input:focus-visible {
+  outline: none;
+  border-color: var(--text-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-accent) 24%, transparent);
+}
+
+.audit-input-date {
+  min-width: 10rem;
+}
+
+.audit-input-date::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
 }
 
 /* ── Table ─────────────────────────────────────── */

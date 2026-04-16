@@ -1,6 +1,6 @@
-import { api } from "../../api.js";
 import { createEmptyState } from "../../components/empty-state.js";
-import type { CodexUserInputRequest } from "../../types.js";
+import type { CodexUserInputRequest } from "../../types/codex.js";
+import { answerCodexUserInputRequest } from "./codex-admin-client.js";
 import { createPanel, promptForUserInput, runCodexAdminAction } from "./codex-admin-helpers.js";
 
 export function renderPendingRequestsPanel(
@@ -39,7 +39,7 @@ function createRequestItem(request: CodexUserInputRequest, onRefresh: () => Prom
       const result = await promptForUserInput(request);
       if (result === null) return;
       await runCodexAdminAction(
-        () => api.postCodexUserInputResponse(request.requestId, result).then(() => undefined),
+        () => answerCodexUserInputRequest(request.requestId, result),
         "Prompt response sent.",
         "Failed to send prompt response.",
         onRefresh,

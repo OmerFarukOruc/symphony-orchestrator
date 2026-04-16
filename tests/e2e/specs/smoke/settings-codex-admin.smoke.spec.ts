@@ -23,12 +23,68 @@ test.describe("Settings Codex Admin Smoke", () => {
     let promptResolved = false;
     const scenario = apiMock.scenario().withSetupConfigured().build();
     await apiMock.install(scenario);
-    await page.route("**/api/v1/codex/requests/user-input", async (route) => {
+    await page.route("**/api/v1/codex/admin", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          data: promptResolved
+          capabilities: {
+            connectedAt: "2026-04-08T11:00:00Z",
+            initializationError: null,
+            methods: {
+              "thread/list": "supported",
+              "thread/read": "supported",
+              "thread/loaded/list": "supported",
+            },
+            notifications: {
+              "app/list/updated": "enabled",
+            },
+          },
+          account: {
+            type: "chatgpt",
+            email: "operator@example.com",
+            planType: "pro",
+          },
+          requiresOpenaiAuth: true,
+          rateLimits: {
+            limitId: "codex",
+            limitName: "codex",
+            primary: {
+              usedPercent: 25,
+              windowDurationMins: 15,
+              resetsAt: 1730947200,
+            },
+            secondary: null,
+          },
+          rateLimitsByLimitId: {
+            codex: {
+              limitId: "codex",
+              limitName: "codex",
+              primary: {
+                usedPercent: 25,
+                windowDurationMins: 15,
+                resetsAt: 1730947200,
+              },
+              secondary: null,
+            },
+          },
+          models: [{ id: "gpt-5.4", displayName: "gpt-5.4", inputModalities: ["text", "image"], isDefault: true }],
+          threads: [
+            {
+              id: "thr_1",
+              name: "Bug bash",
+              preview: "Summarize the repo",
+              modelProvider: "openai",
+              updatedAt: 1730910000,
+              createdAt: 1730900000,
+              status: { type: "idle" },
+            },
+          ],
+          loadedThreadIds: ["thr_1"],
+          features: [{ name: "unified_exec", stage: "beta", displayName: "Unified exec", enabled: true }],
+          collaborationModes: [{ name: "default", displayName: "Default", description: "Default collaboration mode" }],
+          mcpServers: [{ name: "github", status: "ready", authStatus: "authenticated", tools: [1], resources: [] }],
+          pendingRequests: promptResolved
             ? []
             : [
                 {

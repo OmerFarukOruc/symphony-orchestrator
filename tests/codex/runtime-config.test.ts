@@ -99,6 +99,31 @@ describe("buildConfigToml", () => {
     expect(configToml).toContain("requires_openai_auth = true");
     expect(configToml).toContain('cli_auth_credentials_store = "file"');
   });
+
+  it("falls back to the provider id when a custom provider omits name", () => {
+    const configToml = buildConfigToml(
+      baseConfig({
+        auth: {
+          mode: "openai_login",
+          sourceHome: "/tmp/test-home",
+        },
+        provider: {
+          id: "cliproxyapi",
+          name: null,
+          baseUrl: "https://api.example.com/v1",
+          envKey: null,
+          envKeyInstructions: null,
+          wireApi: "responses",
+          requiresOpenaiAuth: true,
+          httpHeaders: {},
+          envHttpHeaders: {},
+          queryParams: {},
+        },
+      }),
+    );
+
+    expect(configToml).toContain('name = "cliproxyapi"');
+  });
 });
 
 describe("prepareCodexRuntimeConfig", () => {

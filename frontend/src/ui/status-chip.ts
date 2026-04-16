@@ -38,3 +38,17 @@ export function statusChip(status: string): HTMLElement {
   chip.append(dot, label);
   return chip;
 }
+
+/**
+ * Canonical bare status-indicator dot. Takes a base class so callers can keep
+ * their page-scoped styling (obs-dot, git-status-dot) while sharing the
+ * underlying primitive. Replaces the duplicate local implementations in
+ * observability-sections.ts and git-view.ts.
+ */
+export function statusDot(status: string, baseClass = "mc-status-dot"): HTMLElement {
+  const normalized = normalizeStatus(status);
+  const dot = document.createElement("span");
+  dot.className = `${baseClass} is-${normalized}`;
+  dot.setAttribute("aria-hidden", "true");
+  return dot;
+}

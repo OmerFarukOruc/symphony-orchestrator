@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveServiceConfig } from "../../src/config/builders.js";
+import { deriveServiceConfig, deriveTrackerConfig } from "../../src/config/builders.js";
 import type { WorkflowDefinition } from "../../src/core/types.js";
 
 function createWorkflow(config: Record<string, unknown>): WorkflowDefinition {
@@ -11,6 +11,15 @@ function createWorkflow(config: Record<string, unknown>): WorkflowDefinition {
 }
 
 describe("deriveServiceConfig", () => {
+  it("normalizes tracker endpoints when deriving the tracker section directly", () => {
+    expect(
+      deriveTrackerConfig({
+        kind: "github",
+        endpoint: "https://api.github.com",
+      }).endpoint,
+    ).toBe("https://api.github.com");
+  });
+
   it("defaults polling to 15 seconds", () => {
     const config = deriveServiceConfig(
       createWorkflow({

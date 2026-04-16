@@ -1,6 +1,6 @@
 import type { Express } from "express";
 
-import { fetchCodexModels } from "../../codex/model-list.js";
+import { readCodexModelCatalog } from "../../codex/model-catalog.js";
 import { createObservabilityHub } from "../../observability/hub.js";
 import { createMetricsCollector } from "../../observability/metrics.js";
 import type { RecoveryReport } from "../../orchestrator/recovery-types.js";
@@ -115,22 +115,11 @@ export function registerSystemRoutes(app: Express, deps: HttpRouteDeps): void {
   app
     .route("/api/v1/models")
     .get(async (_req, res) => {
-      let models: unknown[] | null = null;
-      if (deps.codexControlPlane) {
-        try {
-          const result = (await deps.codexControlPlane.request("model/list", {
-            limit: 50,
-            includeHidden: true,
-          })) as { data?: unknown[] };
-          models = Array.isArray(result.data) ? result.data : [];
-        } catch {
-          models = null;
-        }
-      }
-      const fallback = models === null;
-      const apiKey = deps.secretsStore?.get("OPENAI_API_KEY") ?? undefined;
-      const legacyModels = fallback ? await fetchCodexModels(apiKey) : [];
-      res.json({ models: fallback ? legacyModels : models });
+      const models = await readCodexModelCatalog({
+        controlPlane: deps.codexControlPlane,
+        secretsStore: deps.secretsStore,
+      });
+      res.json({ models });
     })
     .all((_req, res) => {
       methodNotAllowed(res);

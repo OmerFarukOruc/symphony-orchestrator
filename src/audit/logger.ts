@@ -11,42 +11,11 @@ import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { RisolutoDatabase } from "../persistence/sqlite/database.js";
 import { configHistory } from "../persistence/sqlite/schema.js";
 import type { AuditLoggerPort } from "./port.js";
+import type { AuditEntry, AuditQueryOptions, AuditRecord } from "./types.js";
+
+export type { AuditEntry, AuditQueryOptions, AuditRecord };
 
 const REDACTED = "[REDACTED]";
-
-export interface AuditEntry {
-  tableName: string;
-  key: string;
-  path?: string | null;
-  operation: string;
-  previousValue?: string | null;
-  newValue?: string | null;
-  actor?: string;
-  requestId?: string | null;
-}
-
-export interface AuditRecord {
-  id: number;
-  tableName: string;
-  key: string;
-  path: string | null;
-  operation: string;
-  previousValue: string | null;
-  newValue: string | null;
-  actor: string;
-  requestId: string | null;
-  timestamp: string;
-}
-
-export interface AuditQueryOptions {
-  tableName?: string;
-  key?: string;
-  pathPrefix?: string;
-  limit?: number;
-  offset?: number;
-  from?: string;
-  to?: string;
-}
 
 interface WhereResult {
   where: string;

@@ -45,7 +45,7 @@ export function createSectionHeader(title: string, kicker?: string): HTMLElement
 /**
  * Creates a collapsible section wrapper with a summary line.
  * The section header acts as the disclosure toggle.
- * `summaryEl` is a lightweight element shown next to the header when collapsed.
+ * The summary is shown next to the header when collapsed.
  */
 export function createCollapsibleSection(
   id: string,
@@ -56,7 +56,6 @@ export function createCollapsibleSection(
   section: HTMLElement;
   body: HTMLElement;
   summary: HTMLElement;
-  peek: HTMLElement;
   setExpanded: (expanded: boolean) => void;
 } {
   const section = document.createElement("div");
@@ -86,13 +85,10 @@ export function createCollapsibleSection(
 
   header.append(chevron, titleEl, kickerEl, summary);
 
-  const peek = document.createElement("div");
-  peek.className = "overview-collapsible-peek";
-
   const body = document.createElement("div");
   body.className = "overview-collapsible-body";
 
-  section.append(header, peek, body);
+  section.append(header, body);
 
   function setExpanded(expanded: boolean): void {
     header.setAttribute("aria-expanded", String(expanded));
@@ -118,5 +114,5 @@ export function createCollapsibleSection(
   body.hidden = isCollapsed;
   summary.hidden = !isCollapsed;
 
-  return { section, body, summary, peek, setExpanded };
+  return { section, body, summary, setExpanded };
 }

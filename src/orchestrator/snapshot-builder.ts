@@ -94,9 +94,28 @@ export interface SnapshotBuilderCallbacks {
   getTemplateName?: (templateId: string) => string | null;
 }
 
-// Builds a runtime snapshot from orchestrator state.
-// Pure read-path logic extracted for testability and modularity.
+export interface RuntimeReadModel {
+  buildSnapshot(): RuntimeSnapshot;
+  buildIssueDetail(identifier: string): IssueDetailView | null;
+  buildAttemptDetail(attemptId: string): AttemptDetailView | null;
+}
+
+export function createRuntimeReadModel(
+  deps: SnapshotBuilderDeps,
+  callbacks: SnapshotBuilderCallbacks,
+): RuntimeReadModel {
+  return {
+    buildSnapshot: () => buildSnapshotInternal(deps, callbacks),
+    buildIssueDetail: (identifier: string) => buildIssueDetailInternal(identifier, deps, callbacks),
+    buildAttemptDetail: (attemptId: string) => buildAttemptDetailInternal(attemptId, deps),
+  };
+}
+
 export function buildSnapshot(deps: SnapshotBuilderDeps, callbacks: SnapshotBuilderCallbacks): RuntimeSnapshot {
+  return buildSnapshotInternal(deps, callbacks);
+}
+
+function buildSnapshotInternal(deps: SnapshotBuilderDeps, callbacks: SnapshotBuilderCallbacks): RuntimeSnapshot {
   const running = [...callbacks.getRunningEntries().values()].map((entry) =>
     buildRunningIssueView(entry, callbacks.resolveModelSelection),
   );
@@ -192,8 +211,15 @@ function enrichFromArchive(detail: RuntimeIssueView, archivedAttempts: AttemptRe
   return enriched;
 }
 
-// Builds issue detail view including archived attempts.
 export function buildIssueDetail(
+  identifier: string,
+  deps: SnapshotBuilderDeps,
+  callbacks: SnapshotBuilderCallbacks,
+): IssueDetailView | null {
+  return buildIssueDetailInternal(identifier, deps, callbacks);
+}
+
+function buildIssueDetailInternal(
   identifier: string,
   deps: SnapshotBuilderDeps,
   callbacks: SnapshotBuilderCallbacks,
@@ -246,11 +272,16 @@ export function buildIssueDetail(
 /** Typed detail view for a single attempt, including its event stream. */
 export interface AttemptDetailView extends AttemptSummary {
   events: RecentEvent[];
+  summary?: string | null;
   appServer?: AttemptAppServerView;
 }
 
 // Builds attempt detail view with events.
 export function buildAttemptDetail(attemptId: string, deps: SnapshotBuilderDeps): AttemptDetailView | null {
+  return buildAttemptDetailInternal(attemptId, deps);
+}
+
+function buildAttemptDetailInternal(attemptId: string, deps: SnapshotBuilderDeps): AttemptDetailView | null {
   const attempt = deps.attemptStore.getAttempt(attemptId);
   if (!attempt) {
     return null;
@@ -259,11 +290,11 @@ export function buildAttemptDetail(attemptId: string, deps: SnapshotBuilderDeps)
   return {
     ...buildAttemptSummary(attempt, events),
     events,
+    summary: attempt.summary ?? null,
     appServer: buildAttemptAppServer(attempt, events),
   };
 }
 
-// Computes total seconds running from archived attempts and live entries.
 export function computeSecondsRunning(
   attemptStore: SnapshotBuilderDeps["attemptStore"],
   getRunningEntries: () => Map<string, RunningEntry>,

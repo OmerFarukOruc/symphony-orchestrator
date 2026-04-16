@@ -87,18 +87,18 @@
   --color-gray-800: #1e293b;
   --color-gray-900: #0f172a;
 
-  /* Status colors — semantic */
-  --status-backlog: #7b8fa8;
-  --status-triage: #8b8fa0;
-  --status-queued: #4f7cff;
+  /* Status colors — semantic; all pass WCAG AA 4.5:1 on --bg-surface #ffffff */
+  --status-backlog: #5e7491; /* darkened from #7b8fa8 — 4.7:1 on white (AA) */
+  --status-triage: #666a7c; /* darkened from #8b8fa0 — 5.2:1 on white (AA) */
+  --status-queued: #4264d6; /* darkened from #4f7cff — 5.1:1 on white (AA) */
   --status-claimed: #7c62d6;
-  --status-running: #2f9e44;
-  --status-retrying: #d98a1c;
-  --status-blocked: #d94841;
-  --status-completed: #3a9e7a;
-  --status-closed: #7a9652;
+  --status-running: #1e7a2f; /* darkened from #2f9e44 — 5.4:1 on white (AA) */
+  --status-retrying: #a56812; /* darkened from #d98a1c — 4.5:1 on white (AA) */
+  --status-blocked: #c73d35; /* darkened from #d94841 — 4.9:1 on white (AA) */
+  --status-completed: #247a5c; /* darkened from #3a9e7a — 5.2:1 on white (AA) */
+  --status-closed: #5d7a3a; /* darkened from #7a9652 — 4.8:1 on white (AA) */
   --status-cancelled: #b25c6a;
-  --status-duplicate: #8a7f94;
+  --status-duplicate: #756a80; /* darkened from #8a7f94 — 4.9:1 on white (AA) */
   --status-pending-change: #b45837;
 
   /* Severity scale — used for issue card borders, priority badges */
@@ -225,6 +225,7 @@
   --space-5: 1.25rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
+  --space-9: 2.25rem;
   --space-10: 2.5rem;
   --space-12: 3rem;
   --space-16: 4rem;
@@ -287,7 +288,7 @@
 
 html {
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 16px;
   line-height: var(--leading-normal, 1.5);
   color: var(--text-primary);
   background: var(--bg-base);

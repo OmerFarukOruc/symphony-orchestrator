@@ -169,3 +169,18 @@ export interface CodexAccountLoginStartResponse {
   loginId?: string | null;
   authUrl?: string | null;
 }
+
+export interface CodexAdminSnapshotResponse {
+  capabilities: CodexCapabilities;
+  account: CodexAccountRecord | null;
+  requiresOpenaiAuth: boolean;
+  rateLimits?: CodexRateLimitBucket | null;
+  rateLimitsByLimitId?: Record<string, CodexRateLimitBucket> | null;
+  models: CodexModelCatalogEntry[];
+  threads: CodexThreadSummary[];
+  loadedThreadIds: string[];
+  features: CodexFeatureEntry[];
+  collaborationModes: CodexCollaborationModeEntry[];
+  mcpServers: CodexMcpServerStatusEntry[];
+  pendingRequests: CodexUserInputRequest[];
+}

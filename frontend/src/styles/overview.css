@@ -15,14 +15,11 @@
   gap: var(--space-6);
   align-items: start;
   padding: var(--space-6);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--text-accent) 5%, var(--surface-primary-bg)) 0%,
-    var(--surface-primary-bg) 100%
-  );
+  /* Flat surface — the header copper stripe already carries brand;
+     a gradient here reads as decoration rather than signal. */
+  background: var(--surface-primary-bg);
   border: var(--surface-primary-border-width) solid var(--surface-primary-border);
   border-top: 2px solid var(--surface-primary-border-accent);
-  box-shadow: var(--shadow-sm);
 }
 
 .overview-hero-intro {
@@ -32,32 +29,31 @@
 }
 
 .overview-hero-label {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  font-weight: var(--font-bold);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-wide);
   color: var(--text-accent);
 }
 
 .overview-hero-title {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: clamp(1.9rem, 3vw, 2.8rem);
+  /* Scaled down from 1.9-2.8rem marketing hero to operator console scale. */
+  font-size: clamp(1.4rem, 2.2vw, 2rem);
   font-weight: var(--font-bold);
-  line-height: 0.95;
+  line-height: 1.1;
   letter-spacing: var(--tracking-tight);
   font-feature-settings: var(--font-features-heading);
   color: var(--text-primary);
-  max-width: 11ch;
 }
 
 .overview-hero-detail {
   margin: 0;
   max-width: 58ch;
   font-family: var(--font-body);
-  font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
+  font-size: var(--text-base);
+  line-height: var(--leading-loose);
   color: var(--text-secondary);
 }
 
@@ -79,7 +75,7 @@
 
 .overview-hero-metrics {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
@@ -92,9 +88,11 @@
 }
 
 .overview-live-value {
-  font-family: var(--font-heading);
+  /* Data values live in the mono spine per .impeccable.md; Manrope on
+     numerics blurs the boundary between the agent's data and the UI. */
+  font-family: var(--font-mono);
   font-size: clamp(1.5rem, 2.3vw, var(--dashboard-number-lg));
-  font-weight: var(--font-bold);
+  font-weight: var(--font-medium);
   line-height: 0.95;
   letter-spacing: var(--tracking-tight);
   font-feature-settings: var(--font-features-tabular);
@@ -102,10 +100,10 @@
 }
 
 .overview-live-label {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   color: var(--text-secondary);
-  text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
 }
 
@@ -163,11 +161,10 @@
   min-height: 24px;
   padding: 0 var(--space-2);
   border: var(--stroke-default) solid color-mix(in srgb, var(--border-strong) 72%, transparent);
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  font-weight: var(--font-bold);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
   color: var(--text-secondary);
   background: color-mix(in srgb, var(--bg-muted) 78%, var(--bg-surface));
 }
@@ -176,15 +173,6 @@
   color: var(--text-accent);
   border-color: color-mix(in srgb, var(--text-accent) 50%, var(--border-stitch));
   background: color-mix(in srgb, var(--text-accent) 7%, var(--bg-surface));
-}
-
-.overview-attention-context {
-  margin: 0;
-  max-width: 60ch;
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
-  color: var(--text-secondary);
 }
 
 .overview-attention-list {
@@ -260,10 +248,9 @@
 }
 
 .overview-collapsible-summary {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
   font-weight: var(--font-semibold);
-  text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
   color: var(--text-muted);
   white-space: nowrap;
@@ -290,8 +277,18 @@
 
 .overview-token-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.overview-token-grid .overview-live-metric {
+  padding: var(--space-2) var(--space-3);
+  gap: 2px;
+}
+
+.overview-token-grid .overview-live-value {
+  font-size: var(--text-lg);
+  line-height: 1.1;
 }
 
 .overview-events,
@@ -476,41 +473,6 @@
   font-family: var(--font-body);
   font-size: var(--text-xs);
   color: var(--text-secondary);
-}
-
-/* ---- Collapsible peek summary (always visible) ---- */
-
-.overview-collapsible-peek {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 0 var(--space-4) var(--space-3);
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  font-weight: var(--font-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  color: var(--text-muted);
-}
-
-.overview-collapsible-peek .sparkline {
-  flex-shrink: 0;
-}
-
-.overview-peek-dot {
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-}
-
-.overview-peek-dot.is-healthy {
-  background: var(--status-running);
-}
-.overview-peek-dot.is-degraded {
-  background: var(--status-retrying);
-}
-.overview-peek-dot.is-critical {
-  background: var(--status-blocked);
 }
 
 .overview-teaching-empty {

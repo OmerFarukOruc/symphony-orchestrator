@@ -1,4 +1,4 @@
-import type { RecentEvent } from "../types.js";
+import type { RecentEvent } from "../types/runtime.js";
 
 export type SortDirection = "desc" | "asc";
 

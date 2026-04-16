@@ -1,5 +1,5 @@
-import { api } from "../../api.js";
 import { createEmptyState } from "../../components/empty-state.js";
+import { getRuntimeClient } from "../../state/runtime-client.js";
 import { registerPageCleanup } from "../../utils/page.js";
 import { createAsyncState, handleError, withLoading } from "../../utils/async-state.js";
 import { renderAsyncState } from "../../utils/render-guards.js";
@@ -12,16 +12,16 @@ import {
   createPanel,
   createTag,
   formatErrorMessage,
-  normalizeCollaborationModes,
   runCodexAdminAction,
 } from "./codex-admin-helpers.js";
+import { loadCodexAdminData, loadCodexThreadDetail, unsubscribeCodexThread } from "./codex-admin-client.js";
 import { renderAccountPanel } from "./codex-admin-account.js";
 import { renderModelPanel } from "./codex-admin-models.js";
 import { renderDiagnosticsPanel } from "./codex-admin-diagnostics.js";
 import { renderThreadsPanel } from "./codex-admin-threads.js";
 import { renderMcpPanel } from "./codex-admin-mcp.js";
 import { renderPendingRequestsPanel } from "./codex-admin-pending.js";
-import type { CodexThreadDetail } from "../../types.js";
+import type { CodexThreadDetail } from "../../types/codex.js";
 
 function createSummaryPanel(data: CodexAdminData): HTMLElement {
   const counts = capabilityCounts(data.capabilities);
@@ -100,6 +100,7 @@ function createLoadedAdmin(
 }
 
 export function createCodexAdminSection(): HTMLElement {
+  const runtimeClient = getRuntimeClient();
   const root = document.createElement("section");
   root.className = "codex-admin-root";
   const state = createAsyncState<CodexAdminData>();
@@ -115,48 +116,13 @@ export function createCodexAdminSection(): HTMLElement {
       state.data = await withLoading(
         state,
         async () => {
-          const [
-            capabilities,
-            account,
-            rateLimits,
-            models,
-            threads,
-            loadedThreads,
-            features,
-            collaborationModes,
-            mcp,
-            pendingRequests,
-          ] = await Promise.all([
-            api.getCodexCapabilities(),
-            api.getCodexAccount(),
-            api.getCodexAccountRateLimits(),
-            api.getModels(),
-            api.getCodexThreads({ limit: 10, sortKey: "updated_at" }),
-            api.getCodexLoadedThreads(),
-            api.getCodexFeatures(),
-            api.getCodexCollaborationModes(),
-            api.getCodexMcp(),
-            api.getCodexUserInputRequests(),
-          ]);
+          const data = await loadCodexAdminData();
 
-          if (!account.account) {
+          if (!data.account) {
             pendingLoginId = null;
           }
 
-          return {
-            capabilities,
-            account: account.account,
-            requiresOpenaiAuth: Boolean(account.requiresOpenaiAuth),
-            rateLimits: rateLimits.rateLimits ?? null,
-            rateLimitsByLimitId: rateLimits.rateLimitsByLimitId ?? null,
-            models: models.models,
-            threads: threads.data,
-            loadedThreadIds: loadedThreads.data,
-            features: features.data,
-            collaborationModes: normalizeCollaborationModes(collaborationModes),
-            mcpServers: mcp.data,
-            pendingRequests: pendingRequests.data,
-          };
+          return data;
         },
         { onChange: render },
       );
@@ -177,8 +143,7 @@ export function createCodexAdminSection(): HTMLElement {
     loadingThreadId = threadId;
     render();
     try {
-      const response = await api.getCodexThread(threadId, true);
-      expandedThreadDetail = response.thread;
+      expandedThreadDetail = await loadCodexThreadDetail(threadId);
     } catch (error) {
       expandedThreadDetail = undefined;
       toast(formatErrorMessage(error, "Failed to load thread details."), "error");
@@ -191,7 +156,7 @@ export function createCodexAdminSection(): HTMLElement {
   async function unsubscribeThread(threadId: string): Promise<void> {
     await runCodexAdminAction(
       async () => {
-        await api.postCodexThreadUnsubscribe(threadId);
+        await unsubscribeCodexThread(threadId);
         if (expandedThreadId === threadId) {
           expandedThreadId = null;
           expandedThreadDetail = undefined;
@@ -245,17 +210,15 @@ export function createCodexAdminSection(): HTMLElement {
     });
   }
 
-  const onAnyEvent = (event: Event): void => {
-    const detail = (event as CustomEvent<{ type?: string }>).detail;
-    if (!detail?.type) return;
-    if (detail.type === "codex.event" || detail.type === "codex.server_request") {
+  const onRuntimeEvent = (event: { type: string; payload?: Record<string, unknown> }): void => {
+    if (event.type === "codex.event" || event.type === "codex.server_request") {
       scheduleRefresh();
     }
   };
 
-  window.addEventListener("risoluto:any-event", onAnyEvent);
+  const unsubscribeRuntimeEvents = runtimeClient.subscribeRuntimeEvents(onRuntimeEvent);
   registerPageCleanup(root, () => {
-    window.removeEventListener("risoluto:any-event", onAnyEvent);
+    unsubscribeRuntimeEvents();
     if (refreshTimer !== null) {
       window.clearTimeout(refreshTimer);
       refreshTimer = null;

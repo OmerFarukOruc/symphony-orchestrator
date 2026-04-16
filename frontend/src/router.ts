@@ -12,7 +12,7 @@ interface InternalRoute extends Route {
   keys: string[];
 }
 
-interface RouterNavigateDetail {
+export interface RouterNavigateDetail {
   path: string;
   params: Record<string, string>;
   title: string;
@@ -38,6 +38,7 @@ function compileRoute(path: string): Pick<InternalRoute, "pattern" | "keys"> {
 
 class Router {
   private readonly routes: InternalRoute[] = [];
+  private readonly listeners = new Set<(detail: RouterNavigateDetail) => void>();
   private guard: ((path: string) => string | null) | null = null;
   private notFoundRender: ((params: Record<string, string>) => HTMLElement) | null = null;
 
@@ -66,6 +67,13 @@ class Router {
   init(): void {
     globalThis.addEventListener("popstate", () => this.renderCurrent());
     this.renderCurrent();
+  }
+
+  subscribe(handler: (detail: RouterNavigateDetail) => void): () => void {
+    this.listeners.add(handler);
+    return () => {
+      this.listeners.delete(handler);
+    };
   }
 
   private match(pathname: string): { route: InternalRoute; params: Record<string, string> } | null {
@@ -108,11 +116,11 @@ class Router {
     const rendered = decoratePageRoot(matched.route.render(matched.params));
     outlet.replaceChildren(rendered);
     const title = matched.route.title ?? getRouteTitle(rendered);
-    globalThis.dispatchEvent(
-      new CustomEvent("router:navigate", {
-        detail: { path: globalThis.location.pathname, params: matched.params, title } satisfies RouterNavigateDetail,
-      }),
-    );
+    const detail = { path: globalThis.location.pathname, params: matched.params, title } satisfies RouterNavigateDetail;
+    globalThis.dispatchEvent(new CustomEvent("router:navigate", { detail }));
+    for (const listener of this.listeners) {
+      listener(detail);
+    }
   }
 }
 

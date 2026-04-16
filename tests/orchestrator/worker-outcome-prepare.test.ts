@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { prepareWorkerOutcome } from "../../src/orchestrator/worker-outcome/prepare.js";
+import { buildOutcomeView } from "../../src/orchestrator/outcome-view-builder.js";
 import type { OutcomeContext } from "../../src/orchestrator/context.js";
 import type { Issue, RunOutcome, RuntimeIssueView } from "../../src/core/types.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
@@ -23,6 +24,7 @@ function makeCtx(overrides?: { latestIssue?: Issue }): OutcomeContext {
   const runningEntries = new Map<string, RunningEntry>();
   const completedViews = new Map<string, RuntimeIssueView>();
   const detailViews = new Map<string, RuntimeIssueView>();
+  const markDirty = vi.fn();
 
   return {
     runningEntries,
@@ -65,8 +67,20 @@ function makeCtx(overrides?: { latestIssue?: Issue }): OutcomeContext {
         },
       }) as unknown as ReturnType<OutcomeContext["getConfig"]>,
     releaseIssueClaim: vi.fn(),
-    markDirty: vi.fn(),
+    markDirty,
     resolveModelSelection: vi.fn().mockReturnValue(createModelSelection()),
+    buildOutcomeView: (input) =>
+      buildOutcomeView(input.issue, input.workspace, input.entry, input.configuredSelection, input.overrides),
+    setDetailView: (identifier, view) => {
+      detailViews.set(identifier, view);
+      markDirty();
+      return view;
+    },
+    setCompletedView: (identifier, view) => {
+      completedViews.set(identifier, view);
+      markDirty();
+      return view;
+    },
     notify: vi.fn(),
     retryCoordinator: {
       dispatch: vi.fn().mockResolvedValue(undefined),

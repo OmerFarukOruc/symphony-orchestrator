@@ -1,7 +1,7 @@
-import { api } from "../../api.js";
 import { createTableCell, createTableEmptyRow, createTableHead } from "../../ui/table.js";
 import { toast } from "../../ui/toast.js";
-import type { CodexMcpServerStatusEntry } from "../../types.js";
+import type { CodexMcpServerStatusEntry } from "../../types/codex.js";
+import { reloadCodexMcp, startCodexMcpOauthLogin } from "./codex-admin-client.js";
 import { createPanel, formatErrorMessage, runCodexAdminAction } from "./codex-admin-helpers.js";
 
 export function renderMcpPanel(servers: CodexMcpServerStatusEntry[], onRefresh: () => Promise<void>): HTMLElement {
@@ -11,7 +11,7 @@ export function renderMcpPanel(servers: CodexMcpServerStatusEntry[], onRefresh: 
   reloadButton.textContent = "Reload MCP";
   reloadButton.addEventListener("click", () => {
     void runCodexAdminAction(
-      () => api.postCodexMcpReload().then(() => undefined),
+      () => reloadCodexMcp(),
       "MCP reload requested.",
       "Failed to reload MCP configuration.",
       onRefresh,
@@ -66,7 +66,7 @@ function buildOauthButton(serverName: string): HTMLButtonElement {
   button.addEventListener("click", () => {
     void (async () => {
       try {
-        const result = await api.postCodexMcpOauthLogin(serverName);
+        const result = await startCodexMcpOauthLogin(serverName);
         const raw = typeof result === "object" && result !== null ? result : {};
         const authUrl =
           (typeof raw.authUrl === "string" ? raw.authUrl : undefined) ||

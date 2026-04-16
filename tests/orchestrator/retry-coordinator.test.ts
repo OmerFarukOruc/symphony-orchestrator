@@ -11,8 +11,10 @@ import type {
 } from "../../src/core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "../../src/orchestrator/runtime-types.js";
 import type { PreparedWorkerOutcome } from "../../src/orchestrator/worker-outcome/types.js";
+import { buildOutcomeView } from "../../src/orchestrator/outcome-view-builder.js";
 import { createRetryCoordinator } from "../../src/orchestrator/retry-coordinator.js";
 import { createIssue, createWorkspace, createModelSelection, createRunningEntry } from "./issue-test-factories.js";
+import { attachOutcomeRuntimeFinalizers } from "./outcome-runtime-finalizers.js";
 
 interface RetryHarness {
   ctx: OutcomeContext;
@@ -155,9 +157,23 @@ function makeHarness(
     getConfig: () => config,
     releaseIssueClaim,
     markDirty,
+    buildOutcomeView: (input) =>
+      buildOutcomeView(input.issue, input.workspace, input.entry, input.configuredSelection, input.overrides),
+    setDetailView: (identifier, view) => {
+      detailViews.set(identifier, view);
+      markDirty();
+      return view;
+    },
+    setCompletedView: (identifier, view) => {
+      completedViews.set(identifier, view);
+      markDirty();
+      return view;
+    },
     resolveModelSelection,
     notify,
   } as OutcomeContext;
+
+  attachOutcomeRuntimeFinalizers(ctx, { retryEntries });
 
   const retryCoordinator = createRetryCoordinator(
     {
@@ -180,6 +196,16 @@ function makeHarness(
       notify,
       pushEvent,
       resolveModelSelection,
+      setDetailView: (identifier, view) => {
+        detailViews.set(identifier, view);
+        markDirty();
+        return view;
+      },
+      setCompletedView: (identifier, view) => {
+        completedViews.set(identifier, view);
+        markDirty();
+        return view;
+      },
       launchWorker,
     },
   );

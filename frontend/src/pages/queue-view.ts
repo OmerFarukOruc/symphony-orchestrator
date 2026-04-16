@@ -1,34 +1,14 @@
-import { api } from "../api.js";
 import { createIssueInspector } from "../components/issue-inspector.js";
 import { router } from "../router.js";
-import { store } from "../state/store.js";
-import type { AppState } from "../state/store.js";
-import type { RecentEvent, WorkflowColumn } from "../types.js";
 import { registerPageCleanup } from "../utils/page.js";
+import { createQueueWorkbench } from "../features/queue/queue-workbench.js";
 import { createQueueBoardRenderer } from "./queue-board.js";
 import { createDragStateManager } from "./drag-state.js";
-import { handleQueueKeyboard } from "./queue-keyboard.js";
-import { createFilters, createUiState } from "./queue-state.js";
 import { buildQueueToolbar } from "./queue-toolbar.js";
 
-function issueFingerprint(i: { identifier: string; status: string; priority: string | number | null }): string {
-  return `${i.identifier}:${i.status}:${String(i.priority)}`;
-}
-
-function createRefreshHandler(): () => void {
-  let refreshing = false;
-  return () => {
-    if (refreshing) return;
-    refreshing = true;
-    api.postRefresh().finally(() => {
-      setTimeout(() => {
-        refreshing = false;
-      }, 3000);
-    });
-  };
-}
-
 export function createQueuePage(params?: Record<string, string>): HTMLElement {
+  const workbench = createQueueWorkbench({ routeId: params?.id });
+  const { state } = workbench;
   const page = document.createElement("div");
   page.className = "page queue-page fade-in";
   const mainPane = document.createElement("div");
@@ -47,8 +27,6 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
     initialId: params?.id,
     onClose: () => router.navigate("/queue"),
   });
-  inspector.element.hidden = !params?.id;
-  if (params?.id) layout.classList.add("has-panel");
   const pageHeading = document.createElement("h1");
   pageHeading.className = "sr-only";
   pageHeading.textContent = "Board";
@@ -58,120 +36,99 @@ export function createQueuePage(params?: Record<string, string>): HTMLElement {
   layout.append(mainPane, inspector.element);
   page.append(pageHeading, layout);
 
-  const filters = createFilters();
-  let ui = createUiState(store.getState().snapshot?.workflow_columns ?? []);
-  let routeId = params?.id ?? "";
-  let columns: WorkflowColumn[] = store.getState().snapshot?.workflow_columns ?? [];
-  let recentEvents: RecentEvent[] = store.getState().snapshot?.recent_events ?? [];
   let searchInput: HTMLInputElement = document.createElement("input");
   let filterButton: HTMLButtonElement | null = null;
-  let lastColumnFingerprint = "";
-
-  function getColumnFingerprint(cols: WorkflowColumn[]): string {
-    return cols.map((c) => `${c.key}:${c.count ?? 0}:${(c.issues ?? []).map(issueFingerprint).join(",")}`).join("|");
-  }
+  let lastToolbarKey = "";
+  let lastToolbarSearch = state.filters.search;
+  let lastInspectorId = "";
 
   const dragManager = createDragStateManager();
   const boardRenderer = createQueueBoardRenderer({
     board,
-    filters,
-    getUi: () => ui,
-    getRouteId: () => routeId,
-    getRecentEvents: () => recentEvents,
-    clearFilters,
+    filters: state.filters,
+    getUi: () => state.ui,
+    getRouteId: () => state.routeId,
+    getRecentEvents: () => state.recentEvents,
+    clearFilters: () => workbench.clearFilters(),
     requestRender: renderBoard,
-    onOpenIssue: (issueId, fullPage) => router.navigate(fullPage ? `/issues/${issueId}` : `/queue/${issueId}`),
+    onOpenIssue: (issueId, fullPage) => workbench.openIssue(issueId, fullPage),
+    onToggleColumnCollapse: (columnKey) => workbench.toggleColumnCollapse(columnKey),
+    onFocusCard: (columnIndex, cardIndex) => workbench.focusCard(columnIndex, cardIndex),
     dragManager,
   });
 
-  const onRefresh = createRefreshHandler();
-
-  function renderToolbar(): void {
+  function renderToolbar(force = false): void {
+    const nextToolbarKey = workbench.getToolbarKey();
+    const nextSearch = state.filters.search;
+    const searchIsFocused = document.activeElement === searchInput;
+    const shouldRebuild =
+      force || nextToolbarKey !== lastToolbarKey || (!searchIsFocused && nextSearch !== lastToolbarSearch);
+    if (!shouldRebuild) {
+      lastToolbarKey = nextToolbarKey;
+      lastToolbarSearch = nextSearch;
+      return;
+    }
+    lastToolbarKey = nextToolbarKey;
+    lastToolbarSearch = nextSearch;
     const built = buildQueueToolbar({
       toolbar,
-      filters,
-      columns,
-      onRefresh,
-      onReset: clearFilters,
-      onChange: renderBoard,
+      filters: state.filters,
+      columns: state.columns,
+      onRefresh: () => {
+        void workbench.refresh();
+      },
+      onReset: () => workbench.clearFilters(),
+      onSearchChange: (value) => workbench.setSearchText(value),
+      onToggleStage: (stageKey) => workbench.toggleStage(stageKey),
+      onSetPriority: (priority) => workbench.setPriority(priority),
+      onSetSort: (sort) => workbench.setSort(sort),
+      onToggleDensity: () => workbench.toggleDensity(),
+      onToggleCompleted: () => workbench.toggleCompleted(),
     });
     searchInput = built.search;
     filterButton = built.firstStageChip();
   }
 
-  function setRoute(id = ""): void {
-    routeId = id;
-    const open = Boolean(id);
+  function syncInspector(): void {
+    const open = Boolean(state.routeId);
     inspector.element.hidden = !open;
     layout.classList.toggle("has-panel", open);
-    if (open) {
-      inspector.load(id).catch(() => {});
+    if (open && state.routeId !== lastInspectorId) {
+      inspector.load(state.routeId).catch(() => {});
     }
-  }
-
-  function clearFilters(): void {
-    filters.search = "";
-    filters.priority = "all";
-    filters.stages.clear();
-    renderToolbar();
-    searchInput.value = "";
-    renderBoard();
+    lastInspectorId = state.routeId;
   }
 
   function renderBoard(): void {
-    boardRenderer.render(columns);
-  }
-
-  function sync(state: AppState): void {
-    columns = state.snapshot?.workflow_columns ?? [];
-    recentEvents = state.snapshot?.recent_events ?? [];
-    if (ui.collapsed.size === 0 && columns.length > 0) {
-      ui = createUiState(columns);
-    }
-    if (!state.snapshot) {
+    if (!state.hasSnapshot) {
       boardRenderer.renderLoading();
       return;
     }
-    const fp = getColumnFingerprint(columns);
-    if (fp !== lastColumnFingerprint) {
-      lastColumnFingerprint = fp;
-      renderToolbar();
-      renderBoard();
-    }
+    boardRenderer.render(state.columns);
+  }
+
+  function render(): void {
+    renderToolbar();
+    renderBoard();
+    syncInspector();
   }
 
   function onKey(event: KeyboardEvent): void {
-    handleQueueKeyboard(event, {
-      columns,
-      filters,
-      ui,
+    workbench.handleKeyboard(event, {
       search: searchInput,
       filterButton: filterButton ?? undefined,
-      onSelect: (issueId, fullPage) => router.navigate(fullPage ? `/issues/${issueId}` : `/queue/${issueId}`),
-      onClose: () => {
-        if (routeId) {
-          router.navigate("/queue");
-        }
-      },
-      onClearFilters: clearFilters,
-      onRender: renderBoard,
     });
   }
 
-  const navHandler = (event: Event): void => {
-    const detail = (event as CustomEvent<{ path: string; params: Record<string, string> }>).detail;
-    setRoute(detail.path.startsWith("/queue/") ? (detail.params.id ?? "") : "");
-  };
-  const stateHandler = (event: Event): void => sync((event as CustomEvent<AppState>).detail);
-  globalThis.addEventListener("router:navigate", navHandler);
-  globalThis.addEventListener("state:update", stateHandler);
+  const unsubscribe = workbench.subscribe(render);
   globalThis.addEventListener("keydown", onKey);
-  sync(store.getState());
-  setRoute(routeId);
+  workbench.initialize();
+  renderToolbar(true);
+  render();
   registerPageCleanup(page, () => {
     inspector.destroy();
-    globalThis.removeEventListener("router:navigate", navHandler);
-    globalThis.removeEventListener("state:update", stateHandler);
+    unsubscribe();
+    workbench.dispose();
     globalThis.removeEventListener("keydown", onKey);
   });
   return page;

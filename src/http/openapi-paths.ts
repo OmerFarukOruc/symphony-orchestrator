@@ -700,6 +700,14 @@ export function buildCodexPaths(): Record<string, PathItem> {
         responses: codexResponse("Codex capability metadata"),
       },
     },
+    "/api/v1/codex/admin": {
+      get: {
+        tags: ["Codex"],
+        summary: "Get Codex admin snapshot",
+        operationId: "getCodexAdmin",
+        responses: codexResponse("Codex admin snapshot"),
+      },
+    },
     "/api/v1/codex/features": {
       get: {
         tags: ["Codex"],

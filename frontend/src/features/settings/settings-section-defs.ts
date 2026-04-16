@@ -1,4 +1,4 @@
-import { REASONING_EFFORT_OPTIONS } from "../../types.js";
+import { REASONING_EFFORT_OPTIONS } from "../../types/issues.js";
 
 import type { SettingsFieldDefinition, SettingsSectionDefinition } from "./settings-types.js";
 import { SECTION_GROUPS } from "./settings-types.js";

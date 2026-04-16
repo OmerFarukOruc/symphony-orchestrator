@@ -1,7 +1,7 @@
 import { router } from "../router";
-import { store } from "../state/store";
+import { getRuntimeClient } from "../state/runtime-client";
 import type { AppState } from "../state/store";
-import type { WebhookHealth } from "../types";
+import type { WebhookHealth } from "../types/runtime.js";
 import { createEventRow } from "../components/event-row";
 import { createSystemHealthBadge } from "../components/system-health-badge";
 import { createWebhookHealthPanel } from "../components/webhook-health-panel";
@@ -10,14 +10,14 @@ import { buildAttentionList, latestTerminalIssues } from "../utils/issues";
 import { formatCompactNumber, formatCostUsd, formatDuration, formatRateLimitHeadroom } from "../utils/format";
 import { setTextWithDiff } from "../utils/diff";
 import { registerPageCleanup } from "../utils/page";
-import { createSparkline } from "../components/sparkline";
-import { describeCurrentMoment, describeAttentionZone } from "./overview-descriptions.js";
+import { describeCurrentMoment } from "./overview-descriptions.js";
 import { createHeroMetricsBand, createLiveMetric } from "./overview-hero.js";
 import { readCollapsedSections, createSectionHeader, createCollapsibleSection } from "./overview-sections.js";
 import { issueRow, fillList } from "./overview-rows.js";
 import { isGettingStartedDismissed, createTeachingEmptyState, createGettingStartedCard } from "./overview-empty.js";
 
 export function createOverviewPage(): HTMLElement {
+  const runtimeClient = getRuntimeClient();
   const page = document.createElement("div");
   page.className = "page overview-page fade-in";
 
@@ -61,10 +61,6 @@ export function createOverviewPage(): HTMLElement {
   attentionHeader.append(attentionCount);
   attentionZone.append(attentionHeader);
 
-  const attentionContext = document.createElement("p");
-  attentionContext.className = "overview-attention-context";
-  attentionZone.append(attentionContext);
-
   const attentionList = document.createElement("div");
   attentionList.className = "overview-attention-list";
   attentionZone.append(attentionList);
@@ -92,11 +88,10 @@ export function createOverviewPage(): HTMLElement {
 
   const inputTokens = createLiveMetric("Input");
   const outputTokens = createLiveMetric("Output");
-  const totalTokens = createLiveMetric("Total");
   const runtime = createLiveMetric("Runtime");
   const cost = createLiveMetric("Cost");
 
-  tokenGrid.append(inputTokens.root, outputTokens.root, totalTokens.root, runtime.root, cost.root);
+  tokenGrid.append(inputTokens.root, outputTokens.root, runtime.root, cost.root);
   tokenCollapsible.body.append(tokenGrid);
   secondary.append(tokenCollapsible.section);
 
@@ -148,40 +143,6 @@ export function createOverviewPage(): HTMLElement {
     section.setAttribute("aria-busy", "true");
   }
 
-  /** Token-burn history for the sparkline (ring buffer of last 20 snapshots). */
-  const costHistory: number[] = [];
-  let lastPeekHealth = "";
-  let lastPeekCost = -1;
-  let lastPeekStalls = -1;
-
-  /** Updates always-visible peek lines (guarded to avoid DOM thrash on every tick). */
-  function updatePeekSummaries(healthStatus: string, totalCost: string, stallCount: number): void {
-    if (healthStatus !== lastPeekHealth) {
-      lastPeekHealth = healthStatus;
-      const healthDot = document.createElement("span");
-      healthDot.className = `overview-peek-dot is-${healthStatus}`;
-      const healthLabel = document.createElement("span");
-      healthLabel.textContent = healthStatus;
-      healthCollapsible.peek.replaceChildren(healthDot, healthLabel);
-    }
-
-    const currentCost = costHistory.at(-1) ?? -1;
-    if (currentCost !== lastPeekCost) {
-      lastPeekCost = currentCost;
-      const costLabel = document.createElement("span");
-      costLabel.textContent = currentCost > 0 ? totalCost : "\u2014";
-      const sparkline = createSparkline(costHistory, { width: 60, height: 16, color: "var(--text-accent)" });
-      tokenCollapsible.peek.replaceChildren(costLabel, sparkline);
-    }
-
-    if (stallCount !== lastPeekStalls) {
-      lastPeekStalls = stallCount;
-      const stallLabel = document.createElement("span");
-      stallLabel.textContent = stallCount > 0 ? `${stallCount} event${stallCount === 1 ? "" : "s"}` : "none";
-      stallCollapsible.peek.replaceChildren(stallLabel);
-    }
-  }
-
   /** Updates the one-line summary text on each collapsible section header. */
   function updateCollapsibleSummaries(snapshot: NonNullable<AppState["snapshot"]>, terminalCount?: number): void {
     const healthStatus = snapshot.system_health ? snapshot.system_health.status : "healthy";
@@ -201,10 +162,6 @@ export function createOverviewPage(): HTMLElement {
 
     const tc = terminalCount ?? latestTerminalIssues(snapshot.completed ?? []).length;
     terminalCollapsible.summary.textContent = tc > 0 ? `${tc} issue${tc === 1 ? "" : "s"}` : "none";
-
-    costHistory.push(snapshot.codex_totals.cost_usd ?? 0);
-    if (costHistory.length > 20) costHistory.shift();
-    updatePeekSummaries(healthStatus, totalCost, stallCount);
   }
 
   /** Fills empty list containers with teaching empty-state cards. */
@@ -263,13 +220,10 @@ export function createOverviewPage(): HTMLElement {
     setTextWithDiff(heroMetrics.queued, String((snapshot.queued ?? []).length));
     setTextWithDiff(heroMetrics.headroom, formatRateLimitHeadroom(snapshot.rate_limits));
 
-    // Attention count for hero
     const attentionIssues = buildAttentionList(snapshot.workflow_columns ?? []);
     const currentMoment = describeCurrentMoment(snapshot, attentionIssues.length);
     setTextWithDiff(heroState, currentMoment.state);
     setTextWithDiff(heroDetail, currentMoment.detail);
-    setTextWithDiff(heroMetrics.attention, String(attentionIssues.length));
-    setTextWithDiff(attentionContext, describeAttentionZone(attentionIssues.length));
     if (attentionIssues.length === 0) {
       attentionCount.hidden = true;
       attentionCount.textContent = "";
@@ -281,7 +235,6 @@ export function createOverviewPage(): HTMLElement {
     // Token burn metrics
     setTextWithDiff(inputTokens.value, formatCompactNumber(snapshot.codex_totals.input_tokens));
     setTextWithDiff(outputTokens.value, formatCompactNumber(snapshot.codex_totals.output_tokens));
-    setTextWithDiff(totalTokens.value, formatCompactNumber(snapshot.codex_totals.total_tokens));
     setTextWithDiff(runtime.value, formatDuration(snapshot.codex_totals.seconds_running));
     setTextWithDiff(cost.value, formatCostUsd(snapshot.codex_totals.cost_usd));
 
@@ -336,28 +289,23 @@ export function createOverviewPage(): HTMLElement {
     renderEmptyStates();
   }
 
-  const handler = (event: Event): void => renderSnapshot((event as CustomEvent<AppState>).detail);
-  globalThis.addEventListener("state:update", handler);
+  const onState = (state: AppState): void => renderSnapshot(state);
+  const unsubscribeState = runtimeClient.subscribeState(onState);
 
-  // SSE webhook events — trigger immediate panel re-render
-  const webhookHealthHandler = (event: Event): void => {
-    const health = (event as CustomEvent).detail as Record<string, unknown> | undefined;
+  const unsubscribeWebhookHealth = runtimeClient.subscribeWebhookHealth((health) => {
     if (health && typeof health.status === "string") {
-      updateWebhookPanel(health as unknown as WebhookHealth);
+      updateWebhookPanel(health as WebhookHealth);
     }
-  };
-  const webhookReceivedHandler = (): void => {
-    // Re-render from current store state to pick up any timestamp changes
-    renderSnapshot(store.getState());
-  };
-  globalThis.addEventListener("risoluto:webhook-health-changed", webhookHealthHandler);
-  globalThis.addEventListener("risoluto:webhook-received", webhookReceivedHandler);
+  });
+  const unsubscribeWebhookReceived = runtimeClient.subscribeWebhookReceived(() => {
+    renderSnapshot(runtimeClient.getAppState());
+  });
 
-  renderSnapshot(store.getState());
+  renderSnapshot(runtimeClient.getAppState());
   registerPageCleanup(page, () => {
-    globalThis.removeEventListener("state:update", handler);
-    globalThis.removeEventListener("risoluto:webhook-health-changed", webhookHealthHandler);
-    globalThis.removeEventListener("risoluto:webhook-received", webhookReceivedHandler);
+    unsubscribeState();
+    unsubscribeWebhookHealth();
+    unsubscribeWebhookReceived();
   });
 
   return page;

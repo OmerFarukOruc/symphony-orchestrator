@@ -1,8 +1,8 @@
-import { api } from "../../api.js";
 import { createEmptyState } from "../../components/empty-state.js";
 import { skeletonBlock } from "../../ui/skeleton.js";
 import { createTableCell, createTableEmptyRow, createTableHead } from "../../ui/table.js";
-import type { CodexThreadDetail, CodexThreadSummary } from "../../types.js";
+import type { CodexThreadDetail, CodexThreadSummary } from "../../types/codex.js";
+import { forkCodexThread, renameCodexThread, setCodexThreadArchived } from "./codex-admin-client.js";
 import { createMetric, createPanel, createTag, formatUnixSeconds, runCodexAdminAction } from "./codex-admin-helpers.js";
 
 function renderThreadDetail(thread: CodexThreadDetail | undefined, loading: boolean): HTMLElement {
@@ -93,19 +93,14 @@ function createThreadActionsCell(
       const nextName = globalThis.prompt?.("Rename thread", thread.name ?? thread.preview ?? "");
       if (nextName === null || nextName === undefined) return;
       void runCodexAdminAction(
-        () => api.postCodexThreadRename(thread.id, nextName),
+        () => renameCodexThread(thread.id, nextName),
         "Thread renamed.",
         "Failed to rename thread.",
         onRefresh,
       );
     }),
     createThreadActionButton("Fork", () => {
-      void runCodexAdminAction(
-        () => api.postCodexThreadFork(thread.id).then(() => undefined),
-        "Thread forked.",
-        "Failed to fork thread.",
-        onRefresh,
-      );
+      void runCodexAdminAction(() => forkCodexThread(thread.id), "Thread forked.", "Failed to fork thread.", onRefresh);
     }),
     createThreadActionButton(expandedThreadId === thread.id ? "Hide details" : "Details", () => {
       void onToggleThreadDetails(thread.id);
@@ -119,7 +114,7 @@ function createThreadActionsCell(
     ),
     createThreadActionButton(thread.archived ? "Unarchive" : "Archive", () => {
       void runCodexAdminAction(
-        () => (thread.archived ? api.postCodexThreadUnarchive(thread.id) : api.postCodexThreadArchive(thread.id)),
+        () => setCodexThreadArchived(thread.id, !thread.archived),
         thread.archived ? "Thread restored." : "Thread archived.",
         thread.archived ? "Failed to restore thread." : "Failed to archive thread.",
         onRefresh,

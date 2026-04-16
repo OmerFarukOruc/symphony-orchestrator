@@ -81,6 +81,38 @@ describe("frontend api", () => {
     });
   });
 
+  it("loads the aggregated Codex admin snapshot from a single endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse({
+        capabilities: {
+          connectedAt: "2026-04-08T10:55:04Z",
+          initializationError: null,
+          methods: { "thread/list": "supported" },
+          notifications: { "app/list/updated": "enabled" },
+        },
+        account: { type: "chatgpt", email: "user@example.com" },
+        requiresOpenaiAuth: true,
+        rateLimits: { limitId: "codex" },
+        rateLimitsByLimitId: { codex: { limitId: "codex" } },
+        models: [{ id: "gpt-5.4", displayName: "GPT-5.4", isDefault: true }],
+        threads: [{ id: "thr-1", name: "Main thread" }],
+        loadedThreadIds: ["thr-1"],
+        features: [{ name: "fast-mode", enabled: true }],
+        collaborationModes: [{ id: "default", displayName: "Default" }],
+        mcpServers: [{ name: "filesystem", status: "connected" }],
+        pendingRequests: [],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await api.getCodexAdmin();
+
+    expect(response.account?.email).toBe("user@example.com");
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/codex/admin", {
+      headers: undefined,
+    });
+  });
+
   it("requests Codex thread detail with turns from the admin API", async () => {
     const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ thread: { id: "thr_123", turns: [] } }));
     vi.stubGlobal("fetch", fetchMock);

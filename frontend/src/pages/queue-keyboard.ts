@@ -1,4 +1,4 @@
-import type { WorkflowColumn } from "../types";
+import type { WorkflowColumn } from "../types/runtime.js";
 import { filterColumn, hasActiveFilters, type QueueFilters, type QueueUiState } from "./queue-state";
 
 interface QueueKeyboardOptions {

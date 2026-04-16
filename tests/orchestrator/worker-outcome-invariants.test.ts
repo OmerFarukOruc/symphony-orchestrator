@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { handleWorkerOutcome } from "../../src/orchestrator/worker-outcome/index.js";
+import { buildOutcomeView } from "../../src/orchestrator/outcome-view-builder.js";
 import type {
   Issue,
   ModelSelection,
@@ -11,6 +12,7 @@ import type {
 } from "../../src/core/types.js";
 import type { OutcomeContext } from "../../src/orchestrator/context.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
+import { attachOutcomeRuntimeFinalizers } from "./outcome-runtime-finalizers.js";
 
 function makeIssue(overrides: Partial<Issue> = {}): Issue {
   return {
@@ -104,8 +106,9 @@ function makeCtx(
   const runningEntries = new Map<string, RunningEntry>();
   const completedViews = new Map<string, RuntimeIssueView>();
   const detailViews = new Map<string, RuntimeIssueView>();
+  const markDirty = vi.fn();
 
-  return {
+  const ctx = {
     runningEntries,
     completedViews,
     detailViews,
@@ -131,7 +134,19 @@ function makeCtx(
     isRunning: () => isRunning,
     getConfig: () => config,
     releaseIssueClaim: vi.fn(),
-    markDirty: vi.fn(),
+    markDirty,
+    buildOutcomeView: (input) =>
+      buildOutcomeView(input.issue, input.workspace, input.entry, input.configuredSelection, input.overrides),
+    setDetailView: (identifier, view) => {
+      detailViews.set(identifier, view);
+      markDirty();
+      return view;
+    },
+    setCompletedView: (identifier, view) => {
+      completedViews.set(identifier, view);
+      markDirty();
+      return view;
+    },
     resolveModelSelection: vi.fn().mockReturnValue({
       model: "gpt-4o",
       reasoningEffort: "high",
@@ -143,6 +158,9 @@ function makeCtx(
       cancel: vi.fn(),
     },
   };
+
+  attachOutcomeRuntimeFinalizers(ctx);
+  return ctx;
 }
 
 describe("worker-outcome branch invariants", () => {

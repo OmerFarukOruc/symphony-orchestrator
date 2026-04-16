@@ -8,7 +8,19 @@ import type { NotificationEvent } from "../notification/channel.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { WorkspaceRemovalResult } from "../workspace/manager.js";
-import type { RetryCoordinator } from "./retry-coordinator.js";
+import type { OutcomeViewInput } from "./outcome-view-builder.js";
+import type { StopSignal } from "../core/signal-detection.js";
+import type { PreparedWorkerOutcome, TerminalPathKind } from "./worker-outcome/types.js";
+
+/**
+ * Retry coordination contract. Defined here (rather than retry-coordinator.ts)
+ * to avoid a circular import: retry-coordinator.ts depends on OutcomeContext and
+ * RetryRuntimeContext from this file, so the interface must live upstream.
+ */
+export interface RetryCoordinator {
+  dispatch(ctx: OutcomeContext, prepared: PreparedWorkerOutcome): Promise<void>;
+  cancel(issueId: string): void;
+}
 
 /** Shared context type for outcome handlers. Used internally by worker-outcome.ts. */
 export interface OutcomeContext {
@@ -47,6 +59,15 @@ export interface OutcomeContext {
   suppressIssueDispatch?: (issue: Issue) => void;
   markDirty: () => void;
   resolveModelSelection: (identifier: string) => ModelSelection;
+  buildOutcomeView: (input: OutcomeViewInput) => RuntimeIssueView;
+  setDetailView: (identifier: string, view: RuntimeIssueView) => RuntimeIssueView;
+  setCompletedView: (identifier: string, view: RuntimeIssueView) => RuntimeIssueView;
+  finalizeTerminalPath?: (kind: TerminalPathKind, prepared: PreparedWorkerOutcome) => Promise<void>;
+  finalizeStopSignal?: (
+    stopSignal: StopSignal,
+    prepared: PreparedWorkerOutcome,
+    turnCount: number | null,
+  ) => Promise<void>;
   notify: (event: NotificationEvent) => void;
   retryCoordinator: RetryCoordinator;
 }
@@ -69,6 +90,15 @@ export interface OrchestratorContext {
   notify: (event: NotificationEvent) => void;
   pushEvent: (event: RuntimeEventRecord) => void;
   retryCoordinator: RetryCoordinator;
+  buildOutcomeView: (input: OutcomeViewInput) => RuntimeIssueView;
+  setDetailView: (identifier: string, view: RuntimeIssueView) => RuntimeIssueView;
+  setCompletedView: (identifier: string, view: RuntimeIssueView) => RuntimeIssueView;
+  finalizeTerminalPath?: (kind: TerminalPathKind, prepared: PreparedWorkerOutcome) => Promise<void>;
+  finalizeStopSignal?: (
+    stopSignal: StopSignal,
+    prepared: PreparedWorkerOutcome,
+    turnCount: number | null,
+  ) => Promise<void>;
   launchWorker: (issue: Issue, attempt: number | null, options?: LaunchWorkerOptions) => Promise<void>;
   canDispatchIssue: (issue: Issue) => boolean;
   hasAvailableStateSlot: (
@@ -85,3 +115,23 @@ export interface OrchestratorContext {
   detectAndKillStalled: () => { killed: number };
   eventBus?: TypedEventBus<RisolutoEventMap>;
 }
+
+export type RetryRuntimeContext = Pick<
+  OrchestratorContext,
+  | "runningEntries"
+  | "retryEntries"
+  | "detailViews"
+  | "completedViews"
+  | "isRunning"
+  | "getConfig"
+  | "claimIssue"
+  | "releaseIssueClaim"
+  | "hasAvailableStateSlot"
+  | "markDirty"
+  | "notify"
+  | "pushEvent"
+  | "resolveModelSelection"
+  | "setDetailView"
+  | "setCompletedView"
+  | "launchWorker"
+>;

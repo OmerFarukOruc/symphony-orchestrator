@@ -13,6 +13,8 @@ import path from "node:path";
 import type { RisolutoLogger } from "../../core/types.js";
 import type { AttemptStorePort } from "../../core/attempt-store-port.js";
 import { closeDatabase, openDatabase, type RisolutoDatabase } from "./database.js";
+import { createOperatorPersistence, type OperatorPersistence } from "./operator-persistence.js";
+import { createWebhookPersistence, type WebhookPersistence } from "./webhook-persistence.js";
 import { SqliteAttemptStore } from "./attempt-store-sqlite.js";
 import { eq } from "drizzle-orm";
 
@@ -25,6 +27,10 @@ export interface PersistenceRuntime {
   db: RisolutoDatabase;
   /** Attempt store — backed by SQLite. */
   attemptStore: AttemptStorePort;
+  /** Operator-facing SQLite stores grouped by domain instead of by table. */
+  operator: OperatorPersistence;
+  /** Webhook-facing SQLite stores grouped by delivery workflow instead of raw table access. */
+  webhook: WebhookPersistence;
   /** Gracefully close the database connection (WAL checkpoint + release locks). */
   close(): void;
 }
@@ -111,10 +117,14 @@ export async function initPersistenceRuntime(options: PersistenceRuntimeOptions)
   seedDefaults(db);
 
   const attemptStore = new SqliteAttemptStore(db, storeLogger);
+  const operator = createOperatorPersistence(db);
+  const webhook = createWebhookPersistence(db, logger.child({ component: "webhook" }));
 
   return {
     db,
     attemptStore,
+    operator,
+    webhook,
     close() {
       closeDatabase(db);
       logger.info("shared persistence runtime closed");

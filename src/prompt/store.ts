@@ -13,19 +13,9 @@ import { config, promptTemplates } from "../persistence/sqlite/schema.js";
 import type { RisolutoLogger } from "../core/types.js";
 import { createPromptLiquid, PromptTemplateValidationError, validatePromptTemplate } from "./template-policy.js";
 import type { TemplateStorePort } from "./port.js";
+import type { PromptTemplate, PreviewResult } from "./types.js";
 
-export interface PromptTemplate {
-  id: string;
-  name: string;
-  body: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PreviewResult {
-  rendered: string;
-  error: string | null;
-}
+export type { PromptTemplate, PreviewResult };
 
 function buildSampleContext() {
   const now = new Date().toISOString();

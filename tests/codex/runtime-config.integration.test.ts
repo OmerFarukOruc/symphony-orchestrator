@@ -94,6 +94,31 @@ describe("codex runtime config integration", () => {
     expect(configToml).toContain('env_key = "AZURE_OPENAI_API_KEY"');
   });
 
+  it("always writes a provider name for custom providers", () => {
+    const configToml = buildConfigToml(
+      baseConfig({
+        auth: {
+          mode: "openai_login",
+          sourceHome: "/tmp/codex-home",
+        },
+        provider: {
+          id: "custom-provider",
+          name: null,
+          baseUrl: "https://example.com/v1",
+          envKey: null,
+          envKeyInstructions: null,
+          wireApi: "responses",
+          requiresOpenaiAuth: true,
+          httpHeaders: {},
+          envHttpHeaders: {},
+          queryParams: {},
+        },
+      }),
+    );
+
+    expect(configToml).toContain('name = "custom-provider"');
+  });
+
   it("returns all required provider env names in api_key mode", () => {
     expect(
       getRequiredProviderEnvNames(

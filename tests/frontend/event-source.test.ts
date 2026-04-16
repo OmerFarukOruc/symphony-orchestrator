@@ -7,6 +7,7 @@ import {
   subscribeAllEvents,
   type AgentEventPayload,
 } from "../../frontend/src/state/event-source";
+import { resetRuntimeClientForTesting } from "../../frontend/src/state/runtime-client";
 
 const fakeTarget = new EventTarget();
 const originalWindow = global.window;
@@ -40,6 +41,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  resetRuntimeClientForTesting();
   global.window = originalWindow;
   global.EventSource = originalEventSource;
   vi.restoreAllMocks();

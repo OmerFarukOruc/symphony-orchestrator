@@ -7,7 +7,7 @@ import {
   setDropAllowed,
   type KanbanColumnHandle,
 } from "../components/kanban-column";
-import type { RecentEvent, WorkflowColumn } from "../types";
+import type { RecentEvent, WorkflowColumn } from "../types/runtime.js";
 import { skeletonColumn } from "../ui/skeleton";
 import { filterColumn, type QueueFilters, type QueueUiState } from "./queue-state";
 import type { DragStateManager } from "./drag-state";
@@ -21,6 +21,8 @@ interface QueueBoardRendererOptions {
   clearFilters: () => void;
   requestRender: () => void;
   onOpenIssue: (issueId: string, fullPage: boolean) => void;
+  onToggleColumnCollapse: (columnKey: string) => void;
+  onFocusCard: (columnIndex: number, cardIndex: number) => void;
   dragManager?: DragStateManager;
 }
 
@@ -93,9 +95,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
     const existing = columnHandles.get(key);
     if (existing) return existing;
     const handle = createKanbanColumn(() => {
-      const ui = options.getUi();
-      if (ui.collapsed.has(key)) ui.collapsed.delete(key);
-      else ui.collapsed.add(key);
+      options.onToggleColumnCollapse(key);
       options.requestRender();
     });
     columnHandles.set(key, handle);
@@ -158,7 +158,10 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
             hasFilters ? "Clear filters" : "Open overview",
             hasFilters ? options.clearFilters : () => router.navigate("/"),
             emptyVariant,
-            { headingLevel: "h2" },
+            // Per-lane CTAs render up to one per column — rendering them all as
+            // copper primaries would dilute the "one primary action per view"
+            // signal, so demote these to ghost buttons.
+            { headingLevel: "h2", actionVariant: "ghost" },
           ),
         );
         return handle.section;
@@ -189,8 +192,7 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
             ? makeMoveHandler(options, issue.identifier, column.key, () => currentColumns)
             : undefined,
           onFocus: () => {
-            ui.focusedColumn = columnIndex;
-            ui.focusedCard = cardIndex;
+            options.onFocusCard(columnIndex, cardIndex);
           },
         });
         if (!existing) {

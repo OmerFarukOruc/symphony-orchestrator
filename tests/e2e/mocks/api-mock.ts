@@ -41,6 +41,7 @@ export interface ApiMockOverrides {
   codexAccount?: Record<string, unknown>;
   codexRateLimits?: Record<string, unknown>;
   codexThreadDetail?: Record<string, unknown>;
+  codexAdmin?: Record<string, unknown>;
 
   /** Override individual route handlers */
   routeOverrides?: Record<string, (route: Route) => Promise<void> | void>;
@@ -71,6 +72,7 @@ interface PreparedApiMockData {
   codexAccount: Record<string, unknown>;
   codexRateLimits: Record<string, unknown>;
   codexThreadDetail: Record<string, unknown>;
+  codexAdmin: Record<string, unknown>;
 }
 
 function json(route: Route, body: unknown, status = 200): Promise<void> {
@@ -186,6 +188,15 @@ function buildDefaultCodexThreads(): { data: Array<Record<string, unknown>>; nex
   };
 }
 
+function buildDefaultCodexModels(): Array<Record<string, unknown>> {
+  return [
+    { id: "o3-mini", displayName: "o3-mini", inputModalities: ["text"], isDefault: false },
+    { id: "o4-mini", displayName: "o4-mini", inputModalities: ["text"], isDefault: false },
+    { id: "gpt-5.4", displayName: "gpt-5.4", inputModalities: ["text", "image"], isDefault: true },
+    { id: "gpt-4.1", displayName: "gpt-4.1", inputModalities: ["text"], isDefault: false },
+  ];
+}
+
 function buildDefaultRuntimeInfo(): Record<string, unknown> {
   return {
     version: "0.3.1",
@@ -297,26 +308,52 @@ function buildPreparedCodexData(
   | "codexAccount"
   | "codexRateLimits"
   | "codexThreadDetail"
+  | "codexAdmin"
 > {
+  const codexCapabilities = overrides.codexCapabilities ?? buildDefaultCodexCapabilities();
+  const codexThreads = overrides.codexThreads ?? buildDefaultCodexThreads();
+  const codexLoadedThreads = overrides.codexLoadedThreads ?? { data: ["thr_1"] };
+  const codexFeatures = overrides.codexFeatures ?? {
+    data: [{ name: "unified_exec", stage: "beta", displayName: "Unified exec", enabled: true }],
+    nextCursor: null,
+  };
+  const codexCollaborationModes = overrides.codexCollaborationModes ?? {
+    data: [{ name: "default", displayName: "Default", description: "Default collaboration mode" }],
+  };
+  const codexMcp = overrides.codexMcp ?? {
+    data: [{ name: "github", status: "ready", authStatus: "authenticated", tools: [1], resources: [] }],
+    nextCursor: null,
+  };
+  const codexUserInputRequests = overrides.codexUserInputRequests ?? { data: [] };
+  const codexAccount = overrides.codexAccount ?? buildDefaultCodexAccount();
+  const codexRateLimits = overrides.codexRateLimits ?? buildDefaultCodexRateLimits();
+  const codexThreadDetail = overrides.codexThreadDetail ?? buildDefaultCodexThreadDetail();
+
   return {
-    codexCapabilities: overrides.codexCapabilities ?? buildDefaultCodexCapabilities(),
-    codexThreads: overrides.codexThreads ?? buildDefaultCodexThreads(),
-    codexLoadedThreads: overrides.codexLoadedThreads ?? { data: ["thr_1"] },
-    codexFeatures: overrides.codexFeatures ?? {
-      data: [{ name: "unified_exec", stage: "beta", displayName: "Unified exec", enabled: true }],
-      nextCursor: null,
+    codexCapabilities,
+    codexThreads,
+    codexLoadedThreads,
+    codexFeatures,
+    codexCollaborationModes,
+    codexMcp,
+    codexUserInputRequests,
+    codexAccount,
+    codexRateLimits,
+    codexThreadDetail,
+    codexAdmin: overrides.codexAdmin ?? {
+      capabilities: codexCapabilities,
+      account: codexAccount.account ?? null,
+      requiresOpenaiAuth: Boolean(codexAccount.requiresOpenaiAuth),
+      rateLimits: codexRateLimits.rateLimits ?? null,
+      rateLimitsByLimitId: codexRateLimits.rateLimitsByLimitId ?? null,
+      models: buildDefaultCodexModels(),
+      threads: codexThreads.data,
+      loadedThreadIds: codexLoadedThreads.data,
+      features: codexFeatures.data,
+      collaborationModes: codexCollaborationModes.data,
+      mcpServers: codexMcp.data,
+      pendingRequests: codexUserInputRequests.data,
     },
-    codexCollaborationModes: overrides.codexCollaborationModes ?? {
-      data: [{ name: "default", displayName: "Default", description: "Default collaboration mode" }],
-    },
-    codexMcp: overrides.codexMcp ?? {
-      data: [{ name: "github", status: "ready", authStatus: "authenticated", tools: [1], resources: [] }],
-      nextCursor: null,
-    },
-    codexUserInputRequests: overrides.codexUserInputRequests ?? { data: [] },
-    codexAccount: overrides.codexAccount ?? buildDefaultCodexAccount(),
-    codexRateLimits: overrides.codexRateLimits ?? buildDefaultCodexRateLimits(),
-    codexThreadDetail: overrides.codexThreadDetail ?? buildDefaultCodexThreadDetail(),
   };
 }
 
@@ -372,12 +409,7 @@ async function registerCoreRoutes(page: Page, data: PreparedApiMockData): Promis
   await page.route("**/api/v1/git/context", (route) => json(route, data.gitContext));
   await page.route("**/api/v1/models", (route) =>
     json(route, {
-      models: [
-        { id: "o3-mini", displayName: "o3-mini", inputModalities: ["text"], isDefault: false },
-        { id: "o4-mini", displayName: "o4-mini", inputModalities: ["text"], isDefault: false },
-        { id: "gpt-5.4", displayName: "gpt-5.4", inputModalities: ["text", "image"], isDefault: true },
-        { id: "gpt-4.1", displayName: "gpt-4.1", inputModalities: ["text"], isDefault: false },
-      ],
+      models: buildDefaultCodexModels(),
     }),
   );
   await page.route("**/api/v1/workspaces", (route) =>
@@ -415,6 +447,7 @@ async function registerCoreRoutes(page: Page, data: PreparedApiMockData): Promis
 }
 
 async function registerCodexRoutes(page: Page, data: PreparedApiMockData): Promise<void> {
+  await page.route("**/api/v1/codex/admin", (route) => json(route, data.codexAdmin));
   await page.route("**/api/v1/codex/capabilities", (route) => json(route, data.codexCapabilities));
   await page.route("**/api/v1/codex/threads?*", (route) => {
     if (route.request().method() === "GET") {

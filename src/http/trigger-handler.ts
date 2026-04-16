@@ -5,24 +5,15 @@ import type { ConfigStore } from "../config/store.js";
 import type { RisolutoLogger } from "../core/types.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import type { TrackerIssueCreateInput, TrackerPort } from "../tracker/port.js";
+import type { VerifiedWebhookDeliveryStore } from "../webhook/delivery-workflow.js";
+import { WebhookDeliveryWorkflow } from "../webhook/delivery-workflow.js";
 import type { ApiErrorResponse } from "./service-errors.js";
 
 export interface TriggerHandlerDeps {
   configStore?: ConfigStore;
   tracker?: TrackerPort;
   orchestrator: Pick<OrchestratorPort, "requestRefresh" | "requestTargetedRefresh">;
-  webhookInbox?: {
-    insertVerified: (delivery: {
-      deliveryId: string;
-      type: string;
-      action: string;
-      entityId: string | null;
-      issueId: string | null;
-      issueIdentifier: string | null;
-      webhookTimestamp: number | null;
-      payloadJson: string | null;
-    }) => Promise<{ isNew: boolean }>;
-  };
+  webhookInbox?: VerifiedWebhookDeliveryStore;
   logger: RisolutoLogger;
 }
 
@@ -134,11 +125,12 @@ async function handleDuplicateTriggerDelivery(
   dispatch: TriggerDispatchContext,
 ): Promise<boolean> {
   const idempotencyKey = getIdempotencyKey(request, dispatch.body);
-  if (!idempotencyKey || !deps.webhookInbox) {
+  if (!idempotencyKey) {
     return false;
   }
 
-  const result = await deps.webhookInbox.insertVerified({
+  const workflow = new WebhookDeliveryWorkflow(deps.logger, deps.webhookInbox);
+  const isNew = await workflow.ensureNew({
     deliveryId: idempotencyKey,
     type: "Trigger",
     action: dispatch.action,
@@ -148,10 +140,14 @@ async function handleDuplicateTriggerDelivery(
     webhookTimestamp: null,
     payloadJson: JSON.stringify(dispatch.body),
   });
-  if (result.isNew) {
+  if (isNew) {
     return false;
   }
 
+  deps.logger.debug(
+    { deliveryId: idempotencyKey, action: dispatch.action, type: "Trigger" },
+    "duplicate trigger delivery skipped",
+  );
   response.status(200).json({ ok: true, action: dispatch.action, duplicate: true });
   return true;
 }

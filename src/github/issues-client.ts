@@ -1,10 +1,7 @@
 import type { Issue, ServiceConfig, RisolutoLogger } from "../core/types.js";
+import { GitHubTransport } from "./transport.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { withRetry as sharedWithRetry, withRetryReturn as sharedWithRetryReturn } from "../utils/retry.js";
-
-// ---------------------------------------------------------------------------
-// Error type
-// ---------------------------------------------------------------------------
 
 type GitHubErrorCode = "github_transport_error" | "github_http_error" | "github_unknown_payload";
 
@@ -19,10 +16,6 @@ export class GitHubIssuesClientError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Raw GitHub API shape
-// ---------------------------------------------------------------------------
-
 export interface RawGitHubIssue {
   number: number;
   title: string;
@@ -33,10 +26,6 @@ export interface RawGitHubIssue {
   created_at: string;
   updated_at: string;
 }
-
-// ---------------------------------------------------------------------------
-// Issue normalizer (exported for tests)
-// ---------------------------------------------------------------------------
 
 /**
  * Map a raw GitHub API issue to Risoluto's canonical {@link Issue} shape.
@@ -70,19 +59,11 @@ export function normalizeGitHubIssue(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Client
-// ---------------------------------------------------------------------------
-
 export class GitHubIssuesClient {
   constructor(
     private readonly getConfig: () => ServiceConfig,
     private readonly logger: RisolutoLogger,
   ) {}
-
-  // -------------------------------------------------------------------------
-  // Private helpers
-  // -------------------------------------------------------------------------
 
   private getOwnerRepo(): { owner: string; repo: string } {
     const config = this.getConfig();
@@ -102,19 +83,28 @@ export class GitHubIssuesClient {
     return config.tracker.endpoint || "https://api.github.com";
   }
 
+  private createTransport(): GitHubTransport {
+    return new GitHubTransport({
+      apiBaseUrl: this.getApiBaseUrl(),
+      authorizationHeaderName: "Authorization",
+      defaultHeaders: {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json",
+      },
+    });
+  }
+
   private async request<T>(path: string, options?: RequestInit): Promise<T> {
     const url = `${this.getApiBaseUrl()}${path}`;
     let response: Response;
     try {
-      response = await fetch(url, {
-        ...options,
-        headers: {
-          Authorization: `Bearer ${this.getToken()}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "Content-Type": "application/json",
-          ...options?.headers,
-        },
+      response = await this.createTransport().send({
+        pathName: path,
+        method: options?.method ?? "GET",
+        body: typeof options?.body === "string" ? options.body : undefined,
+        token: this.getToken(),
+        headers: (options?.headers ?? undefined) as Record<string, string> | undefined,
       });
     } catch (error) {
       this.logger.error({ error: toErrorString(error), url }, "github api transport failed");
@@ -151,10 +141,6 @@ export class GitHubIssuesClient {
   async withRetryReturn<T>(operation: string, fn: () => Promise<T>): Promise<T> {
     return sharedWithRetryReturn(this.logger, operation, fn);
   }
-
-  // -------------------------------------------------------------------------
-  // Public API
-  // -------------------------------------------------------------------------
 
   async fetchOpenIssues(labels?: string[]): Promise<RawGitHubIssue[]> {
     const { owner, repo } = this.getOwnerRepo();

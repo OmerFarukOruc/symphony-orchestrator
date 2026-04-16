@@ -2,9 +2,10 @@ import { api } from "../api.js";
 import { createEmptyState } from "../components/empty-state.js";
 import { createPageHeader } from "../components/page-header.js";
 import { router } from "../router.js";
+import { getRuntimeClient } from "../state/runtime-client.js";
 import { statusChip } from "../ui/status-chip.js";
 import { skeletonLine } from "../ui/skeleton.js";
-import type { WorkspaceInventoryEntry, WorkspaceInventoryResponse } from "../types.js";
+import type { WorkspaceInventoryEntry, WorkspaceInventoryResponse } from "../types/workspace.js";
 import { flashDiff } from "../utils/diff.js";
 import { el } from "../utils/dom.js";
 import { registerPageCleanup } from "../utils/page.js";
@@ -29,25 +30,24 @@ function toMcStatus(status: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Stat cards                                                         */
+/*  Inventory summary strip                                            */
 /* ------------------------------------------------------------------ */
 
-function buildStatCard(label: string, value: string | number, accent?: string): HTMLElement {
-  const card = el("div", "mc-stat-card" + (accent ? ` is-${accent}` : ""));
-  const val = el("span", "heading-display", String(value));
-  card.append(val, el("span", "mc-stat-card-label", label));
-  return card;
-}
-
-function buildStatsRow(data: WorkspaceInventoryResponse): HTMLElement {
-  const row = el("div", "ws-stats-row");
-  row.append(
-    buildStatCard("Total", data.total),
-    buildStatCard("Active", data.active, data.active > 0 ? "live" : undefined),
-    buildStatCard("Orphaned", data.orphaned, data.orphaned > 0 ? "warning" : undefined),
-    buildStatCard("Disk", formatBytes(data.workspaces.reduce((sum, w) => sum + (w.disk_bytes ?? 0), 0))),
-  );
-  return row;
+function buildSummaryStrip(data: WorkspaceInventoryResponse): HTMLElement {
+  const strip = el("section", "ws-summary-strip");
+  const totalDisk = data.workspaces.reduce((sum, w) => sum + (w.disk_bytes ?? 0), 0);
+  const items: Array<[string, string, "live" | "warning" | null]> = [
+    ["Total", String(data.total), null],
+    ["Active", String(data.active), data.active > 0 ? "live" : null],
+    ["Orphaned", String(data.orphaned), data.orphaned > 0 ? "warning" : null],
+    ["Disk", formatBytes(totalDisk), null],
+  ];
+  for (const [label, value, tone] of items) {
+    const item = el("div", ["ws-summary-item", tone ? `is-${tone}` : ""].filter(Boolean).join(" "));
+    item.append(el("span", "ws-summary-label", label), el("span", "ws-summary-value text-mono", value));
+    strip.append(item);
+  }
+  return strip;
 }
 
 /* ------------------------------------------------------------------ */
@@ -88,14 +88,38 @@ function buildWorkspaceRow(ws: WorkspaceInventoryEntry, index: number, onRemove:
 
   if (ws.status === "orphaned" || ws.status === "completed") {
     const actions = el("div", "ws-row-actions");
-    const removeBtn = el("button", "mc-button is-sm ws-row-remove", "Remove");
-    removeBtn.type = "button";
-    removeBtn.addEventListener("click", () => onRemove(ws.workspace_key));
-    actions.append(removeBtn);
+    wireInlineRemoveConfirm(actions, ws.workspace_key, onRemove);
     row.append(actions);
   }
 
   return row;
+}
+
+/**
+ * Inline confirm pattern: swaps a single "Remove" button for a
+ * Confirm / Cancel pair inside the row so we avoid browser-native
+ * confirm() dialogs, which break focus and don't theme.
+ */
+function wireInlineRemoveConfirm(container: HTMLElement, workspaceKey: string, onRemove: (key: string) => void): void {
+  const removeBtn = el("button", "mc-button is-sm ws-row-remove", "Remove");
+  removeBtn.type = "button";
+  container.append(removeBtn);
+
+  removeBtn.addEventListener("click", () => {
+    container.replaceChildren();
+    const prompt = el("span", "ws-row-confirm-prompt", "Confirm remove?");
+    const confirmBtn = el("button", "mc-button is-sm ws-row-confirm", "Confirm");
+    confirmBtn.type = "button";
+    const cancelBtn = el("button", "mc-button is-sm is-ghost", "Cancel");
+    cancelBtn.type = "button";
+    confirmBtn.addEventListener("click", () => onRemove(workspaceKey));
+    cancelBtn.addEventListener("click", () => {
+      container.replaceChildren();
+      wireInlineRemoveConfirm(container, workspaceKey, onRemove);
+    });
+    container.append(prompt, confirmBtn, cancelBtn);
+    confirmBtn.focus();
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -106,9 +130,10 @@ function buildWorkspaceSection(data: WorkspaceInventoryResponse, onRemove: (key:
   const section = el("section", "ws-section");
 
   const header = el("div", "ws-section-header");
+  const heading = el("h2", "ws-section-heading", "All workspaces");
   const count = el("span", "mc-badge is-sm is-status");
   count.textContent = String(data.total);
-  header.append(count);
+  header.append(heading, count);
   section.append(header);
 
   if (data.workspaces.length === 0) {
@@ -140,7 +165,7 @@ function renderWorkspaces(page: HTMLElement, data: WorkspaceInventoryResponse, o
   if (!body) return;
   body.replaceChildren();
 
-  body.append(buildStatsRow(data), buildWorkspaceSection(data, onRemove));
+  body.append(buildSummaryStrip(data), buildWorkspaceSection(data, onRemove));
 }
 
 /* ------------------------------------------------------------------ */
@@ -151,13 +176,13 @@ function buildLoadingSkeleton(): HTMLElement {
   const shell = document.createElement("div");
   shell.setAttribute("aria-hidden", "true");
 
-  const statsRow = el("div", "ws-stats-row");
+  const summary = el("div", "ws-summary-strip");
   Array.from({ length: 4 }).forEach(() => {
-    const card = el("div", "mc-stat-card");
-    card.append(skeletonLine("60%"), skeletonLine("40%"));
-    statsRow.append(card);
+    const item = el("div", "ws-summary-item ws-summary-item--skeleton");
+    item.append(skeletonLine("60%"), skeletonLine("40%"));
+    summary.append(item);
   });
-  shell.append(statsRow);
+  shell.append(summary);
 
   const listWrap = el("div", "ws-section");
   const sectionHeader = el("div", "ws-section-header");
@@ -181,7 +206,12 @@ function buildLoadingSkeleton(): HTMLElement {
 /* ------------------------------------------------------------------ */
 
 export function createWorkspacesPage(): HTMLElement {
+  const runtimeClient = getRuntimeClient();
   const page = el("div", "page ws-page fade-in");
+
+  const refreshBtn = el("button", "mc-button is-sm is-ghost", "Refresh (r)");
+  refreshBtn.type = "button";
+  refreshBtn.title = "Refresh workspace inventory (r)";
 
   const cleanStaleBtn = el("button", "mc-button is-sm", "Clean stale");
   cleanStaleBtn.type = "button";
@@ -189,7 +219,7 @@ export function createWorkspacesPage(): HTMLElement {
   const header = createPageHeader(
     "Workspaces",
     "Monitor disk usage, inspect workspace state, and identify cleanup targets.",
-    { actions: [cleanStaleBtn] },
+    { actions: [refreshBtn, cleanStaleBtn] },
   );
 
   const body = el("section", "ws-page-body");
@@ -218,7 +248,8 @@ export function createWorkspacesPage(): HTMLElement {
   }
 
   async function handleRemove(workspaceKey: string): Promise<void> {
-    if (!confirm(`Remove workspace ${workspaceKey}? This deletes all workspace files.`)) return;
+    // Inline confirm in the row wired by wireInlineRemoveConfirm — if we got
+    // here the operator already explicitly confirmed.
     try {
       await api.removeWorkspace(workspaceKey);
       await fetchAndRender();
@@ -231,26 +262,56 @@ export function createWorkspacesPage(): HTMLElement {
     if (!currentData) return;
     const stale = currentData.workspaces.filter((ws) => ws.status === "orphaned" || ws.status === "completed");
     if (stale.length === 0) return;
-    if (!confirm(`Remove ${stale.length} stale workspace${stale.length === 1 ? "" : "s"}?`)) return;
+    if (cleanStaleBtn.dataset.state !== "confirm") {
+      const count = stale.length;
+      cleanStaleBtn.textContent = `Confirm: remove ${count} stale`;
+      cleanStaleBtn.dataset.state = "confirm";
+      cleanStaleBtn.classList.add("is-confirming");
+      setTimeout(() => {
+        if (cleanStaleBtn.dataset.state === "confirm") {
+          cleanStaleBtn.textContent = "Clean stale";
+          cleanStaleBtn.dataset.state = "";
+          cleanStaleBtn.classList.remove("is-confirming");
+        }
+      }, 4000);
+      return;
+    }
+    cleanStaleBtn.textContent = "Clean stale";
+    cleanStaleBtn.dataset.state = "";
+    cleanStaleBtn.classList.remove("is-confirming");
     await Promise.allSettled(stale.map((ws) => api.removeWorkspace(ws.workspace_key)));
     await fetchAndRender();
   }
 
   cleanStaleBtn.addEventListener("click", () => void handleCleanStale());
+  refreshBtn.addEventListener("click", () => void fetchAndRender());
+
+  function handleKeydown(event: KeyboardEvent): void {
+    const isTyping =
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement ||
+      (event.target instanceof HTMLElement && event.target.isContentEditable);
+    if (!isTyping && event.key.toLowerCase() === "r" && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      void fetchAndRender();
+    }
+  }
+  globalThis.addEventListener("keydown", handleKeydown);
 
   void fetchAndRender();
 
-  const handler = (): void => {
+  const onState = (): void => {
     if (currentData) void fetchAndRender();
   };
   const onWorkspaceEvent = (): void => {
     void fetchAndRender().then(() => flashDiff(body));
   };
-  window.addEventListener("state:update", handler);
-  window.addEventListener("risoluto:workspace-event", onWorkspaceEvent);
+  const unsubscribeState = runtimeClient.subscribeState(onState);
+  const unsubscribeWorkspaceEvents = runtimeClient.subscribeWorkspaceEvents(onWorkspaceEvent);
   registerPageCleanup(page, () => {
-    window.removeEventListener("state:update", handler);
-    window.removeEventListener("risoluto:workspace-event", onWorkspaceEvent);
+    unsubscribeState();
+    unsubscribeWorkspaceEvents();
+    globalThis.removeEventListener("keydown", handleKeydown);
   });
 
   return page;

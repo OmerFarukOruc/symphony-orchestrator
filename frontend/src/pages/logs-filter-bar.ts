@@ -5,7 +5,7 @@ import {
   getCategoryTooltip,
   type EventCategory,
 } from "../utils/events.js";
-import type { RecentEvent } from "../types.js";
+import type { RecentEvent } from "../types/runtime.js";
 import { createIconButton } from "../ui/buttons.js";
 import type { SortDirection } from "../state/log-buffer.js";
 
@@ -118,10 +118,14 @@ function buildCategoryChip(
 }
 
 export interface LogFilterBarOptions {
-  /** The current active-kinds set — mutated in-place by toggle callbacks. */
+  /** The current active-kinds set from the logs timeline state. */
   activeKinds: Set<string>;
-  /** Called whenever the filter state changes (kind toggle or search input). */
-  onFilterChange: () => void;
+  /** Called when all category filters should be cleared. */
+  onClearCategories: () => void;
+  /** Called when a category chip toggles all of its kinds. */
+  onToggleCategoryKinds: (kinds: Iterable<string>) => void;
+  /** Called whenever the search input changes. */
+  onSearchChange: (value: string) => void;
   /** Called when sort direction should toggle. */
   onSortToggle: (newDirection: SortDirection) => void;
   /** Called when density toggles. */
@@ -197,7 +201,8 @@ export interface LogFilterBarHandle {
  * caller. Returns a handle exposing the elements the caller needs to sync.
  */
 export function buildLogFilterBar(options: LogFilterBarOptions): LogFilterBarHandle {
-  const { activeKinds, onFilterChange, onSortToggle, onDensityToggle, onAutoScrollToggle } = options;
+  const { activeKinds, onClearCategories, onToggleCategoryKinds, onSearchChange, onSortToggle } = options;
+  const { onDensityToggle, onAutoScrollToggle } = options;
   const { onExpandToggle, onCopyAll, onOpenDetailPanel, onCloseDetailPanel, getSortDirection, getEvents } = options;
 
   // ── Root ─────────────────────────────────────────────────────────────
@@ -308,10 +313,7 @@ export function buildLogFilterBar(options: LogFilterBarOptions): LogFilterBarHan
         state: activeKinds.size === 0 ? "active" : "inactive",
         category: null,
         count: totalCount,
-        onToggle: () => {
-          activeKinds.clear();
-          onFilterChange();
-        },
+        onToggle: onClearCategories,
       }),
     ];
 
@@ -322,12 +324,7 @@ export function buildLogFilterBar(options: LogFilterBarOptions): LogFilterBarHan
       chips.push(
         buildCategoryChip(category, bucket, activeKinds, (cat, fallback) => {
           const fresh = buildCategoryIndex(getEvents()).get(cat)?.kinds ?? fallback;
-          const anyActive = countActiveKinds(fresh, activeKinds) > 0;
-          for (const k of fresh) {
-            if (anyActive) activeKinds.delete(k);
-            else activeKinds.add(k);
-          }
-          onFilterChange();
+          onToggleCategoryKinds(fresh);
         }),
       );
     }
@@ -444,7 +441,7 @@ export function buildLogFilterBar(options: LogFilterBarOptions): LogFilterBarHan
   autoToggle.addEventListener("click", onAutoScrollToggle);
   expandToggle.addEventListener("click", onExpandToggle);
   copyAllBtn.addEventListener("click", onCopyAll);
-  search.addEventListener("input", onFilterChange);
+  search.addEventListener("input", () => onSearchChange(search.value));
 
   return {
     element: controls,

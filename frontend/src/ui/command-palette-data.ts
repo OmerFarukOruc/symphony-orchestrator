@@ -1,6 +1,6 @@
 import { api } from "../api";
 import { router } from "../router";
-import type { RuntimeIssueView } from "../types";
+import type { RuntimeIssueView } from "../types/runtime.js";
 import { collectUniqueIssues } from "./sidebar-badges.js";
 import { openShortcutHelp } from "./shortcut-help.js";
 import { navItems } from "./nav-items";

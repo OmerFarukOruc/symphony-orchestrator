@@ -1,4 +1,4 @@
-import type { RecentEvent } from "../types";
+import type { RecentEvent } from "../types/runtime.js";
 import { classifyEvent, getEventTooltip, stringifyPayload } from "../utils/events";
 import { eventChip } from "../ui/event-chip";
 import { formatShortTime } from "../utils/format";

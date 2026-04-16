@@ -22,8 +22,7 @@ import { api } from "./api.js";
 import { initDelightClicks } from "./ui/delight.js";
 import { lazyPage } from "./utils/lazy-page.js";
 import { router } from "./router.js";
-import { connectEventSource } from "./state/event-source.js";
-import { startPolling } from "./state/polling.js";
+import { getRuntimeClient } from "./state/runtime-client.js";
 import { initCommandPalette } from "./ui/command-palette.js";
 import { initHeader } from "./ui/header.js";
 import { initKeyboard } from "./ui/keyboard.js";
@@ -33,6 +32,7 @@ import { initTheme } from "./ui/theme.js";
 import { deduplicatedToast } from "./utils/toast-events.js";
 
 let lastIssueContextId: string | null = null;
+const runtimeClient = getRuntimeClient();
 
 function setDocumentTitle(pageTitle: string): void {
   const base = pageTitle.replaceAll(" · Risoluto", "").trim();
@@ -185,15 +185,13 @@ try {
     router.setGuard(() => null);
   }
   router.init();
-  startPolling();
-  connectEventSource();
+  runtimeClient.start();
 } catch {
   // Server may not have setup endpoint yet — allow navigation
   setupComplete = true;
   router.setGuard(() => null);
   router.init();
-  startPolling();
-  connectEventSource();
+  runtimeClient.start();
 }
 
 // Listen for setup completion from the setup wizard

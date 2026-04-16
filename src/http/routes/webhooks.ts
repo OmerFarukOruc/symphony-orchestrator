@@ -39,9 +39,7 @@ export function registerWebhookRoutes(app: Express, deps: HttpRouteDeps): void {
     });
 
   if (!deps.webhookHandlerDeps) {
-    deps.logger.warn({
-      msg: "webhookHandlerDeps not provided — /webhooks/linear and /webhooks/github will not be registered",
-    });
+    deps.logger.warn("webhookHandlerDeps not provided — /webhooks/linear and /webhooks/github will not be registered");
     return;
   }
 

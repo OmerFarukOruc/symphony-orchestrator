@@ -1,4 +1,4 @@
-import type { RuntimeIssueView, WorkflowColumn } from "../types";
+import type { RuntimeIssueView, WorkflowColumn } from "../types/runtime.js";
 
 const PRIORITY_ORDER: Record<string, number> = {
   urgent: 0,

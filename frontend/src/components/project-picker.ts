@@ -1,6 +1,6 @@
 import { api } from "../api";
 import { router } from "../router.js";
-import type { LinearProject } from "../types";
+import type { LinearProject } from "../types/setup.js";
 import { createEmptyState } from "./empty-state.js";
 
 interface ProjectPickerOptions {

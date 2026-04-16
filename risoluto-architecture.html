@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Risoluto Architecture Diagram</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+
+    .container {
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+
+    .header {
+      margin-bottom: 2rem;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .pulse-dot {
+      width: 12px;
+      height: 12px;
+      background: #22d3ee;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-left: 1.75rem;
+    }
+
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 2rem;
+      overflow-x: auto;
+    }
+
+    svg {
+      width: 100%;
+      min-width: 1200px;
+      display: block;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 0.75rem;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+
+    .card h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .card ul {
+      list-style: none;
+      color: #94a3b8;
+      font-size: 0.8rem;
+    }
+
+    .card li {
+      margin-bottom: 0.45rem;
+      line-height: 1.45;
+    }
+
+    .card li strong {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: #475569;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>Risoluto Architecture</h1>
+      </div>
+      <p class="subtitle">Local orchestrator that turns Linear / GitHub issues into sandboxed Codex agent attempts and delivers the result as a GitHub pull request.</p>
+    </div>
+
+    <!-- Main Diagram -->
+    <div class="diagram-container">
+      <svg viewBox="0 0 1600 1480" preserveAspectRatio="xMidYMid meet">
+        <!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+          </marker>
+          <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+          </marker>
+          <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+          </marker>
+          <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
+          </marker>
+          <marker id="arrowhead-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+          </marker>
+          <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c" />
+          </marker>
+          <marker id="arrowhead-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- =================================================================
+             HOST BOUNDARY (operator's local machine)
+             ================================================================= -->
+        <rect x="50" y="200" width="1500" height="1200" rx="14"
+              fill="rgba(34, 211, 238, 0.03)"
+              stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="10,5"/>
+        <text x="70" y="225" fill="#22d3ee" font-size="12" font-weight="600">
+          Risoluto Host
+        </text>
+        <text x="70" y="243" fill="#94a3b8" font-size="10">
+          Node 22 runtime · ~/.risoluto/archives/ · default :4000
+        </text>
+
+        <!-- =================================================================
+             ARROWS (drawn first so boxes paint on top)
+             ================================================================= -->
+
+        <!-- Operator -> Frontend -->
+        <line x1="260" y1="160" x2="260" y2="278" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#arrowhead-cyan)"/>
+        <text x="275" y="220" fill="#94a3b8" font-size="11">HTTP</text>
+
+        <!-- Frontend <-> HTTP Server -->
+        <line x1="420" y1="310" x2="456" y2="310" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#arrowhead-cyan)"/>
+        <line x1="456" y1="338" x2="420" y2="338" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowhead-orange)"/>
+        <text x="438" y="302" fill="#22d3ee" font-size="10" text-anchor="middle">REST</text>
+        <text x="438" y="358" fill="#fb923c" font-size="10" text-anchor="middle">SSE</text>
+
+        <!-- Linear API -> Webhook Ingress -->
+        <path d="M 540 160 L 540 222 L 930 222 L 930 278" fill="none"
+              stroke="#fb923c" stroke-width="1.8" marker-end="url(#arrowhead-orange)"/>
+        <text x="740" y="216" fill="#fb923c" font-size="10">webhook</text>
+
+        <!-- GitHub API -> Webhook Ingress -->
+        <path d="M 760 160 L 760 232 L 1010 232 L 1010 278" fill="none"
+              stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrowhead-orange)"/>
+
+        <!-- Auth Gate -> HTTP Server (dashed, protects) routed BELOW L2 -->
+        <path d="M 1380 398 L 1380 428 L 630 428 L 630 398" fill="none"
+              stroke="#fb7185" stroke-width="1.6" stroke-dasharray="6,4" marker-end="url(#arrowhead-rose)"/>
+        <text x="1005" y="420" fill="#fb7185" font-size="10" text-anchor="middle">bearer-token guard · loopback bypass</text>
+
+        <!-- HTTP Server -> Orchestrator (down-left) -->
+        <path d="M 540 398 L 540 448 L 215 448 L 215 488" fill="none"
+              stroke="#34d399" stroke-width="1.8" marker-end="url(#arrowhead-emerald)"/>
+        <text x="360" y="442" fill="#94a3b8" font-size="10">OrchestratorPort</text>
+
+        <!-- Orchestrator -> Tracker -->
+        <line x1="350" y1="568" x2="378" y2="568" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrowhead-emerald)"/>
+        <text x="364" y="560" fill="#94a3b8" font-size="10" text-anchor="middle">poll</text>
+
+        <!-- Tracker -> Dispatch -->
+        <line x1="640" y1="568" x2="668" y2="568" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrowhead-emerald)"/>
+
+        <!-- Dispatch -> Workspace -->
+        <line x1="930" y1="568" x2="958" y2="568" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrowhead-emerald)"/>
+
+        <!-- Workspace -> Git -->
+        <line x1="1220" y1="568" x2="1248" y2="568" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrowhead-emerald)"/>
+
+        <!-- Tracker -> Linear (external, dashed, routed left) -->
+        <path d="M 450 488 L 450 460 L 430 460 L 430 188 L 540 188 L 540 160" fill="none"
+              stroke="#34d399" stroke-width="1.4" stroke-dasharray="4,4" marker-end="url(#arrowhead-emerald)"/>
+        <text x="380" y="340" fill="#34d399" font-size="10">GraphQL</text>
+
+        <!-- Tracker -> GitHub (external, dashed, routed right) -->
+        <path d="M 570 488 L 570 460 L 825 460 L 825 188 L 760 188 L 760 160" fill="none"
+              stroke="#34d399" stroke-width="1.3" stroke-dasharray="4,4" marker-end="url(#arrowhead-emerald)"/>
+        <text x="835" y="340" fill="#34d399" font-size="10">REST</text>
+
+        <!-- Orchestrator -> Agent Runner (down) -->
+        <line x1="215" y1="648" x2="215" y2="738" stroke="#34d399" stroke-width="2" marker-end="url(#arrowhead-emerald)"/>
+        <text x="230" y="685" fill="#94a3b8" font-size="10">dispatch</text>
+        <text x="230" y="702" fill="#94a3b8" font-size="10">attempt</text>
+
+        <!-- Agent Runner -> Docker Sandbox -->
+        <line x1="400" y1="830" x2="448" y2="830" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrowhead-amber)"/>
+        <text x="424" y="820" fill="#fbbf24" font-size="10" text-anchor="middle">docker run</text>
+        <text x="424" y="848" fill="#94a3b8" font-size="9" text-anchor="middle">JSON-RPC / stdio</text>
+
+        <!-- Persistence pooled arrow indicator -->
+        <path d="M 780 1090 L 780 1150" fill="none"
+              stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="3,4" marker-end="url(#arrowhead-violet)"/>
+        <text x="790" y="1125" fill="#a78bfa" font-size="10">persist via Port interfaces</text>
+
+        <!-- =================================================================
+             EXTERNAL COMPONENTS (top row)
+             ================================================================= -->
+
+        <!-- Operator -->
+        <rect x="170" y="70" width="200" height="90" rx="8"
+              fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="270" y="100" fill="white" font-size="14" font-weight="600" text-anchor="middle">Operator</text>
+        <text x="270" y="122" fill="#94a3b8" font-size="11" text-anchor="middle">Browser dashboard</text>
+        <text x="270" y="144" fill="#22d3ee" font-size="10" text-anchor="middle">localhost:4000</text>
+
+        <!-- Linear API -->
+        <rect x="430" y="70" width="220" height="90" rx="8"
+              fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="540" y="100" fill="white" font-size="14" font-weight="600" text-anchor="middle">Linear API</text>
+        <text x="540" y="122" fill="#94a3b8" font-size="11" text-anchor="middle">GraphQL · Webhooks</text>
+        <text x="540" y="144" fill="#94a3b8" font-size="10" text-anchor="middle">issue tracker</text>
+
+        <!-- GitHub API -->
+        <rect x="650" y="70" width="220" height="90" rx="8"
+              fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="760" y="100" fill="white" font-size="14" font-weight="600" text-anchor="middle">GitHub API</text>
+        <text x="760" y="122" fill="#94a3b8" font-size="11" text-anchor="middle">REST · Webhooks</text>
+        <text x="760" y="144" fill="#94a3b8" font-size="10" text-anchor="middle">issues · PRs · checks</text>
+
+        <!-- OpenAI / Codex -->
+        <rect x="910" y="70" width="220" height="90" rx="8"
+              fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="1020" y="100" fill="white" font-size="14" font-weight="600" text-anchor="middle">OpenAI / Codex</text>
+        <text x="1020" y="122" fill="#94a3b8" font-size="11" text-anchor="middle">LLM backend</text>
+        <text x="1020" y="144" fill="#94a3b8" font-size="10" text-anchor="middle">API key · OAuth refresh</text>
+
+        <!-- Slack -->
+        <rect x="1190" y="70" width="220" height="90" rx="8"
+              fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="1300" y="100" fill="white" font-size="14" font-weight="600" text-anchor="middle">Slack</text>
+        <text x="1300" y="122" fill="#94a3b8" font-size="11" text-anchor="middle">Incoming Webhook</text>
+        <text x="1300" y="144" fill="#94a3b8" font-size="10" text-anchor="middle">lifecycle alerts</text>
+
+        <!-- =================================================================
+             LAYER 2 — INGRESS (Frontend · HTTP · Webhook · Auth)
+             ================================================================= -->
+
+        <!-- Frontend SPA -->
+        <rect x="80" y="280" width="340" height="120" rx="8"
+              fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.8"/>
+        <text x="250" y="312" fill="white" font-size="15" font-weight="600" text-anchor="middle">Frontend SPA</text>
+        <text x="250" y="338" fill="#94a3b8" font-size="11" text-anchor="middle">React 19 · Vite · TypeScript</text>
+        <text x="250" y="360" fill="#94a3b8" font-size="10" text-anchor="middle">features/ · pages/ · components/</text>
+        <text x="250" y="385" fill="#22d3ee" font-size="10" text-anchor="middle">dev :5173 → prod served by HTTP</text>
+
+        <!-- HTTP Server -->
+        <rect x="460" y="280" width="340" height="120" rx="8"
+              fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.8"/>
+        <text x="630" y="312" fill="white" font-size="15" font-weight="600" text-anchor="middle">HTTP Server</text>
+        <text x="630" y="336" fill="#94a3b8" font-size="11" text-anchor="middle">Express 5 · :4000</text>
+        <text x="630" y="358" fill="#94a3b8" font-size="10" text-anchor="middle">/api/v1/state · /api/v1/events (SSE)</text>
+        <text x="630" y="374" fill="#94a3b8" font-size="10" text-anchor="middle">/api/v1/models · /runtime · /metrics</text>
+        <text x="630" y="392" fill="#34d399" font-size="10" text-anchor="middle">src/http/server.ts</text>
+
+        <!-- Webhook Ingress -->
+        <rect x="840" y="280" width="340" height="120" rx="8"
+              fill="rgba(251, 146, 60, 0.2)" stroke="#fb923c" stroke-width="1.8"/>
+        <text x="1010" y="312" fill="white" font-size="15" font-weight="600" text-anchor="middle">Webhook Ingress</text>
+        <text x="1010" y="336" fill="#94a3b8" font-size="11" text-anchor="middle">/webhooks/linear · /webhooks/github</text>
+        <text x="1010" y="358" fill="#94a3b8" font-size="10" text-anchor="middle">HMAC verify · durable inbox</text>
+        <text x="1010" y="374" fill="#94a3b8" font-size="10" text-anchor="middle">health tracker · registrar</text>
+        <text x="1010" y="392" fill="#fb923c" font-size="10" text-anchor="middle">src/webhook/composition.ts</text>
+
+        <!-- Auth Gate -->
+        <rect x="1220" y="280" width="320" height="120" rx="8"
+              fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.8"/>
+        <text x="1380" y="312" fill="white" font-size="15" font-weight="600" text-anchor="middle">Auth Gate</text>
+        <text x="1380" y="336" fill="#94a3b8" font-size="11" text-anchor="middle">RISOLUTO_READ_TOKEN</text>
+        <text x="1380" y="352" fill="#94a3b8" font-size="11" text-anchor="middle">RISOLUTO_WRITE_TOKEN</text>
+        <text x="1380" y="374" fill="#94a3b8" font-size="10" text-anchor="middle">bearer · loopback bypass · trust proxy</text>
+        <text x="1380" y="392" fill="#fb7185" font-size="10" text-anchor="middle">docs/TRUST_AND_AUTH.md</text>
+
+        <!-- =================================================================
+             LAYER 3 — ORCHESTRATION CORE
+             ================================================================= -->
+
+        <!-- Orchestrator (the brain) -->
+        <rect x="80" y="488" width="270" height="160" rx="8"
+              fill="rgba(6, 78, 59, 0.45)" stroke="#34d399" stroke-width="2.2"/>
+        <text x="215" y="516" fill="white" font-size="15" font-weight="700" text-anchor="middle">Orchestrator</text>
+        <text x="215" y="538" fill="#94a3b8" font-size="11" text-anchor="middle">tick loop · OrchestratorPort</text>
+        <text x="215" y="562" fill="#94a3b8" font-size="10" text-anchor="middle">fetch → reconcile</text>
+        <text x="215" y="578" fill="#94a3b8" font-size="10" text-anchor="middle">→ queue → launch</text>
+        <text x="215" y="602" fill="#94a3b8" font-size="10" text-anchor="middle">Watchdog · StallDetector</text>
+        <text x="215" y="618" fill="#94a3b8" font-size="10" text-anchor="middle">Recovery · Rate limits</text>
+        <text x="215" y="640" fill="#34d399" font-size="10" text-anchor="middle">src/orchestrator/</text>
+
+        <!-- Tracker Port -->
+        <rect x="380" y="488" width="260" height="160" rx="8"
+              fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.8"/>
+        <text x="510" y="516" fill="white" font-size="15" font-weight="600" text-anchor="middle">Tracker Port</text>
+        <text x="510" y="542" fill="#94a3b8" font-size="11" text-anchor="middle">polling + tool provider</text>
+        <text x="510" y="568" fill="#94a3b8" font-size="10" text-anchor="middle">LinearTrackerAdapter</text>
+        <text x="510" y="584" fill="#94a3b8" font-size="10" text-anchor="middle">GitHubTrackerAdapter</text>
+        <text x="510" y="608" fill="#94a3b8" font-size="10" text-anchor="middle">issues · comments · states</text>
+        <text x="510" y="640" fill="#34d399" font-size="10" text-anchor="middle">src/tracker/factory.ts</text>
+
+        <!-- Dispatch + Workflow -->
+        <rect x="670" y="488" width="260" height="160" rx="8"
+              fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.8"/>
+        <text x="800" y="516" fill="white" font-size="15" font-weight="600" text-anchor="middle">Dispatch · Workflow</text>
+        <text x="800" y="542" fill="#94a3b8" font-size="11" text-anchor="middle">priority · state machine</text>
+        <text x="800" y="568" fill="#94a3b8" font-size="10" text-anchor="middle">PriorityQueue · columns</text>
+        <text x="800" y="584" fill="#94a3b8" font-size="10" text-anchor="middle">policy · blocking relations</text>
+        <text x="800" y="608" fill="#94a3b8" font-size="10" text-anchor="middle">retry · cancel · abort</text>
+        <text x="800" y="640" fill="#34d399" font-size="10" text-anchor="middle">src/dispatch · src/workflow</text>
+
+        <!-- Workspace Manager -->
+        <rect x="960" y="488" width="260" height="160" rx="8"
+              fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.8"/>
+        <text x="1090" y="516" fill="white" font-size="15" font-weight="600" text-anchor="middle">Workspace Manager</text>
+        <text x="1090" y="542" fill="#94a3b8" font-size="11" text-anchor="middle">per-issue directories</text>
+        <text x="1090" y="568" fill="#94a3b8" font-size="10" text-anchor="middle">git worktrees · lifecycle</text>
+        <text x="1090" y="584" fill="#94a3b8" font-size="10" text-anchor="middle">prune · reuse</text>
+        <text x="1090" y="608" fill="#94a3b8" font-size="10" text-anchor="middle">mount into sandbox</text>
+        <text x="1090" y="640" fill="#34d399" font-size="10" text-anchor="middle">src/workspace/manager.ts</text>
+
+        <!-- Git / PR Manager -->
+        <rect x="1250" y="488" width="290" height="160" rx="8"
+              fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.8"/>
+        <text x="1395" y="516" fill="white" font-size="15" font-weight="600" text-anchor="middle">Git · PR Manager</text>
+        <text x="1395" y="542" fill="#94a3b8" font-size="11" text-anchor="middle">github-pr-client · pr-monitor</text>
+        <text x="1395" y="568" fill="#94a3b8" font-size="10" text-anchor="middle">worktree-manager</text>
+        <text x="1395" y="584" fill="#94a3b8" font-size="10" text-anchor="middle">multi-repo router</text>
+        <text x="1395" y="608" fill="#94a3b8" font-size="10" text-anchor="middle">open PRs · check runs</text>
+        <text x="1395" y="640" fill="#34d399" font-size="10" text-anchor="middle">src/git/*</text>
+
+        <!-- =================================================================
+             LAYER 4 — AGENT EXECUTION (sandboxed per attempt)
+             ================================================================= -->
+
+        <!-- Agent Runner -->
+        <rect x="80" y="738" width="320" height="190" rx="8"
+              fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.8"/>
+        <text x="240" y="768" fill="white" font-size="15" font-weight="600" text-anchor="middle">Agent Runner</text>
+        <text x="240" y="792" fill="#94a3b8" font-size="11" text-anchor="middle">per-attempt session lifecycle</text>
+        <text x="240" y="816" fill="#94a3b8" font-size="10" text-anchor="middle">docker-session · turn-executor</text>
+        <text x="240" y="834" fill="#94a3b8" font-size="10" text-anchor="middle">spawn child_process</text>
+        <text x="240" y="852" fill="#94a3b8" font-size="10" text-anchor="middle">JSON-RPC over stdio</text>
+        <text x="240" y="874" fill="#94a3b8" font-size="10" text-anchor="middle">token · cost accounting</text>
+        <text x="240" y="896" fill="#94a3b8" font-size="10" text-anchor="middle">RunOutcome: success/error/stall</text>
+        <text x="240" y="918" fill="#34d399" font-size="10" text-anchor="middle">src/agent-runner/index.ts</text>
+
+        <!-- Docker Sandbox (security zone) -->
+        <rect x="450" y="710" width="1090" height="220" rx="12"
+              fill="rgba(120, 53, 15, 0.08)" stroke="#fb7185" stroke-width="1.8" stroke-dasharray="8,5"/>
+        <text x="470" y="736" fill="#fb7185" font-size="12" font-weight="600">docker-sandbox (per attempt)</text>
+        <text x="470" y="754" fill="#94a3b8" font-size="10">capabilities dropped · no-new-privileges · gVisor optional · egress allowlist · resource limits</text>
+
+        <!-- OpenAI Codex CLI (inside sandbox) -->
+        <rect x="480" y="775" width="330" height="130" rx="8"
+              fill="rgba(120, 53, 15, 0.4)" stroke="#fbbf24" stroke-width="1.8"/>
+        <text x="645" y="804" fill="white" font-size="14" font-weight="600" text-anchor="middle">OpenAI Codex CLI</text>
+        <text x="645" y="828" fill="#94a3b8" font-size="11" text-anchor="middle">agent loop · tool use · reasoning</text>
+        <text x="645" y="852" fill="#94a3b8" font-size="10" text-anchor="middle">config.toml generated by host</text>
+        <text x="645" y="870" fill="#94a3b8" font-size="10" text-anchor="middle">OPENAI_API_KEY or OAuth → OpenAI</text>
+        <text x="645" y="893" fill="#fbbf24" font-size="10" text-anchor="middle">src/codex/*</text>
+
+        <!-- Tool Providers -->
+        <rect x="840" y="775" width="330" height="130" rx="8"
+              fill="rgba(120, 53, 15, 0.4)" stroke="#fbbf24" stroke-width="1.8"/>
+        <text x="1005" y="804" fill="white" font-size="14" font-weight="600" text-anchor="middle">Tool Providers</text>
+        <text x="1005" y="828" fill="#94a3b8" font-size="11" text-anchor="middle">callable during turns</text>
+        <text x="1005" y="852" fill="#94a3b8" font-size="10" text-anchor="middle">TrackerToolProvider</text>
+        <text x="1005" y="870" fill="#94a3b8" font-size="10" text-anchor="middle">GithubApiToolClient</text>
+        <text x="1005" y="893" fill="#fbbf24" font-size="10" text-anchor="middle">issue update · PR open · commit</text>
+
+        <!-- Workspace Mount -->
+        <rect x="1200" y="775" width="320" height="130" rx="8"
+              fill="rgba(120, 53, 15, 0.4)" stroke="#fbbf24" stroke-width="1.8"/>
+        <text x="1360" y="804" fill="white" font-size="14" font-weight="600" text-anchor="middle">Workspace Mount</text>
+        <text x="1360" y="828" fill="#94a3b8" font-size="11" text-anchor="middle">bind-mounted worktree</text>
+        <text x="1360" y="852" fill="#94a3b8" font-size="10" text-anchor="middle">archive dir · read/write</text>
+        <text x="1360" y="870" fill="#94a3b8" font-size="10" text-anchor="middle">per-issue isolation</text>
+        <text x="1360" y="893" fill="#fbbf24" font-size="10" text-anchor="middle">src/docker/spawn.ts</text>
+
+        <!-- =================================================================
+             LAYER 5 — SUPPORTING SERVICES (7 boxes, roomier row)
+             ================================================================= -->
+
+        <!-- Secrets -->
+        <rect x="65" y="970" width="205" height="120" rx="8"
+              fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.8"/>
+        <text x="167" y="998" fill="white" font-size="14" font-weight="600" text-anchor="middle">Secrets</text>
+        <text x="167" y="1022" fill="#94a3b8" font-size="10" text-anchor="middle">AES-256-GCM</text>
+        <text x="167" y="1040" fill="#94a3b8" font-size="10" text-anchor="middle">SecretsPort</text>
+        <text x="167" y="1058" fill="#94a3b8" font-size="10" text-anchor="middle">master.key seed</text>
+        <text x="167" y="1080" fill="#fb7185" font-size="9" text-anchor="middle">src/secrets/store.ts</text>
+
+        <!-- Audit Logger -->
+        <rect x="285" y="970" width="205" height="120" rx="8"
+              fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.8"/>
+        <text x="387" y="998" fill="white" font-size="14" font-weight="600" text-anchor="middle">Audit Logger</text>
+        <text x="387" y="1022" fill="#94a3b8" font-size="10" text-anchor="middle">AuditLoggerPort</text>
+        <text x="387" y="1040" fill="#94a3b8" font-size="10" text-anchor="middle">append-only</text>
+        <text x="387" y="1058" fill="#94a3b8" font-size="10" text-anchor="middle">config · secrets</text>
+        <text x="387" y="1080" fill="#fb7185" font-size="9" text-anchor="middle">src/audit/logger.ts</text>
+
+        <!-- Prompt Store -->
+        <rect x="505" y="970" width="205" height="120" rx="8"
+              fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.8"/>
+        <text x="607" y="998" fill="white" font-size="14" font-weight="600" text-anchor="middle">Prompt Store</text>
+        <text x="607" y="1022" fill="#94a3b8" font-size="10" text-anchor="middle">TemplateStorePort</text>
+        <text x="607" y="1040" fill="#94a3b8" font-size="10" text-anchor="middle">system / user / tool</text>
+        <text x="607" y="1058" fill="#94a3b8" font-size="10" text-anchor="middle">per-issue overrides</text>
+        <text x="607" y="1080" fill="#34d399" font-size="9" text-anchor="middle">src/prompt/store.ts</text>
+
+        <!-- Alerts Engine -->
+        <rect x="725" y="970" width="205" height="120" rx="8"
+              fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.8"/>
+        <text x="827" y="998" fill="white" font-size="14" font-weight="600" text-anchor="middle">Alerts Engine</text>
+        <text x="827" y="1022" fill="#94a3b8" font-size="10" text-anchor="middle">rule-based</text>
+        <text x="827" y="1040" fill="#94a3b8" font-size="10" text-anchor="middle">failure rate · stalls</text>
+        <text x="827" y="1058" fill="#94a3b8" font-size="10" text-anchor="middle">history store</text>
+        <text x="827" y="1080" fill="#fb7185" font-size="9" text-anchor="middle">src/alerts/engine.ts</text>
+
+        <!-- Notifications -->
+        <rect x="945" y="970" width="205" height="120" rx="8"
+              fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.8"/>
+        <text x="1047" y="998" fill="white" font-size="14" font-weight="600" text-anchor="middle">Notifications</text>
+        <text x="1047" y="1022" fill="#94a3b8" font-size="10" text-anchor="middle">→ Slack webhook</text>
+        <text x="1047" y="1040" fill="#94a3b8" font-size="10" text-anchor="middle">→ OS desktop toast</text>
+        <text x="1047" y="1058" fill="#94a3b8" font-size="10" text-anchor="middle">lifecycle events</text>
+        <text x="1047" y="1080" fill="#34d399" font-size="9" text-anchor="middle">src/notification/*</text>
+
+        <!-- Automation -->
+        <rect x="1165" y="970" width="205" height="120" rx="8"
+              fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.8"/>
+        <text x="1267" y="998" fill="white" font-size="14" font-weight="600" text-anchor="middle">Automation</text>
+        <text x="1267" y="1022" fill="#94a3b8" font-size="10" text-anchor="middle">node-cron scheduler</text>
+        <text x="1267" y="1040" fill="#94a3b8" font-size="10" text-anchor="middle">scheduled rules</text>
+        <text x="1267" y="1058" fill="#94a3b8" font-size="10" text-anchor="middle">runner</text>
+        <text x="1267" y="1080" fill="#34d399" font-size="9" text-anchor="middle">src/automation/*</text>
+
+        <!-- Observability -->
+        <rect x="1385" y="970" width="155" height="120" rx="8"
+              fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.8"/>
+        <text x="1462" y="998" fill="white" font-size="13" font-weight="600" text-anchor="middle">Observability</text>
+        <text x="1462" y="1022" fill="#94a3b8" font-size="10" text-anchor="middle">Prometheus</text>
+        <text x="1462" y="1038" fill="#94a3b8" font-size="10" text-anchor="middle">/metrics</text>
+        <text x="1462" y="1058" fill="#94a3b8" font-size="10" text-anchor="middle">EventBus · SSE</text>
+        <text x="1462" y="1080" fill="#94a3b8" font-size="9" text-anchor="middle">src/observability/*</text>
+
+        <!-- =================================================================
+             LAYER 6 — PERSISTENCE
+             ================================================================= -->
+
+        <!-- SQLite -->
+        <rect x="80" y="1150" width="540" height="210" rx="8"
+              fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="2.2"/>
+        <text x="350" y="1180" fill="white" font-size="15" font-weight="700" text-anchor="middle">SQLite · Drizzle ORM · better-sqlite3</text>
+        <text x="350" y="1202" fill="#a78bfa" font-size="11" text-anchor="middle">~/.risoluto/archives/state.db</text>
+        <!-- Two-column tables -->
+        <text x="110" y="1236" fill="#e2e8f0" font-size="11" font-weight="600">Runtime</text>
+        <text x="110" y="1258" fill="#94a3b8" font-size="10">• attempts · attempt_events</text>
+        <text x="110" y="1278" fill="#94a3b8" font-size="10">• issue_index (latest-per-issue)</text>
+        <text x="110" y="1298" fill="#94a3b8" font-size="10">• webhook_inbox (durable)</text>
+        <text x="110" y="1318" fill="#94a3b8" font-size="10">• alerts_history · notifications</text>
+
+        <text x="370" y="1236" fill="#e2e8f0" font-size="11" font-weight="600">Config &amp; Prompts</text>
+        <text x="370" y="1258" fill="#94a3b8" font-size="10">• config · config_history</text>
+        <text x="370" y="1278" fill="#94a3b8" font-size="10">• encrypted_secrets</text>
+        <text x="370" y="1298" fill="#94a3b8" font-size="10">• prompt_templates</text>
+        <text x="370" y="1318" fill="#94a3b8" font-size="10">• issue_config (overrides)</text>
+
+        <!-- File System -->
+        <rect x="650" y="1150" width="370" height="210" rx="8"
+              fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.8"/>
+        <text x="835" y="1180" fill="white" font-size="15" font-weight="600" text-anchor="middle">File System</text>
+        <text x="835" y="1202" fill="#fbbf24" font-size="11" text-anchor="middle">chokidar-watched · deep-merged</text>
+        <text x="680" y="1236" fill="#94a3b8" font-size="10">• config/overlay.yaml · YAML config</text>
+        <text x="680" y="1260" fill="#94a3b8" font-size="10">• master.key · AES seed</text>
+        <text x="680" y="1284" fill="#94a3b8" font-size="10">• workspaces/ · git worktrees</text>
+        <text x="680" y="1308" fill="#94a3b8" font-size="10">• archives/ · attempt transcripts</text>
+        <text x="835" y="1340" fill="#fbbf24" font-size="10" text-anchor="middle">src/config/overlay.ts</text>
+
+        <!-- In-Memory State -->
+        <rect x="1050" y="1150" width="330" height="210" rx="8"
+              fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.8"/>
+        <text x="1215" y="1180" fill="white" font-size="15" font-weight="600" text-anchor="middle">In-Memory State</text>
+        <text x="1215" y="1202" fill="#94a3b8" font-size="11" text-anchor="middle">OrchestratorState · RuntimeSnapshot</text>
+        <text x="1080" y="1236" fill="#94a3b8" font-size="10">• runningMap (claims)</text>
+        <text x="1080" y="1258" fill="#94a3b8" font-size="10">• queue · completed · failed views</text>
+        <text x="1080" y="1280" fill="#94a3b8" font-size="10">• stall events · rate limits</text>
+        <text x="1080" y="1302" fill="#94a3b8" font-size="10">• per-issue model/template overrides</text>
+        <text x="1215" y="1340" fill="#94a3b8" font-size="10" text-anchor="middle">served via /api/v1/state</text>
+
+        <!-- Docker Daemon -->
+        <rect x="1410" y="1150" width="130" height="210" rx="8"
+              fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.8"/>
+        <text x="1475" y="1180" fill="white" font-size="13" font-weight="600" text-anchor="middle">Docker</text>
+        <text x="1475" y="1196" fill="white" font-size="13" font-weight="600" text-anchor="middle">Daemon</text>
+        <text x="1475" y="1222" fill="#94a3b8" font-size="10" text-anchor="middle">host runtime</text>
+        <text x="1475" y="1242" fill="#94a3b8" font-size="10" text-anchor="middle">local socket</text>
+        <text x="1475" y="1268" fill="#94a3b8" font-size="10" text-anchor="middle">one container</text>
+        <text x="1475" y="1284" fill="#94a3b8" font-size="10" text-anchor="middle">per attempt</text>
+        <text x="1475" y="1312" fill="#fbbf24" font-size="10" text-anchor="middle">Dockerfile.sandbox</text>
+        <text x="1475" y="1330" fill="#94a3b8" font-size="9" text-anchor="middle">gVisor optional</text>
+
+        <!-- =================================================================
+             LEGEND (below host)
+             ================================================================= -->
+        <g transform="translate(50, 1430)">
+          <text x="0" y="12" fill="white" font-size="12" font-weight="600">Legend</text>
+
+          <rect x="90" y="2" width="18" height="12" rx="3" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.2"/>
+          <text x="115" y="12" fill="#94a3b8" font-size="10">Frontend / UI</text>
+
+          <rect x="235" y="2" width="18" height="12" rx="3" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.2"/>
+          <text x="260" y="12" fill="#94a3b8" font-size="10">Backend service</text>
+
+          <rect x="395" y="2" width="18" height="12" rx="3" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.2"/>
+          <text x="420" y="12" fill="#94a3b8" font-size="10">Database</text>
+
+          <rect x="520" y="2" width="18" height="12" rx="3" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.2"/>
+          <text x="545" y="12" fill="#94a3b8" font-size="10">Sandbox / filesystem</text>
+
+          <rect x="715" y="2" width="18" height="12" rx="3" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.2"/>
+          <text x="740" y="12" fill="#94a3b8" font-size="10">Security / Auth</text>
+
+          <rect x="880" y="2" width="18" height="12" rx="3" fill="rgba(251, 146, 60, 0.2)" stroke="#fb923c" stroke-width="1.2"/>
+          <text x="905" y="12" fill="#94a3b8" font-size="10">Async / Webhook</text>
+
+          <rect x="1050" y="2" width="18" height="12" rx="3" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.2"/>
+          <text x="1075" y="12" fill="#94a3b8" font-size="10">External / generic</text>
+
+          <line x1="1215" y1="8" x2="1245" y2="8" stroke="#fb7185" stroke-width="1.4" stroke-dasharray="5,4"/>
+          <text x="1253" y="12" fill="#94a3b8" font-size="10">Security zone</text>
+
+          <line x1="1375" y1="8" x2="1405" y2="8" stroke="#34d399" stroke-width="1.4" stroke-dasharray="4,4"/>
+          <text x="1413" y="12" fill="#94a3b8" font-size="10">External call</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Runtime Flow (one attempt)</h3>
+        </div>
+        <ul>
+          <li>• <strong>1.</strong> Orchestrator tick polls Linear / GitHub via Tracker Port</li>
+          <li>• <strong>2.</strong> Dispatch sorts by priority; Workspace Manager preps a git worktree</li>
+          <li>• <strong>3.</strong> Agent Runner spawns <code>docker run</code> with Codex CLI + <code>config.toml</code></li>
+          <li>• <strong>4.</strong> Codex calls OpenAI / tool providers over JSON-RPC / stdio</li>
+          <li>• <strong>5.</strong> Git Manager pushes branch and opens / updates PR via GitHub API</li>
+          <li>• <strong>6.</strong> AttemptStore persists turns, events, and RunOutcome to SQLite</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot violet"></div>
+          <h3>Technology Stack</h3>
+        </div>
+        <ul>
+          <li>• <strong>Runtime:</strong> Node.js 22 · strict ESM TypeScript · pnpm</li>
+          <li>• <strong>Backend:</strong> Express 5 · chokidar watcher · node-cron</li>
+          <li>• <strong>Frontend:</strong> React 19 · Vite · SSE for live state</li>
+          <li>• <strong>Persistence:</strong> SQLite · Drizzle ORM · better-sqlite3</li>
+          <li>• <strong>Sandboxing:</strong> Docker (optional gVisor) · iptables egress</li>
+          <li>• <strong>Agent:</strong> OpenAI Codex CLI inside container</li>
+          <li>• <strong>Testing:</strong> Vitest · Playwright (E2E + visual)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>Ports &amp; Adapters</h3>
+        </div>
+        <ul>
+          <li>• <strong>OrchestratorPort</strong> → <code>Orchestrator</code></li>
+          <li>• <strong>TrackerPort</strong> → Linear / GitHub adapters</li>
+          <li>• <strong>AttemptStorePort</strong> → <code>SqliteAttemptStore</code></li>
+          <li>• <strong>ConfigOverlayPort</strong> → file + DB stores</li>
+          <li>• <strong>SecretsPort</strong> → <code>SecretsStore</code> (AES-256-GCM)</li>
+          <li>• <strong>TemplateStorePort</strong> → <code>PromptTemplateStore</code></li>
+          <li>• <strong>AuditLoggerPort</strong> → <code>AuditLogger</code></li>
+          <li>• <strong>GitIntegrationPort</strong> → <code>GitManager</code></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>External Integrations</h3>
+        </div>
+        <ul>
+          <li>• <strong>Linear:</strong> GraphQL client · webhook registrar</li>
+          <li>• <strong>GitHub:</strong> REST issues · PR client · check runs · webhooks</li>
+          <li>• <strong>OpenAI / Codex:</strong> API key or OAuth (token refresh)</li>
+          <li>• <strong>Docker:</strong> local daemon · one sandbox per attempt</li>
+          <li>• <strong>Slack:</strong> outbound incoming webhook</li>
+          <li>• <strong>OS desktop:</strong> native notification bridge</li>
+          <li>• <strong>Prometheus:</strong> scrape <code>/metrics</code> for ops dashboards</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <p class="footer">
+      Risoluto · Autonomous agent orchestrator · local-first · grounded in <code>src/</code> at main
+    </p>
+  </div>
+</body>
+</html>

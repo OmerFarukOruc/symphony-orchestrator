@@ -9,6 +9,7 @@ import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { CodexControlPlane } from "../codex/control-plane.js";
 import type { RisolutoLogger } from "../core/types.js";
 import type { AutomationStorePort } from "../automation/port.js";
+import type { NotificationCenter } from "../notification/notification-center.js";
 import type { NotificationStorePort } from "../notification/port.js";
 import type { MetricsCollector } from "../observability/metrics.js";
 import type { ObservabilityHub } from "../observability/hub.js";
@@ -29,6 +30,10 @@ export interface HttpRouteDeps {
   eventBus?: TypedEventBus<RisolutoEventMap>;
   attemptStore?: Pick<AttemptStorePort, "listCheckpoints" | "getAllPrs">;
   notificationStore?: NotificationStorePort;
+  notificationCenter?: Pick<
+    NotificationCenter,
+    "listNotifications" | "markNotificationRead" | "markAllNotificationsRead" | "listAlertHistory" | "sendSlackTest"
+  >;
   automationStore?: AutomationStorePort;
   automationScheduler?: Pick<AutomationScheduler, "listAutomations" | "runNow">;
   alertHistoryStore?: AlertHistoryStorePort;

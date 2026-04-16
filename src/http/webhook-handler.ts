@@ -3,6 +3,8 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { Response } from "express";
 
 import type { RisolutoLogger } from "../core/types.js";
+import type { VerifiedWebhookDeliveryStore } from "../webhook/delivery-workflow.js";
+import { WebhookDeliveryWorkflow } from "../webhook/delivery-workflow.js";
 import type { ApiErrorResponse } from "./service-errors.js";
 import type { LinearWebhookPayload, WebhookRequest } from "./webhook-types.js";
 import { COMMENT_ACTIONS, ISSUE_ACTIONS, SUPPORTED_WEBHOOK_TYPES, validateWebhookPayload } from "./webhook-types.js";
@@ -24,18 +26,7 @@ export interface WebhookHandlerDeps {
   /** Record a verified delivery in the health tracker. */
   recordVerifiedDelivery: (eventType: string) => void;
   /** Durable inbox for verified deliveries. */
-  webhookInbox?: {
-    insertVerified: (delivery: {
-      deliveryId: string;
-      type: string;
-      action: string;
-      entityId: string | null;
-      issueId: string | null;
-      issueIdentifier: string | null;
-      webhookTimestamp: number | null;
-      payloadJson: string | null;
-    }) => Promise<{ isNew: boolean }>;
-  };
+  webhookInbox?: VerifiedWebhookDeliveryStore;
   logger: RisolutoLogger;
 }
 
@@ -168,55 +159,24 @@ export function handleWebhookLinear(deps: WebhookHandlerDeps, req: WebhookReques
   const { issueId, issueIdentifier } = extractIssueInfo(body.data, type);
 
   // 8. Persist to durable inbox (dedup check)
-  const inboxResult = deps.webhookInbox
-    ? deps.webhookInbox
-        .insertVerified({
-          deliveryId: deliveryId ?? `fallback-${Date.now()}-${randomUUID().slice(0, 8)}`,
-          type,
-          action,
-          entityId: typeof body.data.id === "string" ? body.data.id : null,
-          issueId,
-          issueIdentifier,
-          webhookTimestamp: timestamp,
-          payloadJson: JSON.stringify(body),
-        })
-        .catch((inboxError: unknown) => {
-          deps.logger.error(
-            { error: inboxError instanceof Error ? inboxError.message : String(inboxError) },
-            "inbox insert failed",
-          );
-          return { isNew: true } as const; // proceed even if inbox fails
-        })
-    : Promise.resolve({ isNew: true } as const);
-
-  // 9. Accept — respond immediately before side-effects
-  res.status(200).json({ ok: true });
-
-  // 10. Fire-and-forget side-effects (async, after 200)
-  void inboxResult
-    .then((result) => {
-      if (!result.isNew) {
-        deps.logger.debug({ deliveryId, type, action }, "duplicate webhook delivery — skipped");
-        return;
-      }
-
-      // Record in health tracker
-      deps.recordVerifiedDelivery(eventType);
-
-      // Entity-aware processing
-      processWebhookEvent(deps, type, action, body, issueId, issueIdentifier, usedPreviousSecret);
-    })
-    .catch((sideEffectError: unknown) => {
-      deps.logger.error(
-        {
-          error: sideEffectError instanceof Error ? sideEffectError.message : String(sideEffectError),
-          deliveryId,
-          type,
-          action,
-        },
-        "unhandled error in webhook side-effect processing",
-      );
-    });
+  const workflow = new WebhookDeliveryWorkflow(deps.logger, deps.webhookInbox);
+  workflow.respondAccepted(res, {
+    delivery: {
+      deliveryId: deliveryId ?? `fallback-${Date.now()}-${randomUUID().slice(0, 8)}`,
+      type,
+      action,
+      entityId: typeof body.data.id === "string" ? body.data.id : null,
+      issueId,
+      issueIdentifier,
+      webhookTimestamp: timestamp,
+      payloadJson: JSON.stringify(body),
+    },
+    eventType,
+    recordVerifiedDelivery: deps.recordVerifiedDelivery,
+    duplicateMessage: "duplicate webhook delivery — skipped",
+    errorMessage: "unhandled error in webhook side-effect processing",
+    process: () => processWebhookEvent(deps, type, action, body, issueId, issueIdentifier, usedPreviousSecret),
+  });
 }
 
 /**

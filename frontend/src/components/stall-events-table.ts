@@ -1,4 +1,4 @@
-import type { StallEventView } from "../types.js";
+import type { StallEventView } from "../types/runtime.js";
 import { formatRelativeTime } from "../utils/format.js";
 
 function formatStalledDuration(ms: number): string {

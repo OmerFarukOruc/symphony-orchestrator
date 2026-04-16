@@ -1,31 +1,13 @@
 import { toast } from "../../ui/toast.js";
 import type {
-  CodexAccountResponse,
+  CodexAdminSnapshotResponse,
   CodexCapabilities,
   CodexCollaborationModeEntry,
-  CodexFeatureEntry,
-  CodexMcpServerStatusEntry,
-  CodexModelCatalogEntry,
-  CodexRateLimitsResponse,
-  CodexThreadSummary,
-  CodexUserInputQuestion,
   CodexUserInputRequest,
-} from "../../types.js";
+  CodexUserInputQuestion,
+} from "../../types/codex.js";
 
-export interface CodexAdminData {
-  account: CodexAccountResponse["account"];
-  requiresOpenaiAuth: boolean;
-  rateLimits: CodexRateLimitsResponse["rateLimits"];
-  rateLimitsByLimitId: CodexRateLimitsResponse["rateLimitsByLimitId"];
-  capabilities: CodexCapabilities;
-  models: CodexModelCatalogEntry[];
-  threads: CodexThreadSummary[];
-  loadedThreadIds: string[];
-  features: CodexFeatureEntry[];
-  collaborationModes: CodexCollaborationModeEntry[];
-  mcpServers: CodexMcpServerStatusEntry[];
-  pendingRequests: CodexUserInputRequest[];
-}
+export type CodexAdminData = CodexAdminSnapshotResponse;
 
 export function formatUnixSeconds(value: number | null | undefined): string {
   if (!value) return "\u2014";

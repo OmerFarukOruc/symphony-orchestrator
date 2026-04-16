@@ -93,6 +93,24 @@ export function ensureSectionDrafts(
   return next;
 }
 
+export function sectionHasUnsavedDrafts(
+  section: SettingsSectionDefinition,
+  drafts: Record<string, string> | undefined,
+  effective: Record<string, unknown>,
+): boolean {
+  if (!drafts) {
+    return false;
+  }
+  return Object.entries(drafts).some(([path, draftValue]) => {
+    const field = section.fields.find((candidate) => candidate.path === path);
+    if (!field) {
+      return false;
+    }
+    const effectiveValue = getValueAtPath(effective, path);
+    return draftValue !== formatFieldDraft(field, effectiveValue);
+  });
+}
+
 export function formatFieldDraft(field: SettingsFieldDefinition, value: unknown): string {
   if (value === undefined || value === null) {
     return "";

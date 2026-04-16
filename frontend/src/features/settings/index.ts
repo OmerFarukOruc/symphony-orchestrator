@@ -2,6 +2,7 @@
 // Consumers should import from this file rather than individual modules.
 
 export { createSettingsPage } from "./settings-view.js";
+export { createSettingsWorkbench, type SettingsWorkbench } from "./settings-workbench.js";
 export { createSettingsState, type SettingsState } from "./settings-state.js";
 export {
   buildSettingsSections,
@@ -10,6 +11,7 @@ export {
   isSchemaLimited,
   sectionMatchesFilter,
   sectionVisibleInMode,
+  sectionHasUnsavedDrafts,
   sectionGroups,
   ensureSectionDrafts,
   buildSectionDiffPreview,

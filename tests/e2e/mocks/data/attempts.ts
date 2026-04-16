@@ -1,3 +1,5 @@
+import type { RecentEvent } from "../../../../src/core/types.js";
+
 export interface AttemptSummary {
   attemptId: string;
   attemptNumber: number;
@@ -26,7 +28,7 @@ export interface AttemptRecord extends AttemptSummary {
   threadId?: string | null;
   turnId?: string | null;
   summary?: string | null;
-  events?: unknown[];
+  events?: RecentEvent[];
   appServer?: {
     effectiveProvider: string | null;
     effectiveModel: string | null;
@@ -69,7 +71,7 @@ export function buildAttemptRecord(overrides?: Partial<AttemptRecord>): AttemptR
     title: "Fix authentication bug",
     workspacePath: "/tmp/workspace/sym-42",
     workspaceKey: "ws-001",
-    modelSource: "config",
+    modelSource: "default",
     turnCount: 5,
     threadId: "thread-001",
     turnId: "turn-005",
@@ -89,9 +91,9 @@ export function buildAttemptRecord(overrides?: Partial<AttemptRecord>): AttemptR
     events: [
       {
         at: "2026-01-15T11:30:00.000Z",
-        issue_id: "issue-001",
-        issue_identifier: "SYM-42",
-        session_id: "sess-001",
+        issueId: "issue-001",
+        issueIdentifier: "SYM-42",
+        sessionId: "sess-001",
         event: "tool_call",
         message: "Called write_file",
         content: null,

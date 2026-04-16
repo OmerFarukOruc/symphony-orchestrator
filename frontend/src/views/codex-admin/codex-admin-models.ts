@@ -1,5 +1,5 @@
 import { createTableCell, createTableEmptyRow, createTableHead } from "../../ui/table.js";
-import type { CodexModelCatalogEntry } from "../../types.js";
+import type { CodexModelCatalogEntry } from "../../types/codex.js";
 import { createPanel } from "./codex-admin-helpers.js";
 
 function describeModelReasoning(model: CodexModelCatalogEntry): string {

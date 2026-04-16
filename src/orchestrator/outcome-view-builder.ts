@@ -2,6 +2,20 @@ import { issueView } from "./views.js";
 import type { RunningEntry } from "./runtime-types.js";
 import type { Issue, ModelSelection, Workspace } from "../core/types.js";
 
+export interface OutcomeViewInput {
+  issue: Issue;
+  workspace: Workspace;
+  entry: RunningEntry;
+  configuredSelection: ModelSelection;
+  overrides: {
+    status: string;
+    attempt?: number | null;
+    error?: string | null;
+    message?: string | null;
+    pullRequestUrl?: string | null;
+  };
+}
+
 export function buildOutcomeView(
   issue: Issue,
   workspace: Workspace,

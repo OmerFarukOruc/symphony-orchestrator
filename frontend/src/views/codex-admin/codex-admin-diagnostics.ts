@@ -1,5 +1,5 @@
 import { createTableCell, createTableEmptyRow, createTableHead } from "../../ui/table.js";
-import type { CodexCollaborationModeEntry, CodexFeatureEntry } from "../../types.js";
+import type { CodexCollaborationModeEntry, CodexFeatureEntry } from "../../types/codex.js";
 import { createPanel } from "./codex-admin-helpers.js";
 
 export function renderDiagnosticsPanel(

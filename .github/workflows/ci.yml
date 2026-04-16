@@ -146,6 +146,18 @@ jobs:
       - uses: ./.github/actions/restore-build
       - run: pnpm exec knip
 
+  circular:
+    name: Circular Dependency Check
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/restore-build
+      - run: pnpm run circular
+
   typecheck:
     name: Type Check
     needs: build
@@ -952,7 +964,8 @@ jobs:
   build-and-test:
     name: build-and-test
     if: always()
-    needs: [build, lint, test, frontend-test, knip, typecheck, gitleaks, docker-build, e2e-smoke, integration-pr]
+    needs:
+      [build, lint, test, frontend-test, knip, circular, typecheck, gitleaks, docker-build, e2e-smoke, integration-pr]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -964,6 +977,7 @@ jobs:
           echo "test            = ${{ needs.test.result }}"
           echo "frontend-test   = ${{ needs.frontend-test.result }}"
           echo "knip            = ${{ needs.knip.result }}"
+          echo "circular        = ${{ needs.circular.result }}"
           echo "typecheck       = ${{ needs.typecheck.result }}"
           echo "gitleaks        = ${{ needs.gitleaks.result }}"
           echo "docker-build    = ${{ needs.docker-build.result }}"
@@ -983,6 +997,7 @@ jobs:
              [ "${{ needs.test.result }}" != "success" ] ||
              [ "${{ needs.frontend-test.result }}" != "success" ] ||
              [ "${{ needs.knip.result }}" != "success" ] ||
+             [ "${{ needs.circular.result }}" != "success" ] ||
              [ "${{ needs.typecheck.result }}" != "success" ] ||
              [ "${{ needs.gitleaks.result }}" != "success" ] ||
              [ "$DOCKER_RESULT" != "success" ] ||

@@ -47,6 +47,8 @@
 
 .settings-devtools-section {
   padding: var(--space-6);
+  border-color: color-mix(in srgb, var(--text-accent) 8%, var(--border-subtle));
+  background: color-mix(in srgb, var(--bg-elevated) 70%, var(--bg-surface));
 }
 
 .settings-devtools-section summary {
@@ -54,9 +56,9 @@
   align-items: center;
   gap: var(--space-2);
   cursor: pointer;
-  font-family: var(--font-heading);
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: var(--font-medium);
   color: var(--text-secondary);
   list-style: none;
   user-select: none;
@@ -108,6 +110,8 @@
 
 .codex-admin-panel {
   padding: var(--space-5);
+  border-color: color-mix(in srgb, var(--text-accent) 6%, var(--border-subtle));
+  background: color-mix(in srgb, var(--bg-elevated) 76%, var(--bg-surface));
 }
 
 .codex-admin-metrics {
@@ -120,9 +124,9 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-3);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid color-mix(in srgb, var(--text-accent) 8%, var(--border-subtle));
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-surface) 88%, var(--interactive-primary) 12%);
+  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--text-accent) 4%);
 }
 
 .codex-admin-metric-label,
@@ -151,11 +155,11 @@
 }
 
 .codex-admin-tag.is-success {
-  background: color-mix(in srgb, var(--accent-success, #2f9e44) 18%, var(--bg-surface) 82%);
+  background: color-mix(in srgb, var(--accent-success, #2f9e44) 12%, var(--bg-surface) 88%);
 }
 
 .codex-admin-tag.is-warn {
-  background: color-mix(in srgb, var(--accent-warning, #f08c00) 18%, var(--bg-surface) 82%);
+  background: color-mix(in srgb, var(--accent-warning, #f08c00) 12%, var(--bg-surface) 88%);
 }
 
 .codex-admin-diagnostics {
@@ -243,9 +247,9 @@
   display: grid;
   gap: var(--space-2);
   padding: var(--space-3);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid color-mix(in srgb, var(--text-accent) 7%, var(--border-subtle));
   border-radius: var(--radius-md);
-  background: var(--bg-surface-elevated, var(--bg-surface));
+  background: color-mix(in srgb, var(--bg-elevated) 78%, var(--bg-surface));
 }
 
 @media (max-width: 980px) {

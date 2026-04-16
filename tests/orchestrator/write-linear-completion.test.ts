@@ -7,8 +7,17 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { handleWorkerOutcome } from "../../src/orchestrator/worker-outcome/index.js";
-import type { Issue, ModelSelection, RunOutcome, ServiceConfig, Workspace } from "../../src/core/types.js";
+import { buildOutcomeView } from "../../src/orchestrator/outcome-view-builder.js";
+import type {
+  Issue,
+  ModelSelection,
+  RunOutcome,
+  RuntimeIssueView,
+  ServiceConfig,
+  Workspace,
+} from "../../src/core/types.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
+import { attachOutcomeRuntimeFinalizers } from "./outcome-runtime-finalizers.js";
 
 /** Flush all pending microtasks — needed because writeLinearCompletion is void-dispatched. */
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -112,10 +121,13 @@ function makeCtx(
   } as ServiceConfig;
 
   const runningEntries = new Map<string, RunningEntry>();
-  return {
+  const completedViews = new Map<string, RuntimeIssueView>();
+  const detailViews = new Map<string, RuntimeIssueView>();
+  const markDirty = vi.fn();
+  const ctx = {
     runningEntries,
-    completedViews: new Map<string, unknown>(),
-    detailViews: new Map<string, unknown>(),
+    completedViews,
+    detailViews,
     deps: {
       tracker: {
         fetchIssueStatesByIds: vi.fn().mockResolvedValue([makeIssue()]),
@@ -130,16 +142,31 @@ function makeCtx(
     isRunning: () => true,
     getConfig: () => config,
     releaseIssueClaim: vi.fn(),
-    markDirty: vi.fn(),
+    markDirty,
     resolveModelSelection: vi
       .fn()
       .mockReturnValue({ model: "gpt-4o", reasoningEffort: "high", source: "default" } as ModelSelection),
+    buildOutcomeView: (input) =>
+      buildOutcomeView(input.issue, input.workspace, input.entry, input.configuredSelection, input.overrides),
+    setDetailView: (identifier, view) => {
+      detailViews.set(identifier, view);
+      markDirty();
+      return view;
+    },
+    setCompletedView: (identifier, view) => {
+      completedViews.set(identifier, view);
+      markDirty();
+      return view;
+    },
     notify: vi.fn(),
     retryCoordinator: {
       dispatch: vi.fn().mockResolvedValue(undefined),
       cancel: vi.fn(),
     },
   };
+
+  attachOutcomeRuntimeFinalizers(ctx);
+  return ctx;
 }
 
 describe("writeLinearCompletion — via handleWorkerOutcome + RISOLUTO_STATUS: DONE", () => {

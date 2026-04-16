@@ -3,7 +3,11 @@ import type {
   AttemptCheckpointRecord,
   AttemptRecord,
   AttemptSummary,
-  AuditRecord,
+  IssueDetail,
+  SteerIssueResponse,
+} from "./types/issues.js";
+import type {
+  CodexAdminSnapshotResponse,
   CodexCapabilities,
   CodexAccountLoginStartResponse,
   CodexAccountResponse,
@@ -16,21 +20,17 @@ import type {
   CodexThreadReadResponse,
   CodexThreadListResponse,
   CodexUserInputRequestListResponse,
-  GitContextResponse,
-  IssueDetail,
-  LinearProject,
+} from "./types/codex.js";
+import type { GitContextResponse, LinearProject, SetupStatus } from "./types/setup.js";
+import type { AuditRecord, PromptTemplate, RuntimeInfo, TrackedPrRecord } from "./types/config.js";
+import type { RuntimeSnapshot } from "./types/runtime.js";
+import type {
   NotificationReadResponse,
   NotificationsListResponse,
   NotificationsReadAllResponse,
-  ObservabilitySummary,
-  PromptTemplate,
-  RuntimeInfo,
-  RuntimeSnapshot,
-  SetupStatus,
-  SteerIssueResponse,
-  TrackedPrRecord,
-  WorkspaceInventoryResponse,
-} from "./types";
+} from "./types/notifications.js";
+import type { ObservabilitySummary } from "./types/observability.js";
+import type { WorkspaceInventoryResponse } from "./types/workspace.js";
 import { getReadAccessToken, getWriteAccessToken } from "./access-token";
 
 const BASE = "";
@@ -111,6 +111,7 @@ export const api = {
       models: CodexModelCatalogEntry[];
       nextCursor?: string | null;
     }>("/api/v1/models"),
+  getCodexAdmin: () => get<CodexAdminSnapshotResponse>("/api/v1/codex/admin"),
   getCodexCapabilities: () => get<CodexCapabilities>("/api/v1/codex/capabilities"),
   getCodexThreads: (params?: {
     cursor?: string;

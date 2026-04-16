@@ -52,19 +52,3 @@ export function describeCurrentMoment(
     detail: "Create an issue in Linear and move it to In Progress \u2014 Risoluto will take it from there.",
   };
 }
-
-/**
- * Returns a human-readable description of the current attention zone state.
- * Pure function — takes a count, returns a string.
- */
-export function describeAttentionZone(attentionCount: number): string {
-  if (attentionCount === 0) {
-    return "Nothing needs review right now. If a run stalls, retries, or needs your decision, it will appear here first.";
-  }
-
-  if (attentionCount === 1) {
-    return "One issue is waiting on a retry, unblock, or decision. Review it here before you scan the rest of the system.";
-  }
-
-  return `${attentionCount} issues are waiting on retries, unblocks, or decisions. Start with the oldest blocked item and work downward.`;
-}

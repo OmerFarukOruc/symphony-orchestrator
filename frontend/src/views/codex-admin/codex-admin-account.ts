@@ -1,7 +1,12 @@
-import { api } from "../../api.js";
 import { createEmptyState } from "../../components/empty-state.js";
 import { toast } from "../../ui/toast.js";
-import type { CodexAccountResponse, CodexRateLimitBucket, CodexRateLimitsResponse } from "../../types.js";
+import type { CodexAccountResponse, CodexRateLimitBucket, CodexRateLimitsResponse } from "../../types/codex.js";
+import {
+  cancelCodexBrowserLogin,
+  logoutCodexAccount,
+  startCodexApiKeyLogin,
+  startCodexBrowserLogin,
+} from "./codex-admin-client.js";
 import {
   createMetric,
   createPanel,
@@ -69,7 +74,7 @@ function buildApiKeyButton(onRefresh: () => Promise<void>): HTMLButtonElement {
     if (!apiKey) return;
     void runCodexAdminAction(
       async () => {
-        await api.postCodexAccountLoginStart({ type: "apiKey", apiKey });
+        await startCodexApiKeyLogin(apiKey);
       },
       "API key login saved.",
       "Failed to save API key login.",
@@ -90,7 +95,7 @@ function buildBrowserLoginButton(
   button.addEventListener("click", () => {
     void (async () => {
       try {
-        const result = await api.postCodexAccountLoginStart({ type: "chatgpt" });
+        const result = await startCodexBrowserLogin();
         onPendingLoginIdChange(result.loginId ?? null);
         if (result.authUrl) {
           globalThis.open?.(result.authUrl, "_blank", "noopener");
@@ -117,7 +122,7 @@ function buildCancelLoginButton(
   button.addEventListener("click", () => {
     void runCodexAdminAction(
       async () => {
-        await api.postCodexAccountLoginCancel(pendingLoginId);
+        await cancelCodexBrowserLogin(pendingLoginId);
         onPendingLoginIdChange(null);
       },
       "Pending login cancelled.",
@@ -139,7 +144,7 @@ function buildLogoutButton(
   button.addEventListener("click", () => {
     void runCodexAdminAction(
       async () => {
-        await api.postCodexAccountLogout();
+        await logoutCodexAccount();
         onPendingLoginIdChange(null);
       },
       "Codex account logged out.",

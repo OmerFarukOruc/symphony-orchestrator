@@ -1,4 +1,4 @@
-import type { RecentEvent, RuntimeIssueView } from "../types";
+import type { RecentEvent, RuntimeIssueView } from "../types/runtime.js";
 import { createOutcomeBadge, STATUS_TO_OUTCOME } from "./outcome-badge";
 import { priorityBadge } from "../ui/priority-badge";
 import { statusChip } from "../ui/status-chip";

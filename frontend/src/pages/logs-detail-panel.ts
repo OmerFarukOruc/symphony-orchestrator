@@ -6,7 +6,7 @@ import {
   getEventTooltip,
   type EventCategory,
 } from "../utils/events.js";
-import type { RecentEvent } from "../types.js";
+import type { RecentEvent } from "../types/runtime.js";
 import { makeCategoryChip } from "./logs-filter-bar.js";
 
 interface KindEntry {

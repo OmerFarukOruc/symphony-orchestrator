@@ -1,5 +1,4 @@
 import type { OutcomeContext } from "../context.js";
-import { buildOutcomeView } from "../outcome-view-builder.js";
 import { nowIso } from "../views.js";
 import type { WorkerOutcomeInput, PreparedWorkerOutcome } from "./types.js";
 import { outcomeToStatus } from "./types.js";
@@ -31,16 +30,21 @@ export async function prepareWorkerOutcome(
   });
 
   const modelSelection = ctx.resolveModelSelection(latestIssue.identifier);
-  ctx.detailViews.set(
+  ctx.setDetailView(
     latestIssue.identifier,
-    buildOutcomeView(latestIssue, workspace, entry, modelSelection, {
-      status: outcome.kind,
-      attempt,
-      error: outcome.errorMessage,
-      message: outcome.errorMessage,
+    ctx.buildOutcomeView({
+      issue: latestIssue,
+      workspace,
+      entry,
+      configuredSelection: modelSelection,
+      overrides: {
+        status: outcome.kind,
+        attempt,
+        error: outcome.errorMessage,
+        message: outcome.errorMessage,
+      },
     }),
   );
-  ctx.markDirty();
 
   return { ...input, latestIssue, modelSelection };
 }

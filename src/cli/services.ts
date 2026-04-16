@@ -3,7 +3,6 @@ import { createMetricsCollector } from "../observability/metrics.js";
 import { createObservabilityHub } from "../observability/hub.js";
 import { AlertEngine } from "../alerts/engine.js";
 import type { AlertHistoryStorePort } from "../alerts/history-store.js";
-import { AlertHistoryStore } from "../persistence/sqlite/alert-history-store.js";
 import { AutomationRunner } from "../automation/runner.js";
 import { AutomationScheduler } from "../automation/scheduler.js";
 import { TypedEventBus } from "../core/event-bus.js";
@@ -18,12 +17,11 @@ import type { ConfigStore } from "../config/store.js";
 import { createDispatcher } from "../dispatch/factory.js";
 import { HttpServer } from "../http/server.js";
 import { NotificationManager } from "../notification/manager.js";
+import { NotificationCenter } from "../notification/notification-center.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { initPersistenceRuntime, type PersistenceRuntime } from "../persistence/sqlite/runtime.js";
 import { IssueConfigStore } from "../persistence/sqlite/issue-config-store.js";
-import { AutomationStore } from "../persistence/sqlite/automation-store.js";
 import type { AutomationStorePort } from "../automation/port.js";
-import { NotificationStore } from "../persistence/sqlite/notification-store.js";
 import type { NotificationStorePort } from "../notification/port.js";
 import { PathRegistry } from "../workspace/path-registry.js";
 import type { SecretsStore } from "../secrets/store.js";
@@ -32,14 +30,8 @@ import { WorkspaceManager } from "../workspace/manager.js";
 import { PrMonitorService, type PrMonitorGhClient } from "../git/pr-monitor.js";
 import { initWebhookInfrastructure, buildWebhookHandlerDeps } from "../webhook/composition.js";
 
-// Re-export for consumers that import evaluateWebhookConfig from this module
-// (e.g. tests/webhook/manual-mode.test.ts).
 export { evaluateWebhookConfig } from "../webhook/composition.js";
 export type { WebhookConfig };
-
-// ---------------------------------------------------------------------------
-// Phase types
-// ---------------------------------------------------------------------------
 
 interface InfrastructurePhase {
   persistence: PersistenceRuntime;
@@ -60,6 +52,7 @@ interface WorkspaceDispatchPhase {
 
 interface EventNotificationPhase {
   eventBus: TypedEventBus<RisolutoEventMap>;
+  notificationCenter: NotificationCenter;
   notificationStore: NotificationStorePort;
   automationStore: AutomationStorePort;
   alertHistoryStore: AlertHistoryStorePort;
@@ -147,18 +140,26 @@ function createWorkspaceAndDispatch(
 // Phase 3 — Event + Notification
 // ---------------------------------------------------------------------------
 
-function createEventAndNotification(persistence: PersistenceRuntime, logger: RisolutoLogger): EventNotificationPhase {
+function createEventAndNotification(
+  configStore: ConfigStore,
+  persistence: PersistenceRuntime,
+  logger: RisolutoLogger,
+): EventNotificationPhase {
   const eventBus = new TypedEventBus<RisolutoEventMap>();
-  const notificationStore = NotificationStore.create(persistence.db);
-  const automationStore = AutomationStore.create(persistence.db);
-  const alertHistoryStore = AlertHistoryStore.create(persistence.db);
+  const { notificationStore, automationStore, alertHistoryStore } = persistence.operator;
   const notificationManager = new NotificationManager({
     logger: logger.child({ component: "notifications" }),
     eventBus,
     store: notificationStore,
   });
+  const notificationCenter = new NotificationCenter({
+    notificationStore,
+    alertHistoryStore,
+    configStore,
+    logger: logger.child({ component: "notification-center" }),
+  });
 
-  return { eventBus, notificationStore, automationStore, alertHistoryStore, notificationManager };
+  return { eventBus, notificationCenter, notificationStore, automationStore, alertHistoryStore, notificationManager };
 }
 
 function createCodexControlPlane(
@@ -290,7 +291,7 @@ function createHttpLayer(
   logger: RisolutoLogger,
 ) {
   const { persistence, tracker, metrics, observability } = infra;
-  const { eventBus, notificationStore, automationStore, alertHistoryStore } = events;
+  const { eventBus, notificationCenter, notificationStore, automationStore, alertHistoryStore } = events;
   const { templateStore, auditLogger } = templateAudit;
   const { orchestrator, automationScheduler } = runtime;
 
@@ -303,6 +304,7 @@ function createHttpLayer(
     configOverlayStore: overlayStore,
     secretsStore,
     eventBus,
+    notificationCenter,
     notificationStore,
     automationStore,
     automationScheduler,
@@ -316,10 +318,7 @@ function createHttpLayer(
     webhookHandlerDeps: webhook.webhookUrlSet
       ? buildWebhookHandlerDeps({
           orchestrator,
-          webhookHealthTracker: webhook.webhookHealthTracker,
-          webhookInbox: webhook.webhookInbox,
-          getWebhookSecret: () => webhook.resolvedWebhookSecret.current,
-          getPreviousWebhookSecret: () => webhook.resolvedPreviousWebhookSecret,
+          webhook,
           logger,
         })
       : undefined,
@@ -355,7 +354,7 @@ export async function createServices(
   const workspace = createWorkspaceAndDispatch(configStore, infra, archiveDir, logger);
 
   // Phase 3 — Event + Notification
-  const events = createEventAndNotification(infra.persistence, logger);
+  const events = createEventAndNotification(configStore, infra.persistence, logger);
 
   // Phase 4 — Webhook
   const webhook = initWebhookInfrastructure({

@@ -8,6 +8,9 @@ export function kv(label: string, value: string): HTMLElement {
   caption.className = "text-secondary";
   caption.textContent = label;
   const strong = document.createElement("strong");
+  // Data values occupy the monospace spine per the dual-spine rule in
+  // .impeccable.md. Labels stay in the proportional spine.
+  strong.className = "text-mono";
   strong.textContent = value;
   item.append(caption, strong);
   return item;

@@ -1,4 +1,4 @@
-import type { SystemHealth } from "../types.js";
+import type { SystemHealth } from "../types/runtime.js";
 import { formatRelativeTime } from "../utils/format.js";
 
 /**

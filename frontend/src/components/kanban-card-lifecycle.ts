@@ -1,4 +1,4 @@
-import type { RecentEvent, RuntimeIssueView } from "../types";
+import type { RecentEvent, RuntimeIssueView } from "../types/runtime.js";
 import { buildLifecycleSteps, shouldCollapseLifecycle } from "../utils/lifecycle-stepper";
 import { formatElapsedCompact, formatShortTime } from "../utils/format";
 

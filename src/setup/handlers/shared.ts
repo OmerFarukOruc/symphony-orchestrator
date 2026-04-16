@@ -54,9 +54,7 @@ export interface ProjectNode {
 
 export async function lookupProject(apiKey: string, projectSlug: string): Promise<ProjectNode> {
   const data = await callLinearGraphQL(apiKey, buildProjectLookupQuery(), { projectSlug });
-  const nodes = ((data.data as Record<string, unknown>)?.projects as Record<string, unknown>)?.nodes as
-    | ProjectNode[]
-    | undefined;
+  const nodes = (data.data?.projects as Record<string, unknown> | undefined)?.nodes as ProjectNode[] | undefined;
   const project = nodes?.[0];
   if (!project) {
     throw new Error(`Project "${projectSlug}" not found`);

@@ -1,3 +1,7 @@
+// WHY divergent from src/core/notification-types.ts: the frontend and backend are
+// separate build targets that cannot share imports. These interfaces mirror the
+// wire-format shapes returned by the /api/v1/notifications endpoint. The backend's
+// NotificationSeverity type alias is inlined here as a union to avoid coupling.
 export interface NotificationDeliveryFailure {
   channel: string;
   error: string;

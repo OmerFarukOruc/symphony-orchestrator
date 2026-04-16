@@ -1,23 +1,13 @@
-import {
-  updateIssueModelSelection,
-  resolveModelSelection as resolveModelSelectionFromConfig,
-} from "./model-selection.js";
+import { updateIssueModelSelection } from "./model-selection.js";
 import { sortIssuesForDispatch } from "./dispatch.js";
 import { Watchdog } from "./watchdog.js";
+import { seedCompletedClaims } from "./lifecycle.js";
+import type { AttemptDetailView, IssueDetailView } from "./snapshot-builder.js";
 import {
-  reconcileRunningAndRetrying as reconcileRunningAndRetryingState,
-  refreshQueueViews as refreshQueueViewsState,
-  seedCompletedClaims,
-} from "./lifecycle.js";
-import { launchAvailableWorkers as launchAvailableWorkersState } from "./worker-launcher.js";
-import {
-  buildAttemptDetail,
-  type AttemptDetailView,
-  buildIssueDetail,
-  type IssueDetailView,
-  buildSnapshot,
-} from "./snapshot-builder.js";
-import { buildCtx, cleanupTerminalWorkspaces, type OrchestratorState } from "./orchestrator-delegates.js";
+  createRunLifecycleCoordinator,
+  type OrchestratorState,
+  type RunLifecycleCoordinator,
+} from "./run-lifecycle-coordinator.js";
 import type { OrchestratorContext } from "./context.js";
 import { runStartupRecovery } from "./recovery.js";
 import type { OrchestratorPort } from "./port.js";
@@ -32,6 +22,7 @@ import type { ObservabilityHealthStatus } from "../observability/health.js";
 
 export class Orchestrator implements OrchestratorPort {
   private readonly _state: OrchestratorState;
+  private readonly runtimeCoordinator: RunLifecycleCoordinator;
   private readonly _ctx: OrchestratorContext;
   private tickInFlight = false;
   private nextTickTimer: NodeJS.Timeout | null = null;
@@ -66,9 +57,6 @@ export class Orchestrator implements OrchestratorPort {
       stallEvents: [],
       markDirty,
     };
-    // Build once — closures inside the context reference state directly,
-    // so mutations are visible without rebuilding the context object.
-    this._ctx = buildCtx(this._state, this.deps);
     this.watchdog = new Watchdog({
       getRunningCount: () => this._state.runningEntries.size,
       getQueuedCount: () => this._state.queuedViews.length,
@@ -76,6 +64,18 @@ export class Orchestrator implements OrchestratorPort {
       onHealthUpdated: () => this.markStateDirty(),
       logger: deps.logger,
     });
+    this.runtimeCoordinator = createRunLifecycleCoordinator(this._state, this.deps, {
+      getSystemHealth: () => {
+        const health = this.watchdog.getHealth();
+        return {
+          status: health.status,
+          checkedAt: health.checkedAt,
+          runningCount: health.runningCount,
+          message: health.message,
+        };
+      },
+    });
+    this._ctx = this.runtimeCoordinator.getContext();
     this.deps.configStore.subscribe(() => {
       this.markStateDirty();
     });
@@ -104,7 +104,7 @@ export class Orchestrator implements OrchestratorPort {
       launchWorker: (issue, attempt, options) => this._ctx.launchWorker(issue, attempt, options),
       logger: this.deps.logger,
     });
-    await cleanupTerminalWorkspaces(this._state, this.deps);
+    await this.runtimeCoordinator.cleanupTerminalWorkspaces();
     seedCompletedClaims({
       claimedIssueIds: this._state.claimedIssueIds,
       completedViews: this._state.completedViews,
@@ -224,23 +224,22 @@ export class Orchestrator implements OrchestratorPort {
       return this.cachedSnapshot;
     }
 
-    const cb = this.snapshotCallbacks();
-    const snapshot = buildSnapshot({ attemptStore: this.deps.attemptStore }, cb);
+    const snapshot = this.runtimeCoordinator.buildSnapshot();
     this.cachedSnapshot = {
       revision: this.stateRevision,
-      serializedState: serializeSnapshot(snapshot as RuntimeSnapshot & Record<string, unknown>),
+      serializedState: serializeSnapshot(snapshot),
       snapshot,
     };
     return this.cachedSnapshot;
   }
 
   getIssueDetail(identifier: string): IssueDetailView | null {
-    const detail = buildIssueDetail(identifier, { attemptStore: this.deps.attemptStore }, this.snapshotCallbacks());
+    const detail = this.runtimeCoordinator.buildIssueDetail(identifier);
     return detail ? { ...detail } : null;
   }
 
   getAttemptDetail(attemptId: string): AttemptDetailView | null {
-    const detail = buildAttemptDetail(attemptId, { attemptStore: this.deps.attemptStore });
+    const detail = this.runtimeCoordinator.buildAttemptDetail(attemptId);
     return detail ? { ...detail } : null;
   }
 
@@ -370,12 +369,12 @@ export class Orchestrator implements OrchestratorPort {
       if (this._ctx.detectAndKillStalled().killed > 0) {
         this.markStateDirty();
       }
-      if (await reconcileRunningAndRetryingState(this._ctx)) {
+      if (await this.runtimeCoordinator.reconcileRunningAndRetrying()) {
         this.markStateDirty();
       }
       const candidateIssues = sortIssuesForDispatch(await this.deps.tracker.fetchCandidateIssues());
-      await refreshQueueViewsState(this._ctx, candidateIssues);
-      await launchAvailableWorkersState(this._ctx, candidateIssues);
+      await this.runtimeCoordinator.refreshQueueViews(candidateIssues);
+      await this.runtimeCoordinator.launchAvailableWorkers(candidateIssues);
       metrics.orchestratorPollsTotal.increment({ status: "ok" });
       observer?.recordOperation({
         metric: "lifecycle_poll",
@@ -422,41 +421,6 @@ export class Orchestrator implements OrchestratorPort {
       this.refreshQueued = false;
       if (this._state.running) this.scheduleTick(delayMs);
     }
-  }
-
-  private snapshotCallbacks() {
-    return {
-      getConfig: () => this.deps.configStore.getConfig(),
-      resolveModelSelection: (identifier: string) =>
-        resolveModelSelectionFromConfig(this._state.issueModelOverrides, this.deps.configStore.getConfig(), identifier),
-      getDetailViews: () => this._state.detailViews,
-      getCompletedViews: () => this._state.completedViews,
-      getRunningEntries: () => this._state.runningEntries,
-      getRetryEntries: () => this._state.retryEntries,
-      getQueuedViews: () => this._state.queuedViews,
-      getRecentEvents: () => this._state.recentEvents,
-      getRateLimits: () => this._state.rateLimits,
-      getCodexTotals: () => this._state.codexTotals,
-      getStallEvents: () => this._state.stallEvents,
-      getTemplateOverride: (identifier: string) => this._state.issueTemplateOverrides.get(identifier) ?? null,
-      getTemplateName: (templateId: string) => this.deps.templateStore?.get(templateId)?.name ?? null,
-      getSystemHealth: () => {
-        const h = this.watchdog.getHealth();
-        return { status: h.status, checkedAt: h.checkedAt, runningCount: h.runningCount, message: h.message };
-      },
-      getWebhookHealth: () => {
-        const tracker = this.deps.webhookHealthTracker;
-        if (!tracker) return undefined;
-        const h = tracker.getHealth();
-        return {
-          status: h.status,
-          effectiveIntervalMs: h.effectiveIntervalMs,
-          stats: h.stats,
-          lastDeliveryAt: h.lastDeliveryAt,
-          lastEventType: h.lastEventType,
-        };
-      },
-    };
   }
 }
 

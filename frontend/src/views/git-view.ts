@@ -2,14 +2,10 @@ import { api } from "../api";
 import { createEmptyState } from "../components/empty-state";
 import { createPageHeader } from "../components/page-header";
 import { router } from "../router";
-import type {
-  ActiveBranchView,
-  GitCommitView,
-  GitContextResponse,
-  GitPullView,
-  GitRepoView,
-  TrackedPrRecord,
-} from "../types";
+import { getRuntimeClient } from "../state/runtime-client.js";
+import type { ActiveBranchView, GitCommitView, GitContextResponse, GitPullView, GitRepoView } from "../types/setup.js";
+import type { TrackedPrRecord } from "../types/config.js";
+import { statusDot as sharedStatusDot } from "../ui/status-chip";
 import { el } from "../utils/dom";
 import { registerPageCleanup } from "../utils/page";
 import { formatRelativeTime, formatTimestamp } from "../utils/format";
@@ -37,7 +33,9 @@ function badge(text: string, variant: string): HTMLSpanElement {
 }
 
 function statusDot(status: string): HTMLSpanElement {
-  return el("span", `git-status-dot git-status-dot--${status}`);
+  // Uses the canonical statusDot primitive but with the git-scoped base class
+  // so git-view.css continues to own the visual treatment.
+  return sharedStatusDot(status, "git-status-dot") as HTMLSpanElement;
 }
 
 function sortTrackedPrs(prs: TrackedPrRecord[]): TrackedPrRecord[] {
@@ -332,46 +330,20 @@ function buildCommitRail(data: GitContextResponse): HTMLElement[] {
   return sections;
 }
 
-function buildQuickLinksRail(githubAvailable: boolean): HTMLElement[] {
-  const items: HTMLElement[] = [];
-
+function buildGithubStatusRail(githubAvailable: boolean): HTMLElement | null {
+  if (githubAvailable) {
+    return null;
+  }
   const ghSection = el("div", "git-rail-section git-rail-section--status");
   ghSection.append(el("h3", "git-rail-title", "GitHub API"));
-  if (githubAvailable) {
-    const connected = el("div", "git-gh-status git-gh-status--ok");
-    connected.append(el("span", undefined, "✓"), el("span", undefined, "Connected"));
-    ghSection.append(connected);
-  } else {
-    ghSection.append(
-      el(
-        "p",
-        "git-empty-hint",
-        "No GitHub token found. Add a GITHUB_TOKEN under Settings \u2192 Credentials to unlock pull requests, commits, and repo details.",
-      ),
-    );
-  }
-  items.push(ghSection);
-
-  const linksSection = el("div", "git-rail-section git-rail-section--actions");
-  linksSection.append(el("h3", "git-rail-title", "Quick links"));
-  const links = el("div", "git-quick-links");
-  const queueBtn = el("button", "git-quick-link-btn", "View queue board");
-  queueBtn.type = "button";
-  queueBtn.classList.add("is-primary-action");
-  queueBtn.addEventListener("click", () => router.navigate("/queue"));
-  links.append(queueBtn);
-  const configBtn = el("button", "git-quick-link-btn", "Advanced settings");
-  configBtn.type = "button";
-  configBtn.addEventListener("click", () => router.navigate("/settings#devtools"));
-  links.append(configBtn);
-  const credentialsBtn = el("button", "git-quick-link-btn", "Manage credentials");
-  credentialsBtn.type = "button";
-  credentialsBtn.addEventListener("click", () => router.navigate("/settings#credentials"));
-  links.append(credentialsBtn);
-  linksSection.append(links);
-  items.push(linksSection);
-
-  return items;
+  ghSection.append(
+    el(
+      "p",
+      "git-empty-hint",
+      "No GitHub token found. Add a GITHUB_TOKEN under Settings \u2192 Credentials to unlock pull requests, commits, and repo details.",
+    ),
+  );
+  return ghSection;
 }
 
 function countOpenPrs(data: GitContextResponse): number {
@@ -391,7 +363,7 @@ function buildSummaryStrip(data: GitContextResponse, trackedPrs: TrackedPrRecord
     { label: "Open PRs", value: String(countOpenPrs(data)) },
     { label: "Tracked PRs", value: String(trackedPrs.length) },
     { label: "Merged", value: String(countTrackedPrs(trackedPrs, "merged")) },
-    { label: "GitHub", value: data.githubAvailable ? "Connected" : "No token" },
+    { label: "GitHub", value: data.githubAvailable ? "connected" : "no token" },
   ];
   for (const { label, value } of items) {
     const item = el("div", "summary-strip-item");
@@ -441,8 +413,9 @@ function renderGitContext(page: HTMLElement, data: GitPageData): void {
   for (const commitSection of buildCommitRail(data.context)) {
     activityRail.append(commitSection);
   }
-  for (const railItem of buildQuickLinksRail(data.context.githubAvailable)) {
-    activityRail.append(railItem);
+  const ghStatusRail = buildGithubStatusRail(data.context.githubAvailable);
+  if (ghStatusRail) {
+    activityRail.append(ghStatusRail);
   }
 
   layout.append(mainPanel, activityRail);
@@ -450,11 +423,17 @@ function renderGitContext(page: HTMLElement, data: GitPageData): void {
 }
 
 export function createGitPage(): HTMLElement {
+  const runtimeClient = getRuntimeClient();
   const page = el("div", "page git-page fade-in");
+
+  const refreshBtn = el("button", "mc-button is-sm is-ghost", "Refresh (r)");
+  refreshBtn.type = "button";
+  refreshBtn.title = "Refresh repository context (r)";
 
   const header = createPageHeader(
     "Git & Repositories",
     "Repository context, active branches, pull requests, and recent commits.",
+    { actions: [refreshBtn] },
   );
 
   const body = el("section", "git-page-body");
@@ -492,14 +471,31 @@ export function createGitPage(): HTMLElement {
     }
   }
 
+  refreshBtn.addEventListener("click", () => void fetchAndRender());
+
+  function handleKeydown(event: KeyboardEvent): void {
+    const isTyping =
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement ||
+      (event.target instanceof HTMLElement && event.target.isContentEditable);
+    if (!isTyping && event.key.toLowerCase() === "r" && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      void fetchAndRender();
+    }
+  }
+  globalThis.addEventListener("keydown", handleKeydown);
+
   void fetchAndRender();
 
   // Re-fetch when state updates (branch/status may change)
-  const handler = (): void => {
+  const onState = (): void => {
     if (currentData) void fetchAndRender();
   };
-  window.addEventListener("state:update", handler);
-  registerPageCleanup(page, () => window.removeEventListener("state:update", handler));
+  const unsubscribeState = runtimeClient.subscribeState(onState);
+  registerPageCleanup(page, () => {
+    unsubscribeState();
+    globalThis.removeEventListener("keydown", handleKeydown);
+  });
 
   return page;
 }

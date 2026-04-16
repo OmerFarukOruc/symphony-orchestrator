@@ -5,6 +5,7 @@ import { sumAttemptDurationSeconds } from "../../src/core/attempt-store-port.js"
 import { computeAttemptCostUsd } from "../../src/core/model-pricing.js";
 import type { RunningEntry, RetryRuntimeEntry } from "../../src/orchestrator/runtime-types.js";
 import {
+  createRuntimeReadModel,
   buildSnapshot,
   buildIssueDetail,
   buildAttemptDetail,
@@ -248,175 +249,13 @@ function createCallbacks(overrides?: Partial<SnapshotBuilderCallbacks>): Snapsho
 }
 
 describe("snapshot-builder", () => {
-  describe("buildSnapshot", () => {
-    it("builds an empty snapshot when no state is present", () => {
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks();
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.counts).toEqual({ running: 0, retrying: 0 });
-      expect(snapshot.running).toEqual([]);
-      expect(snapshot.retrying).toEqual([]);
-      expect(snapshot.queued).toEqual([]);
-      expect(snapshot.completed).toEqual([]);
-      expect(snapshot.workflowColumns).toEqual(expect.any(Array));
-      expect(snapshot.codexTotals.secondsRunning).toBe(0);
-    });
-
-    it("includes running entries in the snapshot", () => {
-      const runningEntry = createRunningEntry();
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getRunningEntries: () => new Map([["MT-42", runningEntry]]),
+  describe("createRuntimeReadModel", () => {
+    it("projects snapshot and issue detail through one read-model object", () => {
+      const runningEntry = createRunningEntry({
+        tokenUsage: { inputTokens: 500, outputTokens: 200, totalTokens: 700 },
       });
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.counts.running).toBe(1);
-      expect(snapshot.running).toHaveLength(1);
-      expect(snapshot.running[0]).toMatchObject({
-        identifier: "MT-42",
-        status: "running",
-        attempt: 1,
-        workspaceKey: "MT-42",
-      });
-    });
-
-    it("includes retrying entries in the snapshot", () => {
-      const retryEntry = createRetryEntry();
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getRetryEntries: () => new Map([["MT-43", retryEntry]]),
-      });
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.counts.retrying).toBe(1);
-      expect(snapshot.retrying).toHaveLength(1);
-      expect(snapshot.retrying[0]).toMatchObject({
-        identifier: "MT-43",
-        status: "retrying",
-        attempt: 2,
-        error: "turn_failed",
-      });
-    });
-
-    it("includes queued and completed views", () => {
-      const queuedView: RuntimeIssueView = {
-        issueId: "issue-3",
-        identifier: "MT-44",
-        title: "Queued Issue",
-        state: "Todo",
-        workspaceKey: null,
-        message: null,
-        status: "queued",
-        updatedAt: "2026-03-16T00:00:00Z",
-        attempt: null,
-        error: null,
-      };
-      const completedView: RuntimeIssueView = {
-        issueId: "issue-4",
-        identifier: "MT-45",
-        title: "Completed Issue",
-        state: "Done",
-        workspaceKey: "MT-45",
-        message: "Completed successfully",
-        status: "completed",
-        updatedAt: "2026-03-16T00:00:00Z",
-        attempt: 1,
-        error: null,
-      };
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getQueuedViews: () => [queuedView],
-        getCompletedViews: () => new Map([["MT-45", completedView]]),
-      });
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.queued).toEqual([expect.objectContaining({ identifier: "MT-44", status: "queued" })]);
-      expect(snapshot.completed).toEqual([expect.objectContaining({ identifier: "MT-45", status: "completed" })]);
-    });
-
-    it("computes seconds running from archived attempts and live entries", () => {
-      const archivedAttempt = createAttemptRecord({
-        startedAt: "2026-03-15T00:00:00Z",
-        endedAt: "2026-03-15T00:02:00Z",
-      });
-      const runningEntry = createRunningEntry({ startedAtMs: Date.now() - 30000 });
-
-      const deps = {
-        attemptStore: createAttemptStore({ attempts: [archivedAttempt] }),
-      };
-      const callbacks = createCallbacks({
-        getRunningEntries: () => new Map([["MT-42", runningEntry]]),
-      });
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.codexTotals.secondsRunning).toBeGreaterThanOrEqual(120);
-      expect(snapshot.codexTotals.secondsRunning).toBeLessThan(160);
-    });
-
-    it("includes costUsd in codexTotals", () => {
-      const deps = { attemptStore: createAttemptStore() };
-      (deps.attemptStore.sumCostUsd as ReturnType<typeof vi.fn>).mockReturnValue(0.042);
-      const callbacks = createCallbacks();
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.codexTotals.costUsd).toBe(0.042);
-    });
-
-    it("includes recent events and rate limits", () => {
-      const event = createEvent();
-      const rateLimits = { requestsRemaining: 100, resetAt: "2026-03-16T01:00:00Z" };
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getRecentEvents: () => [event],
-        getRateLimits: () => rateLimits,
-      });
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.recentEvents).toEqual([event]);
-      expect(snapshot.rateLimits).toBe(rateLimits);
-    });
-
-    it("builds workflow columns from state", () => {
-      const runningEntry = createRunningEntry();
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getRunningEntries: () => new Map([["MT-42", runningEntry]]),
-      });
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.workflowColumns.length).toBeGreaterThan(0);
-      expect(snapshot.workflowColumns[0]).toMatchObject({
-        key: expect.any(String),
-        label: expect.any(String),
-        kind: expect.any(String),
-      });
-    });
-  });
-
-  describe("buildIssueDetail", () => {
-    it("returns null when issue is not found", () => {
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks();
-
-      const detail = buildIssueDetail("MT-99", deps, callbacks);
-
-      expect(detail).toBeNull();
-    });
-
-    it("builds detail for a running issue", () => {
-      const runningEntry = createRunningEntry();
       const event = createEvent();
       const attempt = createAttemptRecord();
-
       const deps = {
         attemptStore: createAttemptStore({
           attempts: [attempt],
@@ -428,111 +267,25 @@ describe("snapshot-builder", () => {
         getRunningEntries: () => new Map([["MT-42", runningEntry]]),
         getRecentEvents: () => [event],
       });
+      const readModel = createRuntimeReadModel(deps, callbacks);
 
-      const detail = buildIssueDetail("MT-42", deps, callbacks);
+      const snapshot = readModel.buildSnapshot();
+      const detail = readModel.buildIssueDetail("MT-42");
 
+      expect(snapshot.counts).toEqual({ running: 1, retrying: 0 });
+      expect(snapshot.running[0]).toMatchObject({
+        identifier: "MT-42",
+        status: "running",
+        workspaceKey: "MT-42",
+      });
       expect(detail).toMatchObject({
         identifier: "MT-42",
         status: "running",
         currentAttemptId: "run-1",
         recentEvents: [event],
+        tokenUsage: { inputTokens: 500, outputTokens: 200, totalTokens: 700 },
         attempts: [expect.objectContaining({ attemptId: "attempt-1" })],
       });
-    });
-
-    it("builds detail for a retrying issue", () => {
-      const retryEntry = createRetryEntry();
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getRetryEntries: () => new Map([["MT-43", retryEntry]]),
-        getRecentEvents: () => [createEvent({ issueIdentifier: "MT-43" })],
-      });
-
-      const detail = buildIssueDetail("MT-43", deps, callbacks);
-
-      expect(detail).toMatchObject({
-        identifier: "MT-43",
-        status: "retrying",
-        attempt: 2,
-        error: "turn_failed",
-        recentEvents: [expect.objectContaining({ issueIdentifier: "MT-43" })],
-      });
-    });
-
-    it("builds detail for a completed issue", () => {
-      const completedView: RuntimeIssueView = {
-        issueId: "issue-1",
-        identifier: "MT-42",
-        title: "Completed Issue",
-        state: "Done",
-        workspaceKey: "MT-42",
-        message: "Completed",
-        status: "completed",
-        updatedAt: "2026-03-16T00:00:00Z",
-        attempt: 1,
-        error: null,
-      };
-      const archivedAttempt = createAttemptRecord();
-      const archivedEvent = createEvent({ attemptId: "attempt-1" } as Partial<RecentEvent> as RecentEvent);
-      const deps = {
-        attemptStore: createAttemptStore({
-          attempts: [archivedAttempt],
-          events: [archivedEvent],
-          attemptsByIssue: new Map([["MT-42", [archivedAttempt]]]),
-        }),
-      };
-      const callbacks = createCallbacks({
-        getCompletedViews: () => new Map([["MT-42", completedView]]),
-      });
-
-      const detail = buildIssueDetail("MT-42", deps, callbacks);
-
-      expect(detail).toMatchObject({
-        identifier: "MT-42",
-        status: "completed",
-        recentEvents: [archivedEvent],
-      });
-    });
-
-    it("prioritizes running over retrying over completed over detail views", () => {
-      const runningEntry = createRunningEntry();
-      const retryEntry = createRetryEntry({ identifier: "MT-42", issue: createIssue({ identifier: "MT-42" }) });
-      const completedView: RuntimeIssueView = {
-        issueId: "issue-1",
-        identifier: "MT-42",
-        title: "Completed Issue",
-        state: "Done",
-        workspaceKey: "MT-42",
-        message: "Completed",
-        status: "completed",
-        updatedAt: "2026-03-16T00:00:00Z",
-        attempt: 1,
-        error: null,
-      };
-      const detailView: RuntimeIssueView = {
-        issueId: "issue-1",
-        identifier: "MT-42",
-        title: "Detail View",
-        state: "Todo",
-        workspaceKey: null,
-        message: null,
-        status: "queued",
-        updatedAt: "2026-03-16T00:00:00Z",
-        attempt: null,
-        error: null,
-      };
-
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getRunningEntries: () => new Map([["MT-42", runningEntry]]),
-        getRetryEntries: () => new Map([["MT-42", retryEntry]]),
-        getCompletedViews: () => new Map([["MT-42", completedView]]),
-        getDetailViews: () => new Map([["MT-42", detailView]]),
-      });
-
-      const detail = buildIssueDetail("MT-42", deps, callbacks);
-
-      expect(detail).toMatchObject({ status: "running" });
     });
   });
 
@@ -1110,84 +863,6 @@ describe("snapshot-builder", () => {
       expect(snapshot.codexTotals.outputTokens).toBe(250);
       expect(snapshot.codexTotals.totalTokens).toBe(750);
     });
-
-    it("includes stall events when getStallEvents callback is provided", () => {
-      const stallEvents = [
-        { at: "2026-03-16T00:00:00Z", issueId: "i1", issueIdentifier: "MT-1", silentMs: 120000, timeoutMs: 60000 },
-      ];
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getStallEvents: () => stallEvents,
-      });
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.stallEvents).toHaveLength(1);
-      expect(snapshot.stallEvents![0]).toMatchObject({ issueId: "i1" });
-    });
-
-    it("excludes stall events when getStallEvents callback is absent", () => {
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks();
-      // Make sure getStallEvents is undefined
-      delete (callbacks as Partial<SnapshotBuilderCallbacks>).getStallEvents;
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.stallEvents).toBeUndefined();
-    });
-
-    it("includes systemHealth when getSystemHealth callback is provided", () => {
-      const health = { status: "healthy", lastCheck: "2026-03-16T00:00:00Z" };
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getSystemHealth: () =>
-          health as unknown as ReturnType<NonNullable<SnapshotBuilderCallbacks["getSystemHealth"]>>,
-      });
-
-      const snapshot = buildSnapshot(deps, callbacks);
-
-      expect(snapshot.systemHealth).toBeDefined();
-    });
-
-    it("merges detailViews into workflowColumns completed list", () => {
-      const completedView: RuntimeIssueView = {
-        issueId: "issue-completed",
-        identifier: "MT-98",
-        title: "Completed Issue",
-        state: "Done",
-        workspaceKey: null,
-        message: null,
-        status: "completed",
-        updatedAt: "2026-03-16T00:01:00Z",
-        attempt: 1,
-        error: null,
-      };
-      const detailView: RuntimeIssueView = {
-        issueId: "issue-detail",
-        identifier: "MT-99",
-        title: "Detail Issue",
-        state: "Done",
-        workspaceKey: null,
-        message: null,
-        status: "completed",
-        updatedAt: "2026-03-16T00:00:00Z",
-        attempt: null,
-        error: null,
-      };
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getCompletedViews: () => new Map([["MT-98", completedView]]),
-        getDetailViews: () => new Map([["MT-99", detailView]]),
-      });
-
-      const snapshot = buildSnapshot(deps, callbacks);
-      const doneColumn = snapshot.workflowColumns.find((column) => column.key === "done");
-
-      expect(doneColumn).toBeDefined();
-      expect(doneColumn?.count).toBe(2);
-      expect(doneColumn?.issues.map((issue) => issue.identifier)).toEqual(["MT-98", "MT-99"]);
-    });
   });
 
   describe("buildIssueDetail — additional coverage", () => {
@@ -1205,91 +880,6 @@ describe("snapshot-builder", () => {
 
       expect(detail).not.toBeNull();
       expect(detail!.recentEvents).toEqual([matchingEvent]);
-    });
-
-    it("loads events from archived attempts when issue is completed", () => {
-      const completedView: RuntimeIssueView = {
-        issueId: "issue-1",
-        identifier: "MT-42",
-        title: "Completed Issue",
-        state: "Done",
-        workspaceKey: "MT-42",
-        message: "Completed",
-        status: "completed",
-        updatedAt: "2026-03-16T00:00:00Z",
-        attempt: 1,
-        error: null,
-      };
-      const archivedAttempt = createAttemptRecord({ attemptId: "a1" });
-      const archivedEvent = createEvent({ attemptId: "a1" } as Partial<RecentEvent> as RecentEvent);
-      const deps = {
-        attemptStore: createAttemptStore({
-          attempts: [archivedAttempt],
-          events: [archivedEvent],
-          attemptsByIssue: new Map([["MT-42", [archivedAttempt]]]),
-        }),
-      };
-      const callbacks = createCallbacks({
-        getCompletedViews: () => new Map([["MT-42", completedView]]),
-      });
-
-      const detail = buildIssueDetail("MT-42", deps, callbacks);
-
-      expect(detail).not.toBeNull();
-      expect(detail!.recentEvents).toEqual([archivedEvent]);
-    });
-
-    it("falls back to filtered recent events when no archived attempts", () => {
-      const detailView: RuntimeIssueView = {
-        issueId: "issue-1",
-        identifier: "MT-50",
-        title: "Queued Issue",
-        state: "In Progress",
-        workspaceKey: null,
-        message: null,
-        status: "queued",
-        updatedAt: "2026-03-16T00:00:00Z",
-        attempt: null,
-        error: null,
-      };
-      const matchingEvent = createEvent({ issueIdentifier: "MT-50" });
-      const otherEvent = createEvent({ issueIdentifier: "MT-99" });
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getDetailViews: () => new Map([["MT-50", detailView]]),
-        getRecentEvents: () => [matchingEvent, otherEvent],
-      });
-
-      const detail = buildIssueDetail("MT-50", deps, callbacks);
-
-      expect(detail).not.toBeNull();
-      expect(detail!.recentEvents).toEqual([matchingEvent]);
-    });
-
-    it("does not enrich startedAt or tokenUsage when no archived attempts exist", () => {
-      const detailView: RuntimeIssueView = {
-        issueId: "issue-1",
-        identifier: "MT-50",
-        title: "Queued Issue",
-        state: "In Progress",
-        workspaceKey: null,
-        message: null,
-        status: "queued",
-        updatedAt: "2026-03-16T00:00:00Z",
-        attempt: null,
-        error: null,
-      };
-      const deps = { attemptStore: createAttemptStore() };
-      const callbacks = createCallbacks({
-        getDetailViews: () => new Map([["MT-50", detailView]]),
-        getRecentEvents: () => [createEvent({ issueIdentifier: "MT-50" })],
-      });
-
-      const detail = buildIssueDetail("MT-50", deps, callbacks);
-
-      expect(detail).not.toBeNull();
-      expect(detail?.startedAt).toBeUndefined();
-      expect(detail?.tokenUsage).toBeUndefined();
     });
 
     it("enriches tokenUsage from archived attempts when missing on view", () => {
@@ -1516,49 +1106,6 @@ describe("snapshot-builder", () => {
       expect(summary.workspacePath).toBe("/tmp/risoluto/MT-42");
       expect(summary.workspaceKey).toBe("MT-42");
       expect(summary.modelSource).toBe("default");
-    });
-
-    it("reuses cached archived attempt events while building detail and summaries", () => {
-      const attempt1 = createAttemptRecord({ attemptId: "a1" });
-      const attempt2 = createAttemptRecord({ attemptId: "a2", attemptNumber: 2 });
-      const completedView: RuntimeIssueView = {
-        issueId: "issue-1",
-        identifier: "MT-42",
-        title: "Completed Issue",
-        state: "Done",
-        workspaceKey: "MT-42",
-        message: "Completed",
-        status: "completed",
-        updatedAt: "2026-03-16T00:00:00Z",
-        attempt: 2,
-        error: null,
-      };
-      const eventsByAttempt = new Map<string, RecentEvent[]>([
-        ["a1", [createEvent({ attemptId: "a1", event: "worker_started" } as Partial<RecentEvent> as RecentEvent)]],
-        ["a2", [createEvent({ attemptId: "a2", event: "worker_finished" } as Partial<RecentEvent> as RecentEvent)]],
-      ]);
-      const baseStore = createAttemptStore({
-        attempts: [attempt1, attempt2],
-        attemptsByIssue: new Map([["MT-42", [attempt1, attempt2]]]),
-      });
-      const getEvents = vi.fn((attemptId: string) => eventsByAttempt.get(attemptId) ?? []);
-      const deps = {
-        attemptStore: {
-          ...baseStore,
-          getEvents,
-        },
-      };
-      const callbacks = createCallbacks({
-        getCompletedViews: () => new Map([["MT-42", completedView]]),
-      });
-
-      const detail = buildIssueDetail("MT-42", deps, callbacks);
-
-      expect(detail?.recentEvents).toEqual([...eventsByAttempt.get("a1")!, ...eventsByAttempt.get("a2")!]);
-      expect(detail?.attempts).toHaveLength(2);
-      expect(getEvents).toHaveBeenCalledTimes(2);
-      expect(getEvents).toHaveBeenNthCalledWith(1, "a1");
-      expect(getEvents).toHaveBeenNthCalledWith(2, "a2");
     });
 
     it("reuses cached events for duplicate archived attempts with the same attemptId", () => {

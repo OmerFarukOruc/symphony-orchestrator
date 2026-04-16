@@ -6,7 +6,7 @@
  * implementation.
  */
 
-import type { AuditEntry, AuditRecord, AuditQueryOptions } from "./logger.js";
+import type { AuditEntry, AuditRecord, AuditQueryOptions } from "./types.js";
 
 export interface AuditLoggerPort {
   /** Record an arbitrary mutation entry in the audit log. */

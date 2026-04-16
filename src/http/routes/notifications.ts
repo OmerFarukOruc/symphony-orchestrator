@@ -15,7 +15,11 @@ export function registerNotificationRoutes(app: Express, deps: HttpRouteDeps): v
   app
     .route("/api/v1/notifications")
     .get(async (req, res) => {
-      await handleListNotifications({ notificationStore: deps.notificationStore }, req, res);
+      await handleListNotifications(
+        { notificationStore: deps.notificationStore, notificationCenter: deps.notificationCenter },
+        req,
+        res,
+      );
     })
     .all((_req, res) => {
       methodNotAllowed(res);
@@ -24,7 +28,11 @@ export function registerNotificationRoutes(app: Express, deps: HttpRouteDeps): v
   app
     .route("/api/v1/notifications/:notification_id/read")
     .post(async (req, res) => {
-      await handleMarkNotificationRead({ notificationStore: deps.notificationStore }, req, res);
+      await handleMarkNotificationRead(
+        { notificationStore: deps.notificationStore, notificationCenter: deps.notificationCenter },
+        req,
+        res,
+      );
     })
     .all((_req, res) => {
       methodNotAllowed(res, ["POST"]);
@@ -33,7 +41,11 @@ export function registerNotificationRoutes(app: Express, deps: HttpRouteDeps): v
   app
     .route("/api/v1/notifications/read-all")
     .post(async (req, res) => {
-      await handleMarkAllNotificationsRead({ notificationStore: deps.notificationStore }, req, res);
+      await handleMarkAllNotificationsRead(
+        { notificationStore: deps.notificationStore, notificationCenter: deps.notificationCenter },
+        req,
+        res,
+      );
     })
     .all((_req, res) => {
       methodNotAllowed(res, ["POST"]);
@@ -42,7 +54,11 @@ export function registerNotificationRoutes(app: Express, deps: HttpRouteDeps): v
   app
     .route("/api/v1/notifications/test")
     .post(async (req, res) => {
-      await handleTestSlackNotification({ configStore: deps.configStore, logger: deps.logger }, req, res);
+      await handleTestSlackNotification(
+        { configStore: deps.configStore, logger: deps.logger, notificationCenter: deps.notificationCenter },
+        req,
+        res,
+      );
     })
     .all((_req, res) => {
       methodNotAllowed(res, ["POST"]);
@@ -82,7 +98,11 @@ export function registerNotificationRoutes(app: Express, deps: HttpRouteDeps): v
   app
     .route("/api/v1/alerts/history")
     .get(async (req, res) => {
-      await handleListAlertHistory({ alertHistoryStore: deps.alertHistoryStore }, req, res);
+      await handleListAlertHistory(
+        { alertHistoryStore: deps.alertHistoryStore, notificationCenter: deps.notificationCenter },
+        req,
+        res,
+      );
     })
     .all((_req, res) => {
       methodNotAllowed(res);

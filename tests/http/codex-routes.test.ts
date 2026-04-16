@@ -62,6 +62,71 @@ afterEach(() => {
 });
 
 describe("Codex admin routes", () => {
+  it("returns an aggregated Codex admin snapshot from the host-side control plane", async () => {
+    const codexControlPlane = {
+      getCapabilities: vi.fn().mockResolvedValue({
+        connectedAt: "2026-04-08T10:55:04+03:00",
+        initializationError: null,
+        methods: { "thread/list": "supported", "model/list": "supported" },
+        notifications: { "app/list/updated": "enabled" },
+      }),
+      request: vi.fn().mockImplementation(async (method: string) => {
+        switch (method) {
+          case "account/read":
+            return { account: { type: "chatgpt", email: "user@example.com" }, requiresOpenaiAuth: true };
+          case "account/rateLimits/read":
+            return { rateLimits: { limitId: "codex" }, rateLimitsByLimitId: { codex: { limitId: "codex" } } };
+          case "model/list":
+            return { data: [{ id: "gpt-5.4", displayName: "GPT-5.4", isDefault: true }] };
+          case "thread/list":
+            return { data: [{ id: "thr-1", name: "Main thread" }], nextCursor: null };
+          case "thread/loaded/list":
+            return { data: ["thr-1"] };
+          case "experimentalFeature/list":
+            return { data: [{ name: "fast-mode", enabled: true }], nextCursor: null };
+          case "collaborationMode/list":
+            return [{ id: "default", displayName: "Default" }];
+          case "mcpServerStatus/list":
+            return { data: [{ name: "filesystem", status: "connected" }], nextCursor: null };
+          default:
+            throw new Error(`unexpected method ${method}`);
+        }
+      }),
+      listPendingUserInputRequests: vi.fn().mockReturnValue([
+        {
+          requestId: "req-1",
+          method: "item/tool/requestUserInput",
+          threadId: "thr-1",
+          turnId: "turn-1",
+          questions: [{ id: "choice", question: "Pick one" }],
+          createdAt: "2026-04-08T10:55:04+03:00",
+        },
+      ]),
+    };
+
+    await withServer(
+      (app) =>
+        registerCodexRoutes(app, {
+          orchestrator: makeOrchestrator() as never,
+          codexControlPlane: codexControlPlane as never,
+          logger: createMockLogger(),
+        }),
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/api/v1/codex/admin`);
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body.account.email).toBe("user@example.com");
+        expect(body.requiresOpenaiAuth).toBe(true);
+        expect(body.models).toEqual([{ id: "gpt-5.4", displayName: "GPT-5.4", isDefault: true }]);
+        expect(body.threads).toEqual([{ id: "thr-1", name: "Main thread" }]);
+        expect(body.loadedThreadIds).toEqual(["thr-1"]);
+        expect(body.pendingRequests).toHaveLength(1);
+        expect(codexControlPlane.getCapabilities).toHaveBeenCalledOnce();
+        expect(codexControlPlane.listPendingUserInputRequests).toHaveBeenCalledOnce();
+      },
+    );
+  });
+
   it("returns capabilities from the host-side control plane", async () => {
     const codexControlPlane = {
       getCapabilities: vi.fn().mockResolvedValue({

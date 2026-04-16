@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createJsonResponse, createSnapshot, installDomHarness } from "./helpers";
+import { resetRuntimeClientForTesting } from "../../frontend/src/state/runtime-client";
 
 function createDeferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   let resolve = (_value: T): void => undefined;
@@ -30,6 +31,7 @@ describe("startPolling", () => {
   afterEach(async () => {
     const polling = await import("../../frontend/src/state/polling");
     polling.stopPolling();
+    resetRuntimeClientForTesting();
     restoreDom?.();
     dom = null;
     restoreDom = null;

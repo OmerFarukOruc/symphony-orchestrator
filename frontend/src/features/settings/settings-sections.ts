@@ -5,7 +5,7 @@ import {
   buildSectionDiffPreview,
   buildUnderlyingPaths,
   ensureSectionDrafts,
-  formatFieldDraft,
+  sectionHasUnsavedDrafts,
   SECTION_GROUPS,
   sectionGroups,
   sectionMatchesFilter,
@@ -24,8 +24,11 @@ interface SettingsRenderOptions {
   onToggleDiff: (sectionId: string) => void;
   onTogglePaths: (sectionId: string) => void;
   onSaveSection: (sectionId: string) => void;
+  onRevertSection: (sectionId: string) => void;
   /** Called when the user switches between Focused and Advanced modes. */
   onSetMode?: (mode: SettingsMode) => void;
+  onDraftChange: (sectionId: string, fieldPath: string, value: string) => void;
+  onFocusSection: (sectionId: string) => void;
   /** Called when a field-level action button is clicked (e.g. "Browse" for project slug). */
   onFieldAction?: (sectionId: string, fieldPath: string, actionKind: string) => void;
   /** Called by the unified save bar to save all dirty sections at once. */
@@ -245,21 +248,12 @@ function createNavItem(
     topRow.append(modifiedBadge);
   }
 
-  const sectionDrafts = state.drafts[section.id];
-  if (sectionDrafts) {
-    const hasUnsaved = Object.entries(sectionDrafts).some(([path, draftValue]) => {
-      const field = section.fields.find((f) => f.path === path);
-      if (!field) return false;
-      const effectiveValue = getValueAtPath(state.effective, path);
-      return draftValue !== formatFieldDraft(field, effectiveValue);
-    });
-    if (hasUnsaved) {
-      const unsavedBadge = document.createElement("span");
-      unsavedBadge.className = "settings-nav-badge-unsaved";
-      unsavedBadge.setAttribute("role", "img");
-      unsavedBadge.setAttribute("aria-label", "Has unsaved changes");
-      topRow.append(unsavedBadge);
-    }
+  if (sectionHasUnsavedDrafts(section, state.drafts[section.id], state.effective)) {
+    const unsavedBadge = document.createElement("span");
+    unsavedBadge.className = "settings-nav-badge-unsaved";
+    unsavedBadge.setAttribute("role", "img");
+    unsavedBadge.setAttribute("aria-label", "Has unsaved changes");
+    topRow.append(unsavedBadge);
   }
 
   const desc = document.createElement("span");
@@ -272,7 +266,7 @@ function createNavItem(
   button.addEventListener(
     "click",
     () => {
-      state.selectedSectionId = section.id;
+      options.onSelectSection(section.id);
       highlightRailItem(button.closest(".settings-rail") ?? button.parentElement!, section.id);
       // Suppress scroll spy until the smooth-scroll settles so intermediate
       // sections don't flash in the rail.
@@ -354,7 +348,7 @@ function buildSectionCard(
     prevTier = group.tier ?? (group.advanced ? "expert" : "essential");
   });
 
-  card.append(buildSectionActions(section, state));
+  card.append(buildSectionActions(section, state, options, signal));
 
   // Developer tools: only in Advanced mode
   if (state.mode === "advanced") {
@@ -395,11 +389,27 @@ function buildSectionHeader(section: SettingsSectionDefinition): HTMLElement {
   return header;
 }
 
-function buildSectionActions(section: SettingsSectionDefinition, state: SettingsState): HTMLElement {
+function buildSectionActions(
+  section: SettingsSectionDefinition,
+  state: SettingsState,
+  options: SettingsRenderOptions,
+  signal: AbortSignal,
+): HTMLElement {
   const actions = document.createElement("div");
   actions.className = "form-actions settings-actions";
+  const isSaving = state.savingSectionId === section.id;
 
-  if (state.savingSectionId === section.id) {
+  const revert = createSectionAction("Revert");
+  revert.disabled = isSaving;
+  revert.addEventListener("click", () => options.onRevertSection(section.id), { signal });
+
+  const save = createSectionAction(section.saveLabel, true);
+  save.disabled = isSaving;
+  save.addEventListener("click", () => options.onSaveSection(section.id), { signal });
+
+  actions.append(revert, save);
+
+  if (isSaving) {
     const saving = document.createElement("span");
     saving.className = "settings-saving-indicator";
     saving.textContent = "Saving\u2026";
@@ -545,14 +555,8 @@ function createGroupGrid(
       createSettingsField(field, {
         value: drafts[field.path] ?? "",
         hintId,
-        onInput: (value) => {
-          drafts[field.path] = value;
-          state.error = null;
-          state.selectedSectionId = section.id;
-        },
-        onFocus: () => {
-          state.selectedSectionId = section.id;
-        },
+        onInput: (value) => options.onDraftChange(section.id, field.path, value),
+        onFocus: () => options.onFocusSection(section.id),
         onAction:
           actionKind && options.onFieldAction
             ? () => options.onFieldAction?.(section.id, field.path, actionKind)

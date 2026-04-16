@@ -507,6 +507,7 @@ const attemptAppServerSchema = z.object({
 /** GET /api/v1/attempts/{attempt_id} — attempt detail with events. */
 export const attemptDetailResponseSchema = attemptSummarySchema.extend({
   events: z.array(recentEventSchema),
+  summary: z.string().nullable().optional(),
   appServer: attemptAppServerSchema.optional(),
 });
 

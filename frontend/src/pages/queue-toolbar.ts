@@ -1,4 +1,4 @@
-import type { WorkflowColumn } from "../types";
+import type { WorkflowColumn } from "../types/runtime.js";
 import { getStageDescription } from "../components/state-guide.js";
 import { hasActiveFilters, type QueueFilters } from "./queue-state";
 import { createIcon } from "../ui/icons.js";
@@ -49,21 +49,40 @@ function iconButton(
   return button;
 }
 
-function utilitySep(): HTMLSpanElement {
-  const sep = document.createElement("span");
-  sep.className = "toolbar-utility-sep";
-  sep.setAttribute("role", "separator");
-  sep.setAttribute("aria-orientation", "vertical");
-  return sep;
+function createCompletedToggleButton(active: boolean, onClick: () => void): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "mc-button is-ghost is-sm queue-completed-toggle";
+  button.append(
+    createIcon(active ? "eye" : "eyeOff", { size: 16 }),
+    Object.assign(document.createElement("span"), {
+      className: "queue-completed-toggle-label",
+      textContent: "Completed",
+    }),
+  );
+  button.title = active ? "Hide completed work" : "Show completed work";
+  button.setAttribute("aria-label", button.title);
+  button.classList.toggle("is-active", active);
+  button.addEventListener("click", onClick);
+  return button;
 }
 
-function filterGroup(label: string, className: string, content: HTMLElement): HTMLDivElement {
-  const group = document.createElement("div");
-  group.className = `toolbar-filter-group ${className}`;
-  group.setAttribute("role", "group");
-  group.setAttribute("aria-label", label);
-  group.append(content);
-  return group;
+function createDensityToggleButton(density: string, onClick: () => void): HTMLButtonElement {
+  const comfy = density === "comfortable";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "mc-button is-ghost is-sm queue-density-toggle";
+  const label = Object.assign(document.createElement("span"), {
+    className: "queue-density-toggle-label",
+    textContent: comfy ? "Comfortable" : "Compact",
+  });
+  label.setAttribute("aria-hidden", "true");
+  button.append(createIcon(comfy ? "unfold" : "dense", { size: 16 }), label);
+  button.title = comfy ? "Switch to compact view" : "Switch to comfortable view";
+  button.setAttribute("aria-label", button.title);
+  button.classList.toggle("is-active", comfy);
+  button.addEventListener("click", onClick);
+  return button;
 }
 
 /**
@@ -113,16 +132,31 @@ interface QueueToolbarOptions {
   columns: WorkflowColumn[];
   onRefresh: () => void;
   onReset: () => void;
-  onChange: () => void;
+  onSearchChange: (value: string) => void;
+  onToggleStage: (stageKey: string) => void;
+  onSetPriority: (priority: string) => void;
+  onSetSort: (sort: string) => void;
+  onToggleDensity: () => void;
+  onToggleCompleted: () => void;
 }
 
 export function buildQueueToolbar(options: QueueToolbarOptions): {
   search: HTMLInputElement;
-  sort: HTMLSelectElement;
   firstStageChip: () => HTMLButtonElement | null;
-  refreshLabels: () => void;
 } {
-  const { toolbar, filters, columns, onRefresh, onReset, onChange } = options;
+  const {
+    toolbar,
+    filters,
+    columns,
+    onRefresh,
+    onReset,
+    onSearchChange,
+    onToggleStage,
+    onSetPriority,
+    onSetSort,
+    onToggleDensity,
+    onToggleCompleted,
+  } = options;
   toolbar.replaceChildren();
 
   const search = Object.assign(document.createElement("input"), {
@@ -136,10 +170,11 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   searchHint.className = "mc-button-hint queue-search-hint";
   searchHint.textContent = "/";
   searchHint.title = "Press / to focus search";
+  searchHint.setAttribute("aria-hidden", "true");
 
-  const searchRow = document.createElement("div");
-  searchRow.className = "toolbar-search-row";
-  searchRow.append(search, searchHint);
+  const searchWrap = document.createElement("div");
+  searchWrap.className = "queue-toolbar-search";
+  searchWrap.append(search, searchHint);
 
   const resetBtn = document.createElement("button");
   resetBtn.type = "button";
@@ -147,17 +182,29 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   resetBtn.textContent = "Reset";
   resetBtn.title = "Clear all filters (Esc)";
   resetBtn.hidden = !hasActiveFilters(filters);
-  resetBtn.addEventListener("click", onReset);
+  resetBtn.addEventListener("click", () => {
+    onReset();
+    search.value = filters.search;
+    sort.value = filters.sort;
+    renderStages();
+    renderPriorities();
+    updateResetVisibility();
+    syncControls();
+  });
 
   function updateResetVisibility(): void {
     resetBtn.hidden = !hasActiveFilters(filters);
   }
 
   const stageBar = document.createElement("div");
-  stageBar.className = "mc-toolbar-group";
+  stageBar.className = "mc-toolbar-group queue-toolbar-stages";
+  stageBar.setAttribute("role", "group");
+  stageBar.setAttribute("aria-label", "Workflow stages");
 
   const priorityBar = document.createElement("div");
-  priorityBar.className = "mc-toolbar-group";
+  priorityBar.className = "mc-toolbar-group queue-toolbar-priority";
+  priorityBar.setAttribute("role", "group");
+  priorityBar.setAttribute("aria-label", "Priority");
 
   const mergedColumns = mergeColumns(columns);
 
@@ -169,11 +216,9 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
         const button = chip(
           column.label,
           () => {
-            if (filters.stages.has(column.key)) filters.stages.delete(column.key);
-            else filters.stages.add(column.key);
+            onToggleStage(column.key);
             renderStages();
             updateResetVisibility();
-            onChange();
           },
           {
             ariaLabel: column.count > 0 ? `${column.label}, ${column.count} issues` : `${column.label}, no issues`,
@@ -193,7 +238,6 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
   function renderPriorities(): void {
     priorityBar.replaceChildren(
       ...[
-        ["all", "Any priority"],
         ["urgent", "Urgent"],
         ["high", "High"],
         ["medium", "Medium"],
@@ -203,13 +247,13 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
         const button = chip(
           label,
           () => {
-            filters.priority = value;
+            onSetPriority(active ? "all" : value);
             renderPriorities();
             updateResetVisibility();
-            onChange();
           },
           {
             classNames: ["queue-priority-chip", `queue-priority-chip-${value}`],
+            title: active ? "Click to clear priority filter" : `Filter: ${label} priority`,
           },
         );
         button.classList.toggle("is-active", active);
@@ -219,20 +263,10 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
     );
   }
 
-  const filterRow = document.createElement("div");
-  filterRow.className = "toolbar-filter-row";
-  filterRow.append(
-    filterGroup("Workflow stages", "toolbar-filter-group-stages", stageBar),
-    filterGroup("Priority", "toolbar-filter-group-priority", priorityBar),
-  );
-
-  /* ─── Utility row: view-options (left) │ actions (right) ─── */
-
   const sort = document.createElement("select");
   sort.className = "mc-select";
   sort.classList.add("toolbar-sort-select");
   sort.setAttribute("aria-label", "Board order");
-  sort.title = "Arrange board lanes";
   [
     ["updated", "Recently updated"],
     ["priority", "Priority first"],
@@ -243,73 +277,61 @@ export function buildQueueToolbar(options: QueueToolbarOptions): {
     sort.append(option);
   });
 
-  const densityBtn = iconButton(
-    filters.density === "comfortable" ? "unfold" : "dense",
-    filters.density === "comfortable" ? "Switch to compact view" : "Switch to comfortable view",
-    () => {
-      filters.density = filters.density === "comfortable" ? "compact" : "comfortable";
-      syncControls();
-    },
-  );
-  densityBtn.classList.toggle("is-active", filters.density === "comfortable");
+  const densityBtn = createDensityToggleButton(filters.density, () => {
+    onToggleDensity();
+    syncControls();
+  });
 
-  const viewGroup = document.createElement("div");
-  viewGroup.className = "toolbar-utility-group";
-  viewGroup.append(sort, densityBtn);
-
-  const completedBtn = iconButton(
-    filters.showCompleted ? "eye" : "eyeOff",
-    filters.showCompleted ? "Hide completed work" : "Show completed work",
-    () => {
-      filters.showCompleted = !filters.showCompleted;
-      syncControls();
-    },
-  );
-  completedBtn.classList.toggle("is-active", filters.showCompleted);
+  const completedBtn = createCompletedToggleButton(filters.showCompleted, () => {
+    onToggleCompleted();
+    syncControls();
+  });
 
   const refreshBtn = iconButton("refresh", "Refresh queue", onRefresh);
 
-  const actionsGroup = document.createElement("div");
-  actionsGroup.className = "toolbar-utility-group";
-  actionsGroup.append(completedBtn, resetBtn, refreshBtn);
+  const utilityCluster = document.createElement("div");
+  utilityCluster.className = "queue-toolbar-utility";
+  utilityCluster.append(sort, densityBtn, completedBtn, resetBtn, refreshBtn);
 
   function syncControls(): void {
     /* density */
-    densityBtn.replaceChildren(createIcon(filters.density === "comfortable" ? "unfold" : "dense", { size: 16 }));
-    densityBtn.title = filters.density === "comfortable" ? "Switch to compact view" : "Switch to comfortable view";
+    const comfy = filters.density === "comfortable";
+    const densityLabel = Object.assign(document.createElement("span"), {
+      className: "queue-density-toggle-label",
+      textContent: comfy ? "Comfortable" : "Compact",
+    });
+    densityLabel.setAttribute("aria-hidden", "true");
+    densityBtn.replaceChildren(createIcon(comfy ? "unfold" : "dense", { size: 16 }), densityLabel);
+    densityBtn.title = comfy ? "Switch to compact view" : "Switch to comfortable view";
     densityBtn.setAttribute("aria-label", densityBtn.title);
-    densityBtn.classList.toggle("is-active", filters.density === "comfortable");
+    densityBtn.classList.toggle("is-active", comfy);
 
     /* completed */
-    completedBtn.replaceChildren(createIcon(filters.showCompleted ? "eye" : "eyeOff", { size: 16 }));
+    completedBtn.replaceChildren(
+      createIcon(filters.showCompleted ? "eye" : "eyeOff", { size: 16 }),
+      Object.assign(document.createElement("span"), {
+        className: "queue-completed-toggle-label",
+        textContent: "Completed",
+      }),
+    );
     completedBtn.title = filters.showCompleted ? "Hide completed work" : "Show completed work";
     completedBtn.setAttribute("aria-label", completedBtn.title);
     completedBtn.classList.toggle("is-active", filters.showCompleted);
-
-    onChange();
   }
 
   search.addEventListener("input", () => {
-    filters.search = search.value;
+    onSearchChange(search.value);
     updateResetVisibility();
-    onChange();
   });
   sort.addEventListener("change", () => {
-    filters.sort = sort.value;
-    onChange();
+    onSetSort(sort.value);
   });
   renderStages();
   renderPriorities();
 
-  const utilityRow = document.createElement("div");
-  utilityRow.className = "toolbar-utility-row";
-  utilityRow.append(viewGroup, utilitySep(), actionsGroup);
-
-  toolbar.append(searchRow, filterRow, utilityRow);
+  toolbar.append(searchWrap, stageBar, priorityBar, utilityCluster);
   return {
     search,
-    sort,
     firstStageChip: () => stageBar.querySelector<HTMLButtonElement>(".mc-chip"),
-    refreshLabels: syncControls,
   };
 }
