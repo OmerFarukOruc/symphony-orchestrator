@@ -214,18 +214,14 @@ export function buildActivitySection(detail: IssueDetail): HTMLElement {
   const events = detail.recentEvents.slice(-5);
   if (events.length === 0) {
     list.append(
-      createEmptyState(
-        "No activity yet",
-        "Events will appear here once the worker starts processing this issue. Check live logs to follow work in progress.",
-        "Open logs",
-        () => router.navigate(`/issues/${detail.identifier}/logs`),
-      ),
+      createEmptyState("No activity yet", "Events will appear here once the worker starts processing this issue."),
     );
-  } else {
-    const rows = events.map((event) => createEventRow(event, true));
-    applyStagger(rows);
-    list.append(...rows);
+    section.append(list);
+    return section;
   }
+  const rows = events.map((event) => createEventRow(event, true));
+  applyStagger(rows);
+  list.append(...rows);
   const link = document.createElement("a");
   link.className = "mc-button is-ghost";
   link.href = `/issues/${detail.identifier}/logs`;
@@ -238,6 +234,13 @@ export function buildAttemptsSection(detail: IssueDetail): HTMLElement {
   const section = document.createElement("section");
   section.className = "issue-section mc-panel expand-in";
   section.append(Object.assign(document.createElement("h2"), { textContent: "Attempts" }));
+  if (detail.attempts.length === 0) {
+    const quiet = document.createElement("p");
+    quiet.className = "issue-attempts-empty text-secondary";
+    quiet.textContent = "No attempts yet. Attempts appear here once the worker begins.";
+    section.append(quiet);
+    return section;
+  }
   section.append(createAttemptsTable(detail.attempts, (attemptId) => router.navigate(`/attempts/${attemptId}`)));
   return section;
 }

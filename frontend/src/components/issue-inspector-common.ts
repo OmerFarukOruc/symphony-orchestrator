@@ -54,3 +54,27 @@ export function createSummaryStat(label: string): {
     },
   };
 }
+
+export function createMetric(label: string): {
+  element: HTMLElement;
+  update: (value: string) => void;
+} {
+  const element = document.createElement("div");
+  element.className = "issue-metric";
+  const caption = document.createElement("dt");
+  caption.className = "issue-metric-label";
+  caption.textContent = label;
+  const value = document.createElement("dd");
+  value.className = "issue-metric-value text-mono";
+  element.append(caption, value);
+  return {
+    element,
+    update: (nextValue: string) => {
+      const before = value.textContent ?? "";
+      setTextWithDiff(value, nextValue);
+      if (before && before !== nextValue) {
+        flashDiff(element);
+      }
+    },
+  };
+}

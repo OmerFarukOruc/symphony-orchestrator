@@ -5,9 +5,15 @@ import { statusChip } from "../ui/status-chip";
 import { toast } from "../ui/toast";
 import { skeletonCard } from "../ui/skeleton";
 import { flashDiff, setTextWithDiff } from "../utils/diff";
-import { formatCompactNumber, computeDurationSeconds, formatDuration, formatTimestamp } from "../utils/format";
+import {
+  formatCompactNumber,
+  computeDurationSeconds,
+  formatCostUsd,
+  formatDuration,
+  formatTimestamp,
+} from "../utils/format";
 import { createEmptyState } from "./empty-state";
-import { createSummaryStat } from "./issue-inspector-common.js";
+import { createMetric, createSummaryStat } from "./issue-inspector-common.js";
 import { buildRetrySection } from "./issue-inspector-retry-section.js";
 import {
   buildActivitySection,
@@ -27,12 +33,31 @@ interface IssueInspectorOptions {
   onClose?: () => void;
 }
 
-function buildLiveLogSection(logEl: HTMLElement): HTMLElement {
+function buildLiveLogSection(logEl: HTMLElement, isLive: boolean): HTMLElement {
   const section = document.createElement("section");
-  section.className = "issue-section mc-panel expand-in";
-  section.append(Object.assign(document.createElement("h2"), { textContent: "Live log" }));
-  section.appendChild(logEl);
+  const surface = isLive ? "mc-live-panel" : "mc-panel";
+  section.className = `issue-section ${surface} issue-live-log-section expand-in${isLive ? " is-live" : ""}`;
+  const title = Object.assign(document.createElement("h2"), {
+    textContent: isLive ? "Live log" : "Latest log",
+  });
+  section.append(title, logEl);
   return section;
+}
+
+function composeModelSummary(detail: IssueDetail): string {
+  const model = detail.model ?? "—";
+  const reasoning = detail.reasoningEffort ?? null;
+  if (!reasoning || reasoning === "none" || reasoning === "—") {
+    return model;
+  }
+  return `${model} · ${reasoning}`;
+}
+
+function computeTotalCostUsd(detail: IssueDetail): number | null {
+  return detail.attempts.reduce<number | null>((acc, attempt) => {
+    if (attempt.costUsd === null || attempt.costUsd === undefined) return acc;
+    return (acc ?? 0) + attempt.costUsd;
+  }, null);
 }
 
 export function createIssueInspector(options: IssueInspectorOptions): {
@@ -41,38 +66,23 @@ export function createIssueInspector(options: IssueInspectorOptions): {
   destroy: () => void;
 } {
   const runtimeClient = getRuntimeClient();
+  const isPage = options.mode === "page";
   const root = document.createElement("div");
-  root.className =
-    options.mode === "drawer"
-      ? "issue-inspector issue-inspector-shell queue-drawer drawer"
-      : "issue-page issue-inspector-shell";
-  const header = document.createElement("section");
-  header.className = "issue-header issue-section mc-panel";
-  const summary = document.createElement("section");
-  summary.className = "issue-section mc-panel issue-summary-strip";
-  const content = document.createElement("div");
-  content.className = "issue-inspector issue-inspector-body";
-  root.append(header, summary, content);
+  root.className = isPage
+    ? "issue-page issue-inspector-shell"
+    : "issue-inspector issue-inspector-shell queue-drawer drawer";
 
-  const headerTop = document.createElement("div");
-  headerTop.className = "issue-header-top";
-  const titleBlock = document.createElement("div");
-  titleBlock.className = "issue-header-title-block";
   const identifier = Object.assign(document.createElement("div"), {
     className: "issue-identifier",
   });
-  const title = Object.assign(document.createElement("h1"), { className: "issue-title" });
-  const headerMeta = document.createElement("div");
-  headerMeta.className = "issue-header-meta";
-  const statusSlot = document.createElement("div");
+  const title = Object.assign(document.createElement("h1"), {
+    className: isPage ? "issue-title heading-display" : "issue-title",
+  });
   const updatedAt = document.createElement("span");
-  updatedAt.className = "text-secondary issue-updated-at";
-  titleBlock.append(identifier, title);
-  headerTop.append(titleBlock);
+  updatedAt.className = "issue-updated text-tertiary";
+  const statusSlot = document.createElement("div");
+  statusSlot.className = "issue-status-slot";
 
-  // Primary actions row
-  const headerActions = document.createElement("div");
-  headerActions.className = "issue-header-actions";
   const logsLink = Object.assign(document.createElement("a"), {
     className: "mc-button is-primary",
     textContent: "Open logs",
@@ -86,13 +96,97 @@ export function createIssueInspector(options: IssueInspectorOptions): {
   });
   trackerLink.setAttribute("aria-label", "Open issue in tracker");
   const abortAction = createIssueAbortAction({ requestRefresh: refresh });
-  headerActions.append(abortAction.button, logsLink, trackerLink);
 
-  headerMeta.append(statusSlot, updatedAt);
+  const drawerHeader = document.createElement("section");
+  const drawerSummary = document.createElement("section");
+  const drawerContent = document.createElement("div");
+  const workLane = document.createElement("div");
+  const briefLane = document.createElement("div");
+
+  const summaryStats = {
+    priority: createSummaryStat("Priority"),
+    model: createSummaryStat("Model"),
+    tokens: createSummaryStat("Tokens"),
+    duration: createSummaryStat("Duration"),
+  };
+
+  const metrics = {
+    priority: createMetric("Priority"),
+    model: createMetric("Model"),
+    reasoning: createMetric("Reasoning"),
+    tokens: createMetric("Tokens"),
+    duration: createMetric("Duration"),
+    cost: createMetric("Cost"),
+    lastEvent: createMetric("Last event"),
+  };
 
   let currentId = options.initialId ?? "";
 
-  if (options.mode === "drawer") {
+  if (isPage) {
+    const command = document.createElement("section");
+    command.className = "issue-command mc-command";
+
+    const commandHead = document.createElement("div");
+    commandHead.className = "issue-command-head";
+
+    const identity = document.createElement("div");
+    identity.className = "issue-command-identity";
+    const eyebrow = document.createElement("div");
+    eyebrow.className = "issue-eyebrow";
+    eyebrow.append(identifier);
+    identity.append(eyebrow, title);
+
+    const commandActions = document.createElement("div");
+    commandActions.className = "issue-command-actions";
+    commandActions.append(abortAction.button, logsLink, trackerLink);
+
+    commandHead.append(identity, commandActions);
+
+    const statusLine = document.createElement("div");
+    statusLine.className = "issue-status-line";
+    statusLine.append(statusSlot, updatedAt);
+
+    const metricsList = document.createElement("dl");
+    metricsList.className = "issue-metrics";
+    metricsList.append(
+      metrics.priority.element,
+      metrics.model.element,
+      metrics.reasoning.element,
+      metrics.tokens.element,
+      metrics.duration.element,
+      metrics.cost.element,
+      metrics.lastEvent.element,
+    );
+
+    command.append(commandHead, statusLine, metricsList);
+
+    const body = document.createElement("div");
+    body.className = "issue-body mc-layout is-split";
+    workLane.className = "issue-lane issue-lane-work mc-lane is-primary";
+    briefLane.className = "issue-lane issue-lane-brief mc-lane is-sidebar";
+    body.append(workLane, briefLane);
+
+    root.append(command, body);
+  } else {
+    drawerHeader.className = "issue-header issue-section mc-panel";
+    drawerSummary.className = "issue-section mc-panel issue-summary-strip";
+    drawerContent.className = "issue-inspector issue-inspector-body";
+
+    const headerTop = document.createElement("div");
+    headerTop.className = "issue-header-top";
+    const titleBlock = document.createElement("div");
+    titleBlock.className = "issue-header-title-block";
+    const headerMeta = document.createElement("div");
+    headerMeta.className = "issue-header-meta";
+    titleBlock.append(identifier, title);
+    headerTop.append(titleBlock);
+
+    const headerActions = document.createElement("div");
+    headerActions.className = "issue-header-actions";
+    headerActions.append(abortAction.button, logsLink, trackerLink);
+
+    headerMeta.append(statusSlot, updatedAt);
+
     const fullPageButton = document.createElement("button");
     fullPageButton.type = "button";
     fullPageButton.className = "mc-button is-ghost";
@@ -110,23 +204,17 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     closeBtn.setAttribute("aria-label", "Close panel");
     closeBtn.textContent = "✕";
     closeBtn.addEventListener("click", () => options.onClose?.());
-    header.append(headerTop, headerMeta, headerActions, closeBtn);
-  } else {
-    header.append(headerTop, headerMeta, headerActions);
-  }
+    drawerHeader.append(headerTop, headerMeta, headerActions, closeBtn);
 
-  const summaryStats = {
-    priority: createSummaryStat("Priority"),
-    model: createSummaryStat("Model"),
-    tokens: createSummaryStat("Tokens"),
-    duration: createSummaryStat("Duration"),
-  };
-  summary.replaceChildren(
-    summaryStats.priority.element,
-    summaryStats.model.element,
-    summaryStats.tokens.element,
-    summaryStats.duration.element,
-  );
+    drawerSummary.replaceChildren(
+      summaryStats.priority.element,
+      summaryStats.model.element,
+      summaryStats.tokens.element,
+      summaryStats.duration.element,
+    );
+
+    root.append(drawerHeader, drawerSummary, drawerContent);
+  }
 
   let hydrated = false;
   const liveLog = createLiveLog();
@@ -134,35 +222,42 @@ export function createIssueInspector(options: IssueInspectorOptions): {
   let unsubscribeLifecycle: (() => void) | null = null;
 
   function renderLoading(): void {
-    content.replaceChildren(skeletonCard(), skeletonCard(), skeletonCard());
+    if (isPage) {
+      workLane.replaceChildren(skeletonCard(), skeletonCard(), skeletonCard());
+      briefLane.replaceChildren(skeletonCard(), skeletonCard());
+    } else {
+      drawerContent.replaceChildren(skeletonCard(), skeletonCard(), skeletonCard());
+    }
   }
 
   function renderError(message: string): void {
-    header.hidden = true;
-    summary.hidden = true;
     const classified = classifyFetchError(message);
-    content.replaceChildren(
-      createEmptyState(
-        classified.title,
-        classified.detail,
-        classified.action,
-        () => {
-          if (classified.action === "Open board") {
-            router.navigate("/queue");
-          } else {
-            void refresh();
-          }
-        },
-        classified.variant,
-      ),
+    const emptyState = createEmptyState(
+      classified.title,
+      classified.detail,
+      classified.action,
+      () => {
+        if (classified.action === "Open board") {
+          router.navigate("/queue");
+        } else {
+          void refresh();
+        }
+      },
+      classified.variant,
     );
+    if (isPage) {
+      const command = root.querySelector(".issue-command");
+      const body = root.querySelector(".issue-body");
+      if (command instanceof HTMLElement) command.hidden = true;
+      if (body instanceof HTMLElement) body.hidden = true;
+      root.append(emptyState);
+    } else {
+      drawerHeader.hidden = true;
+      drawerSummary.hidden = true;
+      drawerContent.replaceChildren(emptyState);
+    }
   }
 
-  /**
-   * Map a raw fetch error message to a differentiated recovery. 404 and
-   * serverError need different operator actions — retry is pointless on a
-   * missing resource, and the generic "Needs attention" eyebrow hid that.
-   */
   function classifyFetchError(message: string): {
     title: string;
     detail: string;
@@ -203,56 +298,108 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     };
   }
 
+  function setStaggerIndex(container: HTMLElement, startIndex = 0): void {
+    Array.from(container.children).forEach((child, index) => {
+      if (child instanceof HTMLElement) {
+        child.style.setProperty("--stagger-index", String(startIndex + index));
+      }
+    });
+  }
+
   function render(detail: IssueDetail, preserveScroll = false): void {
-    const bodyScrollTop = preserveScroll ? content.scrollTop : 0;
+    const scrollTarget = isPage ? root.parentElement : drawerContent;
+    const bodyScrollTop = preserveScroll && scrollTarget ? scrollTarget.scrollTop : 0;
     const previousTitle = title.textContent ?? "";
+
     setTextWithDiff(identifier, detail.identifier);
     setTextWithDiff(title, detail.title);
     setTextWithDiff(updatedAt, `Updated ${formatTimestamp(detail.updatedAt)}`);
+
     const nextStatus = statusChip(detail.status);
+    if (isPage) {
+      nextStatus.classList.add("is-lg");
+    }
     statusSlot.replaceChildren(nextStatus);
+
     logsLink.href = `/issues/${detail.identifier}/logs`;
     trackerLink.href = detail.url ?? "#";
     trackerLink.hidden = !detail.url;
     abortAction.sync(detail);
-    header.hidden = false;
-    headerActions.hidden = false;
-    summary.hidden = false;
 
-    summaryStats.priority.update(String(detail.priority ?? "—"));
-    summaryStats.model.update(detail.model ?? "—");
-    summaryStats.tokens.update(formatCompactNumber(detail.tokenUsage?.totalTokens ?? null));
-    summaryStats.duration.update(formatDuration(computeDurationSeconds(detail.startedAt, detail.updatedAt)));
+    if (isPage) {
+      const command = root.querySelector(".issue-command");
+      const body = root.querySelector(".issue-body");
+      if (command instanceof HTMLElement) command.hidden = false;
+      if (body instanceof HTMLElement) body.hidden = false;
+      const emptyState = root.querySelector(":scope > .mc-empty-state");
+      if (emptyState) emptyState.remove();
+      const durationSeconds = computeDurationSeconds(detail.startedAt, detail.updatedAt);
+      metrics.priority.update(String(detail.priority ?? "—"));
+      metrics.model.update(detail.model ?? "—");
+      metrics.reasoning.update(detail.reasoningEffort ?? "—");
+      metrics.tokens.update(formatCompactNumber(detail.tokenUsage?.totalTokens ?? null));
+      metrics.duration.update(formatDuration(durationSeconds));
+      metrics.cost.update(formatCostUsd(computeTotalCostUsd(detail)));
+      metrics.lastEvent.update(formatTimestamp(detail.lastEventAt ?? detail.updatedAt));
+    } else {
+      drawerHeader.hidden = false;
+      drawerSummary.hidden = false;
+      summaryStats.priority.update(String(detail.priority ?? "—"));
+      summaryStats.model.update(composeModelSummary(detail));
+      summaryStats.tokens.update(formatCompactNumber(detail.tokenUsage?.totalTokens ?? null));
+      summaryStats.duration.update(formatDuration(computeDurationSeconds(detail.startedAt, detail.updatedAt)));
+    }
 
     const isActive = detail.status === "running" || detail.status === "retrying";
-    const liveLogSection = isActive ? buildLiveLogSection(liveLog.el) : null;
+    const liveLogSection = isActive ? buildLiveLogSection(liveLog.el, detail.status === "running") : null;
 
-    const sections = [
-      buildDescriptionSection(detail),
-      buildRetrySection(detail),
-      buildSteerSection(detail),
-      liveLogSection,
-      buildActivitySection(detail),
-      buildWorkspaceSection(detail),
-      buildModelSection(detail),
-      buildAttemptsSection(detail),
-    ].filter((section): section is HTMLElement => section instanceof HTMLElement);
-    if (content.children.length > 0) {
-      sections.forEach((section) => {
-        section.classList.remove("expand-in");
-      });
-    }
-    content.replaceChildren(...sections);
-    Array.from(content.children).forEach((section, index) => {
-      if (section instanceof HTMLElement) {
-        section.style.setProperty("--stagger-index", String(index));
+    if (isPage) {
+      const workSections = [
+        buildDescriptionSection(detail),
+        buildRetrySection(detail),
+        buildSteerSection(detail),
+        liveLogSection,
+        buildActivitySection(detail),
+        buildAttemptsSection(detail),
+      ].filter((section): section is HTMLElement => section instanceof HTMLElement);
+      const briefSections = [buildWorkspaceSection(detail), buildModelSection(detail)].filter(
+        (section): section is HTMLElement => section instanceof HTMLElement,
+      );
+      const hadWork = workLane.children.length > 0;
+      const hadBrief = briefLane.children.length > 0;
+      if (hadWork) workSections.forEach((section) => section.classList.remove("expand-in"));
+      if (hadBrief) briefSections.forEach((section) => section.classList.remove("expand-in"));
+      workLane.replaceChildren(...workSections);
+      briefLane.replaceChildren(...briefSections);
+      setStaggerIndex(workLane);
+      setStaggerIndex(briefLane, workSections.length);
+      if (preserveScroll && scrollTarget) {
+        scrollTarget.scrollTop = bodyScrollTop;
       }
-    });
-    if (preserveScroll) {
-      content.scrollTop = bodyScrollTop;
+    } else {
+      const sections = [
+        buildDescriptionSection(detail),
+        buildRetrySection(detail),
+        buildSteerSection(detail),
+        liveLogSection,
+        buildActivitySection(detail),
+        buildWorkspaceSection(detail),
+        buildModelSection(detail),
+        buildAttemptsSection(detail),
+      ].filter((section): section is HTMLElement => section instanceof HTMLElement);
+      if (drawerContent.children.length > 0) {
+        sections.forEach((section) => section.classList.remove("expand-in"));
+      }
+      drawerContent.replaceChildren(...sections);
+      setStaggerIndex(drawerContent);
+      if (preserveScroll) {
+        drawerContent.scrollTop = bodyScrollTop;
+      }
     }
+
     if (previousTitle && previousTitle !== detail.title) {
-      flashDiff(header);
+      const flashTarget = isPage ? root.querySelector(".issue-command") : drawerHeader;
+      if (flashTarget instanceof HTMLElement) flashDiff(flashTarget);
     }
   }
 
@@ -261,7 +408,8 @@ export function createIssueInspector(options: IssueInspectorOptions): {
       return;
     }
     const preserveScroll = hydrated;
-    if (!hydrated && content.children.length === 0) {
+    const lane = isPage ? workLane : drawerContent;
+    if (!hydrated && lane.children.length === 0) {
       renderLoading();
     }
     try {
@@ -282,8 +430,13 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     currentId = id;
     hydrated = false;
     abortAction.sync(null);
-    content.replaceChildren();
-    content.scrollTop = 0;
+    if (isPage) {
+      workLane.replaceChildren();
+      briefLane.replaceChildren();
+    } else {
+      drawerContent.replaceChildren();
+      drawerContent.scrollTop = 0;
+    }
     liveLog.clear();
     unsubscribeEvents?.();
     unsubscribeEvents = runtimeClient.subscribeIssueEvents(id, (entry) => liveLog.append(entry));
@@ -305,8 +458,9 @@ export function createIssueInspector(options: IssueInspectorOptions): {
     identifier.textContent = "Inspector";
     title.textContent = "Select an issue to inspect";
     updatedAt.textContent = "Choose a card from the board.";
-    headerActions.hidden = true;
-    summary.hidden = true;
+    if (!isPage) {
+      drawerSummary.hidden = true;
+    }
   }
   return { element: root, load, destroy };
 }
