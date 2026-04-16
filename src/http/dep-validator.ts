@@ -15,7 +15,6 @@ const OPTIONAL_ROUTE_DEPS: Array<{ key: keyof HttpRouteDeps; feature: string }> 
   { key: "configOverlayStore", feature: "config overlay APIs" },
   { key: "secretsStore", feature: "secret-backed APIs" },
   { key: "archiveDir", feature: "setup API" },
-  { key: "webhookHandlerDeps", feature: "tracker webhook receivers" },
 ];
 
 function isMissing(value: unknown): boolean {

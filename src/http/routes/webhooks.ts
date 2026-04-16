@@ -43,7 +43,9 @@ export function registerWebhookRoutes(app: Express, deps: HttpRouteDeps): void {
     });
 
   if (!deps.webhookHandlerDeps) {
-    deps.logger.warn("webhookHandlerDeps not provided — /webhooks/linear and /webhooks/github will not be registered");
+    deps.logger.debug(
+      "webhook_url not configured — /webhooks/linear and /webhooks/github are not registered (orchestrator will use polling)",
+    );
     return;
   }
 

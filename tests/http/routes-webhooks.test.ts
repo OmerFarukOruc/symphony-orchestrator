@@ -42,7 +42,7 @@ function createDeps(overrides: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 
 describe("registerWebhookRoutes", () => {
-  it("registers trigger route and warns when webhookHandlerDeps is missing", () => {
+  it("registers trigger route and skips tracker webhook routes when webhookHandlerDeps is missing", () => {
     const app = createApp();
     const logger = createMockLogger();
     const deps = createDeps({ logger, webhookHandlerDeps: undefined });
@@ -51,8 +51,9 @@ describe("registerWebhookRoutes", () => {
 
     // Trigger route should still be registered
     expect(app.route).toHaveBeenCalledWith("/api/v1/webhooks/trigger");
-    // Webhook registration should be skipped with warning
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("webhookHandlerDeps not provided"));
+    // Not-configured state is logged at debug, not warn
+    expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining("webhook_url not configured"));
     // /webhooks/linear and /webhooks/github should NOT be registered
     const registeredPaths = app.route.mock.calls.map((call: unknown[]) => call[0]);
     expect(registeredPaths).not.toContain("/webhooks/linear");

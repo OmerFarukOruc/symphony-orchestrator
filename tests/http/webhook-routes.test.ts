@@ -81,7 +81,8 @@ describe("registerWebhookRoutes", () => {
 
     expect(linear.status).toBe(404);
     expect(github.status).toBe(404);
-    expect(deps.logger.warn).toHaveBeenCalled();
+    expect(deps.logger.warn).not.toHaveBeenCalled();
+    expect(deps.logger.debug).toHaveBeenCalled();
   });
 
   it("registers provider webhook routes when webhook deps are available", async () => {
