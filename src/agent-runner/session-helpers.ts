@@ -118,13 +118,18 @@ const TOOL_SCHEMAS: Record<string, object> = {
   },
 };
 
+type DynamicToolSchema = (typeof TOOL_SCHEMAS)[keyof typeof TOOL_SCHEMAS];
+
 /**
  * Build the dynamic tools list for Codex `thread/start`.
  *
  * Includes all tools declared by the tracker provider plus the `github_api`
  * tool (always present as a non-tracker tool).
  */
-export function buildDynamicTools(trackerToolProvider: TrackerToolProvider, logger: RisolutoLogger): object[] {
+export function buildDynamicTools(
+  trackerToolProvider: TrackerToolProvider,
+  logger: RisolutoLogger,
+): DynamicToolSchema[] {
   const allNames = [...trackerToolProvider.toolNames, "github_api"];
   const unknownNames = allNames.filter((name) => TOOL_SCHEMAS[name] === undefined);
   if (unknownNames.length > 0) {

@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 
+import { includesMatchingToken } from "./token-compare.js";
 import { isLoopbackAddress } from "./write-guard.js";
 
 const SAFE_READ_METHODS = new Set(["GET", "HEAD"]);
@@ -103,7 +104,7 @@ export function createReadGuard(): (req: Request, res: Response, next: NextFunct
     // Bearer token from Authorization header
     const bearerToken = extractBearerToken(req);
     if (bearerToken) {
-      if (configuredHeaderTokens.includes(bearerToken)) {
+      if (includesMatchingToken(bearerToken, configuredHeaderTokens)) {
         next();
         return;
       }
@@ -121,7 +122,7 @@ export function createReadGuard(): (req: Request, res: Response, next: NextFunct
     const queryValue = req.query["read_token"];
     const queryToken = typeof queryValue === "string" ? queryValue : null;
     if (queryToken) {
-      if (configuredQueryTokens.includes(queryToken)) {
+      if (includesMatchingToken(queryToken, configuredQueryTokens)) {
         next();
         return;
       }

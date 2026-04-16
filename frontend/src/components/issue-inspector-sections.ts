@@ -100,17 +100,23 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
     value: currentModel,
     required: true,
   });
-  api.getModels().then(({ models }) => {
-    const selected = modelSelect.value;
-    modelSelect.replaceChildren();
-    for (const { id, displayName } of models) {
-      const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = displayName;
-      opt.selected = id === selected;
-      modelSelect.append(opt);
-    }
-  });
+  api
+    .getModels()
+    .then(({ models }) => {
+      const selected = modelSelect.value;
+      modelSelect.replaceChildren();
+      for (const { id, displayName } of models) {
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = displayName;
+        opt.selected = id === selected;
+        modelSelect.append(opt);
+      }
+    })
+    .catch((error: unknown) => {
+      console.error("issue-inspector: failed to load models", error);
+      toast("Failed to load model list — showing current model only.", "error");
+    });
   const effortSelect = createSelectControl({
     options: REASONING_EFFORT_OPTIONS.map((value) => ({
       value: value === "none" ? "" : value,
@@ -143,22 +149,28 @@ export function buildModelSection(detail: IssueDetail): HTMLElement {
     options: [{ value: "", label: "Default" }],
     value: detail.configuredTemplateId ?? "",
   });
-  api.getTemplates().then(({ templates }) => {
-    const selected = templateSelect.value;
-    templateSelect.replaceChildren();
-    const defaultOpt = document.createElement("option");
-    defaultOpt.value = "";
-    defaultOpt.textContent = "Default";
-    defaultOpt.selected = selected === "";
-    templateSelect.append(defaultOpt);
-    for (const { id, name } of templates) {
-      const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = name;
-      opt.selected = id === selected;
-      templateSelect.append(opt);
-    }
-  });
+  api
+    .getTemplates()
+    .then(({ templates }) => {
+      const selected = templateSelect.value;
+      templateSelect.replaceChildren();
+      const defaultOpt = document.createElement("option");
+      defaultOpt.value = "";
+      defaultOpt.textContent = "Default";
+      defaultOpt.selected = selected === "";
+      templateSelect.append(defaultOpt);
+      for (const { id, name } of templates) {
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = name;
+        opt.selected = id === selected;
+        templateSelect.append(opt);
+      }
+    })
+    .catch((error: unknown) => {
+      console.error("issue-inspector: failed to load templates", error);
+      toast("Failed to load template list — using Default only.", "error");
+    });
   const saveTemplate = createButton("Save template", "ghost", "submit");
   templateForm.append(
     createField({ label: "Template", hint: "Leave as Default to use the global prompt template." }, templateSelect),

@@ -126,6 +126,7 @@ async function fetchRoute(path: string, options?: RequestInit): Promise<Response
 async function loadRoutesModuleWithMocks() {
   vi.resetModules();
 
+  const readFileSyncSpy = vi.fn(() => "<html></html>");
   const staticMiddleware = vi.fn();
   const limiterMiddleware = vi.fn();
   const staticSpy = vi.fn(() => staticMiddleware);
@@ -142,7 +143,7 @@ async function loadRoutesModuleWithMocks() {
   const registerWebhookRoutesSpy = vi.fn();
 
   vi.doMock("node:fs", () => ({
-    readFileSync: vi.fn(() => "<html></html>"),
+    readFileSync: readFileSyncSpy,
   }));
   vi.doMock("express", () => ({
     default: { static: staticSpy },
@@ -198,6 +199,7 @@ async function loadRoutesModuleWithMocks() {
     registerNotificationRoutesSpy,
     registerIssueRoutesSpy,
     registerWebhookRoutesSpy,
+    readFileSyncSpy,
   };
 }
 
@@ -711,5 +713,44 @@ describe("registerHttpRoutes wiring", () => {
     expect(spaResponse.type).toHaveBeenCalledWith("html");
     expect(spaResponse.send).toHaveBeenCalled();
     expect(spaResponse.status).not.toHaveBeenCalled();
+  });
+
+  it("reads the SPA index once and reuses the cached HTML across fallback requests", async () => {
+    const { registerHttpRoutes, readFileSyncSpy } = await loadRoutesModuleWithMocks();
+    const app = { use: vi.fn(), all: vi.fn() };
+
+    registerHttpRoutes(
+      app as never,
+      {
+        orchestrator: {},
+        notificationStore: {},
+        automationStore: {},
+        automationScheduler: {},
+        alertHistoryStore: {},
+        logger: createMockLogger(),
+        frontendDir: "/custom/frontend",
+      } as never,
+    );
+
+    const fallback = app.use.mock.calls.at(-1)?.[0] as (request: Request, response: Response) => void;
+    const firstResponse = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+      type: vi.fn().mockReturnThis(),
+      send: vi.fn(),
+    };
+    const secondResponse = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+      type: vi.fn().mockReturnThis(),
+      send: vi.fn(),
+    };
+
+    fallback({ path: "/dashboard" } as Request, firstResponse as never);
+    fallback({ path: "/queue" } as Request, secondResponse as never);
+
+    expect(readFileSyncSpy).toHaveBeenCalledTimes(1);
+    expect(firstResponse.send).toHaveBeenCalledWith("<html></html>");
+    expect(secondResponse.send).toHaveBeenCalledWith("<html></html>");
   });
 });

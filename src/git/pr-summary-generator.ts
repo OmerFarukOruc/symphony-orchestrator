@@ -153,7 +153,7 @@ export async function generatePrSummary(workspaceDir: string, defaultBranch: str
 
   // Pass the diff content directly so codex doesn't need to re-run git.
   // Sanitize triple backticks in diff content to prevent breaking out of the markdown fence.
-  const sanitizedDiff = diff.replace(/```/g, "`` ");
+  const sanitizedDiff = diff.replaceAll("```", "`` ");
   const prompt =
     `Below is the output of \`git diff ${defaultBranch}...HEAD\`. Write a concise summary of ALL changes.\n\n` +
     "```diff\n" +

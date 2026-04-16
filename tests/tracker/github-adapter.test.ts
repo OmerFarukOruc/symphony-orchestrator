@@ -4,6 +4,7 @@ import { GitHubTrackerAdapter } from "../../src/tracker/github-adapter.js";
 import type { GitHubIssuesClient } from "../../src/github/issues-client.js";
 import type { ServiceConfig } from "../../src/core/types.js";
 import type { RawGitHubIssue } from "../../src/github/issues-client.js";
+import { createMockLogger } from "../helpers.js";
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -230,6 +231,18 @@ describe("GitHubTrackerAdapter", () => {
       const result = await adapter.transitionIssue("7", "done");
 
       expect(result).toEqual({ success: false });
+    });
+
+    it("logs transition failures when a logger is provided", async () => {
+      const logger = createMockLogger();
+      const adapterWithLogger = new GitHubTrackerAdapter(client, createConfig, logger);
+      vi.mocked(client.withRetry).mockRejectedValue(new Error("API error"));
+
+      await expect(adapterWithLogger.transitionIssue("7", "done")).resolves.toEqual({ success: false });
+      expect(logger.warn).toHaveBeenCalledWith(
+        { issueId: "7", stateId: "done", error: "API error" },
+        "github tracker transition failed",
+      );
     });
   });
 

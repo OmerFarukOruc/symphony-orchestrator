@@ -3,6 +3,7 @@ import cron, { type ScheduledTask } from "node-cron";
 import type { ConfigStore } from "../config/store.js";
 import type { AutomationConfig, RisolutoLogger } from "../core/types.js";
 import type { NotificationManager } from "../notification/manager.js";
+import { toErrorString } from "../utils/type-guards.js";
 import type { AutomationRunRecord } from "./types.js";
 import type { AutomationRunner } from "./runner.js";
 
@@ -115,28 +116,35 @@ export class AutomationScheduler {
     if (!this.cronApi.validate(config.schedule)) {
       const message = `Invalid cron expression for automation ${config.name}: ${config.schedule}`;
       this.options.logger.warn({ automationName: config.name, schedule: config.schedule }, message);
-      void this.options.notificationManager?.notify({
-        type: "automation_failed",
-        severity: "warning",
-        timestamp: new Date().toISOString(),
-        title: config.name,
-        message,
-        source: "automation-scheduler",
-        href: null,
-        issue: {
-          id: null,
-          identifier: `automation:${config.name}`,
+      void this.options.notificationManager
+        ?.notify({
+          type: "automation_failed",
+          severity: "warning",
+          timestamp: new Date().toISOString(),
           title: config.name,
-          state: null,
-          url: null,
-        },
-        attempt: null,
-        metadata: {
-          automationName: config.name,
-          schedule: config.schedule,
-        },
-        dedupeKey: `automation-invalid:${config.name}:${config.schedule}`,
-      });
+          message,
+          source: "automation-scheduler",
+          href: null,
+          issue: {
+            id: null,
+            identifier: `automation:${config.name}`,
+            title: config.name,
+            state: null,
+            url: null,
+          },
+          attempt: null,
+          metadata: {
+            automationName: config.name,
+            schedule: config.schedule,
+          },
+          dedupeKey: `automation-invalid:${config.name}:${config.schedule}`,
+        })
+        .catch((error: unknown) => {
+          this.options.logger.warn(
+            { automationName: config.name, error: toErrorString(error) },
+            "invalid-cron notification delivery failed",
+          );
+        });
       return { config, signature, task: null, valid: false, lastError: message };
     }
 

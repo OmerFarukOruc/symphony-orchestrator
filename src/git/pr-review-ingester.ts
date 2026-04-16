@@ -215,7 +215,7 @@ export function formatPRFeedbackForPrompt(feedback: PRReviewFeedback): string {
   const lines: string[] = [];
 
   lines.push(`## Previous PR Review Feedback`);
-  lines.push(``, `Pull Request: [#${feedback.prNumber}](${feedback.prUrl})`, ``);
+  lines.push("", `Pull Request: [#${feedback.prNumber}](${feedback.prUrl})`, "");
 
   const hasContent = feedback.reviews.length > 0 || feedback.comments.length > 0 || feedback.inlineComments.length > 0;
 

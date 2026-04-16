@@ -1,5 +1,6 @@
 import { asRecord } from "../utils/type-guards.js";
 import { type ToolCallResult, toolCallSuccess, toolCallFailure } from "../utils/tool-call-result.js";
+import type { PrStatusResponse } from "./github-pr-client.js";
 
 type GithubApiAction = "add_pr_comment" | "get_pr_status";
 
@@ -23,7 +24,7 @@ type GithubApiInput = AddPrCommentInput | GetPrStatusInput;
 
 export interface GithubApiToolClient {
   addPrComment(input: { owner: string; repo: string; pullNumber: number; body: string }): Promise<unknown>;
-  getPrStatus(input: { owner: string; repo: string; pullNumber: number }): Promise<unknown>;
+  getPrStatus(input: { owner: string; repo: string; pullNumber: number }): Promise<PrStatusResponse>;
 }
 
 function asString(value: unknown): string | null {

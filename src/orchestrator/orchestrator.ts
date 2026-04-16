@@ -27,7 +27,7 @@ import type {
   UpdateIssueModelSelectionCommand,
   UpdateIssueModelSelectionResult,
 } from "./port.js";
-import type { OrchestratorDeps } from "./runtime-types.js";
+import type { OrchestratorDeps, RunningEntry } from "./runtime-types.js";
 import { serializeSnapshot } from "./snapshot-serialization.js";
 import { nowIso } from "./views.js";
 import type { ReasoningEffort, RuntimeSnapshot } from "../core/types.js";
@@ -50,6 +50,10 @@ export class Orchestrator implements OrchestratorPort {
     revision: number;
     snapshot: RuntimeSnapshot;
     serializedState: Record<string, unknown>;
+  } | null = null;
+  private runningEntryLookupCache: {
+    revision: number;
+    entriesByIdentifier: Map<string, RunningEntry>;
   } | null = null;
 
   constructor(private readonly deps: OrchestratorDeps) {
@@ -83,6 +87,22 @@ export class Orchestrator implements OrchestratorPort {
   private markStateDirty(): void {
     this.stateRevision += 1;
     this.cachedSnapshot = null;
+    this.runningEntryLookupCache = null;
+  }
+
+  private getRunningEntryByIdentifier(identifier: string) {
+    if (this.runningEntryLookupCache?.revision !== this.stateRevision) {
+      const entriesByIdentifier = new Map<string, RunningEntry>();
+      for (const entry of this._state.runningEntries.values()) {
+        entriesByIdentifier.set(entry.issue.identifier, entry);
+      }
+      this.runningEntryLookupCache = {
+        revision: this.stateRevision,
+        entriesByIdentifier,
+      };
+    }
+
+    return this.runningEntryLookupCache.entriesByIdentifier.get(identifier) ?? null;
   }
 
   async start(): Promise<void> {
@@ -211,9 +231,7 @@ export class Orchestrator implements OrchestratorPort {
   }
 
   stopWorkerForIssue(issueIdentifier: string, reason: string): void {
-    const entry = [...this._state.runningEntries.values()].find(
-      (runningEntry) => runningEntry.issue.identifier === issueIdentifier,
-    );
+    const entry = this.getRunningEntryByIdentifier(issueIdentifier);
     if (!entry) {
       this.deps.logger.debug({ issueIdentifier, reason }, "stopWorkerForIssue: no running worker found");
       return;
@@ -308,9 +326,7 @@ export class Orchestrator implements OrchestratorPort {
   }
 
   private handleAbortIssueCommand(identifier: string): AbortIssueResult {
-    const entry = [...this._state.runningEntries.values()].find(
-      (runningEntry) => runningEntry.issue.identifier === identifier,
-    );
+    const entry = this.getRunningEntryByIdentifier(identifier);
     if (!entry) {
       const detail = this.getIssueDetail(identifier);
       if (!detail) {
@@ -390,9 +406,7 @@ export class Orchestrator implements OrchestratorPort {
   }
 
   private async handleSteerIssueCommand(identifier: string, message: string): Promise<SteerIssueResult> {
-    const entry = [...this._state.runningEntries.values()].find(
-      (runningEntry) => runningEntry.issue.identifier === identifier,
-    );
+    const entry = this.getRunningEntryByIdentifier(identifier);
     if (!entry?.steerTurn) return null;
     const ok = await entry.steerTurn(message);
     return { ok };

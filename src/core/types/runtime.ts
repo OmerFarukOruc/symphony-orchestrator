@@ -2,6 +2,7 @@ import type { IssueBlockerRef } from "./issue.js";
 import type { TokenUsageSnapshot, ReasoningEffort } from "./model.js";
 import type { RecentEvent } from "./attempt.js";
 import type { SystemHealth } from "./health.js";
+import type { WebhookHealthState } from "../../webhook/types.js";
 
 export interface RuntimeIssueView {
   issueId: string;
@@ -60,8 +61,8 @@ export interface RuntimeSnapshot {
   counts: { running: number; retrying: number };
   running: RuntimeIssueView[];
   retrying: RuntimeIssueView[];
-  queued?: RuntimeIssueView[];
-  completed?: RuntimeIssueView[];
+  queued: RuntimeIssueView[];
+  completed: RuntimeIssueView[];
   workflowColumns: WorkflowColumnView[];
   codexTotals: {
     inputTokens: number;
@@ -74,12 +75,6 @@ export interface RuntimeSnapshot {
   recentEvents: RecentEvent[];
   stallEvents?: StallEventView[];
   systemHealth?: SystemHealth;
-  webhookHealth?: {
-    status: string;
-    effectiveIntervalMs: number;
-    stats: { deliveriesReceived: number; lastDeliveryAt: string | null; lastEventType: string | null };
-    lastDeliveryAt: string | null;
-    lastEventType: string | null;
-  };
+  webhookHealth?: WebhookHealthState;
   availableModels?: string[] | null;
 }

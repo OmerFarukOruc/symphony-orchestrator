@@ -6,7 +6,7 @@
  */
 export interface PrRecord {
   prId: string;
-  attemptId: string;
+  attemptId: string | null;
   issueId: string;
   owner: string;
   repo: string;

@@ -123,6 +123,24 @@ describe("createReadGuard", () => {
     expect(response.status).toHaveBeenCalledWith(401);
   });
 
+  it("rejects header tokens with the wrong length even when they share a prefix", () => {
+    vi.stubEnv("RISOLUTO_READ_TOKEN", "read-secret");
+    const next = vi.fn();
+    const response = createResponse();
+    const request = {
+      method: "GET",
+      path: "/api/v1/state",
+      socket: { remoteAddress: "10.0.0.5" },
+      get: vi.fn().mockReturnValue("Bearer read-sec"),
+      query: {},
+    };
+
+    createReadGuard()(request as never, response as never, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(401);
+  });
+
   it("skips public runtime and setup reads", () => {
     const next = vi.fn();
     const response = createResponse();

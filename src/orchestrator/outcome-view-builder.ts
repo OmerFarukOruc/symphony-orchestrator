@@ -16,20 +16,6 @@ export interface OutcomeViewInput {
   };
 }
 
-export interface OutcomeViewInput {
-  issue: Issue;
-  workspace: Workspace;
-  entry: RunningEntry;
-  configuredSelection: ModelSelection;
-  overrides: {
-    status: string;
-    attempt?: number | null;
-    error?: string | null;
-    message?: string | null;
-    pullRequestUrl?: string | null;
-  };
-}
-
 export function buildOutcomeView(
   issue: Issue,
   workspace: Workspace,

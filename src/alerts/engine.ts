@@ -5,6 +5,7 @@ import type { ConfigStore } from "../config/store.js";
 import type { NotificationManager } from "../notification/manager.js";
 import type { AlertHistoryStorePort } from "./history-store.js";
 import { AlertPipeline } from "./alert-pipeline.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 interface AlertEngineOptions {
   configStore: ConfigStore;
@@ -24,7 +25,12 @@ export class AlertEngine {
     if (String(channel).startsWith("notification.")) {
       return;
     }
-    void this.pipeline.processEvent(String(channel), payload);
+    void this.pipeline.processEvent(String(channel), payload).catch((error: unknown) => {
+      this.options.logger.error(
+        { channel: String(channel), error: toErrorString(error) },
+        "alert pipeline processing failed",
+      );
+    });
   };
 
   constructor(private readonly options: AlertEngineOptions) {

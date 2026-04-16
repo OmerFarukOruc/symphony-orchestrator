@@ -141,7 +141,17 @@ class RetryCoordinatorImpl implements RetryCoordinator {
     const dueAtMs = Date.now() + delayMs;
     const timer = setTimeout(() => {
       void this.revalidateAndLaunch(issue.id, attempt).catch((retryError) => {
-        void this.handleRetryLaunchFailure(issue, attempt, retryError);
+        void this.handleRetryLaunchFailure(issue, attempt, retryError).catch((failureError: unknown) => {
+          this.deps.logger.error(
+            {
+              issue_id: issue.id,
+              issue_identifier: issue.identifier,
+              retry_error: toErrorString(retryError),
+              error: toErrorString(failureError),
+            },
+            "retry launch failure handling crashed",
+          );
+        });
       });
     }, delayMs);
 

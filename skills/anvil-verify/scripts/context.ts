@@ -67,7 +67,7 @@ export function extractOwnedFiles(plan: string): string[] {
       const cleaned = item
         .trim()
         .replace(/^(create|update|delete)\s+/i, "")
-        .replace(/[`]/g, "")
+        .replaceAll("`", "")
         .replace(/[.;]$/g, "")
         .trim();
       if (cleaned && isLikelyRepoPath(cleaned)) {

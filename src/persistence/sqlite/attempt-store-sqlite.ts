@@ -262,7 +262,7 @@ function rowToPrRecord(row: {
 }): OpenPrRecord {
   const prRecord: PrRecord = {
     prId: row.prId,
-    attemptId: row.attemptId ?? "",
+    attemptId: row.attemptId,
     issueId: row.issueId,
     owner: row.owner,
     repo: row.repo,

@@ -1,5 +1,6 @@
-import type { Issue, ServiceConfig } from "../core/types.js";
+import type { Issue, RisolutoLogger, ServiceConfig } from "../core/types.js";
 import { GitHubIssuesClient, normalizeGitHubIssue } from "../github/issues-client.js";
+import { toErrorString } from "../utils/type-guards.js";
 import type {
   TrackerIssueCreateInput,
   TrackerIssueCreateResult,
@@ -32,6 +33,7 @@ export class GitHubTrackerAdapter implements TrackerPort {
   constructor(
     private readonly client: GitHubIssuesClient,
     private readonly getConfig: () => ServiceConfig,
+    private readonly logger?: Pick<RisolutoLogger, "warn">,
   ) {}
 
   async fetchCandidateIssues(): Promise<Issue[]> {
@@ -106,7 +108,8 @@ export class GitHubTrackerAdapter implements TrackerPort {
     try {
       await this.updateIssueState(issueId, stateId);
       return { success: true };
-    } catch {
+    } catch (error) {
+      this.logger?.warn({ issueId, stateId, error: toErrorString(error) }, "github tracker transition failed");
       return { success: false };
     }
   }

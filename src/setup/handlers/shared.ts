@@ -1,7 +1,7 @@
 import { buildProjectLookupQuery } from "../../linear/queries.js";
-import type { SetupApiDeps as SetupPortDeps } from "../port.js";
+import type { SetupApiDeps } from "../port.js";
 
-export type SetupApiDeps = SetupPortDeps;
+export type { SetupApiDeps } from "../port.js";
 
 const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
 

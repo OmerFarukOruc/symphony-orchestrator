@@ -1,4 +1,4 @@
-import type { Issue, ServiceConfig } from "../core/types.js";
+import type { Issue, RisolutoLogger, ServiceConfig } from "../core/types.js";
 import type { LinearClient } from "../linear/client.js";
 import {
   buildCreateIssueMutation,
@@ -24,6 +24,7 @@ import type {
   TrackerProvisionSelectProjectInput,
   TrackerProvisionSelectProjectResult,
 } from "./port.js";
+import { toErrorString } from "../utils/type-guards.js";
 
 interface LinearGraphQLResponse {
   data?: Record<string, unknown>;
@@ -48,6 +49,7 @@ export class LinearTrackerAdapter implements TrackerPort {
   constructor(
     private readonly client: LinearClient,
     private readonly getConfig?: () => ServiceConfig,
+    private readonly logger?: Pick<RisolutoLogger, "warn">,
   ) {}
 
   fetchCandidateIssues(): Promise<Issue[]> {
@@ -86,7 +88,8 @@ export class LinearTrackerAdapter implements TrackerPort {
     try {
       await this.client.updateIssueStateStrict(issueId, stateId);
       return { success: true };
-    } catch {
+    } catch (error) {
+      this.logger?.warn({ issueId, stateId, error: toErrorString(error) }, "linear tracker transition failed");
       return { success: false };
     }
   }

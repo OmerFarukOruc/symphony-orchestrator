@@ -504,6 +504,42 @@ describe("RetryCoordinator timer flows", () => {
     );
   });
 
+  it("logs when retry failure handling itself crashes", async () => {
+    vi.useFakeTimers();
+    const harness = makeHarness();
+    const issue = createIssue();
+    const entry = createRunningEntry({ modelSelection: undefined as unknown as ModelSelection });
+    harness.runningEntries.set(issue.id, entry);
+    harness.launchWorker.mockRejectedValueOnce(new Error("spawn failed"));
+    harness.resolveModelSelection.mockImplementation(() => {
+      throw new Error("selection lookup failed");
+    });
+
+    await harness.ctx.retryCoordinator.dispatch(
+      harness.ctx,
+      makePrepared(
+        makeOutcome({ kind: "cancelled", errorCode: "model_override_updated" }),
+        entry,
+        issue,
+        createWorkspace(),
+        createModelSelection(),
+        2,
+      ),
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(harness.logger.error).toHaveBeenCalledWith(
+      {
+        issue_id: issue.id,
+        issue_identifier: issue.identifier,
+        retry_error: "spawn failed",
+        error: "selection lookup failed",
+      },
+      "retry launch failure handling crashed",
+    );
+  });
+
   it("cancel removes retry entries and releases claims when nothing is running", async () => {
     vi.useFakeTimers();
     const harness = makeHarness();

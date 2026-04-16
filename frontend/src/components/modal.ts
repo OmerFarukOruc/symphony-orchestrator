@@ -89,7 +89,7 @@ export function createModal(options: ModalOptions): ModalController {
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
       const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
+      const lastElement = focusableElements.item(focusableElements.length - 1);
 
       if (event.shiftKey && document.activeElement === firstElement) {
         event.preventDefault();

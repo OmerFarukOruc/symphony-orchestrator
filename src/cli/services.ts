@@ -27,7 +27,7 @@ import { PathRegistry } from "../workspace/path-registry.js";
 import type { SecretsStore } from "../secrets/store.js";
 import { createTracker } from "../tracker/factory.js";
 import { WorkspaceManager } from "../workspace/manager.js";
-import { PrMonitorService, type PrMonitorGhClient } from "../git/pr-monitor.js";
+import { PrMonitorService } from "../git/pr-monitor.js";
 import { initWebhookInfrastructure, buildWebhookHandlerDeps } from "../webhook/composition.js";
 
 export { evaluateWebhookConfig } from "../webhook/composition.js";
@@ -261,7 +261,7 @@ function createRuntimeServices(
 
   const prMonitor = new PrMonitorService({
     store: persistence.attemptStore,
-    ghClient: gitManager as unknown as PrMonitorGhClient,
+    ghClient: gitManager,
     tracker,
     workspaceManager,
     getConfig: () => configStore.getConfig().agent,

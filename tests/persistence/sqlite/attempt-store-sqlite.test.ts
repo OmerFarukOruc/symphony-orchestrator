@@ -83,7 +83,7 @@ function createCheckpoint(
 
 function createPrInput(
   overrides: Partial<{
-    attemptId: string;
+    attemptId: string | null;
     issueId: string;
     owner: string;
     repo: string;
@@ -729,7 +729,7 @@ describe("SqliteAttemptStore", () => {
 
       const [closedPr] = await store.getAllPrs();
       expect(closedPr).toMatchObject({
-        attemptId: "",
+        attemptId: null,
         status: "closed",
         mergedAt: null,
         mergeCommitSha: null,

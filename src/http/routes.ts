@@ -20,6 +20,7 @@ const frontendDist = join(process.cwd(), "dist/frontend");
 export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
   const staticRoot = deps.frontendDir ?? frontendDist;
   const spaIndexPath = join(staticRoot, "index.html");
+  let cachedSpaIndexHtml: string | null = null;
   const routeDeps = {
     ...deps,
     metrics: deps.metrics ?? createMetricsCollector(),
@@ -49,6 +50,9 @@ export function registerHttpRoutes(app: Express, deps: HttpRouteDeps): void {
       response.status(404).json({ error: { code: "not_found", message: "Not found" } });
       return;
     }
-    response.type("html").send(readFileSync(spaIndexPath, "utf8"));
+    if (cachedSpaIndexHtml === null) {
+      cachedSpaIndexHtml = readFileSync(spaIndexPath, "utf8");
+    }
+    response.type("html").send(cachedSpaIndexHtml);
   });
 }

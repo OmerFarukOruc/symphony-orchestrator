@@ -77,7 +77,9 @@ export async function runCodexAdminAction(
   }
 }
 
-export async function promptForUserInput(request: CodexUserInputRequest): Promise<unknown | null> {
+export async function promptForUserInput(
+  request: CodexUserInputRequest,
+): Promise<{ answers: Array<{ id: string; value: string }> } | null> {
   const answers: Array<{ id: string; value: string }> = [];
   for (const question of request.questions) {
     const promptText = buildQuestionPrompt(question);

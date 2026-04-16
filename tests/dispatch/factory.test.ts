@@ -108,6 +108,7 @@ describe("createDispatcher", () => {
 
   it("creates DispatchClient when DISPATCH_MODE is 'remote'", () => {
     process.env.DISPATCH_MODE = "remote";
+    process.env.DISPATCH_SHARED_SECRET = "dispatch-secret";
     const dispatcher = createDispatcher(() => createConfig(), createMockDeps());
 
     expect(dispatcher).toBeInstanceOf(DispatchClient);
@@ -115,6 +116,7 @@ describe("createDispatcher", () => {
 
   it("passes DISPATCH_URL to DispatchClient", () => {
     process.env.DISPATCH_MODE = "remote";
+    process.env.DISPATCH_SHARED_SECRET = "dispatch-secret";
     process.env.DISPATCH_URL = "http://custom:9100/dispatch";
     const dispatcher = createDispatcher(() => createConfig(), createMockDeps());
 
@@ -131,9 +133,19 @@ describe("createDispatcher", () => {
 
   it("creates dispatch-client logger child in remote mode", () => {
     process.env.DISPATCH_MODE = "remote";
+    process.env.DISPATCH_SHARED_SECRET = "dispatch-secret";
     const deps = createMockDeps();
     createDispatcher(() => createConfig(), deps);
 
     expect(deps.logger.child).toHaveBeenCalledWith({ component: "dispatch-client" });
+  });
+
+  it("fails fast when remote dispatch is configured without a shared secret", () => {
+    process.env.DISPATCH_MODE = "remote";
+    delete process.env.DISPATCH_SHARED_SECRET;
+
+    expect(() => createDispatcher(() => createConfig(), createMockDeps())).toThrow(
+      "DISPATCH_SHARED_SECRET is required when DISPATCH_MODE=remote",
+    );
   });
 });

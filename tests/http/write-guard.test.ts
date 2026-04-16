@@ -199,6 +199,24 @@ describe("createWriteGuard", () => {
     expect(response.status).toBe(401);
   });
 
+  it("rejects tokens with the wrong length even when the prefix matches", () => {
+    vi.stubEnv("RISOLUTO_WRITE_TOKEN", "test-secret-token");
+    const next = vi.fn();
+    const response = createMockResponse();
+
+    createWriteGuard()(
+      createMockRequest({
+        authorization: "Bearer test-secret",
+        remoteAddress: "127.0.0.1",
+      }),
+      response,
+      next,
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(response._status).toBe(401);
+  });
+
   it("allows GET, HEAD, and OPTIONS as safe methods without auth checks", () => {
     for (const method of ["GET", "HEAD", "OPTIONS"]) {
       const next = vi.fn();

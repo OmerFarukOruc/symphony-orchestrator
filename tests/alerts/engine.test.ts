@@ -76,6 +76,34 @@ describe("AlertEngine", () => {
     });
   });
 
+  it("logs pipeline failures instead of leaving them unhandled", async () => {
+    const eventBus = new TypedEventBus<RisolutoEventMap>();
+    const logger = createMockLogger();
+    const engine = new AlertEngine({
+      configStore: createConfigStore() as never,
+      eventBus,
+      notificationManager: { notify: vi.fn() } as never,
+      historyStore: makeHistoryStore(),
+      logger,
+      pipeline: {
+        processEvent: vi.fn().mockRejectedValue(new Error("pipeline exploded")),
+      } as never,
+    });
+
+    engine.start();
+    eventBus.emit("worker.failed", {
+      issueId: "issue-1",
+      identifier: "ENG-1",
+      error: "worker crashed",
+    });
+    await vi.waitFor(() => {
+      expect(logger.error).toHaveBeenCalledWith(
+        { channel: "worker.failed", error: "pipeline exploded" },
+        "alert pipeline processing failed",
+      );
+    });
+  });
+
   it("suppresses repeated alerts inside the cooldown window", async () => {
     const eventBus = new TypedEventBus<RisolutoEventMap>();
     const notificationManager = {

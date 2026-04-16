@@ -41,11 +41,11 @@ export function createTracker(getConfig: () => ServiceConfig, logger: RisolutoLo
 
   if (config.tracker.kind === "github") {
     const client = new GitHubIssuesClient(getConfig, logger.child({ component: "github" }));
-    const tracker = new GitHubTrackerAdapter(client, getConfig);
+    const tracker = new GitHubTrackerAdapter(client, getConfig, logger.child({ component: "github-tracker" }));
     return { tracker, trackerToolProvider: new NullTrackerToolProvider(), linearClient: null };
   }
 
   const linearClient = new LinearClient(getConfig, logger.child({ component: "linear" }));
-  const tracker = new LinearTrackerAdapter(linearClient, getConfig);
+  const tracker = new LinearTrackerAdapter(linearClient, getConfig, logger.child({ component: "linear-tracker" }));
   return { tracker, trackerToolProvider: new LinearTrackerToolProvider(linearClient), linearClient };
 }

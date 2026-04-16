@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 
 import type { WriteAuditLog } from "./write-audit.js";
+import { tokensMatch } from "./token-compare.js";
 
 /**
  * Write-route authorization policy for privileged mutation endpoints.
@@ -77,7 +78,7 @@ export function createWriteGuard(
     if (writeToken) {
       const suppliedToken = parseBearerToken(req.get("authorization"));
 
-      if (suppliedToken !== writeToken) {
+      if (!tokensMatch(suppliedToken, writeToken)) {
         res.status(401).json({
           error: {
             code: "write_unauthorized",

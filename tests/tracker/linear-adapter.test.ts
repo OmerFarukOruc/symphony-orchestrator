@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { LinearTrackerAdapter } from "../../src/tracker/linear-adapter.js";
 import type { LinearClient } from "../../src/linear/client.js";
 import type { Issue } from "../../src/core/types.js";
+import { createMockLogger } from "../helpers.js";
 
 // ---------------------------------------------------------------------------
 // Mock factory
@@ -156,6 +157,18 @@ describe("LinearTrackerAdapter", () => {
       const result = await adapter.transitionIssue("issue-abc", "state-done");
 
       expect(result).toEqual({ success: false });
+    });
+
+    it("logs transition failures when a logger is provided", async () => {
+      const logger = createMockLogger();
+      const adapterWithLogger = new LinearTrackerAdapter(client, undefined, logger);
+      vi.mocked(client.updateIssueStateStrict).mockRejectedValue(new Error("Linear API error"));
+
+      await expect(adapterWithLogger.transitionIssue("issue-abc", "state-done")).resolves.toEqual({ success: false });
+      expect(logger.warn).toHaveBeenCalledWith(
+        { issueId: "issue-abc", stateId: "state-done", error: "Linear API error" },
+        "linear tracker transition failed",
+      );
     });
 
     it("returns { success: false } when Linear does not confirm the transition", async () => {

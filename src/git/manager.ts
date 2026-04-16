@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 
 import type { Issue, RisolutoLogger } from "../core/types.js";
 import { GitHubPrClient } from "./github-pr-client.js";
+import type { PrStatusResponse } from "./github-pr-client.js";
 import type { GitIntegrationPort } from "./port.js";
 import type { RepoMatch } from "./repo-router.js";
 import type { GitRunner, PrCreateResult } from "./git-types.js";
@@ -40,8 +41,11 @@ function sanitizeBranchSegment(value: string): string {
 }
 
 function deriveBranchName(issue: Pick<Issue, "identifier" | "branchName">, branchPrefix = "risoluto/"): string {
-  if (issue.branchName && issue.branchName.trim().length > 0) {
-    return issue.branchName.trim();
+  const provided = issue.branchName?.trim();
+  // Reject tracker-supplied names starting with "-" to prevent flag injection
+  // into git commands (e.g. a branchName of "--force" becomes a flag arg).
+  if (provided && provided.length > 0 && !provided.startsWith("-")) {
+    return provided;
   }
   const slug = sanitizeBranchSegment(issue.identifier) || "issue";
   return `${branchPrefix}${slug}`;
@@ -240,7 +244,7 @@ export class GitManager implements GitIntegrationPort {
     repo: string;
     pullNumber: number;
     tokenEnvName?: string;
-  }): Promise<unknown> {
+  }): Promise<PrStatusResponse> {
     return this.githubPrClient.getPrStatus(input);
   }
   private async pushWithToken(workspaceDir: string, branch: string, tokenEnvName?: string): Promise<void> {

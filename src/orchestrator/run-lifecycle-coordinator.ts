@@ -269,7 +269,9 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
     if (!this.deps.notificationManager) {
       return;
     }
-    void this.deps.notificationManager.notify(event);
+    void this.deps.notificationManager.notify(event).catch((error: unknown) => {
+      this.deps.logger.warn({ eventType: event.type, error: toErrorString(error) }, "notification delivery failed");
+    });
   }
 
   private buildOutcomeView(input: OutcomeViewInput): RuntimeIssueView {

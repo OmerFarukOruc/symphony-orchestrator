@@ -34,9 +34,14 @@ export function createDispatcher(getConfig: () => ServiceConfig, deps: Dispatche
   const dispatchMode = process.env.DISPATCH_MODE ?? "local";
 
   if (dispatchMode === "remote") {
+    const secret = process.env.DISPATCH_SHARED_SECRET?.trim();
+    if (!secret) {
+      throw new Error("DISPATCH_SHARED_SECRET is required when DISPATCH_MODE=remote");
+    }
+
     return new DispatchClient({
       dispatchUrl: process.env.DISPATCH_URL ?? "http://data-plane:9100/dispatch",
-      secret: process.env.DISPATCH_SHARED_SECRET ?? "",
+      secret,
       getConfig,
       logger: deps.logger.child({ component: "dispatch-client" }),
     });

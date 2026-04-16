@@ -163,7 +163,7 @@ describe("buildCtx — notify", () => {
   });
 
   it("delegates to notificationManager.notify when present", () => {
-    const notifyFn = vi.fn();
+    const notifyFn = vi.fn().mockResolvedValue(undefined);
     const state = makeState();
     const ctx = buildCtx(
       state,
