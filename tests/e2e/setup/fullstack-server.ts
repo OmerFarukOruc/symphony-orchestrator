@@ -24,8 +24,12 @@ import type { RisolutoEventMap } from "../../../src/core/risoluto-events.js";
 import type { Issue, RecentEvent, RisolutoLogger, RuntimeIssueView, RuntimeSnapshot } from "../../../src/core/types.js";
 import { HttpServer } from "../../../src/http/server.js";
 import type { LinearWebhookPayload } from "../../../src/http/webhook-types.js";
-import type { AttemptDetailView, AttemptSummary, IssueDetailView } from "../../../src/orchestrator/snapshot-builder.js";
-import { serializeSnapshot } from "../../../src/orchestrator/snapshot-serialization.js";
+import {
+  serializeSnapshot,
+  type AttemptDetailView,
+  type AttemptSummary,
+  type IssueDetailView,
+} from "../../../src/orchestrator/snapshot-builder.js";
 
 const WEBHOOK_SECRET = "fullstack-test-webhook-secret";
 const RECENT_EVENT_LIMIT = 50;
@@ -98,7 +102,7 @@ function toWorkflowKey(state: string): string {
   const collapsed = collapseNonWordSequences(state.trim().toLowerCase());
   let normalized = collapsed.output.join("");
   // short state strings, no DoS risk
-  normalized = normalized.replace(/^-+|-+$/g, "");
+  normalized = normalized.replaceAll(/^-+|-+$/g, "");
   return normalized || "unknown";
 }
 
@@ -197,7 +201,7 @@ function buildIssueFromContext(context: WebhookIssueContext): Issue {
 
 function latestAttemptForIssue(state: FullstackState, identifier: string): AttemptDetailView | null {
   const attempts = state.attempts.filter((attempt) => attempt.issueIdentifier === identifier);
-  return attempts.length > 0 ? (attempts[attempts.length - 1] ?? null) : null;
+  return attempts.at(-1) ?? null;
 }
 
 function getLastEventAt(state: FullstackState, identifier: string): string | null {
@@ -205,7 +209,7 @@ function getLastEventAt(state: FullstackState, identifier: string): string | nul
   if (relatedEvents.length === 0) {
     return null;
   }
-  return relatedEvents[relatedEvents.length - 1]?.at ?? null;
+  return relatedEvents.at(-1)?.at ?? null;
 }
 
 function toRuntimeReasoningEffort(value: string | null): RuntimeIssueView["reasoningEffort"] {

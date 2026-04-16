@@ -11,13 +11,11 @@ import type { RuntimeEventRecord } from "../core/lifecycle-events.js";
 import type { NotificationEvent } from "../notification/channel.js";
 import type { OrchestratorDeps, RunningEntry } from "./runtime-types.js";
 import type { OrchestratorContext } from "./context.js";
-import type { OutcomeViewInput } from "./outcome-view-builder.js";
-import { createRuntimeReadModelFromState } from "./snapshot-builder.js";
-import type { AttemptDetailView, IssueDetailView, RuntimeReadModel } from "./snapshot-builder.js";
+import { buildOutcomeView as buildProjectedOutcomeView, createRuntimeReadModelFromState } from "./snapshot-builder.js";
+import type { AttemptDetailView, IssueDetailView, OutcomeViewInput, RuntimeReadModel } from "./snapshot-builder.js";
 
 import { nowIso } from "./views.js";
 import { resolveModelSelection as resolveModelSelectionFromConfig } from "./model-selection.js";
-import { buildOutcomeView as buildProjectedOutcomeView } from "./outcome-view-builder.js";
 import { createRetryCoordinator } from "./retry-coordinator.js";
 import {
   applyUsageEventInState,

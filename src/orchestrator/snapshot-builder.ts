@@ -1,12 +1,16 @@
 import { buildWorkflowColumns } from "../workflow/columns.js";
 import { computeAttemptCostUsd } from "../core/model-pricing.js";
 import { nowIso } from "./views.js";
-import { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
-import { projectCompletedViewsForSnapshot } from "./core/snapshot-projection.js";
-export { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
+import {
+  projectCompletedViewsForSnapshot,
+  projectOutcomeIssueView,
+  projectRetryIssueView,
+  projectRunningIssueView,
+} from "./core/snapshot-projection.js";
 import { type IssueLocatorCallbacks, resolveIssue, toIssueView } from "./issue-locator.js";
 import type {
   AttemptRecord,
+  Issue,
   RecentEvent,
   RuntimeIssueView,
   RuntimeSnapshot,
@@ -14,9 +18,133 @@ import type {
   ModelSelection,
   StallEventView,
   SystemHealth,
+  Workspace,
 } from "../core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
 import type { LifecycleState } from "./core/lifecycle-state.js";
+
+/* ------------------------------------------------------------------ */
+/*  Issue-view builders                                                 */
+/* ------------------------------------------------------------------ */
+
+/** Converts a RunningEntry to a RuntimeIssueView. */
+export function buildRunningIssueView(
+  entry: RunningEntry,
+  resolveModelSelection: (identifier: string) => ModelSelection,
+): RuntimeIssueView {
+  return projectRunningIssueView(entry, resolveModelSelection);
+}
+
+/** Converts a RetryRuntimeEntry to a RuntimeIssueView. */
+export function buildRetryIssueView(
+  entry: RetryRuntimeEntry,
+  resolveModelSelection: (identifier: string) => ModelSelection,
+): RuntimeIssueView {
+  return projectRetryIssueView(entry, resolveModelSelection);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Outcome-view builder                                               */
+/* ------------------------------------------------------------------ */
+
+export interface OutcomeViewInput {
+  issue: Issue;
+  workspace: Workspace;
+  entry: RunningEntry;
+  configuredSelection: ModelSelection;
+  overrides: {
+    status: string;
+    attempt?: number | null;
+    error?: string | null;
+    message?: string | null;
+    pullRequestUrl?: string | null;
+  };
+}
+
+export function buildOutcomeView(
+  issue: Issue,
+  workspace: Workspace,
+  entry: RunningEntry,
+  configuredSelection: ModelSelection,
+  overrides: {
+    status: string;
+    attempt?: number | null;
+    error?: string | null;
+    message?: string | null;
+    pullRequestUrl?: string | null;
+  },
+): RuntimeIssueView {
+  return projectOutcomeIssueView(issue, workspace, entry, configuredSelection, overrides);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Snapshot serialization (snake_case wire format)                    */
+/* ------------------------------------------------------------------ */
+
+export function serializeSnapshot(snapshot: RuntimeSnapshot): Record<string, unknown> {
+  return {
+    generated_at: snapshot.generatedAt,
+    counts: snapshot.counts,
+    queued: snapshot.queued ?? [],
+    running: snapshot.running,
+    retrying: snapshot.retrying,
+    completed: snapshot.completed ?? [],
+    workflow_columns: (snapshot.workflowColumns ?? []).map((column) => ({
+      key: column.key,
+      label: column.label,
+      kind: column.kind,
+      terminal: Boolean(column.terminal),
+      count: column.count ?? column.issues?.length ?? 0,
+      issues: column.issues ?? [],
+    })),
+    codex_totals: {
+      input_tokens: snapshot.codexTotals.inputTokens,
+      output_tokens: snapshot.codexTotals.outputTokens,
+      total_tokens: snapshot.codexTotals.totalTokens,
+      seconds_running: snapshot.codexTotals.secondsRunning,
+      cost_usd: snapshot.codexTotals.costUsd,
+    },
+    rate_limits: snapshot.rateLimits,
+    recent_events: snapshot.recentEvents.map((event) => ({
+      at: event.at,
+      issue_id: event.issueId,
+      issue_identifier: event.issueIdentifier,
+      session_id: event.sessionId,
+      event: event.event,
+      message: event.message,
+      content: event.content ?? null,
+      metadata: event.metadata ?? null,
+    })),
+    stall_events: snapshot.stallEvents?.map((event) => ({
+      at: event.at,
+      issue_id: event.issueId,
+      issue_identifier: event.issueIdentifier,
+      silent_ms: event.silentMs,
+      timeout_ms: event.timeoutMs,
+    })),
+    system_health: snapshot.systemHealth
+      ? {
+          status: snapshot.systemHealth.status,
+          checked_at: snapshot.systemHealth.checkedAt,
+          running_count: snapshot.systemHealth.runningCount,
+          message: snapshot.systemHealth.message,
+        }
+      : undefined,
+    webhook_health: snapshot.webhookHealth
+      ? {
+          status: snapshot.webhookHealth.status,
+          effective_interval_ms: snapshot.webhookHealth.effectiveIntervalMs,
+          stats: {
+            deliveries_received: snapshot.webhookHealth.stats.deliveriesReceived,
+            last_delivery_at: snapshot.webhookHealth.stats.lastDeliveryAt,
+            last_event_type: snapshot.webhookHealth.stats.lastEventType,
+          },
+          last_delivery_at: snapshot.webhookHealth.lastDeliveryAt,
+          last_event_type: snapshot.webhookHealth.lastEventType,
+        }
+      : undefined,
+  };
+}
 
 export interface AttemptSummary {
   attemptId: string;
@@ -320,7 +448,6 @@ export interface AttemptDetailView extends AttemptSummary {
   appServer?: AttemptAppServerView;
 }
 
-// Builds attempt detail view with events.
 export function buildAttemptDetail(attemptId: string, deps: SnapshotBuilderDeps): AttemptDetailView | null {
   return buildAttemptDetailInternal(attemptId, deps);
 }
@@ -351,7 +478,6 @@ export function computeSecondsRunning(
   return archivedSeconds + liveSeconds;
 }
 
-// Computes total cost in USD from archived attempts plus in-flight running workers.
 export function computeCostUsd(
   attemptStore: SnapshotBuilderDeps["attemptStore"],
   getRunningEntries?: () => Map<string, RunningEntry>,
@@ -368,7 +494,6 @@ export function computeCostUsd(
   return archivedCost + liveCost;
 }
 
-// Returns the greater of the archived token count and the live in-memory counter.
 // Live counters can race ahead of archived data when workers are still running,
 // but after a restart the in-memory counters reset to 0 while archives persist.
 function computeArchivedTokenField(
@@ -477,7 +602,6 @@ function buildAttemptAppServer(attempt: AttemptRecord, events: RecentEvent[]): A
   return hasAppServerData(summary) ? summary : undefined;
 }
 
-// Builds a minimal attempt summary from an AttemptRecord.
 function buildAttemptSummary(attempt: AttemptRecord, events: RecentEvent[] = []): AttemptSummary {
   const costUsd = computeAttemptCostUsd(attempt);
   const appServer = buildAttemptAppServer(attempt, events);

@@ -8,7 +8,7 @@ import type { NotificationEvent } from "../notification/channel.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { WorkspaceRemovalResult } from "../workspace/manager.js";
-import type { OutcomeViewInput } from "./outcome-view-builder.js";
+import type { OutcomeViewInput } from "./snapshot-builder.js";
 import type { StopSignal } from "../core/signal-detection.js";
 import type { PreparedWorkerOutcome, TerminalPathKind } from "./worker-outcome/types.js";
 import type { LifecycleState } from "./core/lifecycle-state.js";

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { handleWorkerOutcome } from "../../src/orchestrator/worker-outcome/index.js";
 import { handleWorkerFailure } from "../../src/orchestrator/worker-failure.js";
-import { buildOutcomeView } from "../../src/orchestrator/outcome-view-builder.js";
+import { buildOutcomeView } from "../../src/orchestrator/snapshot-builder.js";
 import type {
   Issue,
   ModelSelection,

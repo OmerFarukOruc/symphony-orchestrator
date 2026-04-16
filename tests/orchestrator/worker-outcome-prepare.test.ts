@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { prepareWorkerOutcome } from "../../src/orchestrator/worker-outcome/prepare.js";
-import { buildOutcomeView } from "../../src/orchestrator/outcome-view-builder.js";
+import { buildOutcomeView } from "../../src/orchestrator/snapshot-builder.js";
 import type { OutcomeContext } from "../../src/orchestrator/context.js";
 import type { Issue, RunOutcome, RuntimeIssueView } from "../../src/core/types.js";
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";

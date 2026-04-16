@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { serializeSnapshot } from "../../src/orchestrator/snapshot-serialization.js";
+import { serializeSnapshot } from "../../src/orchestrator/snapshot-builder.js";
 import type { RuntimeSnapshot } from "../../src/core/types.js";
 
 describe("serializeSnapshot", () => {

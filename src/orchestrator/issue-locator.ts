@@ -1,4 +1,4 @@
-import { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
+import { projectRetryIssueView, projectRunningIssueView } from "./core/snapshot-projection.js";
 import type { ModelSelection, RuntimeIssueView } from "../core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
 
@@ -67,9 +67,9 @@ export function resolveIssue(identifier: string, callbacks: IssueLocatorCallback
 export function toIssueView(location: IssueLocation, callbacks: IssueLocatorCallbacks): RuntimeIssueView {
   switch (location.kind) {
     case "running":
-      return buildRunningIssueView(location.entry, callbacks.resolveModelSelection);
+      return projectRunningIssueView(location.entry, callbacks.resolveModelSelection);
     case "retry":
-      return buildRetryIssueView(location.entry, callbacks.resolveModelSelection);
+      return projectRetryIssueView(location.entry, callbacks.resolveModelSelection);
     case "completed":
     case "detail":
       return location.view;

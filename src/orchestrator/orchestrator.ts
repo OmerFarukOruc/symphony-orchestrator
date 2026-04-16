@@ -28,7 +28,7 @@ import type {
   UpdateIssueModelSelectionResult,
 } from "./port.js";
 import type { OrchestratorDeps, RunningEntry } from "./runtime-types.js";
-import { serializeSnapshot } from "./snapshot-serialization.js";
+import { serializeSnapshot } from "./snapshot-builder.js";
 import { nowIso } from "./views.js";
 import type { ReasoningEffort, RuntimeSnapshot } from "../core/types.js";
 import type { RecoveryReport } from "./recovery-types.js";

@@ -11,7 +11,7 @@ import type {
 } from "../../src/core/types.js";
 import type { RetryRuntimeEntry, RunningEntry } from "../../src/orchestrator/runtime-types.js";
 import type { PreparedWorkerOutcome } from "../../src/orchestrator/worker-outcome/types.js";
-import { buildOutcomeView } from "../../src/orchestrator/outcome-view-builder.js";
+import { buildOutcomeView } from "../../src/orchestrator/snapshot-builder.js";
 import { createRetryCoordinator } from "../../src/orchestrator/retry-coordinator.js";
 import { createIssue, createWorkspace, createModelSelection, createRunningEntry } from "./issue-test-factories.js";
 import { attachOutcomeRuntimeFinalizers } from "./outcome-runtime-finalizers.js";
