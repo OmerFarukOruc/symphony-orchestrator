@@ -23,10 +23,12 @@ export function createNotificationsPage(): HTMLElement {
   const runtimeClient = getRuntimeClient();
   const page = el("div", "page notifications-page fade-in");
 
-  const refreshButton = el("button", buttonClassName({ tone: "ghost", size: "sm" }), "Refresh");
+  const refreshButton = el("button", buttonClassName({ tone: "ghost", size: "sm" }), "Refresh (r)");
   refreshButton.type = "button";
-  const markAllButton = el("button", buttonClassName({ tone: "primary", size: "sm" }), "Mark all read");
+  refreshButton.title = "Refresh notifications (r)";
+  const markAllButton = el("button", buttonClassName({ tone: "primary", size: "sm" }), "Mark all read (m)");
   markAllButton.type = "button";
+  markAllButton.title = "Mark all notifications read (m)";
 
   const header = createPageHeader(
     "Notifications",
@@ -154,11 +156,11 @@ export function createNotificationsPage(): HTMLElement {
 
 function buildLoadingSkeleton(): HTMLElement {
   const shell = el("div", "notifications-loading");
-  const statsRow = el("div", "notifications-stats-row");
-  Array.from({ length: 4 }).forEach(() => {
-    const card = el("div", "mc-stat-card");
-    card.append(skeletonLine("44%"), skeletonLine("34%"));
-    statsRow.append(card);
+  const statsRow = el("div", "notifications-summary-strip");
+  Array.from({ length: 3 }).forEach(() => {
+    const item = el("div", "notifications-summary-item notifications-summary-item--skeleton");
+    item.append(skeletonLine("44%"), skeletonLine("34%"));
+    statsRow.append(item);
   });
 
   const list = el("div", "notifications-list");
@@ -183,7 +185,7 @@ function renderPage(
   },
 ): void {
   body.replaceChildren();
-  body.append(buildStatsRow(snapshot), buildToolbar(snapshot, filter, actions.onFilterChange));
+  body.append(buildSummaryStrip(snapshot), buildToolbar(snapshot, filter, actions.onFilterChange));
 
   if (snapshot.notifications.length === 0 && snapshot.totalCount === 0) {
     body.append(renderNoNotificationsState());
@@ -219,25 +221,23 @@ function renderPage(
   body.append(list);
 }
 
-function buildStatsRow(snapshot: NotificationsListResponse): HTMLElement {
+function buildSummaryStrip(snapshot: NotificationsListResponse): HTMLElement {
   const criticalCount = snapshot.notifications.filter((notification) => notification.severity === "critical").length;
-  const quietedCount = snapshot.notifications.filter(
-    (notification) => notification.deliverySummary?.skippedDuplicate,
-  ).length;
-  const row = el("div", "notifications-stats-row");
-  row.append(
-    buildStatCard("Total", formatCompactNumber(snapshot.totalCount)),
-    buildStatCard("Unread", formatCompactNumber(snapshot.unreadCount), snapshot.unreadCount > 0 ? "live" : undefined),
-    buildStatCard("Critical", formatCompactNumber(criticalCount), criticalCount > 0 ? "warning" : undefined),
-    buildStatCard("Quieted", formatCompactNumber(quietedCount)),
-  );
-  return row;
-}
-
-function buildStatCard(label: string, value: string, accent?: string): HTMLElement {
-  const card = el("div", "mc-stat-card" + (accent ? ` is-${accent}` : ""));
-  card.append(el("span", "heading-display", value), el("span", "mc-stat-card-label", label));
-  return card;
+  const strip = el("section", "notifications-summary-strip");
+  const items: Array<[string, string, "live" | "warning" | null]> = [
+    ["Total", formatCompactNumber(snapshot.totalCount), null],
+    ["Unread", formatCompactNumber(snapshot.unreadCount), snapshot.unreadCount > 0 ? "live" : null],
+    ["Critical", formatCompactNumber(criticalCount), criticalCount > 0 ? "warning" : null],
+  ];
+  for (const [label, value, tone] of items) {
+    const item = el("div", ["notifications-summary-item", tone ? `is-${tone}` : ""].filter(Boolean).join(" "));
+    item.append(
+      el("span", "notifications-summary-label", label),
+      el("span", "notifications-summary-value text-mono", value),
+    );
+    strip.append(item);
+  }
+  return strip;
 }
 
 function buildToolbar(
@@ -325,7 +325,9 @@ function buildNotificationRow(
   }
 
   if (!notification.read) {
-    const markRead = el("button", buttonClassName({ tone: "primary", size: "sm" }), "Mark read");
+    // Per-row "Mark read" stays ghost so the header's "Mark all read"
+    // is the single copper primary for the viewport.
+    const markRead = el("button", buttonClassName({ tone: "ghost", size: "sm" }), "Mark read");
     markRead.type = "button";
     markRead.addEventListener("click", () => onMarkRead(notification.id));
     actions.append(markRead);
@@ -336,6 +338,8 @@ function buildNotificationRow(
 }
 
 function buildSeverityBadge(notification: NotificationRecord): HTMLElement {
+  // Info should read as neutral, not "queued" — is-status-queued is reserved
+  // for tracker-state meaning and was mis-routing operator perception.
   const badge = el(
     "span",
     `mc-chip is-sm ${
@@ -343,7 +347,7 @@ function buildSeverityBadge(notification: NotificationRecord): HTMLElement {
         ? "is-status-blocked"
         : notification.severity === "warning"
           ? "is-status-retrying"
-          : "is-status-queued"
+          : "is-muted"
     }`,
     notification.severity === "critical" ? "Critical" : notification.severity === "warning" ? "Warning" : "Info",
   );
@@ -459,7 +463,7 @@ function severityStripClass(notification: NotificationRecord): string {
   if (notification.severity === "warning") {
     return " is-status-retrying";
   }
-  return " is-status-queued";
+  return "";
 }
 
 function metadataString(metadata: Record<string, unknown> | null, key: string): string | null {

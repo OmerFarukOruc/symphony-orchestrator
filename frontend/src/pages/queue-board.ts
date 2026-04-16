@@ -158,7 +158,10 @@ export function createQueueBoardRenderer(options: QueueBoardRendererOptions): {
             hasFilters ? "Clear filters" : "Open overview",
             hasFilters ? options.clearFilters : () => router.navigate("/"),
             emptyVariant,
-            { headingLevel: "h2" },
+            // Per-lane CTAs render up to one per column — rendering them all as
+            // copper primaries would dilute the "one primary action per view"
+            // signal, so demote these to ghost buttons.
+            { headingLevel: "h2", actionVariant: "ghost" },
           ),
         );
         return handle.section;

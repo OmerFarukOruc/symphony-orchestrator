@@ -287,10 +287,12 @@
   flex-shrink: 0;
 }
 
+.git-status-dot.is-running,
 .git-status-dot--running {
   background: var(--status-running);
 }
 
+.git-status-dot.is-retrying,
 .git-status-dot--retrying {
   background: var(--status-blocked);
 }

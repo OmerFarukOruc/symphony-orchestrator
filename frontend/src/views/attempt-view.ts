@@ -4,13 +4,7 @@ import { createPageHeader } from "../components/page-header";
 import { router } from "../router";
 import { skeletonBlock, skeletonCard } from "../ui/skeleton";
 import { statusChip } from "../ui/status-chip";
-import {
-  computeDurationSeconds,
-  formatCompactNumber,
-  formatCostUsd,
-  formatDuration,
-  formatTimestamp,
-} from "../utils/format";
+import { formatCompactNumber, formatCostUsd, formatRunDuration, formatTimestamp } from "../utils/format";
 import { registerPageCleanup } from "../utils/page";
 import type { AttemptAppServer, AttemptCheckpointRecord, AttemptRecord, IssueDetail } from "../types";
 import { resolveIssueIdentifier } from "./attempt-utils";
@@ -315,10 +309,10 @@ function renderAttemptPage(
     },
   );
 
-  const summary = createSection("Summary strip", "attempt-summary-strip mc-panel");
+  const summary = createSection("Run summary", "attempt-summary-strip mc-panel");
   summary.append(
     createMetaItem("Status", statusChip(attempt.status)),
-    createMetaItem("Duration", formatDuration(computeDurationSeconds(attempt.startedAt, attempt.endedAt)), true),
+    createMetaItem("Duration", formatRunDuration(attempt.startedAt, attempt.endedAt), true),
     createMetaItem("Started", formatTimestamp(attempt.startedAt), true),
     createMetaItem("Ended", formatTimestamp(attempt.endedAt), true),
     createMetaItem("Model", attempt.model ?? "—", true),

@@ -31,9 +31,31 @@ export function formatDuration(seconds: number | null | undefined): string {
   }
   const whole = Math.max(0, Math.round(seconds));
   const hours = Math.floor(whole / 3600);
+  // For multi-day durations, fall back to a compact humanized form so the
+  // Duration column does not break table layout with values like 2165:27:44.
+  if (hours >= 100) {
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    return remainingHours === 0 ? `${days}d` : `${days}d ${remainingHours}h`;
+  }
   const minutes = Math.floor((whole % 3600) / 60);
   const remaining = whole % 60;
   return [hours, minutes, remaining].map((part) => String(part).padStart(2, "0")).join(":");
+}
+
+export function formatRunDuration(start: string | null | undefined, end: string | null | undefined): string {
+  if (!start) {
+    return "—";
+  }
+  if (!end) {
+    return "ongoing";
+  }
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return "—";
+  }
+  return formatDuration(Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 1000)));
 }
 
 /** Convert milliseconds to a human-readable duration string (e.g. "5 minutes", "30 seconds"). */

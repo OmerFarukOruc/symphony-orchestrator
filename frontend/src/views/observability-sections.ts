@@ -7,6 +7,7 @@ import type {
   ObservabilityTraceRecord,
   RuntimeSnapshot,
 } from "../types";
+import { statusDot } from "../ui/status-chip";
 import { formatCompactNumber, formatDuration, formatRelativeTime, formatShortTime } from "../utils/format";
 
 import {
@@ -550,8 +551,5 @@ function makeEmptyRow(message: string): HTMLElement {
 }
 
 function makeStatusDot(status: HealthStatus | string): HTMLElement {
-  const dot = document.createElement("span");
-  dot.className = `obs-dot is-${status}`;
-  dot.setAttribute("aria-hidden", "true");
-  return dot;
+  return statusDot(String(status), "obs-dot");
 }

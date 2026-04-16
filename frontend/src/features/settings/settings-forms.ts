@@ -158,11 +158,8 @@ function buildCredentialControl(): HTMLElement {
           await refresh();
         });
         container.append(addBtn);
-
-        const trust = document.createElement("p");
-        trust.className = "settings-credential-trust text-secondary";
-        trust.textContent = "Encrypted at rest. Values are write-only after save.";
-        container.append(trust);
+        // Encryption posture is documented once via the form field hint
+        // (see settings-section-defs.ts), no need to repeat it here.
       } catch {
         container.replaceChildren();
         const err = document.createElement("p");

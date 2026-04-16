@@ -7,6 +7,9 @@ const EMPTY_STATE_ICONS = {
   events: "emptyEvents",
   attention: "emptyAttention",
   error: "emptyError",
+  notFound: "emptyError",
+  serverError: "emptyError",
+  timeout: "emptyNetwork",
   network: "emptyNetwork",
 } as const satisfies Record<string, IconName>;
 
@@ -18,7 +21,10 @@ const EMPTY_STATE_KICKERS = {
   terminal: "Archive calm",
   events: "Signal quiet",
   attention: "Clear runway",
-  error: "Needs attention",
+  error: "Fetch error",
+  notFound: "Not found",
+  serverError: "Server error",
+  timeout: "Request timed out",
   network: "Connection pending",
 } as const satisfies Record<EmptyStateVariant, string>;
 
@@ -36,6 +42,7 @@ interface StateBoxConfig {
   headingLevel: "h2" | "h3";
   actionLabel?: string;
   onAction?: () => void;
+  actionVariant: "primary" | "ghost";
   secondaryActionLabel?: string;
   secondaryActionHref?: string;
 }
@@ -44,6 +51,7 @@ export interface EmptyStateOptions {
   secondaryActionLabel?: string;
   secondaryActionHref?: string;
   headingLevel?: "h2" | "h3";
+  actionVariant?: "primary" | "ghost";
 }
 
 function buildStateBox(config: StateBoxConfig): HTMLElement {
@@ -73,7 +81,7 @@ function buildStateBox(config: StateBoxConfig): HTMLElement {
   if (config.actionLabel && config.onAction) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "mc-button is-primary";
+    button.className = `mc-button is-${config.actionVariant}`;
     button.textContent = config.actionLabel;
     button.addEventListener("click", config.onAction);
     box.append(button);
@@ -113,6 +121,7 @@ export function createEmptyState(
     headingLevel: options.headingLevel ?? "h3",
     actionLabel,
     onAction,
+    actionVariant: options.actionVariant ?? "primary",
     secondaryActionLabel: options.secondaryActionLabel,
     secondaryActionHref: options.secondaryActionHref,
   });

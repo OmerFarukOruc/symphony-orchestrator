@@ -474,7 +474,16 @@ export class LinearClient {
         body: JSON.stringify({ query, variables }),
       });
     } catch (error) {
-      this.logger.error({ error: toErrorString(error) }, "linear graphql transport failed");
+      const cause = error instanceof Error ? error.cause : undefined;
+      const causeFields: Record<string, unknown> = {};
+      if (cause instanceof Error) {
+        causeFields.causeMessage = cause.message;
+        const code = (cause as { code?: unknown }).code;
+        if (typeof code === "string") {
+          causeFields.causeCode = code;
+        }
+      }
+      this.logger.error({ error: toErrorString(error), ...causeFields }, "linear graphql transport failed");
       throw new LinearClientError("linear_transport_error", "linear graphql request failed during transport", {
         cause: error,
       });

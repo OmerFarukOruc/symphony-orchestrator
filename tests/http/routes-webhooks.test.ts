@@ -52,11 +52,7 @@ describe("registerWebhookRoutes", () => {
     // Trigger route should still be registered
     expect(app.route).toHaveBeenCalledWith("/api/v1/webhooks/trigger");
     // Webhook registration should be skipped with warning
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        msg: expect.stringContaining("webhookHandlerDeps not provided"),
-      }),
-    );
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("webhookHandlerDeps not provided"));
     // /webhooks/linear and /webhooks/github should NOT be registered
     const registeredPaths = app.route.mock.calls.map((call: unknown[]) => call[0]);
     expect(registeredPaths).not.toContain("/webhooks/linear");

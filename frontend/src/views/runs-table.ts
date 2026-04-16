@@ -1,13 +1,7 @@
 import type { AttemptSummary } from "../types";
 import { statusChip } from "../ui/status-chip";
 import { applyTableRowInteraction, createMonoTableCell, createTableHead, setTableCellLabel } from "../ui/table";
-import {
-  computeDurationSeconds,
-  formatCompactNumber,
-  formatDuration,
-  formatRelativeTime,
-  formatTimestamp,
-} from "../utils/format";
+import { formatCompactNumber, formatRelativeTime, formatRunDuration, formatTimestamp } from "../utils/format";
 
 export interface RunsTableOptions {
   attempts: AttemptSummary[];
@@ -25,7 +19,7 @@ function tokenBreakdown(attempt: AttemptSummary): string {
 }
 
 function durationLabel(attempt: AttemptSummary): string {
-  return formatDuration(computeDurationSeconds(attempt.startedAt, attempt.endedAt));
+  return formatRunDuration(attempt.startedAt, attempt.endedAt);
 }
 
 function createTimeCell(value: string | null): HTMLTableCellElement {

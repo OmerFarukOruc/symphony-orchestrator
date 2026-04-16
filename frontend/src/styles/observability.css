@@ -69,7 +69,7 @@
   padding: var(--space-4) var(--space-5);
   background: var(--surface-primary-bg, var(--bg-elevated));
   border: 1px solid var(--border-default);
-  border-top: 2px solid var(--color-copper-400);
+  border-top: 2px solid var(--text-accent);
 }
 
 .obs-pulse-verdict {
@@ -92,10 +92,9 @@
 }
 
 .obs-pulse-counts {
-  font-size: var(--text-2xs);
+  font-size: var(--text-xs);
   color: var(--text-muted);
   letter-spacing: var(--tracking-wider);
-  text-transform: uppercase;
 }
 
 .obs-pulse-live {
@@ -110,8 +109,8 @@
   height: 8px;
   flex: none;
   border-radius: var(--radius-full);
-  background: var(--color-copper-400);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-copper-400) 28%, transparent);
+  background: var(--text-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-accent) 28%, transparent);
   animation: obsPulseBeat 2.4s ease-in-out infinite;
 }
 
@@ -147,23 +146,22 @@
 }
 
 .obs-pulse-live-time {
-  font-size: var(--text-2xs);
+  font-size: var(--text-xs);
   color: var(--text-muted);
   letter-spacing: var(--tracking-wide);
 }
 
 .obs-pulse-drift {
-  font-size: var(--text-2xs);
+  font-size: var(--text-xs);
   color: var(--status-retrying);
   padding: 2px var(--space-2);
   border: 1px solid color-mix(in srgb, var(--status-retrying) 45%, transparent);
   letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
 }
 
 .obs-pulse-root {
   max-width: 360px;
-  font-size: var(--text-2xs);
+  font-size: var(--text-xs);
   color: var(--text-muted);
   text-align: right;
   overflow: hidden;
@@ -193,10 +191,10 @@
 }
 
 .obs-vital-label {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-widest);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-wide);
   color: var(--text-muted);
 }
 
@@ -233,16 +231,15 @@
 
 .obs-ledger-title {
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--text-xxs);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
   font-weight: var(--font-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
+  letter-spacing: var(--tracking-wide);
   color: var(--text-muted);
 }
 
 .obs-ledger-detail {
-  font-size: var(--text-2xs);
+  font-size: var(--text-xs);
   color: var(--text-subtle);
   letter-spacing: var(--tracking-wide);
 }

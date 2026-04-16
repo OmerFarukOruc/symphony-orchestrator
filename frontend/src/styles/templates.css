@@ -105,6 +105,49 @@
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.templates-actions-spacer {
+  flex: 1 1 var(--space-4);
+}
+
+.templates-delete-btn {
+  color: var(--status-blocked);
+  border-color: color-mix(in srgb, var(--status-blocked) 30%, transparent);
+}
+
+.templates-delete-btn:hover {
+  background: color-mix(in srgb, var(--status-blocked) 10%, var(--bg-elevated));
+  border-color: var(--status-blocked);
+}
+
+.templates-delete-btn.is-confirming {
+  color: var(--status-blocked);
+  background: color-mix(in srgb, var(--status-blocked) 10%, var(--bg-elevated));
+  border-color: var(--status-blocked);
+  font-weight: var(--font-semibold);
+}
+
+.templates-new-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+.templates-new-form input {
+  padding: var(--space-2);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+}
+
+.templates-new-form > div {
+  display: flex;
+  gap: var(--space-2);
 }
 
 /* ── Preview panel ─────────────────────────────── */

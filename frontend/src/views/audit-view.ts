@@ -77,6 +77,7 @@ export function createAuditPage(): HTMLElement {
   filters.className = "audit-filters";
 
   const tableSelect = document.createElement("select");
+  tableSelect.className = "audit-select";
   tableSelect.setAttribute("aria-label", "Filter by table");
   for (const [label, value] of [
     ["All tables", ""],
@@ -92,15 +93,18 @@ export function createAuditPage(): HTMLElement {
 
   const keyInput = document.createElement("input");
   keyInput.type = "text";
+  keyInput.className = "audit-input";
   keyInput.placeholder = "Filter by key\u2026";
   keyInput.setAttribute("aria-label", "Filter by key");
 
   const fromInput = document.createElement("input");
   fromInput.type = "date";
+  fromInput.className = "audit-input audit-input-date";
   fromInput.setAttribute("aria-label", "From date");
 
   const toInput = document.createElement("input");
   toInput.type = "date";
+  toInput.className = "audit-input audit-input-date";
   toInput.setAttribute("aria-label", "To date");
 
   const clearBtn = createButton("Clear");
@@ -136,7 +140,7 @@ export function createAuditPage(): HTMLElement {
   /* ── Empty state ────────────────────────────── */
   const emptyEl = createEmptyState(
     "No audit entries yet",
-    "Audit entries appear here when configuration changes are made. Adjust the filters above, or wait for new changes to arrive.",
+    "Changes made through Settings or the API will appear here. Adjust the filters above, or wait for new changes to arrive.",
     undefined,
     undefined,
     "events",

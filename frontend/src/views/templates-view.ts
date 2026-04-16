@@ -51,8 +51,6 @@ function buildNewForm(state: TemplatesState, onCreated: () => void, formContaine
   nameInput.placeholder = "Display name";
 
   const actions = document.createElement("div");
-  actions.style.display = "flex";
-  actions.style.gap = "var(--space-2)";
 
   const createBtn = document.createElement("button");
   createBtn.type = "button";
@@ -177,13 +175,15 @@ export function createTemplatesPage(): HTMLElement {
   previewBtn.textContent = "Preview";
   previewBtn.title = "Preview the saved template";
 
+  const actionsSpacer = document.createElement("span");
+  actionsSpacer.className = "templates-actions-spacer";
+
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
-  deleteBtn.className = "mc-button is-ghost is-sm";
-  deleteBtn.style.color = "var(--status-blocked)";
+  deleteBtn.className = "mc-button is-ghost is-sm templates-delete-btn";
   deleteBtn.textContent = "Delete";
 
-  actionsBar.append(saveBtn, setActiveBtn, previewBtn, deleteBtn);
+  actionsBar.append(saveBtn, setActiveBtn, previewBtn, actionsSpacer, deleteBtn);
 
   const previewPanel = document.createElement("div");
 
@@ -374,11 +374,9 @@ export function createTemplatesPage(): HTMLElement {
     }
   }
 
-  async function deleteTemplate(): Promise<void> {
+  async function performDelete(): Promise<void> {
     const tpl = selectedTemplate(state);
     if (!tpl) return;
-
-    if (!window.confirm(`Delete template "${tpl.name}"?`)) return;
 
     state.deleting = true;
     deleteBtn.disabled = true;
@@ -396,7 +394,34 @@ export function createTemplatesPage(): HTMLElement {
     } finally {
       state.deleting = false;
       deleteBtn.disabled = false;
+      deleteBtn.dataset.state = "";
+      deleteBtn.textContent = "Delete";
+      deleteBtn.classList.remove("is-confirming");
     }
+  }
+
+  /**
+   * Two-click delete: first click arms the button with a confirm state;
+   * second click commits. Arm state clears after 4s.
+   * Replaces window.confirm() so the operator's flow stays in-app.
+   */
+  async function deleteTemplate(): Promise<void> {
+    const tpl = selectedTemplate(state);
+    if (!tpl) return;
+    if (deleteBtn.dataset.state !== "confirm") {
+      deleteBtn.dataset.state = "confirm";
+      deleteBtn.textContent = `Confirm delete "${tpl.name}"`;
+      deleteBtn.classList.add("is-confirming");
+      setTimeout(() => {
+        if (deleteBtn.dataset.state === "confirm") {
+          deleteBtn.dataset.state = "";
+          deleteBtn.textContent = "Delete";
+          deleteBtn.classList.remove("is-confirming");
+        }
+      }, 4000);
+      return;
+    }
+    await performDelete();
   }
 
   /* ── Event wiring ────────────────────────────── */
