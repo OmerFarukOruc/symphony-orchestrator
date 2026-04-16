@@ -57,6 +57,11 @@ export function readProjectSlug(overlay: Record<string, unknown>): string | unde
   return slug || undefined;
 }
 
+export function readTrackerKind(overlay: Record<string, unknown>): string | undefined {
+  const kind = readOverlayString(overlay, "tracker.kind", ["tracker", "kind"]);
+  return kind || undefined;
+}
+
 export function hasRepoRoutes(overlay: Record<string, unknown>): boolean {
   const repos = overlay.repos;
   return Array.isArray(repos) && repos.length > 0;

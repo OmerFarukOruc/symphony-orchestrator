@@ -1,14 +1,13 @@
 import type { Express, Response } from "express";
 
-import type { SecretsPort } from "./port.js";
-import { methodNotAllowed } from "../http/route-helpers.js";
-import { isRecord } from "../utils/type-guards.js";
+import type { SecretsPort } from "../../secrets/port.js";
+import { methodNotAllowed } from "../errors.js";
+import { isRecord } from "../../utils/type-guards.js";
 
 function isValidSecretKey(value: string): boolean {
   return /^[\w.:-]+$/.test(value);
 }
 
-/** Returns false and sends a 400 response when the key param is invalid. */
 function validateSecretKeyOrReject(key: string | undefined, response: Response): key is string {
   if (!key || !isValidSecretKey(key)) {
     response.status(400).json({

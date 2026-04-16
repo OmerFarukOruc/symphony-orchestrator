@@ -2,15 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { RunningEntry } from "../../src/orchestrator/runtime-types.js";
 import type { TokenUsageSnapshot } from "../../src/core/types.js";
-
-/**
- * The delegate functions are not re-exported from the module, but the key pure logic
- * (pushRecentEvent truncation, applyUsageEvent math, notifyChannel guard) is exercised
- * by importing buildCtx and constructing a minimal OrchestratorState.
- * We test the buildCtx-produced context methods here.
- */
-import { buildCtx, type OrchestratorState } from "../../src/orchestrator/orchestrator-delegates.js";
 import type { OrchestratorDeps } from "../../src/orchestrator/runtime-types.js";
+import {
+  createRunLifecycleCoordinator,
+  type OrchestratorState,
+} from "../../src/orchestrator/run-lifecycle-coordinator.js";
+
+function buildCtx(state: OrchestratorState, deps: OrchestratorDeps) {
+  return createRunLifecycleCoordinator(state, deps).getContext();
+}
 
 function makeState(overrides: Partial<OrchestratorState> = {}): OrchestratorState {
   return {

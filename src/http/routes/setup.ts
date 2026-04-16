@@ -1,16 +1,14 @@
 import type { Express } from "express";
 
-import { methodNotAllowed } from "../http/route-helpers.js";
-import { getSetupService } from "./setup-service.js";
-
-import { handleDetectDefaultBranch } from "./detect-default-branch.js";
-import { handleDeleteRepoRoute, handleGetRepoRoutes, handlePostRepoRoute } from "./repo-route-handlers.js";
-import type { SetupApiDeps } from "./setup-handlers.js";
+import { methodNotAllowed } from "../errors.js";
+import { getSetupService } from "../../setup/setup-service.js";
+import { handleDetectDefaultBranch } from "../../setup/detect-default-branch.js";
+import { handleDeleteRepoRoute, handleGetRepoRoutes, handlePostRepoRoute } from "../../setup/repo-route-handlers.js";
+import type { SetupApiDeps } from "../../setup/setup-handlers.js";
 import {
   handleGetLinearProjects,
   handleGetPkceAuthStatus,
   handleGetStatus,
-  handlePostPkceAuthCancel,
   handlePostCodexAuth,
   handlePostCreateLabel,
   handlePostCreateProject,
@@ -19,11 +17,12 @@ import {
   handlePostLinearProject,
   handlePostMasterKey,
   handlePostOpenaiKey,
+  handlePostPkceAuthCancel,
   handlePostPkceAuthStart,
   handlePostReset,
-} from "./setup-handlers.js";
+} from "../../setup/setup-handlers.js";
 
-export type { SetupApiDeps } from "./setup-handlers.js";
+export type { SetupApiDeps } from "../../setup/setup-handlers.js";
 
 export function registerSetupApi(app: Express, deps: SetupApiDeps): void {
   const service = getSetupService(deps);

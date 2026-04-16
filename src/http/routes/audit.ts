@@ -1,22 +1,7 @@
-/**
- * HTTP routes for the audit log.
- *
- * GET /api/v1/audit — paginated, filterable audit log.
- *
- * Query params:
- *   tableName — filter by table (config, secrets, prompt_templates)
- *   key       — filter by exact key
- *   pathPrefix — filter by path prefix
- *   from      — filter by timestamp >= ISO date
- *   to        — filter by timestamp <= ISO date
- *   limit     — max results (default 50)
- *   offset    — pagination offset (default 0)
- */
-
 import type { Express } from "express";
 
-import { methodNotAllowed } from "../http/route-helpers.js";
-import type { AuditLoggerPort } from "./port.js";
+import type { AuditLoggerPort } from "../../audit/port.js";
+import { methodNotAllowed } from "../errors.js";
 
 function clampInt(value: number, min: number, max: number, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;

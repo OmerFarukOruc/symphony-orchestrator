@@ -4,8 +4,8 @@ import express from "express";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createLogger } from "../../src/core/logger.js";
+import { registerTemplateApi } from "../../src/http/routes/prompt.js";
 import { openDatabase, closeDatabase, type RisolutoDatabase } from "../../src/persistence/sqlite/database.js";
-import { registerTemplateApi } from "../../src/prompt/api.js";
 import { PromptTemplateStore } from "../../src/prompt/store.js";
 
 let db: RisolutoDatabase;

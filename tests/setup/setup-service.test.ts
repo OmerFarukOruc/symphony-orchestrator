@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
 import { SecretsStore } from "../../src/secrets/store.js";
 import { createSetupService } from "../../src/setup/setup-service.js";
-import { buildSilentLogger, buildStubOrchestrator } from "../helpers/http-server-harness.js";
+import { buildSilentLogger, buildStubOrchestrator, buildStubTracker } from "../helpers/http-server-harness.js";
 
 const MASTER_KEY = "test-master-key-32chars-exactly!!";
 const originalEnv = { ...process.env };
@@ -16,6 +16,7 @@ let tmpDir: string;
 let secretsStore: SecretsStore;
 let configOverlayStore: ConfigOverlayStore;
 let orchestrator: ReturnType<typeof buildStubOrchestrator>;
+let tracker: ReturnType<typeof buildStubTracker>;
 
 beforeEach(async () => {
   process.env = { ...originalEnv };
@@ -33,6 +34,7 @@ beforeEach(async () => {
   await configOverlayStore.start();
 
   orchestrator = buildStubOrchestrator();
+  tracker = buildStubTracker();
 });
 
 afterEach(async () => {
@@ -49,6 +51,7 @@ describe("setup-service", () => {
       configOverlayStore,
       orchestrator,
       archiveDir: tmpDir,
+      tracker,
     });
 
     expect(service.getStatus()).toEqual({
@@ -102,6 +105,7 @@ describe("setup-service", () => {
       configOverlayStore,
       orchestrator,
       archiveDir: tmpDir,
+      tracker,
     });
 
     await service.reset();
@@ -126,6 +130,7 @@ describe("setup-service", () => {
       configOverlayStore,
       orchestrator,
       archiveDir: tmpDir,
+      tracker,
     });
 
     expect(service.getRepoRoutes()).toEqual({ routes: [] });
@@ -176,6 +181,7 @@ describe("setup-service", () => {
       configOverlayStore,
       orchestrator,
       archiveDir: tmpDir,
+      tracker,
     });
 
     const fetchMock = vi.spyOn(globalThis, "fetch");

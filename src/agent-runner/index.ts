@@ -1,6 +1,6 @@
 import { type DockerSessionDeps, type PrecomputedRuntimeConfig } from "./docker-session.js";
 import { DefaultAttemptExecutor, type AttemptExecutor } from "./attempt-executor.js";
-import type { CodexRuntimePort } from "./codex-runtime-port.js";
+import type { AgentSessionPort } from "./session-port.js";
 import { DockerCodexRuntimePort } from "./docker-runtime.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import type { RunAttemptDispatcher } from "../dispatch/types.js";
@@ -31,13 +31,13 @@ export class AgentRunner implements RunAttemptDispatcher {
       logger: RisolutoLogger;
       spawnProcess?: DockerSessionDeps["spawnProcess"];
       metrics?: MetricsCollector;
-      runtimePort?: CodexRuntimePort;
+      sessionPort?: AgentSessionPort;
       attemptExecutor?: AttemptExecutor;
     },
   ) {
     this.deps.metrics ??= createMetricsCollector();
-    const runtimePort =
-      this.deps.runtimePort ??
+    const sessionPort =
+      this.deps.sessionPort ??
       new DockerCodexRuntimePort({
         getConfig: this.deps.getConfig,
         tracker: this.deps.tracker,
@@ -55,7 +55,7 @@ export class AgentRunner implements RunAttemptDispatcher {
       new DefaultAttemptExecutor({
         getConfig: this.deps.getConfig,
         workspaceManager: this.deps.workspaceManager,
-        runtimePort,
+        sessionPort,
         logger: this.deps.logger,
       });
   }

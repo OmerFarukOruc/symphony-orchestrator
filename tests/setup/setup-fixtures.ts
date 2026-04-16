@@ -4,18 +4,22 @@ import express from "express";
 import { vi } from "vitest";
 
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
+import type { ServiceConfig } from "../../src/core/types.js";
 import type { AttemptStorePort } from "../../src/core/attempt-store-port.js";
 import type { RunAttemptDispatcher } from "../../src/dispatch/types.js";
 import { ConfigStore } from "../../src/config/store.js";
 import { LinearClient } from "../../src/linear/client.js";
 import { LinearTrackerAdapter } from "../../src/tracker/linear-adapter.js";
+import type { TrackerPort } from "../../src/tracker/port.js";
 import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
 import { IssueConfigStore } from "../../src/persistence/sqlite/issue-config-store.js";
 import { openDatabase } from "../../src/persistence/sqlite/database.js";
 import { SecretsStore } from "../../src/secrets/store.js";
-import { registerSetupApi } from "../../src/setup/api.js";
+import { registerSetupApi } from "../../src/http/routes/setup.js";
+import { readProjectSlug, readTrackerKind } from "../../src/setup/setup-status.js";
 import { WorkspaceManager } from "../../src/workspace/manager.js";
 import { createMockLogger } from "../helpers.js";
+import { buildStubTracker } from "../helpers/http-server-harness.js";
 
 /* ── Type aliases ──────────────────────────────────────────────────── */
 
@@ -67,6 +71,30 @@ export function createAgentRunnerMock(): RunAttemptDispatcher {
       throw new Error("not used in setup api tests");
     }),
   };
+}
+
+export function createTrackerMock(): TrackerPort {
+  return buildStubTracker();
+}
+
+function createSetupTracker(secretsStore: SecretsStore, configOverlayStore: ConfigOverlayStore): TrackerPort {
+  const logger = createMockLogger();
+  const getConfig = (): ServiceConfig =>
+    ({
+      tracker: {
+        kind: readTrackerKind(configOverlayStore.toMap()) ?? "linear",
+        apiKey: secretsStore.get("LINEAR_API_KEY") ?? process.env.LINEAR_API_KEY ?? "",
+        endpoint: "https://api.linear.app/graphql",
+        projectSlug: readProjectSlug(configOverlayStore.toMap()) ?? null,
+        owner: "",
+        repo: "",
+        activeStates: ["Backlog", "Todo", "In Progress"],
+        terminalStates: ["Done", "Canceled"],
+      },
+      github: { token: secretsStore.get("GITHUB_TOKEN") ?? process.env.GITHUB_TOKEN ?? "", apiBaseUrl: "" },
+    }) as ServiceConfig;
+
+  return new LinearTrackerAdapter(new LinearClient(getConfig, logger), getConfig);
 }
 
 function createAttemptStoreMock(): AttemptStorePort {
@@ -134,6 +162,7 @@ export async function startSetupApiServer(options?: {
   secretsStore?: SecretsStore;
   configOverlayStore?: ConfigOverlayStore;
   orchestrator?: Orchestrator;
+  tracker?: TrackerPort;
 }): Promise<{
   baseUrl: string;
   secretsStore: SecretsStore;
@@ -146,12 +175,14 @@ export async function startSetupApiServer(options?: {
   const secretsStore = options?.secretsStore ?? createSecretsStoreMock();
   const configOverlayStore = options?.configOverlayStore ?? createConfigOverlayStoreMock();
   const orchestrator = options?.orchestrator ?? createOrchestratorMock();
+  const tracker = options?.tracker ?? createSetupTracker(secretsStore, configOverlayStore);
 
   registerSetupApi(app, {
     secretsStore,
     configOverlayStore,
     orchestrator,
     archiveDir: options?.archiveDir ?? "/archive-root",
+    tracker,
   });
 
   const server = await new Promise<Server>((resolve) => {

@@ -3,13 +3,17 @@ import type { Express } from "express";
 import rateLimit from "express-rate-limit";
 
 import type { HttpRouteDeps } from "../route-types.js";
-import { handleWebhookGitHub, type GitHubWebhookHandlerDeps } from "../github-webhook-handler.js";
 import { triggerSchema } from "../request-schemas.js";
 import { methodNotAllowed } from "../route-helpers.js";
 import { handleTriggerDispatch } from "../trigger-handler.js";
 import { validateBody } from "../validation.js";
-import { handleWebhookLinear, type WebhookHandlerDeps } from "../webhook-handler.js";
 import type { WebhookRequest } from "../webhook-types.js";
+import {
+  handleWebhookGitHub,
+  handleWebhookLinear,
+  type GitHubWebhookHandlerDeps,
+  type WebhookHandlerDeps,
+} from "../../webhook/http-adapter.js";
 
 export function registerWebhookRoutes(app: Express, deps: HttpRouteDeps): void {
   const triggerLimiter = rateLimit({

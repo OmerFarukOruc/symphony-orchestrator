@@ -2,10 +2,10 @@ import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";
 import type { RisolutoLogger, WebhookConfig } from "../core/types.js";
 import type { PersistenceRuntime } from "../persistence/sqlite/runtime.js";
-import type { WebhookHandlerDeps } from "../http/webhook-handler.js";
 import type { OrchestratorPort } from "../orchestrator/port.js";
 import type { SecretsStore } from "../secrets/store.js";
 import type { createTracker } from "../tracker/factory.js";
+import type { WebhookHandlerDeps } from "./http-adapter.js";
 import { createWebhookRuntime, evaluateWebhookConfig, type WebhookRuntime } from "./runtime.js";
 
 /**

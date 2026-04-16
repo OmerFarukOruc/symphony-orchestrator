@@ -88,7 +88,7 @@ describe("evaluateWebhookConfig", () => {
 
 describe("webhook config integration", () => {
   it("config.webhook is populated when webhook section is present in workflow", async () => {
-    const { deriveServiceConfig } = await import("../../src/config/builders.js");
+    const { deriveServiceConfig } = await import("../../src/config/derivation-pipeline.js");
     const config = deriveServiceConfig({
       config: {
         tracker: { kind: "linear", api_key: "lin_test", project_slug: "TEST" },
@@ -111,7 +111,7 @@ describe("webhook config integration", () => {
   });
 
   it("config.webhook is null when webhook section is absent", async () => {
-    const { deriveServiceConfig } = await import("../../src/config/builders.js");
+    const { deriveServiceConfig } = await import("../../src/config/derivation-pipeline.js");
     const config = deriveServiceConfig({
       config: {
         tracker: { kind: "linear", api_key: "lin_test", project_slug: "TEST" },
@@ -125,7 +125,7 @@ describe("webhook config integration", () => {
   });
 
   it("config.webhook is null when webhook_url is empty", async () => {
-    const { deriveServiceConfig } = await import("../../src/config/builders.js");
+    const { deriveServiceConfig } = await import("../../src/config/derivation-pipeline.js");
     const config = deriveServiceConfig({
       config: {
         tracker: { kind: "linear", api_key: "lin_test", project_slug: "TEST" },
@@ -140,7 +140,7 @@ describe("webhook config integration", () => {
   });
 
   it("config.webhook has empty webhookSecret when only webhook_url is set", async () => {
-    const { deriveServiceConfig } = await import("../../src/config/builders.js");
+    const { deriveServiceConfig } = await import("../../src/config/derivation-pipeline.js");
     const config = deriveServiceConfig({
       config: {
         tracker: { kind: "linear", api_key: "lin_test", project_slug: "TEST" },

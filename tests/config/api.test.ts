@@ -6,9 +6,9 @@ import path from "node:path";
 import express, { type Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { registerConfigApi } from "../../src/config/api.js";
 import { ConfigOverlayStore } from "../../src/config/overlay.js";
 import { createLogger } from "../../src/core/logger.js";
+import { registerConfigApi } from "../../src/http/routes/config.js";
 
 const tempDirs: string[] = [];
 

@@ -2,6 +2,7 @@ import { buildWorkflowColumns } from "../workflow/columns.js";
 import { computeAttemptCostUsd } from "../core/model-pricing.js";
 import { nowIso } from "./views.js";
 import { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
+import { projectCompletedViewsForSnapshot } from "./core/snapshot-projection.js";
 export { buildRunningIssueView, buildRetryIssueView } from "./issue-view-builders.js";
 import { type IssueLocatorCallbacks, resolveIssue, toIssueView } from "./issue-locator.js";
 import type {
@@ -15,6 +16,7 @@ import type {
   SystemHealth,
 } from "../core/types.js";
 import type { RunningEntry, RetryRuntimeEntry } from "./runtime-types.js";
+import type { LifecycleState } from "./core/lifecycle-state.js";
 
 export interface AttemptSummary {
   attemptId: string;
@@ -100,6 +102,27 @@ export interface RuntimeReadModel {
   buildAttemptDetail(attemptId: string): AttemptDetailView | null;
 }
 
+export interface RuntimeReadModelStateInput {
+  state: Pick<
+    LifecycleState,
+    | "detailViews"
+    | "completedViews"
+    | "runningEntries"
+    | "retryEntries"
+    | "queuedViews"
+    | "recentEvents"
+    | "rateLimits"
+    | "codexTotals"
+    | "stallEvents"
+    | "issueTemplateOverrides"
+  >;
+  getConfig: () => ServiceConfig;
+  resolveModelSelection: (identifier: string) => ModelSelection;
+  getSystemHealth?: () => SystemHealth | null;
+  getWebhookHealth?: () => RuntimeSnapshot["webhookHealth"] | undefined;
+  getTemplateName?: (templateId: string) => string | null;
+}
+
 export function createRuntimeReadModel(
   deps: SnapshotBuilderDeps,
   callbacks: SnapshotBuilderCallbacks,
@@ -109,6 +132,29 @@ export function createRuntimeReadModel(
     buildIssueDetail: (identifier: string) => buildIssueDetailInternal(identifier, deps, callbacks),
     buildAttemptDetail: (attemptId: string) => buildAttemptDetailInternal(attemptId, deps),
   };
+}
+
+export function createRuntimeReadModelFromState(
+  deps: SnapshotBuilderDeps,
+  input: RuntimeReadModelStateInput,
+): RuntimeReadModel {
+  return createRuntimeReadModel(deps, {
+    getConfig: input.getConfig,
+    resolveModelSelection: input.resolveModelSelection,
+    getDetailViews: () => input.state.detailViews,
+    getCompletedViews: () => input.state.completedViews,
+    getRunningEntries: () => input.state.runningEntries,
+    getRetryEntries: () => input.state.retryEntries,
+    getQueuedViews: () => input.state.queuedViews,
+    getRecentEvents: () => input.state.recentEvents,
+    getRateLimits: () => input.state.rateLimits,
+    getCodexTotals: () => input.state.codexTotals,
+    getStallEvents: () => input.state.stallEvents,
+    getSystemHealth: input.getSystemHealth,
+    getWebhookHealth: input.getWebhookHealth,
+    getTemplateOverride: (identifier: string) => input.state.issueTemplateOverrides.get(identifier) ?? null,
+    getTemplateName: input.getTemplateName,
+  });
 }
 
 export function buildSnapshot(deps: SnapshotBuilderDeps, callbacks: SnapshotBuilderCallbacks): RuntimeSnapshot {
@@ -123,9 +169,7 @@ function buildSnapshotInternal(deps: SnapshotBuilderDeps, callbacks: SnapshotBui
     buildRetryIssueView(entry, callbacks.resolveModelSelection),
   );
   const queued = callbacks.getQueuedViews();
-  const completed = [...callbacks.getCompletedViews().values()]
-    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
-    .slice(0, 25);
+  const completed = projectCompletedViewsForSnapshot(callbacks.getCompletedViews().values());
   const codexTotals = callbacks.getCodexTotals();
 
   return {

@@ -311,7 +311,6 @@ export function createWorkspacesPage(): HTMLElement {
   registerPageCleanup(page, () => {
     unsubscribeState();
     unsubscribeWorkspaceEvents();
-    globalThis.removeEventListener("keydown", handleKeydown);
   });
 
   return page;

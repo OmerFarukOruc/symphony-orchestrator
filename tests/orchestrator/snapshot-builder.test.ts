@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { sumAttemptDurationSeconds } from "../../src/core/attempt-analytics.js";
 import type { AttemptRecord, RecentEvent, RuntimeIssueView, ServiceConfig } from "../../src/core/types.js";
-import { sumAttemptDurationSeconds } from "../../src/core/attempt-store-port.js";
 import { computeAttemptCostUsd } from "../../src/core/model-pricing.js";
 import type { RunningEntry, RetryRuntimeEntry } from "../../src/orchestrator/runtime-types.js";
 import {

@@ -24,7 +24,7 @@ import { TypedEventBus } from "../../src/core/event-bus.js";
 import type { RisolutoEventMap } from "../../src/core/risoluto-events.js";
 import type { RisolutoLogger } from "../../src/core/types.js";
 import { HttpServer } from "../../src/http/server.js";
-import type { WebhookHandlerDeps } from "../../src/http/webhook-handler.js";
+import type { WebhookHandlerDeps } from "../../src/webhook/http-adapter.js";
 import type { ConfigOverlayPort } from "../../src/config/overlay.js";
 import type { ConfigStore } from "../../src/config/store.js";
 import type { AttemptStorePort } from "../../src/core/attempt-store-port.js";
@@ -33,6 +33,7 @@ import { closeDatabase, openDatabase, type RisolutoDatabase } from "../../src/pe
 import type { PromptTemplateStore } from "../../src/prompt/store.js";
 import type { SecretsStore } from "../../src/secrets/store.js";
 import type { AuditLogger } from "../../src/audit/logger.js";
+import type { TrackerPort } from "../../src/tracker/port.js";
 
 /* ------------------------------------------------------------------ */
 /*  Stub builders                                                      */
@@ -102,6 +103,34 @@ export function buildStubOrchestrator(overrides: Partial<OrchestratorPort> = {})
   };
 }
 
+export function buildStubTracker(overrides: Partial<TrackerPort> = {}): TrackerPort {
+  return {
+    fetchCandidateIssues: vi.fn(async () => []),
+    fetchIssueStatesByIds: vi.fn(async () => []),
+    fetchIssuesByStates: vi.fn(async () => []),
+    resolveStateId: vi.fn(async () => null),
+    updateIssueState: vi.fn(async () => undefined),
+    createComment: vi.fn(async () => undefined),
+    createIssue: vi.fn(async () => ({ issueId: "1", identifier: "stub#1", url: null })),
+    transitionIssue: vi.fn(async () => ({ success: true })),
+    provision: vi.fn(async (input) => {
+      switch (input.type) {
+        case "list_projects":
+          return { projects: [] };
+        case "select_project":
+          return { ok: true };
+        case "create_project":
+          return { ok: true, project: { name: input.name, url: null, teamKey: null } };
+        case "create_test_issue":
+          return { ok: true, issueIdentifier: "stub#1", issueUrl: "https://example.test/issues/1" };
+        case "create_label":
+          return { ok: true, labelId: "stub-label", labelName: "risoluto", alreadyExists: false };
+      }
+    }),
+    ...overrides,
+  };
+}
+
 /**
  * Build a silent logger that swallows all output (avoids noise in tests).
  */
@@ -145,6 +174,8 @@ export function buildWebhookDeps(overrides: Partial<WebhookHandlerDeps> = {}): W
 export interface TestServerOverrides {
   /** Override the orchestrator (Tier 1 stub used when omitted). */
   orchestrator?: OrchestratorPort;
+  /** Override the tracker (stub used when omitted). */
+  tracker?: TrackerPort;
   /** Override the logger (silent logger used when omitted). */
   logger?: RisolutoLogger;
   /** Provide or enable a real event bus (Tier 2). `true` creates one automatically. */
@@ -182,6 +213,8 @@ export interface TestServerResult {
   eventBus: TypedEventBus<RisolutoEventMap> | null;
   /** The orchestrator used by the server (for assertion / spy access). */
   orchestrator: OrchestratorPort;
+  /** The tracker used by the server (for assertion / spy access). */
+  tracker: TrackerPort;
   /** The logger used by the server (for assertion / spy access). */
   logger: RisolutoLogger;
   /** Stop the server, close the DB, and remove the temp directory. */
@@ -241,6 +274,7 @@ export async function startTestServer(overrides: TestServerOverrides = {}): Prom
 
   /* ---- orchestrator ---- */
   const orchestrator = overrides.orchestrator ?? buildStubOrchestrator();
+  const tracker = overrides.tracker ?? buildStubTracker();
 
   /* ---- logger ---- */
   const logger = overrides.logger ?? buildSilentLogger();
@@ -248,6 +282,7 @@ export async function startTestServer(overrides: TestServerOverrides = {}): Prom
   /* ---- server ---- */
   const server = new HttpServer({
     orchestrator,
+    tracker,
     logger,
     eventBus: eventBus ?? undefined,
     webhookHandlerDeps,
@@ -281,6 +316,7 @@ export async function startTestServer(overrides: TestServerOverrides = {}): Prom
     db,
     eventBus,
     orchestrator,
+    tracker,
     logger,
     teardown,
   };

@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { Orchestrator } from "../../src/orchestrator/orchestrator.js";
+import { serializeSnapshot } from "../../src/orchestrator/snapshot-serialization.js";
 import type { WebhookHealthTracker } from "../../src/webhook/health-tracker.js";
 import type { WebhookHealthState } from "../../src/webhook/types.js";
-import { serializeSnapshot } from "../../src/http/route-helpers.js";
 import type { RuntimeSnapshot } from "../../src/core/types.js";
 import {
   createConfig,

@@ -101,15 +101,21 @@ export async function preflight(ctx: RunContext): Promise<PhaseResult> {
     return fail("GITHUB_TOKEN not resolved");
   }
 
-  // 3. Codex auth.json
-  const resolvedSourceHome = expandTilde(config.codex.source_home);
-  const authJsonPath = path.join(resolvedSourceHome, "auth.json");
-  if (existsSync(authJsonPath)) {
-    checkCount++;
-    logCheck(ctx, "preflight", "Codex auth.json exists", true, authJsonPath);
+  // 3. Codex auth — auth.json is only required in openai_login mode;
+  // api_key mode relies on the OpenAI key resolved from the runtime config.
+  if (config.codex.auth_mode === "openai_login") {
+    const resolvedSourceHome = expandTilde(config.codex.source_home);
+    const authJsonPath = path.join(resolvedSourceHome, "auth.json");
+    if (existsSync(authJsonPath)) {
+      checkCount++;
+      logCheck(ctx, "preflight", "Codex auth ready", true, authJsonPath);
+    } else {
+      logCheck(ctx, "preflight", "Codex auth ready", false, authJsonPath);
+      return fail(`Codex auth.json not found at ${authJsonPath}`);
+    }
   } else {
-    logCheck(ctx, "preflight", "Codex auth.json exists", false, authJsonPath);
-    return fail(`Codex auth.json not found at ${authJsonPath}`);
+    checkCount++;
+    logCheck(ctx, "preflight", "Codex auth ready", true, "api_key mode");
   }
 
   // 4. Docker running

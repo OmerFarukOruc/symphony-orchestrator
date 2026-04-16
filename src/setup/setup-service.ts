@@ -2,13 +2,6 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 
-import {
-  buildCreateIssueMutation,
-  buildCreateLabelMutation,
-  buildCreateProjectMutation,
-  buildTeamStatesQuery,
-  buildTeamsQuery,
-} from "../linear/queries.js";
 import { normalizeCodexAuthJson } from "../codex/auth-file.js";
 import {
   checkAuthEndpointReachable,
@@ -19,82 +12,19 @@ import {
   startCallbackServer,
   type PkceSession,
 } from "./device-auth.js";
-import { hasCodexAuthFile, hasRepoRoutes, readProjectSlug } from "./setup-status.js";
 import {
-  callLinearGraphQL,
-  getLinearApiKey,
-  lookupProject,
-  type LinearGraphQLResponse,
+  SetupServiceError,
+  type LinearProjectOption,
+  type RepoRouteEntry,
+  type SaveRepoRouteInput,
   type SetupApiDeps,
-} from "./handlers/shared.js";
-
-interface LinearTeam {
-  id: string;
-  name: string;
-  key: string;
-}
-
-interface ProjectCreateResult {
-  success?: boolean;
-  project?: {
-    id?: string;
-    name?: string;
-    slugId?: string;
-    url?: string;
-    teams?: { nodes?: Array<{ key: string }> };
-  };
-}
+  type SetupStatusSnapshot,
+  type SetupPort,
+  type SetupProviderConfig,
+} from "./port.js";
+import { hasCodexAuthFile, hasRepoRoutes, readProjectSlug, readTrackerKind } from "./setup-status.js";
 
 const GITHUB_URL_RE = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(?:\.git)?$/u;
-
-export interface SetupStatusSnapshot {
-  configured: boolean;
-  steps: {
-    masterKey: { done: boolean };
-    linearProject: { done: boolean };
-    repoRoute: { done: boolean };
-    openaiKey: { done: boolean };
-    githubToken: { done: boolean };
-  };
-}
-
-export interface LinearProjectOption {
-  id: unknown;
-  name: unknown;
-  slugId: unknown;
-  teamKey: string | null;
-}
-
-export interface SetupProviderConfig {
-  supplied: boolean;
-  name: string | null;
-  baseUrl: string | null;
-}
-
-export interface RepoRouteEntry {
-  repo_url: string;
-  default_branch: string;
-  identifier_prefix: string;
-  label?: string;
-}
-
-export interface SaveRepoRouteInput {
-  repoUrl: string | null;
-  defaultBranch?: string | null;
-  identifierPrefix: string | null;
-  label?: string | null;
-}
-
-export class SetupServiceError extends Error {
-  constructor(
-    public readonly status: number,
-    public readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = "SetupServiceError";
-  }
-}
 
 function stripTrailingSlashes(value: string): string {
   let end = value.length;
@@ -165,96 +95,6 @@ async function validateOpenaiKey(key: string, validationUrl: string): Promise<bo
   } catch {
     return false;
   }
-}
-
-async function fetchLinearTeams(apiKey: string): Promise<LinearTeam[]> {
-  const teamsData = await callLinearGraphQL(apiKey, buildTeamsQuery(), {});
-  return ((teamsData.data?.teams as Record<string, unknown> | undefined)?.nodes as LinearTeam[] | undefined) ?? [];
-}
-
-async function createLinearProject(apiKey: string, name: string, teamIds: string[]): Promise<ProjectCreateResult> {
-  const data = await callLinearGraphQL(apiKey, buildCreateProjectMutation(), { name, teamIds });
-  return (data.data?.projectCreate as ProjectCreateResult | undefined) ?? {};
-}
-
-async function createRisolutoLabel(
-  apiKey: string,
-  projectSlug: string,
-): Promise<{ id: string; name: string; alreadyExists: boolean }> {
-  const project = await lookupProject(apiKey, projectSlug);
-  const teamId = project.teams?.nodes?.[0]?.id;
-  if (!teamId) {
-    throw new Error("No team found for the selected project");
-  }
-
-  let data: LinearGraphQLResponse;
-  try {
-    data = await callLinearGraphQL(apiKey, buildCreateLabelMutation(), {
-      teamId,
-      name: "risoluto",
-      color: "#2563eb",
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.toLowerCase().includes("duplicate")) {
-      return { id: "", name: "risoluto", alreadyExists: true };
-    }
-    throw error;
-  }
-
-  const result = data.data?.issueLabelCreate as
-    | { success?: boolean; issueLabel?: { id?: string; name?: string } }
-    | undefined;
-
-  if (!result?.success || !result.issueLabel?.id || !result.issueLabel?.name) {
-    throw new Error("Linear did not confirm label creation");
-  }
-
-  return { id: result.issueLabel.id, name: result.issueLabel.name, alreadyExists: false };
-}
-
-async function lookupInProgressStateId(apiKey: string, teamId: string): Promise<string> {
-  const data = await callLinearGraphQL(apiKey, buildTeamStatesQuery(), { teamId });
-  const states = (data.data?.team as Record<string, unknown> | undefined)?.states as
-    | { nodes?: Array<{ id: string; name: string }> }
-    | undefined;
-  const inProgress = states?.nodes?.find((state) => state.name.toLowerCase() === "in progress");
-  if (!inProgress) {
-    throw new Error('No "In Progress" state found for the team');
-  }
-  return inProgress.id;
-}
-
-async function createLinearTestIssue(
-  apiKey: string,
-  projectSlug: string,
-): Promise<{ identifier: string; url: string }> {
-  const project = await lookupProject(apiKey, projectSlug);
-  const teamId = project.teams?.nodes?.[0]?.id;
-  if (!teamId) {
-    throw new Error("No team found for the selected project");
-  }
-
-  const stateId = await lookupInProgressStateId(apiKey, teamId);
-  const data = await callLinearGraphQL(apiKey, buildCreateIssueMutation(), {
-    teamId,
-    projectId: project.id,
-    title: "Risoluto smoke test",
-    description:
-      "This issue was created automatically to verify your Risoluto setup. " +
-      "Risoluto should pick it up within one poll cycle and run a sandboxed agent.",
-    stateId,
-  });
-
-  const result = data.data?.issueCreate as
-    | { success?: boolean; issue?: { identifier?: string; url?: string } }
-    | undefined;
-
-  if (!result?.success || !result.issue?.identifier || !result.issue?.url) {
-    throw new Error("Linear did not confirm issue creation");
-  }
-
-  return { identifier: result.issue.identifier, url: result.issue.url };
 }
 
 function isSupportedGitHubHost(hostname: string): boolean {
@@ -345,39 +185,31 @@ export async function fetchDefaultBranch(
   return DEFAULT_BRANCH_FALLBACK;
 }
 
-export interface SetupService {
-  getStatus(): SetupStatusSnapshot;
-  createMasterKey(providedKey?: string | null): Promise<{ key: string }>;
-  getLinearProjects(): Promise<{ projects: LinearProjectOption[] }>;
-  selectLinearProject(slugId: string): Promise<{ ok: true }>;
-  saveOpenaiKey(key: string, provider: SetupProviderConfig): Promise<{ valid: boolean }>;
-  saveCodexAuth(authJson: string): Promise<{ ok: true }>;
-  startPkceAuth(): Promise<{ authUrl: string }>;
-  getPkceAuthStatus(): Promise<{ status: string; error?: string }>;
-  cancelPkceAuth(): Promise<{ ok: true }>;
-  saveGithubToken(token: string): Promise<{ valid: boolean }>;
-  createTestIssue(): Promise<{ ok: true; issueIdentifier: string; issueUrl: string }>;
-  createLabel(): Promise<{ ok: true; labelId: string; labelName: string; alreadyExists: boolean }>;
-  getRepoRoutes(): { routes: RepoRouteEntry[] };
-  saveRepoRoute(input: SaveRepoRouteInput): Promise<{ ok: true; route: RepoRouteEntry }>;
-  deleteRepoRoute(index: number): Promise<{ ok: true; routes: RepoRouteEntry[] }>;
-  detectDefaultBranch(repoUrl: string | null): Promise<{ defaultBranch: string }>;
-  createProject(name: string): Promise<{
-    ok: true;
-    project: { id?: string; name?: string; slugId?: string; url: string | null; teamKey: string | null };
-  }>;
-  reset(): Promise<{ ok: true }>;
-}
-
-class SetupServiceImpl implements SetupService {
+class SetupServiceImpl implements SetupPort {
   private activePkceSession: PkceSession | null = null;
 
   constructor(private readonly deps: SetupApiDeps) {}
 
+  private getTrackerKind(): string {
+    return readTrackerKind(this.deps.configOverlayStore.toMap()) ?? "linear";
+  }
+
+  private getLinearApiKey(): string {
+    return this.deps.secretsStore.get("LINEAR_API_KEY") ?? process.env.LINEAR_API_KEY ?? "";
+  }
+
+  private requireTracker() {
+    if (this.deps.tracker) {
+      return this.deps.tracker;
+    }
+    throw new SetupServiceError(500, "tracker_unavailable", "Tracker provisioning is unavailable");
+  }
+
   getStatus(): SetupStatusSnapshot {
     const masterKeyDone = this.deps.secretsStore.isInitialized();
     const overlay = this.deps.configOverlayStore.toMap();
-    const linearProjectDone = Boolean(readProjectSlug(overlay));
+    const trackerKind = readTrackerKind(overlay) ?? "linear";
+    const linearProjectDone = trackerKind !== "linear" || Boolean(readProjectSlug(overlay));
     const hasApiKey = !!(this.deps.secretsStore.get("OPENAI_API_KEY") || process.env.OPENAI_API_KEY);
     const hasAuthJson = hasCodexAuthFile(this.deps.archiveDir, overlay);
     const openaiKeyDone = hasApiKey || hasAuthJson;
@@ -409,29 +241,14 @@ class SetupServiceImpl implements SetupService {
   }
 
   async getLinearProjects(): Promise<{ projects: LinearProjectOption[] }> {
-    const apiKey = getLinearApiKey(this.deps);
-    if (!apiKey) {
+    if (this.getTrackerKind() === "linear" && !this.getLinearApiKey()) {
       throw new SetupServiceError(400, "missing_api_key", "LINEAR_API_KEY not configured");
     }
-
-    const query = "{ projects(first: 50) { nodes { id name slugId teams { nodes { key } } } } }";
-    const data = await callLinearGraphQL(apiKey, query, {});
-    const nodes = (data.data?.projects as Record<string, unknown> | undefined)?.nodes as unknown[] | undefined;
-    const projects = (nodes ?? []).map((nodeValue) => {
-      const node = nodeValue as Record<string, unknown>;
-      const teams = node.teams as { nodes?: Array<{ key: string }> } | undefined;
-      return {
-        id: node.id,
-        name: node.name,
-        slugId: node.slugId,
-        teamKey: teams?.nodes?.[0]?.key ?? null,
-      };
-    });
-
-    return { projects };
+    return this.requireTracker().provision({ type: "list_projects" });
   }
 
   async selectLinearProject(slugId: string): Promise<{ ok: true }> {
+    await this.requireTracker().provision({ type: "select_project", slugId });
     await this.deps.configOverlayStore.set("tracker.project_slug", slugId);
     await this.deps.orchestrator.start();
     this.deps.orchestrator.requestRefresh("setup");
@@ -643,64 +460,51 @@ class SetupServiceImpl implements SetupService {
   }
 
   async createTestIssue(): Promise<{ ok: true; issueIdentifier: string; issueUrl: string }> {
-    const apiKey = getLinearApiKey(this.deps);
-    if (!apiKey) {
+    if (this.getTrackerKind() === "linear" && !this.getLinearApiKey()) {
       throw new SetupServiceError(400, "missing_api_key", "LINEAR_API_KEY not configured");
     }
-
-    const projectSlug = readProjectSlug(this.deps.configOverlayStore.toMap());
-    if (!projectSlug) {
+    if (this.getTrackerKind() === "linear" && !readProjectSlug(this.deps.configOverlayStore.toMap())) {
       throw new SetupServiceError(400, "missing_project", "No Linear project selected");
     }
 
-    const { identifier, url } = await createLinearTestIssue(apiKey, projectSlug);
-    return { ok: true, issueIdentifier: identifier, issueUrl: url };
+    return this.requireTracker().provision({ type: "create_test_issue" });
   }
 
   async createLabel(): Promise<{ ok: true; labelId: string; labelName: string; alreadyExists: boolean }> {
-    const apiKey = getLinearApiKey(this.deps);
-    if (!apiKey) {
+    if (this.getTrackerKind() === "linear" && !this.getLinearApiKey()) {
       throw new SetupServiceError(400, "missing_api_key", "LINEAR_API_KEY not configured");
     }
-
-    const projectSlug = readProjectSlug(this.deps.configOverlayStore.toMap());
-    if (!projectSlug) {
+    if (this.getTrackerKind() === "linear" && !readProjectSlug(this.deps.configOverlayStore.toMap())) {
       throw new SetupServiceError(400, "missing_project", "No Linear project selected");
     }
 
-    const { id, name, alreadyExists } = await createRisolutoLabel(apiKey, projectSlug);
-    return { ok: true, labelId: id, labelName: name, alreadyExists };
+    return this.requireTracker().provision({ type: "create_label" });
   }
 
   async createProject(name: string): Promise<{
     ok: true;
     project: { id?: string; name?: string; slugId?: string; url: string | null; teamKey: string | null };
   }> {
-    const apiKey = getLinearApiKey(this.deps);
-    if (!apiKey) {
+    if (this.getTrackerKind() !== "linear") {
+      throw new SetupServiceError(
+        400,
+        "unsupported_tracker_operation",
+        "Project creation is only available when tracker.kind is linear",
+      );
+    }
+    if (!this.getLinearApiKey()) {
       throw new SetupServiceError(400, "missing_api_key", "LINEAR_API_KEY not configured");
     }
 
-    const teams = await fetchLinearTeams(apiKey);
-    if (!teams.length) {
-      throw new SetupServiceError(400, "no_teams", "No teams found in your Linear workspace");
+    try {
+      return await this.requireTracker().provision({ type: "create_project", name });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("No teams found")) {
+        throw new SetupServiceError(400, "no_teams", "No teams found in your Linear workspace");
+      }
+      throw error;
     }
-
-    const result = await createLinearProject(apiKey, name, [teams[0].id]);
-    if (!result?.success || !result.project?.slugId) {
-      throw new Error("Linear did not confirm project creation");
-    }
-
-    return {
-      ok: true,
-      project: {
-        id: result.project.id,
-        name: result.project.name,
-        slugId: result.project.slugId,
-        url: result.project.url ?? null,
-        teamKey: result.project.teams?.nodes?.[0]?.key ?? teams[0].key,
-      },
-    };
   }
 
   async reset(): Promise<{ ok: true }> {
@@ -717,13 +521,16 @@ class SetupServiceImpl implements SetupService {
   }
 }
 
-const setupServiceCache = new WeakMap<SetupApiDeps, SetupService>();
+export type SetupService = SetupPort;
+export type { SetupProviderConfig } from "./port.js";
 
-export function createSetupService(deps: SetupApiDeps): SetupService {
+const setupServiceCache = new WeakMap<SetupApiDeps, SetupPort>();
+
+export function createSetupService(deps: SetupApiDeps): SetupPort {
   return new SetupServiceImpl(deps);
 }
 
-export function getSetupService(deps: SetupApiDeps): SetupService {
+export function getSetupService(deps: SetupApiDeps): SetupPort {
   const existing = setupServiceCache.get(deps);
   if (existing) {
     return existing;
@@ -733,10 +540,12 @@ export function getSetupService(deps: SetupApiDeps): SetupService {
   return service;
 }
 
-export function isSetupService(value: SetupApiDeps | SetupService): value is SetupService {
-  return typeof (value as SetupService).getStatus === "function";
+export function isSetupService(value: SetupApiDeps | SetupPort): value is SetupPort {
+  return typeof (value as SetupPort).getStatus === "function";
 }
 
-export function resolveSetupService(value: SetupApiDeps | SetupService): SetupService {
+export function resolveSetupService(value: SetupApiDeps | SetupPort): SetupPort {
   return isSetupService(value) ? value : getSetupService(value);
 }
+
+export { SetupServiceError } from "./port.js";

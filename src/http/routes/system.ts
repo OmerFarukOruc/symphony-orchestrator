@@ -95,8 +95,11 @@ export function registerSystemRoutes(app: Express, deps: HttpRouteDeps): void {
 
   app
     .route("/api/v1/refresh")
-    .post((req, res) => {
-      const refresh = deps.orchestrator.requestRefresh(refreshReason(req));
+    .post(async (req, res) => {
+      const refresh =
+        typeof deps.orchestrator.executeCommand === "function"
+          ? await deps.orchestrator.executeCommand({ type: "refresh", reason: refreshReason(req) })
+          : deps.orchestrator.requestRefresh(refreshReason(req));
       res.status(202).json({ queued: refresh.queued, coalesced: refresh.coalesced, requested_at: refresh.requestedAt });
     })
     .all((_req, res) => {

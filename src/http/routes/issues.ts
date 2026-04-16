@@ -13,8 +13,14 @@ import { validateBody } from "../validation.js";
 export function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
   app
     .route("/api/v1/:issue_identifier/abort")
-    .post((req, res) => {
-      const result = deps.orchestrator.abortIssue(req.params.issue_identifier);
+    .post(async (req, res) => {
+      const result =
+        typeof deps.orchestrator.executeCommand === "function"
+          ? await deps.orchestrator.executeCommand({
+              type: "abort_issue",
+              identifier: req.params.issue_identifier,
+            })
+          : deps.orchestrator.abortIssue(req.params.issue_identifier);
       if (!result.ok) {
         const status = result.code === "not_found" ? 404 : 409;
         res.status(status).json({ error: { code: result.code, message: result.message } });
@@ -42,15 +48,15 @@ export function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
 
   app
     .route("/api/v1/:issue_identifier/template")
-    .post(validateBody(templateOverrideSchema), (req, res) => {
+    .post(validateBody(templateOverrideSchema), async (req, res) => {
       if (!deps.templateStore) {
         res.status(503).json({ error: { code: "not_configured", message: "template store not available" } });
         return;
       }
-      handleTemplateOverride(deps.orchestrator, deps.templateStore, req, res);
+      await handleTemplateOverride(deps.orchestrator, deps.templateStore, req, res);
     })
-    .delete((req, res) => {
-      handleTemplateClear(deps.orchestrator, req, res);
+    .delete(async (req, res) => {
+      await handleTemplateClear(deps.orchestrator, req, res);
     })
     .all((_req, res) => {
       methodNotAllowed(res, ["POST", "DELETE"]);
@@ -111,7 +117,14 @@ export function registerIssueRoutes(app: Express, deps: HttpRouteDeps): void {
   app
     .route("/api/v1/:issue_identifier/steer")
     .post(validateBody(steerSchema), async (req, res) => {
-      const result = await deps.orchestrator.steerIssue(req.params.issue_identifier, req.body.message);
+      const result =
+        typeof deps.orchestrator.executeCommand === "function"
+          ? await deps.orchestrator.executeCommand({
+              type: "steer_issue",
+              identifier: req.params.issue_identifier,
+              message: req.body.message,
+            })
+          : await deps.orchestrator.steerIssue(req.params.issue_identifier, req.body.message);
       if (!result) {
         res.status(404).json({ error: { code: "not_found", message: "issue not running" } });
         return;

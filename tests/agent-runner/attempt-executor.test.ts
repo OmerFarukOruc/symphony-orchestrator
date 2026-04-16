@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { DefaultAttemptExecutor } from "../../src/agent-runner/attempt-executor.js";
-import type { CodexRuntimePort, CodexRuntimeSession } from "../../src/agent-runner/codex-runtime-port.js";
+import type { AgentSession, AgentSessionPort } from "../../src/agent-runner/session-port.js";
 import type { SelfReviewResult } from "../../src/agent-runner/self-review.js";
 import type { RunOutcome, ServiceConfig } from "../../src/core/types.js";
 import type { WorkspaceManager } from "../../src/workspace/manager.js";
@@ -58,7 +58,7 @@ function createNormalOutcome(overrides?: Partial<RunOutcome>): RunOutcome {
   };
 }
 
-function createRuntimeSession(overrides?: Partial<CodexRuntimeSession>): CodexRuntimeSession {
+function createRuntimeSession(overrides?: Partial<AgentSession>): AgentSession {
   return {
     initialize: vi.fn(async () => ({ threadId: "thread-123", prompt: "rendered prompt" })),
     execute: vi.fn(async () => createNormalOutcome()),
@@ -100,7 +100,7 @@ describe("DefaultAttemptExecutor", () => {
         order.push("shutdown");
       }),
     });
-    const runtimePort: CodexRuntimePort = {
+    const sessionPort: AgentSessionPort = {
       start: vi.fn(async () => {
         order.push("start");
         return runtime;
@@ -109,7 +109,7 @@ describe("DefaultAttemptExecutor", () => {
     const executor = new DefaultAttemptExecutor({
       getConfig: () => createConfig({ selfReview: true, turnTimeoutMs: 400_000 }),
       workspaceManager,
-      runtimePort,
+      sessionPort,
       logger: createMockLogger(),
     });
     const input = createInput({
@@ -136,7 +136,7 @@ describe("DefaultAttemptExecutor", () => {
     const order: string[] = [];
     const events: Array<{ event: string; message: string; metadata?: Record<string, unknown> | null }> = [];
     const workspaceManager = createWorkspaceManager(order);
-    const runtimePort: CodexRuntimePort = {
+    const sessionPort: AgentSessionPort = {
       start: vi.fn(async () => {
         throw new Error("docker socket unavailable");
       }),
@@ -144,7 +144,7 @@ describe("DefaultAttemptExecutor", () => {
     const executor = new DefaultAttemptExecutor({
       getConfig: () => createConfig(),
       workspaceManager,
-      runtimePort,
+      sessionPort,
       logger: createMockLogger(),
     });
 
@@ -194,7 +194,7 @@ describe("DefaultAttemptExecutor", () => {
         order.push("shutdown");
       }),
     });
-    const runtimePort: CodexRuntimePort = {
+    const sessionPort: AgentSessionPort = {
       start: vi.fn(async () => {
         order.push("start");
         return runtime;
@@ -203,7 +203,7 @@ describe("DefaultAttemptExecutor", () => {
     const executor = new DefaultAttemptExecutor({
       getConfig: () => createConfig({ selfReview: true }),
       workspaceManager,
-      runtimePort,
+      sessionPort,
       logger: createMockLogger(),
     });
 
@@ -264,7 +264,7 @@ describe("DefaultAttemptExecutor", () => {
       }),
       getThreadId: vi.fn(() => "thread-cancel"),
     });
-    const runtimePort: CodexRuntimePort = {
+    const sessionPort: AgentSessionPort = {
       start: vi.fn(async () => {
         order.push("start");
         return runtime;
@@ -273,7 +273,7 @@ describe("DefaultAttemptExecutor", () => {
     const executor = new DefaultAttemptExecutor({
       getConfig: () => createConfig(),
       workspaceManager,
-      runtimePort,
+      sessionPort,
       logger: createMockLogger(),
     });
 

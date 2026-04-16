@@ -1,5 +1,7 @@
-// Backward-compatible barrel — re-exports all domain types from leaf modules.
-// All importers of this file remain unchanged.
+// Intentional high-fanout type barrel.
+// Epic #410 removes avoidable wrapper churn elsewhere, but this file remains
+// because its broad re-export surface is structural to the current codebase and
+// deleting it would create noisy import fanout without deepening boundaries.
 
 export type { Issue, IssueBlockerRef } from "./types/issue.js";
 

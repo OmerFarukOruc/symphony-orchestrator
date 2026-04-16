@@ -13,8 +13,8 @@
  * logged at warn level — they never crash the monitor loop.
  */
 
+import { sortAttemptsDesc } from "../core/attempt-analytics.js";
 import type { OpenPrRecord } from "../core/attempt-store-port.js";
-import { sortAttemptsDesc } from "../core/attempt-store-port.js";
 import type { AttemptStorePort } from "../core/attempt-store-port.js";
 import type { TypedEventBus } from "../core/event-bus.js";
 import type { RisolutoEventMap } from "../core/risoluto-events.js";

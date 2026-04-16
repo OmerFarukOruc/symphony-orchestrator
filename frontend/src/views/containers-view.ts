@@ -329,22 +329,8 @@ export function createContainersPage(): HTMLElement {
 
   const unsubscribeState = runtimeClient.subscribeState(renderFromState, { includeHeartbeat: true });
   renderFromState(runtimeClient.getAppState());
-
-  function handleKeydown(event: KeyboardEvent): void {
-    const isTyping =
-      event.target instanceof HTMLInputElement ||
-      event.target instanceof HTMLTextAreaElement ||
-      (event.target instanceof HTMLElement && event.target.isContentEditable);
-    if (!isTyping && event.key.toLowerCase() === "r" && !event.ctrlKey && !event.metaKey) {
-      event.preventDefault();
-      refreshButton.click();
-    }
-  }
-  globalThis.addEventListener("keydown", handleKeydown);
-
   registerPageCleanup(page, () => {
     unsubscribeState();
-    globalThis.removeEventListener("keydown", handleKeydown);
   });
 
   return page;

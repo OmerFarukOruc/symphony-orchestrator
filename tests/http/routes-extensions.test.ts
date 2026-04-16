@@ -41,6 +41,7 @@ describe("registerExtensionRoutes", () => {
       configOverlayStore: {},
       secretsStore: { get: vi.fn() },
       archiveDir: "/tmp/archive",
+      tracker: {},
       templateStore: {},
       auditLogger: {},
     });
@@ -118,7 +119,9 @@ describe("registerExtensionRoutes", () => {
     registerExtensionRoutes(app as never, deps);
 
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ msg: expect.stringContaining("secretsStore, configOverlayStore, or archiveDir") }),
+      expect.objectContaining({
+        msg: expect.stringContaining("secretsStore, configOverlayStore, archiveDir, or tracker"),
+      }),
     );
   });
 

@@ -5,7 +5,7 @@ import { router } from "../router";
 import { getRuntimeClient } from "../state/runtime-client.js";
 import type { ActiveBranchView, GitCommitView, GitContextResponse, GitPullView, GitRepoView } from "../types/setup.js";
 import type { TrackedPrRecord } from "../types/config.js";
-import { statusDot as sharedStatusDot } from "../ui/status-chip";
+import { statusDot as sharedStatusDot } from "../ui/status-chip.js";
 import { el } from "../utils/dom";
 import { registerPageCleanup } from "../utils/page";
 import { formatRelativeTime, formatTimestamp } from "../utils/format";
@@ -492,10 +492,7 @@ export function createGitPage(): HTMLElement {
     if (currentData) void fetchAndRender();
   };
   const unsubscribeState = runtimeClient.subscribeState(onState);
-  registerPageCleanup(page, () => {
-    unsubscribeState();
-    globalThis.removeEventListener("keydown", handleKeydown);
-  });
+  registerPageCleanup(page, () => unsubscribeState());
 
   return page;
 }

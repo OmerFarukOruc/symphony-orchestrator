@@ -146,29 +146,9 @@ export function createNotificationsPage(): HTMLElement {
   const unsubscribeState = runtimeClient.subscribeState(() => {
     void loadNotifications();
   });
-
-  function handleKeydown(event: KeyboardEvent): void {
-    const isTyping =
-      event.target instanceof HTMLInputElement ||
-      event.target instanceof HTMLTextAreaElement ||
-      (event.target instanceof HTMLElement && event.target.isContentEditable);
-    if (isTyping || event.ctrlKey || event.metaKey) {
-      return;
-    }
-    if (event.key.toLowerCase() === "r") {
-      event.preventDefault();
-      void loadNotifications();
-    } else if (event.key.toLowerCase() === "m" && !markAllButton.hasAttribute("disabled")) {
-      event.preventDefault();
-      void markAllNotificationsRead();
-    }
-  }
-  globalThis.addEventListener("keydown", handleKeydown);
-
   registerPageCleanup(page, () => {
     unsubscribeNotifications();
     unsubscribeState();
-    globalThis.removeEventListener("keydown", handleKeydown);
   });
 
   return page;

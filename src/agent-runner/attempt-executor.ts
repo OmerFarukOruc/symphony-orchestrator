@@ -1,5 +1,5 @@
 import { classifyRunError, failureOutcome, outcomeForAbort } from "./abort-outcomes.js";
-import type { CodexRuntimePort, CodexRuntimeSession } from "./codex-runtime-port.js";
+import type { AgentSession, AgentSessionPort } from "./session-port.js";
 import type { PrecomputedRuntimeConfig } from "./docker-session.js";
 import type { AgentRunnerEventHandler } from "./contracts.js";
 import { createLifecycleEvent } from "../core/lifecycle-events.js";
@@ -34,7 +34,7 @@ export interface AttemptExecutor {
 interface AttemptExecutorDeps {
   getConfig: () => ServiceConfig;
   workspaceManager: WorkspaceManager;
-  runtimePort: CodexRuntimePort;
+  sessionPort: AgentSessionPort;
   logger: RisolutoLogger;
 }
 
@@ -69,9 +69,9 @@ export class DefaultAttemptExecutor implements AttemptExecutor {
       input.onEvent(event);
     };
 
-    let runtime: CodexRuntimeSession;
+    let runtime: AgentSession;
     try {
-      runtime = await this.deps.runtimePort.start({
+      runtime = await this.deps.sessionPort.start({
         issue: input.issue,
         modelSelection: input.modelSelection,
         workspace: input.workspace,
@@ -120,7 +120,7 @@ export class DefaultAttemptExecutor implements AttemptExecutor {
   }
 
   private async runActiveAttempt(
-    runtime: CodexRuntimeSession,
+    runtime: AgentSession,
     input: Omit<AttemptLaunchInput, "precomputedRuntimeConfig"> & { signal: AbortSignal },
     logger: Pick<RisolutoLogger, "warn">,
     getLastAgentMessageContent: () => string | null,
@@ -253,7 +253,7 @@ function classifyLifecycleFailure(outcome: RunOutcome): { event: string; message
   return { event: "codex_failed", message: "Codex initialization failed" };
 }
 
-function handleRunError(error: unknown, runtime: CodexRuntimeSession, signal: AbortSignal): RunOutcome {
+function handleRunError(error: unknown, runtime: AgentSession, signal: AbortSignal): RunOutcome {
   const threadId = runtime.getThreadId();
   const turnId: string | null = null;
   const turnCount = 0;

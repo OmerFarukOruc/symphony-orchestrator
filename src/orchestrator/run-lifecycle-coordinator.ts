@@ -1,8 +1,6 @@
 import type {
   Issue,
   RuntimeSnapshot,
-  ModelSelection,
-  RecentEvent,
   RunOutcome,
   RuntimeIssueView,
   SystemHealth,
@@ -11,21 +9,28 @@ import type {
 } from "../core/types.js";
 import type { RuntimeEventRecord } from "../core/lifecycle-events.js";
 import type { NotificationEvent } from "../notification/channel.js";
-import type { OrchestratorDeps, RetryRuntimeEntry, RunningEntry } from "./runtime-types.js";
+import type { OrchestratorDeps, RunningEntry } from "./runtime-types.js";
 import type { OrchestratorContext } from "./context.js";
 import type { OutcomeViewInput } from "./outcome-view-builder.js";
-import { createRuntimeReadModel } from "./snapshot-builder.js";
-import type {
-  AttemptDetailView,
-  IssueDetailView,
-  RuntimeReadModel,
-  SnapshotBuilderCallbacks,
-} from "./snapshot-builder.js";
+import { createRuntimeReadModelFromState } from "./snapshot-builder.js";
+import type { AttemptDetailView, IssueDetailView, RuntimeReadModel } from "./snapshot-builder.js";
 
-import { nowIso, usageDelta } from "./views.js";
+import { nowIso } from "./views.js";
 import { resolveModelSelection as resolveModelSelectionFromConfig } from "./model-selection.js";
 import { buildOutcomeView as buildProjectedOutcomeView } from "./outcome-view-builder.js";
 import { createRetryCoordinator } from "./retry-coordinator.js";
+import {
+  applyUsageEventInState,
+  claimIssueInState,
+  MAX_RECENT_EVENTS,
+  pushRecentEventInState,
+  releaseIssueClaimInState,
+  setCompletedViewInState,
+  setDetailViewInState,
+  setQueuedViewsInState,
+  setRateLimitsInState,
+  type LifecycleState,
+} from "./core/lifecycle-state.js";
 import {
   reconcileRunningAndRetrying as reconcileRunningAndRetryingState,
   refreshQueueViews as refreshQueueViewsState,
@@ -42,15 +47,13 @@ import { handleWorkerFailure } from "./worker-failure.js";
 import { handleWorkerOutcome } from "./worker-outcome/index.js";
 import { executeGitPostRun } from "./git-post-run.js";
 import { writeCompletionWriteback, writeFailureWriteback } from "./worker-outcome/completion-writeback.js";
-import { detectAndKillStalledWorkers, type StallEvent } from "./stall-detector.js";
+import { detectAndKillStalledWorkers } from "./stall-detector.js";
 import { createMetricsCollector } from "../observability/metrics.js";
 import { toErrorString } from "../utils/type-guards.js";
 import type { StopSignal } from "../core/signal-detection.js";
 import type { PreparedWorkerOutcome, TerminalPathKind } from "./worker-outcome/types.js";
 import { issueRef, outcomeToStatus } from "./worker-outcome/types.js";
 import type { UpsertPrInput } from "../core/attempt-store-port.js";
-
-const MAX_RECENT_EVENTS = 250;
 
 export interface RunLifecycleCoordinator {
   getContext(): OrchestratorContext;
@@ -63,24 +66,7 @@ export interface RunLifecycleCoordinator {
   buildAttemptDetail(attemptId: string): AttemptDetailView | null;
 }
 
-export interface OrchestratorState {
-  running: boolean;
-  runningEntries: Map<string, RunningEntry>;
-  retryEntries: Map<string, RetryRuntimeEntry>;
-  completedViews: Map<string, RuntimeIssueView>;
-  detailViews: Map<string, RuntimeIssueView>;
-  claimedIssueIds: Set<string>;
-  queuedViews: RuntimeIssueView[];
-  recentEvents: RecentEvent[];
-  rateLimits: unknown;
-  issueModelOverrides: Map<string, Omit<ModelSelection, "source">>;
-  issueTemplateOverrides: Map<string, string>;
-  operatorAbortSuppressions?: Map<string, string>;
-  sessionUsageTotals: Map<string, TokenUsageSnapshot>;
-  codexTotals: { inputTokens: number; outputTokens: number; totalTokens: number; secondsRunning: number };
-  stallEvents: StallEvent[];
-  markDirty: () => void;
-}
+export type OrchestratorState = LifecycleState;
 
 export interface RunLifecycleReadModelDeps {
   getSystemHealth?: () => SystemHealth | null;
@@ -104,7 +90,30 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
     private readonly readModelDeps: RunLifecycleReadModelDeps,
   ) {
     this.ctx = this.buildContext();
-    this.readModel = createRuntimeReadModel({ attemptStore: deps.attemptStore }, this.snapshotCallbacks());
+    this.readModel = createRuntimeReadModelFromState(
+      { attemptStore: deps.attemptStore },
+      {
+        state: this.state,
+        getConfig: () => this.deps.configStore.getConfig(),
+        resolveModelSelection: (identifier: string) => this.ctx.resolveModelSelection(identifier),
+        getSystemHealth: () => this.readModelDeps.getSystemHealth?.() ?? null,
+        getTemplateName: (templateId: string) => this.deps.templateStore?.get(templateId)?.name ?? null,
+        getWebhookHealth: () => {
+          const tracker = this.deps.webhookHealthTracker;
+          if (!tracker) {
+            return undefined;
+          }
+          const health = tracker.getHealth();
+          return {
+            status: health.status,
+            effectiveIntervalMs: health.effectiveIntervalMs,
+            stats: health.stats,
+            lastDeliveryAt: health.lastDeliveryAt,
+            lastEventType: health.lastEventType,
+          };
+        },
+      },
+    );
     this.ctx.retryCoordinator = createRetryCoordinator(
       {
         tracker: deps.tracker,
@@ -149,24 +158,25 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
   }
 
   private buildContext(): OrchestratorContext {
-    const ctx = {
+    const ctx: Omit<
+      OrchestratorContext,
+      | "running"
+      | "runningEntries"
+      | "retryEntries"
+      | "completedViews"
+      | "detailViews"
+      | "claimedIssueIds"
+      | "queuedViews"
+    > = {
       deps: this.deps,
       getConfig: () => this.deps.configStore.getConfig(),
       isRunning: () => this.state.running,
       resolveModelSelection: (identifier) =>
         resolveModelSelectionFromConfig(this.state.issueModelOverrides, this.deps.configStore.getConfig(), identifier),
-      releaseIssueClaim: (issueId) => {
-        const deleted = this.state.claimedIssueIds.delete(issueId);
-        if (deleted) {
-          this.state.markDirty();
-        }
-      },
+      releaseIssueClaim: (issueId) => void releaseIssueClaimInState(this.state, issueId),
       suppressIssueDispatch: (issue) =>
-        this.state.operatorAbortSuppressions?.set(issue.id, buildIssueDispatchFingerprint(issue)),
-      claimIssue: (issueId) => {
-        this.state.claimedIssueIds.add(issueId);
-        this.state.markDirty();
-      },
+        (this.state.operatorAbortSuppressions ??= new Map()).set(issue.id, buildIssueDispatchFingerprint(issue)),
+      claimIssue: (issueId) => claimIssueInState(this.state, issueId),
       markDirty: () => this.state.markDirty(),
       notify: (event) => this.notifyChannel(event),
       pushEvent: (event) => this.pushEvent(event),
@@ -181,6 +191,9 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
         await launchWorkerState(
           {
             ...ctx,
+            runningEntries: this.state.runningEntries,
+            completedViews: this.state.completedViews,
+            detailViews: this.state.detailViews,
             handleWorkerPromise: (promise, workerIssue, workspace, entry, workerAttempt) =>
               this.handleWorkerPromise(promise, workerIssue, workspace, entry, workerAttempt),
           },
@@ -199,7 +212,7 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
           issue,
           this.deps.configStore.getConfig(),
           this.state.claimedIssueIds,
-          this.state.operatorAbortSuppressions,
+          this.state.operatorAbortSuppressions ?? undefined,
         ),
       hasAvailableStateSlot: (issue, pendingStateCounts, runningStateCounts) =>
         hasAvailableStateSlotState(
@@ -210,19 +223,13 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
           runningStateCounts,
         ),
       getQueuedViews: () => this.state.queuedViews,
-      setQueuedViews: (views) => {
-        this.state.queuedViews = views;
-        this.state.markDirty();
-      },
+      setQueuedViews: (views) => setQueuedViewsInState(this.state, views),
       applyUsageEvent: (entry, usage, usageMode) => this.applyUsageEvent(entry, usage, usageMode),
-      setRateLimits: (rateLimits) => {
-        this.state.rateLimits = rateLimits;
-        this.state.markDirty();
-      },
+      setRateLimits: (rateLimits) => setRateLimitsInState(this.state, rateLimits),
       getStallEvents: () => this.state.stallEvents,
       detectAndKillStalled: () => this.detectAndKillStalled(),
       eventBus: this.deps.eventBus,
-    } as OrchestratorContext;
+    };
 
     Object.defineProperties(ctx, {
       running: {
@@ -255,7 +262,7 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
       },
     });
 
-    return ctx;
+    return ctx as OrchestratorContext;
   }
 
   private notifyChannel(event: NotificationEvent): void {
@@ -276,15 +283,11 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
   }
 
   private setDetailView(identifier: string, view: RuntimeIssueView): RuntimeIssueView {
-    this.state.detailViews.set(identifier, view);
-    this.state.markDirty();
-    return view;
+    return setDetailViewInState(this.state, identifier, view);
   }
 
   private setCompletedView(identifier: string, view: RuntimeIssueView): RuntimeIssueView {
-    this.state.completedViews.set(identifier, view);
-    this.state.markDirty();
-    return view;
+    return setCompletedViewInState(this.state, identifier, view);
   }
 
   private async finalizeTerminalPath(kind: TerminalPathKind, prepared: PreparedWorkerOutcome): Promise<void> {
@@ -564,41 +567,8 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
     }
   }
 
-  private snapshotCallbacks(): SnapshotBuilderCallbacks {
-    return {
-      getConfig: () => this.deps.configStore.getConfig(),
-      resolveModelSelection: (identifier: string) => this.ctx.resolveModelSelection(identifier),
-      getDetailViews: () => this.state.detailViews,
-      getCompletedViews: () => this.state.completedViews,
-      getRunningEntries: () => this.state.runningEntries,
-      getRetryEntries: () => this.state.retryEntries,
-      getQueuedViews: () => this.state.queuedViews,
-      getRecentEvents: () => this.state.recentEvents,
-      getRateLimits: () => this.state.rateLimits,
-      getCodexTotals: () => this.state.codexTotals,
-      getStallEvents: () => this.state.stallEvents,
-      getTemplateOverride: (identifier: string) => this.state.issueTemplateOverrides.get(identifier) ?? null,
-      getTemplateName: (templateId: string) => this.deps.templateStore?.get(templateId)?.name ?? null,
-      getSystemHealth: () => this.readModelDeps.getSystemHealth?.() ?? null,
-      getWebhookHealth: () => {
-        const tracker = this.deps.webhookHealthTracker;
-        if (!tracker) {
-          return undefined;
-        }
-        const health = tracker.getHealth();
-        return {
-          status: health.status,
-          effectiveIntervalMs: health.effectiveIntervalMs,
-          stats: health.stats,
-          lastDeliveryAt: health.lastDeliveryAt,
-          lastEventType: health.lastEventType,
-        };
-      },
-    };
-  }
-
   private pushEvent(event: RuntimeEventRecord): void {
-    pushRecentEvent(this.state, event);
+    pushRecentEventInState(this.state, event, MAX_RECENT_EVENTS);
     this.state.markDirty();
     forwardToEventBus(this.deps, event);
   }
@@ -732,35 +702,7 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
   }
 
   private applyUsageEvent(entry: RunningEntry, usage: TokenUsageSnapshot, usageMode: "absolute_total" | "delta"): void {
-    if (usageMode === "absolute_total") {
-      const previous = entry.sessionId ? (this.state.sessionUsageTotals.get(entry.sessionId) ?? null) : null;
-      const delta = usageDelta(previous, usage);
-      this.state.codexTotals = {
-        ...this.state.codexTotals,
-        inputTokens: this.state.codexTotals.inputTokens + delta.inputTokens,
-        outputTokens: this.state.codexTotals.outputTokens + delta.outputTokens,
-        totalTokens: this.state.codexTotals.totalTokens + delta.totalTokens,
-      };
-      entry.tokenUsage = usage;
-      if (entry.sessionId) {
-        this.state.sessionUsageTotals.set(entry.sessionId, usage);
-      }
-      this.state.markDirty();
-      return;
-    }
-
-    this.state.codexTotals = {
-      ...this.state.codexTotals,
-      inputTokens: this.state.codexTotals.inputTokens + usage.inputTokens,
-      outputTokens: this.state.codexTotals.outputTokens + usage.outputTokens,
-      totalTokens: this.state.codexTotals.totalTokens + usage.totalTokens,
-    };
-    entry.tokenUsage = {
-      inputTokens: (entry.tokenUsage?.inputTokens ?? 0) + usage.inputTokens,
-      outputTokens: (entry.tokenUsage?.outputTokens ?? 0) + usage.outputTokens,
-      totalTokens: (entry.tokenUsage?.totalTokens ?? 0) + usage.totalTokens,
-    };
-    this.state.markDirty();
+    applyUsageEventInState(this.state, entry, usage, usageMode);
   }
 
   private detectAndKillStalled(): { killed: number } {
@@ -769,7 +711,7 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
       stallEvents: this.state.stallEvents,
       getConfig: () => this.deps.configStore.getConfig(),
       pushEvent: (event) => {
-        pushRecentEvent(this.state, event);
+        pushRecentEventInState(this.state, event, MAX_RECENT_EVENTS);
         forwardToEventBus(this.deps, event);
       },
       logger: { warn: (...args) => this.deps.logger.warn(...args) },
@@ -841,22 +783,6 @@ class RunLifecycleCoordinatorImpl implements RunLifecycleCoordinator {
           reason: `worker failed for ${workerIssue.identifier}`,
         });
       });
-  }
-}
-
-function pushRecentEvent(state: OrchestratorState, event: RuntimeEventRecord): void {
-  state.recentEvents.push({
-    at: event.at,
-    issueId: event.issueId,
-    issueIdentifier: event.issueIdentifier,
-    sessionId: event.sessionId,
-    event: event.event,
-    message: event.message,
-    content: event.content ?? null,
-    metadata: event.metadata ?? null,
-  });
-  if (state.recentEvents.length > MAX_RECENT_EVENTS) {
-    state.recentEvents.splice(0, state.recentEvents.length - MAX_RECENT_EVENTS);
   }
 }
 

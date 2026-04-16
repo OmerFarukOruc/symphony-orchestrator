@@ -16,25 +16,63 @@ The user-visible promise is stability, not new surface area. Operators should st
 - [x] (2026-04-15 14:36Z) Reviewed the long-horizon Codex durable-memory pattern from the Design Desk example and distilled the required artifact roles: frozen spec, source-of-truth plan, execution runbook, and continuously updated status log.
 - [x] (2026-04-15 14:36Z) Audited the current repo layout for the affected subsystems under `src/`, `tests/`, and `src/http/routes/`.
 - [x] (2026-04-15 14:36Z) Created the durable planning stack under `.anvil/epic-404-architecture-deepening/` plus this repo-visible ExecPlan so a fresh Codex session can resume without hidden chat context.
-- [ ] Unit 0: create a clean implementation worktree and baseline the current branch, status, and test state before code changes.
-- [ ] Unit 1: implement `#410` by removing stale compat shims and documenting `src/core/types.ts` churn as intrinsic.
-- [ ] Unit 2: implement `#406` by relocating snapshot serialization and attempt analytics helpers to correct layers.
-- [ ] Unit 3: implement `#409` by relocating domain HTTP adapters into `src/http/routes/` and introducing `src/http/errors.ts`.
-- [ ] Unit 4: implement `#405` by extending `TrackerPort` with provisioning and collapsing setup behind a `SetupPort`.
-- [ ] Unit 5: implement `#407` by introducing `WebhookPort` and collapsing the three-layer webhook wrapper stack.
-- [ ] Unit 6: implement `#408` by introducing `AgentSessionPort` and replacing the `docker-session` mock-heavy test surface.
-- [ ] Unit 7: implement `#402` Phase A by extracting orchestrator pure helpers and defining `LifecycleState` / reducer scaffolding behind the existing shell.
-- [ ] Unit 8: implement `#402` Phase B by routing orchestrator state transitions and snapshot projection through the new core.
-- [ ] Unit 9: implement `#402` Phase C by unifying mutating commands, deleting duplicate context layers, and finishing caller migration.
-- [ ] Unit 10: run the final regression sweep, update docs, and refresh all durable run artifacts.
+- [x] (2026-04-15 14:59Z) Resumed execution in dedicated clean worktree `/home/oruc/Desktop/workspace/risoluto-worktrees/epic-404-architecture-deepening`, restored truthful `.anvil` run-state markers, and completed the Unit 0 baseline gate (`build`, `lint`, `format:check`, `test`) on branch `epic-404-architecture-deepening`.
+- [x] Unit 0: create a clean implementation worktree and baseline the current branch, status, and test state before code changes.
+- [x] (2026-04-15 15:07Z) Completed Unit 1 (`#410`) by deleting `src/orchestrator/orchestrator-delegates.ts` and `src/config/builders.ts`, repointing the remaining callers to `run-lifecycle-coordinator.ts`, `derivation-pipeline.ts`, and `section-builders.ts`, and documenting `src/core/types.ts` as an intentional high-fanout barrel.
+- [x] Unit 1: implement `#410` by removing stale compat shims and documenting `src/core/types.ts` churn as intrinsic.
+- [x] (2026-04-15 15:21Z) Completed Unit 2 (`#406`) by moving `serializeSnapshot` into `src/orchestrator/snapshot-serialization.ts`, moving attempt ordering/duration helpers into `src/core/attempt-analytics.ts`, removing the dead JSONL wording from `src/core/attempt-store-port.ts`, and repointing runtime plus test callers to the new ownership boundaries.
+- [x] Unit 2: implement `#406` by relocating snapshot serialization and attempt analytics helpers to correct layers.
+- [x] (2026-04-15 15:30Z) Completed Unit 3 (`#409`) by moving the config, secrets, prompt, audit, and setup adapters into `src/http/routes/`, introducing `src/http/errors.ts` for shared HTTP error helpers, updating extension-route wiring to the new modules, and deleting the domain-owned `api.ts` files.
+- [x] Unit 3: implement `#409` by relocating domain HTTP adapters into `src/http/routes/` and introducing `src/http/errors.ts`.
+- [x] (2026-04-15 16:02Z) Completed Unit 4 (`#405`) by introducing `src/setup/port.ts`, routing setup provisioning through `TrackerPort.provision`, moving Linear provisioning logic into `LinearTrackerAdapter`, adding GitHub-safe provisioning behavior in `GitHubTrackerAdapter`, wiring setup routes to require a tracker dependency, and restoring the legacy `400 no_teams` project-creation contract after the first green-to-red full-suite pass exposed the regression.
+- [x] Unit 4: implement `#405` by extending `TrackerPort` with provisioning and collapsing setup behind a `SetupPort`.
+- [x] (2026-04-15 16:16Z) Completed Unit 5 (`#407`) by introducing `src/webhook/port.ts` and `src/webhook/service.ts`, moving the Linear and GitHub webhook HTTP adapters under `src/webhook/http-adapter.ts`, moving signature verification under `src/webhook/signature.ts`, deleting `src/http/webhook-handler.ts` and `src/http/github-webhook-handler.ts`, and rewiring route types, composition, and tests to the webhook-owned boundary while preserving the existing `/webhooks/*` contracts.
+- [x] Unit 5: implement `#407` by introducing `WebhookPort` and collapsing the three-layer webhook wrapper stack.
+- [x] (2026-04-15 16:26Z) Completed Unit 6 (`#408`) by introducing `src/agent-runner/session-port.ts` as the agent-session boundary, migrating `attempt-executor.ts`, `index.ts`, and `docker-runtime.ts` to the new `AgentSessionPort`/`AgentSession` vocabulary, keeping `codex-runtime-port.ts` as a compatibility barrel for incremental callers, and adding `tests/agent-runner/agent-session-port.test.ts` so the new seam is exercised directly without going through Docker-session internals.
+- [x] Unit 6: implement `#408` by introducing `AgentSessionPort` and replacing the `docker-session` mock-heavy test surface.
+- [x] (2026-04-15 17:05Z) Completed Unit 7 (`#402` Phase A) by introducing `src/orchestrator/core/` with dispatch, retry-policy, lifecycle-state, and snapshot-projection scaffolding; rewiring the existing orchestrator helper modules to those pure core functions; adding reducer-style tests for queue/detail projection and completed-claim seeding; and preserving the live shell behavior behind the existing runtime coordinator.
+- [x] Unit 7: implement `#402` Phase A by extracting orchestrator pure helpers and defining `LifecycleState` / reducer scaffolding behind the existing shell.
+- [x] (2026-04-15 17:27Z) Completed Unit 8 (`#402` Phase B) by making `LifecycleState` the live runtime state shape, constructing the orchestrator shell state through `createLifecycleState`, routing the runtime read model through `createRuntimeReadModelFromState`, wiring coordinator mutations through the new core state helpers, and keeping the public orchestrator/HTTP contracts stable while the live runtime adopted the Phase A vocabulary.
+- [x] Unit 8: implement `#402` Phase B by routing orchestrator state transitions and snapshot projection through the new core.
+- [x] (2026-04-15 17:43Z) Completed Unit 9 (`#402` Phase C) by adding a typed `executeCommand` surface to `OrchestratorPort`, routing the issue/model/template/transition/trigger/system HTTP mutators through that unified command path with compatibility fallbacks for older test doubles, and collapsing the remaining operator-write logic onto shared orchestrator command handlers while keeping route contracts stable.
+- [x] Unit 9: implement `#402` Phase C by unifying mutating commands, deleting duplicate context layers, and finishing caller migration.
+- [x] (2026-04-15 20:13Z) Completed Unit 10 final sweep by regrouping the shipped tree into atomic commits, fixing the one closeout-only CLI bootstrap timeout flake, rerunning the full repo gate, and refreshing every durable `.anvil` artifact plus this ExecPlan for final handoff.
+- [x] Unit 10: run the final regression sweep, update docs, and refresh all durable run artifacts.
 
 ## Surprises & Discoveries
 
 - Observation: the repo already has an established `src/http/routes/` module pattern.
   Evidence: `src/http/routes.ts` already mounts `codex`, `extensions`, `git`, `issues`, `notifications`, `system`, `webhooks`, and `workspaces` route modules, so `#409` should extend an existing pattern rather than invent a new one.
 
+- Observation: the dedicated implementation worktree did not have `node_modules` installed yet, so the first Unit 0 build failed on missing `tsc`.
+  Evidence: `pnpm run build` initially exited with `sh: line 1: tsc: command not found` plus `Local package.json exists, but node_modules missing`; rerunning after `pnpm install --frozen-lockfile` produced a green baseline gate.
+
+- Observation: the only Unit 1 gate failure was a formatting miss in the rewritten orchestrator compatibility test after swapping imports from the deleted shim to the real coordinator.
+  Evidence: `pnpm run format:check` failed on `tests/orchestrator/orchestrator-delegates.test.ts`; running `pnpm exec prettier --write tests/orchestrator/orchestrator-delegates.test.ts` fixed it and the rerun gate passed.
+
+- Observation: the only Unit 2 gate failure was a formatting miss in the trimmed HTTP helper test after moving snapshot serialization coverage into its new orchestrator-owned suite.
+  Evidence: `pnpm run format:check` failed on `tests/http/route-helpers.test.ts`; running `pnpm exec prettier --write tests/http/route-helpers.test.ts` fixed it and the rerun gate passed.
+
 - Observation: the setup subsystem already has dedicated tests, but the current test shape is still too handler-centric.
   Evidence: the repo contains `tests/setup/setup-service.test.ts` plus many per-handler files such as `tests/setup/project-handler.test.ts`, `tests/setup/openai-key-handler.test.ts`, and `tests/setup/handlers.integration.test.ts`. The real problem is not “zero tests,” it is “wrong boundary plus duplicated wrapper tests.”
+
+- Observation: the first Unit 4 full-suite pass changed one long-standing setup contract even though the new port wiring itself was correct.
+  Evidence: `tests/setup/project-handler.test.ts` and `tests/setup/project-handler-extended.test.ts` failed because the new tracker-owned project creation surfaced “no teams found” as a generic `502 linear_api_error` instead of the historical `400 no_teams`; the fix was to preserve that HTTP contract in `setup-service.ts` while keeping tracker provisioning inside the adapters.
+
+- Observation: deleting the HTTP-owned webhook handler modules was less risky than it first looked because the real contract surface was mostly import ownership, not behavior logic.
+  Evidence: after moving the handlers to `src/webhook/http-adapter.ts` and deleting `src/http/webhook-handler.ts` plus `src/http/github-webhook-handler.ts`, the webhook-targeted suites and the full `pnpm test` gate both stayed green once route types, harness imports, and signature exports were repointed.
+
+- Observation: the agent-runner already had a workable session abstraction, but it was hidden behind Codex-runtime naming rather than an explicit agent-session contract.
+  Evidence: Unit 6 landed mostly as a boundary-lifting refactor: `DefaultAttemptExecutor` and `AgentRunner` now depend on `AgentSessionPort`, while `codex-runtime-port.ts` became a compatibility re-export layer so the rest of the repo could stay stable during the migration.
+
+- Observation: the first Unit 7 build caught a stale type reference that the targeted suites did not exercise, and the new core files needed one dedicated Prettier pass before the repo gate was fully green.
+  Evidence: `pnpm run build` initially failed in `src/orchestrator/outcome-view-builder.ts` because the wrapper still referenced `ReturnType<typeof issueView>` after the projection moved into `src/orchestrator/core/snapshot-projection.ts`; after fixing that type and formatting the four new core/test files, `build`, `lint`, `format:check`, `typecheck`, `typecheck:frontend`, and `pnpm test` all passed.
+
+- Observation: Unit 8’s targeted suites stayed green, but the full gate still found two important runtime assumptions that only the wider repo surface exercised.
+  Evidence: the first Unit 8 full-gate pass exposed `buildContext()` typing holes after the new lifecycle-state wiring, then the first `pnpm test` pass surfaced an operator-abort regression in `tests/orchestrator/worker-outcome-invariants.test.ts` because some older fixtures did not initialize `operatorAbortSuppressions`; making the launch context explicit and restoring the null-safe suppression path fixed the failures and the rerun full gate passed.
+
+- Observation: Unit 9 could move the real server path onto a unified command surface without forcing a big-bang mock migration, as long as the HTTP adapters kept a short compatibility fallback for older test doubles.
+  Evidence: the real `Orchestrator` now exposes `executeCommand(...)`, while the HTTP handlers and routes prefer that path but fall back to the older method surface when a stub lacks the new method; this let the targeted HTTP suites and the full `pnpm test` gate stay green while still proving the live path through the new command surface.
 
 - Observation: the current worktree is already dirty in unrelated frontend files.
   Evidence: `git status --short` before this planning pass showed modifications under `frontend/src/` and related tests that are outside epic `#404`. Execution must not revert or absorb those changes accidentally.
@@ -44,6 +82,9 @@ The user-visible promise is stability, not new surface area. Operators should st
 
 - Observation: the branch is already `architecture-deepening-closeout`, which is semantically related to the epic but not a clean execution environment.
   Evidence: `git branch --show-current` returned `architecture-deepening-closeout` while the worktree was non-clean. A dedicated worktree is safer than running the full long-horizon implementation directly here.
+
+- Observation: the only failing proof in the final full-suite closeout was not a product regression but a timeout in `tests/cli/bootstrap.test.ts` while dynamically importing the heavy `src/cli/index.ts` module.
+  Evidence: `pnpm test` failed only on `tests/cli/bootstrap.test.ts > rejects invalid --port values before startup` with the default 5s Vitest timeout; increasing the timeout for the three dynamic-import assertions removed the flake and the rerun full gate passed.
 
 ## Decision Log
 
@@ -67,11 +108,19 @@ The user-visible promise is stability, not new surface area. Operators should st
   Rationale: epic `#410` already distinguishes avoidable churn from intrinsic high-fanout churn. Replacing the barrel would explode touch points across ~123 importers for little gain.
   Date/Author: 2026-04-15 / OpenAI Codex
 
+- Decision: preserve setup route error semantics in the setup service even after moving provider-specific work into tracker adapters.
+  Rationale: tracker adapters should own provisioning behavior, but route-visible status codes and error codes such as `missing_api_key`, `missing_project`, and `no_teams` remain part of the setup HTTP contract and should not drift just because the implementation boundary deepened.
+  Date/Author: 2026-04-15 / OpenAI Codex
+
+- Decision: keep the closeout-only CLI fix as a standalone proof commit instead of folding it into the architecture slices.
+  Rationale: the timeout adjustment is independent from the epic's runtime boundary work, so a dedicated test commit keeps the implementation history easier to audit.
+  Date/Author: 2026-04-15 / OpenAI Codex
+
 ## Outcomes & Retrospective
 
-This checkpoint is planning-only. No production code has been changed yet. The main outcome is that epic `#404` now has a durable execution stack designed for a long-running, low-babysitting Codex pass: a frozen prompt, a source-of-truth plan, an implementation runbook, a current-state documentation log, a handoff note, and a status file.
+Execution is complete through Unit 10. The run landed the smaller support-boundary cleanups (`#410`, `#406`, `#409`, `#405`, `#407`, `#408`), completed all three orchestrator phases, and then closed with a green full-gate sweep plus durable artifact refresh.
 
-The biggest planning lesson is that the epic should not be treated as “seven unrelated tickets.” The units interlock. `#405`, `#407`, and `#408` establish the cleaner port boundaries that make the `#402` orchestrator migration materially easier, while `#406`, `#409`, and `#410` remove incidental churn that would otherwise pollute the large orchestrator diff. The safest implementation story is therefore staged and cumulative.
+The staged plan paid off exactly the way it was supposed to. Unit 7 created the vocabulary, Unit 8 moved the live runtime onto it, and Unit 9 let the write paths converge on a single command surface without redesigning the public API or the tests all at once. Unit 10 then proved the whole tree, exposed one small CLI test-timeout flake, and closed the run with an honest atomic commit history instead of a fake unit-by-unit split.
 
 ## Context and Orientation
 

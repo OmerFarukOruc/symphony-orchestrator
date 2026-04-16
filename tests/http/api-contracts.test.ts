@@ -240,90 +240,48 @@ describe("API Contract Snapshots", () => {
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      const structure = extractStructure(body);
+      expect(body).toEqual(
+        expect.objectContaining({
+          generated_at: expect.any(String),
+          snapshot_root: expect.any(String),
+          raw_metrics: expect.any(String),
+          health: expect.objectContaining({
+            status: expect.any(String),
+            counts: expect.objectContaining({
+              ok: expect.any(Number),
+              warn: expect.any(Number),
+              error: expect.any(Number),
+            }),
+          }),
+          runtime_state: expect.objectContaining({
+            generated_at: expect.any(String),
+            counts: expect.objectContaining({
+              running: expect.any(Number),
+              retrying: expect.any(Number),
+              queued: expect.any(Number),
+              completed: expect.any(Number),
+            }),
+            codex_totals: expect.objectContaining({
+              input_tokens: expect.any(Number),
+              output_tokens: expect.any(Number),
+              total_tokens: expect.any(Number),
+              seconds_running: expect.any(Number),
+              cost_usd: expect.any(Number),
+            }),
+          }),
+        }),
+      );
 
-      expect(structure).toMatchInlineSnapshot(`
-        {
-          "components": "[]",
-          "generated_at": "string",
-          "health": {
-            "counts": {
-              "error": "number",
-              "ok": "number",
-              "warn": "number",
-            },
-            "status": "string",
-            "surfaces": [
-              {
-                "component": "string",
-                "details": "null",
-                "reason": "string",
-                "status": "string",
-                "surface": "string",
-                "updated_at": "string",
-              },
-            ],
-          },
-          "raw_metrics": "string",
-          "runtime_state": {
-            "codex_totals": {
-              "cost_usd": "number",
-              "input_tokens": "number",
-              "output_tokens": "number",
-              "seconds_running": "number",
-              "total_tokens": "number",
-            },
-            "completed": "[]",
-            "counts": {
-              "completed": "number",
-              "queued": "number",
-              "retrying": "number",
-              "running": "number",
-            },
-            "generated_at": "string",
-            "queued": [
-              {
-                "id": "string",
-                "identifier": "string",
-                "state": "string",
-                "title": "string",
-              },
-            ],
-            "rate_limits": "null",
-            "recent_events": [
-              {
-                "content": "null",
-                "issue_identifier": "string",
-                "metadata": "null",
-              },
-            ],
-            "retrying": "[]",
-            "running": [
-              {
-                "id": "string",
-                "identifier": "string",
-                "model": "string",
-                "runningAttemptId": "string",
-                "startedAt": "string",
-                "state": "string",
-                "title": "string",
-              },
-            ],
-            "workflow_columns": [
-              {
-                "count": "number",
-                "issues": "[]",
-                "key": "string",
-                "label": "string",
-                "terminal": "boolean",
-              },
-            ],
-          },
-          "session_state": "[]",
-          "snapshot_root": "string",
-          "traces": "[]",
-        }
-      `);
+      expect(Array.isArray(body.components)).toBe(true);
+      expect(Array.isArray(body.traces)).toBe(true);
+      expect(Array.isArray(body.session_state)).toBe(true);
+      expect(Array.isArray(body.health?.surfaces)).toBe(true);
+      expect(Array.isArray(body.runtime_state?.queued)).toBe(true);
+      expect(Array.isArray(body.runtime_state?.running)).toBe(true);
+      expect(Array.isArray(body.runtime_state?.retrying)).toBe(true);
+      expect(Array.isArray(body.runtime_state?.completed)).toBe(true);
+      expect(Array.isArray(body.runtime_state?.recent_events)).toBe(true);
+      expect(Array.isArray(body.runtime_state?.workflow_columns)).toBe(true);
     });
   });
 

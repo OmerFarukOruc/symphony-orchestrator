@@ -2,6 +2,7 @@ import { updateIssueModelSelection } from "./model-selection.js";
 import { sortIssuesForDispatch } from "./dispatch.js";
 import { Watchdog } from "./watchdog.js";
 import { seedCompletedClaims } from "./lifecycle.js";
+import { createLifecycleState } from "./core/lifecycle-state.js";
 import type { AttemptDetailView, IssueDetailView } from "./snapshot-builder.js";
 import {
   createRunLifecycleCoordinator,
@@ -11,11 +12,26 @@ import {
 import type { OrchestratorContext } from "./context.js";
 import { runStartupRecovery } from "./recovery.js";
 import type { OrchestratorPort } from "./port.js";
+import type {
+  AbortIssueCommand,
+  AbortIssueResult,
+  ClearIssueTemplateOverrideCommand,
+  ClearIssueTemplateOverrideResult,
+  OrchestratorCommand,
+  RefreshCommand,
+  RefreshCommandResult,
+  SetIssueTemplateOverrideCommand,
+  SetIssueTemplateOverrideResult,
+  SteerIssueCommand,
+  SteerIssueResult,
+  UpdateIssueModelSelectionCommand,
+  UpdateIssueModelSelectionResult,
+} from "./port.js";
 import type { OrchestratorDeps } from "./runtime-types.js";
+import { serializeSnapshot } from "./snapshot-serialization.js";
 import { nowIso } from "./views.js";
-import type { ModelSelection, ReasoningEffort, RuntimeSnapshot } from "../core/types.js";
+import type { ReasoningEffort, RuntimeSnapshot } from "../core/types.js";
 import type { RecoveryReport } from "./recovery-types.js";
-import { serializeSnapshot } from "../http/route-helpers.js";
 import { toErrorString } from "../utils/type-guards.js";
 import { createMetricsCollector } from "../observability/metrics.js";
 import type { ObservabilityHealthStatus } from "../observability/health.js";
@@ -39,24 +55,7 @@ export class Orchestrator implements OrchestratorPort {
   constructor(private readonly deps: OrchestratorDeps) {
     this.deps.metrics ??= createMetricsCollector();
     const markDirty = () => this.markStateDirty();
-    this._state = {
-      running: false,
-      runningEntries: new Map(),
-      retryEntries: new Map(),
-      completedViews: new Map(),
-      detailViews: new Map(),
-      claimedIssueIds: new Set(),
-      queuedViews: [],
-      recentEvents: [],
-      rateLimits: null,
-      issueModelOverrides: new Map(),
-      issueTemplateOverrides: new Map(),
-      operatorAbortSuppressions: new Map(),
-      sessionUsageTotals: new Map(),
-      codexTotals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, secondsRunning: 0 },
-      stallEvents: [],
-      markDirty,
-    };
+    this._state = createLifecycleState(markDirty);
     this.watchdog = new Watchdog({
       getRunningCount: () => this._state.runningEntries.size,
       getQueuedCount: () => this._state.queuedViews.length,
@@ -158,20 +157,57 @@ export class Orchestrator implements OrchestratorPort {
     await Promise.allSettled(workers.map((w) => w.promise));
   }
 
+  async executeCommand(command: RefreshCommand): Promise<RefreshCommandResult>;
+  async executeCommand(command: AbortIssueCommand): Promise<AbortIssueResult>;
+  async executeCommand(command: UpdateIssueModelSelectionCommand): Promise<UpdateIssueModelSelectionResult>;
+  async executeCommand(command: SetIssueTemplateOverrideCommand): Promise<SetIssueTemplateOverrideResult>;
+  async executeCommand(command: ClearIssueTemplateOverrideCommand): Promise<ClearIssueTemplateOverrideResult>;
+  async executeCommand(command: SteerIssueCommand): Promise<SteerIssueResult>;
+  async executeCommand(
+    command: OrchestratorCommand,
+  ): Promise<
+    | RefreshCommandResult
+    | AbortIssueResult
+    | UpdateIssueModelSelectionResult
+    | SetIssueTemplateOverrideResult
+    | ClearIssueTemplateOverrideResult
+    | SteerIssueResult
+  > {
+    switch (command.type) {
+      case "refresh":
+        return this.handleRefreshCommand(command);
+      case "abort_issue":
+        return this.handleAbortIssueCommand(command.identifier);
+      case "update_issue_model_selection":
+        return this.handleUpdateIssueModelSelectionCommand({
+          identifier: command.identifier,
+          model: command.model,
+          reasoningEffort: command.reasoningEffort,
+        });
+      case "set_issue_template_override":
+        return this.handleSetIssueTemplateOverrideCommand(command.identifier, command.templateId);
+      case "clear_issue_template_override":
+        return this.handleClearIssueTemplateOverrideCommand(command.identifier);
+      case "steer_issue":
+        return this.handleSteerIssueCommand(command.identifier, command.message);
+      default: {
+        const unreachable: never = command;
+        throw new Error(`Unsupported orchestrator command: ${JSON.stringify(unreachable)}`);
+      }
+    }
+  }
+
   requestRefresh(reason: string): { queued: boolean; coalesced: boolean; requestedAt: string } {
-    const requestedAt = nowIso();
-    const coalesced = this.refreshQueued;
-    this.refreshQueued = true;
-    this.deps.logger.info({ reason, requestedAt }, "refresh requested");
-    this.scheduleTick(0);
-    return { queued: !coalesced, coalesced, requestedAt };
+    const result = this.handleRefreshCommand({ type: "refresh", reason });
+    return {
+      queued: result.queued,
+      coalesced: result.coalesced,
+      requestedAt: result.requestedAt,
+    };
   }
 
   requestTargetedRefresh(issueId: string, issueIdentifier: string, reason: string): void {
-    this.deps.logger.info({ issueId, issueIdentifier, reason }, "targeted refresh requested");
-    // For now, trigger a full refresh — the orchestrator will coalesce multiple calls.
-    // Future: implement issue-specific fetch via tracker.fetchIssueStatesByIds() to avoid full poll.
-    this.requestRefresh(reason);
+    void this.handleRefreshCommand({ type: "refresh", issueId, issueIdentifier, reason });
   }
 
   stopWorkerForIssue(issueIdentifier: string, reason: string): void {
@@ -243,11 +279,35 @@ export class Orchestrator implements OrchestratorPort {
     return detail ? { ...detail } : null;
   }
 
-  abortIssue(
-    identifier: string,
-  ):
-    | { ok: true; alreadyStopping: boolean; requestedAt: string }
-    | { ok: false; code: "not_found" | "conflict"; message: string } {
+  abortIssue(identifier: string): AbortIssueResult {
+    return this.handleAbortIssueCommand(identifier);
+  }
+
+  async updateIssueModelSelection(input: {
+    identifier: string;
+    model: string;
+    reasoningEffort: ReasoningEffort | null;
+  }): Promise<UpdateIssueModelSelectionResult> {
+    return this.handleUpdateIssueModelSelectionCommand(input);
+  }
+
+  getTemplateOverride(identifier: string): string | null {
+    return this._state.issueTemplateOverrides.get(identifier) ?? null;
+  }
+
+  updateIssueTemplateOverride(identifier: string, templateId: string): boolean {
+    return Boolean(this.handleSetIssueTemplateOverrideCommand(identifier, templateId));
+  }
+
+  clearIssueTemplateOverride(identifier: string): boolean {
+    return Boolean(this.handleClearIssueTemplateOverrideCommand(identifier));
+  }
+
+  async steerIssue(identifier: string, message: string): Promise<SteerIssueResult> {
+    return this.handleSteerIssueCommand(identifier, message);
+  }
+
+  private handleAbortIssueCommand(identifier: string): AbortIssueResult {
     const entry = [...this._state.runningEntries.values()].find(
       (runningEntry) => runningEntry.issue.identifier === identifier,
     );
@@ -279,11 +339,11 @@ export class Orchestrator implements OrchestratorPort {
     return { ok: true, alreadyStopping, requestedAt };
   }
 
-  async updateIssueModelSelection(input: {
+  private async handleUpdateIssueModelSelectionCommand(input: {
     identifier: string;
     model: string;
     reasoningEffort: ReasoningEffort | null;
-  }): Promise<{ updated: boolean; restarted: boolean; appliesNextAttempt: boolean; selection: ModelSelection } | null> {
+  }): Promise<UpdateIssueModelSelectionResult> {
     const result = await updateIssueModelSelection(
       {
         getConfig: () => this.deps.configStore.getConfig(),
@@ -308,35 +368,57 @@ export class Orchestrator implements OrchestratorPort {
     return result;
   }
 
-  getTemplateOverride(identifier: string): string | null {
-    return this._state.issueTemplateOverrides.get(identifier) ?? null;
-  }
-
-  updateIssueTemplateOverride(identifier: string, templateId: string): boolean {
+  private handleSetIssueTemplateOverrideCommand(
+    identifier: string,
+    templateId: string,
+  ): SetIssueTemplateOverrideResult {
     const detail = this.getIssueDetail(identifier);
-    if (!detail) return false;
+    if (!detail) return null;
     this._state.issueTemplateOverrides.set(identifier, templateId);
     this.markStateDirty();
     this.deps.issueConfigStore.upsertTemplateId(identifier, templateId);
-    return true;
+    return { updated: true, appliesNextAttempt: true };
   }
 
-  clearIssueTemplateOverride(identifier: string): boolean {
+  private handleClearIssueTemplateOverrideCommand(identifier: string): ClearIssueTemplateOverrideResult {
     const detail = this.getIssueDetail(identifier);
-    if (!detail) return false;
+    if (!detail) return null;
     this._state.issueTemplateOverrides.delete(identifier);
     this.markStateDirty();
     this.deps.issueConfigStore.clearTemplateId(identifier);
-    return true;
+    return { cleared: true };
   }
 
-  async steerIssue(identifier: string, message: string): Promise<{ ok: boolean } | null> {
+  private async handleSteerIssueCommand(identifier: string, message: string): Promise<SteerIssueResult> {
     const entry = [...this._state.runningEntries.values()].find(
       (runningEntry) => runningEntry.issue.identifier === identifier,
     );
     if (!entry?.steerTurn) return null;
     const ok = await entry.steerTurn(message);
     return { ok };
+  }
+
+  private handleRefreshCommand(command: RefreshCommand): RefreshCommandResult {
+    if (command.issueId && command.issueIdentifier) {
+      this.deps.logger.info(
+        { issueId: command.issueId, issueIdentifier: command.issueIdentifier, reason: command.reason },
+        "targeted refresh requested",
+      );
+      const fullRefresh = this.handleRefreshCommand({ type: "refresh", reason: command.reason });
+      return {
+        ...fullRefresh,
+        targeted: true,
+        issueId: command.issueId,
+        issueIdentifier: command.issueIdentifier,
+      };
+    }
+
+    const requestedAt = nowIso();
+    const coalesced = this.refreshQueued;
+    this.refreshQueued = true;
+    this.deps.logger.info({ reason: command.reason, requestedAt }, "refresh requested");
+    this.scheduleTick(0);
+    return { queued: !coalesced, coalesced, requestedAt, targeted: false };
   }
 
   getEffectivePollingInterval(): number {
