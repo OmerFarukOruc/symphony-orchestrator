@@ -19,7 +19,6 @@ import { registerSetupApi } from "../../src/http/routes/setup.js";
 import { readProjectSlug, readTrackerKind } from "../../src/setup/setup-status.js";
 import { WorkspaceManager } from "../../src/workspace/manager.js";
 import { createMockLogger } from "../helpers.js";
-import { buildStubTracker } from "../helpers/http-server-harness.js";
 
 /* ── Type aliases ──────────────────────────────────────────────────── */
 
@@ -71,10 +70,6 @@ export function createAgentRunnerMock(): RunAttemptDispatcher {
       throw new Error("not used in setup api tests");
     }),
   };
-}
-
-export function createTrackerMock(): TrackerPort {
-  return buildStubTracker();
 }
 
 function createSetupTracker(secretsStore: SecretsStore, configOverlayStore: ConfigOverlayStore): TrackerPort {
