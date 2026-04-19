@@ -13,7 +13,7 @@ import { eq, and, isNull, or, lt, desc, sql } from "drizzle-orm";
 
 import type { RisolutoDatabase } from "./database.js";
 import { webhookInbox } from "./schema.js";
-import type { RisolutoLogger } from "../../core/types.js";
+import type { RisolutoLogger } from "../../core/types/logger.js";
 
 export type WebhookInboxStatus = "received" | "processing" | "applied" | "ignored" | "retry" | "dead_letter";
 
