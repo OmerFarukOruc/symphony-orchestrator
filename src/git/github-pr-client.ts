@@ -1,21 +1,10 @@
 import type { Issue } from "../core/types.js";
 import { GitHubApiError, GitHubTransport } from "../github/transport.js";
-import type { GithubApiToolClient } from "./github-api-tool.js";
-import type { PrCreateResult } from "./git-types.js";
+import type { GithubApiToolClient, PrCreateResult, PrStatusResponse } from "./git-types.js";
 import type { RepoMatch } from "./repo-router.js";
 import { isRecord } from "../utils/type-guards.js";
 
-/**
- * Typed shape of the GitHub REST API response for a single pull request.
- * Used by `getPrStatus()` and the PR monitor polling loop.
- */
-export interface PrStatusResponse {
-  state: "open" | "closed";
-  merged: boolean;
-  number: number;
-  html_url: string;
-  merge_commit_sha: string | null;
-}
+export type { PrStatusResponse } from "./git-types.js";
 
 /**
  * Type guard that narrows an `unknown` value to `PrStatusResponse`.

@@ -21,3 +21,20 @@ export interface PrCreateResult {
   number: number;
   state: "open" | "closed";
 }
+
+/**
+ * Typed shape of the GitHub REST API response for a single pull request.
+ * Used by `getPrStatus()` and the PR monitor polling loop.
+ */
+export interface PrStatusResponse {
+  state: "open" | "closed";
+  merged: boolean;
+  number: number;
+  html_url: string;
+  merge_commit_sha: string | null;
+}
+
+export interface GithubApiToolClient {
+  addPrComment(input: { owner: string; repo: string; pullNumber: number; body: string }): Promise<unknown>;
+  getPrStatus(input: { owner: string; repo: string; pullNumber: number }): Promise<PrStatusResponse>;
+}
