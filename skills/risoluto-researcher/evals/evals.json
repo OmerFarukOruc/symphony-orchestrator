@@ -14,6 +14,13 @@
       "prompt": "Analyze the Aider project at https://aider.chat for feature alignment against the Risoluto spine. Follow links to /docs, /features, and any changelog you find. Aider is an interactive CLI rather than an orchestrator, so expect many Risoluto features to show as [R!] (Risoluto-only).",
       "expected_output": "A per-target markdown file at research/aider-chat.md with website-crawl metadata (fetch date, pages visited), spine-alignment entries, [NEW] entries for interactive-CLI features not on our orchestrator-shaped spine, candidate flags, coverage manifest, and INDEX.md update.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "composio-refresh-run",
+      "prompt": "Refresh the ComposioHQ/agent-orchestrator target — the upstream has shipped new changesets since the last run. I want to see the deltas recorded in ## Run history and the INDEX.md row updated in place, not rewritten.",
+      "expected_output": "research/composiohq-agent-orchestrator.md updated with a new row in ## Run history showing date + spine SHA + target SHA + delta (new [NEW] entries, [?] flips, etc.). INDEX.md target row updated in place; negative-space section recomputed. No prior rows destroyed.",
+      "files": []
     }
   ]
 }

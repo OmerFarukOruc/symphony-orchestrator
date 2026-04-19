@@ -191,6 +191,22 @@ Run both. Merge features. If a feature appears in both sources, the evidence blo
 
 ## Subagent delegation pattern
 
+Two chunking strategies, used for two different passes. Pass 1 (spine-driven alignment) chunks by **spine section**. Pass 2 (target-novel enumeration) chunks by **target surface**. They're complementary — run both, merge results.
+
+### Pass 1 chunking — by spine section
+
+Spawn one subagent per spine section. Each subagent gets:
+
+- One brief from `research/.briefs/NN-<section>.md` (or, if briefs are absent, the matching `##` section of `RISOLUTO_FEATURES.md`).
+- A pointer to the already-extracted target corpus (clone path for repos, page cache for websites).
+- Instructions to return one alignment record per spine item in that section, with legend code + evidence + `Searched for:` queries for any `[R!]`.
+
+This parallelizes cleanly: ~11 spine sections × ≤15 items each × one subagent per section fits in a single fan-out. The main agent merges — no dedup needed because each subagent owns a disjoint slice of the spine.
+
+Prefer this over "one subagent walks the entire spine serially." With a 120+-item spine, serial walks blow the context budget and lose fidelity on later items.
+
+### Pass 2 chunking — by target surface
+
 When the target is non-trivial (>50 source files or >10 doc pages), spawn specialized `Explore` subagents in parallel — one per surface type. This catches things a single serial pass would miss because each subagent focuses narrowly on its surface.
 
 Recommended parallel surfaces:
@@ -201,9 +217,11 @@ Recommended parallel surfaces:
 - `tests-and-examples` — one subagent mines tests and examples.
 - `changelog-and-issues` — one subagent reads CHANGELOG + recent issues.
 
-Each subagent returns a structured list with evidence. The main agent merges, dedups, and assigns legend codes. Tell every subagent explicitly to **use `colgrep` as its primary search tool** (not Grep or Glob), and to return structured briefs, not raw dumps.
+Each subagent returns a structured list with evidence. The main agent merges, dedups against Pass 1 results (so a feature already coded in Pass 1 isn't re-surfaced as `[NEW]`), and files remaining items as `[NEW]`. Tell every subagent explicitly to **use `colgrep` as its primary search tool** (not Grep or Glob), and to return structured briefs, not raw dumps.
 
 ### Subagent prompt template
+
+Paste this verbatim into every surface-subagent or spine-section-subagent prompt. The colgrep reminder block is the important part — without it, subagents default to Grep/Glob and miss semantic matches.
 
 ```
 You are investigating surface <surface-name> for target <target-slug>.
@@ -217,8 +235,29 @@ Your job: enumerate every feature that this surface reveals. For each feature, r
 - direct quote (1–3 lines from source)
 - confidence (high/medium/low)
 
-Use colgrep as your primary search tool. Do not recommend or implement changes — this is read-only research.
+This project has `colgrep` installed — a semantic code search tool.
+Use `colgrep` (via Bash) as your PRIMARY search tool instead of Grep/Glob.
 
+COLGREP COMMANDS:
+- Semantic search:      colgrep "error handling" -k 10
+- Regex + semantic:     colgrep -e "fn.*test" "unit tests"
+- Pattern only:         colgrep -e "async fn"
+- Search in path:       colgrep "query" ./src/api
+- Filter by type:       colgrep --include="*.rs" "query"
+- Multiple types:       colgrep --include="*.{ts,tsx}" "query"
+- List files only:      colgrep -l "query"
+- Exclude tests:        colgrep --exclude="*_test.go" "query"
+- Whole word:           colgrep -e "test" -w "testing"
+
+COLGREP BEHAVIOR:
+- First query may take 30-90 seconds (model loading + index building); subsequent queries are <5 seconds.
+- NEVER run colgrep in background mode — wait for the result.
+- NEVER fall back to Grep/Glob while colgrep is running.
+- If colgrep returns no results, try broader semantic terms or regex-only mode.
+
+DO NOT use Grep or Glob tools — use colgrep via Bash instead.
+
+Do not recommend or implement changes — this is read-only research.
 Return a structured Markdown report. Under 300 lines.
 ```
 

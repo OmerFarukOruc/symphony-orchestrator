@@ -26,11 +26,11 @@
 
 ## Targets
 
-| Target | Type | Version | Last run | [=] | [R+] | [T+] | [R!] | [NEW] | [?] | Roadmap candidates | Notes |
-|--------|------|---------|----------|-----|------|------|------|-------|-----|--------------------|-------|
-| [symphony](symphony.md) | github-repo | v1.4.0 @ abc1234 | 2026-04-18 | 28 | 6 | 9 | 4 | 11 | 2 | 12 | Elixir reference impl; spec-source |
-| [aider](aider.md) | github-repo | v0.54 @ def5678 | 2026-04-18 | 8 | 2 | 4 | 18 | 14 | 3 | 9 | Interactive CLI, not orchestrator — many `[R!]` expected |
-| [sweep](sweep-dev.md) | website | fetched 2026-04-18 | 2026-04-18 | 6 | 1 | 8 | 12 | 9 | 7 | 11 | SaaS; website-only analysis, confidence capped |
+| Target | Type | Version | Last run | [=] | [R+] | [T+] | [R!] | [NEW] | [?] | Candidate flags | Notes |
+|--------|------|---------|----------|-----|------|------|------|-------|-----|-----------------|-------|
+| [symphony](symphony.md) | github-repo | v1.4.0 @ abc1234 | 2026-04-18 | 28 | 6 | 9 | 4 | 11 | 2 | 20 | Elixir reference impl; spec-source |
+| [aider](aider.md) | github-repo | v0.54 @ def5678 | 2026-04-18 | 8 | 2 | 4 | 18 | 14 | 3 | 18 | Interactive CLI, not orchestrator — many `[R!]` expected |
+| [sweep](sweep-dev.md) | website | fetched 2026-04-18 | 2026-04-18 | 6 | 1 | 8 | 12 | 9 | 7 | 17 | SaaS; website-only analysis, confidence capped |
 
 ## Spine sections × targets (matrix view)
 

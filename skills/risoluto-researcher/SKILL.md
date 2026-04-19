@@ -46,11 +46,7 @@ Before running the skill body, verify these preconditions. If any fails, stop an
 
 1. `research/<slug>.md` — the per-target ledger (created or updated).
 2. `research/INDEX.md` — master cross-project index (updated).
-3. A short terminal report to the user summarizing:
-   - target name + version / commit / fetch date
-   - counts per legend code (`[=]`, `[R+]`, `[T+]`, `[R!]`, `[NEW]`, `[?]`)
-   - top 3 roadmap candidates with one-line justifications
-   - any confidence-low entries that need human review
+3. A short terminal report to the user (see §8 for the exact structured block) — covers target identity, files written, legend totals, confidence mix, coverage, ambiguity-pass stats, top 3 candidate flags, and any blockers.
 
 Slug rules:
 - GitHub: `<org>-<repo>`, lowercased, hyphen-separated. Strip `.git`.
@@ -96,35 +92,9 @@ No single LLM pass can guarantee full feature extraction from a non-trivial repo
 
 2. **Surface enumeration, not free-form exploration.** Before feature extraction, enumerate every source surface that could reveal a feature, then hit each systematically. The full surface list lives in `references/extraction-methods.md`. At minimum, for repos: README headings, docs/ tree, CHANGELOG, release notes, CLI `--help` for every subcommand, HTTP/GraphQL route tables, OpenAPI/schema files, config schema (env vars + YAML + flags), test `describe`/`it` blocks, public API exports, top 20 production dependencies, issue labels, open-issue titles (≤100).
 
-3. **Parallel subagents per surface.** Spawn one `Explore` subagent per surface type — each returns a structured list of features with evidence. Main agent merges and dedups. A single serial walk will miss things that parallel specialized walks catch.
+3. **Parallel subagents.** Pass 1 (spine-driven) spawns one subagent per spine section; Pass 2 (target-novel) spawns one subagent per target surface. Each returns a structured list with evidence. Main agent merges and dedups. See `references/extraction-methods.md` §"Subagent delegation pattern" for the full chunking strategy.
 
-   **Every subagent prompt MUST include this colgrep command reference** (the project has `colgrep` installed, a semantic code search tool — subagents default to Grep/Glob unless explicitly told otherwise):
-
-   ```
-   This project has `colgrep` installed - a semantic code search tool.
-   Use `colgrep` (via Bash) as your PRIMARY search tool instead of Grep/Glob.
-
-   COLGREP COMMANDS:
-   - Semantic search:      colgrep "error handling" -k 10
-   - Regex + semantic:     colgrep -e "fn.*test" "unit tests"
-   - Pattern only:         colgrep -e "async fn"
-   - Search in path:       colgrep "query" ./src/api
-   - Filter by type:       colgrep --include="*.rs" "query"
-   - Multiple types:       colgrep --include="*.{ts,tsx}" "query"
-   - List files only:      colgrep -l "query"
-   - Exclude tests:        colgrep --exclude="*_test.go" "query"
-   - Whole word:           colgrep -e "test" -w "testing"
-
-   COLGREP BEHAVIOR:
-   - First query may take 30-90 seconds (model loading + index building); subsequent queries are <5 seconds
-   - NEVER run colgrep in background mode — wait for the result
-   - NEVER fall back to Grep/Glob while colgrep is running
-   - If colgrep returns no results, try broader semantic terms or regex-only mode
-
-   DO NOT use Grep or Glob tools — use colgrep via Bash instead.
-   ```
-
-   Paste that verbatim into every surface-subagent prompt. Without it, subagents default to Grep and miss semantic matches.
+   **Every subagent prompt MUST include the colgrep reminder block from `references/extraction-methods.md` §"Subagent prompt template".** Without it, subagents default to Grep/Glob and miss semantic matches. The reminder block lives in one place so it stays consistent — paste it verbatim, don't paraphrase.
 
 4. **Coverage manifest as a first-class output.** Every target file ends with `## Coverage manifest`: a table of every surface scanned (with file count / byte size / fetch status) and every surface skipped (with reason — "private", "404", "paywalled", "too-large-for-single-pass"). Under-coverage becomes visible and you can re-run with targeted refreshes.
 
@@ -165,13 +135,19 @@ For **websites**, do a depth-limited crawl starting from the URL:
 
 ### 2) Load and normalize the spine
 
-Read `research/RISOLUTO_FEATURES.md`. Parse it into a flat list of spine entries. The spine format is user-controlled, so be tolerant — expect headings at `##` or `###` level with a short description under each. Capture:
+**Prefer briefs over re-parsing the spine.** If `research/.briefs/` contains `NN-*.md` files (one per Risoluto subsystem — orchestrator, agent-runner, http, persistence, etc.), load those as the per-section spine index. Each brief is already behavior-focused, chunked by subsystem, and includes symbol/file/line citations. Using briefs cuts context cost and makes the spine-section subagent chunking in Pass 1 land cleanly.
+
+Staleness check: if any brief's mtime is older than `research/RISOLUTO_FEATURES.md` by more than 14 days, the brief may lag the spine — report that in the run report so the operator knows to regenerate briefs, but keep going (briefs are rarely wrong about the shape of a subsystem, only about the newest features).
+
+**Fallback: parse the spine directly.** If `research/.briefs/` is missing, empty, or absent from this project, read `research/RISOLUTO_FEATURES.md` and parse it into a flat list of spine entries. The spine format is user-controlled, so be tolerant — expect headings at `##` or `###` level with a short description under each. Capture:
 
 - `spine_id` — a stable identifier (use the heading slug if present, otherwise the lowercased heading text).
 - `title` — the human-readable feature name.
 - `description` — whatever sits under the heading, trimmed.
 
-If the spine is very large (>200 entries), skim it and group entries by the top-level section headings so you can triage which sections the target is likely to touch before going feature-by-feature.
+If the spine is very large (>200 entries), group entries by the top-level section headings before going feature-by-feature.
+
+**Never write to the briefs or the spine from this skill.** Both are owned by the `update-feature-spine` workflow. If a brief looks wrong, flag it in `## Analyst notes`, don't edit it.
 
 ### 3) Align target → spine
 
@@ -187,6 +163,18 @@ Output exactly one `[=]` / `[R+]` / `[T+]` / `[R!]` / `[?]` per spine entry. Fil
 Now walk the target's own surface with fresh eyes — not cross-referenced to the spine. Look for capabilities the target documents or implements that don't appear anywhere in the spine. Each one becomes a `[NEW]` entry. These are the single most valuable outputs of this skill because they expand the question space for the roadmap.
 
 Be aggressive here. "They have CLI completion and we don't" counts. "They expose a Prometheus histogram for X and we only have a counter" counts. Every observable difference that isn't already on the spine is potentially `[NEW]`.
+
+### 4.5) Resolve high-signal ambiguities before writing
+
+After passes 1 and 2, before filling the template, scan the running `[?]` list. For each entry ask: **"if this flipped to `[R+]`, `[T+]`, or `[R!]`, would it change the `## Candidate flags` list?"** If yes, it's high-signal — spend one targeted read to resolve it (a single file, a single doc page, a single `colgrep`/grep query). If no, it stays `[?]` and moves to `## Needs follow-up` for later.
+
+The reason this step exists: research runs routinely produce `[?]` entries that a 5-minute direct read would resolve. Leaving them ambiguous hides real signal and creates noise in the cross-target synthesis downstream. But resolving all of them is unbounded work, so cap tightly.
+
+**Budget:** ≤5 resolutions per run, capped at ~10 minutes total. Stop early at diminishing returns (2 consecutive resolutions that don't change the flag list).
+
+**Log contract:** every resolution gets a sub-row in `## Run history`. Use the pattern `1a` under run `1`, `2a` under run `2`, etc. Record the transition (`[?]→[R+]`), the evidence read, and a one-line reason. This preserves the audit trail — later runs see what was actively resolved vs what stayed ambiguous, and can skip re-resolving the same entries.
+
+**What not to do here:** don't re-crawl the target, don't re-run subagents, don't add new spine-alignment items. This is a closer, not a second pass.
 
 ### 5) Write the per-target file
 
@@ -226,13 +214,23 @@ Do not rewrite the whole INDEX from scratch on every run — this is an append/u
 
 ### 8) Report back to the user
 
-Produce a short report (≤150 words) covering:
+Produce this structured block — the operator reads it at a glance, and it diffs cleanly across runs. Keep the shape, fill every field. If a field has nothing to say, write `none` rather than omitting the line.
 
-- File(s) written, with paths.
-- Legend-code totals (e.g., "⚖️ 12 · 🟢 4 · 🔴 7 · ⭐ 3 · ✨ 9 · ❓ 2").
-- Top 3 roadmap candidates, one line each.
-- Any `low`-confidence entries that went into `## Needs follow-up`.
-- Anything the skill could not verify (e.g., paywalled docs, dead links, repos too large to crawl in one pass).
+```markdown
+**Target:** `<slug>` (`github-repo | website | hybrid`) · `<version>` @ `<sha>` · fetched `<date>`
+**Files:** `research/<slug>.md` (created | updated, run N) · `research/INDEX.md` (updated)
+**Totals:** ⚖️ <n> · 🟢 <n> · 🔴 <n> · ⭐ <n> · ✨ <n> · ❓ <n> — total <n>
+**Confidence:** high <n> · medium <n> · low <n>
+**Coverage:** <n>/<n> surfaces scanned · skipped: <short list or "none">
+**Ambiguity pass:** <n> resolved, <n> remain in `## Needs follow-up` (or "skipped: <reason>")
+**Top candidate flags (≤3):**
+- <title> (`[T+]` | `[NEW]`, <signal>) — <one line>
+- <title> (`[T+]` | `[NEW]`, <signal>) — <one line>
+- <title> (`[T+]` | `[NEW]`, <signal>) — <one line>
+**Blockers / gaps:** <e.g., "paywalled docs on /compliance", "gh rate-limited on open issues", or "none">
+```
+
+The totals line must match `## Totals at a glance` in the per-target file exactly — if they drift, the per-target file is the source of truth, fix the report. The top-3 candidate flags are picked by signal (`interesting` first, then `out-of-scope` / `noise` only if fewer than 3 `interesting` exist); don't invent roadmap narrative here.
 
 ## Quality self-check before declaring done
 
@@ -242,6 +240,7 @@ Before you claim the ledger is written, verify:
 - [ ] Every legend entry has all four evidence fields populated (source, quote, version/date, confidence).
 - [ ] `## Coverage manifest` is populated with every surface attempted AND every surface skipped-with-reason.
 - [ ] Every `[R!]` entry has a `Searched for:` line listing ≥3 distinct search attempts (the inversion test). `[R!]` with no searches recorded = downgrade to `[?]`.
+- [ ] Ambiguity-resolution pass was run (or explicitly skipped with a one-line reason). Every resolution has a sub-row in `## Run history` (e.g., `1a` under run `1`) showing the `[?]→<code>` transition and the evidence read.
 - [ ] `## Target-novel features` is non-empty for a non-trivial target. If it IS empty, you almost certainly under-explored — re-run Pass 2 before shipping.
 - [ ] `research/INDEX.md` was updated in place (row parsed, row updated/appended) — NOT destructively rewritten.
 - [ ] No spine entry is silently dropped — each one gets a code or an explicit `[?]` with explanation.
