@@ -153,8 +153,8 @@ describe("logs data helpers", () => {
     expect(result.events).toEqual([expect.objectContaining({ message: "Turn diff updated", event: "turn_diff" })]);
   });
 
-  it("defaults issue-scoped logs routes to archive mode", () => {
-    expect(resolveInitialLogsMode("/issues/NIN-23/logs")).toBe("archive");
+  it("defaults both logs routes to live mode so operators always open on the active stream", () => {
+    expect(resolveInitialLogsMode("/issues/NIN-23/logs")).toBe("live");
     expect(resolveInitialLogsMode("/logs/NIN-23")).toBe("live");
   });
 

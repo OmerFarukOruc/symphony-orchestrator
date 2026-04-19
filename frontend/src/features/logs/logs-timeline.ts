@@ -1,8 +1,9 @@
 import { eventMatchesSearch, stringifyPayload } from "../../utils/events.js";
-import type { RecentEvent } from "../../types/runtime.js";
+import type { RecentEvent, RuntimeIssueView } from "../../types/runtime.js";
 import { createLogBuffer, type SortDirection } from "../../state/log-buffer.js";
 import { getRuntimeClient, type AgentEventPayload, type RuntimeClient } from "../../state/runtime-client.js";
 import { loadArchiveLogs, loadLiveLogs, shouldDisplayLogsEvent } from "../../pages/logs-data.js";
+import { reduceEvents, type RenderedTimeline } from "./logs-reducer.js";
 
 export type LogsMode = "live" | "archive";
 export type LogsDensity = "compact" | "comfortable";
@@ -25,6 +26,15 @@ export interface LogsTimelineState {
   issueTitle: string;
   activeKinds: Set<string>;
   newEventCount: number;
+  loading: boolean;
+  error: string | null;
+  issueView: RuntimeIssueView | null;
+  /**
+   * Section keys the user has manually collapsed. Persisted across re-renders
+   * so SSE events don't flip collapsed blocks back open. Keys: "preamble" or
+   * "turn:${turnId}".
+   */
+  collapsedSections: Set<string>;
 }
 
 type IntervalHandle = number;
@@ -41,6 +51,7 @@ interface LogsTimelineDeps {
 interface LogsTimelineOptions {
   id: string;
   rerender: (options?: LogsRenderOptions) => void;
+  initialMode?: LogsMode;
   deps?: Partial<LogsTimelineDeps>;
 }
 
@@ -50,6 +61,7 @@ export interface LogsTimeline {
   dispose: () => void;
   getAllEvents: () => RecentEvent[];
   getVisibleEvents: () => RecentEvent[];
+  getTimeline: () => RenderedTimeline;
   getSortDirection: () => SortDirection;
   getExpandedCount: () => number;
   getHeaderSummary: () => string;
@@ -65,7 +77,10 @@ export interface LogsTimeline {
   setSortDirection: (direction: SortDirection) => void;
   toggleDensity: () => void;
   toggleAutoScroll: () => void;
+  setAutoScroll: (value: boolean) => void;
   toggleExpandAll: () => void;
+  toggleCollapsedSection: (key: string) => void;
+  isSectionCollapsed: (key: string) => boolean;
   acknowledgeNewEvents: () => void;
   switchMode: (mode: LogsMode) => void;
   refresh: () => Promise<void>;
@@ -119,14 +134,19 @@ export function createLogsTimeline(options: LogsTimelineOptions): LogsTimeline {
 
   const buffer = createLogBuffer("desc");
   const expandedEvents = new Set<string>();
+  const initialMode: LogsMode = options.initialMode ?? "live";
   const state: LogsTimelineState = {
-    mode: "live",
+    mode: initialMode,
     density: "compact",
-    autoScroll: false,
+    autoScroll: initialMode === "live",
     searchText: "",
     issueTitle: options.id,
     activeKinds: new Set<string>(),
     newEventCount: 0,
+    loading: false,
+    error: null,
+    issueView: null,
+    collapsedSections: new Set<string>(),
   };
 
   let timer: IntervalHandle | null = null;
@@ -190,21 +210,42 @@ export function createLogsTimeline(options: LogsTimelineOptions): LogsTimeline {
   }
 
   async function refresh(): Promise<void> {
-    const fresh = state.mode === "live" ? await deps.loadLiveLogs(options.id) : await deps.loadArchiveLogs(options.id);
-    state.issueTitle = fresh.title.trim() || options.id;
-    buffer.clear();
-    buffer.load(fresh.events);
-    resetNewEvents();
-    rerender({ animate: true });
+    state.loading = true;
+    state.error = null;
+    rerender();
+    try {
+      const fresh =
+        state.mode === "live" ? await deps.loadLiveLogs(options.id) : await deps.loadArchiveLogs(options.id);
+      state.issueTitle = fresh.title.trim() || options.id;
+      state.issueView = fresh.issueView;
+      buffer.clear();
+      buffer.load(fresh.events);
+      resetNewEvents();
+      state.loading = false;
+      rerender({ animate: true });
+    } catch (error) {
+      state.loading = false;
+      state.error = error instanceof Error ? error.message : String(error);
+      rerender();
+    }
   }
 
   async function reconcile(): Promise<void> {
-    const fresh = state.mode === "live" ? await deps.loadLiveLogs(options.id) : await deps.loadArchiveLogs(options.id);
-    state.issueTitle = fresh.title.trim() || options.id;
-    const beforeSize = buffer.size();
-    buffer.load(fresh.events);
-    if (buffer.size() !== beforeSize) {
-      rerender();
+    try {
+      const fresh =
+        state.mode === "live" ? await deps.loadLiveLogs(options.id) : await deps.loadArchiveLogs(options.id);
+      state.issueTitle = fresh.title.trim() || options.id;
+      if (fresh.issueView) {
+        state.issueView = fresh.issueView;
+      }
+      const beforeSize = buffer.size();
+      buffer.load(fresh.events);
+      if (buffer.size() !== beforeSize) {
+        rerender();
+      }
+    } catch {
+      // Reconcile failures are transient — the next tick or SSE event will recover.
+      // Keeping the existing buffer preserves the operator's view.
     }
   }
 
@@ -294,22 +335,46 @@ export function createLogsTimeline(options: LogsTimelineOptions): LogsTimeline {
   }
 
   function toggleAutoScroll(): void {
-    state.autoScroll = !state.autoScroll;
-    if (state.autoScroll) {
+    setAutoScroll(!state.autoScroll);
+  }
+
+  function setAutoScroll(value: boolean): void {
+    if (state.autoScroll === value) {
+      return;
+    }
+    state.autoScroll = value;
+    if (value) {
       resetNewEvents();
     }
     rerender();
   }
 
-  function toggleExpandAll(): void {
-    if (expandedEvents.size > 0) {
-      expandedEvents.clear();
+  function toggleCollapsedSection(key: string): void {
+    if (state.collapsedSections.has(key)) {
+      state.collapsedSections.delete(key);
     } else {
-      for (const event of getVisibleEvents()) {
-        if (stringifyPayload(event.content)) {
-          expandedEvents.add(rowKey(event));
-        }
+      state.collapsedSections.add(key);
+    }
+    rerender();
+  }
+
+  function isSectionCollapsed(key: string): boolean {
+    return state.collapsedSections.has(key);
+  }
+
+  function toggleExpandAll(): void {
+    // The hierarchical renderer collapses completed turns by default. If any
+    // section is currently collapsed, clear the set (expand everything). Else,
+    // mark every known turn as collapsed.
+    if (state.collapsedSections.size > 0) {
+      state.collapsedSections.clear();
+    } else {
+      const timeline = reduceEvents(buffer.events());
+      for (const turn of timeline.turns) {
+        const key = `turn:${turn.turnId ?? turn.sessionId ?? turn.startedAt}`;
+        state.collapsedSections.add(key);
       }
+      state.collapsedSections.add("preamble");
     }
     rerender();
   }
@@ -373,6 +438,7 @@ export function createLogsTimeline(options: LogsTimelineOptions): LogsTimeline {
     dispose,
     getAllEvents: () => buffer.events(),
     getVisibleEvents,
+    getTimeline: () => reduceEvents(buffer.events()),
     getSortDirection: () => buffer.direction(),
     getExpandedCount: () => expandedEvents.size,
     getHeaderSummary: buildHeaderSummary,
@@ -388,7 +454,10 @@ export function createLogsTimeline(options: LogsTimelineOptions): LogsTimeline {
     setSortDirection,
     toggleDensity,
     toggleAutoScroll,
+    setAutoScroll,
     toggleExpandAll,
+    toggleCollapsedSection,
+    isSectionCollapsed,
     acknowledgeNewEvents,
     switchMode,
     refresh,

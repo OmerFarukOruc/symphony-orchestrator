@@ -28,6 +28,7 @@ function createLogsData(overrides: Partial<LogsData> = {}): LogsData {
     title: "NIN-1 Improve logs",
     issueId: "NIN-1",
     events: [createRecentEvent()],
+    issueView: null,
     ...overrides,
   };
 }
@@ -119,6 +120,10 @@ describe("logs-timeline", () => {
 
     timeline.initialize();
     await flushMicrotasks();
+
+    // autoScroll defaults to true in live mode so new events are followed,
+    // not counted. Turn it off to simulate the operator scrolling up.
+    timeline.setAutoScroll(false);
 
     streamHandler?.({ type: "agent.event", payload: createPayload() as unknown as Record<string, unknown> });
 

@@ -1,17 +1,24 @@
 import { api } from "../api";
-import type { AttemptRecord, IssueDetail, RecentEvent } from "../types";
+import type { AttemptRecord, IssueDetail, RecentEvent, RuntimeIssueView } from "../types";
 
 export interface LogsData {
   title: string;
   issueId: string;
   events: RecentEvent[];
+  issueView: RuntimeIssueView | null;
 }
 
 export function shouldDisplayLogsEvent(event: RecentEvent): boolean {
-  // Stream deltas are transport noise on the logs page. The final assistant
-  // message still appears as its own event, so hiding these avoids duplicate,
-  // low-signal rows without losing operator context.
-  return event.event !== "agent_streaming" && event.message !== "Agent streaming text";
+  // Legacy stream deltas without accumulated content are transport noise. The
+  // reducer surfaces agent_message_partial and tool_output_live events that
+  // carry accumulated content, so raw "Agent streaming text" stubs stay hidden.
+  if (event.event === "agent_streaming") {
+    return false;
+  }
+  if (event.message === "Agent streaming text" && !event.content) {
+    return false;
+  }
+  return true;
 }
 
 function filterLogsEvents(events: RecentEvent[]): RecentEvent[] {
@@ -20,7 +27,12 @@ function filterLogsEvents(events: RecentEvent[]): RecentEvent[] {
 
 export async function loadLiveLogs(issueId: string): Promise<LogsData> {
   const detail: IssueDetail = await api.getIssue(issueId);
-  return { title: detail.title, issueId: detail.identifier, events: filterLogsEvents(detail.recentEvents) };
+  return {
+    title: detail.title,
+    issueId: detail.identifier,
+    events: filterLogsEvents(detail.recentEvents),
+    issueView: detail,
+  };
 }
 
 export async function loadArchiveLogs(issueId: string): Promise<LogsData> {
@@ -34,12 +46,13 @@ export async function loadArchiveLogs(issueId: string): Promise<LogsData> {
     return rightNum - leftNum;
   })[0];
   if (!latestAttempt) {
-    return { title: issueId, issueId, events: [] };
+    return { title: issueId, issueId, events: [], issueView: null };
   }
   const detail: AttemptRecord = await api.getAttemptDetail(latestAttempt.attemptId);
   return {
     title: detail.title ?? detail.issueIdentifier ?? "Archived attempt",
     issueId: detail.issueIdentifier ?? issueId,
     events: filterLogsEvents(detail.events ?? []),
+    issueView: null,
   };
 }

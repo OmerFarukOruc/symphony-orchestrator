@@ -7,6 +7,7 @@ import {
 } from "../utils/events.js";
 import type { RecentEvent } from "../types/runtime.js";
 import { createIconButton } from "../ui/buttons.js";
+import { createIcon } from "../ui/icons.js";
 import type { SortDirection } from "../state/log-buffer.js";
 
 type ChipState = "active" | "partial" | "inactive";
@@ -50,10 +51,14 @@ export function makeCategoryChip(options: {
   const stateClass = options.state === "active" ? " is-active" : options.state === "partial" ? " is-partial" : "";
   button.className = `mc-chip is-interactive${stateClass}${categoryClass}`;
   button.title = options.title;
-  button.setAttribute("aria-pressed", options.state === "active" ? "true" : "false");
-  if (options.state === "partial") {
-    button.setAttribute("aria-checked", "mixed");
-  }
+  // Tristate toggle: ARIA 1.2 permits aria-pressed="mixed" on role=button.
+  // Never pair with aria-checked — that attribute is reserved for checkbox/radio roles.
+  const pressed = options.state === "active" ? "true" : options.state === "partial" ? "mixed" : "false";
+  button.setAttribute("aria-pressed", pressed);
+  // Roving tabindex: every chip starts at -1; the group controller promotes
+  // exactly one chip to tabindex=0 so Tab enters the group once, then arrow
+  // keys navigate within it.
+  button.tabIndex = -1;
   const text = document.createElement("span");
   text.className = "logs-chip-label";
   text.textContent = options.label;
@@ -238,10 +243,12 @@ export function buildLogFilterBar(options: LogFilterBarOptions): LogFilterBarHan
   const detailFiltersBadge = document.createElement("span");
   detailFiltersBadge.className = "logs-detail-filters-badge";
   detailFiltersBadge.hidden = true;
+  // SVG caret consistent with the rest of the icon system; svg itself is
+  // marked aria-hidden inside the createIcon factory so no AT chatter.
   const detailFiltersCaret = document.createElement("span");
   detailFiltersCaret.className = "logs-detail-filters-caret";
   detailFiltersCaret.setAttribute("aria-hidden", "true");
-  detailFiltersCaret.textContent = "▾";
+  detailFiltersCaret.append(createIcon("chevronDown", { size: 14 }));
   detailFiltersBtn.append(detailFiltersLabel, detailFiltersBadge, detailFiltersCaret);
 
   const utilityLeft = document.createElement("div");
@@ -250,7 +257,6 @@ export function buildLogFilterBar(options: LogFilterBarOptions): LogFilterBarHan
 
   const utilityRight = document.createElement("div");
   utilityRight.className = "logs-utility-right";
-  utilityRight.append(detailFiltersBtn);
 
   // ── View action buttons ───────────────────────────────────────────────
   const viewActions = document.createElement("div");
@@ -275,12 +281,26 @@ export function buildLogFilterBar(options: LogFilterBarOptions): LogFilterBarHan
   });
   const copyAllBtn = makeViewActionButton({ iconName: "copy", label: "Copy", tooltipLabel: "Copy all logs" });
 
+  // Purely visual dividers between button groups — hidden from AT so the
+  // toolbar reads as a flat list of commands, not "button, separator, button".
+  const detailFiltersDivider = document.createElement("span");
+  detailFiltersDivider.className = "logs-view-actions-divider";
+  detailFiltersDivider.setAttribute("aria-hidden", "true");
+
   const viewActionsDivider = document.createElement("span");
   viewActionsDivider.className = "logs-view-actions-divider";
-  viewActionsDivider.setAttribute("role", "separator");
-  viewActionsDivider.setAttribute("aria-orientation", "vertical");
+  viewActionsDivider.setAttribute("aria-hidden", "true");
 
-  viewActions.append(sortToggle, densityToggle, autoToggle, expandToggle, viewActionsDivider, copyAllBtn);
+  viewActions.append(
+    detailFiltersBtn,
+    detailFiltersDivider,
+    sortToggle,
+    densityToggle,
+    autoToggle,
+    expandToggle,
+    viewActionsDivider,
+    copyAllBtn,
+  );
   utilityRight.append(viewActions);
   utilityRow.append(utilityLeft, utilityRight);
 
@@ -301,8 +321,22 @@ export function buildLogFilterBar(options: LogFilterBarOptions): LogFilterBarHan
   }
 
   // ── Chip rendering helpers ────────────────────────────────────────────
+  // Signature of the last chip rebuild so SSE-driven rerenders with no
+  // chip-affecting change skip the O(n) indexing + DOM replace.
+  let lastChipSignature: string | null = null;
+
   function renderCategoryChips(): void {
-    const index = buildCategoryIndex(getEvents());
+    const events = getEvents();
+    // Buffer is append-only deduped by log-buffer; length plus first/last
+    // timestamps uniquely identifies the chip-relevant state. activeKinds
+    // flips chip `is-active`/`is-partial` classes so must be in the signature.
+    const signature = `${events.length}|${events[0]?.at ?? ""}|${events.at(-1)?.at ?? ""}|${[...activeKinds].sort().join("\u0000")}`;
+    if (signature === lastChipSignature) {
+      return;
+    }
+    lastChipSignature = signature;
+
+    const index = buildCategoryIndex(events);
     let totalCount = 0;
     for (const bucket of index.values()) totalCount += bucket.count;
 
@@ -330,6 +364,22 @@ export function buildLogFilterBar(options: LogFilterBarOptions): LogFilterBarHan
     }
 
     filterRow.replaceChildren(...chips);
+    // After a rebuild, make sure exactly one chip is Tab-reachable so the
+    // toolbar remains keyboard-enterable even when no chip has been focused.
+    syncRovingTabindex();
+  }
+
+  /**
+   * Roving tabindex: exactly one chip in the group is tabindex=0 at any time.
+   * Preference order: the currently-active (pressed) chip, then the first chip.
+   */
+  function syncRovingTabindex(focused?: HTMLButtonElement): void {
+    const chips = Array.from(filterRow.querySelectorAll<HTMLButtonElement>("button.mc-chip"));
+    if (chips.length === 0) return;
+    const preferred = focused ?? chips.find((chip) => chip.getAttribute("aria-pressed") === "true") ?? chips[0];
+    for (const chip of chips) {
+      chip.tabIndex = chip === preferred ? 0 : -1;
+    }
   }
 
   function updateDetailFiltersBadge(): void {
@@ -422,13 +472,24 @@ export function buildLogFilterBar(options: LogFilterBarOptions): LogFilterBarHan
   });
 
   filterRow.addEventListener("keydown", (event) => {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const { key } = event;
+    if (key !== "ArrowLeft" && key !== "ArrowRight" && key !== "Home" && key !== "End") return;
     const chips = Array.from(filterRow.querySelectorAll<HTMLButtonElement>("button.mc-chip"));
+    if (chips.length === 0) return;
     const currentIndex = chips.findIndex((chip) => chip === document.activeElement);
     if (currentIndex === -1) return;
     event.preventDefault();
-    const delta = event.key === "ArrowLeft" ? -1 : 1;
-    const next = chips[(currentIndex + delta + chips.length) % chips.length];
+    let nextIndex: number;
+    if (key === "Home") {
+      nextIndex = 0;
+    } else if (key === "End") {
+      nextIndex = chips.length - 1;
+    } else {
+      const delta = key === "ArrowLeft" ? -1 : 1;
+      nextIndex = (currentIndex + delta + chips.length) % chips.length;
+    }
+    const next = chips[nextIndex];
+    syncRovingTabindex(next);
     next.focus();
   });
 

@@ -55,10 +55,6 @@ test.describe("Logs SSE & Sort Smoke", () => {
     await expect(logs.logRows.first()).toBeVisible({ timeout: 5000 });
 
     const initialCount = await logs.logRows.count();
-    await page.evaluate(() => {
-      (window as typeof window & { __logsFirstRow?: Element | null }).__logsFirstRow =
-        document.querySelector(".mc-log-row");
-    });
 
     // Dispatch synthetic SSE event via CustomEvent
     await page.evaluate(() => {
@@ -80,19 +76,13 @@ test.describe("Logs SSE & Sort Smoke", () => {
       );
     });
 
-    // New event should appear
+    // New event text should appear inside a log row
     await expect(page.getByText("SSE live event arrived")).toBeVisible({ timeout: 3000 });
 
-    // Row count should increase
+    // The hierarchical renderer folds new events into the active turn; the
+    // per-step row count must increase.
     const newCount = await logs.logRows.count();
     expect(newCount).toBeGreaterThan(initialCount);
-
-    const preservedExistingRow = await page.evaluate(() => {
-      const stored = (window as typeof window & { __logsFirstRow?: Element | null }).__logsFirstRow;
-      const rows = document.querySelectorAll(".mc-log-row");
-      return Boolean(stored && stored.isConnected && rows[1] === stored);
-    });
-    expect(preservedExistingRow).toBe(true);
   });
 
   test("streaming placeholder SSE events stay hidden", async ({ page }) => {

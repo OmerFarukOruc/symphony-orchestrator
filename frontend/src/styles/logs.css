@@ -5,69 +5,779 @@
   flex-direction: column;
   height: 100%;
   min-height: 0; /* Allow shrinking in flex context */
+  --logs-rail-width: 8px;
+  --logs-sigil-width: 32px;
+  --logs-turn-indent: calc(var(--space-4) + var(--logs-rail-width));
+  --logs-block-max: 15rem;
+  /* Single source of truth for the sticky top bar height; also consumed by
+     .logs-control to anchor its own sticky offset. Previously duplicated as a
+     48px literal in two places. */
+  --logs-top-bar-height: 48px;
+  /* Named container so sibling chrome (top bar AND filter bar descendants) can
+     respond to the page's own width, not the viewport. Lets the logs page
+     collapse gracefully when embedded in a narrow drawer or split view. */
+  container-type: inline-size;
+  container-name: logs-shell;
 }
 
-/* ── Header: breadcrumb + Live/Archive tabs ──────────────────────────────── */
-
-.logs-header {
-  flex: 0 0 auto;
-  align-items: flex-start;
-  gap: var(--space-5);
-}
-
-.logs-header-copy {
-  display: grid;
-  gap: var(--space-2);
-  min-width: 0;
+.logs-layout {
   flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
 }
 
-.logs-header-actions {
+.logs-main {
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  flex: 0 0 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.logs-breadcrumb {
+.logs-main .logs-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ── Sticky top bar (identity · state banner · token meter) ─────────────── */
+
+.mc-logs-top-bar {
+  position: sticky;
+  top: 0;
+  /* Local stacking: top bar above the filter bar (5), both below page overlays. */
+  z-index: 11;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-5);
+  background: var(--bg-canvas);
+  border-top: 2px solid var(--text-accent);
+  border-bottom: 1px solid var(--border-stitch);
+  min-height: var(--logs-top-bar-height);
+}
+
+/* Responds to the logs shell's own width, not the viewport — stays correct
+   when embedded in a narrow drawer or split view. */
+@container logs-shell (max-width: 960px) {
+  .mc-logs-top-bar {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-2);
+  }
+}
+
+.mc-logs-top-bar-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.mc-logs-top-bar-id {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.mc-logs-top-bar-status {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
   letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-stitch);
+  line-height: 1.5;
+}
+
+.mc-logs-top-bar-status[data-status="running"] {
+  background: color-mix(in srgb, var(--status-running) 14%, transparent);
+  color: var(--status-running);
+  border-color: color-mix(in srgb, var(--status-running) 30%, transparent);
+}
+
+.mc-logs-top-bar-status[data-status="blocked"],
+.mc-logs-top-bar-status[data-status="failed"] {
+  background: color-mix(in srgb, var(--status-blocked) 14%, transparent);
+  color: var(--status-blocked);
+  border-color: color-mix(in srgb, var(--status-blocked) 30%, transparent);
+}
+
+.mc-logs-top-bar-status[data-status="queued"] {
+  background: color-mix(in srgb, var(--status-queued) 14%, transparent);
+  color: var(--status-queued);
+  border-color: color-mix(in srgb, var(--status-queued) 30%, transparent);
+}
+
+.mc-logs-top-bar-status[data-status="retrying"],
+.mc-logs-top-bar-status[data-status="stalled"] {
+  background: color-mix(in srgb, var(--status-retrying) 14%, transparent);
+  color: var(--status-retrying);
+  border-color: color-mix(in srgb, var(--status-retrying) 30%, transparent);
+}
+
+.mc-logs-top-bar-status[data-status="success"],
+.mc-logs-top-bar-status[data-status="completed"],
+.mc-logs-top-bar-status[data-status="closed"] {
+  background: color-mix(in srgb, var(--status-completed) 14%, transparent);
+  color: var(--status-completed);
+  border-color: color-mix(in srgb, var(--status-completed) 30%, transparent);
+}
+
+.mc-logs-top-bar-status[data-status="cancelled"] {
+  background: color-mix(in srgb, var(--status-cancelled) 14%, transparent);
+  color: var(--status-cancelled);
+  border-color: color-mix(in srgb, var(--status-cancelled) 30%, transparent);
+}
+
+.mc-logs-top-bar-status[data-status="claimed"] {
+  background: color-mix(in srgb, var(--status-claimed) 14%, transparent);
+  color: var(--status-claimed);
+  border-color: color-mix(in srgb, var(--status-claimed) 30%, transparent);
+}
+
+.mc-logs-top-bar-status[data-status="gate"] {
+  background: color-mix(in srgb, var(--status-gate) 14%, transparent);
+  color: var(--status-gate);
+  border-color: color-mix(in srgb, var(--status-gate) 30%, transparent);
+}
+
+.mc-logs-top-bar-title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  min-width: 0;
+  max-width: 46ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mc-logs-top-bar-title:empty {
+  display: none;
+}
+
+.mc-logs-top-bar-model {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
   color: var(--text-muted);
-  margin: 0;
+  letter-spacing: var(--tracking-wide);
 }
 
-.logs-title,
-.logs-subtitle {
-  margin: 0;
+.mc-logs-top-bar-model[hidden] {
+  display: none;
 }
 
-.logs-subtitle {
-  max-width: 72ch;
+.mc-logs-top-bar-pr {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-copper-400);
+  letter-spacing: var(--tracking-wide);
+  text-decoration: none;
+}
+
+.mc-logs-top-bar-pr:hover {
+  color: var(--color-copper-500);
+  text-decoration: underline;
+}
+
+.mc-logs-top-bar-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mc-logs-top-bar-banner[data-level="error"] .mc-logs-top-bar-banner-copy {
+  color: var(--status-blocked);
+}
+
+.mc-logs-top-bar-banner[data-level="warning"] .mc-logs-top-bar-banner-copy {
+  color: var(--status-retrying);
+}
+
+.mc-logs-top-bar-banner[data-level="success"] .mc-logs-top-bar-banner-copy {
+  color: var(--text-muted);
+}
+
+.mc-logs-top-bar-banner-copy {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mc-logs-top-bar-banner-elapsed {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+}
+
+.mc-logs-top-bar-tokens {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-muted);
+}
+
+.mc-logs-top-bar-tokens[hidden] {
+  display: none;
+}
+
+.mc-logs-top-bar-token-in {
+  color: var(--text-secondary);
+}
+
+.mc-logs-top-bar-token-out {
+  color: var(--text-secondary);
+}
+
+.mc-logs-top-bar-token-sep {
+  color: var(--border-strong);
+}
+
+.mc-logs-top-bar-attempt {
+  padding: 1px var(--space-2);
+  border: 1px solid var(--border-stitch);
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+/* ── Preamble block — same structure as a turn, slate rail for distinction ─ */
+
+.mc-logs-turn.is-preamble::before {
+  background: var(--border-strong);
+  opacity: 0.5;
+}
+
+.mc-logs-turn.is-preamble .mc-logs-turn-label {
+  color: var(--text-secondary);
+}
+
+/* ── Turn block ─────────────────────────────────────────────────────────── */
+
+.mc-logs-turn {
+  position: relative;
+  margin: var(--space-3) var(--space-5);
+  padding-left: var(--logs-turn-indent);
+}
+
+.mc-logs-turn::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--logs-rail-width);
+  background: color-mix(in srgb, var(--color-copper-400) 40%, var(--border-stitch));
+  border-radius: 2px;
+  opacity: 0.6;
+}
+
+.mc-logs-turn.is-active::before {
+  opacity: 1;
+  background: var(--color-copper-400);
+}
+
+.mc-logs-turn-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.mc-logs-turn-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-wide);
+}
+
+.mc-logs-turn-chevron {
+  color: var(--text-muted);
+  transition: transform var(--motion-fast) var(--ease-out-quart);
+}
+
+.mc-logs-turn:not(.is-collapsed) .mc-logs-turn-chevron {
+  transform: rotate(90deg);
+}
+
+.mc-logs-turn-label {
+  color: var(--text-primary);
+}
+
+.mc-logs-turn-duration,
+.mc-logs-turn-usage {
+  color: var(--text-muted);
+  font-weight: var(--font-regular);
+  font-size: var(--text-2xs);
+}
+
+.mc-logs-turn-summary {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.mc-logs-turn-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-1) 0 var(--space-3);
+}
+
+.mc-logs-turn.is-collapsed .mc-logs-turn-body {
+  display: none;
+}
+
+.mc-logs-turn-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-style: italic;
+}
+
+/* ── Step row ───────────────────────────────────────────────────────────── */
+
+.mc-logs-step {
+  display: grid;
+  grid-template-columns: var(--logs-sigil-width) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition:
+    background-color var(--motion-fast) var(--ease-out-quart),
+    border-color var(--motion-fast) var(--ease-out-quart);
+}
+
+.mc-logs-step:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-stitch);
+}
+
+.mc-logs-step.has-time-gap {
+  margin-top: var(--space-3);
+  border-top: 1px dashed var(--border-strong);
+  padding-top: var(--space-3);
+}
+
+.mc-logs-step-sigil {
+  position: relative;
+  width: var(--logs-sigil-width);
+  height: var(--logs-sigil-width);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.mc-logs-step-sigil[data-tone="warning"] {
+  color: var(--status-retrying);
+}
+
+.mc-logs-step-sigil[data-tone="action"] {
+  color: var(--status-running);
+}
+
+.mc-logs-step-sigil[data-tone="edit"] {
+  color: var(--color-copper-400);
+}
+
+.mc-logs-step-sigil[data-tone="search"] {
+  color: var(--status-running);
+}
+
+.mc-logs-step-sigil[data-tone="message"] {
+  color: var(--text-primary);
+}
+
+.mc-logs-step-sigil[data-tone="error"] {
+  color: var(--status-blocked);
+}
+
+.mc-logs-step-sigil[data-tone="user"] {
+  color: var(--color-copper-500);
+}
+
+.mc-logs-step-sigil[data-tone="info"] {
+  color: var(--text-secondary);
+}
+
+.mc-logs-step-sigil.is-live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: sigilPing 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+.mc-logs-step-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.mc-logs-step-time {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  /* --text-muted meets WCAG AA (4.5:1) on both themes; --text-subtle failed at 3.8:1. */
+  color: var(--text-muted);
+  min-width: var(--space-12);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* Hidden checkbox that toggles the clamp on the paired <p>. */
+.mc-logs-step-expand {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mc-logs-step-message-label {
+  cursor: pointer;
+  min-width: 0;
+  flex: 1;
+}
+
+.mc-logs-step-message {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  color: var(--text-primary);
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   line-height: var(--leading-normal);
 }
 
-/* Live dot on the active Live button */
-.logs-live-btn.is-active::before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--status-running);
-  margin-right: var(--space-1);
-  flex-shrink: 0;
-  animation: livePulse 2s ease-in-out infinite;
+.mc-logs-step-expand:checked + .mc-logs-step-message,
+.mc-logs-step-message-label:has(.mc-logs-step-expand:checked) .mc-logs-step-message {
+  -webkit-line-clamp: unset;
+  display: block;
 }
 
-@keyframes livePulse {
+.mc-logs-step[data-kind="error"] .mc-logs-step-message {
+  color: var(--status-blocked);
+}
+
+.mc-logs-step[data-kind="reasoning"] .mc-logs-step-message,
+.mc-logs-step[data-kind="tool_approval_granted"] .mc-logs-step-message {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.mc-logs-step-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+.mc-logs-step-duration,
+.mc-logs-step-pending {
+  font-variant-numeric: tabular-nums;
+  padding: 1px var(--space-1);
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+}
+
+.mc-logs-step-pending {
+  color: var(--status-running);
+  background: color-mix(in srgb, var(--status-running) 10%, transparent);
+}
+
+.mc-logs-step-diff-summary {
+  display: inline-flex;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+}
+
+.mc-logs-step-diff-added {
+  color: var(--status-running);
+}
+
+.mc-logs-step-diff-removed {
+  color: var(--status-blocked);
+}
+
+.mc-logs-step-thinking,
+.mc-logs-step-output {
+  position: relative;
+  grid-column: 2 / span 2;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-stitch);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: var(--logs-block-max);
+  overflow: auto;
+}
+
+/* Sticky fade anchored to the visible bottom — signals there is more to scroll
+ * without overlapping the scrollbar track. */
+.mc-logs-step-thinking::after,
+.mc-logs-step-output::after {
+  content: "";
+  position: sticky;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  height: var(--space-6);
+  margin-top: calc(-1 * var(--space-6));
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bg-surface));
+}
+
+.mc-logs-step-prose {
+  grid-column: 2 / span 2;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2) var(--space-3);
+  /* 8% tint reads above the JND against --bg-elevated. */
+  background: color-mix(in srgb, var(--status-running) 8%, var(--bg-elevated));
+  border: 1px solid color-mix(in srgb, var(--status-running) 20%, var(--border-stitch));
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  color: var(--text-primary);
+  line-height: var(--leading-relaxed);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mc-logs-step-prose.is-streaming::after {
+  content: "▍";
+  display: inline-block;
+  margin-left: var(--space-half);
+  color: var(--color-copper-400);
+  animation: typingCursor 1.2s steps(2, end) infinite;
+}
+
+/* ── Skeleton loading rows ──────────────────────────────────────────────── */
+
+.mc-logs-skeleton-row {
+  display: grid;
+  grid-template-columns: var(--logs-sigil-width) 1fr 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  animation: skeletonFadeIn var(--motion-medium) var(--ease-out-quart);
+  animation-delay: calc(var(--stagger-index, 0) * 70ms);
+  animation-fill-mode: both;
+}
+
+.mc-logs-skeleton-block {
+  /* Raw pixels are intentional here — skeleton bars are low-level primitives
+   * sized independently of the body text scale. */
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--bg-muted) 0%,
+    var(--bg-elevated) 50%,
+    var(--bg-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+/* Top-bar skeleton shimmer for the brief window between mount and first
+ * IssueDetail response. Matches the step-row skeleton aesthetic. */
+.mc-logs-top-bar-skeleton {
+  display: inline-block;
+  height: 11px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--bg-muted) 0%,
+    var(--bg-elevated) 50%,
+    var(--bg-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+.mc-logs-top-bar-skeleton[data-skeleton="title"] {
+  width: 7rem;
+}
+
+.mc-logs-top-bar-skeleton[data-skeleton="pill"] {
+  width: 4rem;
+  height: 16px;
+}
+
+.mc-logs-top-bar-skeleton[data-skeleton="tokens"] {
+  width: 9rem;
+}
+
+.mc-logs-skeleton-block:nth-child(2) {
+  animation-delay: 200ms;
+}
+
+.mc-logs-skeleton-block:nth-child(3) {
+  animation-delay: 400ms;
+}
+
+/* ── Error banner ───────────────────────────────────────────────────────── */
+
+.mc-logs-error {
+  margin: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--status-blocked) 35%, var(--border-stitch));
+  background: color-mix(in srgb, var(--status-blocked) 6%, var(--bg-surface));
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
+
+.mc-logs-error-title {
+  margin: 0 0 var(--space-1) 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--status-blocked);
+  letter-spacing: var(--tracking-wide);
+}
+
+.mc-logs-error-body {
+  margin: 0 0 var(--space-3) 0;
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+  word-break: break-word;
+}
+
+/* ── Resume follow pill ─────────────────────────────────────────────────── */
+
+.logs-resume-follow {
+  position: fixed;
+  bottom: calc(var(--space-6) + var(--control-height-lg));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-tooltip);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  box-shadow: var(--shadow-lg);
+}
+
+.logs-resume-follow:hover {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+}
+
+/* ── Motion keyframes ───────────────────────────────────────────────────── */
+
+@keyframes sigilPing {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes typingCursor {
   0%,
   100% {
-    opacity: 1;
+    opacity: 0;
   }
   50% {
-    opacity: 0.35;
+    opacity: 1;
+  }
+}
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 200% 50%;
+  }
+  100% {
+    background-position: -200% 50%;
+  }
+}
+
+@keyframes skeletonFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-logs-step-sigil.is-live::after,
+  .mc-logs-step-prose.is-streaming::after,
+  .mc-logs-skeleton-block,
+  .mc-logs-skeleton-row,
+  .mc-logs-top-bar-skeleton,
+  .logs-detail-panel {
+    animation: none !important;
+  }
+  .mc-logs-step-sigil.is-live {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
   }
 }
 
@@ -82,8 +792,17 @@
   border-bottom: 1px solid var(--border-stitch);
   background: var(--bg-canvas);
   position: sticky;
-  top: 0;
+  /* Stacks below the top bar so both remain visible when the user scrolls.
+     Token is declared once on .logs-page — no fallback needed. */
+  top: var(--logs-top-bar-height);
+  /* Local stacking context inside the logs page: top bar at 11, filter bar
+     at 5. Both stay below any page-level tooltip/drawer (var(--z-tooltip)=20). */
   z-index: 5;
+  /* Enables @container inline-size queries on descendants, so the filter bar
+     adapts to its own width (useful inside drawers/split views), not the
+     viewport. Named so other surfaces don't accidentally match. */
+  container-type: inline-size;
+  container-name: logs-control;
 }
 
 /* Row 1: category chips */
@@ -104,14 +823,12 @@
   border-radius: var(--radius-sm);
 }
 
-/* Row 2: search + detail filter button + view actions */
+/* Row 2: search + view actions (Event filters lives inside the actions group) */
 .logs-utility-row {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
   gap: var(--space-3);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border-stitch);
 }
 
 .logs-search.mc-input {
@@ -123,7 +840,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -135,10 +852,10 @@
 
 .logs-utility-right {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
-  width: 100%;
+  flex: 0 0 auto;
   min-width: 0;
   flex-wrap: wrap;
 }
@@ -237,7 +954,7 @@
   width: auto;
   min-width: max-content;
   padding: 0 var(--space-3);
-  height: 40px;
+  height: var(--control-height-xl);
   border: 1px solid transparent;
   background: transparent;
   white-space: nowrap;
@@ -263,6 +980,15 @@
 .mc-chip.is-interactive.is-active:hover {
   background: var(--color-copper-500);
   border-color: var(--color-copper-500);
+}
+
+/* Enlarged touch target for category chips in the toolbar. The base .mc-chip
+   is ~22px (matches Linear/Raycast density for inline badges) but in this
+   toolbar context the chips are primary filter controls — clears the WCAG
+   2.5.8 AA 24px minimum and the 28px Linear/Raycast control target. */
+.logs-filter-row .mc-chip.is-interactive {
+  min-height: 28px;
+  padding-block: var(--space-1);
 }
 
 /* Chip internal layout: label + count badge */
@@ -332,18 +1058,24 @@
 }
 
 [class*="mc-chip-category-"].is-active:hover {
-  background: color-mix(in srgb, var(--chip-color) 85%, #000);
-  border-color: color-mix(in srgb, var(--chip-color) 85%, #000);
+  /* Theme-aware shade: mixing with text-primary darkens in light theme and
+     lightens in dark theme (text-primary is always the high-contrast side of
+     the canvas), giving the right hover response in both. Never mix with
+     #000 / #fff — that always moves toward the wrong pole in one theme. */
+  background: color-mix(in srgb, var(--chip-color) 85%, var(--text-primary));
+  border-color: color-mix(in srgb, var(--chip-color) 85%, var(--text-primary));
 }
 
 /* ── Detail filters button ───────────────────────────────────────────────── */
 
-.logs-detail-filters-btn {
+.logs-detail-filters-btn.mc-button {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
+  padding: 0 var(--space-3);
+  min-height: var(--control-height-xl);
+  height: var(--control-height-xl);
 }
 
 .logs-detail-filters-btn.is-active,
@@ -360,7 +1092,7 @@
   min-width: 18px;
   height: 18px;
   padding: 0 var(--space-1);
-  border-radius: 9px;
+  border-radius: var(--radius-full);
   background: var(--color-copper-400);
   color: var(--interactive-primary-text);
   font-size: var(--text-2xs);
@@ -369,9 +1101,17 @@
 }
 
 .logs-detail-filters-caret {
-  font-size: var(--text-2xs);
+  display: inline-flex;
+  align-items: center;
   color: currentcolor;
   opacity: 0.7;
+  transition: transform var(--motion-fast) var(--ease-out-quart);
+}
+
+/* Caret flips when the panel is open — reinforces the toggle affordance
+   without adding new chrome. */
+.logs-detail-filters-btn.is-open .logs-detail-filters-caret {
+  transform: rotate(180deg);
 }
 
 @keyframes detailPanelSlide {
@@ -474,6 +1214,18 @@
   background: var(--bg-canvas);
   transition: background-color var(--motion-fast) var(--ease-out-quart);
   position: relative;
+  /* Let the browser skip layout + paint for rows scrolled out of view. Cheaper
+     than full virtualization, transparent to app code. contain-intrinsic-size
+     reserves a sensible height so scrollbar position stays stable while rows
+     are skipped; the upper bound matches the tallest comfortable row. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56px;
+}
+
+/* Compact density rows are shorter; give the intrinsic size estimate a
+   matching lower bound so the scrollbar doesn't shift when toggling density. */
+.logs-scroll.is-compact .mc-log-row {
+  contain-intrinsic-size: auto 36px;
 }
 
 /* Left accent stripe for rapid severity scanning */
@@ -876,7 +1628,7 @@
   bottom: var(--space-6);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 20;
+  z-index: var(--z-tooltip);
   background: var(--color-copper-400);
   color: var(--interactive-primary-text);
   border-color: var(--color-copper-400);
@@ -885,25 +1637,33 @@
   box-shadow: var(--shadow-lg);
 }
 
+/* Arrow glyph sits beside the indicator label with a small gap. The glyph is
+   aria-hidden so screen readers announce only the label. Shared between the
+   "New events" indicator and the "Resume follow" pill. */
+.logs-indicator-arrow {
+  display: inline-block;
+  margin-right: var(--space-1);
+  line-height: 1;
+}
+
 .logs-new-indicator:hover {
   background: var(--color-copper-500);
   border-color: var(--color-copper-500);
 }
 
-@media (max-width: 960px) {
-  .logs-header {
+/* Container-based responsiveness: the filter bar adapts to its own width, not
+   the viewport. A logs page embedded in a narrow drawer or split view collapses
+   the same way it does at a narrow viewport — predictable and composable. */
+@container logs-control (max-width: 960px) {
+  .logs-utility-row {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .logs-header-actions,
   .logs-utility-right {
     width: 100%;
     justify-content: flex-start;
     margin-left: 0;
-  }
-
-  .logs-utility-row {
-    align-items: stretch;
   }
 
   .logs-utility-left {
@@ -911,12 +1671,7 @@
   }
 }
 
-@media (max-width: 720px) {
-  .logs-header,
-  .logs-control {
-    padding-inline: var(--space-3);
-  }
-
+@container logs-control (max-width: 720px) {
   .logs-utility-left {
     flex-wrap: wrap;
   }
@@ -924,6 +1679,14 @@
   .logs-detail-filters-btn,
   .logs-search {
     width: 100%;
+  }
+}
+
+/* Row-level viewport rules stay viewport-based because .mc-log-row lives
+   outside .logs-control's container scope. */
+@media (max-width: 720px) {
+  .logs-control {
+    padding-inline: var(--space-3);
   }
 
   .mc-log-row,

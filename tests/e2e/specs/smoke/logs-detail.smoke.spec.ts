@@ -36,14 +36,12 @@ test.describe("Logs Page & Attempt Detail Smoke", () => {
     await expect(logs.breadcrumb).toContainText("SYM-42", { timeout: 5000 });
   });
 
-  test("logs page renders filter controls and mode toggles", async ({ page }) => {
+  test("logs page renders filter controls", async ({ page }) => {
     const logs = new LogsPage(page);
     await logs.navigateIssueLogs("SYM-42");
 
     await expect(logs.controlBar).toBeVisible({ timeout: 5000 });
     await expect(logs.searchInput).toBeVisible({ timeout: 5000 });
-    await expect(logs.liveButton).toBeVisible({ timeout: 5000 });
-    await expect(logs.archiveButton).toBeVisible({ timeout: 5000 });
   });
 
   test("logs page shows recent events with log rows and timestamps", async ({ page }) => {

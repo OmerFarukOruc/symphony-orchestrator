@@ -23,22 +23,17 @@ export class LogsPage extends BasePage {
 
   // ── Header ───────────────────────────────────────────────────────────
 
+  /**
+   * The sticky identity strip at the top of the logs page. Under the
+   * hierarchical redesign the old `.logs-header` section was removed in favour
+   * of the sticky `.mc-logs-top-bar`, which shows issue id, status, and tokens.
+   */
   get header(): Locator {
-    return this.page.locator(".logs-header");
+    return this.page.locator(".mc-logs-top-bar");
   }
 
   get breadcrumb(): Locator {
-    return this.page.locator(".logs-breadcrumb");
-  }
-
-  // ── Mode Tabs ────────────────────────────────────────────────────────
-
-  get liveButton(): Locator {
-    return this.page.locator(".logs-live-btn");
-  }
-
-  get archiveButton(): Locator {
-    return this.page.locator(".mc-button-segment button").filter({ hasText: "History" });
+    return this.page.locator(".mc-logs-top-bar-id");
   }
 
   // ── Filter Controls ──────────────────────────────────────────────────
@@ -65,16 +60,38 @@ export class LogsPage extends BasePage {
     return this.page.locator(".logs-scroll");
   }
 
+  /**
+   * Any log entry visible on the page. The hierarchical renderer emits
+   * `.mc-logs-step` elements inside turn blocks; the legacy flat renderer
+   * (used when filters/search are active) emits `.mc-log-row`. Both count
+   * as user-visible entries.
+   */
   get logRows(): Locator {
-    return this.page.locator(".mc-log-row");
+    return this.page.locator(".mc-logs-step, .mc-log-row");
+  }
+
+  get turnBlocks(): Locator {
+    return this.page.locator(".mc-logs-turn");
+  }
+
+  get activeTurnBlock(): Locator {
+    return this.page.locator(".mc-logs-turn.is-active");
+  }
+
+  get topBar(): Locator {
+    return this.page.locator(".mc-logs-top-bar");
+  }
+
+  get stateBanner(): Locator {
+    return this.page.locator(".mc-logs-top-bar-banner");
   }
 
   get logMessages(): Locator {
-    return this.page.locator(".mc-log-message");
+    return this.page.locator(".mc-logs-step-message, .mc-log-message");
   }
 
   get logTimestamps(): Locator {
-    return this.page.locator(".mc-log-time");
+    return this.page.locator(".mc-logs-step-time, .mc-log-time");
   }
 
   // ── View Actions ─────────────────────────────────────────────────────
