@@ -82,33 +82,33 @@ describe("eventTypeLabel", () => {
     expect(eventTypeLabel("reasoning")).toBe("Thinking");
   });
 
-  it("returns 'Tool used' for tool_call", () => {
-    expect(eventTypeLabel("tool_call")).toBe("Tool used");
+  it("returns 'Tool' for tool_call", () => {
+    expect(eventTypeLabel("tool_call")).toBe("Tool");
   });
 
   it("returns 'Web search' for web_search", () => {
     expect(eventTypeLabel("web_search")).toBe("Web search");
   });
 
-  it("returns 'User input' for user_message", () => {
-    expect(eventTypeLabel("user_message")).toBe("User input");
+  it("returns 'You' for user_message", () => {
+    expect(eventTypeLabel("user_message")).toBe("You");
   });
 
-  it("returns 'Shell command' for tool_exec", () => {
-    expect(eventTypeLabel("tool_exec")).toBe("Shell command");
+  it("returns 'Shell' for tool_exec", () => {
+    expect(eventTypeLabel("tool_exec")).toBe("Shell");
   });
 
   it("dedupes token_usage and token_usage_updated to the same label", () => {
-    expect(eventTypeLabel("token_usage")).toBe("Tokens used");
-    expect(eventTypeLabel("token_usage_updated")).toBe("Tokens used");
+    expect(eventTypeLabel("token_usage")).toBe("Tokens");
+    expect(eventTypeLabel("token_usage_updated")).toBe("Tokens");
   });
 
   it("returns 'File changes' for turn_diff", () => {
     expect(eventTypeLabel("turn_diff")).toBe("File changes");
   });
 
-  it("returns 'Session update' for thread_status", () => {
-    expect(eventTypeLabel("thread_status")).toBe("Session update");
+  it("returns 'Thread status' for thread_status", () => {
+    expect(eventTypeLabel("thread_status")).toBe("Thread status");
   });
 
   it("returns a humanized fallback for unknown keys", () => {
