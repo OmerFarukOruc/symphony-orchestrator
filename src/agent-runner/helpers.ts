@@ -110,8 +110,10 @@ function extractCommandContent(item: Record<string, unknown>, verb: "started" | 
     }
     return asString(item.command);
   }
-  if (asString(item.output) !== null) return asString(item.output);
-  if (asString(item.aggregatedOutput) !== null) return asString(item.aggregatedOutput);
+  const output = asString(item.output);
+  if (output !== null) return output;
+  const aggregatedOutput = asString(item.aggregatedOutput);
+  if (aggregatedOutput !== null) return aggregatedOutput;
   const stdout = asString(item.stdout);
   const stderr = asString(item.stderr);
   if (stdout || stderr) {

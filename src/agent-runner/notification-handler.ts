@@ -10,12 +10,58 @@ import { sanitizeContent } from "../core/content-sanitizer.js";
 import { detectStopSignal, type StopSignal } from "../core/signal-detection.js";
 import {
   appendReasoningText,
+  clearStreamingBuffer,
   composeSessionId,
-  recordReviewSummary,
   deleteReasoningBuffer,
+  getOrCreateStreamingBuffer,
   recordCompletedTurn,
+  recordReviewSummary,
+  type StreamingBuffer,
   type TurnState,
 } from "./turn-state.js";
+
+const STREAM_DEBOUNCE_MS = 80;
+const MAX_LIVE_BUFFER_CHARS = 16_000;
+
+interface StreamEmitInput {
+  state: TurnState;
+  issue: Issue;
+  threadId: string | null;
+  turnId: string | null;
+  buffers: Map<string, StreamingBuffer>;
+  itemId: string;
+  event: string;
+  message: string;
+  onEvent: (event: AgentRunnerNotificationEvent) => void;
+}
+
+function scheduleStreamEmit(input: StreamEmitInput, delta: string): void {
+  if (!delta) {
+    return;
+  }
+  const buffer = getOrCreateStreamingBuffer(input.buffers, input.itemId);
+  buffer.content += delta;
+  if (buffer.content.length > MAX_LIVE_BUFFER_CHARS) {
+    buffer.content = buffer.content.slice(-MAX_LIVE_BUFFER_CHARS);
+  }
+  if (buffer.pendingFlush) {
+    return;
+  }
+  buffer.pendingFlush = setTimeout(() => {
+    buffer.pendingFlush = null;
+    buffer.lastFlushMs = Date.now();
+    input.onEvent({
+      at: new Date().toISOString(),
+      issueId: input.issue.id,
+      issueIdentifier: input.issue.identifier,
+      sessionId: composeSessionId(input.threadId, input.turnId),
+      event: input.event,
+      message: input.message,
+      content: buffer.content,
+      metadata: { itemId: input.itemId, streaming: true },
+    });
+  }, STREAM_DEBOUNCE_MS);
+}
 
 interface AgentRunnerNotificationEvent {
   at: string;
@@ -71,12 +117,94 @@ function handleTokenUsageUpdated(input: NotificationInput, params: Record<string
 
 function handleReasoningDelta(input: NotificationInput, params: Record<string, unknown>): void {
   const delta = asRecord(params.delta);
-  appendReasoningText(input.state, asString(delta.id) ?? asString(params.itemId), asString(delta.text));
+  const itemId = asString(delta.id) ?? asString(params.itemId);
+  const text = asString(delta.text);
+  appendReasoningText(input.state, itemId, text);
+  if (itemId && text) {
+    scheduleStreamEmit(
+      {
+        state: input.state,
+        issue: input.issue,
+        threadId: input.threadId,
+        turnId: input.turnId,
+        buffers: input.state.reasoningDeltaBuffers,
+        itemId,
+        event: "reasoning_delta",
+        message: "Agent thinking",
+        onEvent: input.onEvent,
+      },
+      text,
+    );
+  }
 }
 
 function handleReasoningPartAdded(input: NotificationInput, params: Record<string, unknown>): void {
   const part = asRecord(params.part);
-  appendReasoningText(input.state, asString(params.itemId), asString(part.text));
+  const itemId = asString(params.itemId);
+  const text = asString(part.text);
+  appendReasoningText(input.state, itemId, text);
+  if (itemId && text) {
+    scheduleStreamEmit(
+      {
+        state: input.state,
+        issue: input.issue,
+        threadId: input.threadId,
+        turnId: input.turnId,
+        buffers: input.state.reasoningDeltaBuffers,
+        itemId,
+        event: "reasoning_delta",
+        message: "Agent thinking",
+        onEvent: input.onEvent,
+      },
+      text,
+    );
+  }
+}
+
+function handleAgentMessageDelta(input: NotificationInput, params: Record<string, unknown>): void {
+  const delta = asRecord(params.delta);
+  const itemId = asString(delta.id) ?? asString(params.itemId);
+  const text = asString(delta.text) ?? asString(params.text) ?? asString(delta.content);
+  if (!itemId || !text) {
+    return;
+  }
+  scheduleStreamEmit(
+    {
+      state: input.state,
+      issue: input.issue,
+      threadId: input.threadId,
+      turnId: input.turnId,
+      buffers: input.state.agentMessageBuffers,
+      itemId,
+      event: "agent_message_partial",
+      message: "Agent typing",
+      onEvent: input.onEvent,
+    },
+    text,
+  );
+}
+
+function handleCommandOutputDelta(input: NotificationInput, params: Record<string, unknown>): void {
+  const itemId = asString(params.itemId) ?? asString(asRecord(params.delta).id);
+  const delta = asRecord(params.delta);
+  const chunk = asString(delta.text) ?? asString(delta.output) ?? asString(params.text) ?? asString(params.output);
+  if (!itemId || !chunk) {
+    return;
+  }
+  scheduleStreamEmit(
+    {
+      state: input.state,
+      issue: input.issue,
+      threadId: input.threadId,
+      turnId: input.turnId,
+      buffers: input.state.commandOutputBuffers,
+      itemId,
+      event: "tool_output_live",
+      message: "Command output streaming",
+      onEvent: input.onEvent,
+    },
+    chunk,
+  );
 }
 
 function handlePlanDelta(input: NotificationInput, params: Record<string, unknown>): void {
@@ -107,6 +235,7 @@ function handleTurnPlanUpdated(input: NotificationInput, params: Record<string, 
 function handleThreadStatusChanged(input: NotificationInput, params: Record<string, unknown>): void {
   const status = asRecord(params.status);
   const statusType = asString(status.type) ?? "unknown";
+  const activeFlags = Array.isArray(status.activeFlags) ? status.activeFlags : [];
   input.onEvent({
     at: new Date().toISOString(),
     issueId: input.issue.id,
@@ -114,8 +243,11 @@ function handleThreadStatusChanged(input: NotificationInput, params: Record<stri
     sessionId: composeSessionId(asString(params.threadId) ?? input.threadId, input.turnId),
     event: "thread_status",
     message: `Thread status changed to ${statusType}`,
-    content: JSON.stringify(status),
-    metadata: { threadStatus: status },
+    metadata: {
+      threadStatus: statusType,
+      activeFlags,
+      raw: status,
+    },
   });
 }
 
@@ -167,6 +299,11 @@ function handleItemEvent(
   }
   if (verb === "completed") {
     deleteReasoningBuffer(input.state, itemId);
+    // Completion supersedes any live-delta buffers for this item. Flushing them
+    // here prevents stale "typing" rows from lingering after the final payload.
+    clearStreamingBuffer(input.state.agentMessageBuffers, itemId);
+    clearStreamingBuffer(input.state.commandOutputBuffers, itemId);
+    clearStreamingBuffer(input.state.reasoningDeltaBuffers, itemId);
   }
 
   // Detect stop signal from the RAW agent message text (before sanitizeContent
@@ -187,7 +324,12 @@ function handleItemEvent(
     message: sanitizeContent(itemId ? `${itemType} ${itemId} ${verb}` : `${itemType} ${verb}`) || "item event",
     content,
     ...(stopSignal ? { stopSignal } : {}),
-    metadata: { itemType, verb, ...(isDiff ? { isDiff: true } : {}) },
+    metadata: {
+      itemType,
+      verb,
+      ...(itemId ? { itemId } : {}),
+      ...(isDiff ? { isDiff: true } : {}),
+    },
   });
 }
 
@@ -211,6 +353,9 @@ const methodHandlers: Record<string, (input: NotificationInput, params: Record<s
   "item/plan/delta": handlePlanDelta,
   "turn/plan/updated": handleTurnPlanUpdated,
   "thread/status/changed": handleThreadStatusChanged,
+  "item/agentMessage/delta": handleAgentMessageDelta,
+  "item/commandExecution/outputDelta": handleCommandOutputDelta,
+  "item/fileChange/outputDelta": handleCommandOutputDelta,
 };
 
 export function handleNotification(input: NotificationInput): void {
@@ -259,9 +404,6 @@ const CODEX_NOTIFICATION_LABELS: Record<string, { event: string; message: string
   "codex/event/mcp_startup_complete": { event: "system", message: "MCP tools initialized" },
   "thread/started": { event: "thread_started", message: "Thread session opened" },
   "account/rateLimits/updated": { event: "rate_limits", message: "API rate limits updated" },
-  "item/agentMessage/delta": { event: "agent_streaming", message: "Agent streaming text" },
-  "item/fileChange/outputDelta": { event: "tool_output", message: "File change output streaming" },
-  "item/commandExecution/outputDelta": { event: "tool_output", message: "Command output streaming" },
 };
 
 function mapCodexNotification(method: string, params: Record<string, unknown>): { event: string; message: string } {

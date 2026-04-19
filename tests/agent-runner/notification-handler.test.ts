@@ -289,7 +289,10 @@ describe("handleNotification", () => {
       expect(events[0]).toMatchObject({
         event: "thread_status",
         message: "Thread status changed to active",
-        content: JSON.stringify({ type: "active", activeFlags: ["waitingOnApproval"] }),
+        metadata: {
+          threadStatus: "active",
+          activeFlags: ["waitingOnApproval"],
+        },
       });
     });
   });
@@ -393,9 +396,6 @@ describe("handleNotification", () => {
       ["codex/event/mcp_startup_complete", "system", "MCP tools initialized"],
       ["thread/started", "thread_started", "Thread session opened"],
       ["account/rateLimits/updated", "rate_limits", "API rate limits updated"],
-      ["item/agentMessage/delta", "agent_streaming", "Agent streaming text"],
-      ["item/fileChange/outputDelta", "tool_output", "File change output streaming"],
-      ["item/commandExecution/outputDelta", "tool_output", "Command output streaming"],
     ])("maps %s to event=%s, message=%s", (method, expectedEvent, expectedMessage) => {
       handleNotification({
         state,
@@ -638,24 +638,87 @@ describe("handleNotification", () => {
   });
 
   describe("item/commandExecution/outputDelta", () => {
-    it("maps to tool_output via the label fallback path", () => {
-      handleNotification({
-        state,
-        notification: {
-          method: "item/commandExecution/outputDelta",
-          params: { delta: { text: "output chunk" } },
-        },
-        issue,
-        threadId: "thread-1",
-        turnId: "turn-1",
-        onEvent,
-      });
+    it("buffers deltas and emits a debounced tool_output_live event with accumulated content", async () => {
+      vi.useFakeTimers();
+      try {
+        handleNotification({
+          state,
+          notification: {
+            method: "item/commandExecution/outputDelta",
+            params: { itemId: "cmd-1", delta: { text: "chunk-a" } },
+          },
+          issue,
+          threadId: "thread-1",
+          turnId: "turn-1",
+          onEvent,
+        });
+        handleNotification({
+          state,
+          notification: {
+            method: "item/commandExecution/outputDelta",
+            params: { itemId: "cmd-1", delta: { text: "chunk-b" } },
+          },
+          issue,
+          threadId: "thread-1",
+          turnId: "turn-1",
+          onEvent,
+        });
 
-      expect(events).toHaveLength(1);
-      expect(events[0]).toMatchObject({
-        event: "tool_output",
-        message: "Command output streaming",
-      });
+        expect(events).toHaveLength(0);
+
+        await vi.advanceTimersByTimeAsync(100);
+
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({
+          event: "tool_output_live",
+          message: "Command output streaming",
+          content: "chunk-achunk-b",
+          metadata: { itemId: "cmd-1", streaming: true },
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  describe("item/agentMessage/delta", () => {
+    it("buffers agent message deltas and emits agent_message_partial", async () => {
+      vi.useFakeTimers();
+      try {
+        handleNotification({
+          state,
+          notification: {
+            method: "item/agentMessage/delta",
+            params: { itemId: "msg-1", delta: { text: "Hello, " } },
+          },
+          issue,
+          threadId: "thread-1",
+          turnId: "turn-1",
+          onEvent,
+        });
+        handleNotification({
+          state,
+          notification: {
+            method: "item/agentMessage/delta",
+            params: { itemId: "msg-1", delta: { text: "world." } },
+          },
+          issue,
+          threadId: "thread-1",
+          turnId: "turn-1",
+          onEvent,
+        });
+
+        await vi.advanceTimersByTimeAsync(100);
+
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({
+          event: "agent_message_partial",
+          content: "Hello, world.",
+          metadata: { itemId: "msg-1", streaming: true },
+        });
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

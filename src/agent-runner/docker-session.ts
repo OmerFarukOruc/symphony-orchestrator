@@ -232,7 +232,18 @@ function setupConnection(
     logger,
     config.codex.readTimeoutMs,
     async (request: JsonRpcRequest) => {
-      const result = await handleCodexRequest(request, deps.trackerToolProvider, deps.githubToolClient);
+      const result = await handleCodexRequest(request, deps.trackerToolProvider, deps.githubToolClient, (sideEvent) => {
+        input.onEvent({
+          at: new Date().toISOString(),
+          issueId: input.issue.id,
+          issueIdentifier: input.issue.identifier,
+          sessionId: session.threadId && session.turnId ? `${session.threadId}-${session.turnId}` : session.threadId,
+          event: sideEvent.event,
+          message: sideEvent.message,
+          content: sideEvent.content ?? null,
+          metadata: sideEvent.metadata ?? null,
+        });
+      });
       if (result.fatalFailure) {
         fatalFailure = result.fatalFailure;
         session.connection.close();

@@ -55,11 +55,15 @@ export class DefaultAttemptExecutor implements AttemptExecutor {
     let lastAgentMessageContent: string | null = null;
     let lastStopSignal: StopSignal | null = null;
     const contentCapturingOnEvent: AgentRunnerEventHandler = (event) => {
-      if (
-        ((event.event === "agent_message" && event.message?.includes("completed")) ||
-          (event.event === "item_completed" && event.message?.includes("agentMessage"))) &&
-        event.content
-      ) {
+      // Detect the final agent-message item via structured metadata rather than
+      // fuzzy string-matching, so a wording change in notification-handler.ts
+      // never breaks stop-signal detection here.
+      const metadata = event.metadata;
+      const itemType = typeof metadata?.["itemType"] === "string" ? metadata["itemType"] : null;
+      const verb = typeof metadata?.["verb"] === "string" ? metadata["verb"] : null;
+      const isFinalAgentMessage =
+        verb === "completed" && (itemType === "agentMessage" || event.event === "agent_message");
+      if (isFinalAgentMessage && event.content) {
         lastAgentMessageContent = event.content;
       }
       if (event.stopSignal) {
