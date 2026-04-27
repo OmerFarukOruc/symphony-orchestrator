@@ -22,6 +22,21 @@ Touch only what the task requires. A bug fix is not a refactor; a refactor is no
 
 Validate against the real user-visible outcome, not the task description. A green test suite is not proof the feature works — for UI changes, that means `/visual-verify` in the browser; for orchestrator changes, that means confirming the event actually reaches the dashboard; for Linear integration changes, that means the round-trip comment/state-transition lands. If you can't verify end-to-end, say so explicitly instead of claiming success.
 
+## Strategy Context
+
+Every Claude Code session in this repo should read these before planning non-trivial work. They encode the north star, operator ideas, and deferred decisions that keep sessions aligned across time.
+
+| File | Role |
+|------|------|
+| `docs/strategy/VISION.md` | Single north star — "personal autonomous coder, overnight-solo, dogfood-driven". Quality + reliability pillars. Explicitly rejected scope. |
+| `docs/strategy/IDEAS.md` | Operator ideas ledger — PR quality, reliability, future primitives. Origin record for anything that later becomes a roadmap issue. |
+| `docs/strategy/OPEN_QUESTIONS.md` | Deferred strategic questions. Check before proposing a design that touches one of them. |
+| `docs/strategy/MEMORY_WIRING.md` | How this context loads. Three-tier design: CLAUDE.md pointers, skill slices, future qmd semantic search. |
+| `research/INDEX.md` *(private submodule)* | Peer-by-peer alignment matrix + negative space. Absent when submodule isn't initialized — degrade gracefully. |
+| `research/RISOLUTO_FEATURES.md` *(private submodule)* | Canonical feature spine. Source of truth for feature-parity claims. |
+
+**Rule.** If a task contradicts `VISION.md` (e.g., proposing a web IDE surface, a generic agent framework shape, or a multi-tenant auth model as first-class), stop and flag before implementing. If it touches an `OPEN_QUESTIONS.md` entry, surface the question to the operator before designing around it.
+
 ## Architecture at a Glance
 
 | Area | Entry files |
